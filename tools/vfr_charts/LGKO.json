@@ -1,0 +1,113 @@
+{
+ "chart": "AD 2-LGKO-VFR, VFR routes KOS TMA (23 JAN 25, AIRAC AMDT 01/25)",
+ "points": [
+  {
+   "name": "KANDELUSA",
+   "dms": "36 29 46 N 026 58 57 E"
+  },
+  {
+   "name": "KEFALOS",
+   "dms": "36 43 06 N 026 55 04 E"
+  },
+  {
+   "name": "NERA",
+   "dms": "36 54 35 N 026 55 39 E"
+  },
+  {
+   "name": "NISYROS",
+   "dms": "36 33 29 N 027 11 47 E"
+  },
+  {
+   "name": "PERGUSA",
+   "dms": "36 34 58 N 027 02 18 E"
+  },
+  {
+   "name": "TELENDOS",
+   "dms": "36 59 49 N 026 54 06 E"
+  },
+  {
+   "name": "KOPAR",
+   "dms": "36 49 49 N 026 41 19 E"
+  },
+  {
+   "name": "KOS VOR",
+   "dms": "36 47 26.22 N 027 05 28.63 E",
+   "no_symbol": true
+  }
+ ],
+ "routes": [
+  {
+   "a": "TELENDOS",
+   "b": "NERA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 5
+  },
+  {
+   "a": "NERA",
+   "b": "KOPAR",
+   "min": 1500,
+   "max": 1500,
+   "nm": 12.5
+  },
+  {
+   "a": "NERA",
+   "b": "KEFALOS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 11.5
+  },
+  {
+   "a": "KOPAR",
+   "b": "KEFALOS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 13
+  },
+  {
+   "a": "KEFALOS",
+   "b": "KOS VOR",
+   "min": 1500,
+   "max": 1500,
+   "nm": 9.5
+  },
+  {
+   "a": "KEFALOS",
+   "b": "PERGUSA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 10
+  },
+  {
+   "a": "KEFALOS",
+   "b": "KANDELUSA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 14
+  },
+  {
+   "a": "PERGUSA",
+   "b": "NISYROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 8
+  },
+  {
+   "a": "KOPAR",
+   "b": "KANDELUSA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "KANDELUSA",
+   "b": "KOPAR",
+   "min": 2000,
+   "max": 2000,
+   "nm": 24,
+   "oneway": true
+  }
+ ],
+ "notes": "KOPAR\u2013KANDELUSA has an arrowed altitude per direction. Holdings at TELENDOS and KEFALOS."
+}

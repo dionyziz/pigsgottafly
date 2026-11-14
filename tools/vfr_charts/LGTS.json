@@ -1,0 +1,339 @@
+{
+ "chart": "AD 2-LGTS-VFR, VFR routes MAKEDONIA TMA (12 JUN 25, AIRAC AMDT 05/25)",
+ "points": [
+  {
+   "name": "AGIA",
+   "dms": "39 43 12 N 022 45 40 E"
+  },
+  {
+   "name": "APOLON",
+   "dms": "40 36 43 N 023 28 42 E"
+  },
+  {
+   "name": "DROMOS",
+   "dms": "40 27 00 N 023 23 30 E"
+  },
+  {
+   "name": "EPANOM",
+   "dms": "40 26 00 N 022 51 50 E"
+  },
+  {
+   "name": "FALLIA",
+   "dms": "40 46 25 N 022 37 59 E",
+   "reviewed": "not in agreement with open flightmaps (1.0 / 2.6 NM); chart waypoint table value used"
+  },
+  {
+   "name": "GOLF",
+   "dms": "40 12 22 N 022 57 05 E"
+  },
+  {
+   "name": "KATERO",
+   "dms": "40 21 34 N 022 31 57 E",
+   "reviewed": "not in agreement with open flightmaps (1.0 / 2.6 NM); chart waypoint table value used"
+  },
+  {
+   "name": "KILKIS",
+   "dms": "40 59 51 N 022 53 21 E"
+  },
+  {
+   "name": "KORONA",
+   "dms": "40 40 12 N 023 06 39 E"
+  },
+  {
+   "name": "KRATIA",
+   "dms": "40 19 27 N 023 03 47 E"
+  },
+  {
+   "name": "LAGADA",
+   "dms": "40 46 26 N 023 04 48 E"
+  },
+  {
+   "name": "MAKRIS",
+   "dms": "40 26 00 N 022 39 50 E"
+  },
+  {
+   "name": "ODIKO",
+   "dms": "40 58 17 N 023 14 31 E"
+  },
+  {
+   "name": "PANORA",
+   "dms": "40 36 54 N 023 01 48 E"
+  },
+  {
+   "name": "PIKROS",
+   "dms": "40 49 53 N 022 50 03 E"
+  },
+  {
+   "name": "PLATAMON",
+   "dms": "39 56 53 N 022 42 41 E"
+  },
+  {
+   "name": "PLAYIA",
+   "dms": "40 15 56 N 023 11 54 E"
+  },
+  {
+   "name": "POSIDI",
+   "dms": "39 57 12 N 023 20 58 E"
+  },
+  {
+   "name": "STRIMON",
+   "dms": "40 47 14 N 023 50 59 E"
+  },
+  {
+   "name": "VASILI",
+   "dms": "40 28 24 N 023 08 06 E"
+  },
+  {
+   "name": "LGAX",
+   "dms": "40 38 46.8 N 022 29 34.2 E",
+   "no_symbol": true
+  },
+  {
+   "name": "FSK",
+   "dms": "41 05 55.37 N 022 59 29.36 E",
+   "no_symbol": true
+  }
+ ],
+ "routes": [
+  {
+   "a": "FALLIA",
+   "b": "FSK",
+   "min": 4500,
+   "max": 4500,
+   "nm": 25
+  },
+  {
+   "a": "KILKIS",
+   "b": "PIKROS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 10
+  },
+  {
+   "a": "FALLIA",
+   "b": "PIKROS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 10
+  },
+  {
+   "a": "PIKROS",
+   "b": "LAGADA",
+   "min": 3000,
+   "max": 3000,
+   "nm": 12
+  },
+  {
+   "a": "LAGADA",
+   "b": "ODIKO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 14
+  },
+  {
+   "a": "VASILI",
+   "b": "DROMOS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 12
+  },
+  {
+   "a": "MAKRIS",
+   "b": "GOLF",
+   "min": 2500,
+   "max": 2500,
+   "nm": 19
+  },
+  {
+   "a": "GOLF",
+   "b": "POSIDI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 24
+  },
+  {
+   "a": "LGAX",
+   "b": "FALLIA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 10,
+   "oneway": true
+  },
+  {
+   "a": "FALLIA",
+   "b": "LGAX",
+   "min": 1000,
+   "max": 1000,
+   "nm": 10,
+   "oneway": true
+  },
+  {
+   "a": "MAKRIS",
+   "b": "FALLIA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "FALLIA",
+   "b": "MAKRIS",
+   "min": 1000,
+   "max": 1000,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "EPANOM",
+   "b": "MAKRIS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 9,
+   "oneway": true
+  },
+  {
+   "a": "MAKRIS",
+   "b": "EPANOM",
+   "min": 1000,
+   "max": 1000,
+   "nm": 9,
+   "oneway": true
+  },
+  {
+   "a": "PANORA",
+   "b": "KORONA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 5,
+   "oneway": true
+  },
+  {
+   "a": "KORONA",
+   "b": "PANORA",
+   "min": 3000,
+   "max": 3000,
+   "nm": 5,
+   "oneway": true
+  },
+  {
+   "a": "LAGADA",
+   "b": "KORONA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 6,
+   "oneway": true
+  },
+  {
+   "a": "LAGADA",
+   "b": "APOLON",
+   "min": 4500,
+   "max": 4500,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "APOLON",
+   "b": "LAGADA",
+   "min": 4000,
+   "max": 4000,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "KORONA",
+   "b": "APOLON",
+   "min": 4500,
+   "max": 4500,
+   "nm": 17,
+   "oneway": true
+  },
+  {
+   "a": "APOLON",
+   "b": "KORONA",
+   "min": 4000,
+   "max": 4000,
+   "nm": 17,
+   "oneway": true
+  },
+  {
+   "a": "KORONA",
+   "b": "DROMOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 18,
+   "oneway": true
+  },
+  {
+   "a": "DROMOS",
+   "b": "KORONA",
+   "min": 4000,
+   "max": 4000,
+   "nm": 18,
+   "oneway": true
+  },
+  {
+   "a": "APOLON",
+   "b": "DROMOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "DROMOS",
+   "b": "APOLON",
+   "min": 4000,
+   "max": 4000,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "MAKRIS",
+   "b": "KATERO",
+   "min": 5000,
+   "max": 5000,
+   "nm": 8,
+   "oneway": true
+  },
+  {
+   "a": "DROMOS",
+   "b": "PLAYIA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "PLAYIA",
+   "b": "DROMOS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "PLAYIA",
+   "b": "POSIDI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 20,
+   "oneway": true
+  },
+  {
+   "a": "POSIDI",
+   "b": "PLAYIA",
+   "min": 4000,
+   "max": 4000,
+   "nm": 20,
+   "oneway": true
+  },
+  {
+   "a": "LAGADA",
+   "b": "FSK",
+   "min": 4500,
+   "max": 4500,
+   "nm": 20
+  }
+ ],
+ "notes": "FSK = FISKA VOR/DME (TO/FROM FSK VOR tracks from FALLIA and LAGADA). Dash-dot routes (MIL aircraft only) omitted. No altitude shown: APOLON\u2013STRIMON (20), EPANOM\u2013GOLF (14), MAKRIS\u2013PLATAMON (29). LAGADA\u2192KORONA and MAKRIS\u2192KATERO show a single arrowed altitude (one-way)."
+}

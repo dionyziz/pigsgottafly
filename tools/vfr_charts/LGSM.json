@@ -1,0 +1,20 @@
+{
+  "chart": "AD 2-LGSM-VFR, VFR routes SAMOS TMA (17 APR 25, AIRAC AMDT 03/25)",
+  "points": [
+    {"name": "ORMOS", "dms": "37 50 33 N 026 34 51 E"},
+    {"name": "URNIL", "dms": "37 41 06 N 026 31 43 E"},
+    {"name": "LARKI", "dms": "37 23 56 N 026 50 18 E"},
+    {"name": "BALLOS", "from": "ofm", "ofm_name": "BALOS"},
+    {"name": "IRREON", "from": "ofm", "ofm_name": "IREON"},
+    {"name": "SAM", "dms": "37 41 11.85 N 026 54 25.48 E", "no_symbol": true}
+  ],
+  "routes": [
+    {"a": "URNIL", "b": "ORMOS", "min": 3500, "max": 3500, "nm": 9.7},
+    {"a": "URNIL", "b": "BALLOS", "min": 2000, "max": 2000, "nm": 11},
+    {"a": "BALLOS", "b": "IRREON", "min": 1000, "max": 1000, "nm": 7},
+    {"a": "URNIL", "b": "LARKI", "min": 2500, "max": 2500, "nm": 22.6},
+    {"a": "LARKI", "b": "BALLOS", "min": 1000, "max": 1000, "nm": 15, "oneway": true},
+    {"a": "IRREON", "b": "LARKI", "min": 1000, "max": 1000, "nm": 15, "oneway": true}
+  ],
+  "notes": "BALLOS and IRREON print no coordinates (open flightmaps BALOS / IREON, checked against the chart symbols). BALLOS holding max 2000. SAM = SAMOS VOR/DME."
+}

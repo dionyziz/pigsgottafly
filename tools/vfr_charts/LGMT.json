@@ -1,0 +1,222 @@
+{
+ "chart": "AD 2-LGMT-VFR, VFR routes MITILINI TMA (14 MAY 26, AIRAC AMDT 04/26)",
+ "points": [
+  {
+   "name": "PARASKEVI",
+   "dms": "39 14 57 N 026 16 55 E"
+  },
+  {
+   "name": "AMANI",
+   "dms": "39 19 56 N 026 29 58 E"
+  },
+  {
+   "name": "ERESO",
+   "dms": "39 17 31 N 025 56 37 E"
+  },
+  {
+   "name": "FOKKAS",
+   "dms": "39 00 56 N 026 01 00 E"
+  },
+  {
+   "name": "GERA",
+   "dms": "39 07 42 N 026 24 29 E"
+  },
+  {
+   "name": "KALONI",
+   "dms": "39 09 56 N 026 17 57 E"
+  },
+  {
+   "name": "MIMMIS",
+   "dms": "38 57 25 N 026 17 02 E"
+  },
+  {
+   "name": "MIRSINIA",
+   "dms": "38 54 25 N 026 30 30 E"
+  },
+  {
+   "name": "MOLIVOS",
+   "dms": "39 22 43 N 026 09 42 E"
+  },
+  {
+   "name": "PALIOS",
+   "dms": "39 19 30 N 026 26 27 E"
+  },
+  {
+   "name": "PANNOS",
+   "dms": "38 52 29 N 026 14 28 E"
+  },
+  {
+   "name": "PLOMARI",
+   "dms": "38 56 27 N 026 21 24 E"
+  },
+  {
+   "name": "POLIKNI",
+   "dms": "39 05 16 N 026 09 05 E"
+  },
+  {
+   "name": "SIKAMIA",
+   "dms": "39 23 41 N 026 21 05 E"
+  },
+  {
+   "name": "LSV",
+   "dms": "39 13 52.68 N 026 25 31.16 E",
+   "no_symbol": true
+  }
+ ],
+ "routes": [
+  {
+   "a": "ERESO",
+   "b": "MOLIVOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11
+  },
+  {
+   "a": "MOLIVOS",
+   "b": "SIKAMIA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 9
+  },
+  {
+   "a": "SIKAMIA",
+   "b": "PALIOS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 6
+  },
+  {
+   "a": "PALIOS",
+   "b": "AMANI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 3
+  },
+  {
+   "a": "PALIOS",
+   "b": "PARASKEVI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 9
+  },
+  {
+   "a": "PALIOS",
+   "b": "LSV",
+   "min": 2500,
+   "max": 2500,
+   "nm": 6
+  },
+  {
+   "a": "AMANI",
+   "b": "LSV",
+   "min": 2500,
+   "max": 2500
+  },
+  {
+   "a": "LSV",
+   "b": "GERA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 6
+  },
+  {
+   "a": "KALONI",
+   "b": "LSV",
+   "min": 2500,
+   "max": 2500,
+   "nm": 7
+  },
+  {
+   "a": "PARASKEVI",
+   "b": "KALONI",
+   "min": 3500,
+   "max": 3500,
+   "nm": 5
+  },
+  {
+   "a": "ERESO",
+   "b": "KALONI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 18
+  },
+  {
+   "a": "ERESO",
+   "b": "POLIKNI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 16
+  },
+  {
+   "a": "ERESO",
+   "b": "FOKKAS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 17
+  },
+  {
+   "a": "KALONI",
+   "b": "GERA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 6
+  },
+  {
+   "a": "KALONI",
+   "b": "POLIKNI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 8
+  },
+  {
+   "a": "POLIKNI",
+   "b": "FOKKAS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 8
+  },
+  {
+   "a": "POLIKNI",
+   "b": "MIMMIS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 10
+  },
+  {
+   "a": "FOKKAS",
+   "b": "MIMMIS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 13
+  },
+  {
+   "a": "MIMMIS",
+   "b": "PLOMARI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 4
+  },
+  {
+   "a": "MIMMIS",
+   "b": "PANNOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 5
+  },
+  {
+   "a": "PLOMARI",
+   "b": "PANNOS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 7
+  },
+  {
+   "a": "PLOMARI",
+   "b": "MIRSINIA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 7
+  }
+ ],
+ "notes": "LSV = LESVOS VOR/DME. Holdings: PALIOS, GERA 2500; MIRSINIA 1500."
+}

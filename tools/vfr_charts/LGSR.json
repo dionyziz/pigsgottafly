@@ -1,0 +1,156 @@
+{
+ "chart": "AD 2-LGSR-VFR, VFR routes SANTORINI TMA (11 JUN 26, AIRAC AMDT 05/26)",
+ "points": [
+  {
+   "name": "ANAFI WEST",
+   "dms": "36 23 09 N 025 43 24 E"
+  },
+  {
+   "name": "ANIDROS",
+   "dms": "36 38 01 N 025 41 04 E"
+  },
+  {
+   "name": "CHRISTIANA",
+   "dms": "36 14 55 N 025 12 55 E"
+  },
+  {
+   "name": "CTR1",
+   "dms": "36 29 41 N 025 15 38 E"
+  },
+  {
+   "name": "GIVIS",
+   "dms": "36 07 23 N 025 24 18 E"
+  },
+  {
+   "name": "IRBEG",
+   "dms": "36 48 37 N 025 25 41 E"
+  },
+  {
+   "name": "KAMENI",
+   "dms": "36 24 11 N 025 23 45 E"
+  },
+  {
+   "name": "KARAVOS",
+   "dms": "36 37 57 N 025 03 21 E"
+  },
+  {
+   "name": "KUPIS",
+   "dms": "36 14 19 N 025 53 55 E"
+  },
+  {
+   "name": "MAGANARI",
+   "dms": "36 38 03 N 025 21 28 E"
+  },
+  {
+   "name": "UVRIT",
+   "dms": "36 36 31 N 025 49 45 E"
+  }
+ ],
+ "routes": [
+  {
+   "a": "KARAVOS",
+   "b": "IRBEG",
+   "min": 2500,
+   "max": 2500,
+   "nm": 21
+  },
+  {
+   "a": "IRBEG",
+   "b": "MAGANARI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 11
+  },
+  {
+   "a": "IRBEG",
+   "b": "ANIDROS",
+   "min": 3000,
+   "max": 3000,
+   "nm": 16
+  },
+  {
+   "a": "KARAVOS",
+   "b": "MAGANARI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 14.5
+  },
+  {
+   "a": "MAGANARI",
+   "b": "ANIDROS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 16
+  },
+  {
+   "a": "ANIDROS",
+   "b": "UVRIT",
+   "min": 3500,
+   "max": 3500,
+   "nm": 7
+  },
+  {
+   "a": "KARAVOS",
+   "b": "CTR1",
+   "min": 2500,
+   "max": 2500,
+   "nm": 13
+  },
+  {
+   "a": "CTR1",
+   "b": "MAGANARI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 10
+  },
+  {
+   "a": "CTR1",
+   "b": "KAMENI",
+   "min": 2000,
+   "max": 2000,
+   "nm": 9
+  },
+  {
+   "a": "KARAVOS",
+   "b": "CHRISTIANA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 24
+  },
+  {
+   "a": "KAMENI",
+   "b": "CHRISTIANA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 13
+  },
+  {
+   "a": "CHRISTIANA",
+   "b": "GIVIS",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "ANIDROS",
+   "b": "ANAFI WEST",
+   "min": 2500,
+   "max": 2500,
+   "nm": 15
+  },
+  {
+   "a": "UVRIT",
+   "b": "ANAFI WEST",
+   "min": 2500,
+   "max": 2500,
+   "nm": 14
+  },
+  {
+   "a": "ANAFI WEST",
+   "b": "KUPIS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 12
+  }
+ ],
+ "notes": "Helicopter route KAMENI\u2013GIVIS (HEL 17 NM, 1000) omitted. Holdings: KAMENI 2000, ANAFI WEST 2000."
+}

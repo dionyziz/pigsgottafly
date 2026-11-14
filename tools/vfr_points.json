@@ -1,0 +1,466 @@
+{
+ "LGLR": [],
+ "LGTG": [
+  {
+   "name": "ALIVERI",
+   "lat": 38.4075,
+   "lon": 24.04194
+  },
+  {
+   "name": "AMFIKLIA",
+   "lat": 38.64056,
+   "lon": 22.52611
+  },
+  {
+   "name": "ABLONAS",
+   "lat": 38.16944,
+   "lon": 23.73556
+  },
+  {
+   "name": "CHALKIS",
+   "lat": 38.46611,
+   "lon": 23.59667
+  },
+  {
+   "name": "DIRFIS",
+   "lat": 38.54583,
+   "lon": 23.83083
+  },
+  {
+   "name": "ERETRIA",
+   "lat": 38.39361,
+   "lon": 23.79333
+  },
+  {
+   "name": "GERMI",
+   "lat": 38.16556,
+   "lon": 23.12444
+  },
+  {
+   "name": "ILIKIS",
+   "lat": 38.41083,
+   "lon": 23.26833
+  },
+  {
+   "name": "KALAMO",
+   "lat": 38.29194,
+   "lon": 23.86361
+  },
+  {
+   "name": "KIMI",
+   "lat": 38.64556,
+   "lon": 24.15472
+  },
+  {
+   "name": "LAMIAS",
+   "lat": 38.90167,
+   "lon": 22.4325
+  },
+  {
+   "name": "LIMNIS",
+   "lat": 38.16889,
+   "lon": 23.89556
+  },
+  {
+   "name": "MALESINA",
+   "lat": 38.62556,
+   "lon": 23.2375
+  },
+  {
+   "name": "MANDOUDI",
+   "lat": 38.79556,
+   "lon": 23.475
+  },
+  {
+   "name": "NTOVRI",
+   "lat": 38.16667,
+   "lon": 22.93333
+  },
+  {
+   "name": "ORCHOMENOS",
+   "lat": 38.49194,
+   "lon": 22.98222
+  },
+  {
+   "name": "OREI",
+   "lat": 38.94944,
+   "lon": 23.09
+  },
+  {
+   "name": "OROPOS",
+   "lat": 38.33278,
+   "lon": 23.73389
+  },
+  {
+   "name": "POUNDA",
+   "lat": 38.24833,
+   "lon": 22.76306
+  },
+  {
+   "name": "PSACHNA",
+   "lat": 38.58194,
+   "lon": 23.64417
+  },
+  {
+   "name": "SARAKINI",
+   "lat": 38.75,
+   "lon": 23.67194
+  },
+  {
+   "name": "VAGIAS",
+   "lat": 38.31917,
+   "lon": 23.17694
+  },
+  {
+   "name": "XORKI",
+   "lat": 38.16972,
+   "lon": 23.50917
+  }
+ ],
+ "LGAD": [],
+ "LGAV": [
+  {
+   "name": "AGIOS GEORGIOS",
+   "lat": 37.49194,
+   "lon": 23.89861
+  },
+  {
+   "name": "PIKAD",
+   "lat": 38.06139,
+   "lon": 22.69778
+  },
+  {
+   "name": "AGIOS THOMAS",
+   "lat": 37.95722,
+   "lon": 23.89556
+  },
+  {
+   "name": "RILIN",
+   "lat": 37.965,
+   "lon": 22.66667
+  },
+  {
+   "name": "ABEAM KEA",
+   "lat": 37.76139,
+   "lon": 24.43556
+  },
+  {
+   "name": "STAVROS",
+   "lat": 38.01083,
+   "lon": 23.84417
+  },
+  {
+   "name": "ASTOV",
+   "lat": 37.42083,
+   "lon": 22.53444
+  },
+  {
+   "name": "SERIFOS",
+   "lat": 37.18222,
+   "lon": 24.39583
+  },
+  {
+   "name": "ASTROS",
+   "lat": 37.40056,
+   "lon": 22.76472
+  },
+  {
+   "name": "SOREV",
+   "lat": 37.09694,
+   "lon": 24.42444
+  },
+  {
+   "name": "ABLONAS",
+   "lat": 38.16944,
+   "lon": 23.73556
+  },
+  {
+   "name": "SOUTH KITHNOS",
+   "lat": 37.2975,
+   "lon": 24.37722
+  },
+  {
+   "name": "AVLAKI",
+   "lat": 37.85667,
+   "lon": 24.05889
+  },
+  {
+   "name": "SPETSAI",
+   "lat": 37.285,
+   "lon": 23.11306
+  },
+  {
+   "name": "BADEL",
+   "lat": 37.00056,
+   "lon": 24.07389
+  },
+  {
+   "name": "VARIX",
+   "lat": 37.36389,
+   "lon": 25.03417
+  },
+  {
+   "name": "DAPORI",
+   "lat": 37.81306,
+   "lon": 23.26528
+  },
+  {
+   "name": "VELOP",
+   "lat": 37.14917,
+   "lon": 23.28667
+  },
+  {
+   "name": "ELEFSINA",
+   "lat": 38.06361,
+   "lon": 23.55583
+  },
+  {
+   "name": "YDRA",
+   "lat": 37.37,
+   "lon": 23.58778
+  },
+  {
+   "name": "EPIDAVROS",
+   "lat": 37.64167,
+   "lon": 23.17056
+  },
+  {
+   "name": "YIAROS",
+   "lat": 37.63722,
+   "lon": 24.74306
+  },
+  {
+   "name": "EAST AIGINA",
+   "lat": 37.76889,
+   "lon": 23.56833
+  },
+  {
+   "name": "ZOUMBERI",
+   "lat": 38.06556,
+   "lon": 23.99889
+  },
+  {
+   "name": "EAST POROS",
+   "lat": 37.52694,
+   "lon": 23.5325
+  },
+  {
+   "name": "EGN",
+   "lat": 37.76611,
+   "lon": 23.42639
+  },
+  {
+   "name": "FLEVES",
+   "lat": 37.77028,
+   "lon": 23.76083
+  },
+  {
+   "name": "GERMI",
+   "lat": 38.16556,
+   "lon": 23.12444
+  },
+  {
+   "name": "HELLINIKON",
+   "lat": 37.88972,
+   "lon": 23.73472
+  },
+  {
+   "name": "HOLARGOS",
+   "lat": 37.99611,
+   "lon": 23.80083
+  },
+  {
+   "name": "ILIOUP",
+   "lat": 37.94222,
+   "lon": 23.7675
+  },
+  {
+   "name": "KAFIREAS",
+   "lat": 38.15889,
+   "lon": 24.60028
+  },
+  {
+   "name": "KASTELLA",
+   "lat": 37.94389,
+   "lon": 23.64417
+  },
+  {
+   "name": "KEA",
+   "lat": 37.5175,
+   "lon": 24.28833
+  },
+  {
+   "name": "KIATON",
+   "lat": 38.01306,
+   "lon": 22.74833
+  },
+  {
+   "name": "KINETA",
+   "lat": 37.96389,
+   "lon": 23.22083
+  },
+  {
+   "name": "KORINTHOS",
+   "lat": 37.93028,
+   "lon": 22.93583
+  },
+  {
+   "name": "LOFISKOS",
+   "lat": 37.9175,
+   "lon": 23.99167
+  },
+  {
+   "name": "MAKROS",
+   "lat": 37.64611,
+   "lon": 24.10639
+  },
+  {
+   "name": "MANDILOU",
+   "lat": 37.9375,
+   "lon": 24.51833
+  },
+  {
+   "name": "MEGALO",
+   "lat": 37.99861,
+   "lon": 24.24111
+  },
+  {
+   "name": "MEGARA",
+   "lat": 37.98139,
+   "lon": 23.36611
+  },
+  {
+   "name": "MEROUTI",
+   "lat": 38.05778,
+   "lon": 24.59083
+  },
+  {
+   "name": "NAFPLIO",
+   "lat": 37.56222,
+   "lon": 22.79194
+  },
+  {
+   "name": "NISSOS TINOS",
+   "lat": 37.55667,
+   "lon": 25.10861
+  },
+  {
+   "name": "NORTH ANDROS",
+   "lat": 37.96056,
+   "lon": 24.68222
+  },
+  {
+   "name": "NORTH SYROS",
+   "lat": 37.51111,
+   "lon": 24.92778
+  },
+  {
+   "name": "NTAOU PENTELIS",
+   "lat": 38.04722,
+   "lon": 23.95889
+  },
+  {
+   "name": "PALLINI",
+   "lat": 38.03111,
+   "lon": 23.88694
+  },
+  {
+   "name": "PARALIA ASTERIA",
+   "lat": 37.86417,
+   "lon": 23.74167
+  },
+  {
+   "name": "PATROKLOS",
+   "lat": 37.64889,
+   "lon": 23.94833
+  },
+  {
+   "name": "PERATI",
+   "lat": 37.91778,
+   "lon": 24.04278
+  }
+ ],
+ "LGBL": [],
+ "LGIR": [
+  {
+   "name": "ABEAM AGIOS",
+   "lat": 35.36333,
+   "lon": 25.78917
+  },
+  {
+   "name": "ABEAM MALLIA",
+   "lat": 35.34972,
+   "lon": 25.46778
+  },
+  {
+   "name": "AGIOS MYRON",
+   "lat": 35.23083,
+   "lon": 25.03083
+  },
+  {
+   "name": "AVGO",
+   "lat": 35.60389,
+   "lon": 25.57556
+  },
+  {
+   "name": "DIA",
+   "lat": 35.46833,
+   "lon": 25.18194
+  },
+  {
+   "name": "GRANDES ISLAND",
+   "lat": 35.21444,
+   "lon": 26.31139
+  },
+  {
+   "name": "HOSPITAL",
+   "lat": 35.30889,
+   "lon": 25.09361
+  },
+  {
+   "name": "IERAPETRA",
+   "lat": 35.01611,
+   "lon": 25.75306
+  },
+  {
+   "name": "KASTELI",
+   "lat": 35.19306,
+   "lon": 25.32917
+  },
+  {
+   "name": "LABUX",
+   "lat": 35.58194,
+   "lon": 25.85889
+  },
+  {
+   "name": "PAXIMADI",
+   "lat": 35.43333,
+   "lon": 25.27528
+  },
+  {
+   "name": "PSIRA ISLAND",
+   "lat": 35.19722,
+   "lon": 25.86639
+  },
+  {
+   "name": "SKALANI",
+   "lat": 35.28389,
+   "lon": 25.18583
+  }
+ ],
+ "LGKL": [],
+ "LGKO": [],
+ "LGKP": [],
+ "LGKR": [],
+ "LGKV": [],
+ "LGMK": [],
+ "LGMT": [],
+ "LGPA": [],
+ "LGRP": [],
+ "LGSA": [],
+ "LGSK": [],
+ "LGSM": [],
+ "LGSR": [],
+ "LGSY": [],
+ "LGTS": []
+}

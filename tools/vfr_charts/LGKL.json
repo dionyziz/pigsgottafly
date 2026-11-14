@@ -1,0 +1,335 @@
+{
+ "chart": "AD 2-LGKL-VFR, VFR routes KALAMATA MTMA (16 APRIL 26, AIRAC AMDT 03/26). Positions from open flightmaps (chart prints only BERAP, ASTOV, VELOP, SOKRI), checked against chart symbols.",
+ "points": [
+  {
+   "name": "NEDA",
+   "from": "ofm"
+  },
+  {
+   "name": "MEGA",
+   "from": "ofm"
+  },
+  {
+   "name": "FILIATRA",
+   "from": "ofm"
+  },
+  {
+   "name": "PILO",
+   "from": "ofm"
+  },
+  {
+   "name": "PETALO",
+   "from": "ofm"
+  },
+  {
+   "name": "KORONI",
+   "from": "ofm"
+  },
+  {
+   "name": "AREO",
+   "from": "ofm"
+  },
+  {
+   "name": "KALAME",
+   "from": "ofm"
+  },
+  {
+   "name": "KARDAMI",
+   "from": "ofm"
+  },
+  {
+   "name": "SPARTI",
+   "from": "ofm"
+  },
+  {
+   "name": "GITHIO",
+   "from": "ofm"
+  },
+  {
+   "name": "MONEVA",
+   "from": "ofm"
+  },
+  {
+   "name": "ELAFON",
+   "from": "ofm",
+   "ofm_name": "ELAFI"
+  },
+  {
+   "name": "MALEAS",
+   "from": "ofm",
+   "ofm_name": "MALEA"
+  },
+  {
+   "name": "TENARO",
+   "from": "ofm"
+  },
+  {
+   "name": "KIPARI",
+   "from": "ofm"
+  },
+  {
+   "name": "LEONID",
+   "from": "ofm",
+   "ofm_name": "LEONI"
+  }
+ ],
+ "routes": [
+  {
+   "a": "MEGA",
+   "b": "NEDA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 20,
+   "oneway": true
+  },
+  {
+   "a": "NEDA",
+   "b": "MEGA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 20,
+   "oneway": true
+  },
+  {
+   "a": "NEDA",
+   "b": "FILIATRA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "FILIATRA",
+   "b": "NEDA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "FILIATRA",
+   "b": "PILO",
+   "min": 3500,
+   "max": 3500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "PILO",
+   "b": "FILIATRA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "PETALO",
+   "b": "PILO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "PILO",
+   "b": "PETALO",
+   "min": 5500,
+   "max": 5500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "KORONI",
+   "b": "PILO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "PILO",
+   "b": "KORONI",
+   "min": 3500,
+   "max": 3500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "AREO",
+   "b": "KORONI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 22,
+   "oneway": true
+  },
+  {
+   "a": "KORONI",
+   "b": "AREO",
+   "min": 1500,
+   "max": 1500,
+   "nm": 22,
+   "oneway": true
+  },
+  {
+   "a": "MEGA",
+   "b": "KALAME",
+   "min": 5500,
+   "max": 5500,
+   "nm": 23,
+   "oneway": true
+  },
+  {
+   "a": "KALAME",
+   "b": "MEGA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 23,
+   "oneway": true
+  },
+  {
+   "a": "MEGA",
+   "b": "SPARTI",
+   "min": 7500,
+   "max": 7500,
+   "nm": 25,
+   "oneway": true
+  },
+  {
+   "a": "SPARTI",
+   "b": "MEGA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 25,
+   "oneway": true
+  },
+  {
+   "a": "KALAME",
+   "b": "KARDAMI",
+   "min": 5500,
+   "max": 5500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "KARDAMI",
+   "b": "KALAME",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "KARDAMI",
+   "b": "AREO",
+   "min": 5500,
+   "max": 5500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "AREO",
+   "b": "KARDAMI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "GITHIO",
+   "b": "AREO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "AREO",
+   "b": "GITHIO",
+   "min": 5500,
+   "max": 5500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "MONEVA",
+   "b": "GITHIO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "GITHIO",
+   "b": "MONEVA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "ELAFON",
+   "b": "MONEVA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 12,
+   "oneway": true
+  },
+  {
+   "a": "MONEVA",
+   "b": "ELAFON",
+   "min": 4500,
+   "max": 4500,
+   "nm": 12,
+   "oneway": true
+  },
+  {
+   "a": "ELAFON",
+   "b": "TENARO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 25,
+   "oneway": true
+  },
+  {
+   "a": "TENARO",
+   "b": "ELAFON",
+   "min": 3500,
+   "max": 3500,
+   "nm": 25,
+   "oneway": true
+  },
+  {
+   "a": "MALEAS",
+   "b": "ELAFON",
+   "min": 4500,
+   "max": 4500,
+   "nm": 12,
+   "oneway": true
+  },
+  {
+   "a": "ELAFON",
+   "b": "MALEAS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 12,
+   "oneway": true
+  },
+  {
+   "a": "MONEVA",
+   "b": "KIPARI",
+   "min": 6500,
+   "max": 6500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "KIPARI",
+   "b": "MONEVA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 16,
+   "oneway": true
+  }
+ ],
+ "notes": "All altitudes per direction (arrowed). Not transcribed (arrows not legible): AREO\u2013TENARO (17), MONEVA\u2013MALEAS (17). No altitude: GITHIO\u2013SPARTI (20), SPARTI\u2013ASTOV (21), LEONID\u2013KIPARI (15), MALEAS\u2013SOKRI (17); dashed routes (MEGA\u2013ASTOV, SPARTI\u2013LEONID\u2013VELOP, KIPARI\u2013VELOP) omitted. Holdings: PETALO 4000, KALAMATA 2000."
+}

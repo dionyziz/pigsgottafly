@@ -1,0 +1,114 @@
+{
+ "chart": "AD 2-LGPA-VFR, VFR routes PAROS CTR (20 MAR 25, AIRAC AMDT 02/25)",
+ "points": [
+  {
+   "name": "ANTIPAROS",
+   "dms": "37 01 30 N 025 01 12 E"
+  },
+  {
+   "name": "BIBEX",
+   "dms": "37 12 29 N 024 50 04 E"
+  },
+  {
+   "name": "DIDIS",
+   "dms": "37 12 10 N 025 14 34 E"
+  },
+  {
+   "name": "EROTU",
+   "dms": "36 57 27 N 024 51 08 E"
+  },
+  {
+   "name": "ERAKIS",
+   "dms": "37 03 00 N 024 49 00 E"
+  },
+  {
+   "name": "FANNOS",
+   "dms": "36 58 38 N 025 10 17 E"
+  },
+  {
+   "name": "KOTOMERI",
+   "dms": "36 59 37 N 025 23 53 E"
+  },
+  {
+   "name": "MAISTROS",
+   "dms": "37 09 06 N 025 10 26 E"
+  },
+  {
+   "name": "NAKSOS",
+   "dms": "37 05 00 N 025 18 19 E"
+  }
+ ],
+ "routes": [
+  {
+   "a": "BIBEX",
+   "b": "ERAKIS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 10
+  },
+  {
+   "a": "BIBEX",
+   "b": "ANTIPAROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 14
+  },
+  {
+   "a": "ERAKIS",
+   "b": "ANTIPAROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 10
+  },
+  {
+   "a": "EROTU",
+   "b": "ANTIPAROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 9
+  },
+  {
+   "a": "DIDIS",
+   "b": "MAISTROS",
+   "min": 1000,
+   "max": 1000,
+   "nm": 5
+  },
+  {
+   "a": "DIDIS",
+   "b": "NAKSOS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 8
+  },
+  {
+   "a": "MAISTROS",
+   "b": "NAKSOS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 8
+  },
+  {
+   "a": "FANNOS",
+   "b": "NAKSOS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 9
+  },
+  {
+   "a": "FANNOS",
+   "b": "KOTOMERI",
+   "min": 1500,
+   "max": 1500,
+   "nm": 11
+  },
+  {
+   "a": "NAKSOS",
+   "b": "KOTOMERI",
+   "min": 2000,
+   "max": 2000,
+   "nm": 7
+  }
+ ],
+ "notes": "SOREV\u2013ERAKIS (19, not to scale) and EROTU\u2013GENDO\u2013MIL (R32) show no altitude. Holdings 1000 at ANTIPAROS, MAISTROS, NAKSOS, FANNOS, KOTOMERI."
+}

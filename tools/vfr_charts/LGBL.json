@@ -1,0 +1,153 @@
+{
+ "chart": "AD 2-LGBL-VFR, VFR routes ANCHIALOS MTMA (03 SEP 26, AIRAC AMDT 08/26). Positions from open flightmaps, checked against chart symbols.",
+ "points": [
+  {
+   "name": "CHALKI",
+   "from": "ofm"
+  },
+  {
+   "name": "STEFANO",
+   "from": "ofm"
+  },
+  {
+   "name": "VOLLOS",
+   "from": "ofm"
+  },
+  {
+   "name": "ZAGORA",
+   "from": "ofm"
+  },
+  {
+   "name": "ARGA",
+   "from": "ofm"
+  },
+  {
+   "name": "FARSALA",
+   "from": "ofm"
+  },
+  {
+   "name": "PETROTO",
+   "from": "ofm"
+  },
+  {
+   "name": "PTELEOS",
+   "from": "ofm"
+  },
+  {
+   "name": "TRIKERI",
+   "from": "ofm"
+  },
+  {
+   "name": "EVOIAS",
+   "from": "ofm"
+  },
+  {
+   "name": "OREI",
+   "from": "ofm"
+  },
+  {
+   "name": "LAMIAS",
+   "from": "ofm"
+  },
+  {
+   "name": "PELASGIA",
+   "from": "ofm"
+  },
+  {
+   "name": "AGIA",
+   "from": "ofm"
+  },
+  {
+   "name": "KARPENISI",
+   "from": "ofm"
+  },
+  {
+   "name": "ANL",
+   "dms": "39 12 59.36 N 022 47 41.72 E",
+   "no_symbol": true
+  }
+ ],
+ "routes": [
+  {
+   "a": "ANL",
+   "b": "STEFANO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "STEFANO",
+   "b": "ANL",
+   "min": 3500,
+   "max": 3500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "CHALKI",
+   "b": "ANL",
+   "min": 5500,
+   "max": 5500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "ANL",
+   "b": "CHALKI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "VOLLOS",
+   "b": "ARGA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "ARGA",
+   "b": "VOLLOS",
+   "min": 6500,
+   "max": 6500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "ARGA",
+   "b": "ZAGORA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "ZAGORA",
+   "b": "ARGA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "EVOIAS",
+   "b": "OREI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "OREI",
+   "b": "EVOIAS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 11,
+   "oneway": true
+  }
+ ],
+ "notes": "Dense chart with per-direction altitudes; only segments whose arrowed labels were read unambiguously are included. Not transcribed: CHALKI\u2013STEFANO, STEFANO\u2013VOLLOS, AGIA\u2013STEFANO, AGIA\u2013ZAGORA, ZAGORA/ARGA\u2013SKIATHOS, FARSALA\u2013PETROTO, PETROTO\u2013LAMIAS/PTELEOS/KARPENISI, VOLLOS\u2013ANL, ANL\u2013PTELEOS, PTELEOS\u2013OREI, OREI\u2013ARGA, OREI\u2013SARAKINI/ORCHOMENOS/MALESINA, LAMIAS\u2013MALESINA. Dashed routes (MIL only) omitted. ANL = ANCHIALOS VOR/DME."
+}

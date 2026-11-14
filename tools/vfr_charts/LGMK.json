@@ -1,0 +1,37 @@
+{
+  "chart": "AD 2-LGMK-VFR, VFR routes MIKONOS TMA (11 JUN 26, AIRAC AMDT 05/26)",
+  "points": [
+    {"name": "DIDIS", "dms": "37 12 10 N 025 14 34 E"},
+    {"name": "DILLOS", "dms": "37 23 32 N 025 15 39 E"},
+    {"name": "DRAGON", "dms": "37 28 09 N 025 29 07 E"},
+    {"name": "FTELIA", "dms": "37 30 30 N 025 22 49 E"},
+    {"name": "KIMA", "dms": "37 18 42 N 025 17 21 E"},
+    {"name": "KOUNOUPAS", "dms": "37 26 10 N 025 22 20 E"},
+    {"name": "LAOUTI", "dms": "37 31 59 N 025 12 55 E"},
+    {"name": "LETSO", "dms": "37 27 27 N 025 39 30 E"},
+    {"name": "LIVADI", "dms": "37 25 29 N 025 25 11 E"},
+    {"name": "NITSA", "dms": "37 11 27 N 025 22 40 E"},
+    {"name": "NISSOS TINOS", "dms": "37 33 24 N 025 06 31 E"},
+    {"name": "ORNO", "dms": "37 25 12 N 025 19 18 E"},
+    {"name": "OSSCAR", "dms": "37 20 18 N 025 27 36 E"},
+    {"name": "PIDAX", "dms": "37 13 41 N 025 30 41 E"},
+    {"name": "RINNIA", "dms": "37 26 32 N 025 10 46 E"},
+    {"name": "VARIX", "dms": "37 21 50 N 025 02 03 E"}
+  ],
+  "routes": [
+    {"a": "VARIX", "b": "RINNIA", "min": 1500, "max": 1500, "nm": 8},
+    {"a": "VARIX", "b": "DILLOS", "min": 1500, "max": 1500, "nm": 11},
+    {"a": "VARIX", "b": "DIDIS", "min": 2000, "max": 2000, "nm": 14},
+    {"a": "RINNIA", "b": "DIDIS", "min": 1500, "max": 1500, "nm": 15},
+    {"a": "RINNIA", "b": "DILLOS", "min": 1500, "max": 1500, "nm": 5},
+    {"a": "DILLOS", "b": "DIDIS", "min": 1500, "max": 1500, "nm": 11},
+    {"a": "DILLOS", "b": "KIMA", "min": 1500, "max": 1500, "nm": 5},
+    {"a": "KIMA", "b": "NITSA", "min": 1500, "max": 1500, "nm": 8},
+    {"a": "DIDIS", "b": "NITSA", "min": 2000, "max": 2000, "nm": 6},
+    {"a": "NITSA", "b": "PIDAX", "min": 2000, "max": 2000, "nm": 7},
+    {"a": "PIDAX", "b": "LETSO", "min": 2000, "max": 2000, "nm": 15},
+    {"a": "LETSO", "b": "DRAGON", "min": 1500, "max": 1500, "nm": 8},
+    {"a": "NISSOS TINOS", "b": "RINNIA", "min": 1500, "max": 1500, "nm": 8}
+  ],
+  "notes": "Dashed HEL routes (helicopters only) omitted."
+}

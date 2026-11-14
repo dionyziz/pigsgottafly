@@ -1,0 +1,443 @@
+{
+ "chart": "AD 2-LGAV-VFR, ATHINA TMA - VFR ROUTES (03 SEP 26, AIRAC AMDT 08/26)",
+ "points": [],
+ "routes": [
+  {
+   "a": "PIKAD",
+   "b": "KIATON",
+   "min": 6000,
+   "max": 6000
+  },
+  {
+   "a": "KIATON",
+   "b": "KORINTHOS",
+   "min": 6000,
+   "max": 6000
+  },
+  {
+   "a": "PIKAD",
+   "b": "KORINTHOS",
+   "min": 6000,
+   "max": 6000,
+   "nm": 14
+  },
+  {
+   "a": "RILIN",
+   "b": "KORINTHOS",
+   "min": 6000,
+   "max": 6000,
+   "nm": 13
+  },
+  {
+   "a": "KORINTHOS",
+   "b": "ABLONAS",
+   "min": 6000,
+   "max": 6000,
+   "nm": 40
+  },
+  {
+   "a": "KORINTHOS",
+   "b": "MEGARA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 21
+  },
+  {
+   "a": "KORINTHOS",
+   "b": "KINETA",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "KINETA",
+   "b": "MEGARA",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "KORINTHOS",
+   "b": "DAPORI",
+   "min": 3500,
+   "max": 3500,
+   "nm": 17
+  },
+  {
+   "a": "GERMI",
+   "b": "MEGARA",
+   "min": 5000,
+   "max": 5000,
+   "nm": 16
+  },
+  {
+   "a": "MEGARA",
+   "b": "DAPORI",
+   "min": 3000,
+   "max": 3000,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "EGN",
+   "b": "MEGARA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 13,
+   "oneway": true
+  },
+  {
+   "a": "EGN",
+   "b": "DAPORI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 8,
+   "oneway": true
+  },
+  {
+   "a": "DAPORI",
+   "b": "EGN",
+   "min": 2000,
+   "max": 2000,
+   "nm": 8,
+   "oneway": true
+  },
+  {
+   "a": "DAPORI",
+   "b": "EPIDAVROS",
+   "min": 2000,
+   "max": 3000,
+   "nm": 11
+  },
+  {
+   "a": "EGN",
+   "b": "EPIDAVROS",
+   "min": 2000,
+   "max": 2500,
+   "nm": 14
+  },
+  {
+   "a": "DAPORI",
+   "b": "EAST POROS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "EGN",
+   "b": "EAST POROS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "EGN",
+   "b": "ELEFSINA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 19
+  },
+  {
+   "a": "EAST AIGINA",
+   "b": "ELEFSINA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 18
+  },
+  {
+   "a": "EGN",
+   "b": "HELLINIKON",
+   "min": 2000,
+   "max": 2000,
+   "nm": 17
+  },
+  {
+   "a": "EAST AIGINA",
+   "b": "HELLINIKON",
+   "min": 2000,
+   "max": 2000,
+   "nm": 11
+  },
+  {
+   "a": "EAST AIGINA",
+   "b": "EAST POROS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 15
+  },
+  {
+   "a": "KASTELLA",
+   "b": "HELLINIKON",
+   "min": 1500,
+   "max": 1500,
+   "nm": 5
+  },
+  {
+   "a": "ABLONAS",
+   "b": "STAVROS",
+   "min": 5500,
+   "max": 5500
+  },
+  {
+   "a": "ABLONAS",
+   "b": "HOLARGOS",
+   "min": 5500,
+   "max": 5500
+  },
+  {
+   "a": "PERATI",
+   "b": "AVLAKI",
+   "min": 1000,
+   "max": 1500,
+   "nm": 4
+  },
+  {
+   "a": "PERATI",
+   "b": "MANDILOU",
+   "min": 1500,
+   "max": 1500,
+   "nm": 22
+  },
+  {
+   "a": "PERATI",
+   "b": "ABEAM KEA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 21
+  },
+  {
+   "a": "ABEAM KEA",
+   "b": "YIAROS",
+   "min": 3000,
+   "max": 3000,
+   "nm": 16
+  },
+  {
+   "a": "AVLAKI",
+   "b": "MAKROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 13
+  },
+  {
+   "a": "MAKROS",
+   "b": "MANDILOU",
+   "min": 1500,
+   "max": 1500,
+   "nm": 26
+  },
+  {
+   "a": "MAKROS",
+   "b": "AGIOS GEORGIOS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 13
+  },
+  {
+   "a": "MAKROS",
+   "b": "KEA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 12
+  },
+  {
+   "a": "MANDILOU",
+   "b": "MEROUTI",
+   "min": 4000,
+   "max": 4000,
+   "nm": 8
+  },
+  {
+   "a": "MEROUTI",
+   "b": "KAFIREAS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 6
+  },
+  {
+   "a": "KAFIREAS",
+   "b": "NORTH ANDROS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 12
+  },
+  {
+   "a": "NORTH ANDROS",
+   "b": "YIAROS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 20
+  },
+  {
+   "a": "YIAROS",
+   "b": "NISSOS TINOS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 18
+  },
+  {
+   "a": "YIAROS",
+   "b": "NORTH SYROS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 12
+  },
+  {
+   "a": "NORTH SYROS",
+   "b": "VARIX",
+   "min": 3500,
+   "max": 3500,
+   "nm": 10
+  },
+  {
+   "a": "SOUTH KITHNOS",
+   "b": "VARIX",
+   "min": 3500,
+   "max": 3500,
+   "nm": 32
+  },
+  {
+   "a": "KEA",
+   "b": "SOREV",
+   "min": 3500,
+   "max": 3500,
+   "nm": 26
+  },
+  {
+   "a": "KEA",
+   "b": "SOUTH KITHNOS",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "KEA",
+   "b": "SERIFOS",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "SOUTH KITHNOS",
+   "b": "SOREV",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "SOUTH KITHNOS",
+   "b": "SERIFOS",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "SERIFOS",
+   "b": "SOREV",
+   "min": 3500,
+   "max": 3500
+  },
+  {
+   "a": "YDRA",
+   "b": "SOUTH KITHNOS",
+   "min": 3000,
+   "max": 3000,
+   "nm": 38
+  },
+  {
+   "a": "AGIOS GEORGIOS",
+   "b": "SOUTH KITHNOS",
+   "min": 3000,
+   "max": 3000,
+   "nm": 26
+  },
+  {
+   "a": "YDRA",
+   "b": "KEA",
+   "min": 3000,
+   "max": 3000,
+   "nm": 35
+  },
+  {
+   "a": "YDRA",
+   "b": "AGIOS GEORGIOS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 17
+  },
+  {
+   "a": "EAST POROS",
+   "b": "AGIOS GEORGIOS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 18
+  },
+  {
+   "a": "EAST POROS",
+   "b": "YDRA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 9
+  },
+  {
+   "a": "YDRA",
+   "b": "SOREV",
+   "min": 3500,
+   "max": 3500,
+   "nm": 43
+  },
+  {
+   "a": "YDRA",
+   "b": "BADEL",
+   "min": 3500,
+   "max": 3500,
+   "nm": 32
+  },
+  {
+   "a": "YDRA",
+   "b": "VELOP",
+   "min": 3500,
+   "max": 3500,
+   "nm": 20
+  },
+  {
+   "a": "VELOP",
+   "b": "SPETSAI",
+   "min": 1500,
+   "max": 5500,
+   "nm": 12
+  },
+  {
+   "a": "SPETSAI",
+   "b": "YDRA",
+   "min": 1500,
+   "max": 3000,
+   "nm": 23
+  },
+  {
+   "a": "SPETSAI",
+   "b": "ASTROS",
+   "min": 1500,
+   "max": 5000,
+   "nm": 18
+  },
+  {
+   "a": "ASTROS",
+   "b": "ASTOV",
+   "min": 2500,
+   "max": 6500,
+   "nm": 11
+  },
+  {
+   "a": "NAFPLIO",
+   "b": "ASTOV",
+   "min": 2500,
+   "max": 6500,
+   "nm": 15
+  },
+  {
+   "a": "NAFPLIO",
+   "b": "EPIDAVROS",
+   "min": 2500,
+   "max": 5000,
+   "nm": 18
+  }
+ ],
+ "notes": "Points from the chart's text coordinate table (tools/vfr_points.json). Omitted (ambiguous labels): STAVROS\u2013AGIOS THOMAS, HELLINIKON\u2013ILIOUP\u2013HOLARGOS. Helicopter routes omitted."
+}

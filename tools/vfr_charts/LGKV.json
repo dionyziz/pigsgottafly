@@ -1,0 +1,235 @@
+{
+ "chart": "AD 2-LGKV-VFR, VFR routes KAVALA TMA (30 OCT 25, AIRAC AMDT 09/25)",
+ "points": [
+  {
+   "name": "ALISTRATI",
+   "dms": "41 03 54 N 023 57 30 E"
+  },
+  {
+   "name": "AMALA",
+   "dms": "40 34 07 N 024 49 58 E"
+  },
+  {
+   "name": "ASKOS",
+   "dms": "40 38 17 N 024 16 13 E"
+  },
+  {
+   "name": "DRAMA",
+   "dms": "41 08 53 N 024 08 44 E"
+  },
+  {
+   "name": "FANARI",
+   "dms": "40 57 25 N 025 07 46 E"
+  },
+  {
+   "name": "IASMOS",
+   "dms": "41 07 43 N 025 11 06 E"
+  },
+  {
+   "name": "IDILO",
+   "dms": "40 47 26 N 025 26 22 E"
+  },
+  {
+   "name": "KALAMON",
+   "dms": "41 00 43 N 024 12 38 E"
+  },
+  {
+   "name": "KAVALA",
+   "dms": "40 56 03 N 024 24 42 E"
+  },
+  {
+   "name": "KERAMOTI",
+   "dms": "40 51 10 N 024 42 10 E"
+  },
+  {
+   "name": "KINIRA",
+   "dms": "40 39 31 N 024 46 57 E"
+  },
+  {
+   "name": "KOMOTINI",
+   "dms": "41 07 00 N 025 24 34 E"
+  },
+  {
+   "name": "LOUTRA",
+   "dms": "40 43 37 N 024 05 59 E"
+  },
+  {
+   "name": "PARANESTI",
+   "dms": "41 16 01 N 024 30 07 E"
+  },
+  {
+   "name": "PEREN",
+   "dms": "40 35 48 N 023 58 04 E"
+  },
+  {
+   "name": "PONTOL",
+   "dms": "40 58 14 N 024 34 52 E"
+  },
+  {
+   "name": "PRINOS",
+   "dms": "40 45 40 N 024 33 46 E"
+  },
+  {
+   "name": "ROUPOL",
+   "dms": "40 54 58 N 024 15 22 E"
+  },
+  {
+   "name": "SKALA MARION",
+   "dms": "40 38 29 N 024 30 48 E"
+  },
+  {
+   "name": "SOSUS",
+   "dms": "40 44 39 N 025 04 24 E"
+  },
+  {
+   "name": "STRIMON",
+   "dms": "40 47 14 N 023 50 59 E"
+  },
+  {
+   "name": "XANTHI",
+   "dms": "41 08 22 N 024 53 15 E"
+  },
+  {
+   "name": "XERIS",
+   "dms": "41 09 14 N 024 08 25 E"
+  }
+ ],
+ "routes": [
+  {
+   "a": "ALISTRATI",
+   "b": "KALAMON",
+   "min": 4500,
+   "max": 4500,
+   "nm": 12
+  },
+  {
+   "a": "ALISTRATI",
+   "b": "ROUPOL",
+   "min": 4500,
+   "max": 4500,
+   "nm": 16
+  },
+  {
+   "a": "LOUTRA",
+   "b": "KAVALA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 19
+  },
+  {
+   "a": "KAVALA",
+   "b": "PONTOL",
+   "min": 2000,
+   "max": 2000,
+   "nm": 8
+  },
+  {
+   "a": "LOUTRA",
+   "b": "ASKOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 9.5
+  },
+  {
+   "a": "ASKOS",
+   "b": "SKALA MARION",
+   "min": 2000,
+   "max": 2000,
+   "nm": 11
+  },
+  {
+   "a": "ASKOS",
+   "b": "AMALA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 26
+  },
+  {
+   "a": "SKALA MARION",
+   "b": "PRINOS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 8
+  },
+  {
+   "a": "PRINOS",
+   "b": "KERAMOTI",
+   "min": 1500,
+   "max": 1500,
+   "nm": 8
+  },
+  {
+   "a": "KERAMOTI",
+   "b": "KINIRA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 12
+  },
+  {
+   "a": "KINIRA",
+   "b": "AMALA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 6
+  },
+  {
+   "a": "KERAMOTI",
+   "b": "FANARI",
+   "min": 2000,
+   "max": 2000,
+   "nm": 20
+  },
+  {
+   "a": "KERAMOTI",
+   "b": "SOSUS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 18
+  },
+  {
+   "a": "KINIRA",
+   "b": "SOSUS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 14
+  },
+  {
+   "a": "AMALA",
+   "b": "SOSUS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 15
+  },
+  {
+   "a": "FANARI",
+   "b": "IASMOS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 11
+  },
+  {
+   "a": "FANARI",
+   "b": "XANTHI",
+   "min": 1500,
+   "max": 1500,
+   "nm": 16
+  },
+  {
+   "a": "XERIS",
+   "b": "KALAMON",
+   "min": 4500,
+   "max": 4500,
+   "nm": 9,
+   "oneway": true
+  },
+  {
+   "a": "KALAMON",
+   "b": "XERIS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 9,
+   "oneway": true
+  }
+ ],
+ "notes": "No altitude shown: STRIMON\u2013LOUTRA, LOUTRA\u2013PEREN, PEREN\u2013ASKOS, SOSUS\u2013IDILO, FANARI\u2013IDILO, FANARI\u2013KOMOTINI, IASMOS\u2013KOMOTINI. Ambiguous labels, not transcribed: ROUPOL\u2013LOUTRA, SOSUS\u2013FANARI. Holdings: LOUTRA 5000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
+}

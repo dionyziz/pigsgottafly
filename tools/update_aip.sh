@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Rebuild all AIP-derived data from a new Greek eAIP release. See AIP-UPDATE.md.
+#
+#   tools/update_aip.sh <dir with aipgr_*.zip.0NN parts> <AIRAC e.g. 2612> "<AIRAC AMDT label, e.g. AIRAC AMDT 10/26 (wef 26 NOV 2026)>"
+#
+# Needs: unzip, bsdtar, pdftotext, pdftoppm, tesseract, python3 (numpy, Pillow, opencv), node.
+set -euo pipefail
+PARTS="$1"; CYCLE="$2"; LABEL="$3"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+WORK="$(mktemp -d -t navlog-aip-XXXX)"
+echo "work dir: $WORK"
+
+echo "== 1. unpack"
+cat "$PARTS"/aipgr_*.zip.0* > "$WORK/aip.zip"
+echo "   archive sha256: $(shasum -a 256 "$WORK/aip.zip" | cut -d' ' -f1)   <- compare with the published checksum"
+unzip -tq "$WORK/aip.zip"
+mkdir -p "$WORK/iso" "$WORK/txt" "$WORK/vfr" "$WORK/charts"
+unzip -q "$WORK/aip.zip" -d "$WORK/zip"
+bsdtar -xf "$WORK"/zip/*.iso -C "$WORK/iso"
+PDF="$WORK/iso/ais/eaip/pdf"
+
+echo "== 2. text of the sections we use"
+for f in "$PDF"/AD\ 2/AD2-*/LG_AD_2_LG??_en.pdf "$PDF/AD 1/AD 1.6 CAT B AERODROMES/catb"/*.pdf "$PDF/ENR 2"/*.pdf "$PDF/ENR 4"/*.pdf "$PDF/GEN 2"/*.pdf; do
+  pdftotext -layout "$f" "$WORK/txt/$(basename "$f" .pdf).txt"
+done
+for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
+  f="$PDF/$(echo "$f" | tr '#' ' ')"; pdftotext -layout "$f" "$WORK/vfr/$(basename "$f" .pdf).txt"
+done
+
+echo "== 3. what changed since the last update (review these by hand, see AIP-UPDATE.md)"
+python3 -I "$ROOT/tools/vfr_manifest.py" check "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
+for s in ENR_2_1 ENR_4_1 GEN_2_7; do
+  echo "   $s: $(grep -hoE 'AIRAC AMDT [0-9]+/[0-9]+' "$WORK/txt/LG_${s}_en.txt" | sort -u | tail -1)"
+done
+
+echo "== 4. aerodromes, airspace, sunset"
+sed -i '' "s|^AIRAC = .*|AIRAC = '$LABEL'|" "$ROOT/tools/build_aip.py"
+python3 -I "$ROOT/tools/parse_ad.py" "$WORK/txt" "$WORK/ad_raw.json"
+python3 -I "$ROOT/tools/build_aip.py" "$WORK/ad_raw.json" "$ROOT/data/aip.js"
+python3 -I "$ROOT/tools/parse_sun.py" "$WORK/txt/LG_GEN_2_7_en.txt" "$ROOT/data/sun.js"
+
+echo "== 5. VFR points and routes"
+python3 -I "$ROOT/tools/parse_vfr.py" "$WORK/vfr" "$ROOT/tools/vfr_points.json"
+python3 -I "$ROOT/tools/fetch_ofm.py" "$CYCLE" "$ROOT/tools/ofm_points.json"
+python3 -I "$ROOT/tools/known_points.py" "$ROOT/tools/vfr_points.json" "$ROOT/tools/vfr_charts" "$ROOT/tools/ofm_points.json" "$WORK/known.json"
+for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
+  f="$PDF/$(echo "$f" | tr '#' ' ')"; c=$(basename "$f" | sed -E 's/.*(LG[A-Z]{2})_VFR.*/\1/')
+  n=$(pdfinfo "$f" | awk '/Pages/{print $2}')
+  for p in $(seq 1 "$n"); do
+    [ "$(pdftotext -f "$p" -l "$p" "$f" - | wc -w)" -gt 50 ] && continue      # text pages, not the chart
+    pdftoppm -f "$p" -l "$p" -r 600 -gray -png "$f" "$WORK/charts/${c}_p$p"
+    img=$(ls "$WORK/charts/${c}_p$p"*.png)
+    VFR_NO_ROUTES=1 python3 -I "$ROOT/tools/vfr_chart.py" "$img" "$c" "$ROOT/tools/vfr_ocr/${c}_p$p-$p.json" "$WORK/charts/overlay_${c}_p$p.png" "$WORK/known.json" | tail -1
+  done
+done
+python3 -I "$ROOT/tools/build_vfr.py" "$ROOT/tools/vfr_points.json" "$ROOT/tools/vfr_charts" "$ROOT/tools/vfr_ocr" "$ROOT/tools/ofm_points.json" "$ROOT/data/vfr.js"
+
+echo "== 6. stamp and test"
+(cd "$ROOT" && node tools/stamp.mjs && npm test && npm run test:e2e)
+python3 -I "$ROOT/tools/vfr_manifest.py" write "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
+echo "done. Chart renders and overlays: $WORK/charts"

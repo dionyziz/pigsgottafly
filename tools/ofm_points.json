@@ -1,0 +1,2244 @@
+{
+"airac": "2611",
+"source": "https://snapshots.openflightmaps.org/live/2611/ofmx/lggg/latest/ofmx_lg.zip",
+"points": [
+{
+"name": "PANOMI",
+"lat": 40.433333,
+"lon": 22.863889,
+"ad": "LGTS"
+},
+{
+"name": "MAKRIS",
+"lat": 40.433333,
+"lon": 22.673148,
+"ad": "LGTS"
+},
+{
+"name": "FALLIA",
+"lat": 40.78972,
+"lon": 22.64111,
+"ad": "LGTS"
+},
+{
+"name": "PIKRO",
+"lat": 40.86167,
+"lon": 22.86583,
+"ad": "LGTS"
+},
+{
+"name": "LAGADA",
+"lat": 40.77111,
+"lon": 23.083333,
+"ad": "LGTS"
+},
+{
+"name": "KORONA",
+"lat": 40.672222,
+"lon": 23.116667,
+"ad": "LGTS"
+},
+{
+"name": "PANORA",
+"lat": 40.60861,
+"lon": 23.03194,
+"ad": "LGTS"
+},
+{
+"name": "VASILI",
+"lat": 40.47556,
+"lon": 23.13611,
+"ad": "LGTS"
+},
+{
+"name": "DROMOS",
+"lat": 40.45,
+"lon": 23.397222,
+"ad": "LGTS"
+},
+{
+"name": "APOLON",
+"lat": 40.60472,
+"lon": 23.48611,
+"ad": "LGTS"
+},
+{
+"name": "KRATIA",
+"lat": 40.31445,
+"lon": 23.06944,
+"ad": "LGTS"
+},
+{
+"name": "PLAYIA",
+"lat": 40.2575,
+"lon": 23.21667,
+"ad": "LGTS"
+},
+{
+"name": "GOLF",
+"lat": 40.21028,
+"lon": 22.93417,
+"ad": "LGTS"
+},
+{
+"name": "KILKIS",
+"lat": 40.99667,
+"lon": 22.89028,
+"ad": "LGTS"
+},
+{
+"name": "POSIDI",
+"lat": 39.96056,
+"lon": 23.335,
+"ad": "LGTS"
+},
+{
+"name": "RION",
+"lat": 38.271667,
+"lon": 21.805,
+"ad": "LGAD"
+},
+{
+"name": "OXIA",
+"lat": 38.254444,
+"lon": 21.126667,
+"ad": "LGAD"
+},
+{
+"name": "MOUNDA",
+"lat": 38.034167,
+"lon": 20.802778,
+"ad": "LGAD"
+},
+{
+"name": "YERAKI",
+"lat": 37.722222,
+"lon": 20.978056,
+"ad": "LGAD"
+},
+{
+"name": "KILLINI",
+"lat": 37.937222,
+"lon": 21.140833,
+"ad": "LGAD"
+},
+{
+"name": "KALOGRIA",
+"lat": 38.137778,
+"lon": 21.293333,
+"ad": "LGAD"
+},
+{
+"name": "VARDA",
+"lat": 37.965278,
+"lon": 21.385278,
+"ad": "LGAD"
+},
+{
+"name": "ACHAIA",
+"lat": 38.113056,
+"lon": 21.586944,
+"ad": "LGAD"
+},
+{
+"name": "PAPPAS",
+"lat": 38.163056,
+"lon": 21.445278,
+"ad": "LGAD"
+},
+{
+"name": "KYRA PANAGIA",
+"lat": 39.304444,
+"lon": 24.053889,
+"ad": "LGSY"
+},
+{
+"name": "SKANTZOURA",
+"lat": 39.078611,
+"lon": 24.12,
+"ad": "LGSY"
+},
+{
+"name": "SKYROPOULA",
+"lat": 38.856944,
+"lon": 24.341667,
+"ad": "LGSY"
+},
+{
+"name": "OCHTHONIA",
+"lat": 38.524722,
+"lon": 24.231944,
+"ad": "LGSY"
+},
+{
+"name": "SARAKINA",
+"lat": 38.719444,
+"lon": 24.648889,
+"ad": "LGSY"
+},
+{
+"name": "BALTADOROS",
+"lat": 38.965556,
+"lon": 24.703889,
+"ad": "LGSY"
+},
+{
+"name": "KOROS",
+"lat": 39.099722,
+"lon": 24.915833,
+"ad": "LGSY"
+},
+{
+"name": "SIALMAS",
+"lat": 39.458333,
+"lon": 24.983056,
+"ad": "LGSY"
+},
+{
+"name": "AGIOS GEORGIOS",
+"lat": 37.491944,
+"lon": 23.898611,
+"ad": "LGAV"
+},
+{
+"name": "AGIOS THOMAS",
+"lat": 37.957222,
+"lon": 23.895556,
+"ad": "LGAV"
+},
+{
+"name": "FLEVES",
+"lat": 37.772685,
+"lon": 23.768056,
+"ad": "LGAV"
+},
+{
+"name": "PATROKLOS",
+"lat": 37.659167,
+"lon": 23.958333,
+"ad": "LGAV"
+},
+{
+"name": "ASTROS",
+"lat": 37.400556,
+"lon": 22.774444,
+"ad": "LGAV"
+},
+{
+"name": "AVLAKI",
+"lat": 37.861111,
+"lon": 24.064722,
+"ad": "LGAV"
+},
+{
+"name": "DAPORI",
+"lat": 37.813056,
+"lon": 23.265278,
+"ad": "LGAV"
+},
+{
+"name": "ABEAM KEA",
+"lat": 37.768981,
+"lon": 24.437037,
+"ad": "LGAV"
+},
+{
+"name": "KORINTHOS",
+"lat": 37.932222,
+"lon": 22.9375,
+"ad": "LGAV"
+},
+{
+"name": "LOFISKOS",
+"lat": 37.918056,
+"lon": 23.997222,
+"ad": "LGAV"
+},
+{
+"name": "EAST AIGINA",
+"lat": 37.77037,
+"lon": 23.569444,
+"ad": "LGAV"
+},
+{
+"name": "EGN",
+"lat": 37.764167,
+"lon": 23.423889,
+"ad": "LGAV"
+},
+{
+"name": "HELLINIKON",
+"lat": 37.889722,
+"lon": 23.734722,
+"ad": "LGAV"
+},
+{
+"name": "KASTELLA",
+"lat": 37.943889,
+"lon": 23.644167,
+"ad": "LGAV"
+},
+{
+"name": "MAKROS",
+"lat": 37.646111,
+"lon": 24.106389,
+"ad": "LGAV"
+},
+{
+"name": "MANDILOU",
+"lat": 37.9375,
+"lon": 24.518333,
+"ad": "LGAV"
+},
+{
+"name": "MEROUTI",
+"lat": 38.057778,
+"lon": 24.590833,
+"ad": "LGAV"
+},
+{
+"name": "NAFPLIO",
+"lat": 37.562222,
+"lon": 22.791944,
+"ad": "LGAV"
+},
+{
+"name": "NORTH ANDROS",
+"lat": 37.960556,
+"lon": 24.682222,
+"ad": "LGAV"
+},
+{
+"name": "NORTH SYROS",
+"lat": 37.511111,
+"lon": 24.927778,
+"ad": "LGAV"
+},
+{
+"name": "PERATI",
+"lat": 37.917778,
+"lon": 24.042778,
+"ad": "LGAV"
+},
+{
+"name": "EAST POROS",
+"lat": 37.533796,
+"lon": 23.543056,
+"ad": "LGAV"
+},
+{
+"name": "STAVROS",
+"lat": 38.010833,
+"lon": 23.844167,
+"ad": "LGAV"
+},
+{
+"name": "SOREV",
+"lat": 37.096944,
+"lon": 24.424444,
+"ad": "LGAV"
+},
+{
+"name": "SOUTH KITHNOS",
+"lat": 37.2975,
+"lon": 24.377222,
+"ad": "LGAV"
+},
+{
+"name": "SPETSAI",
+"lat": 37.285,
+"lon": 23.113056,
+"ad": "LGAV"
+},
+{
+"name": "VELOP",
+"lat": 37.149167,
+"lon": 23.286667,
+"ad": "LGAV"
+},
+{
+"name": "YDRA",
+"lat": 37.37,
+"lon": 23.587778,
+"ad": "LGAV"
+},
+{
+"name": "YIAROS",
+"lat": 37.637222,
+"lon": 24.743056,
+"ad": "LGAV"
+},
+{
+"name": "DIA",
+"lat": 35.468333,
+"lon": 25.181944,
+"ad": "LGIR"
+},
+{
+"name": "PAXIMADI",
+"lat": 35.433333,
+"lon": 25.275278,
+"ad": "LGIR"
+},
+{
+"name": "ABEAM MALLIA",
+"lat": 35.349722,
+"lon": 25.467778,
+"ad": "LGIR"
+},
+{
+"name": "ABEAM AGIOS",
+"lat": 35.363333,
+"lon": 25.789167,
+"ad": "LGIR"
+},
+{
+"name": "PSIRA ISLAND",
+"lat": 35.197222,
+"lon": 25.866389,
+"ad": "LGIR"
+},
+{
+"name": "GRANDES ISLAND",
+"lat": 35.214444,
+"lon": 26.311389,
+"ad": "LGIR"
+},
+{
+"name": "AVGO",
+"lat": 35.603889,
+"lon": 25.575556,
+"ad": "LGIR"
+},
+{
+"name": "IERAPETRA",
+"lat": 35.016111,
+"lon": 25.753056,
+"ad": "LGIR"
+},
+{
+"name": "KASTELI",
+"lat": 35.193056,
+"lon": 25.329167,
+"ad": "LGIR"
+},
+{
+"name": "HOSPITAL",
+"lat": 35.308889,
+"lon": 25.093611,
+"ad": "LGIR"
+},
+{
+"name": "AGIOS MYRON",
+"lat": 35.230833,
+"lon": 25.030833,
+"ad": "LGIR"
+},
+{
+"name": "SKALANI",
+"lat": 35.283889,
+"lon": 25.185833,
+"ad": "LGIR"
+},
+{
+"name": "LABUX",
+"lat": 35.581944,
+"lon": 25.858889,
+"ad": "LGIR"
+},
+{
+"name": "NEDA",
+"lat": 37.394722,
+"lon": 21.676111,
+"ad": "LGKL"
+},
+{
+"name": "MEGA",
+"lat": 37.395278,
+"lon": 22.103333,
+"ad": "LGKL"
+},
+{
+"name": "PILO",
+"lat": 36.912222,
+"lon": 21.693611,
+"ad": "LGKL"
+},
+{
+"name": "PETALO",
+"lat": 36.958333,
+"lon": 21.934722,
+"ad": "LGKL"
+},
+{
+"name": "KALAME",
+"lat": 37.039722,
+"lon": 22.122222,
+"ad": "LGKL"
+},
+{
+"name": "MELI",
+"lat": 37.230556,
+"lon": 21.976389,
+"ad": "LGKL"
+},
+{
+"name": "KARDAMI",
+"lat": 36.885,
+"lon": 22.233333,
+"ad": "LGKL"
+},
+{
+"name": "SPARTI",
+"lat": 37.076389,
+"lon": 22.431944,
+"ad": "LGKL"
+},
+{
+"name": "GORITSA",
+"lat": 37.028333,
+"lon": 22.564722,
+"ad": "LGKL"
+},
+{
+"name": "LEONI",
+"lat": 37.170556,
+"lon": 22.850556,
+"ad": "LGKL"
+},
+{
+"name": "KROKE",
+"lat": 36.881111,
+"lon": 22.545,
+"ad": "LGKL"
+},
+{
+"name": "MONEVA",
+"lat": 36.685556,
+"lon": 23.045,
+"ad": "LGKL"
+},
+{
+"name": "KANDELUSA",
+"lat": 36.496111,
+"lon": 26.9825,
+"ad": "LGKO"
+},
+{
+"name": "KEFALOS",
+"lat": 36.718333,
+"lon": 26.917778,
+"ad": "LGKO"
+},
+{
+"name": "NERA",
+"lat": 36.909722,
+"lon": 26.9275,
+"ad": "LGKO"
+},
+{
+"name": "NISYROS",
+"lat": 36.558056,
+"lon": 27.196389,
+"ad": "LGKO"
+},
+{
+"name": "PERGUSA",
+"lat": 36.582778,
+"lon": 27.038333,
+"ad": "LGKO"
+},
+{
+"name": "KOPAR",
+"lat": 36.830278,
+"lon": 26.688611,
+"ad": "LGKO"
+},
+{
+"name": "TELENDOS",
+"lat": 36.996944,
+"lon": 26.901667,
+"ad": "LGKO"
+},
+{
+"name": "ANTENA",
+"lat": 39.593611,
+"lon": 19.868611,
+"ad": "LGKR"
+},
+{
+"name": "KASIOPI",
+"lat": 39.783333,
+"lon": 19.945833,
+"ad": "LGKR"
+},
+{
+"name": "CASTRO",
+"lat": 39.6,
+"lon": 19.954722,
+"ad": "LGKR"
+},
+{
+"name": "GARDII",
+"lat": 39.455556,
+"lon": 19.869444,
+"ad": "LGKR"
+},
+{
+"name": "IGOU",
+"lat": 39.508333,
+"lon": 20.271111,
+"ad": "LGKR"
+},
+{
+"name": "LEFKIMI",
+"lat": 39.360278,
+"lon": 20.111111,
+"ad": "LGKR"
+},
+{
+"name": "OTHONI",
+"lat": 39.866667,
+"lon": 19.383333,
+"ad": "LGKR"
+},
+{
+"name": "PARGAA",
+"lat": 39.278056,
+"lon": 20.388611,
+"ad": "LGKR"
+},
+{
+"name": "PALE",
+"lat": 39.752778,
+"lon": 19.630556,
+"ad": "LGKR"
+},
+{
+"name": "PAXI",
+"lat": 39.177778,
+"lon": 20.213889,
+"ad": "LGKR"
+},
+{
+"name": "PELEKAS",
+"lat": 39.6,
+"lon": 19.775278,
+"ad": "LGKR"
+},
+{
+"name": "IDIMI",
+"lat": 38.983611,
+"lon": 19.3825,
+"ad": "LGKR"
+},
+{
+"name": "PITAS",
+"lat": 39.9,
+"lon": 19.844444,
+"ad": "LGKR"
+},
+{
+"name": "AMANI",
+"lat": 39.331667,
+"lon": 26.484444,
+"ad": "LGMT"
+},
+{
+"name": "ERESO",
+"lat": 39.291944,
+"lon": 25.943611,
+"ad": "LGMT"
+},
+{
+"name": "FOKKAS",
+"lat": 39.015556,
+"lon": 26.016667,
+"ad": "LGMT"
+},
+{
+"name": "GERA",
+"lat": 39.128333,
+"lon": 26.408056,
+"ad": "LGMT"
+},
+{
+"name": "KALONI",
+"lat": 39.165556,
+"lon": 26.299167,
+"ad": "LGMT"
+},
+{
+"name": "MIMMIS",
+"lat": 38.956944,
+"lon": 26.283889,
+"ad": "LGMT"
+},
+{
+"name": "MIRSINIA",
+"lat": 38.906944,
+"lon": 26.508333,
+"ad": "LGMT"
+},
+{
+"name": "MOLIVOS",
+"lat": 39.378611,
+"lon": 26.161667,
+"ad": "LGMT"
+},
+{
+"name": "PALIOS",
+"lat": 39.325,
+"lon": 26.440833,
+"ad": "LGMT"
+},
+{
+"name": "PANNOS",
+"lat": 38.874722,
+"lon": 26.241111,
+"ad": "LGMT"
+},
+{
+"name": "PLOMARI",
+"lat": 38.940833,
+"lon": 26.356667,
+"ad": "LGMT"
+},
+{
+"name": "POLIKNI",
+"lat": 39.087778,
+"lon": 26.151389,
+"ad": "LGMT"
+},
+{
+"name": "SIKAMIA",
+"lat": 39.394722,
+"lon": 26.351389,
+"ad": "LGMT"
+},
+{
+"name": "ANTIPAROS",
+"lat": 37.025,
+"lon": 25.02,
+"ad": "LGPA"
+},
+{
+"name": "BIBEX",
+"lat": 37.208056,
+"lon": 24.834444,
+"ad": "LGPA"
+},
+{
+"name": "DIDIS",
+"lat": 37.202778,
+"lon": 25.242778,
+"ad": "LGPA"
+},
+{
+"name": "EROTU",
+"lat": 36.9575,
+"lon": 24.852222,
+"ad": "LGPA"
+},
+{
+"name": "ERAKIS",
+"lat": 37.05,
+"lon": 24.816667,
+"ad": "LGPA"
+},
+{
+"name": "FANOS",
+"lat": 36.977222,
+"lon": 25.171389,
+"ad": "LGPA"
+},
+{
+"name": "KOTOMERI",
+"lat": 36.993611,
+"lon": 25.398056,
+"ad": "LGPA"
+},
+{
+"name": "MAISTROS",
+"lat": 37.151667,
+"lon": 25.173889,
+"ad": "LGPA"
+},
+{
+"name": "NAXOS",
+"lat": 37.083333,
+"lon": 25.305278,
+"ad": "LGPA"
+},
+{
+"name": "AFANTOU",
+"lat": 36.295,
+"lon": 28.165278,
+"ad": "LGRP"
+},
+{
+"name": "ALFA",
+"lat": 35.801111,
+"lon": 27.438889,
+"ad": "LGRP"
+},
+{
+"name": "ALIMIA",
+"lat": 36.278056,
+"lon": 27.705556,
+"ad": "LGRP"
+},
+{
+"name": "MPRAVO",
+"lat": 36.130833,
+"lon": 28.441667,
+"ad": "LGRP"
+},
+{
+"name": "CHARLIE",
+"lat": 36.234722,
+"lon": 28.4925,
+"ad": "LGRP"
+},
+{
+"name": "DELTA",
+"lat": 36.44,
+"lon": 28.073889,
+"ad": "LGRP"
+},
+{
+"name": "CHALKI",
+"lat": 36.203056,
+"lon": 27.5125,
+"ad": "LGRP"
+},
+{
+"name": "LINDOS",
+"lat": 36.070278,
+"lon": 28.075278,
+"ad": "LGRP"
+},
+{
+"name": "MARITSA",
+"lat": 36.367778,
+"lon": 28.115278,
+"ad": "LGRP"
+},
+{
+"name": "NOVEMBER",
+"lat": 35.723611,
+"lon": 28.242778,
+"ad": "LGRP"
+},
+{
+"name": "SESKLI",
+"lat": 36.497778,
+"lon": 27.85,
+"ad": "LGRP"
+},
+{
+"name": "TILLOS",
+"lat": 36.448333,
+"lon": 27.348889,
+"ad": "LGRP"
+},
+{
+"name": "WHISKEY",
+"lat": 35.575,
+"lon": 28.138889,
+"ad": "LGRP"
+},
+{
+"name": "BAVES",
+"lat": 35.424722,
+"lon": 24.726944,
+"ad": "LGSA"
+},
+{
+"name": "BALOS",
+"lat": 35.596111,
+"lon": 23.602222,
+"ad": "LGSA"
+},
+{
+"name": "DREPANO",
+"lat": 35.481111,
+"lon": 24.248611,
+"ad": "LGSA"
+},
+{
+"name": "KALYVES",
+"lat": 35.448889,
+"lon": 24.178889,
+"ad": "LGSA"
+},
+{
+"name": "KILO",
+"lat": 35.733333,
+"lon": 23.466667,
+"ad": "LGSA"
+},
+{
+"name": "LIMA",
+"lat": 36.0,
+"lon": 23.630556,
+"ad": "LGSA"
+},
+{
+"name": "MALAXA",
+"lat": 35.466667,
+"lon": 24.080833,
+"ad": "LGSA"
+},
+{
+"name": "MALEME",
+"lat": 35.533333,
+"lon": 23.816667,
+"ad": "LGSA"
+},
+{
+"name": "MIKE",
+"lat": 36.0,
+"lon": 24.0,
+"ad": "LGSA"
+},
+{
+"name": "OSCAR",
+"lat": 35.700556,
+"lon": 24.116667,
+"ad": "LGSA"
+},
+{
+"name": "PALEOCHORA",
+"lat": 35.2275,
+"lon": 23.680833,
+"ad": "LGSA"
+},
+{
+"name": "PAPA",
+"lat": 35.696944,
+"lon": 24.694722,
+"ad": "LGSA"
+},
+{
+"name": "PLAKIAS",
+"lat": 35.188889,
+"lon": 24.356667,
+"ad": "LGSA"
+},
+{
+"name": "PRASES",
+"lat": 35.366667,
+"lon": 23.830556,
+"ad": "LGSA"
+},
+{
+"name": "RAVDOUCHA",
+"lat": 35.543056,
+"lon": 23.735833,
+"ad": "LGSA"
+},
+{
+"name": "RETHIMNO",
+"lat": 35.383333,
+"lon": 24.472222,
+"ad": "LGSA"
+},
+{
+"name": "SFAKIA",
+"lat": 35.208333,
+"lon": 24.138056,
+"ad": "LGSA"
+},
+{
+"name": "SPATHA",
+"lat": 35.7,
+"lon": 23.741667,
+"ad": "LGSA"
+},
+{
+"name": "TIMPAKI",
+"lat": 35.066667,
+"lon": 24.75,
+"ad": "LGSA"
+},
+{
+"name": "THODOROU",
+"lat": 35.543056,
+"lon": 23.933333,
+"ad": "LGSA"
+},
+{
+"name": "CHRIS",
+"lat": 39.418056,
+"lon": 23.890278,
+"ad": "LGSK"
+},
+{
+"name": "DRYLO",
+"lat": 38.9425,
+"lon": 23.646944,
+"ad": "LGSK"
+},
+{
+"name": "ETEKA",
+"lat": 39.156389,
+"lon": 24.008333,
+"ad": "LGSK"
+},
+{
+"name": "EVIKO",
+"lat": 39.189167,
+"lon": 23.430833,
+"ad": "LGSK"
+},
+{
+"name": "IBIDI",
+"lat": 39.416944,
+"lon": 23.501111,
+"ad": "LGSK"
+},
+{
+"name": "KOUKOUNARIES",
+"lat": 39.131667,
+"lon": 23.423056,
+"ad": "LGSK"
+},
+{
+"name": "LEFKO",
+"lat": 38.934167,
+"lon": 23.525556,
+"ad": "LGSK"
+},
+{
+"name": "PELAS",
+"lat": 39.3,
+"lon": 23.991667,
+"ad": "LGSK"
+},
+{
+"name": "PRASO",
+"lat": 39.038611,
+"lon": 23.351944,
+"ad": "LGSK"
+},
+{
+"name": "AGIOS IOANNIS",
+"lat": 39.178611,
+"lon": 23.651389,
+"ad": "LGSK"
+},
+{
+"name": "ORMOS",
+"lat": 37.8425,
+"lon": 26.580833,
+"ad": "LGSM"
+},
+{
+"name": "URNIL",
+"lat": 37.685,
+"lon": 26.528611,
+"ad": "LGSM"
+},
+{
+"name": "BALOS",
+"lat": 37.643333,
+"lon": 26.753333,
+"ad": "LGSM"
+},
+{
+"name": "IREON",
+"lat": 37.643333,
+"lon": 26.908333,
+"ad": "LGSM"
+},
+{
+"name": "LARKI",
+"lat": 37.398889,
+"lon": 26.838333,
+"ad": "LGSM"
+},
+{
+"name": "LATAN",
+"lat": 39.293333,
+"lon": 19.000278,
+"ad": "LGKR"
+},
+{
+"name": "A/F TERPSITHEA",
+"lat": 39.661667,
+"lon": 22.341667,
+"ad": "LGLR"
+},
+{
+"name": "AGIA",
+"lat": 39.7225,
+"lon": 22.761111,
+"ad": "LGLR"
+},
+{
+"name": "AGISA",
+"lat": 39.733333,
+"lon": 23.35,
+"ad": "LGLR"
+},
+{
+"name": "CHALKI",
+"lat": 39.568889,
+"lon": 22.541667,
+"ad": "LGLR"
+},
+{
+"name": "DELERIA",
+"lat": 39.805833,
+"lon": 22.328333,
+"ad": "LGLR"
+},
+{
+"name": "ELASONA",
+"lat": 39.897778,
+"lon": 22.174167,
+"ad": "LGLR"
+},
+{
+"name": "FARSALA",
+"lat": 39.296944,
+"lon": 22.375833,
+"ad": "LGBL"
+},
+{
+"name": "GEDIKI",
+"lat": 39.691667,
+"lon": 22.541667,
+"ad": "LGLR"
+},
+{
+"name": "GONNI",
+"lat": 39.865556,
+"lon": 22.461111,
+"ad": "LGLR"
+},
+{
+"name": "KALABAKA",
+"lat": 39.708611,
+"lon": 21.620833,
+"ad": "LGLR"
+},
+{
+"name": "MESORACHI",
+"lat": 39.570556,
+"lon": 22.351944,
+"ad": "LGLR"
+},
+{
+"name": "NIAMATA",
+"lat": 39.623889,
+"lon": 22.6225,
+"ad": "LGLR"
+},
+{
+"name": "NIKEA",
+"lat": 39.563889,
+"lon": 22.453333,
+"ad": "LGLR"
+},
+{
+"name": "NIOCHORI",
+"lat": 39.608611,
+"lon": 21.973056,
+"ad": "LGLR"
+},
+{
+"name": "PLATA",
+"lat": 39.679444,
+"lon": 22.297778,
+"ad": "LGLR"
+},
+{
+"name": "SIKOURIO",
+"lat": 39.759722,
+"lon": 22.583333,
+"ad": "LGLR"
+},
+{
+"name": "TIRNAVOS",
+"lat": 39.741111,
+"lon": 22.273611,
+"ad": "LGLR"
+},
+{
+"name": "TRIKALA",
+"lat": 39.555,
+"lon": 21.760556,
+"ad": "LGLR"
+},
+{
+"name": "VERDIKOUSA",
+"lat": 39.781389,
+"lon": 21.978333,
+"ad": "LGLR"
+},
+{
+"name": "KISA",
+"lat": 39.801944,
+"lon": 22.846667,
+"ad": "LGLR"
+},
+{
+"name": "A/F FLABOURO",
+"lat": 39.959167,
+"lon": 22.258333,
+"ad": "LGLR"
+},
+{
+"name": "ORCHOMENOS",
+"lat": 38.497685,
+"lon": 22.992593,
+"ad": "LGTG"
+},
+{
+"name": "MALESINA",
+"lat": 38.625556,
+"lon": 23.2375,
+"ad": "LGTG"
+},
+{
+"name": "LAMIAS",
+"lat": 38.901667,
+"lon": 22.4325,
+"ad": "LGBL"
+},
+{
+"name": "AMFIKLIA",
+"lat": 38.640556,
+"lon": 22.526111,
+"ad": "LGTG"
+},
+{
+"name": "CHALKIS",
+"lat": 38.466111,
+"lon": 23.596667,
+"ad": "LGTG"
+},
+{
+"name": "PSACHNA",
+"lat": 38.581944,
+"lon": 23.644167,
+"ad": "LGTG"
+},
+{
+"name": "MANDOUDI",
+"lat": 38.795556,
+"lon": 23.475,
+"ad": "LGTG"
+},
+{
+"name": "DIRFIS",
+"lat": 38.545833,
+"lon": 23.830833,
+"ad": "LGTG"
+},
+{
+"name": "KIMI",
+"lat": 38.652778,
+"lon": 24.152222,
+"ad": "LGTG"
+},
+{
+"name": "ALIVERI",
+"lat": 38.4075,
+"lon": 24.041944,
+"ad": "LGTG"
+},
+{
+"name": "ILIKIS",
+"lat": 38.410833,
+"lon": 23.268333,
+"ad": "LGTG"
+},
+{
+"name": "VAGIAS",
+"lat": 38.319167,
+"lon": 23.176944,
+"ad": "LGTG"
+},
+{
+"name": "POUNDA",
+"lat": 38.248333,
+"lon": 22.763056,
+"ad": "LGTG"
+},
+{
+"name": "NTOVRI",
+"lat": 38.166667,
+"lon": 22.933333,
+"ad": "LGTG"
+},
+{
+"name": "ERETRIA",
+"lat": 38.393611,
+"lon": 23.793333,
+"ad": "LGTG"
+},
+{
+"name": "LIMNIS",
+"lat": 38.168889,
+"lon": 23.895556,
+"ad": "LGTG"
+},
+{
+"name": "OROPOS",
+"lat": 38.332778,
+"lon": 23.733889,
+"ad": "LGTG"
+},
+{
+"name": "ARGA",
+"lat": 39.228889,
+"lon": 23.209167,
+"ad": "LGBL"
+},
+{
+"name": "VOLLOS",
+"lat": 39.361667,
+"lon": 22.9125,
+"ad": "LGBL"
+},
+{
+"name": "PTELEOS",
+"lat": 39.064722,
+"lon": 22.946667,
+"ad": "LGBL"
+},
+{
+"name": "PETROTO",
+"lat": 39.194167,
+"lon": 22.379722,
+"ad": "LGBL"
+},
+{
+"name": "KARPENISI",
+"lat": 38.928611,
+"lon": 21.795833,
+"ad": "LGBL"
+},
+{
+"name": "PELASGIA",
+"lat": 38.939444,
+"lon": 22.824444,
+"ad": "LGBL"
+},
+{
+"name": "TRIKERI",
+"lat": 39.164444,
+"lon": 23.096389,
+"ad": "LGBL"
+},
+{
+"name": "STEFANO",
+"lat": 39.463889,
+"lon": 22.731111,
+"ad": "LGBL"
+},
+{
+"name": "ZAGORA",
+"lat": 39.448056,
+"lon": 23.100556,
+"ad": "LGBL"
+},
+{
+"name": "SKOPELOS",
+"lat": 39.121111,
+"lon": 23.746667,
+"ad": "LGSY"
+},
+{
+"name": "ALISTRATI",
+"lat": 41.065,
+"lon": 23.958333,
+"ad": "LGKV"
+},
+{
+"name": "AMALA",
+"lat": 40.568611,
+"lon": 24.832778,
+"ad": "LGKV"
+},
+{
+"name": "ASKOS",
+"lat": 40.638056,
+"lon": 24.270278,
+"ad": "LGKV"
+},
+{
+"name": "FANARI",
+"lat": 40.956944,
+"lon": 25.129444,
+"ad": "LGKV"
+},
+{
+"name": "IASMOS",
+"lat": 41.128611,
+"lon": 25.185,
+"ad": "LGKV"
+},
+{
+"name": "IDILO",
+"lat": 40.790556,
+"lon": 25.439444,
+"ad": "LGKV"
+},
+{
+"name": "KAVALA",
+"lat": 40.934167,
+"lon": 24.411667,
+"ad": "LGKV"
+},
+{
+"name": "KERAMOTI",
+"lat": 40.852778,
+"lon": 24.702778,
+"ad": "LGKV"
+},
+{
+"name": "KINIRA",
+"lat": 40.658611,
+"lon": 24.7825,
+"ad": "LGKV"
+},
+{
+"name": "KOMOTINI",
+"lat": 41.116667,
+"lon": 25.409444,
+"ad": "LGKV"
+},
+{
+"name": "LOUTRA",
+"lat": 40.726944,
+"lon": 24.099722,
+"ad": "LGKV"
+},
+{
+"name": "PARANESTI",
+"lat": 41.266944,
+"lon": 24.501944,
+"ad": "LGKV"
+},
+{
+"name": "PEREN",
+"lat": 40.596667,
+"lon": 23.967778,
+"ad": "LGKV"
+},
+{
+"name": "PONTOL",
+"lat": 40.970556,
+"lon": 24.581111,
+"ad": "LGKV"
+},
+{
+"name": "PRINOS",
+"lat": 40.761111,
+"lon": 24.562778,
+"ad": "LGKV"
+},
+{
+"name": "ROUPOL",
+"lat": 40.916111,
+"lon": 24.256111,
+"ad": "LGKV"
+},
+{
+"name": "SKALA MARION",
+"lat": 40.641389,
+"lon": 24.513333,
+"ad": "LGKV"
+},
+{
+"name": "SOSUS",
+"lat": 40.744167,
+"lon": 25.073333,
+"ad": "LGKV"
+},
+{
+"name": "STRYMON",
+"lat": 40.787222,
+"lon": 23.849722,
+"ad": "LGKV"
+},
+{
+"name": "XANTHI",
+"lat": 41.139444,
+"lon": 24.8875,
+"ad": "LGKV"
+},
+{
+"name": "XERIS",
+"lat": 41.153889,
+"lon": 24.140278,
+"ad": "LGKV"
+},
+{
+"name": "KATERO",
+"lat": 40.322222,
+"lon": 22.505,
+"ad": "LGTS"
+},
+{
+"name": "PLATAMON",
+"lat": 39.948056,
+"lon": 22.711389,
+"ad": "LGLR"
+},
+{
+"name": "OLGAT",
+"lat": 40.244722,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "EPIRU",
+"lat": 39.977778,
+"lon": 19.583333,
+"ad": null
+},
+{
+"name": "NIKRO",
+"lat": 39.665833,
+"lon": 20.12,
+"ad": null
+},
+{
+"name": "VJOSA",
+"lat": 39.981944,
+"lon": 20.391389,
+"ad": null
+},
+{
+"name": "TUMBO",
+"lat": 40.067222,
+"lon": 20.472778,
+"ad": null
+},
+{
+"name": "DIMIS",
+"lat": 40.0725,
+"lon": 20.594722,
+"ad": null
+},
+{
+"name": "PINDO",
+"lat": 40.480833,
+"lon": 20.955833,
+"ad": null
+},
+{
+"name": "BITLA",
+"lat": 40.875556,
+"lon": 21.358056,
+"ad": null
+},
+{
+"name": "BEKVA",
+"lat": 40.934444,
+"lon": 21.695,
+"ad": null
+},
+{
+"name": "TALAS",
+"lat": 41.076667,
+"lon": 21.916667,
+"ad": null
+},
+{
+"name": "ERANA",
+"lat": 41.163333,
+"lon": 22.239444,
+"ad": null
+},
+{
+"name": "MAKED",
+"lat": 41.129167,
+"lon": 22.516667,
+"ad": null
+},
+{
+"name": "DISOR",
+"lat": 41.247222,
+"lon": 22.758333,
+"ad": null
+},
+{
+"name": "RUGAS",
+"lat": 41.329444,
+"lon": 22.791389,
+"ad": null
+},
+{
+"name": "GOLDO",
+"lat": 40.882222,
+"lon": 26.249444,
+"ad": null
+},
+{
+"name": "BELGI",
+"lat": 40.5,
+"lon": 25.883333,
+"ad": null
+},
+{
+"name": "VEXOL",
+"lat": 38.348889,
+"lon": 26.199444,
+"ad": null
+},
+{
+"name": "SITRU",
+"lat": 38.107222,
+"lon": 26.299444,
+"ad": null
+},
+{
+"name": "REDRA",
+"lat": 37.982222,
+"lon": 26.524444,
+"ad": null
+},
+{
+"name": "YUNUS",
+"lat": 36.709722,
+"lon": 27.883333,
+"ad": null
+},
+{
+"name": "SOTIV",
+"lat": 36.55,
+"lon": 28.483333,
+"ad": null
+},
+{
+"name": "BENEM",
+"lat": 36.183333,
+"lon": 29.316667,
+"ad": null
+},
+{
+"name": "EVENO",
+"lat": 35.833333,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "GIRKI",
+"lat": 35.583472,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "LUTIG",
+"lat": 35.529444,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "ALKIS",
+"lat": 35.2,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "TOSKA",
+"lat": 34.966667,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "AGAPI",
+"lat": 34.87,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "MAGIS",
+"lat": 34.583333,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "ABILO",
+"lat": 34.323611,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "KAVOS",
+"lat": 33.733333,
+"lon": 30.0,
+"ad": null
+},
+{
+"name": "TANSA",
+"lat": 34.0,
+"lon": 26.816667,
+"ad": null
+},
+{
+"name": "METRU",
+"lat": 34.0,
+"lon": 25.15,
+"ad": null
+},
+{
+"name": "SALUN",
+"lat": 34.0,
+"lon": 24.45,
+"ad": null
+},
+{
+"name": "ARLOS",
+"lat": 34.625278,
+"lon": 23.0,
+"ad": null
+},
+{
+"name": "NEVIK",
+"lat": 35.133333,
+"lon": 21.961111,
+"ad": null
+},
+{
+"name": "DEMAG",
+"lat": 35.518056,
+"lon": 21.153333,
+"ad": null
+},
+{
+"name": "ROTAS",
+"lat": 35.947167,
+"lon": 20.229556,
+"ad": null
+},
+{
+"name": "BELIX",
+"lat": 36.966667,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "LORNO",
+"lat": 37.4,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "RUTOM",
+"lat": 38.518306,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "DINOB",
+"lat": 38.724194,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "NOSTO",
+"lat": 39.816667,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "TIGRA",
+"lat": 40.056667,
+"lon": 19.0,
+"ad": null
+},
+{
+"name": "KIATON",
+"lat": 38.021759,
+"lon": 22.758333,
+"ad": "LGAV"
+},
+{
+"name": "ILIOUP",
+"lat": 37.948148,
+"lon": 23.768056,
+"ad": "LGAV"
+},
+{
+"name": "SERIFOS",
+"lat": 37.192593,
+"lon": 24.404167,
+"ad": "LGAV"
+},
+{
+"name": "DILLOS",
+"lat": 37.398148,
+"lon": 25.268056,
+"ad": "LGMK"
+},
+{
+"name": "DRAGO",
+"lat": 37.469167,
+"lon": 25.485278,
+"ad": "LGMK"
+},
+{
+"name": "FTELIA",
+"lat": 37.508333,
+"lon": 25.380278,
+"ad": "LGMK"
+},
+{
+"name": "KOUNOUPAS",
+"lat": 37.436111,
+"lon": 25.372222,
+"ad": "LGMK"
+},
+{
+"name": "LETSO",
+"lat": 37.4575,
+"lon": 25.658333,
+"ad": "LGMK"
+},
+{
+"name": "LIVADI",
+"lat": 37.424722,
+"lon": 25.419722,
+"ad": "LGMK"
+},
+{
+"name": "MIKE",
+"lat": 37.319444,
+"lon": 25.293056,
+"ad": "LGMK"
+},
+{
+"name": "NITSA",
+"lat": 37.190833,
+"lon": 25.377778,
+"ad": "LGMK"
+},
+{
+"name": "ORNOS",
+"lat": 37.42,
+"lon": 25.321667,
+"ad": "LGMK"
+},
+{
+"name": "OSSCAR",
+"lat": 37.334167,
+"lon": 25.466667,
+"ad": "LGMK"
+},
+{
+"name": "PIDAX",
+"lat": 37.228056,
+"lon": 25.511389,
+"ad": "LGMK"
+},
+{
+"name": "RINIA",
+"lat": 37.442222,
+"lon": 25.179444,
+"ad": "LGMK"
+},
+{
+"name": "NISSOS TINOS",
+"lat": 37.556667,
+"lon": 25.114352,
+"ad": "LGAV"
+},
+{
+"name": "ANAFI WEST",
+"lat": 36.385833,
+"lon": 25.723333,
+"ad": "LGSR"
+},
+{
+"name": "ANIDROS",
+"lat": 36.633611,
+"lon": 25.684444,
+"ad": "LGSR"
+},
+{
+"name": "CHRISTIANA",
+"lat": 36.248611,
+"lon": 25.215278,
+"ad": "LGSR"
+},
+{
+"name": "CTR1",
+"lat": 36.494722,
+"lon": 25.260556,
+"ad": "LGSR"
+},
+{
+"name": "GIVIS",
+"lat": 36.123056,
+"lon": 25.405,
+"ad": "LGSR"
+},
+{
+"name": "IRBEG",
+"lat": 36.810278,
+"lon": 25.428056,
+"ad": "LGSR"
+},
+{
+"name": "KAMENI",
+"lat": 36.403056,
+"lon": 25.395833,
+"ad": "LGSR"
+},
+{
+"name": "KARAVOS",
+"lat": 36.6325,
+"lon": 25.055833,
+"ad": "LGSR"
+},
+{
+"name": "KUPIS",
+"lat": 36.238611,
+"lon": 25.898611,
+"ad": "LGSR"
+},
+{
+"name": "MAGANARI",
+"lat": 36.634167,
+"lon": 25.357778,
+"ad": "LGSR"
+},
+{
+"name": "UVRIT",
+"lat": 36.608611,
+"lon": 25.829167,
+"ad": "LGSR"
+},
+{
+"name": "TITUS",
+"lat": 36.331389,
+"lon": 21.384722,
+"ad": null
+},
+{
+"name": "ANTAR",
+"lat": 33.8,
+"lon": 28.266667,
+"ad": null
+},
+{
+"name": "A/F MYRINI",
+"lat": 39.4075,
+"lon": 21.994722,
+"ad": "LGLR"
+},
+{
+"name": "MATA",
+"lat": 39.396111,
+"lon": 22.071111,
+"ad": "LGLR"
+},
+{
+"name": "PARAX",
+"lat": 39.56,
+"lon": 20.409722,
+"ad": "LGKR"
+},
+{
+"name": "IP 26",
+"lat": 39.157778,
+"lon": 22.907778,
+"ad": "LGBL"
+},
+{
+"name": "IP 08",
+"lat": 39.283333,
+"lon": 22.724722,
+"ad": "LGBL"
+},
+{
+"name": "KALAVRITA",
+"lat": 38.033333,
+"lon": 22.110278,
+"ad": "LGAD"
+},
+{
+"name": "ELLINIKO",
+"lat": 38.053333,
+"lon": 21.805833,
+"ad": "LGAD"
+},
+{
+"name": "CHAVARI",
+"lat": 37.8475,
+"lon": 21.383333,
+"ad": "LGAD"
+},
+{
+"name": "A/F KONTARIOTISA",
+"lat": 40.219444,
+"lon": 22.459444,
+"ad": "LGLR"
+},
+{
+"name": "GALATINI",
+"lat": 40.318611,
+"lon": 21.551667,
+"ad": "LGLR"
+},
+{
+"name": "GREVENA",
+"lat": 40.084167,
+"lon": 21.427222,
+"ad": "LGLR"
+},
+{
+"name": "KARPERO",
+"lat": 39.9475,
+"lon": 21.618611,
+"ad": "LGLR"
+},
+{
+"name": "SARANTOPORO",
+"lat": 40.069167,
+"lon": 22.053333,
+"ad": "LGLR"
+},
+{
+"name": "ATFIR",
+"lat": 41.401667,
+"lon": 23.774722,
+"ad": null
+},
+{
+"name": "EVIVI",
+"lat": 41.402778,
+"lon": 23.455556,
+"ad": null
+},
+{
+"name": "AREO",
+"lat": 36.663056,
+"lon": 22.38,
+"ad": "LGKL"
+},
+{
+"name": "ASTOV",
+"lat": 37.420833,
+"lon": 22.534444,
+"ad": "LGKL"
+},
+{
+"name": "BERAP",
+"lat": 37.414444,
+"lon": 21.632222,
+"ad": "LGKL"
+},
+{
+"name": "ELAFI",
+"lat": 36.506389,
+"lon": 22.973889,
+"ad": "LGKL"
+},
+{
+"name": "FILIATRA",
+"lat": 37.156111,
+"lon": 21.587222,
+"ad": "LGKL"
+},
+{
+"name": "GITHIO",
+"lat": 36.761944,
+"lon": 22.563611,
+"ad": "LGKL"
+},
+{
+"name": "KIPARI",
+"lat": 36.950833,
+"lon": 23.018611,
+"ad": "LGKL"
+},
+{
+"name": "KORONI",
+"lat": 36.795278,
+"lon": 21.960278,
+"ad": "LGKL"
+},
+{
+"name": "MALEA",
+"lat": 36.436944,
+"lon": 23.195278,
+"ad": "LGKL"
+},
+{
+"name": "SOKRI",
+"lat": 36.257778,
+"lon": 23.471944,
+"ad": "LGKL"
+},
+{
+"name": "TENARO",
+"lat": 36.384444,
+"lon": 22.486111,
+"ad": "LGKL"
+},
+{
+"name": "KAFIREAS",
+"lat": 38.158889,
+"lon": 24.600278,
+"ad": "LGAV"
+},
+{
+"name": "BADEL",
+"lat": 37.000556,
+"lon": 24.073889,
+"ad": "LGAV"
+},
+{
+"name": "XORKI",
+"lat": 38.169722,
+"lon": 23.509167,
+"ad": "LGTG"
+},
+{
+"name": "ASTOV",
+"lat": 37.423611,
+"lon": 22.534444,
+"ad": "LGAV"
+},
+{
+"name": "ABLONAS",
+"lat": 38.171296,
+"lon": 23.737037,
+"ad": "LGTG"
+},
+{
+"name": "ELEFSINA (LGEL)",
+"lat": 38.071296,
+"lon": 23.556944,
+"ad": "LGAV"
+},
+{
+"name": "EPIDAVROS",
+"lat": 37.647222,
+"lon": 23.173148,
+"ad": "LGAV"
+},
+{
+"name": "GERMI",
+"lat": 38.175926,
+"lon": 23.12963,
+"ad": "LGTG"
+},
+{
+"name": "KEA",
+"lat": 37.518056,
+"lon": 24.291667,
+"ad": "LGAV"
+},
+{
+"name": "KINETA",
+"lat": 37.973148,
+"lon": 23.223611,
+"ad": "LGAV"
+},
+{
+"name": "MARMARA",
+"lat": 38.104167,
+"lon": 23.9375,
+"ad": "LGAV"
+},
+{
+"name": "MEGALO",
+"lat": 37.997685,
+"lon": 24.274537,
+"ad": "LGAV"
+},
+{
+"name": "PARALIA ASTERIA",
+"lat": 37.873611,
+"lon": 23.747222,
+"ad": "LGAV"
+},
+{
+"name": "PIKAD",
+"lat": 38.068981,
+"lon": 22.707407,
+"ad": "LGAV"
+},
+{
+"name": "RILIN",
+"lat": 37.975,
+"lon": 22.666667,
+"ad": "LGAV"
+},
+{
+"name": "KALAMON",
+"lat": 41.019907,
+"lon": 24.217593,
+"ad": "LGKV"
+},
+{
+"name": "AGIA",
+"lat": 39.726389,
+"lon": 22.768519,
+"ad": "LGBL"
+},
+{
+"name": "CHALKI",
+"lat": 39.57037,
+"lon": 22.547222,
+"ad": "LGBL"
+},
+{
+"name": "OREI",
+"lat": 38.960185,
+"lon": 23.094444,
+"ad": "LGBL"
+},
+{
+"name": "HOLARGOS",
+"lat": 38.00463,
+"lon": 23.801389,
+"ad": "LGAV"
+},
+{
+"name": "NTAOU PENTELIS",
+"lat": 38.056481,
+"lon": 23.964815,
+"ad": "LGAV"
+},
+{
+"name": "ZOUMBERI",
+"lat": 38.076111,
+"lon": 24.009259,
+"ad": "LGAV"
+},
+{
+"name": "SARAKINI",
+"lat": 38.75,
+"lon": 23.675463,
+"ad": "LGTG"
+},
+{
+"name": "EVOIAS",
+"lat": 39.030556,
+"lon": 23.3,
+"ad": "LGBL"
+},
+{
+"name": "VARIX",
+"lat": 37.35,
+"lon": 25.034722,
+"ad": "LGAV"
+},
+{
+"name": "ODIKO",
+"lat": 40.974537,
+"lon": 23.247685,
+"ad": "LGTS"
+}
+]
+}

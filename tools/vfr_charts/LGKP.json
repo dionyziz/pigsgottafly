@@ -1,0 +1,191 @@
+{
+ "chart": "AD 2-LGKP-VFR, VFR routes KARPATHOS AREA (IRAKLION TMA) (16 APR 26, AIRAC AMDT 03/26)",
+ "points": [
+  {
+   "name": "ABEAM MARATHOS",
+   "dms": "35 36 54 N 027 20 43 E"
+  },
+  {
+   "name": "ABEAM PRIONIA",
+   "dms": "35 38 53 N 027 01 17 E"
+  },
+  {
+   "name": "ABEAM RWY",
+   "dms": "35 21 49 N 027 04 26 E"
+  },
+  {
+   "name": "AKTI",
+   "dms": "35 25 58 N 027 00 52 E"
+  },
+  {
+   "name": "INATOS",
+   "dms": "35 07 33 N 027 12 16 E"
+  },
+  {
+   "name": "EIRINI",
+   "dms": "35 17 49 N 027 28 12 E"
+  },
+  {
+   "name": "FINIKI",
+   "dms": "35 32 51 N 027 05 08 E"
+  },
+  {
+   "name": "DELTAS",
+   "dms": "35 36 07 N 027 26 38 E"
+  },
+  {
+   "name": "KASSONISIA",
+   "dms": "35 28 24 N 026 51 10 E"
+  },
+  {
+   "name": "MARATHOS",
+   "dms": "35 37 58 N 027 09 49 E"
+  },
+  {
+   "name": "PATELA",
+   "dms": "35 29 37 N 027 20 05 E"
+  },
+  {
+   "name": "PIGADIA",
+   "dms": "35 30 53 N 027 14 41 E"
+  },
+  {
+   "name": "SKALOMA",
+   "dms": "35 20 27 N 026 58 32 E"
+  },
+  {
+   "name": "SKROFA",
+   "dms": "35 26 28 N 027 15 15 E"
+  },
+  {
+   "name": "TRAPEZA",
+   "dms": "35 19 02 N 026 52 23 E"
+  },
+  {
+   "name": "MOKIS",
+   "dms": "35 17 02 N 026 46 28 E"
+  }
+ ],
+ "routes": [
+  {
+   "a": "ABEAM PRIONIA",
+   "b": "MARATHOS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 7
+  },
+  {
+   "a": "MARATHOS",
+   "b": "ABEAM MARATHOS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 9
+  },
+  {
+   "a": "ABEAM PRIONIA",
+   "b": "FINIKI",
+   "min": 1000,
+   "max": 1000,
+   "nm": 7
+  },
+  {
+   "a": "MARATHOS",
+   "b": "PIGADIA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 8
+  },
+  {
+   "a": "ABEAM MARATHOS",
+   "b": "PIGADIA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 8
+  },
+  {
+   "a": "ABEAM MARATHOS",
+   "b": "PATELA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 7
+  },
+  {
+   "a": "PIGADIA",
+   "b": "PATELA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 5
+  },
+  {
+   "a": "PIGADIA",
+   "b": "SKROFA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 5
+  },
+  {
+   "a": "PATELA",
+   "b": "SKROFA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 5
+  },
+  {
+   "a": "KASSONISIA",
+   "b": "ABEAM PRIONIA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 14
+  },
+  {
+   "a": "KASSONISIA",
+   "b": "AKTI",
+   "min": 1000,
+   "max": 1000,
+   "nm": 8
+  },
+  {
+   "a": "KASSONISIA",
+   "b": "SKALOMA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 10
+  },
+  {
+   "a": "TRAPEZA",
+   "b": "SKALOMA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 5
+  },
+  {
+   "a": "MOKIS",
+   "b": "TRAPEZA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 5
+  },
+  {
+   "a": "MOKIS",
+   "b": "INATOS",
+   "min": 6500,
+   "max": 6500,
+   "nm": 23
+  },
+  {
+   "a": "INATOS",
+   "b": "EIRINI",
+   "min": 6500,
+   "max": 6500,
+   "nm": 17
+  },
+  {
+   "a": "EIRINI",
+   "b": "DELTAS",
+   "min": 6500,
+   "max": 6500,
+   "nm": 18
+  }
+ ],
+ "notes": "SKALOMA\u2013ABEAM RWY (5 NM) shows no altitude. ALFA/DELTAS\u2013ABEAM MARATHOS are TO/FROM RODOS tracks without altitude (Rodos routes are on the LGRP chart). Holdings 1000 at KASSONISIA, FINIKI, PATELA, SKROFA, ABEAM RWY, SKALOMA."
+}

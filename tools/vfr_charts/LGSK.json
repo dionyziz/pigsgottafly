@@ -1,0 +1,24 @@
+{
+  "chart": "AD 2-LGSK-VFR, VFR routes SKIATHOS TMA (20 MAR 25, AIRAC AMDT 02/25). No coordinates printed: positions from open flightmaps, checked against the chart symbols.",
+  "points": [
+    {"name": "IBIDI", "from": "ofm"},
+    {"name": "CHRISTI", "from": "ofm", "ofm_name": "CHRIS"},
+    {"name": "PELAS", "from": "ofm"},
+    {"name": "ETEKA", "from": "ofm"},
+    {"name": "AG. IOANNIS", "from": "ofm", "ofm_name": "AGIOS IOANNIS"},
+    {"name": "EVIKO", "from": "ofm"},
+    {"name": "KOUKOUNARIES", "from": "ofm"},
+    {"name": "PRASON", "from": "ofm", "ofm_name": "PRASO"},
+    {"name": "LEFKON", "from": "ofm", "ofm_name": "LEFKO"},
+    {"name": "DRYLOS", "from": "ofm", "ofm_name": "DRYLO"},
+    {"name": "SKP", "dms": "39 10 50.31 N 023 36 57.35 E", "no_symbol": true}
+  ],
+  "routes": [
+    {"a": "IBIDI", "b": "EVIKO", "min": 3500, "max": 3500, "nm": 14},
+    {"a": "KOUKOUNARIES", "b": "PRASON", "min": 3500, "max": 3500, "nm": 7},
+    {"a": "PRASON", "b": "LEFKON", "min": 4500, "max": 4500, "nm": 10},
+    {"a": "SKP", "b": "PELAS", "min": 2000, "max": 2000, "nm": 19},
+    {"a": "SKP", "b": "ETEKA", "min": 2000, "max": 2000, "nm": 18}
+  ],
+  "notes": "SKP = SKOPELOS VOR/DME (routes to PELAS and ETEKA start at the VOR; AG. IOANNIS is the holding point beside it, 2500). DRYLOS–SKOPELOS heliport (10 NM, 2500) and heliport–CHRISTI (21 NM, 2500) end at the heliport, not a reporting point; EVIKO–KOUKOUNARIES (3 NM) shows no altitude; helicopter route PRASON–SKOPELOS (500) omitted."
+}

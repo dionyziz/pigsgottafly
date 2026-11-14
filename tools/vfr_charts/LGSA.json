@@ -1,0 +1,245 @@
+{
+ "chart": "AD 2-LGSA-VFR, VFR routes SOUDA MTMA (06 AUG 26, AIRAC AMDT 07/26)",
+ "points": [
+  {
+   "name": "LIMA",
+   "from": "ofm"
+  },
+  {
+   "name": "MIKE",
+   "from": "ofm"
+  },
+  {
+   "name": "KILO",
+   "from": "ofm"
+  },
+  {
+   "name": "SPATHA",
+   "from": "ofm"
+  },
+  {
+   "name": "OSCARA",
+   "from": "ofm",
+   "ofm_name": "OSCAR"
+  },
+  {
+   "name": "PAPA",
+   "from": "ofm"
+  },
+  {
+   "name": "MPALOS",
+   "from": "ofm",
+   "ofm_name": "BALOS"
+  },
+  {
+   "name": "RAVDOUCHA",
+   "from": "ofm"
+  },
+  {
+   "name": "MALEME",
+   "from": "ofm"
+  },
+  {
+   "name": "THODOROU",
+   "from": "ofm"
+  },
+  {
+   "name": "MALAXA",
+   "from": "ofm"
+  },
+  {
+   "name": "KALIVES",
+   "from": "ofm",
+   "ofm_name": "KALYVES"
+  },
+  {
+   "name": "DREPANO",
+   "from": "ofm"
+  },
+  {
+   "name": "RETHIMNO",
+   "from": "ofm"
+  },
+  {
+   "name": "PRASES",
+   "from": "ofm"
+  },
+  {
+   "name": "PALEOCHORA",
+   "from": "ofm"
+  },
+  {
+   "name": "SFAKIA",
+   "from": "ofm"
+  },
+  {
+   "name": "PLAKIAS",
+   "from": "ofm"
+  },
+  {
+   "name": "TIMBAKI",
+   "from": "ofm",
+   "ofm_name": "TIMPAKI"
+  },
+  {
+   "name": "BAVES",
+   "dms": "35 25 29 N 024 43 37 E"
+  }
+ ],
+ "routes": [
+  {
+   "a": "LIMA",
+   "b": "SPATHA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 19
+  },
+  {
+   "a": "MIKE",
+   "b": "OSCARA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 19
+  },
+  {
+   "a": "KILO",
+   "b": "SPATHA",
+   "min": 5000,
+   "max": 5000,
+   "nm": 14
+  },
+  {
+   "a": "KILO",
+   "b": "RAVDOUCHA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 17
+  },
+  {
+   "a": "MPALOS",
+   "b": "SPATHA",
+   "min": 5000,
+   "max": 5000,
+   "nm": 9
+  },
+  {
+   "a": "MPALOS",
+   "b": "RAVDOUCHA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 7
+  },
+  {
+   "a": "SPATHA",
+   "b": "MALEME",
+   "min": 2000,
+   "max": 2000,
+   "nm": 11
+  },
+  {
+   "a": "THODOROU",
+   "b": "MALAXA",
+   "min": 2000,
+   "max": 2000,
+   "nm": 9
+  },
+  {
+   "a": "MALAXA",
+   "b": "DREPANO",
+   "min": 3000,
+   "max": 3000,
+   "nm": 8
+  },
+  {
+   "a": "MALEME",
+   "b": "PRASES",
+   "min": 4000,
+   "max": 4000,
+   "nm": 10
+  },
+  {
+   "a": "MALAXA",
+   "b": "PRASES",
+   "min": 6500,
+   "max": 6500,
+   "nm": 14
+  },
+  {
+   "a": "MPALOS",
+   "b": "PALEOCHORA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 22
+  },
+  {
+   "a": "PRASES",
+   "b": "PALEOCHORA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 11
+  },
+  {
+   "a": "PALEOCHORA",
+   "b": "SFAKIA",
+   "min": 7500,
+   "max": 7500,
+   "nm": 22
+  },
+  {
+   "a": "SFAKIA",
+   "b": "PLAKIAS",
+   "min": 7500,
+   "max": 7500,
+   "nm": 11
+  },
+  {
+   "a": "PLAKIAS",
+   "b": "TIMBAKI",
+   "min": 2500,
+   "max": 2500,
+   "nm": 21
+  },
+  {
+   "a": "PLAKIAS",
+   "b": "RETHIMNO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 13
+  },
+  {
+   "a": "RETHIMNO",
+   "b": "PAPA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 21
+  },
+  {
+   "a": "RETHIMNO",
+   "b": "BAVES",
+   "min": 1500,
+   "max": 1500,
+   "nm": 13
+  },
+  {
+   "a": "MALAXA",
+   "b": "KALIVES",
+   "min": 2000,
+   "max": 2000,
+   "nm": 5
+  },
+  {
+   "a": "KALIVES",
+   "b": "RETHIMNO",
+   "min": 2000,
+   "max": 2000
+  },
+  {
+   "a": "MALAXA",
+   "b": "RETHIMNO",
+   "min": 2000,
+   "max": 2000,
+   "nm": 20
+  }
+ ],
+ "notes": "Only BAVES prints coordinates; others from open flightmaps (checked against chart symbols). JET ONLY routes (SPATHA\u2013THODOROU, DREPANO\u2013RETHIMNO, DREPANO\u2013PAPA) omitted. No altitude shown: RAVDOUCHA\u2013MALEME (4), MALEME\u2013THODOROU (6). Holdings 2000 at SPATHA, OSCARA, MALEME, KALIVES; 1500 at RETHIMNO. The (20) label covers MALAXA\u2013KALIVES\u2013RETHIMNO."
+}

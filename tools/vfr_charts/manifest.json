@@ -1,0 +1,86 @@
+{
+ "LGAD": {
+  "file": "AD 2/AD2-LGAD/LG_AD_2_LGAD_VFR_en.pdf",
+  "sha256": "258104b82609fd912b6b6c6c55dd786e3f164fad086f5dad3b4ed705185dd2be"
+ },
+ "LGAV": {
+  "file": "AD 2/AD2-LGAV/LG_AD_2_LGAV_VFR_en.pdf",
+  "sha256": "37cc69a50bf5068ef964287709983cf3532d1953f9f5f8761ceaf3f91bc6ad8e"
+ },
+ "LGBL": {
+  "file": "AD 2/AD2-LGBL/LG_AD_2_LGBL_VFR_en.pdf",
+  "sha256": "3a6d5739e5a2ed26ad90375d48b9705e6d9c2592262eff552d05b8a819d437df"
+ },
+ "LGIR": {
+  "file": "AD 2/AD2-LGIR/LG_AD_2_LGIR_VFR_en.pdf",
+  "sha256": "c3e82e5fb3862d8bfc567ee4947d59344eb2f18d4b6794db267cfde3b355b368"
+ },
+ "LGKL": {
+  "file": "AD 2/AD2-LGKL/LG_AD_2_LGKL_VFR_en.pdf",
+  "sha256": "9792ab51561841efe3d193ff1ed2ee165971a792e9929d7dea54624388b7a022"
+ },
+ "LGKO": {
+  "file": "AD 2/AD2-LGKO/LG_AD_2_LGKO_VFR_en.pdf",
+  "sha256": "cae44d1f723af7e5c8eba3a4d2d9c147e76242019c8dacf981721976dd30784c"
+ },
+ "LGKP": {
+  "file": "AD 2/AD2-LGKP/LG_AD_2_LGKP_VFR_en.pdf",
+  "sha256": "c35b888c6615bd879bd4e697f8d29b95f225c5a5d0cff490cd8710aa7188c1eb"
+ },
+ "LGKR": {
+  "file": "AD 2/AD2-LGKR/LG_AD_2_LGKR_VFR_en.pdf",
+  "sha256": "be59e97ba3caef378030c187c553aeaeed76c275797de72ab616b7fd18c660df"
+ },
+ "LGKV": {
+  "file": "AD 2/AD2-LGKV/LG_AD_2_LGKV_VFR_en.pdf",
+  "sha256": "c4ee7605d94379203b5175ecef058b454dc8bac7b16ab93a868e2ec6c93b2bf5"
+ },
+ "LGLR": {
+  "file": "AD 1/AD 1.6 CAT B AERODROMES/catb/LG_AD_1_6_15_LGLR_VFR_en.pdf",
+  "sha256": "98ea94c5b8d1af43cb33140d5b39d409da0eb38f03c98d98f818714343a30ef3"
+ },
+ "LGMK": {
+  "file": "AD 2/AD2-LGMK/LG_AD_2_LGMK_VFR_en.pdf",
+  "sha256": "d4ff16a7fb2084a76aced051a212ba844fce4804056b6d182e7d113f9cc3512d"
+ },
+ "LGMT": {
+  "file": "AD 2/AD2-LGMT/LG_AD_2_LGMT_VFR_en.pdf",
+  "sha256": "5b1c8f854df00c5b499ef82f457d22b654c7328fd515868c11f23e92350c1638"
+ },
+ "LGPA": {
+  "file": "AD 2/AD2-LGPA/LG_AD_2_LGPA_VFR_en.pdf",
+  "sha256": "111a86d6764d41b9b3ba17eee84812eafbc3bf0282272909cb4bac937048331e"
+ },
+ "LGRP": {
+  "file": "AD 2/AD2-LGRP/LG_AD_2_LGRP_VFR_en.pdf",
+  "sha256": "035300bdc03de0737fd2afa66b2aee5db83f23412a809cc02ac9d54178d4750a"
+ },
+ "LGSA": {
+  "file": "AD 2/AD2-LGSA/LG_AD_2_LGSA_VFR_en.pdf",
+  "sha256": "1bb80d0374a5aa06383017171a89d2df77393a226dad6e7fe3a65bc1a9ed285e"
+ },
+ "LGSK": {
+  "file": "AD 2/AD2-LGSK/LG_AD_2_LGSK_VFR_en.pdf",
+  "sha256": "2ecf361b918f761ef335f0db3c81a587357fb9fb51a5ccffc2750d6c80221de4"
+ },
+ "LGSM": {
+  "file": "AD 2/AD2-LGSM/LG_AD_2_LGSM_VFR_en.pdf",
+  "sha256": "a1022113351a9041a3282049388436dca9f3f8a559b00faa47370d3f67e80443"
+ },
+ "LGSR": {
+  "file": "AD 2/AD2-LGSR/LG_AD_2_LGSR_VFR_en.pdf",
+  "sha256": "8659f2a1b2a48c78712063689276474c9d933f651591ca43ec3ec474c22af1fb"
+ },
+ "LGSY": {
+  "file": "AD 2/AD2-LGSY/LG_AD_2_LGSY_VFR_en.pdf",
+  "sha256": "29773e9ac01103e26869572295ce800c00ecb7cbd2a648717426af0b5449e5d9"
+ },
+ "LGTG": {
+  "file": "AD 1/AD 1.6 CAT B AERODROMES/catb/LG_AD_1_6_29_LGTG_VFR_en.pdf",
+  "sha256": "fcd488166d22628513b20fb7989a2ac4b3256bae57e784d0659939bc58785e86"
+ },
+ "LGTS": {
+  "file": "AD 2/AD2-LGTS/LG_AD_2_LGTS_VFR_en.pdf",
+  "sha256": "84846ea12c1a010dc2ad6ebbfd99ef7335d9c3f908dba7e9c874585f5de2b055"
+ }
+}

@@ -1,0 +1,242 @@
+{
+ "chart": "AD 2-LGRP-VFR, VFR routes RODOS TMA (14 MAY 26, AIRAC AMDT 04/26)",
+ "points": [
+  {
+   "name": "AFANTOU",
+   "dms": "36 17 42 N 028 09 55 E"
+  },
+  {
+   "name": "ALFA",
+   "dms": "35 48 04 N 027 26 20 E"
+  },
+  {
+   "name": "ALIMIA",
+   "dms": "36 16 41 N 027 42 20 E"
+  },
+  {
+   "name": "CHALKI",
+   "dms": "36 12 11 N 027 30 45 E"
+  },
+  {
+   "name": "CHARLIE",
+   "dms": "36 14 05 N 028 29 33 E"
+  },
+  {
+   "name": "LINDOS",
+   "dms": "36 04 13 N 028 04 31 E"
+  },
+  {
+   "name": "MARITSA",
+   "dms": "36 22 04 N 028 06 55 E"
+  },
+  {
+   "name": "MPRAVO",
+   "dms": "36 07 51 N 028 26 30 E"
+  },
+  {
+   "name": "NISYROS",
+   "dms": "36 33 29 N 027 11 47 E"
+  },
+  {
+   "name": "NOVEMBER",
+   "dms": "35 43 25 N 028 14 34 E"
+  },
+  {
+   "name": "NTELTA",
+   "dms": "36 26 24 N 028 04 26 E",
+   "reviewed": "reviewed on the chart overlay: AIP coordinates fall beside the printed symbol (label box); AIP value used"
+  },
+  {
+   "name": "SESKLI",
+   "dms": "36 29 52 N 027 51 00 E"
+  },
+  {
+   "name": "TILLOS",
+   "dms": "36 26 54 N 027 20 56 E"
+  },
+  {
+   "name": "WHISKY",
+   "dms": "35 34 30 N 028 08 20 E",
+   "reviewed": "reviewed on the chart overlay: AIP coordinates fall beside the printed symbol (label box); AIP value used"
+  }
+ ],
+ "routes": [
+  {
+   "a": "TILLOS",
+   "b": "SESKLI",
+   "min": 2000,
+   "max": 2000,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "SESKLI",
+   "b": "TILLOS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "TILLOS",
+   "b": "ALIMIA",
+   "min": 3000,
+   "max": 3000,
+   "nm": 20,
+   "oneway": true
+  },
+  {
+   "a": "ALIMIA",
+   "b": "TILLOS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 20,
+   "oneway": true
+  },
+  {
+   "a": "ALIMIA",
+   "b": "SESKLI",
+   "min": 2000,
+   "max": 2000,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "SESKLI",
+   "b": "ALIMIA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "ALFA",
+   "b": "ALIMIA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 32,
+   "oneway": true
+  },
+  {
+   "a": "ALIMIA",
+   "b": "ALFA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 32,
+   "oneway": true
+  },
+  {
+   "a": "ALFA",
+   "b": "LINDOS",
+   "min": 4000,
+   "max": 4000,
+   "nm": 35,
+   "oneway": true
+  },
+  {
+   "a": "LINDOS",
+   "b": "ALFA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 35,
+   "oneway": true
+  },
+  {
+   "a": "LINDOS",
+   "b": "AFANTOU",
+   "min": 3000,
+   "max": 3000,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "AFANTOU",
+   "b": "LINDOS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "AFANTOU",
+   "b": "MARITSA",
+   "min": 2500,
+   "max": 2500,
+   "nm": 5,
+   "oneway": true
+  },
+  {
+   "a": "MARITSA",
+   "b": "AFANTOU",
+   "min": 2000,
+   "max": 2000,
+   "nm": 5,
+   "oneway": true
+  },
+  {
+   "a": "AFANTOU",
+   "b": "CHARLIE",
+   "min": 3500,
+   "max": 3500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "CHARLIE",
+   "b": "AFANTOU",
+   "min": 3000,
+   "max": 3000,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "AFANTOU",
+   "b": "MPRAVO",
+   "min": 3000,
+   "max": 3000,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "MPRAVO",
+   "b": "AFANTOU",
+   "min": 3500,
+   "max": 3500,
+   "nm": 16,
+   "oneway": true
+  },
+  {
+   "a": "LINDOS",
+   "b": "NOVEMBER",
+   "min": 5500,
+   "max": 5500,
+   "nm": 22,
+   "oneway": true
+  },
+  {
+   "a": "NOVEMBER",
+   "b": "LINDOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 22,
+   "oneway": true
+  },
+  {
+   "a": "LINDOS",
+   "b": "WHISKY",
+   "min": 5500,
+   "max": 5500,
+   "nm": 30,
+   "oneway": true
+  },
+  {
+   "a": "WHISKY",
+   "b": "LINDOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 30,
+   "oneway": true
+  }
+ ],
+ "notes": "Altitudes are direction-specific (arrowed labels), so every route is two one-way segments. NISYROS\u2013TILLOS (10 NM) and CHALKI\u2013ALIMIA (10 NM) show no altitude; ALFA\u2013ABEAM MARATHOS/DELTAS are TO/FROM RODOS tracks without altitude."
+}
