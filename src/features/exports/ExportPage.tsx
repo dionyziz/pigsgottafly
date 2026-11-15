@@ -56,13 +56,20 @@ export function ExportPage() {
   const k = kind as ExportKind;
   return (
     <div className="page export-page" data-testid="export-page" data-kind={kind}>
-      <div className="row no-print export-bar">
+      <div className="no-print export-bar">
         <Link to={`/flights/${flight.id}`} className="export-back">← {flight.summary.title || 'Flight'}</Link>
-        <h2>{EXPORT_LABEL[k]}</h2>
-        <span className="spacer" />
-        <nav className="export-tabs" aria-label="Other exports">
-          {EXPORT_KINDS.filter((x) => x !== k).map((x) => (
-            <Link key={x} to={`/flights/${flight.id}/export/${x}`}>{EXPORT_LABEL[x]}</Link>
+        <nav className="export-tabs" aria-label="Exports" role="tablist">
+          {EXPORT_KINDS.map((x) => (
+            <Link
+              key={x}
+              to={`/flights/${flight.id}/export/${x}`}
+              role="tab"
+              aria-selected={x === k}
+              aria-current={x === k ? 'page' : undefined}
+              className={x === k ? 'active' : undefined}
+            >
+              {EXPORT_LABEL[x]}
+            </Link>
           ))}
         </nav>
         <button className="primary" onClick={() => window.print()} data-testid="export-print">Print</button>

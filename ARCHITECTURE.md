@@ -60,7 +60,7 @@ src/
     notams.ts              NOTAM briefing: fetchNotams (GET /api/flights/:id/notams), texts (validity, limits, decoded
                            subject), Q-line circle rings for the map, visibleNotams (relevant / show all)
     hazardWeather.ts       Open-Meteo corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid cells cached one by
-                           one): fetchHazardWeather, computeRouteHazards (editor strip + map, navlog export notes)
+                           one): fetchHazardWeather, computeRouteHazards (editor strip + map)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
     useAsync.ts            small loading hook
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:

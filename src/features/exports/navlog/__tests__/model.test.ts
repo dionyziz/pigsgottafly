@@ -93,17 +93,11 @@ describe('one sheet', () => {
     expect(s.totals.sunset).toMatch(/^SUNSET \d\d:\d\dZ$/);
   });
 
-  test('notes: times, fuel plan (required + reserve), card, sources', () => {
-    const tt = computed.navlog.times;
-    expect(out.notes[0]).toContain('Block-off 09:00Z · T/O 09:15Z');
-    expect(tt.takeoffMin).toBe(9 * 60 + 15);
-    const trip = computed.navlog.totals.tripFuel;
-    expect(out.notes[1]).toContain(`Fuel: taxi 4 + trip ${trip} = required ${trip + 4} L · FOB ${trip + 4 + 30} L (endurance ${fmtHmm(Math.floor(((trip + 34) / 30) * 60))})`);
-    expect(out.notes.some((x) => /swung|Compass/.test(x))).toBe(true);
-    expect(out.sources.some((x) => x.startsWith('Wind typed by hand on legs 1, 2, 3'))).toBe(true);
-    expect(out.notes[2]).toMatch(/^DEV: Magnetic compass, swung \d{4}-\d\d-\d\d · VAR: WMM2025/);
-    expect(out.notes[3]).toBe('Winds aloft: no forecast (calm wind used) · wind typed by hand on legs 1, 2, 3');
-    expect(out.notes.length).toBeLessThanOrEqual(5);
+  test('notes box left blank; sources on screen; no weather warnings', () => {
+    expect(out).not.toHaveProperty('notes');
+    expect(out.sources[0]).toBe('Winds aloft: none, calm wind used');
+    expect(out.sources).toContain('wind typed on legs 1, 2, 3');
+    expect(out.warnings.some((w) => /calm wind|METAR|forecast/i.test(w))).toBe(false);
   });
 
   test('terminal information: departure, destination, airspace, FIS', () => {
@@ -114,7 +108,8 @@ describe('one sheet', () => {
     const tt = out.terminal[0];
     expect(tt.elev).toBe(String(aerodrome('LGTT')!.elevFt));
     expect(tt.rwy).toContain(' / ');
-    expect(tt.freq).toMatch(/TWR \d{3}\.\d+/);
+    expect(tt.units[0].unit).toBe('TWR');
+    expect(tt.units[0].freqs[0]).toMatch(/^\d{3}\.\d+$/);
   });
 });
 
@@ -126,7 +121,7 @@ describe('no wind, no aircraft', () => {
     expect(L.wd).toBe('');
     expect(L.ws).toBe('');
     expect(L.windMissing).toBe(true);
-    expect(out.warnings.join('\n')).toMatch(/calm wind/i);
+    expect(out.sources[0]).toMatch(/calm wind/i);
   });
   test('without an aircraft the sheet still renders', () => {
     const { out } = build(flight(route, { aircraftId: null }), { aircraft: null });
@@ -198,10 +193,9 @@ describe('surface weather in the header', () => {
     expect(h.sky).toBe('SKC');
     // LGAV 03L/R and 21L/R: north-easterly wind → 03L/R
     expect(h.runway).toBe('03L/R');
-    expect(out.sources[0]).toBe('Winds/temp aloft: Open-Meteo ECMWF IFS 0.25°, fetched 08:00Z');
-    expect(out.notes[4]).toMatch(/^Surface: LGAV forecast 09:00Z · LGKR forecast \d\d:\d\dZ$/);
-    expect(out.sources.some((s) => s.startsWith('LGAV departure: ECMWF IFS 0.25° forecast for 09:00Z (Open-Meteo)'))).toBe(true);
-    expect(out.sources.some((s) => s.startsWith('LGKR arrival:'))).toBe(true);
+    expect(out.sources[0]).toBe('Winds aloft ECMWF IFS 0.25°, fetched 08:00Z');
+    expect(out.sources[1]).toBe('LGAV forecast 09:00Z');
+    expect(out.sources[2]).toMatch(/^LGKR forecast \d\d:\d\dZ$/);
     // leg midpoint had no data: flagged
     expect(out.sheets[0].legs[0]!.windMissing).toBe(true);
   });
@@ -213,8 +207,8 @@ describe('surface weather in the header', () => {
     const { out } = build(flight(route), { weather, metar, nowMs: obs + 10 * 60000 });
     const h = out.sheets[0].header;
     expect(h).toMatchObject({ temp: '17/09', wind: '21015G25KT', qnh: '1011', sky: 'CAVOK', runway: '21L/R' });
-    expect(out.sources.some((s) => s.startsWith('LGAV departure: METAR LGAV 200850Z'))).toBe(true);
-    expect(out.notes[4]).toMatch(/^Surface: LGAV METAR LGAV 200850Z · LGKR forecast/);
+    expect(out.sources[1]).toMatch(/^METAR LGAV 200850Z/);
+    expect(out.sources[2]).toMatch(/^LGKR forecast/);
   });
 
   test('chosen runway on the flight wins', () => {
@@ -244,18 +238,18 @@ describe('helpers', () => {
       e('LGMG MEGARA', 'A/A', '122.400', [], null),
     ], REF.aerodromes);
     expect(rows).toHaveLength(3);
-    expect(rows[0]).toMatchObject({ field: 'LGTT', freq: 'TWR 122.650 118.500 · GND 121.700' });
-    expect(rows[1]).toMatchObject({ field: 'MY NOTES', elev: '', rwy: '', freq: 'A/A 123.450' });
+    expect(rows[0]).toMatchObject({ field: 'LGTT', units: [{ unit: 'TWR', freqs: ['122.650', '118.500'] }, { unit: 'GND', freqs: ['121.700'] }] });
+    expect(rows[1]).toMatchObject({ field: 'MY NOTES', elev: '', rwy: '', units: [{ unit: 'A/A', freqs: ['123.450'] }] });
     expect(rows[2].field).toBe('LGMG');
   });
   test('terminal rows print the callsign of a hand-added unit', () => {
     const e = (callsign: string, service: string, primary: string, sourceKey: string | null): AtcEntry =>
       ({ id: callsign + service, role: sourceKey ? 'departure' : 'custom', group: sourceKey ? 'LGTT DEKELIA / TATOI' : 'Other', callsign, service, primary, backups: [], remark: '', sourceKey });
     expect(terminalRows([e('SKYROS APPROACH', 'APP', '123.45', null)], REF.aerodromes)[0])
-      .toMatchObject({ field: 'Other', freq: 'SKYROS APPROACH 123.45' });
-    expect(terminalRows([e('SKYROS', 'ATIS', '127.0', null)], REF.aerodromes)[0].freq).toBe('SKYROS ATIS 127.0');
-    expect(terminalRows([e('MY RADIO', '', '130.0', null)], REF.aerodromes)[0].freq).toBe('MY RADIO 130.0');
+      .toMatchObject({ field: 'Other', units: [{ unit: 'SKYROS APPROACH', freqs: ['123.45'] }] });
+    expect(terminalRows([e('SKYROS', 'ATIS', '127.0', null)], REF.aerodromes)[0].units[0].unit).toBe('SKYROS ATIS');
+    expect(terminalRows([e('MY RADIO', '', '130.0', null)], REF.aerodromes)[0].units[0].unit).toBe('MY RADIO');
     // Generated rows keep the compact v2 form: the field names the aerodrome.
-    expect(terminalRows([e('TATOI TOWER', 'TWR', '122.650', 'ad:LGTT:TATOI TOWER')], REF.aerodromes)[0].freq).toBe('TWR 122.650');
+    expect(terminalRows([e('TATOI TOWER', 'TWR', '122.650', 'ad:LGTT:TATOI TOWER')], REF.aerodromes)[0].units).toEqual([{ unit: 'TWR', freqs: ['122.650'] }]);
   });
 });
