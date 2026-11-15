@@ -194,7 +194,7 @@ describe('W&B sheet (MD 4.3)', () => {
     expect(html).toContain('NORMAL CATEGORY');
     expect(html).toContain('UTILITY CATEGORY');
     expect(html).toContain('PASS');
-    expect(html).toContain('MD 4.3');
+    expect(html).not.toMatch(/MD 4\.\d|club/i);
     expect(fmtArm(0.94)).toBe('0.94');
     expect(fmtArm(1.215)).toBe('1.215');
   });
@@ -268,7 +268,8 @@ describe('performance sheet (MD 4.4)', () => {
     const doc = flight();
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV) });
     const html = renderToStaticMarkup(<PerfSheet m={m} />);
-    for (const t of ['PERFORMANCE LOG', 'T.O.D.A.', 'T.O.R.R.', 'L.D.A.', 'L.R.R.', 'Vglide', 'Vapr', 'MD 4.4', 'Short dry grass']) expect(html).toContain(t);
+    for (const t of ['PERFORMANCE LOG', 'T.O.D.A.', 'T.O.R.R.', 'L.D.A.', 'L.R.R.', 'Vglide', 'Vapr', 'Short dry grass']) expect(html).toContain(t);
+    expect(html).not.toMatch(/MD 4\.\d|club/i);
   });
 
   test('both sheets carry the PIC e-signature on their SIGN line', () => {
@@ -415,8 +416,8 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
         // (the AFM one on hot days at PA + 10 %/15 °C, and on cold days, where the club's DA entry
         // falls below PA); the club-method figures must match the club calculator.
         const p = e.perf!;
-        const clubD = p.distances!.method === 'club' ? p.distances! : p.alternative!;
-        expect(clubD.method).toBe('club');
+        const clubD = p.distances!.method === 'da' ? p.distances! : p.alternative!;
+        expect(clubD.method).toBe('da');
         const clubTodr = Math.ceil(clubD.requiredTotalM - 1e-9), clubTorr = Math.ceil(clubD.requiredGroundM - 1e-9);
         track(clubTodr, club.todrM!);
         expect(within(clubTodr, club.todrM!), `TODR (club method) ${clubTodr} vs ${club.todrM}`).toBe(true);
@@ -431,8 +432,8 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
         // fixture). The club-method figures must still match the club; the printed LDR is the
         // larger of the two and is never shorter than the club's.
         const p = e.perf!;
-        const clubD = p.distances!.method === 'club' ? p.distances! : p.alternative!;
-        expect(clubD.method).toBe('club');
+        const clubD = p.distances!.method === 'da' ? p.distances! : p.alternative!;
+        expect(clubD.method).toBe('da');
         const clubLdr = Math.ceil(clubD.requiredTotalM - 1e-9), clubLrr = Math.ceil(clubD.requiredGroundM - 1e-9);
         track(clubLdr, club.ldrM!);
         expect(within(clubLdr, club.ldrM!), `LDR (club method) ${clubLdr} vs ${club.ldrM}`).toBe(true);

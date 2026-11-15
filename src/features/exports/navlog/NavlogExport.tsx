@@ -2,7 +2,7 @@
 // legs. A faithful port of the v2 print sheet (legacy index.html / css/style.css / js/app.js
 // sheetHtml), read-only and fed by the v3 flight model: calc/computeNavlog with live Open-Meteo
 // winds aloft, METAR (when current) or forecast surface conditions at each end, and the flight's
-// ATC list as the terminal information.
+// ATC list as the terminal information (on each sheet, the units its legs touch).
 //
 // Usage (ExportPage): <NavlogExport flight={flight} />. On screen the sheets are scaled to the
 // container width; in print each sheet fills one A4 landscape page (named page "md42").
@@ -12,7 +12,7 @@ import { buildLegs } from '../../../calc';
 import { api } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { REF, SUN_TABLES } from '../../../data/ref';
-import { atcInput, endpointAerodrome, generateAtcList } from '../../../data/atc';
+import { atcInput, atcLegRelevance, endpointAerodrome, generateAtcList } from '../../../data/atc';
 import { fetchRouteWeather, type RouteWeather } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult } from '../../../data/weatherMetar';
 import {
@@ -80,8 +80,9 @@ export function NavlogExport({ flight }: { flight: Flight }) {
       doc: flight, aircraft, settings: pilot?.settings ?? null, weather,
       ref: { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES },
     });
-    const atc = flight.atc ?? generateAtcList(atcInput(flight.route, computed.altitudesFt, REF, pilot?.settings.enrouteAerodromeRadiusNm ?? 2));
-    return buildNavlogDocument({ doc: flight, aircraft, computed, atc, aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now() });
+    const gen = atcInput(flight.route, computed.altitudesFt, REF, pilot?.settings.enrouteAerodromeRadiusNm ?? 2);
+    const atc = flight.atc ?? generateAtcList(gen);
+    return buildNavlogDocument({ doc: flight, aircraft, computed, atc, atcRelevance: atcLegRelevance(gen), aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now() });
   }, [loading, flight, aircraft, pilot, weather, metar]);
 
   // ---- scale to the container on screen; fit text after every render
@@ -126,7 +127,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
         ref={host}
         style={{ ['--fit' as string]: `${fitPx}px`, ['--hair' as string]: snap(fitPx, 1), ['--thick' as string]: snap(fitPx * 1.6, 2) }}
       >
-        {doc.sheets.map((s) => <Sheet key={s.index} sheet={s} doc={doc} />)}
+        {doc.sheets.map((s) => <Sheet key={s.index} sheet={s} />)}
       </div>
     </div>
   );
@@ -186,13 +187,14 @@ function TerminalCells({ t, rowH }: { t: TerminalRow | undefined; rowH: number }
   );
 }
 
-function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
+function Sheet({ sheet }: { sheet: NavlogSheet }) {
   const h = sheet.header;
   const tr = 4 + 2 * LEGS_PER_SHEET;
   const rowsTpl = `calc(19*var(--u)) calc(19*var(--u)) calc(19*var(--u)) repeat(${2 * LEGS_PER_SHEET}, calc(27*var(--u))) calc(30*var(--u))`;
-  const nRows = Math.max(MIN_TERMINAL_ROWS, doc.terminal.length);
+  const terminal = sheet.terminal;
+  const nRows = Math.max(MIN_TERMINAL_ROWS, terminal.length);
   // rows share the box by their number of radio units (a row of five units gets 2.6 single rows' height)
-  const weight = (i: number) => 1 + 0.4 * Math.max(0, (doc.terminal[i]?.units.length ?? 1) - 1);
+  const weight = (i: number) => 1 + 0.4 * Math.max(0, (terminal[i]?.units.length ?? 1) - 1);
   const weights = Array.from({ length: nRows }, (_, i) => weight(i));
   const totalWeight = weights.reduce((a, b) => a + b, 0);
 
@@ -280,9 +282,10 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
 
         <C r={tr} c={1} cs={9} cls="ti-title fold">Terminal Information</C>
         <C r={tr} c={10} cls="cp-end total-row">
-          {sheet.bottomLabel && <div className="h end-lbl">{sheet.bottomLabel}</div>}
-          <div className={`end-name${sheet.bottomLabel ? ' under-lbl' : ''}`}><div className="cpn cpn-end">{sheet.bottomName}</div></div>
+          {sheet.bottomLabel && <div className="h end-lbl end-lbl-bottom">{sheet.bottomLabel}</div>}
         </C>
+        {/* the name after the last row sits on the line above the totals, as every other checkpoint does */}
+        <C r={tr} c={10} cls="cpn-cell"><div className="cpn cpn-bottom">{sheet.bottomName}</div></C>
         <C r={tr} c={11} cls="tot-label total-row">TOTALS</C>
         <C r={tr} c={12} cls="total-row"><V t={sheet.totals.dist} /></C>
         <C r={tr} c={13} cls="total-row" />
@@ -295,7 +298,7 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
       <div className="g foot">
         <div className="ti">
           <div className="th">Field</div><div className="th">Elevation</div><div className="th">Runways</div><div className="th">Radio Frequencies</div>
-          {Array.from({ length: nRows }, (_, i) => <TerminalCells key={i} t={doc.terminal[i]} rowH={(165 * weights[i]) / totalWeight} />)}
+          {Array.from({ length: nRows }, (_, i) => <TerminalCells key={i} t={terminal[i]} rowH={(165 * weights[i]) / totalWeight} />)}
         </div>
         <div className="notes">
           <div className="th">Notes:</div>

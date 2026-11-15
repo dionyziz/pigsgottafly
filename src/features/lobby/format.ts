@@ -1,6 +1,7 @@
 // Pure formatting and filtering helpers for the lobby and the list pages (unit-tested in
 // tests/unit/screens/format.test.ts). No DOM, no React.
 import type { FlightListItem } from '../../shared';
+import { fmtDuration } from '../../calc';
 
 
 /** Today's calendar date in the browser's zone, 'YYYY-MM-DD'. */
@@ -40,11 +41,9 @@ export function relativeDay(d: string, today: string): string {
   return '';
 }
 
-/** Minutes → 'H:MM' ('' for null). */
+/** Minutes → '1h35' ('' for null). */
 export function fmtHm(m: number | null | undefined): string {
-  if (m == null || !isFinite(m)) return '';
-  const r = Math.round(m);
-  return `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`;
+  return fmtDuration(m);
 }
 
 /**

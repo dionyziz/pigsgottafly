@@ -52,6 +52,11 @@ export interface PilotSettings {
   /** Aerodromes within this distance of the route are listed in the ATC list (default 2 NM). */
   enrouteAerodromeRadiusNm: number;
   /**
+   * Alternate aerodrome (ICAO, or the AIP id of one without) pre-filled on new flights (FPL item
+   * 16); editable per flight. Missing or null = none.
+   */
+  defaultAlternate?: string | null;
+  /**
    * No longer used (kept so old profiles stay valid): whether a handler submits the General
    * Declaration now comes from the AIP handling hours and NOTAMs, with a per-flight override
    * (FlightOptions.genDecHandled).

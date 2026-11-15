@@ -160,6 +160,11 @@ export const routes: Route[] = [
         base.route = [p(), p()];
       }
       const d = await checkDoc(db, pilot.id, input, base);
+      // the profile's alternate (FPL item 16), unless the request gave alternates or the flight ends there
+      const givenAlternates = !!input.options && typeof input.options === 'object' && 'alternates' in input.options;
+      const altn = pilot.settings.defaultAlternate && !givenAlternates && !d.options.alternates.length ? await findAerodrome(db, pilot.settings.defaultAlternate) : null;
+      const dest = d.route.length > 1 ? d.route[d.route.length - 1] : null;
+      if (altn && !(dest && dest.kind === 'aerodrome' && dest.refId === altn.id)) d.options = { ...d.options, alternates: [altn.icao || altn.id] };
       if (!('summary' in input)) {
         const [ac] = d.aircraftId ? await db.query('SELECT registration FROM aircraft WHERE id = $1', [d.aircraftId]) : [];
         d.summary = {

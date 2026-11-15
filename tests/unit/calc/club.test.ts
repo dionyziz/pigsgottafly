@@ -37,12 +37,12 @@
 //     unrounded; safety 1.33 / 1.43.
 //   - distances: the AFM table at the DENSITY altitude (0 ft column below 0), linear in mass
 //     (extrapolated above 1043 kg), zero-wind column, −10 % per 5 kt headwind for take-off AND
-//     landing, × condition × safety, rounded to the metre. Our 'club' method is this model; our
+//     landing, × condition × safety, rounded to the metre. Our 'da' method is this model; our
 //     results agree within 0.75 % or 1 m (observed max ≈ 0.6 %, from DIFFERENCES 3 and 4).
 //   - The AFM method ('afm': table at PA + 10 %/15 °C, take-off headwind columns) is NOT the
 //     club's: with headwind the AFM columns give up to ~28 % shorter take-offs, in heat the
 //     +10 %/15 °C rule gives up to ~15 % shorter take-offs but up to ~10 % longer landings than
-//     entering the table at DA. That is why 'club' is the default method. Checked below.
+//     entering the table at DA. That is why 'da' is the default method. Checked below.
 import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -239,13 +239,13 @@ describe('club performance (MD 4.4)', () => {
     expect(Math.abs(Math.abs(w.headwindKt) - club.headwindKt)).toBeLessThanOrEqual(0.1 + 1e-9);
     expect(Math.abs(w.crosswindKt - club.crosswindKt)).toBeLessThanOrEqual(0.1 + 1e-9);
     // Condition and safety factors.
-    const d = distances(c, ph, { method: 'club', clubWindBug: true });
+    const d = distances(c, ph, { method: 'da', clubWindBug: true });
     expect(Math.abs(d.factors.condition! - club.conditionFactor)).toBeLessThanOrEqual(0.005 + 1e-9);
     expect(d.factors.safety).toBe(club.safetyFactor);
   });
 
   test.each(PERF_CASES)('case %i %s: TODR/TORR or LDR/LRR, club method with the club wind (≤ 0.75 % or 1 m)', (_n, ph, c) => {
-    const d = distances(c, ph, { method: 'club', clubWindBug: true });
+    const d = distances(c, ph, { method: 'da', clubWindBug: true });
     const club = req(c, ph);
     expect(within(d.requiredTotalM, club.total, 0.0075, 1), `total ${d.requiredTotalM.toFixed(1)} vs ${club.total}`).toBe(true);
     expect(within(d.requiredGroundM, club.ground, 0.0075, 1), `ground ${d.requiredGroundM.toFixed(1)} vs ${club.ground}`).toBe(true);
@@ -258,8 +258,8 @@ describe('club performance (MD 4.4)', () => {
       for (const ph of PHASES) {
         const p = phaseInput(c.input, ph);
         const w = windComponents(p.rwyHdg, p.windDir, p.windKt);
-        const ours = distances(c, ph, { method: 'club', clubWindBug: false });
-        const asClub = distances(c, ph, { method: 'club', clubWindBug: true });
+        const ours = distances(c, ph, { method: 'da', clubWindBug: false });
+        const asClub = distances(c, ph, { method: 'da', clubWindBug: true });
         const club = req(c, ph);
         if (w.headwindKt < -0.05) {
           tail++;
@@ -294,7 +294,7 @@ describe('club performance (MD 4.4)', () => {
         const w = windComponents(p.rwyHdg, p.windDir, p.windKt);
         if (w.headwindKt < -0.05) continue; // tailwind: see above
         const afm = distances(c, ph, { method: 'afm', clubWindBug: false });
-        const clubM = distances(c, ph, { method: 'club', clubWindBug: false });
+        const clubM = distances(c, ph, { method: 'da', clubWindBug: false });
         const r = afm.requiredTotalM / clubM.requiredTotalM;
         if (ph === 'landing') {
           expect(r).toBeGreaterThanOrEqual(1 - 1e-9);

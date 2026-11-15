@@ -26,16 +26,15 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
   - exports.
 - **Navlog strip.** A collapsible strip of live legs: Open-Meteo ECMWF winds at each leg's midpoint, altitude and time, with WCA, TH, MH, CH from the compass card, GS, ETE and fuel. It also lists weather hazards along the route (thunderstorms, visibility, cloud below the planned altitude), which are drawn on the map too.
 - **Calculations** are pure TypeScript in `src/calc` and unit-tested:
-  - W&B and performance are cross-checked against all 90 cases from the Aeroclub Mesogeion calculator (`tests/unit/calc/club.test.ts`, which documents each difference);
+  - W&B and performance are cross-checked against 90 reference cases from an independent W&B and performance calculator (`tests/unit/calc/club.test.ts`, which documents each difference);
   - the e2e navlog is checked against an independent oracle.
 - **METAR/TAF** from aviationweather.gov, fetched through the API.
 - **Exports.** Print-ready A4 pages, one route per document:
-  - MD 4.2 navlog;
+  - navigation log (one sheet per 9 legs);
   - Form 731, with e-signatures: passengers sign through a share link;
-  - General Declaration (MD 4.7), with who submits it worked out from the handling hours at both ends (AIP + NOTAMs; per-flight override);
+  - General Declaration, with who submits it worked out from the handling hours at both ends (AIP + NOTAMs; per-flight override);
   - ICAO 2012 FPL message plus a filled form, with AFTN addressees from AIP ENR 1.11;
-  - W&B (MD 4.3) with the CG envelope chart;
-  - take-off/landing performance (MD 4.4);
+  - weight & balance with the CG envelope chart, and take-off/landing performance, as one signed document;
   - NOTAM briefing.
 - **Optional services** (enabled by environment variables):
   - e-mailing Form 731 and the GenDec to HCAA;

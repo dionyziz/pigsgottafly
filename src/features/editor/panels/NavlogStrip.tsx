@@ -2,7 +2,7 @@
 // ETE, ETA, fuel) from computeNavlog(), the winds source with a refresh, and every warning of the
 // flight (winds, compass card, W&B, performance, crosswind, fuel, manifest).
 import { useState } from 'react';
-import { fmtHdg } from '../../../calc';
+import { fmtAltitude, fmtHdg } from '../../../calc';
 import { WIND_MODELS, type WindModel } from '../../../shared';
 import { useEditor } from '../state';
 import { useNotams } from '../notams';
@@ -53,7 +53,7 @@ export function NavlogStrip() {
       {state !== 'closed' && <div {...r.handleProps} aria-label="Resize the navlog" data-testid="resize-navlog" />}
       <header className="ns-head">
         <button type="button" className="ns-toggle" onClick={() => set(state === 'closed' ? 'open' : 'closed')} aria-expanded={state !== 'closed'}>
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="ep-caret"><path d="M3 7.5 6 4.5 9 7.5" /></svg>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="ep-caret"><path d="M3 4.5 6 7.5 9 4.5" /></svg>
           <b>Navlog</b>
         </button>
         {navlog && navlog.legs.length > 0 ? (
@@ -106,7 +106,7 @@ export function NavlogStrip() {
                     <tr key={L?.key ?? i} data-testid="navlog-row" className={notamLeg === i ? 'is-notam' : undefined}
                       title={notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined}>
                       <td className="ns-leg"><span>{L?.from.name}</span><span className="muted"> → </span><span>{L?.to.name}</span></td>
-                      <td className={'num' + (fin(r.altFt) ? '' : ' warn')}>{fin(r.altFt) ? r.altFt : '?'}</td>
+                      <td className={'num' + (fin(r.altFt) ? '' : ' warn')}>{fin(r.altFt) ? fmtAltitude(r.altFt) : '?'}</td>
                       <td className="num">{r.tasKt}</td>
                       <td className="num">{hdg(r.tc)}</td>
                       <td className="num">{hdg(r.mc)}</td>
@@ -120,7 +120,7 @@ export function NavlogStrip() {
                       <td className="num"><b>{hdg(r.ch ?? r.mh)}</b></td>
                       <td className="num">{fin(r.gs) ? r.gs : ''}</td>
                       <td className="num">{r.dist}</td>
-                      <td className="num">{fin(r.ete) ? r.ete : ''}</td>
+                      <td className="num">{fin(r.ete) ? fmtDur(r.ete) : ''}</td>
                       <td className="num">{fin(r.endMin) && fin(dayMs) ? fmtMin(r.endMin) : ''}</td>
                       <td className="num">{fin(r.fuel) ? r.fuel : ''}</td>
                     </tr>
@@ -131,7 +131,7 @@ export function NavlogStrip() {
                 <tr>
                   <td colSpan={12}>{navlog.legs.length} legs{!navlog.blockOffSet && <span className="muted"> · block-off not set: 12:00Z assumed</span>}</td>
                   <td className="num">{navlog.totals.dist}</td>
-                  <td className="num">{navlog.totals.ete}</td>
+                  <td className="num">{fmtDur(navlog.totals.ete)}</td>
                   <td />
                   <td className="num">{navlog.totals.tripFuel}</td>
                 </tr>

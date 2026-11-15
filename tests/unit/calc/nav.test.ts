@@ -53,6 +53,10 @@ test('remaining distance/time and totals', () => {
   expect(rows.map((r) => r.ateRem)).toEqual([17, 4, 0]);
   expect(t).toEqual({ dist: 35, ete: 24, tripFuel: 13, fuel: 17 });
   expect([Nav.fmtHmm(4), Nav.fmtHmm(0), Nav.fmtHmm(75), Nav.fmtHdg(0), Nav.fmtHdg(5)]).toEqual(['0:04', '0:00', '1:15', '360', '005']);
+  expect([Nav.fmtHmm(119.6), Nav.fmtDuration(104), Nav.fmtDuration(10), Nav.fmtDuration(0), Nav.fmtDuration(119.6), Nav.fmtDuration(NaN), Nav.fmtDuration(null)])
+    .toEqual(['2:00', '1h44', '0h10', '0h00', '2h00', '', '']);
+  expect([Nav.fmtAltitude(3000), Nav.fmtAltitude(3000, { unit: true }), Nav.fmtAltitude(6500), Nav.fmtAltitude(9500, { unit: true }), Nav.fmtAltitude(NaN)])
+    .toEqual(['3000', '3000 ft', 'FL065', 'FL095', '---']);
   expect([Nav.parseClock('0930'), Nav.parseClock('09:30Z'), Nav.parseClock('24:00')]).toEqual([570, 570, NaN]);
 });
 

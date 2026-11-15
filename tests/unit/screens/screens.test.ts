@@ -25,7 +25,8 @@ describe('lobby format', () => {
     expect(relativeDay('2026-11-20', '2026-11-15')).toBe('In 5 days');
     expect(relativeDay('2026-11-12', '2026-11-15')).toBe('3 days ago');
     expect(relativeDay('2027-03-01', '2026-11-15')).toBe('');
-    expect(fmtHm(95)).toBe('1:35');
+    expect(fmtHm(95)).toBe('1h35');
+    expect(fmtHm(10)).toBe('0h10');
     expect(fmtHm(null)).toBe('');
   });
   it('converts UTC block-off to a local clock time', () => {
@@ -119,7 +120,7 @@ describe('aerodrome picker', () => {
 describe('profile form', () => {
   const base = {
     fullName: ' Test Pilot ', phone: '+30 690', licenceNo: '', nationality: 'greek', relation: 'M123', dateOfBirth: '', weightKg: '80',
-    idType: '' as const, idNumber: '', homeAerodrome: 'lgtt', defaultAircraftId: '', taxiOutMin: '', taxiInMin: '12', reserveMin: '',
+    idType: '' as const, idNumber: '', homeAerodrome: 'lgtt', defaultAircraftId: '', defaultAlternate: '', taxiOutMin: '', taxiInMin: '12', reserveMin: '',
     finalReserveMin: '', windModel: 'ecmwf_ifs025' as const, enrouteAerodromeRadiusNm: '',
   };
   it('never fills pilot-specific values the pilot left empty', () => {
@@ -131,7 +132,9 @@ describe('profile form', () => {
     expect(u.nationality).toBe('GREEK');
     expect(u.weightKg).toBe(80);
     expect(u.defaultAircraftId).toBeNull();
-    expect(u.settings).toMatchObject({ finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, windModel: 'ecmwf_ifs025' });
+    expect(u.settings).toMatchObject({ finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, windModel: 'ecmwf_ifs025', defaultAlternate: null });
+    expect(toUpdate({ ...base, defaultAlternate: 'lgav' }, false).settings?.defaultAlternate).toBe('LGAV');
+    expect(() => toUpdate({ ...base, defaultAlternate: 'nowhere' }, false)).toThrow(/not an aerodrome/);
   });
   it('rejects a missing name/phone, an unknown aerodrome and bad numbers', () => {
     expect(() => toUpdate({ ...base, fullName: ' ' }, true)).toThrow(/name/);

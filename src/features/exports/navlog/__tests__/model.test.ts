@@ -6,8 +6,8 @@ import { aircraftFromTypeJson, emptyFlightDoc, legKey, DEFAULT_SETTINGS } from '
 import type { Aircraft, AtcEntry, CompassCard, FlightDoc, RoutePoint } from '../../../../shared';
 import type { RouteWeather, OpenMeteoLocation } from '../../../../data/weather';
 import { parseMetar, type MetarTafResult } from '../../../../data/weatherMetar';
-import { fmtHdg, fmtHmm, fmtSigned } from '../../../../calc';
-import { generateAtcList, atcInput } from '../../../../data/atc';
+import { fmtHdg, fmtDuration, fmtSigned } from '../../../../calc';
+import { generateAtcList, atcInput, atcLegRelevance } from '../../../../data/atc';
 import reims from '../../../../../data/aircraft/reims-f172m.json';
 import cards from '../../../../../data/aircraft/compass-cards.json';
 import { buildNavlogDocument, computeFlightNavlog, fmtSurfaceWind, LEGS_PER_SHEET, runwayInUse, terminalRows } from '../model';
@@ -40,8 +40,9 @@ function windAll(route: RoutePoint[], dir: number, kt: number): FlightDoc['legOv
 function build(doc: FlightDoc, o: { weather?: RouteWeather | null; metar?: MetarTafResult | null; nowMs?: number; aircraft?: Aircraft | null } = {}) {
   const aircraft = o.aircraft === undefined ? AC : o.aircraft;
   const computed = computeFlightNavlog({ doc, aircraft, settings: SETTINGS, weather: o.weather ?? null, ref });
-  const atc = doc.atc ?? generateAtcList(atcInput(doc.route, computed.altitudesFt, REF, 2));
-  const out = buildNavlogDocument({ doc, aircraft, computed, atc, aerodromes: REF.aerodromes, weather: o.weather ?? null, metar: o.metar ?? null, nowMs: o.nowMs ?? Date.parse('2026-11-15T12:00:00Z') });
+  const gen = atcInput(doc.route, computed.altitudesFt, REF, 2);
+  const atc = doc.atc ?? generateAtcList(gen);
+  const out = buildNavlogDocument({ doc, aircraft, computed, atc, atcRelevance: atcLegRelevance(gen), aerodromes: REF.aerodromes, weather: o.weather ?? null, metar: o.metar ?? null, nowMs: o.nowMs ?? Date.parse('2026-11-15T12:00:00Z') });
   return { computed, out, atc };
 }
 
@@ -69,13 +70,13 @@ describe('one sheet', () => {
       expect(c.ch).toBe(fmtHdg(r.ch!));
       expect(c.dist).toBe(String(r.dist));
       expect(c.gs).toBe(String(r.gs));
-      expect(c.ete).toBe(fmtHmm(r.ete!));
+      expect(c.ete).toBe(fmtDuration(r.ete!));
       expect(c.fuel).toBe(String(r.fuel));
       expect(c.windMissing).toBe(false);
     });
     // remaining distance/time after each leg
     expect(s.legs[2]!.rem).toBe('0');
-    expect(s.legs[2]!.ate).toBe('0:00');
+    expect(s.legs[2]!.ate).toBe('0h00');
     expect(s.legs[0]!.rem).toBe(String(computed.navlog.legs[1].dist + computed.navlog.legs[2].dist));
     expect(s.legs.slice(3).every((x) => x === null)).toBe(true);
   });
@@ -85,11 +86,12 @@ describe('one sheet', () => {
     expect(s.topName).toBe('LGTT');
     expect(s.checkpoints.slice(0, 3)).toEqual(['DAPORI', 'KORINTHOS', 'LGMG']);
     expect(s.checkpoints.slice(3).every((x) => x === '')).toBe(true);
-    expect(s.bottomLabel).toBe('ARRIVAL');
-    expect(s.bottomName).toBe('LGMG');
+    // the destination is printed once, after its leg; the line above the totals stays empty
+    expect(s.bottomLabel).toBe('');
+    expect(s.bottomName).toBe('');
     expect(s.header).toMatchObject({ date: DATE, aircraft: 'SX-ASV', blockStart: '09:00Z', est: 'EST 30lt/h = 0.5lt/min' });
     const t = computed.navlog.totals;
-    expect(s.totals).toMatchObject({ dist: String(t.dist), ete: fmtHmm(t.ete), fuel: String(t.tripFuel + 4) });
+    expect(s.totals).toMatchObject({ dist: String(t.dist), ete: fmtDuration(t.ete), fuel: String(t.tripFuel + 4) });
     expect(s.totals.sunset).toMatch(/^SUNSET \d\d:\d\dZ$/);
   });
 
@@ -157,14 +159,58 @@ describe('long routes continue on further sheets', () => {
     expect(b.topLabel).toBe('');
     expect(b.topName).toBe('P9');
     expect(b.checkpoints[0]).toBe('P10');
-    expect(b.bottomLabel).toBe('ARRIVAL');
-    expect(b.bottomName).toBe('LGTT');
+    expect(b.checkpoints[3]).toBe('LGTT');
+    expect(b.bottomLabel).toBe('');
+    expect(b.bottomName).toBe('');
     // second sheet first row = leg 10
     expect(b.legs[0]!.tc).toBe(fmtHdg(computed.navlog.legs[9].tc));
     // totals of the whole flight on every sheet
     expect(a.totals).toEqual(b.totals);
     expect(a.index).toBe(0);
     expect(b.count).toBe(2);
+  });
+});
+
+describe('a full sheet ends at the destination', () => {
+  const pts = [ad('LGTT')];
+  for (let i = 0; i < 8; i++) pts.push(custom(`Q${i + 1}`, 38.0 + 0.05 * i, 23.6 + 0.05 * i));
+  pts.push(ad('LGMG'));
+  const { out } = build(flight(pts, { legOverrides: windAll(pts, 200, 10) }));
+  test('the destination sits on the line above the totals, marked ARRIVAL', () => {
+    expect(out.sheets).toHaveLength(1);
+    const s = out.sheets[0];
+    expect(s.checkpoints).toEqual(['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8']);
+    expect(s.bottomName).toBe('LGMG');
+    expect(s.bottomLabel).toBe('ARRIVAL');
+  });
+});
+
+describe('terminal information per sheet', () => {
+  // LGTT → 9 points west → LGMG → 3 points → LGKR: the sheets touch different aerodromes
+  const pts = [ad('LGTT')];
+  for (let i = 0; i < 8; i++) pts.push(custom(`W${i + 1}`, 38.1 - 0.02 * i, 23.7 - 0.08 * i));
+  pts.push(ad('LGMG'));
+  for (let i = 0; i < 3; i++) pts.push(custom(`S${i + 1}`, 37.9 - 0.15 * i, 22.9 - 0.25 * i));
+  pts.push(ad('LGKL'));
+  const custom731 = { id: 'x', role: 'custom', group: 'Other', callsign: 'MY UNIT', service: '', primary: '123.450', backups: [], remark: '', sourceKey: null } as unknown as AtcEntry;
+  const doc = flight(pts, { legOverrides: windAll(pts, 200, 10) });
+  const { out, atc } = build({ ...doc, atc: null });
+  const { out: withCustom } = build({ ...doc, atc: [...atc, custom731] });
+  const fields = (i: number, o = out) => o.sheets[i].terminal.map((r) => r.field);
+  test('each sheet lists the units its legs touch', () => {
+    expect(out.sheets).toHaveLength(2);
+    expect(fields(0)).toContain('LGTT');
+    expect(fields(0)).toContain('LGMG');
+    expect(fields(0)).not.toContain('LGKL');
+    expect(fields(1)).not.toContain('LGTT');
+    expect(fields(1)).toContain('LGKL');
+    expect(fields(1)).toContain('LGMG');
+    // the whole flight's list is the union
+    for (const f of [...fields(0), ...fields(1)]) expect(out.terminal.map((r) => r.field)).toContain(f);
+  });
+  test('rows added by hand go on every sheet', () => {
+    expect(fields(0, withCustom)).toContain('Other');
+    expect(fields(1, withCustom)).toContain('Other');
   });
 });
 

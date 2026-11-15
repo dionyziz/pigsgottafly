@@ -191,8 +191,35 @@ export const fmtHdg = (d: number): string => (isFinite(d) ? pad(norm360(Math.rou
 /** Signed integer with a U+2212 minus ('+5', '−3', '0'). */
 export const fmtSigned = (d: number): string =>
   isFinite(d) ? (Math.round(d) > 0 ? '+' : Math.round(d) < 0 ? '−' : '') + Math.abs(Math.round(d)) : '';
-/** Minutes → 'h:mm'. */
-export const fmtHmm = (min: number): string => (isFinite(min) ? `${Math.floor(min / 60)}:${pad(Math.round(min % 60))}` : '');
+/** Minutes → 'h:mm' (machine-ish layouts only; people read fmtDuration). */
+export const fmtHmm = (min: number): string => {
+  if (!isFinite(min)) return '';
+  const m = Math.round(min);
+  return `${Math.floor(m / 60)}:${pad(m % 60)}`;
+};
+/** A duration as people read it: minutes → '1h44', '0h10' (rounded to the minute). '' for non-finite or negative. */
+export function fmtDuration(min: number | null | undefined): string {
+  if (min == null || !isFinite(min) || min < 0) return '';
+  const m = Math.round(min);
+  return `${Math.floor(m / 60)}h${pad(m % 60)}`;
+}
+
+/**
+ * Altitudes at or above this are written as flight levels (the usual transition altitude in the
+ * Athinai FIR; below it altitudes are in feet on QNH).
+ */
+export const TRANSITION_ALTITUDE_FT = 6000;
+/**
+ * A planned altitude as pilots write it: plain feet below the transition altitude ('3000', or
+ * '3000 ft' with `unit`), a flight level at or above it ('FL065'). '---' when unknown.
+ * (The ICAO FPL item 15 keeps its own encoding: see exports/fpl.)
+ */
+export function fmtAltitude(ft: number | null | undefined, opts: { unit?: boolean } = {}): string {
+  if (ft == null || !isFinite(ft)) return '---';
+  if (ft >= TRANSITION_ALTITUDE_FT) return `FL${pad(Math.max(0, Math.round(ft / 100)), 3)}`;
+  const v = String(Math.max(0, Math.round(ft)));
+  return opts.unit ? `${v} ft` : v;
+}
 /** Minutes after midnight → 'HH:MM' (wrapping at 24 h). */
 export function fmtClock(min: number): string {
   if (!isFinite(min)) return '';

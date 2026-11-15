@@ -18,7 +18,7 @@ import '../lobby/lists.css';
 interface Form {
   fullName: string; phone: string; licenceNo: string; nationality: string; relation: string;
   dateOfBirth: string; weightKg: string; idType: '' | 'ID' | 'PASSPORT'; idNumber: string;
-  homeAerodrome: string; defaultAircraftId: string;
+  homeAerodrome: string; defaultAircraftId: string; defaultAlternate: string;
   taxiOutMin: string; taxiInMin: string; reserveMin: string; finalReserveMin: string;
   windModel: WindModel; enrouteAerodromeRadiusNm: string;
 }
@@ -29,7 +29,7 @@ function formOf(p: Pilot): Form {
   return {
     fullName: p.fullName, phone: p.phone, licenceNo: p.licenceNo, nationality: p.nationality, relation: p.relation,
     dateOfBirth: p.dateOfBirth ?? '', weightKg: s(p.weightKg), idType: p.idType, idNumber: p.idNumber,
-    homeAerodrome: p.homeAerodrome ?? '', defaultAircraftId: p.defaultAircraftId ?? '',
+    homeAerodrome: p.homeAerodrome ?? '', defaultAircraftId: p.defaultAircraftId ?? '', defaultAlternate: p.settings.defaultAlternate ?? '',
     taxiOutMin: s(p.settings.taxiOutMin), taxiInMin: s(p.settings.taxiInMin), reserveMin: s(p.settings.reserveMin),
     finalReserveMin: s(p.settings.finalReserveMin), windModel: p.settings.windModel,
     enrouteAerodromeRadiusNm: s(p.settings.enrouteAerodromeRadiusNm),
@@ -57,6 +57,8 @@ export function toUpdate(f: Form, welcome: boolean): PilotUpdate {
     },
   };
   if (welcome) return base;
+  const altn = resolveAerodrome(f.defaultAlternate);
+  if (f.defaultAlternate.trim() && !altn) throw new Error(`“${f.defaultAlternate.trim()}” is not an aerodrome in the current AIP`);
   return {
     ...base,
     licenceNo: f.licenceNo.trim(), nationality: f.nationality.trim().toUpperCase(), relation: f.relation.trim(),
@@ -67,6 +69,7 @@ export function toUpdate(f: Form, welcome: boolean): PilotUpdate {
       finalReserveMin: num(f.finalReserveMin, 'Final reserve', 600) ?? 0,
       windModel: f.windModel,
       enrouteAerodromeRadiusNm: num(f.enrouteAerodromeRadiusNm, 'En-route aerodrome radius', 50) ?? 2,
+      defaultAlternate: altn ? altn.icao || altn.id : null,
     },
   };
 }
@@ -161,7 +164,7 @@ export function ProfilePage() {
         </section>
 
         <section className="form-section">
-          <header><h2>Home aerodrome</h2><p>New flights start here and return here.</p></header>
+          <header><h2>Home aerodrome</h2><p>New flights start here and return here{welcome ? '' : ', with the default alternate filled in'}.</p></header>
           <div className="grid2">
             <label className="field"><span>Aerodrome<span className="req" aria-hidden>*</span></span>
               <AerodromePicker name="homeAerodrome" value={f.homeAerodrome} onChange={(v) => setF((x) => ({ ...x, homeAerodrome: v }))} required />
@@ -176,6 +179,12 @@ export function ProfilePage() {
                     {(hangar || []).map((a) => <option key={a.id} value={a.id}>{a.registration}{a.makeModel ? ` · ${a.makeModel}` : ''}</option>)}
                   </select>
                 )}
+              </label>
+            )}
+            {!welcome && (
+              <label className="field" data-testid="profile-default-alternate">Default alternate aerodrome
+                <AerodromePicker name="defaultAlternate" value={f.defaultAlternate} onChange={(v) => setF((x) => ({ ...x, defaultAlternate: v }))} placeholder="Optional, e.g. LGAV" />
+                <span className="hint">Pre-filled as the alternate (FPL item 16) of new flights; change it per flight under Flight plan</span>
               </label>
             )}
           </div>

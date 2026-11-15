@@ -1,7 +1,8 @@
 // /flights/new: creates a flight and opens it in the editor. The server fills in the profile
 // defaults (home → home route, default aircraft, taxi times, wind model, PIC on the manifest). When
-// the profile has no home aerodrome (or ?ask=1), the pilot is asked where the flight starts first;
-// nothing is assumed (pilot correction #1).
+// the profile has no home aerodrome (or ?ask=1), the pilot is asked for the origin (and, optionally,
+// the destination) first; nothing is assumed (pilot correction #1). Either way the editor's Route
+// section shows both ends as fields.
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
@@ -21,6 +22,7 @@ export function NewFlightPage() {
   const started = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
   const create = (req: FlightCreateRequest) => {
     if (started.current) return;
@@ -44,24 +46,31 @@ export function NewFlightPage() {
   }
 
   const ad = resolveAerodrome(from);
+  const dest = to.trim() ? resolveAerodrome(to) : ad;
+  const ok = !!ad && !!dest;
   return (
     <Shell>
       <div className="page-head"><h1>New flight</h1></div>
       <form className="card form-section" style={{ maxWidth: 520 }} data-testid="new-flight-form"
-        onSubmit={(e) => { e.preventDefault(); if (ad) create({ route: [point(ad), point(ad)] }); }}>
+        onSubmit={(e) => { e.preventDefault(); if (ad && dest) create({ route: [point(ad), point(dest)] }); }}>
         <header>
-          <h2>Where does the flight start?</h2>
-          <p>{pilot.homeAerodrome ? 'The flight starts and ends here; draw the rest of the route on the map.' : <>You have no home aerodrome in your <Link to="/profile">profile</Link> yet. The flight starts and ends here; draw the rest on the map.</>}</p>
+          <h2>Where does the flight go?</h2>
+          <p>{pilot.homeAerodrome ? 'Draw the rest of the route on the map. Both ends can be changed later in the editor.' : <>You have no home aerodrome in your <Link to="/profile">profile</Link> yet. Draw the rest of the route on the map; both ends can be changed later in the editor.</>}</p>
         </header>
-        <label className="field">Departure aerodrome
-          <AerodromePicker name="from" value={from} onChange={setFrom} autoFocus />
-        </label>
+        <div className="grid2">
+          <label className="field">Origin
+            <AerodromePicker name="from" value={from} onChange={setFrom} autoFocus />
+          </label>
+          <label className="field">Destination
+            <AerodromePicker name="to" value={to} onChange={setTo} placeholder={ad ? `${ad.icao || ad.id} (back to the origin)` : 'ICAO or name'} />
+          </label>
+        </div>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="row">
           <button type="button" className="ghost" onClick={() => create({ route: [] })}>Start with an empty map</button>
           <span className="spacer" />
           <Link to="/" className="btn ghost">Cancel</Link>
-          <button className="primary" type="submit" disabled={!ad}>Create flight</button>
+          <button className="primary" type="submit" disabled={!ok}>Create flight</button>
         </div>
       </form>
     </Shell>

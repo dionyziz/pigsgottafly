@@ -44,7 +44,7 @@ import {
 } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult, type StationReports } from '../../../data/weatherMetar';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
-import { aerodromeNotamEffects, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
+import { aerodromeNotamEffects, fmtDuration, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
 import { aerodromeChecks as buildAdChecks, aerodromeWarnings, type AdCheck } from './aerodromeChecks';
 import { useEditor } from '../state';
 import { useNotams } from '../notams';
@@ -524,11 +524,9 @@ export function fmtMin(min: number): string {
   const m = ((Math.round(min) % 1440) + 1440) % 1440;
   return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
 }
-/** Duration in minutes → 'H:MM'. */
+/** Duration in minutes → '1h44' ('–' when unknown). */
 export function fmtDur(min: number | null | undefined): string {
-  if (!fin(min) || min < 0) return '–';
-  const m = Math.round(min);
-  return `${Math.floor(m / 60)}:${pad2(m % 60)}`;
+  return fmtDuration(min) || '–';
 }
 
 /** Local (Greece) clock time of a UTC instant, e.g. '14:30'. */

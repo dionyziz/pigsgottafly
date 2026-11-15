@@ -1,4 +1,4 @@
-// The editor's left panel: When, Aerodrome hours, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
+// The editor's left panel: Route (origin, destination), When, Aerodrome hours, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
 // Flight plan (alternates, remarks), Exports. Numbers come from useFlightCalc() (src/calc); edits
 // go through useEditor().update().
 import { EXPORT_KINDS, EXPORT_LABEL, type ExportKind } from '../../../shared';
@@ -13,15 +13,16 @@ import { FuelSection } from './FuelSection';
 import { ManifestSection } from './ManifestSection';
 import { NotamSection } from './NotamSection';
 import { PerformanceSection } from './PerformanceSection';
+import { RouteSection } from './RouteSection';
 import { Chip, Icon, Section } from './ui';
 import { WhenSection } from './WhenSection';
 
 const EXPORT_HINT: Record<ExportKind, string> = {
-  navlog: 'MD 4.2 sheet',
+  navlog: 'Printable sheet, A4 landscape',
   form731: 'HCAA persons on board',
-  gendec: 'MD 4.7, ICAO Annex 9',
+  gendec: 'ICAO Annex 9',
   fpl: 'ICAO FPL for AFTN',
-  wbperf: 'MD 4.3 loading + MD 4.4 take-off/landing',
+  wbperf: 'Loading sheet, envelope, take-off/landing',
   briefing: 'NOTAMs along the route',
 };
 
@@ -56,6 +57,7 @@ function ExportsSection() {
 export function FlightPanel() {
   return (
     <div className="ep" data-testid="flight-panel">
+      <RouteSection />
       <WhenSection />
       <AerodromeSection />
       <AircraftSection />

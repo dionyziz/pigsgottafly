@@ -12,7 +12,7 @@
 // Reserve litres are rounded UP to whole litres (as each leg's fuel on the paper sheet); trip and
 // taxi litres are used as given (NavlogResult.totals.tripFuel is already a sum of whole litres).
 
-import { distanceNm } from './nav.js';
+import { distanceNm, fmtDuration } from './nav.js';
 
 export interface FuelPlanInput {
   /** Σ leg fuel, L (NavlogResult.totals.tripFuel). */
@@ -129,7 +129,7 @@ export function planFuel(input: FuelPlanInput): FuelPlan {
   else if (fobIsDefault && defaultOverCapacity) add('warn', `Required + reserve ${defaultFobL} L exceeds usable capacity ${usable} L.`);
   if (belowRequired) add('danger', `Fuel on board ${fobL} L is below required ${requiredL} L.`);
   if (input.burnLph > 0 && landingFuelL >= 0) {
-    const left = `Fuel at landing ${landingFuelL} L lasts ${landingEnduranceMin} min`;
+    const left = `Fuel at landing ${landingFuelL} L lasts ${fmtDuration(landingEnduranceMin)}`;
     if (short(legalMin)) {
       add('danger', input.localFlight
         ? `${left}: below the ${legalMin} min legal final reserve for a local VFR flight (NCO.OP.125).`

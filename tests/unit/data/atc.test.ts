@@ -3,8 +3,10 @@ import { describe, expect, test } from 'vitest';
 import { REF, aerodrome, vfrPoint } from '../../../src/data/ref';
 import {
   aerodromeUnits,
+  atcEntryLegs,
   atcFreqText,
   atcInput,
+  atcLegRelevance,
   endpointAerodrome,
   fisSide,
   generateAtcList,
@@ -165,6 +167,29 @@ describe('real routes', () => {
     expect(hit.backups).toEqual(['120.000']);
     expect(hit.remark).toBe("3000'–FL 065; H24");
     expect(generateAtcList(input(7500)).some((e) => e.group === 'TEST TMA')).toBe(false);
+  });
+});
+
+describe('legs each row relates to', () => {
+  test('LGTT-KIMI-LGSY: departure on leg 1, destination on leg 2, TMA and FIS by the legs entering them', () => {
+    const route = [ad('LGTT'), vfr('LGSY/KIMI'), ad('LGSY')];
+    const input = atcInput(route, [4500, 4500], REF, 2);
+    const rel = atcLegRelevance(input);
+    const list = generateAtcList(input);
+    const legsOf = (group: string) => atcEntryLegs(list.find((e) => e.group === group)!, rel);
+    expect(legsOf('LGTT DEKELIA / TATOI')).toEqual([0]);
+    expect(legsOf('LGSY SKIROS')).toEqual([1]);
+    expect(legsOf('ATHINAI TMA')).toContain(0);
+    expect(legsOf('FIS')!.length).toBeGreaterThan(0);
+    // rows added by hand, and rows the route no longer produces: unknown (every sheet)
+    expect(atcEntryLegs({ sourceKey: null }, rel)).toBeNull();
+    expect(atcEntryLegs({ sourceKey: 'ad:LGKR:KERKIRA TOWER' }, rel)).toBeNull();
+  });
+  test('a local flight relates its aerodrome to the first and last legs; a stop to the legs either side', () => {
+    const route = [ad('LGTT'), ad('LGMG'), custom('X', 38.3, 23.2), ad('LGTT')];
+    const rel = atcLegRelevance(atcInput(route, [3000, 3000, 3000], REF, 2));
+    expect(atcEntryLegs({ sourceKey: 'ad:LGTT:TATOI TOWER' }, rel)).toEqual([0, 2]);
+    expect(atcEntryLegs({ sourceKey: 'ad:LGMG:MEGARA RADIO' }, rel)).toEqual([0, 1]);
   });
 });
 
