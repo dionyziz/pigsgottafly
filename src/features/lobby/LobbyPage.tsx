@@ -37,14 +37,13 @@ async function renameFlight(id: string, title: string): Promise<void> {
 export function LobbyPage() {
   const [params, setParams] = useSearchParams();
   const trashView = params.get('view') === 'trash';
-  const { data, reload, loading, error, setData } = useAsync(() => api.flights.list(trashView), [trashView]);
+  const { data, reload, loading, error, setData } = useAsync(() => api.flights.list(trashView), [trashView], { refetchOnFocus: true, invalidatedBy: 'flights' });
   const [q, setQ] = useState('');
   const [renaming, setRenaming] = useState<FlightListItem | null>(null);
   const navigate = useNavigate();
   const toast = useToast();
   const pilot = usePilot();
   const today = localToday();
-  const year = +today.slice(0, 4);
 
   const rows = useMemo(() => (data || []).filter((r) => matchesQuery(flightSearchText(r), q)), [data, q]);
   const { upcoming, past } = useMemo(() => splitFlights(rows, today), [rows, today]);
@@ -116,7 +115,7 @@ export function LobbyPage() {
           <div className="sub">{[route, s.aircraft].filter(Boolean).join(' · ') || 'No route yet'}</div>
         </div>
         <div className="cell hide-sm">
-          <b>{fmtDate(date, year) || 'No date'}</b>
+          <b>{fmtDate(date) || 'No date'}</b>
           {rel && <div className="sub">{rel}</div>}
         </div>
         <div className="cell hide-sm" title={local ? `${local} local time` : undefined}>

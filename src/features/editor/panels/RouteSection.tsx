@@ -3,13 +3,11 @@
 // aerodrome replaces that end of the route (a new point, so only the leg touching it loses its
 // per-leg overrides); on a route with one point, picking the destination adds it.
 import { useEffect, useState } from 'react';
-import { uid, type FlightDoc, type RefAerodrome, type RoutePoint } from '../../../shared';
+import { aerodromePoint as pointOf, type FlightDoc, type RefAerodrome, type RoutePoint } from '../../../shared';
 import { AerodromePicker, resolveAerodrome } from '../../profile/AerodromePicker';
-import { aerodromeName } from '../map/snap';
 import { useEditor } from '../state';
 import { Section } from './ui';
 
-const pointOf = (a: RefAerodrome): RoutePoint => ({ uid: uid(), kind: 'aerodrome', refId: a.id, name: aerodromeName(a), lat: a.lat, lon: a.lon });
 
 /** What the field shows for a route end: the aerodrome's code, else the point's name. */
 export function endText(p: RoutePoint | undefined): string {

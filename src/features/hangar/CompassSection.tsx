@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type AttachmentRef, type AttachmentType, type CompassCard } from '../../shared/types';
 import { api } from '../../data/api';
+import { fmtSize } from '../../shared/format';
 import { Field, IssueList, PointTable, Section } from './fields';
 import { addCompassCard, addYears, cardStatus, deviationOf, issuesAt } from './model';
 import type { SectionProps } from './sections';
@@ -35,7 +36,6 @@ function DeviationCurve({ points }: { points: [number, number][] }) {
   );
 }
 
-const fmtSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 /** File → base64 (no data: prefix). */
 function readBase64(file: File): Promise<string> {

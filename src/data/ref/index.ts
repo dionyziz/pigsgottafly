@@ -14,6 +14,7 @@ import type {
   RefVfrPoint,
   RefVfrRoute,
 } from '../../shared/ref';
+import { aerodromeName } from '../../shared/aerodrome';
 import airacJson from './airac.json';
 import aerodromesJson from './aerodromes.json';
 import runwaysJson from './runways.json';
@@ -75,9 +76,7 @@ export function runwaysOf(aerodromeId: string): RefRunway[] {
 }
 
 /** Label used for route points and the navlog: ICAO, else the last part of the name. */
-export function aerodromeLabel(a: RefAerodrome): string {
-  return a.icao || a.name.split('/').pop()!.trim();
-}
+export const aerodromeLabel: (a: RefAerodrome) => string = aerodromeName;
 
 /** The aerodrome a typed text names: exact id/ICAO, else a unique name match. */
 export function resolveAerodrome(text: string): RefAerodrome | undefined {

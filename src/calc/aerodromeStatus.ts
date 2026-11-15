@@ -14,7 +14,7 @@
 // A NOTAM whose schedule cannot be read exactly makes the status 'unknown' (citing the NOTAM) instead of a guess.
 import type { Notam } from '../shared/briefing.js';
 import type { HoursSpec, RefAdHours, RefAerodrome, RefSunTable } from '../shared/ref.js';
-import { clockZ, fmtRules, hoursAt, intervals, isoDay, normalizeAipText, parseSchedule, type HoursAt, type HoursStatus } from './adHours.js';
+import { clockZ, fmtRules, hoursAt, intervals, normalizeAipText, parseSchedule, type HoursAt, type HoursStatus } from './adHours.js';
 
 export type AdTarget = 'ad' | 'ats' | 'handling';
 

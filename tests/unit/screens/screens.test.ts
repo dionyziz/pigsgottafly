@@ -17,7 +17,6 @@ const item = (id: string, date: string, extra: Partial<FlightListItem['summary']
 describe('lobby format', () => {
   it('formats dates and relative days', () => {
     expect(fmtDate('2026-11-15')).toBe('2026-11-15');
-    expect(fmtDate('2026-11-15', 2026)).toBe('2026-11-15');
     expect(fmtDate('nope')).toBe('');
     expect(daysBetween('2026-12-31', '2027-01-02')).toBe(2);
     expect(relativeDay('2026-11-15', '2026-11-15')).toBe('Today');

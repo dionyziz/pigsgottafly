@@ -16,6 +16,7 @@
 // end of the day after the flight. A link is bound to the person it was given to (personHash): a
 // passenger without a saved record is keyed by seat, and whoever later takes that seat is a different
 // person whom the old link must not reach.
+import { fmtDate } from '../../../src/shared/date.js';
 import crypto from 'node:crypto';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
@@ -183,10 +184,7 @@ async function newLink(db: Queryable, L: Loaded, person: Form731Person): Promise
   return token;
 }
 
-const fmtDay = (date: string) => {
-  const d = new Date(`${date}T00:00:00Z`);
-  return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : '';
-};
+const fmtDay = fmtDate;
 
 const MAIL_DENIED = 'Your account has no e-mail address to copy the forms to.';
 /** Whether this pilot can send forms by e-mail: configured on the server, and the pilot has an e-mail to cc. */

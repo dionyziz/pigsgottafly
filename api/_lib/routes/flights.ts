@@ -9,10 +9,11 @@ import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
 import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 import type { Queryable } from '../db.js';
-import type { FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../src/shared/types.js';
+import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
-import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
+import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, validateCrew } from '../../../src/shared/constants.js';
 import { findAerodrome } from './ref.js';
+import { aerodromePoint } from '../../../src/shared/aerodrome.js';
 import { accessibleSql, canUseAircraft } from '../access.js';
 
 async function load(db: Queryable, pilotId: string, id: string) {
@@ -156,8 +157,7 @@ export const routes: Route[] = [
       base.crew = [{ role: 'PIC', passengerId: null, seat: picSeat(seats ?? FALLBACK_SEATS), snapshot: picSnapshot(pilot) }];
       const home = pilot.homeAerodrome ? await findAerodrome(db, pilot.homeAerodrome) : null;
       if (home) {
-        const p = (): RoutePoint => ({ uid: uid(), kind: 'aerodrome', refId: home.id, name: home.icao || home.name, lat: home.lat, lon: home.lon });
-        base.route = [p(), p()];
+        base.route = [aerodromePoint(home), aerodromePoint(home)];
       }
       const d = await checkDoc(db, pilot.id, input, base);
       // the profile's alternate (FPL item 16), unless the request gave alternates or the flight ends there

@@ -1,61 +1,15 @@
 // Pure formatting and filtering helpers for the lobby and the list pages (unit-tested in
 // tests/unit/screens/format.test.ts). No DOM, no React.
 import type { FlightListItem } from '../../shared';
-import { fmtDuration } from '../../calc';
+import { fmtDate } from '../../shared/date';
+import { fmtDuration } from '../../shared/format';
 
-
-/** Today's calendar date in the browser's zone, 'YYYY-MM-DD'. */
-export function localToday(now = new Date()): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
-
-function parseIso(d: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
-  if (!m) return null;
-  const dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  return isNaN(dt.getTime()) ? null : dt;
-}
-
-/** 'YYYY-MM-DD' ('' for an invalid date). `currentYear` is accepted for compatibility and ignored. */
-export function fmtDate(d: string, _currentYear?: number): string {
-  const dt = parseIso(d);
-  return dt ? dt.toISOString().slice(0, 10) : '';
-}
-
-/** Whole days from `from` to `to` (both 'YYYY-MM-DD'); null if either is invalid. */
-export function daysBetween(from: string, to: string): number | null {
-  const a = parseIso(from), b = parseIso(to);
-  if (!a || !b) return null;
-  return Math.round((b.getTime() - a.getTime()) / 86400000);
-}
-
-/** 'Today', 'Tomorrow', 'In 5 days', 'Yesterday', '3 days ago', or '' beyond two weeks. */
-export function relativeDay(d: string, today: string): string {
-  const n = daysBetween(today, d);
-  if (n === null) return '';
-  if (n === 0) return 'Today';
-  if (n === 1) return 'Tomorrow';
-  if (n === -1) return 'Yesterday';
-  if (n > 1 && n <= 14) return `In ${n} days`;
-  if (n < -1 && n >= -14) return `${-n} days ago`;
-  return '';
-}
+// Date helpers live in src/shared/date.ts (Greek local time); re-exported for the old import path.
+export { ageOn, daysBetween, fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
 
 /** Minutes → '1h35' ('' for null). */
 export function fmtHm(m: number | null | undefined): string {
   return fmtDuration(m);
-}
-
-/**
- * Local clock time of a UTC 'HH:MM' on a date, in `timeZone` (default: the browser's).
- * '' when either is missing.
- */
-export function utcToLocal(date: string, hhmm: string, timeZone?: string): string {
-  const d = parseIso(date);
-  const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
-  if (!d || !m) return '';
-  const t = new Date(d.getTime() + (+m[1] * 60 + +m[2]) * 60000);
-  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone }).format(t);
 }
 
 /** Lower-cased text a flight row is searched by: title, every route point (aerodromes, VFR points,
@@ -81,13 +35,4 @@ export function splitFlights(rows: FlightListItem[], today: string): { upcoming:
   const upcoming = rows.filter((r) => !r.date || r.date >= today).sort((a, b) => key(a).localeCompare(key(b)) || b.updated - a.updated);
   const past = rows.filter((r) => r.date && r.date < today).sort((a, b) => key(b).localeCompare(key(a)) || b.updated - a.updated);
   return { upcoming, past };
-}
-
-/** Age in whole years on `on` for a date of birth; null if unknown. */
-export function ageOn(dob: string | null, on: string): number | null {
-  const b = parseIso(dob || ''), d = parseIso(on);
-  if (!b || !d) return null;
-  let age = d.getUTCFullYear() - b.getUTCFullYear();
-  if (d.getUTCMonth() < b.getUTCMonth() || (d.getUTCMonth() === b.getUTCMonth() && d.getUTCDate() < b.getUTCDate())) age--;
-  return age;
 }

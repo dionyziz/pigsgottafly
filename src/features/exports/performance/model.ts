@@ -13,6 +13,8 @@
 // when neither). Required distances are printed rounded UP to the metre.
 import type { Aircraft, FlightDoc, Pilot } from '../../../shared';
 import type { RefRunway } from '../../../shared/ref';
+import { fmtDate } from '../../../shared/date';
+import { fmtClock } from '../../../shared/format';
 import type { EndpointPerf, ExportCalc } from '../wb/exportCalc';
 import { perfVerdict } from '../../../calc/perfVerdict';
 import { perfSpeeds, type PerfSpeeds } from './speeds';
@@ -83,20 +85,13 @@ const ceilM = (x: number) => String(Math.ceil(x - 1e-9));
 /** Two decimals, half up on the decimal value (1.265 → '1.27', as the club prints factors). */
 const f2 = (x: number) => (Math.round(x * 100 + 1e-7) / 100).toFixed(2);
 const pad3 = (x: number) => String(Math.round(((x % 360) + 360) % 360) || 360).padStart(3, '0');
-const pad2 = (n: number) => String(n).padStart(2, '0');
 const signed = (x: number) => (x >= 0 ? '+' : '−') + Math.abs(Math.round(x));
 
 /** Minutes after 00:00 UTC → 'HH:MMZ'. */
 export function clockZ(min: number): string {
-  if (!fin(min)) return '';
-  const m = ((Math.round(min) % 1440) + 1440) % 1440;
-  return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}Z`;
+  return fmtClock(min, { z: true });
 }
 
-function fmtDate(d: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
-}
 
 const PAVED = /ASPH|CONC|BIT|PAVED|ASP/i;
 

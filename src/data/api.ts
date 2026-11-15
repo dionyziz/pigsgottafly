@@ -31,6 +31,16 @@ import type {
 } from '../shared';
 import type { FileRequest, FilingState } from '../shared/briefing';
 import type { FormsState, SigningView } from '../shared/forms';
+import { invalidate, putEntity, type EntityKey } from './entityStore';
+
+/** After a successful mutation: whatever shows `keys` refetches, in this tab and the others. */
+function changes<A extends unknown[], R>(keys: EntityKey | EntityKey[], fn: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
+  return async (...a: A) => {
+    const r = await fn(...a);
+    invalidate(keys);
+    return r;
+  };
+}
 
 export class ApiRequestError extends Error {
   constructor(public status: number, message: string, public body: unknown) {
@@ -61,13 +71,14 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   return out as T;
 }
 
-function crud<T, I>(base: string) {
+/** List/get/create/update/remove of one entity; every mutation invalidates `key` (plus `alsoChanges` on create/remove). */
+function crud<T, I>(base: string, key: EntityKey, alsoChanges: EntityKey[] = []) {
   return {
     list: () => request<T[]>('GET', base),
     get: (id: string) => request<T>('GET', `${base}/${encodeURIComponent(id)}`),
-    create: (input: I) => request<T>('POST', base, input),
-    update: (id: string, patch: Partial<I>) => request<T>('PUT', `${base}/${encodeURIComponent(id)}`, patch),
-    remove: (id: string) => request<null>('DELETE', `${base}/${encodeURIComponent(id)}`),
+    create: changes([key, ...alsoChanges], (input: I) => request<T>('POST', base, input)),
+    update: changes(key, (id: string, patch: Partial<I>) => request<T>('PUT', `${base}/${encodeURIComponent(id)}`, patch)),
+    remove: changes([key, ...alsoChanges], (id: string) => request<null>('DELETE', `${base}/${encodeURIComponent(id)}`)),
   };
 }
 
@@ -78,18 +89,23 @@ export const api = {
 
   me: {
     get: () => request<Pilot>('GET', 'me'),
-    update: (patch: PilotUpdate) => request<Pilot>('PUT', 'me', patch),
+    /** Stores the answer as the session pilot (every tab sees it). */
+    update: async (patch: PilotUpdate) => {
+      const p = await request<Pilot>('PUT', 'me', patch);
+      putEntity('pilot', p, { broadcast: true });
+      return p;
+    },
   },
   /** Own aircraft and those shared with the pilot, each with `access` (role, owner). */
-  aircraft: crud<HangarAircraft, AircraftInput>('aircraft'),
+  aircraft: crud<HangarAircraft, AircraftInput>('aircraft', 'aircraft', ['pilot']),
   /** Who has access to an aircraft (src/shared/sharing.ts). */
   shares: {
     get: (aircraftId: string) => request<AircraftSharing>('GET', `aircraft/${encodeURIComponent(aircraftId)}/shares`),
-    add: (aircraftId: string, email: string, role: ShareRole) => request<AircraftSharing>('POST', `aircraft/${encodeURIComponent(aircraftId)}/shares`, { email, role }),
-    setRole: (aircraftId: string, pilotId: string, role: ShareRole) =>
-      request<AircraftSharing>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`, { role }),
+    add: changes('aircraft', (aircraftId: string, email: string, role: ShareRole) => request<AircraftSharing>('POST', `aircraft/${encodeURIComponent(aircraftId)}/shares`, { email, role })),
+    setRole: changes('aircraft', (aircraftId: string, pilotId: string, role: ShareRole) =>
+      request<AircraftSharing>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`, { role })),
     /** Removes a person; with your own pilot id, removes the aircraft from your hangar. */
-    remove: (aircraftId: string, pilotId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`),
+    remove: changes(['aircraft', 'pilot'], (aircraftId: string, pilotId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`)),
   },
   /** Files stored with an aircraft (compass swing reports). */
   attachments: {
@@ -103,25 +119,25 @@ export const api = {
     start: (aircraftId: string, input: AircraftFileStart) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files`, input),
     putChunk: (aircraftId: string, fileId: string, seq: number, data: string) =>
       request<null>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/chunks/${seq}`, { data }),
-    complete: (aircraftId: string, fileId: string) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/complete`, {}),
+    complete: changes('aircraft', (aircraftId: string, fileId: string) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/complete`, {})),
     chunk: (aircraftId: string, fileId: string, seq: number) =>
       request<{ data: string }>('GET', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/chunks/${seq}`),
     rename: (aircraftId: string, fileId: string, title: string) => request<AircraftFile>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`, { title }),
-    remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`),
+    remove: changes('aircraft', (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`)),
   },
-  passengers: crud<Passenger, PassengerInput>('passengers'),
-  waypoints: crud<Waypoint, WaypointInput>('waypoints'),
+  passengers: crud<Passenger, PassengerInput>('passengers', 'passengers'),
+  waypoints: crud<Waypoint, WaypointInput>('waypoints', 'waypoints'),
 
   /** Raw flight endpoints; the editor should save through flightStore (offline-tolerant). */
   flights: {
     list: (trash = false) => request<FlightListItem[]>('GET', trash ? 'flights?trash=1' : 'flights'),
     get: (id: string) => request<Flight>('GET', `flights/${encodeURIComponent(id)}`),
-    create: (input: FlightCreateRequest = {}) => request<Flight>('POST', 'flights', input),
+    create: changes('flights', (input: FlightCreateRequest = {}) => request<Flight>('POST', 'flights', input)),
     /** 409 → ApiRequestError with body = the current Flight. */
-    update: (id: string, flight: FlightDoc, version: number) => request<FlightUpdateResponse>('PUT', `flights/${encodeURIComponent(id)}`, { flight, version }),
-    trash: (id: string) => request<null>('DELETE', `flights/${encodeURIComponent(id)}`),
-    restore: (id: string) => request<Flight>('POST', `flights/${encodeURIComponent(id)}/restore`),
-    copy: (id: string, req: FlightCopyRequest = {}) => request<Flight>('POST', `flights/${encodeURIComponent(id)}/copy`, req),
+    update: changes('flights', (id: string, flight: FlightDoc, version: number) => request<FlightUpdateResponse>('PUT', `flights/${encodeURIComponent(id)}`, { flight, version })),
+    trash: changes('flights', (id: string) => request<null>('DELETE', `flights/${encodeURIComponent(id)}`)),
+    restore: changes('flights', (id: string) => request<Flight>('POST', `flights/${encodeURIComponent(id)}/restore`)),
+    copy: changes('flights', (id: string, req: FlightCopyRequest = {}) => request<Flight>('POST', `flights/${encodeURIComponent(id)}/copy`, req)),
     opened: (id: string) => request<null>('POST', `flights/${encodeURIComponent(id)}/opened`),
   },
 

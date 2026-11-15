@@ -3,12 +3,12 @@
 // with access sees them; owners and editors add, replace, rename and remove.
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../data/api';
+import { isoDay as fmtDate } from '../../shared/date';
+import { fmtSize } from '../../shared/format';
 import { aircraftFileBlob, resizePhoto, saveBlob, uploadAircraftFile } from '../../data/aircraftFiles';
 import { DOCUMENT_MAX_BYTES, PHOTO_TYPES, type AircraftFile } from '../../shared/types';
 import { Section } from './fields';
 
-const fmtSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-const fmtDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** Object URL of a file's content while mounted (null while loading or on error). */
 function useFileUrl(aircraftId: string, f: AircraftFile | null | undefined, onProgress?: (x: number) => void): { url: string | null; error: string | null } {

@@ -16,7 +16,6 @@ import type { OpenMeteoLocation } from '../../../src/data/weather';
 
 const FIX: OpenMeteoLocation[] = JSON.parse(fs.readFileSync(path.join(__dirname, '../../fixtures/openmeteo-hazards-lgtt-2026-11-16.json'), 'utf8'));
 const T = (iso: string) => Date.parse(iso);
-const H = 3600000;
 
 const sample = (o: Partial<HazardSample> = {}): HazardSample => ({
   timeMs: T('2026-11-16T07:00Z'), weatherCode: 1, capeJkg: 0, visibilityM: null, cloudLowPct: 0, tempC: 15, dewC: 5, elevM: 100, levels: [], ...o,

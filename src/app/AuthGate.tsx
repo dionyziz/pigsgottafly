@@ -1,10 +1,14 @@
 // Loads /api/session. Google mode without a session → the sign-in screen (Google Identity
 // Services button, as in v2). Local mode → straight in as the local pilot.
+//
+// The session pilot is the 'pilot' entity (src/data/entities.ts): a profile change anywhere (this
+// page, another page, another tab) or a window focus refreshes it, so usePilot() is never stale.
 import { Loading } from './Loading';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiRequestError } from '../data/api';
+import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/entities';
 import type { Pilot, SessionResponse } from '../shared';
-import { SessionContext } from './session';
+import { SessionContext, type SessionValue } from './session';
 import { SignIn } from './SignIn';
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -13,7 +17,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   const load = useCallback(async () => {
     try {
-      setSession(await api.session());
+      const s = await api.session();
+      // another pilot (or none): nothing cached belongs to them
+      if (getEntity<Pilot>('pilot').data?.id !== s.pilot?.id) clearEntities();
+      if (s.authed && s.pilot) putEntity('pilot', s.pilot);
+      setSession(s);
       setError(null);
     } catch (e) {
       setError(e instanceof ApiRequestError && e.offline ? 'You are offline.' : 'The server is not responding.');
@@ -28,19 +36,28 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('pgf:unauthorized', onUnauthorized);
   }, []);
 
-  if (error) return <div className="center-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><button onClick={load}>Try again</button></div></div>;
-  if (!session) return <Loading screen />;
-  if (!session.authed || !session.pilot) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
+  // the session pilot follows the 'pilot' entity (refetched when changed here or in another tab)
+  useEffect(() => subscribeEntity('pilot', () => {
+    const p = getEntity<Pilot>('pilot').data;
+    if (p) setSession((s) => (s && s.authed && s.pilot && s.pilot.id === p.id && s.pilot !== p ? { ...s, pilot: p } : s));
+  }), []);
 
-  const value = {
+  const signedIn = !!session?.authed && !!session.pilot;
+  const value = useMemo((): SessionValue | null => (session && signedIn ? {
     session,
-    pilot: session.pilot,
-    setPilot: (p: Pilot) => setSession({ ...session, pilot: p }),
+    pilot: session.pilot!,
+    // functional: never writes back a session captured before another change; every tab follows
+    setPilot: (p: Pilot) => putEntity('pilot', p, { broadcast: true }),
     signOut: async () => {
       await api.logout().catch(() => {});
       try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
+      clearEntities();
       await load();
     },
-  };
+  } : null), [session, signedIn, load]);
+
+  if (error) return <div className="center-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><button onClick={load}>Try again</button></div></div>;
+  if (!session) return <Loading screen />;
+  if (!value) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

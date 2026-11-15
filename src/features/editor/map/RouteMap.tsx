@@ -187,7 +187,7 @@ function labelKey(leg: { mcMag: number; distNm: number }, alt: LegAltitude | und
 }
 
 export function RouteMap(props: RouteMapProps) {
-  const { route, date, altitudes, refData, waypoints, home } = props;
+  const { route, date, altitudes, refData, waypoints } = props;
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [loaded, setLoaded] = useState(false);

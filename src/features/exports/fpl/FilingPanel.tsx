@@ -11,6 +11,7 @@ import { api, ApiRequestError } from '../../../data/api';
 import { AipLink } from '../../../app/AipLink';
 import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import type { Flight } from '../../../shared';
+import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
 
 const STATUS_LABEL: Record<FilingStatus, string> = {
   'not-filed': 'Not filed', created: 'Created', filed: 'Filed', manual_correction: 'Queued for manual correction', suspended: 'Suspended',
@@ -19,9 +20,8 @@ const STATUS_LABEL: Record<FilingStatus, string> = {
 };
 const OPEN = new Set<FilingStatus>(['created', 'filed', 'manual_correction', 'suspended', 'departed', 'terminated', 'arriving']);
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const clockZ = (ms: number) => { const d = new Date(ms); return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`; };
-const dateTimeZ = (ms: number) => { const d = new Date(ms); return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)} ${clockZ(ms)}`; };
+const clockZ = (ms: number) => fmtClockMs(ms, { z: true });
+const dateTimeZ = (ms: number) => fmtDateTimeMs(ms);
 
 export interface FilingPanelProps {
   flight: Flight;

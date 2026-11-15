@@ -23,6 +23,7 @@
 //
 // Everything here is advisory (model guidance); the official briefing remains the pilot's job.
 import { fmtAltitude } from './nav.js';
+import { fmtClockMs } from '../shared/format.js';
 
 /** Cloud cover on one pressure level. */
 export interface HazardLevel {
@@ -98,7 +99,7 @@ export const coverCode = (pct: number): 'FEW' | 'SCT' | 'BKN' | 'OVC' => {
 const COVER_RANK = { FEW: 1, SCT: 2, BKN: 3, OVC: 4, VV: 4 } as const;
 const round100 = (ft: number) => Math.round(ft / 100) * 100;
 const floor100 = (ft: number) => Math.floor(ft / 100) * 100;
-const hhmm = (ms: number) => new Date(ms).toISOString().slice(11, 16);
+const hhmm = (ms: number) => fmtClockMs(ms);
 const timeRange = (a: number, b: number) => (a === b ? `${hhmm(a)}Z` : `${hhmm(a)}–${hhmm(b)}Z`);
 
 /**

@@ -4,6 +4,7 @@
 import type { LatLon, RoutePoint, RoutePointKind, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefVfrPoint } from '../../../shared/ref';
 import { distanceNm } from '../../../calc';
+import { aerodromeName } from '../../../shared/aerodrome';
 
 export interface SnapCandidate extends LatLon {
   /** What a route point made from this candidate refers to. */
@@ -49,9 +50,7 @@ export const AERODROME_PRIORITY_NM = 1.5;
 export const SNAP_RADIUS_PX = 12;
 
 /** Label of an aerodrome as a route point: ICAO, else the last part of the name (as v2). */
-export function aerodromeName(a: RefAerodrome): string {
-  return a.icao || a.name.split('/').pop()!.trim();
-}
+export { aerodromeName };
 
 /**
  * Everything the cursor may snap to. Open-flightmaps duplicates of a charted point (same name

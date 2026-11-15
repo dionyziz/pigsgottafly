@@ -24,6 +24,14 @@ src/
     constants.ts           DEFAULT_SETTINGS (unset values), SETTING_SUGGESTIONS, profileMissing(), seatLayout(),
                            seatStation(), validateCrew(), EXPORT_KINDS, legKey(), uid(), autoTitle(), emptyFlightDoc()
     templates.ts           aircraft TYPE templates (AFM data, blank airframe): aircraftFromTypeJson(), blankAircraft()
+    format.ts              THE formatters: pad, fmtClock(min,{z,fallback}) 'HH:MM', fmtClockMs, fmtDateTimeMs
+                           'YYYY-MM-DD HH:MMZ', fmtDuration(min,{fallback}) '1h44', fmtAltitude '3000'/'FL065'
+                           (TRANSITION_ALTITUDE_FT), fmtLocalClock, fmtLocalDayTime, fmtSize, errorMessage(e)
+    date.ts                LOCAL_TZ = Europe/Athens (the one local zone), parseIsoDate, isIsoDate, isoDay, todayUtc,
+                           localToday, localDayTime, fmtDate, daysBetween, addDays, relativeDay, ageOn, utcToLocal,
+                           localOffsetLabel
+    aerodrome.ts           aerodromeName(a) (ICAO, else the last part of the name), aerodromePoint(a): the one rule for
+                           route points (new flight, editor, map, server home route)
   calc/                    pure calculations (no I/O, no DOM)
     nav.ts                 port of v2 js/nav.js: geodesy, wind triangle, deviation, NOAA sunset, computeLeg, summarize
     wmm.ts                 World Magnetic Model WMM2025: magneticVariation(lat, lon, date, altFt), wmmField, wmmValid
@@ -62,7 +70,18 @@ src/
     hazardWeather.ts       Open-Meteo corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid cells cached one by
                            one): fetchHazardWeather, computeRouteHazards (editor strip + map)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
-    useAsync.ts            small loading hook
+    entityStore.ts         entity cache + invalidation bus (no React): keys pilot|passengers|aircraft|waypoints|flights;
+                           invalidate(keys) → refetch what is on screen + BroadcastChannel('pgf') to the other tabs;
+                           hidden tabs defer until shown; focus/visibility revalidates (> 5 s old); per-key request
+                           sequence (a slow answer never overwrites a newer one); putEntity, onInvalidate, onRevalidate
+    entities.ts            useEntity('pilot'|'passengers'|'aircraft'|'waypoints'): cached, shared, refetched on change
+    api.ts (mutations)     every create/update/remove invalidates its key (aircraft also 'pilot': default aircraft;
+                           shares/files → 'aircraft'; flights → 'flights'); api.me.update stores the pilot (all tabs)
+    useAsync.ts            loading hook (newest request wins) + {refetchOnFocus, invalidatedBy: EntityKey[]}
+    sequence.ts            sequencer()/useSequencer()/latestOnly(): only the newest async request sets state
+    useFlightWeather.ts    one weather + METAR loader for a flight (leg midpoints, departure, stops, destination;
+                           metarRelevant(date) = one "near now" rule; a failed fetch ends loading): for panels/calc.tsx,
+                           NavlogExport, wb/useExportCalc, fpl/useFplData
     aipLinks.ts            links to the official AIP Greece PDFs (HASP eAIP): AIP_EAIP_BASE (the AIRAC's online eAIP,
                            set by tools/update_aip.sh), aipSection/aipUrl ('LGAV AD 2.3' → AD 2 LGAV PDF; the
                            eAIP start page when a section has no PDF), from ref/aip-files.json
@@ -152,7 +171,8 @@ tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calcul
 src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
 tests/api/                 vitest: API, auth, migrations (PGlite in memory)
 tests/e2e/                 harness.mjs (CDP), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs, sharing.e2e.test.mjs,
-                           smoke.e2e.test.mjs, lists.e2e.test.mjs (lobby and account lists),
+                           smoke.e2e.test.mjs, lists.e2e.test.mjs (lobby and account lists), freshness.e2e.test.mjs
+                           (two tabs: a profile edit / flight rename in one shows in the other),
                            flight.e2e.test.mjs (whole workflow: map drawing/snapping, panels, navlog vs oracle,
                            every export + PDF page size, W&B vs an independent sum, take-off vs club case 60)
 tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr/wbp.php, used to cross-check W&B and performance
@@ -162,6 +182,8 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 
 ## Conventions
 
+- **Freshness**: pages read the pilot's records through `useEntity` (or `useAsync` with `invalidatedBy`), never a one-off `api.*.get()` in an effect; mutations go through `api.*` (which invalidates). The session pilot (`usePilot()`) is the 'pilot' entity, so a profile change in any page or tab, or a window focus, refreshes it.
+- **Formatting**: use `src/shared/format.ts` / `date.ts` (no local `pad2`, `fmtDate`, `clockZ` copies). Local time is always Greek time (`LOCAL_TZ`), whatever the device zone. `tsconfig` has `noUnusedLocals`.
 - **Units**: kg, m (arms), kg·m, L, kt, ft, NM (route), m (runway), °C, hPa. Dates are `YYYY-MM-DD`, clock times are `HH:MM` UTC, and record timestamps are epoch ms.
 - **Imports**: `src/shared`, `src/calc`, `api/` and `tools/` use explicit `.js` extensions, because the API runs as Node ESM. `tsconfig.node.json` (NodeNext) enforces this. Client code (`src/app`, `src/features`, `src/data`) uses Bundler resolution: no extensions, and `../shared` works.
 - **Nothing pilot-specific is an app default** (pilot correction #1). A new pilot starts with an empty profile (`homeAerodrome: null`, taxi and reserve `null`) and an empty hangar. The app asks for the profile on first use (the onboarding redirect to `/profile?welcome=1`). `SETTING_SUGGESTIONS` are placeholders only. Calculations treat `null` as "not set" and warn. Only the pilot who already existed in production gets his stated values (LGTT, 15/15/60) and SX-ASV/SX-ASG, through one-time migration 003.
