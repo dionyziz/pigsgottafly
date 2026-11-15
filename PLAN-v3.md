@@ -130,3 +130,16 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 - **Links** expire after the flight date and can be revoked; they give access to nothing else. Tokens are stored hashed.
 - **Submit:** when everyone has signed, "Send to HCAA" emails the signed Form 731 as a PDF (generated server-side with pdf-lib, laid out like the original) to 731@hcaa.gov.gr, cc the pilot, reply-to the pilot, subject "Form 731 · SX-ASV · LGTT → LGSY · 20 Nov 2026". Sent from the app's address (e.g. forms@pigsgottafly.com) through a transactional email provider (Vercel-compatible, e.g. Resend), with SPF/DKIM set up for pigsgottafly.com. The sent time and provider message ID are stored on the flight; re-sending is possible after changes.
 - Tests: token access control (other flights/pilots unreachable), masking, invalidation on change, PDF content, email sending mocked.
+
+### Sending forms to HCAA by email (no printing)
+- **Form 731:** sent once per flight as a PDF attachment to 731@hcaa.gov.gr (as in the signatures section above). The app records that it was sent; sending again is an explicit "re-send" after changes.
+- **General Declaration:** when the departure or destination has no handler (e.g. LGTT), the PIC sends it: "Send to HCAA" emails the GenDec as a PDF attachment to gendec@hcaa.gov.gr, cc and reply-to the pilot, once per flight, with the same sent/re-send tracking. A per-aerodrome "handled" flag (handler submits the GenDec) hides the button.
+- Neither form needs a print step; the print view stays available but is not the main path.
+
+### Flight plan addressing (Greek VFR)
+- Generated from data/aftn/greece-vfr-addressing.json (AIP ENR 1.11 rules, aerodrome overrides such as LGMG, cross-checked against the club's table): ACC/FIC pair(s) for the ACC areas crossed, each TMA/MTMA entered below its listed level, and ZTZX/ZPZX for departure, destination, alternate and every aerodrome whose CTR/ATZ the route enters. Shown for review before filing.
+
+### Touch-and-go and intermediate-stop requests
+- On any aerodrome on the route (departure, destination, or an aerodrome waypoint), its map popover and its row in the route list offer: "Request touch-and-go" and "Request intermediate stop (n min)".
+- Each adds an item 18 remark in the club's format, e.g. `RMK/REQUEST TOUCH N GO AT LGMG`, `RMK/REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN`; for the departure aerodrome before leaving, `RMK/INITIALLY REQUEST TOUCH N GO AT LGTT`. Multiple requests are joined in one RMK/ field. They are listed on the flight (removable) and appear in the FPL message and form.
+- An aerodrome waypoint with a touch-and-go is treated as a point the route passes through at pattern altitude/speed for timing.

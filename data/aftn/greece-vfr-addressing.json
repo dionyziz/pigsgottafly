@@ -1,0 +1,63 @@
+{
+  "_source": "AIP Greece ENR 1.11 'Addressing of flight plan messages' (21 MAR 2024), aerodrome AFS entries from AD 1.6 / AD 2 sections (AIRAC AMDT 09/26 archive in aip/); cross-checked against the Aeroclub Mesogeion 'Common AFTN Addresses' table (https://www.mesogeion-aeroclub.gr/ViewFlightSchedule.php, 15 Nov 2026).",
+  "rules": [
+    "Always: the ACC/FIC of every ACC area the route is in: ATHINAI ACC -> LGGGZFZX, LGGGYXYK; MAKEDONIA ACC -> LGMDZFZX, LGMDYXYK (above FL195: ZQZX instead of ZFZX; not used for VFR here).",
+    "Plus, for each TMA/MTMA the route enters below the listed level: the TMA addresses below.",
+    "Plus, for each aerodrome whose CTR or ATZ the route enters, and for the departure, destination and alternate aerodromes: <ICAO>ZTZX and <ICAO>ZPZX, with the aerodrome overrides below.",
+    "DEP and ARR messages are issued by the departure/destination ATS unit, not the filer (ENR 1.11.2.1)."
+  ],
+  "acc": {
+    "ATHINAI": ["LGGGZFZX", "LGGGYXYK"],
+    "MAKEDONIA": ["LGMDZFZX", "LGMDYXYK"]
+  },
+  "tma": [
+    { "acc": "ATHINAI", "name": "ANDRAVIDA MTMA", "sector": "North", "belowFL": 155, "addresses": ["LGADZAZX"] },
+    { "acc": "ATHINAI", "name": "ANDRAVIDA MTMA", "sector": "South", "belowFL": null, "addresses": ["LGADZAZX"] },
+    { "acc": "ATHINAI", "name": "ATHINAI TMA", "belowFL": 195, "addresses": ["LGATZAZV", "LGAVZTZX", "LGAVZPZX"], "_note": "Between FL195 and FL245: LGATZAZX instead of LGATZAZV (not VFR)." },
+    { "acc": "ATHINAI", "name": "IRAKLION TMA", "sector": "South", "belowFL": 155, "addresses": ["LGIRZAZX"] },
+    { "acc": "ATHINAI", "name": "IRAKLION TMA", "sector": "North / Iraklion Area", "belowFL": 155, "addresses": ["LGIRZAZX"] },
+    { "acc": "ATHINAI", "name": "IRAKLION TMA", "sector": "North / Sitia Area", "belowFL": 125, "addresses": ["LGIRZAZX"] },
+    { "acc": "ATHINAI", "name": "IRAKLION TMA", "sector": "North / Karpathos Area", "belowFL": 125, "addresses": ["LGIRZAZX"] },
+    { "acc": "ATHINAI", "name": "IOANNINA TMA", "belowFL": 155, "addresses": ["LGIOZAZX"] },
+    { "acc": "ATHINAI", "name": "KERKIRA TMA", "belowFL": 245, "addresses": ["LGKRZAZX"] },
+    { "acc": "ATHINAI", "name": "KALAMATA MTMA", "sector": "West", "belowFL": 245, "addresses": ["LGKLZAZX"], "_note": "West sector above FL245: LGADZAZX." },
+    { "acc": "ATHINAI", "name": "KALAMATA MTMA", "sector": "East", "belowFL": 85, "addresses": ["LGKLZAZX"] },
+    { "acc": "ATHINAI", "name": "KOS TMA", "belowFL": 95, "addresses": ["LGKOZAZX"] },
+    { "acc": "ATHINAI", "name": "MIKONOS TMA", "belowFL": 95, "addresses": ["LGMKZAZX"] },
+    { "acc": "ATHINAI", "name": "PREVEZA MTMA", "belowFL": 160, "addresses": ["LGPZZAZX"] },
+    { "acc": "ATHINAI", "name": "RODOS TMA", "belowFL": 155, "addresses": ["LGRPZAZX"] },
+    { "acc": "ATHINAI", "name": "SAMOS TMA", "belowFL": 105, "addresses": ["LGSMZAZX"] },
+    { "acc": "ATHINAI", "name": "SANTORINI TMA", "belowFL": 155, "addresses": ["LGSRZAZX"] },
+    { "acc": "ATHINAI", "name": "SOUDA MTMA", "belowFL": null, "addresses": ["LGSAZAZX"] },
+    { "acc": "ATHINAI", "name": "TANAGRA MTMA", "belowFL": null, "addresses": ["LGTGZAZX"] },
+    { "acc": "MAKEDONIA", "name": "ALEXANDROUPOLIS TMA", "belowFL": 155, "addresses": ["LGALZAZX"] },
+    { "acc": "MAKEDONIA", "name": "ANCHIALOS MTMA", "belowFL": null, "addresses": ["LGBLZAZX"] },
+    { "acc": "MAKEDONIA", "name": "CHIOS TMA", "belowFL": 95, "addresses": ["LGHIZAZX"] },
+    { "acc": "MAKEDONIA", "name": "KAVALA TMA", "belowFL": 155, "addresses": ["LGKVZAZX"] },
+    { "acc": "MAKEDONIA", "name": "LARISSA MTMA", "sector": "North", "belowFL": 105, "addresses": ["LGLRZAZX"] },
+    { "acc": "MAKEDONIA", "name": "LARISSA MTMA", "sector": "South", "belowFL": null, "addresses": ["LGLRZAZX"] },
+    { "acc": "MAKEDONIA", "name": "LIMNOS TMA", "belowFL": 155, "addresses": ["LGLMZAZX"] },
+    { "acc": "MAKEDONIA", "name": "MAKEDONIA TMA", "belowFL": 245, "addresses": ["LGTSZAZX"] },
+    { "acc": "MAKEDONIA", "name": "MITILINI TMA", "belowFL": 145, "addresses": ["LGMTZAZX"] },
+    { "acc": "MAKEDONIA", "name": "SKIATHOS TMA", "belowFL": 115, "addresses": ["LGSKZAZX"] },
+    { "acc": "MAKEDONIA", "name": "SKIROS MTMA", "sector": "Northeast", "belowFL": null, "addresses": ["LGSYZAZX"] },
+    { "acc": "MAKEDONIA", "name": "SKIROS MTMA", "sector": "Southeast", "belowFL": 75, "addresses": ["LGSYZAZX"] }
+  ],
+  "aerodromeOverrides": {
+    "LGMG": { "addresses": ["LGMGZTZX", "LGMGYFYX"], "_source": "Club table uses LGMGZTZX + LGMGYFYX; AD 1.6.18 lists AFTN LGMGYFYX (HASP) and LGMGYXYX (MIL). Megara has no ARO, so ZPZX is replaced by the HASP AFS address." }
+  },
+  "aerodromeAfs": {
+    "_comment": "Each aerodrome's own AFS address as published in its AD 1.6 / AD 2 entry (for reference; the ENR 1.11 rule uses ZTZX/ZPZX).",
+    "LGTT": "LGTTYXYX", "LGEL": "LGELYXYX", "LGTG": "LGTGYXYX", "LGMG": "LGMGYFYX (HASP), LGMGYXYX (MIL)", "LGKM": "LGKMYVYE", "LGKN": "LGKNYXYX",
+    "LGAV": "LGAVZPZA, LGAVYOYX (AIS), LGAVZTZX (TWR)", "LGSY": "LGSYZDYX", "LGSA": "LGSAZDYX, LGSAYXYX", "LGAD": "LGADYDYX (civil), LGADYXYX (mil)"
+  },
+  "clubComparison": {
+    "agrees": "All 48 addresses in the club table follow ENR 1.11: ZTZX/ZPZX for the 17 listed aerodromes, the 7 TMA addresses (LGTG, LGBL, LGSK, LGSY, LGKL, LGMK, LGMT, plus LGAD and LGTS), Athinai TMA below FL195 (LGATZAZV, LGAVZTZX, LGAVZPZX) and both ACC/FIC pairs.",
+    "clubOnly": ["LGMGYFYX (Megara: HASP AFS address used instead of LGMGZPZX; consistent with AD 1.6.18)"],
+    "missingFromClubTable": ["LGIRZAZX (Iraklion TMA)", "LGIOZAZX (Ioannina TMA)", "LGKRZAZX (Kerkira TMA)", "LGKOZAZX (Kos TMA)", "LGPZZAZX (Preveza MTMA)", "LGRPZAZX (Rodos TMA)", "LGSMZAZX (Samos TMA)", "LGSRZAZX (Santorini TMA)", "LGSAZAZX (Souda MTMA)", "LGALZAZX (Alexandroupolis TMA)", "LGHIZAZX (Chios TMA)", "LGKVZAZX (Kavala TMA)", "LGLRZAZX (Larissa MTMA)", "LGLMZAZX (Limnos TMA)", "ZTZX/ZPZX of any other aerodrome whose CTR/ATZ is entered, e.g. LGKR, LGIR, LGRP, LGSR, LGKO, LGSA"],
+    "notes": [
+      "The club lists only the FL195 variant for Athinai TMA, which is the right one for VFR.",
+      "Tatoi publishes its own AFS address LGTTYXYX in AD 1.6.5; the club (and ENR 1.11) use LGTTZTZX + LGTTZPZX."
+    ]
+  }
+}
