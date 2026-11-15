@@ -17,6 +17,7 @@ import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
 import { missingEssentials, sameTypeCopy } from './model';
 import { buildFromTemplate, TYPE_TEMPLATES } from './templates';
+import { AircraftPhoto } from './AircraftFiles';
 import { ShareDialog, SharedChip } from './ShareDialog';
 import '../lobby/lists.css';
 import './hangar.css';
@@ -76,6 +77,9 @@ export function HangarPage() {
             const seats = a.massBalance.stations.flatMap((s) => (s.kind === 'seat' ? s.seats || [] : [])).length;
             return (
               <div key={a.id} className="ac-card card" data-aircraft-id={a.id}>
+                <Link to={`/hangar/${a.id}`} className="ac-card-photo" tabIndex={-1} aria-hidden="true">
+                  <AircraftPhoto aircraftId={a.id} photo={a.photo} className="card" alt="" />
+                </Link>
                 <div className="ac-card-head">
                   <Link to={`/hangar/${a.id}`} className="reg mono">{a.registration}</Link>
                   {isDefault && <span className="chip ok" title="New flights use this aircraft">Default</span>}

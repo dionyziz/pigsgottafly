@@ -1,6 +1,10 @@
 // Fuel: required (allowance + trip + final reserve), reserve on top, fuel on board (default =
-// required + reserve; editable), capacity and endurance.
+// required + reserve; editable), capacity and endurance. An aircraft with more than one approved
+// fuel gets one input per type (mixed tanks allowed): FOB is their sum, the W&B weighs each type.
 import { Link } from 'react-router-dom';
+import { fuelByType, fuelLoad, fuelTypesLabel, primaryFuel, type FlightDoc, type FuelType } from '../../../shared';
+
+const trimNum = (n: number) => String(Math.round(n * 100) / 100);
 import { useEditor } from '../state';
 import { fmtDur, useFlightCalc } from './calc';
 import { Chip, KV, NumberInput, Section } from './ui';
@@ -28,6 +32,23 @@ export function FuelSection() {
   const pct = aircraft.fuel.usableL > 0 ? Math.min(100, (fuel.fobL / aircraft.fuel.usableL) * 100) : 0;
   const reqPct = aircraft.fuel.usableL > 0 ? Math.min(100, (fuel.requiredL / aircraft.fuel.usableL) * 100) : 0;
   const reserveMin = pilot.settings.reserveMin;
+  const types = aircraft.fuel.types.map((g) => g.type);
+  const primary = primaryFuel(aircraft.fuel).type;
+  const multi = types.length > 1;
+  const split = fuelByType(doc.options.fuelL);
+  /** Litres typed per type: the split, else all of a typed FOB in the first fuel. */
+  const typed = (t: FuelType): number | null => split ? (split[t] ?? null) : t === primary ? doc.fobL : null;
+  const setType = (t: FuelType, v: number | null) => update((d) => {
+    const cur = fuelByType(d.options.fuelL) ?? (d.fobL != null ? { [primary]: d.fobL } : {});
+    const next: Partial<Record<FuelType, number>> = { ...cur };
+    if (v == null) delete next[t]; else next[t] = v;
+    const keys = Object.keys(next) as FuelType[];
+    if (!keys.length) return withFuel(d, null, null); // nothing typed: back to the default
+    const total = keys.reduce((a, k) => a + (next[k] ?? 0), 0);
+    // only the first fuel: a plain total, as for a single-fuel aircraft
+    return withFuel(d, total, keys.every((k) => k === primary) ? null : next);
+  }, { coalesce: 'fob-' + t });
+  const load = fuelLoad(aircraft.fuel, fuel.fobL, doc.options.fuelL);
 
   return (
     <Section id="fuel" title="Fuel" badge={badge}>
@@ -41,18 +62,44 @@ export function FuelSection() {
         <KV k="Required + reserve" v={<span className="mono">{fuel.defaultFobL} L</span>} tone={fuel.defaultOverCapacity ? 'warn' : undefined} />
       </div>
       <div className="ep-fob">
-        <label className="field">Fuel on board at block-off (L)
-          <span className="row">
-            <NumberInput value={doc.fobL} min={0} max={2000} width={90} placeholder={String(fuel.defaultFobL)} testId="fob"
-              onCommit={(v) => update((d) => ({ ...d, fobL: v }), { coalesce: 'fob' })} />
-            {doc.fobL != null
-              ? <button type="button" className="ghost" onClick={() => update((d) => ({ ...d, fobL: null }))}>Use required + reserve</button>
-              : <span className="hint">Default: required + reserve</span>}
-            {doc.fobL == null && aircraft.fuel.usableL > 0 && fuel.defaultOverCapacity && (
-              <button type="button" className="ghost" onClick={() => update((d) => ({ ...d, fobL: aircraft.fuel.usableL }))}>Full tanks</button>
-            )}
-          </span>
-        </label>
+        {multi ? (
+          <div className="field">Fuel on board at block-off (L)
+            <span className="row ep-fob-types">
+              {types.map((t) => (
+                <label key={t} className="ep-fob-type">
+                  <span className="muted">{t}</span>
+                  <NumberInput value={typed(t)} min={0} max={2000} width={80} ariaLabel={`${t} on board, litres`}
+                    placeholder={t === primary && doc.fobL == null && !split ? String(fuel.defaultFobL) : '0'}
+                    testId={t === primary ? 'fob' : `fob-${t}`} onCommit={(v) => setType(t, v)} />
+                </label>
+              ))}
+              <span className="mono ep-fob-total" data-testid="fob-total">= {fuel.fobL} L</span>
+            </span>
+            <span className="row">
+              {doc.fobL != null
+                ? <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, null, null))}>Use required + reserve</button>
+                : <span className="hint">Default: required + reserve, as {primary}</span>}
+              {doc.fobL == null && aircraft.fuel.usableL > 0 && fuel.defaultOverCapacity && (
+                <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, aircraft.fuel.usableL, null))}>Full tanks</button>
+              )}
+            </span>
+            {load.mixed && <span className="hint" data-testid="fob-mix">Mixed: {load.parts.map((p) => `${trimNum(p.litres)} L × ${p.densityKgPerL}`).join(' + ')} = {trimNum(Math.round(load.kg * 10) / 10)} kg</span>}
+          </div>
+        ) : (
+          <label className="field">Fuel on board at block-off (L)
+            <span className="row">
+              <NumberInput value={doc.fobL} min={0} max={2000} width={90} placeholder={String(fuel.defaultFobL)} testId="fob"
+                onCommit={(v) => update((d) => withFuel(d, v, null), { coalesce: 'fob' })} />
+              {doc.fobL != null
+                ? <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, null, null))}>Use required + reserve</button>
+                : <span className="hint">Default: required + reserve</span>}
+              {doc.fobL == null && aircraft.fuel.usableL > 0 && fuel.defaultOverCapacity && (
+                <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, aircraft.fuel.usableL, null))}>Full tanks</button>
+              )}
+            </span>
+          </label>
+        )}
+        {load.unapproved.length > 0 && <p className="ep-note danger-text">{load.unapproved.join(' and ')} {load.unapproved.length > 1 ? 'are' : 'is'} not an approved fuel of {aircraft.registration}.</p>}
         {aircraft.fuel.usableL > 0 && (
           <div className="ep-gauge" title={`${fuel.fobL} of ${aircraft.fuel.usableL} L usable`}>
             <div className={'fill' + (fuel.overCapacity ? ' over' : fuel.belowRequired ? ' low' : '')} style={{ width: `${pct}%` }} />
@@ -60,7 +107,7 @@ export function FuelSection() {
           </div>
         )}
         <div className="ep-gauge-legend muted">
-          <span>0</span><span>Usable {aircraft.fuel.usableL} L ({aircraft.fuel.type})</span>
+          <span>0</span><span>Usable {aircraft.fuel.usableL} L ({fuelTypesLabel(aircraft.fuel)})</span>
         </div>
       </div>
       <div className="ep-kvs">
@@ -74,4 +121,9 @@ export function FuelSection() {
       ))}
     </Section>
   );
+}
+
+/** The flight with fuel on board `fobL` (null = default) and the split by type (null = all the first fuel). */
+function withFuel(d: FlightDoc, fobL: number | null, byType: Partial<Record<FuelType, number>> | null): FlightDoc {
+  return { ...d, fobL, options: { ...d.options, fuelL: byType } };
 }

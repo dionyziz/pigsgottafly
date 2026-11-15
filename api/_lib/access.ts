@@ -5,6 +5,7 @@
 import type { Queryable } from './db.js';
 import { HttpError, notFound } from './http.js';
 import { toAircraft } from './rows.js';
+import { photoJsonSql, toFile } from './routes/files.js';
 import type { AircraftAccess, AircraftRole, HangarAircraft } from '../../src/shared/sharing.js';
 
 type Row = Record<string, any>;
@@ -14,7 +15,7 @@ export const accessibleSql = (alias: string, param: string) =>
   `(${alias}.pilot_id = ${param} OR EXISTS (SELECT 1 FROM aircraft_shares s_ WHERE s_.aircraft_id = ${alias}.id AND s_.pilot_id = ${param}))`;
 
 const SELECT = `SELECT a.*, CASE WHEN a.pilot_id = $1 THEN 'owner' ELSE s.role END AS access_role,
-    o.email AS owner_email, o.full_name AS owner_full_name, o.name AS owner_name
+    o.email AS owner_email, o.full_name AS owner_full_name, o.name AS owner_name, ${photoJsonSql('a')} AS photo_file
   FROM aircraft a JOIN pilots o ON o.id = a.pilot_id
   LEFT JOIN aircraft_shares s ON s.aircraft_id = a.id AND s.pilot_id = $1
   WHERE (a.pilot_id = $1 OR s.pilot_id IS NOT NULL)`;
@@ -28,7 +29,7 @@ function access(r: Row): AircraftAccess {
   };
 }
 
-export const toHangarAircraft = (r: Row): HangarAircraft => ({ ...toAircraft(r), access: access(r) });
+export const toHangarAircraft = (r: Row): HangarAircraft => ({ ...toAircraft(r), access: access(r), photo: r.photo_file ? toFile(r.photo_file) : null });
 
 /** Every aircraft the pilot owns or that is shared with them, by registration (own first on a tie). */
 export async function listAircraft(db: Queryable, pilotId: string): Promise<HangarAircraft[]> {

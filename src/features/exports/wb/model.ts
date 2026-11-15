@@ -10,7 +10,7 @@
 // adds a total at the stop (landing there, and the take-off from there with the same fuel: no
 // refuelling, no taxi burn before take-off) and its own check against MLW, MTOW and the envelope.
 import type { Aircraft, Envelope, FlightDoc, Pilot, WbCategory } from '../../../shared';
-import { seatLayout } from '../../../shared';
+import { fuelLoad, primaryFuel, seatLayout } from '../../../shared';
 import type { WbCheck, WbPoint, WbResult } from '../../../calc';
 import type { ExportCalc } from './exportCalc';
 
@@ -209,9 +209,11 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   }
 
   const mb = aircraft.massBalance;
-  const rho = aircraft.fuel.densityKgPerL;
   const fuelStation = mb.stations.find((s) => s.kind === 'fuel');
-  const fuelLabel = `${aircraft.fuel.type} ${rho > 0 ? `${trimNum(rho)} kg/L` : '(density not set)'}`;
+  // The fuel on board by type: one type → 'AVGAS 0.72 kg/L'; mixed → each type with its density.
+  const load = calc.fuelLoad ?? fuelLoad(aircraft.fuel, calc.fuelTakeoffL, doc.options.fuelL);
+  const grades = load.parts.length ? load.parts.map((p) => ({ type: p.type, rho: p.densityKgPerL })) : [{ type: primaryFuel(aircraft.fuel).type, rho: primaryFuel(aircraft.fuel).densityKgPerL }];
+  const fuelLabel = grades.map((g) => `${g.type} ${g.rho > 0 ? `${trimNum(g.rho)} kg/L` : '(density not set)'}`).join(' + ');
   const lines: WbLine[] = [];
 
   // People per seat station, from the manifest (names, seat labels, weights).
@@ -242,7 +244,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     const usable = aircraft.fuel.usableL;
     lines.push({
       key: 'fuel', kind: 'fuel', label: `Fuel (${fuelLabel})`,
-      note: `${trimNum(calc.fuelTakeoffL)} L on board${usable > 0 ? ` · max ${trimNum(usable)} L usable` : ''}`,
+      note: `${load.mixed ? `${load.parts.map((p) => `${trimNum(p.litres)} L ${p.type}`).join(' + ')} = ` : ''}${trimNum(calc.fuelTakeoffL)} L on board${usable > 0 ? ` · max ${trimNum(usable)} L usable` : ''}`,
       massKg: fuelRow.massKg, armM: fuelStation?.armM ?? fuelRow.armM, momentKgM: fuelRow.momentKgM, people: [],
       over: usable > 0 && calc.fuelTakeoffL > usable + 1e-9,
     });

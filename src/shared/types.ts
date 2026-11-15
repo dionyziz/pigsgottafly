@@ -117,10 +117,21 @@ export type PilotUpdate = Partial<
 export type WakeCategory = 'L' | 'M' | 'H' | 'J';
 export type FuelType = 'AVGAS' | 'MOGAS' | 'JET A-1';
 
-export interface FuelSpec {
+/** One fuel approved for the aircraft, with the density the W&B uses for it. */
+export interface FuelGrade {
   type: FuelType;
-  /** kg per litre used for W&B (AVGAS 0.72, MOGAS 0.75 per MD 4.3). */
+  /** kg per litre (MD 4.3: AVGAS 0.72, MOGAS 0.75; DEFAULT_FUEL_DENSITY in fuel.ts). */
   densityKgPerL: number;
+}
+
+export interface FuelSpec {
+  /**
+   * The approved fuels, at least one, each type once. The first is the aircraft's usual fuel: a
+   * flight that gives only a total (FlightDoc.fobL without FlightOptions.fuelL) carries that one.
+   * Mixed tanks are allowed: the W&B mass is the sum of litres × density per type.
+   * (Before migration 014 this was a single `type` + `densityKgPerL`; normalizeFuelSpec reads both.)
+   */
+  types: FuelGrade[];
   /** Total tank capacity, L. */
   totalL: number;
   /** Usable fuel, L (SX-ASV 144, SX-ASG 182). FOB above this is warned. */
@@ -326,6 +337,49 @@ export interface Attachment extends AttachmentRef {
   data: string;
 }
 
+// Aircraft photo and documents (POH/AFM, weighing report, … as PDFs). Stored in aircraft_attachments
+// (kind 'photo' / 'document', migration 015) in chunks, because a POH (10–40 MB) is far above the
+// serverless request and response limits (~4.5 MB): the client uploads and downloads it chunk by
+// chunk (AIRCRAFT_FILE_CHUNK_BYTES each, base64 in JSON) and assembles a Blob to view or save.
+export type AircraftFileKind = 'photo' | 'document';
+export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const DOCUMENT_TYPES = ['application/pdf'] as const;
+/** Bytes per chunk (2 MiB: 2.8 MB as base64, well within the request/response limits). */
+export const AIRCRAFT_FILE_CHUNK_BYTES = 2 * 1024 * 1024;
+/** The photo is resized in the browser (longest side PHOTO_MAX_PX) before upload. */
+export const PHOTO_MAX_PX = 1600;
+export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+export const DOCUMENT_MAX_BYTES = 80 * 1024 * 1024;
+
+/** A photo or document of an aircraft (metadata; the content comes chunk by chunk). */
+export interface AircraftFile {
+  id: Id;
+  kind: AircraftFileKind;
+  /** Shown name, e.g. 'POH', 'Weighing report 2024' ('' for the photo). */
+  title: string;
+  /** Original file name. */
+  name: string;
+  mime: string;
+  /** Bytes. */
+  size: number;
+  /** Number of chunks of the content. */
+  chunks: number;
+  uploaded: EpochMs;
+}
+/** POST /api/aircraft/:id/files: starts an upload; the file appears once all chunks are in (POST …/complete). */
+export interface AircraftFileStart {
+  kind: AircraftFileKind;
+  name: string;
+  title: string;
+  mime: string;
+  size: number;
+}
+/** GET /api/aircraft/:id/files */
+export interface AircraftFiles {
+  photo: AircraftFile | null;
+  documents: AircraftFile[];
+}
+
 export interface Aircraft {
   id: Id;
   /** e.g. 'SX-ASV' (FPL item 7 drops the hyphen). */
@@ -493,6 +547,12 @@ export interface FlightOptions {
   arrivalSurface: string | null;
   /** Touch-and-go / intermediate-stop requests (missing on older flights = none). */
   aerodromeRequests?: AerodromeRequest[];
+  /**
+   * Fuel on board at block-off per type, L, when the pilot gives it by type (aircraft with more
+   * than one approved fuel; the club W&B calculator takes MOGAS and AVGAS litres separately).
+   * FlightDoc.fobL is then their sum. null / missing = all of fobL is the aircraft's first fuel.
+   */
+  fuelL?: Partial<Record<FuelType, number>> | null;
   /**
    * Who sends the General Declaration, overriding the automatic decision (handling per AIP + NOTAMs):
    * true = a handler submits it, false = the PIC sends it; null / missing = automatic.

@@ -1,8 +1,8 @@
 // Aircraft page sections: identity, flight plan items, speeds, fuel. (Mass & balance, performance
 // and compass cards are in their own files.) Each section edits the draft through `edit`.
-import type { AircraftInput, FuelType, WakeCategory } from '../../shared/types';
-import { Check, Field, NumInput, Section } from './fields';
-import { ADS_CODES, ITEM10A_CODES, SSR_CODES, issuesAt, join10a, join10b, split10a, split10b, type Issue } from './model';
+import type { AircraftInput, WakeCategory } from '../../shared/types';
+import { Check, Field, IssueList, NumInput, Section } from './fields';
+import { ADS_CODES, ITEM10A_CODES, SSR_CODES, addFuelType, issuesAt, join10a, join10b, makePrimaryFuel, otherFuelTypes, removeFuelType, split10a, split10b, type Issue } from './model';
 
 export interface SectionProps {
   a: AircraftInput;
@@ -116,7 +116,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
         <Field label="PBN/ (item 18)" issues={at('equipment.pbn')} hint="Only with R in item 10a, e.g. B2D2S1">
           <input className="mono upper" value={e.pbn} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.pbn = v; }); }} maxLength={16} placeholder="none" />
         </Field>
-        <Field label="Other item 18 indicators" issues={at('equipment.item18Extras')} hint="e.g. NAV/… COM/…  DOF/, REG/ and RMK/ come from the flight">
+        <Field label="Other item 18 indicators" issues={at('equipment.item18Extras')} hint="e.g. NAV/SBAS COM/… · RMK/ text joins the flight’s RMK/">
           <input className="mono upper" value={e.item18Extras} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.item18Extras = v; }); }} maxLength={200} />
         </Field>
       </div>
@@ -194,8 +194,6 @@ export function SpeedsSection({ a, edit, issues }: SectionProps) {
   );
 }
 
-const DENSITY: Record<FuelType, number> = { AVGAS: 0.72, MOGAS: 0.75, 'JET A-1': 0.8 };
-
 export function FuelSection({ a, edit, issues }: SectionProps) {
   const f = a.fuel;
   const at = (p: string) => issuesAt(issues, p, true);
@@ -203,17 +201,39 @@ export function FuelSection({ a, edit, issues }: SectionProps) {
   const fu = (fn: (q: AircraftInput['fuel']) => void) => edit((d) => fn(d.fuel));
   const endurance = f.burnLph > 0 && f.usableL > 0 ? f.usableL / f.burnLph : null;
   const hm = (h: number) => `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')} min`;
+  const others = otherFuelTypes(f);
+  const rho = f.types[0]?.densityKgPerL ?? 0;
   return (
     <Section id="fuel" title="Fuel" intro="Capacity limits the fuel on board; the burn rate and the fixed allowance give the required fuel of each flight.">
+      <div className="fuel-types">
+        <span className="lbl">Approved fuels <span className="muted">· density for the W&B; with more than one, flights take the litres of each (mixed tanks)</span></span>
+        <table className="ed-table fuel-tbl">
+          <thead><tr><th>Fuel</th><th className="num">Density <span className="u">kg/L</span></th><th /><th /></tr></thead>
+          <tbody>
+            {f.types.map((g, i) => (
+              <tr key={g.type}>
+                <td className="mono">{g.type}</td>
+                <td className="num">
+                  <NumInput value={g.densityKgPerL} min={0} max={2} width={90} ariaLabel={`${g.type} density`} invalid={bad(`fuel.types.${i}.densityKgPerL`)}
+                    onChange={(v) => fu((q) => { q.types[i].densityKgPerL = v ?? 0; })} />
+                </td>
+                <td>{i === 0
+                  ? (f.types.length > 1 ? <span className="hint" title="A flight that gives only a total carries this fuel">Usual fuel</span> : null)
+                  : <button type="button" className="link" onClick={() => fu((q) => makePrimaryFuel(q, g.type))}>Make usual</button>}</td>
+                <td className="row-tools">
+                  <button type="button" className="icon sm danger" aria-label={`Remove ${g.type}`} title="Remove" disabled={f.types.length <= 1}
+                    onClick={() => fu((q) => removeFuelType(q, g.type))}>×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {others.length > 0 && (
+          <div className="row">{others.map((t) => <button key={t} type="button" className="ghost sm" onClick={() => fu((q) => addFuelType(q, t))}>+ {t}</button>)}</div>
+        )}
+        <IssueList issues={issuesAt(issues, 'fuel.types')} />
+      </div>
       <div className="grid3">
-        <Field label="Fuel type" issues={at('fuel.type')} hint={`Density for W&B: AVGAS 0.72, MOGAS 0.75 kg/L`}>
-          <select value={f.type} onChange={(e) => { const t = e.target.value as FuelType; fu((q) => { if (q.densityKgPerL === DENSITY[q.type]) q.densityKgPerL = DENSITY[t]; q.type = t; }); }}>
-            {(Object.keys(DENSITY) as FuelType[]).map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </Field>
-        <Field label="Density" issues={at('fuel.densityKgPerL')}>
-          <NumInput value={f.densityKgPerL} onChange={(v) => fu((q) => { q.densityKgPerL = v ?? 0; })} min={0} max={2} unit="kg/L" invalid={bad('fuel.densityKgPerL')} />
-        </Field>
         <Field label="Tanks" issues={at('fuel.tanks')} hint="e.g. standard, long-range">
           <input value={f.tanks} onChange={(e) => { const v = e.target.value; fu((q) => { q.tanks = v; }); }} maxLength={60} />
         </Field>
@@ -239,7 +259,7 @@ export function FuelSection({ a, edit, issues }: SectionProps) {
         <div className="stat">
           <span className="muted">Endurance on usable fuel</span>
           <b>{endurance != null ? hm(endurance) : '—'}</b>
-          {f.densityKgPerL > 0 && f.usableL > 0 && <span className="muted">{Math.round(f.usableL * f.densityKgPerL)} kg usable</span>}
+          {rho > 0 && f.usableL > 0 && <span className="muted">{Math.round(f.usableL * rho)} kg usable ({f.types[0].type})</span>}
         </div>
       </div>
     </Section>
