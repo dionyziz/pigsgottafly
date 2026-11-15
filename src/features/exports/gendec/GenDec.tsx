@@ -20,7 +20,7 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?:
   return (
     <div className="pgf-forms" data-testid="gendec">
       {props.panel}
-      <FormWarnings warnings={m.warnings} />
+      <FormWarnings warnings={m.warnings} fixes={m.fixes} />
       <section className="pgf-sheet gd-sheet" aria-label="General Declaration">
         <h1 className="gd-title">GENERAL DECLARATION</h1>
         <div className="gd-sub">(OUTWARD/INWARD)</div>

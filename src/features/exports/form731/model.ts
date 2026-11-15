@@ -1,4 +1,5 @@
 // Form 731 (HCAA "Official statement of persons boarding private aircraft"): what goes in each field.
+import type { FormFix } from './FormWarnings';
 import { chunk, formatDate, formPeople, idText, placeLong, routePlaces, routeEnds, type FormExportProps } from './common';
 
 /** Rows printed on one Form 731 sheet. */
@@ -30,6 +31,8 @@ export interface Form731Model {
   picName: string;
   /** Missing data, shown on screen only. */
   warnings: string[];
+  /** How to fix each warning (keyed by its text). */
+  fixes: Record<string, FormFix>;
 }
 
 export function form731Model(props: FormExportProps): Form731Model {
@@ -48,14 +51,17 @@ export function form731Model(props: FormExportProps): Form731Model {
   }));
 
   const warnings: string[] = [];
-  if (!places.length) warnings.push('The route is empty: no airport or route on the form.');
-  else if (!places[0].aerodrome) warnings.push(`The departure point ${places[0].code} is not an aerodrome.`);
-  if (!flight.date) warnings.push('The flight has no date.');
-  if (!aircraft) warnings.push('No aircraft is selected: the registration is blank.');
+  const fixes: Record<string, FormFix> = {};
+  const warn = (text: string, fix: FormFix | null) => { warnings.push(text); if (fix) fixes[text] = fix; };
+  if (!places.length) warn('The route is empty: no airport or route on the form.', { kind: 'flight' });
+  else if (!places[0].aerodrome) warn(`The departure point ${places[0].code} is not an aerodrome.`, { kind: 'flight' });
+  if (!flight.date) warn('The flight has no date.', { kind: 'flight' });
+  if (!aircraft) warn('No aircraft is selected: the registration is blank.', { kind: 'flight' });
   for (const r of rows) {
     const who = r.role === 'PIC' ? 'PIC' : r.name || `Passenger ${r.no}`;
     const miss = [!r.name && 'name', !r.idPassport && 'ID/passport number', !r.contact && 'phone'].filter(Boolean);
-    if (miss.length) warnings.push(`${who}: no ${miss.join(', ')}.`);
+    // People saved in the passenger list (key = passenger id) or the PIC can be edited; a seat-only entry is fixed on the flight.
+    if (miss.length) warn(`${who}: no ${miss.join(', ')}.`, r.key.startsWith('seat:') ? { kind: 'flight' } : { kind: 'person', key: r.key });
   }
 
   return {
@@ -66,5 +72,6 @@ export function form731Model(props: FormExportProps): Form731Model {
     sheets: chunk(rows, ROWS_PER_SHEET),
     picName: rows.find((r) => r.role === 'PIC')?.name ?? '',
     warnings,
+    fixes,
   };
 }

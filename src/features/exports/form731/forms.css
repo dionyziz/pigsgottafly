@@ -36,7 +36,15 @@
 /* Handwriting signatures (Homemade Apple, Apache 2.0: public/fonts/HomemadeApple-LICENSE.txt) */
 @font-face { font-family: 'PGF Signature'; font-style: normal; font-weight: 400; font-display: block; src: url('/fonts/HomemadeApple-Regular.ttf') format('truetype'); }
 .pgf-signature { font-family: 'PGF Signature', cursive; color: #13296f; line-height: 1.1; white-space: nowrap; }
-.pgf-signature-when { display: block; font: 2mm/1.1 Arial, Helvetica, sans-serif; color: #333; white-space: nowrap; }
+.pgf-signature-when, .pgf-signature-via { position: relative; display: block; font: 1.9mm/1.15 Arial, Helvetica, sans-serif; color: #222; white-space: nowrap; }
+.pgf-signature-via { color: #555; }
+.pgf-signature-wrap { position: relative; display: inline-block; isolation: isolate; }
+.pgf-signature-wrap > .pgf-signature { position: relative; }
+/* watermark behind the signature */
+.pgf-signature-mark { position: absolute; inset: -0.6mm -1mm; z-index: -1; display: flex; align-items: center; gap: 1mm; opacity: .16; pointer-events: none; overflow: hidden; }
+.pgf-signature-mark img { height: 100%; max-height: 9mm; width: auto; filter: grayscale(1); }
+.pgf-signature-mark span { font: 800 3.6mm/1 Arial, Helvetica, sans-serif; letter-spacing: .04em; color: #1f5fbf; white-space: nowrap; }
+@media print { .pgf-signature-mark { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
 /* Signatures / send panel above the sheets (screen only) */
 .pgf-panel { width: 100%; max-width: 900px; padding: 14px 16px; border-radius: 10px; background: var(--surface, #fff); border: 1px solid var(--line, #e3e6ea); font-size: 13.5px; display: grid; gap: 10px; }
@@ -56,3 +64,4 @@
 .pgf-handling .is-unhandled { color: var(--warn, #8a5a00); }
 .pgf-panel button.linkish { border: 0; background: none; padding: 0; color: var(--accent, #2563eb); font-size: inherit; cursor: pointer; }
 .pgf-panel button.linkish:hover { text-decoration: underline; }
+.pgf-form-warnings .pgf-fix { margin-left: 6px; font-weight: 600; white-space: nowrap; }

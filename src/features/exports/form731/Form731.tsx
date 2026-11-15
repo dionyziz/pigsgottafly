@@ -15,7 +15,7 @@ export function Form731(props: FormExportProps & { signatures?: Record<string, S
   return (
     <div className="pgf-forms" data-testid="form731">
       {props.panel}
-      <FormWarnings warnings={m.warnings} />
+      <FormWarnings warnings={m.warnings} fixes={m.fixes} />
       {m.sheets.map((rows, i) => (
         <Sheet key={i} rows={rows} m={m} index={i} signatures={props.signatures ?? {}} />
       ))}
@@ -29,12 +29,14 @@ function stamp(ms: number): string {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
 }
 
-/** "D. Zindros" in the handwriting font, with the time it was signed. */
+/** "D. Zindros" in the handwriting font over a faint Pig's Gotta Fly mark, with when it was signed. */
 export function Signature({ s, size = 4.6 }: { s: ShownSignature; size?: number }) {
   return (
     <span className="pgf-signature-wrap" data-testid="signature">
+      <span className="pgf-signature-mark" aria-hidden="true"><img src="/icon.svg" alt="" /><span>PIG&rsquo;S GOTTA FLY</span></span>
       <span className="pgf-signature" style={{ fontSize: `${size}mm` }}>{transliterate(signatureName(s.name), { keepCase: true })}</span>
-      <span className="pgf-signature-when">signed {stamp(s.signedAt)}</span>
+      <span className="pgf-signature-when">Electronically signed {stamp(s.signedAt)}</span>
+      <span className="pgf-signature-via">pigsgottafly.com</span>
     </span>
   );
 }

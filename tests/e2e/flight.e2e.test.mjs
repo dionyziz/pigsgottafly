@@ -437,7 +437,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.match(tx, /If no disinsecting has been carried out during the flight/);
   // the PIC's e-signature on the declaration's signature line (as on Form 731)
   await page.waitFor(() => !!document.querySelector('.gd-sigline [data-testid=signature]'));
-  assert.match(await page.eval(() => document.querySelector('.gd-sigline').innerText), /T\. Pilot\s*signed \d{4}-\d{2}-\d{2} \d{2}:\d{2}Z/);
+  assert.match(await page.eval(() => document.querySelector('.gd-sigline').innerText), /T\. Pilot\s*Electronically signed \d{4}-\d{2}-\d{2} \d{2}:\d{2}Z/);
   // who sends it: neither LGTT nor LGMG has a handler (AIP AD 1.6), so the PIC does; the per-flight override
   await page.waitFor(() => !!document.querySelector('[data-testid=gendec-handling-departure]'));
   assert.match(await text('[data-testid=gendec-handling-departure]'), /LGTT: no handling \(AIP AD 1\.6\.5\.4\)/);
