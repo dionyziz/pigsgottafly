@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { connect } from '../../api/_lib/db';
 import { migrate, MIGRATIONS, type Migration } from '../../api/_lib/migrate';
 import { seedSql } from '../../tools/build_seed';
-import { legacyAtc } from '../../api/_lib/migrations/004_legacy_flights';
+import { legacyAtc, legacyLegOverrides } from '../../api/_lib/migrations/004_legacy_flights';
 import type { AtcEntry } from '../../src/shared/types';
 import { createApi } from '../../api/_lib/app';
 import { CID, JWK } from './helpers';
@@ -75,6 +75,10 @@ describe('migrations', () => {
     expect(ac.map((r) => r.registration)).toEqual(['SX-ASG', 'SX-ASV']);
     expect(p.default_aircraft_id).toBe(ac[1].id);
     expect(ac[1].mass_balance.emptyMassKg).toBe(691.2);
+    // SX-ASG: colours from the club's photo, life vests from its weighing report (FPL item 19 A/, J/)
+    const [asg] = await db.query(`SELECT colours, equipment FROM aircraft WHERE pilot_id = 'u1' AND registration = 'SX-ASG'`);
+    expect(asg.colours).toBe('WHITE RED BLACK STRIPES');
+    expect(asg.equipment.jackets).toEqual({ present: true, light: false, fluorescein: false, uhf: false, vhf: false });
 
     // the old session still works, and the flight is converted
     const api = createApi({ db, googleClientId: CID, googleKeys: async () => [JWK] });
@@ -140,6 +144,66 @@ describe('migrations', () => {
     ]);
     expect(f2.leg_overrides).toEqual({ 'm0>m1': { altFt: 2500 } });
     await db.close();
+  });
+
+  test('a malformed v2 flight converts within the PUT checks, so the editor can save it back', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    const token = 'tok-' + crypto.randomBytes(8).toString('hex');
+    const hash = crypto.createHash('sha256').update(token).digest('base64url');
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await db.query(`INSERT INTO sessions VALUES ($1, 'u1', $2)`, [hash, Date.now()]);
+    const data = {
+      ...legacyData,
+      title: 'T'.repeat(500), blockStart: '2561', taxiMin: 9999, card: 'C'.repeat(300),
+      waypoints: [
+        { lat: 38.10861, lon: 23.78333, name: 'LGTT' }, null, { lat: '38.3', lon: '23.5', name: 'N'.repeat(500) },
+        { lat: 'x', lon: 23 }, { lat: 200, lon: 23 }, { lat: null, lon: 23 }, { lat: 38.10861, lon: 23.78333, name: 'LGTT' },
+      ],
+      // L0: altitude and wind direction out of range (dropped), wind speed kept; L1: all valid
+      ov: { 'L0.alt': '999999', 'L0.wd': '400', 'L0.ws': '15', 'L1.alt': '-2000', 'L1.temp': '12,5', 'L1.tas': '0',
+        'T.m9.field': 'F'.repeat(400), 'T.m9.freq': '122.5 ' + 'X'.repeat(600) },
+      termManual: ['m9'],
+    };
+    await db.query(`INSERT INTO flights (id, owner, data, summary, version, created, updated, opened) VALUES ('f9', 'u1', $1::jsonb, $2::jsonb, 3, 10, 20, 30)`,
+      [JSON.stringify(data), JSON.stringify({ title: 'S'.repeat(400), dist: 'abc', ete: -5, fuel: 1e9 })]);
+    await migrate(db, withOwner(OWNER));
+
+    const api = createApi({ db, googleClientId: CID, googleKeys: async () => [JWK] });
+    const server = http.createServer((req, res) => api(req, res));
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    try {
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/`;
+      const headers = { cookie: `pgf_session=${token}`, 'content-type': 'application/json' };
+      const f = await (await fetch(base + 'flights/f9', { headers })).json();
+      expect(f.route.map((p: any) => p.uid)).toEqual(['m0', 'm1', 'm2']);
+      expect(f.route[1]).toMatchObject({ kind: 'custom', lat: 38.3, lon: 23.5 });
+      expect(f.route[1].name).toHaveLength(60);
+      expect(f.legOverrides).toEqual({ 'm0>m1': { windKt: 15 }, 'm1>m2': { tempC: 12.5 } });
+      expect(f).toMatchObject({ blockOff: '', taxiOutMin: 15 });
+      expect(f.title).toHaveLength(200);
+      expect(f.options.compassCard).toHaveLength(100);
+      expect(f.summary).toMatchObject({ distNm: null, eteMin: null, fuelL: null });
+      const custom = f.atc.find((e: AtcEntry) => e.id === 'v2-m9');
+      expect(custom).toMatchObject({ primary: '122.5' });
+      expect(custom.group).toHaveLength(200);
+      expect(custom.remark).toHaveLength(500);
+
+      // what the editor does on every change: the whole document back
+      const { id: _i, version, created: _c, updated: _u, opened: _o, deleted: _d, ...flight } = f;
+      const put = await fetch(base + 'flights/f9', { method: 'PUT', headers, body: JSON.stringify({ flight, version }) });
+      expect(put.status).toBe(200);
+    } finally {
+      server.close();
+      await db.close();
+    }
+  });
+
+  test('legacyLegOverrides keeps only values PUT /flights accepts', () => {
+    const route = [{ uid: 'a' }, { uid: 'b' }];
+    expect(legacyLegOverrides({ 'L0.alt': '60000', 'L0.wd': '360', 'L0.ws': '251', 'L0.tas': 'fast', 'L0.temp': '−5' }, route))
+      .toEqual({ 'a>b': { altFt: 60000, windDirDeg: 360, tempC: -5 } });
+    expect(legacyLegOverrides({ 'L0.alt': '60001', 'L0.wd': '-1' }, route)).toEqual({});
   });
 
   test('legacyAtc: hidden rows, edited rows v3 does not generate, nothing edited', () => {

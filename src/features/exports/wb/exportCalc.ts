@@ -6,7 +6,7 @@
 import type { Aircraft, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
 import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
-  aerodromePerformance, isaTempC, magneticVariation, wbLoadsFromManifest, weightAndBalance,
+  aerodromePerformance, isaTempC, magneticVariation, performanceMass, wbLoadsFromManifest, weightAndBalance,
   type AerodromePerf, type WbResult,
 } from '../../../calc';
 import type { RouteWeather, SurfaceConditions } from '../../../data/weather';
@@ -48,6 +48,8 @@ export interface EndpointPerf {
   variationDeg: number;
   massKg: number | null;
   massSource: 'wb' | 'mtow' | null;
+  /** Why MTOW stands in: no W&B, or someone on the manifest has no weight. */
+  massReason: 'weight-missing' | 'no-wb' | null;
   surface: string | null;
   perf: AerodromePerf | null;
 }
@@ -57,6 +59,8 @@ export interface ExportCalc {
   wb: WbResult | null;
   /** Manifest problems found while building the loads (missing weights…). */
   wbLoadWarnings: string[];
+  /** People on the manifest with no weight (0 kg in the W&B): the balance is incomplete. */
+  missingWeights: string[];
   /** Fuel at take-off / landing used for the W&B, L. */
   fuelTakeoffL: number;
   fuelLandingL: number;
@@ -77,14 +81,17 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
   //      (MD 4.3 and the club calculator: no taxi burn before take-off).
   let wb: WbResult | null = null;
   let wbLoadWarnings: string[] = [];
+  let missingWeights: string[] = [];
   const fuelTakeoffL = fuel ? fuel.fobL : fin(doc.fobL) ? doc.fobL : 0;
   const rawLanding = fuel ? fuel.landingFuelL : fuelTakeoffL;
   const fuelLandingL = rawLanding;
   const fuelBurnL = fuel ? fuel.taxiL + fuel.tripL : 0;
   if (aircraft) {
     const mb = aircraft.massBalance;
-    const { loads, warnings } = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
-    wbLoadWarnings = warnings;
+    const m = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
+    const loads = m.loads;
+    wbLoadWarnings = m.warnings;
+    missingWeights = m.missingWeights;
     try {
       wb = weightAndBalance({
         massBalance: mb,
@@ -121,10 +128,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     const wind = toPerfWind(conditions);
     const date = doc.date || new Date(nowMs).toISOString().slice(0, 10);
     const variationDeg = ad ? magneticVariation(ad.lat, ad.lon, date) : 0;
-    let massKg: number | null = null;
-    let massSource: EndpointPerf['massSource'] = null;
-    if (wb) { massKg = phase === 'takeoff' ? wb.takeoff.massKg : wb.landing.massKg; massSource = 'wb'; }
-    else if (aircraft && aircraft.massBalance.mtowKg > 0) { massKg = aircraft.massBalance.mtowKg; massSource = 'mtow'; }
+    const { massKg, massSource, reason: massReason } = performanceMass(wb, phase, aircraft?.massBalance.mtowKg, missingWeights.length);
     const surface = phase === 'takeoff' ? doc.options.departureSurface : doc.options.arrivalSurface;
     let perf: AerodromePerf | null = null;
     if (ad && aircraft && massKg != null) {
@@ -148,12 +152,12 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     }
     return {
       phase, point, aerodrome: ad, timeMin, weather: ew, conditions,
-      qnhHpa, qnhAssumed, oatC, oatAssumed, wind, variationDeg, massKg, massSource, surface, perf,
+      qnhHpa, qnhAssumed, oatC, oatAssumed, wind, variationDeg, massKg, massSource, massReason, surface, perf,
     };
   };
 
   const blockOffSet = navlog.blockOffSet;
   const departure = endpoint('takeoff', depPoint, blockOffSet ? times.takeoffMin : NaN);
   const arrival = endpoint('landing', arrPoint, blockOffSet ? times.landingMin : NaN);
-  return { computed, wb, wbLoadWarnings, fuelTakeoffL, fuelLandingL, fuelBurnL, departure, arrival };
+  return { computed, wb, wbLoadWarnings, missingWeights, fuelTakeoffL, fuelLandingL, fuelBurnL, departure, arrival };
 }

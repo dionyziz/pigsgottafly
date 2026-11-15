@@ -224,6 +224,27 @@ describe('performance sheet (MD 4.4)', () => {
     expect(perfSpeeds({ ...ASV, makeModel: 'Piper PA-28' }, 1000, 0).vxKt).toBeNull();
   });
 
+  test('a person with no weight: performance uses MTOW (not the too-light W&B mass) and says why', () => {
+    const doc = flight({ crew: [crew('PIC', 'front-left', 'Pat Pilot', 80), crew('PAX', 'rear-left', 'Robin Rider', null)] });
+    const calc = calcOf(doc, ASV);
+    expect(calc.missingWeights).toEqual(['Robin Rider']);
+    expect(calc.wb).not.toBeNull();
+    for (const e of [calc.departure, calc.arrival]) {
+      expect(e.massKg).toBe(ASV.massBalance.mtowKg);
+      expect(e.massSource).toBe('mtow');
+      expect(e.massReason).toBe('weight-missing');
+    }
+    const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc });
+    const mass = m.departure.rows.find((r) => r.key === 'mass')!;
+    expect(mass.status).toBe('warn');
+    expect(mass.note).toMatch(/weight missing/);
+    // complete manifest: W&B mass again
+    const full = calcOf(flight(), ASV);
+    expect(full.missingWeights).toEqual([]);
+    expect(full.departure.massSource).toBe('wb');
+    expect(full.departure.massReason).toBeNull();
+  });
+
   test('a route end that is not an aerodrome is incomplete', () => {
     const doc = flight({ route: [adPoint('LGTT', 'a'), { uid: 'z', kind: 'custom', refId: null, name: 'ZOFRI', lat: 37.0, lon: 25.0 }] });
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV) });
@@ -365,9 +386,20 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
       if (ph === 'landing' && litres < c.input.BlockFuel) continue; // club lands with negative fuel
       compared[ph]++;
       if (ph === 'takeoff') {
-        track(val(b, 'todr'), club.todrM!);
-        expect(within(val(b, 'todr'), club.todrM!), `TODR ${val(b, 'todr')} vs ${club.todrM}`).toBe(true);
-        expect(within(val(b, 'torr'), club.torrM!), `TORR ${val(b, 'torr')} vs ${club.torrM}`).toBe(true);
+        // Take-off: as for landing below, both methods are computed and the longer TODR printed
+        // (the AFM one on hot days at PA + 10 %/15 °C, and on cold days, where the club's DA entry
+        // falls below PA); the club-method figures must match the club calculator.
+        const p = e.perf!;
+        const clubD = p.distances!.method === 'club' ? p.distances! : p.alternative!;
+        expect(clubD.method).toBe('club');
+        const clubTodr = Math.ceil(clubD.requiredTotalM - 1e-9), clubTorr = Math.ceil(clubD.requiredGroundM - 1e-9);
+        track(clubTodr, club.todrM!);
+        expect(within(clubTodr, club.todrM!), `TODR (club method) ${clubTodr} vs ${club.todrM}`).toBe(true);
+        expect(within(clubTorr, club.torrM!), `TORR (club method) ${clubTorr} vs ${club.torrM}`).toBe(true);
+        const longer = Math.max(p.distances!.requiredTotalM, p.alternative!.requiredTotalM);
+        expect(val(b, 'todr')).toBe(Math.ceil(longer - 1e-9));
+        expect(val(b, 'todr')).toBeGreaterThanOrEqual(club.todrM! - 1);
+        expect(val(b, 'todr-alt')).toBe(Math.ceil(p.alternative!.requiredTotalM - 1e-9));
       } else {
         // Landing: aerodromePerformance computes the club method AND the AFM method (table at PA,
         // +10 %/15 °C) and prints the longer LDR (the AFM one on hot days, by up to ~9 % over this

@@ -66,13 +66,15 @@ function Endpoint({ e }: { e: EndpointCalc }) {
             sub={p.variableWind ? 'variable: full crosswind' : undefined}
             tone={!p.crosswindOk || p.tailwind ? 'danger' : undefined} />
           <KV k="PA / DA" v={<span className="mono">{Math.round(p.pressureAltFt)} / {Math.round(p.densityAltFt)} ft</span>} sub={`ISA ${p.isaDevC >= 0 ? '+' : ''}${p.isaDevC.toFixed(0)}°C`} />
-          {e.massKg != null && <KV k="Mass" v={<span className="mono">{e.massKg.toFixed(0)} kg</span>} sub={e.massSource === 'mtow' ? 'MTOW (no W&B)' : undefined} />}
+          {e.massKg != null && <KV k="Mass" v={<span className="mono">{e.massKg.toFixed(0)} kg</span>} sub={e.massSource === 'mtow' ? (e.massReason === 'weight-missing' ? 'MTOW (weight missing)' : 'MTOW (no W&B)') : undefined}
+            tone={e.massReason === 'weight-missing' ? 'warn' : undefined} />}
           {p.distances && (to ? (
             <>
               <KV k="TORR / TORA" tone={p.availableGroundM != null && p.distances.requiredGroundM > p.availableGroundM ? 'danger' : undefined}
                 v={<span className="mono">{m(p.distances.requiredGroundM)} / {m(p.availableGroundM)}</span>} />
               <KV k="TODR / TODA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : undefined}
-                v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>} />
+                v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
+                sub={p.alternative ? <span data-testid="todr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span> : undefined} />
             </>
           ) : (
             <KV k="LDR / LDA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : undefined}

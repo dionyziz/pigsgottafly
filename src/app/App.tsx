@@ -4,6 +4,7 @@
 //   /flights/:id                   flight editor (map)
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wb | performance)
 //   /profile  /hangar  /hangar/:id  /passengers  /waypoints
+//   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -21,6 +22,8 @@ import { PassengersPage } from '../features/passengers';
 // The map (MapLibre) and the export sheets are loaded on demand, so the lobby and lists load fast.
 const EditorPage = lazy(() => import('../features/editor').then((m) => ({ default: m.EditorPage })));
 const ExportPage = lazy(() => import('../features/exports').then((m) => ({ default: m.ExportPage })));
+// The Form 731 signing page: public (no sign-in), outside the AuthGate.
+const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ default: m.SignPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
@@ -46,6 +49,9 @@ export function App() {
     <ErrorBoundary>
     <BrowserRouter>
       <ToastProvider>
+        <Routes>
+        <Route path="/sign/:token" element={<Suspense fallback={<div className="loading-screen">Loading…</div>}><SignPage /></Suspense>} />
+        <Route path="*" element={
         <AuthGate>
           <LegacyHashRedirect />
           <Onboarding>
@@ -65,6 +71,8 @@ export function App() {
             </Suspense>
           </Onboarding>
         </AuthGate>
+        } />
+        </Routes>
       </ToastProvider>
     </BrowserRouter>
     </ErrorBoundary>

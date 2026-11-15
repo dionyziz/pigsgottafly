@@ -61,8 +61,10 @@ function mockAutorouter() {
   return { calls, state, fetch };
 }
 
-async function start(autorouter: AutorouterSettings | null) {
-  const s = createServer({ db: 'memory://', googleClientId: CID, googleKeys: async () => [JWK], autorouter, client: (_q, r) => { r.writeHead(404); r.end(); } });
+/** The pilots of these tests who may use the autorouter account (AUTOROUTER_PILOTS). */
+const AR_PILOTS = ['na@example.com', 'nb@example.com', 'fa@example.com', 'fb@example.com'];
+async function start(autorouter: AutorouterSettings | null, autorouterPilots: string[] = AR_PILOTS) {
+  const s = createServer({ db: 'memory://', googleClientId: CID, googleKeys: async () => [JWK], autorouter, autorouterPilots, client: (_q, r) => { r.writeHead(404); r.end(); } });
   await s.ready;
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
   return { base: `http://127.0.0.1:${(s.address() as AddressInfo).port}/api/`, close: () => new Promise<void>((r) => s.close(() => r())) };
@@ -222,6 +224,8 @@ describe('filing via autorouter (mocked)', () => {
     a = client(api.base); b = client(api.base);
     await a.login('f-a', 'fa@example.com');
     await b.login('f-b', 'fb@example.com');
+    // the first aircraft becomes the default, so new flights are flown in SX-ASV (item 7 SXASV)
+    expect((await a.call('POST', 'aircraft', { registration: 'SX-ASV' })).status).toBe(201);
     fid = await newFlight(a);
   });
   afterAll(() => api.close());
@@ -262,6 +266,20 @@ describe('filing via autorouter (mocked)', () => {
     expect(s.log[0]).toMatchObject({ action: 'file', ok: false });
     ar.state.fileError = '';
   });
+  test('the plan must be for the flight’s aircraft (item 7 and REG/)', async () => {
+    const f2 = await newFlight(a);
+    const sent = () => ar.calls.filter((c) => c.path === '/flightplan/file').length;
+    const before = sent();
+    for (const fpl of [FPL.replace('FPL-SXASV', 'FPL-SXABC'), FPL.replace('REG/SXASV', 'REG/SXABC'), FPL.replace('FPL-SXASV', 'FPL-OAL123')]) {
+      const r = await a.call('POST', `flights/${f2}/filing`, { fpl, addresses: [] });
+      expect(r.status).toBe(400);
+      expect(r.body.error).toMatch(/aircraft/);
+    }
+    // a flight without an aircraft cannot be filed at all
+    const f3 = (await a.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', aircraftId: null, route: [pt('LGTT', 'a'), pt('LGMG', 'b')] })).body.id;
+    expect((await a.call('POST', `flights/${f3}/filing`, { fpl: FPL, addresses: [] })).status).toBe(400);
+    expect(sent()).toBe(before);
+  });
   test('isolation: another pilot sees nothing and cannot act', async () => {
     expect((await b.call('GET', `flights/${fid}/filing`)).status).toBe(404);
     expect((await b.call('POST', `flights/${fid}/filing/cancel`, {})).status).toBe(404);
@@ -299,5 +317,59 @@ describe('AFTN addressees', () => {
     expect(northOfBoundary({ lat: 37.97, lon: 23.73 }, (fis as RefFis).boundary)).toBe(true); // Athens
     expect(northOfBoundary({ lat: 37.6, lon: 23.5 }, (fis as RefFis).boundary)).toBe(false); // Saronic gulf
     expect(northOfBoundary({ lat: 35.3, lon: 25.1 }, (fis as RefFis).boundary)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------- who may use the autorouter account
+
+describe('autorouter account allow-list', () => {
+  const ar = mockAutorouter();
+  const settings = { email: 'app@example.com', password: 's3cret', filing: true, fetch: ar.fetch };
+  const FPL = '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030\n-DOF/261116 REG/SXASV\n-E/0400 P/2 A/WHITE C/PILOT +3069000000)';
+  async function attempt(pilots: string[], email: string) {
+    const api = await start(settings, pilots);
+    try {
+      const c = client(api.base);
+      await c.login(`s-${email}`, email);
+      expect((await c.call('POST', 'aircraft', { registration: 'SX-ASV' })).status).toBe(201);
+      const fid = await newFlight(c);
+      return {
+        state: (await c.call('GET', `flights/${fid}/filing`)).body,
+        file: await c.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: [] }),
+        notams: (await c.call('GET', `flights/${fid}/notams`)).body,
+      };
+    } finally { await api.close(); }
+  }
+  test('a pilot not on the list: no filing, no NOTAM quota, nothing sent to autorouter', async () => {
+    const n = ar.calls.length;
+    const r = await attempt(['owner@example.com'], 'stranger@example.com');
+    expect(r.state).toMatchObject({ enabled: false });
+    expect(r.state.reason).toMatch(/not available for this account/);
+    expect(r.file.status).toBe(503);
+    expect(r.notams).toMatchObject({ status: 'not-configured', notams: [] });
+    expect(r.notams.message).toMatch(/not available for this account/);
+    expect(ar.calls.length).toBe(n);
+  });
+  test('an empty list (no AUTOROUTER_PILOTS, no ALLOWED_EMAILS) means nobody in Google mode', async () => {
+    const n = ar.calls.length;
+    const r = await attempt([], 'anyone@example.com');
+    expect(r.file.status).toBe(503);
+    expect(r.notams.status).toBe('not-configured');
+    expect(ar.calls.length).toBe(n);
+  });
+  test('a listed pilot (case-insensitive) may file', async () => {
+    const r = await attempt(['Owner@Example.com'], 'owner@example.com');
+    expect(r.state.enabled).toBe(true);
+    expect(r.file.status).toBe(200);
+    expect(r.notams.status).toBe('ok');
+  });
+});
+
+describe('configFromEnv: AUTOROUTER_PILOTS', () => {
+  test('parsed and lower-cased; unset falls back to ALLOWED_EMAILS in createApi', async () => {
+    const { configFromEnv } = await import('../../api/_lib/app');
+    expect(configFromEnv({ AUTOROUTER_PILOTS: ' Pilot@Example.com , b@y.gr,', ALLOWED_EMAILS: 'x@y.z' }).autorouterPilots).toEqual(['pilot@example.com', 'b@y.gr']);
+    expect(configFromEnv({ AUTOROUTER_PILOTS: '' }).autorouterPilots).toEqual([]);
+    expect('autorouterPilots' in configFromEnv({ ALLOWED_EMAILS: 'x@y.z' })).toBe(false);
   });
 });

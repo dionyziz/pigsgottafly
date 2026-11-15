@@ -14,6 +14,7 @@ import type {
 } from '../../src/shared/types.js';
 import { DEFAULT_SETTINGS, DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY } from '../../src/shared/constants.js';
 import { badRequest } from './http.js';
+import { checkCompassCards, checkEquipment, checkFuel, checkMassBalance, checkPerformance } from './aircraftDoc.js';
 
 type Row = Record<string, any>;
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
@@ -184,7 +185,6 @@ export function waypointInput(input: Partial<WaypointInput>, base: WaypointInput
   return w;
 }
 
-const JSON_DOCS = ['fuel', 'massBalance', 'performance', 'equipment'] as const;
 export function aircraftInput(input: Partial<AircraftInput>, base: AircraftInput): AircraftInput {
   const a = { ...base };
   if ('registration' in input) a.registration = str(input.registration, 'registration', 20).toUpperCase();
@@ -197,11 +197,16 @@ export function aircraftInput(input: Partial<AircraftInput>, base: AircraftInput
     if (!['L', 'M', 'H', 'J'].includes(input.wake as string)) throw badRequest('wake must be L, M, H or J');
     a.wake = input.wake!;
   }
-  if ('cruiseTasKt' in input) a.cruiseTasKt = reqNum(input.cruiseTasKt, 'cruiseTasKt', 0, 1000);
-  if ('patternTasKt' in input) a.patternTasKt = reqNum(input.patternTasKt, 'patternTasKt', 0, 1000);
-  if ('climbTasKt' in input) a.climbTasKt = optNum(input.climbTasKt, 'climbTasKt', 0, 1000);
-  for (const k of JSON_DOCS) if (k in input) (a as any)[k] = obj(input[k], k);
-  if ('compassCards' in input) a.compassCards = arr(input.compassCards, 'compassCards');
+  // speeds: JSON numbers only (no string coercion); 0 = not set yet (see aircraftDoc.ts)
+  const tas = (v: unknown, f: string) => { if (typeof v !== 'number') throw badRequest(`${f} must be a number in [0, 1000]`); return reqNum(v, f, 0, 1000); };
+  if ('cruiseTasKt' in input) a.cruiseTasKt = tas(input.cruiseTasKt, 'cruiseTasKt');
+  if ('patternTasKt' in input) a.patternTasKt = tas(input.patternTasKt, 'patternTasKt');
+  if ('climbTasKt' in input) a.climbTasKt = input.climbTasKt == null ? null : tas(input.climbTasKt, 'climbTasKt');
+  if ('fuel' in input) a.fuel = checkFuel(input.fuel);
+  if ('massBalance' in input) a.massBalance = checkMassBalance(input.massBalance);
+  if ('performance' in input) a.performance = checkPerformance(input.performance);
+  if ('equipment' in input) a.equipment = checkEquipment(input.equipment);
+  if ('compassCards' in input) a.compassCards = checkCompassCards(input.compassCards);
   if (!a.registration) throw badRequest('registration is required');
   return a;
 }

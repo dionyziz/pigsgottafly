@@ -3,8 +3,9 @@
 // known fields only, so a stale or buggy client cannot store values that later turn the safety
 // numbers (W&B, altitudes, fuel) into NaN or nonsense. Numbers must be JSON numbers: strings,
 // booleans and null are not coerced (null / absent means "not set" where a field is optional).
-import type { AtcEntry, AtcRole, FlightOptions, FlightSummary, LegOverride, RoutePoint, WbCategory, WindModel } from '../../src/shared/types.js';
+import type { AerodromeRequest, AtcEntry, AtcRole, FlightOptions, FlightSummary, LegOverride, RoutePoint, WbCategory, WindModel } from '../../src/shared/types.js';
 import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
+import { MAX_STOP_MIN } from '../../src/shared/requests.js';
 import { badRequest } from './http.js';
 import { arr, obj } from './rows.js';
 
@@ -151,6 +152,21 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
   if ('remarks' in i) o.remarks = text(i.remarks, 'options.remarks', 1000);
   for (const k of ['departureRunway', 'arrivalRunway'] as const) if (k in i) o[k] = optText(i[k], `options.${k}`, 10);
   for (const k of ['departureSurface', 'arrivalSurface'] as const) if (k in i) o[k] = optText(i[k], `options.${k}`, 60);
+  if ('aerodromeRequests' in i) {
+    const list = i.aerodromeRequests === null ? [] : arr<unknown>(i.aerodromeRequests, 'options.aerodromeRequests');
+    if (list.length > MAX_ROUTE_POINTS) throw badRequest('options.aerodromeRequests has too many entries');
+    o.aerodromeRequests = list.map((v, j): AerodromeRequest => {
+      const r = obj<Record<string, unknown>>(v, `options.aerodromeRequests[${j}]`);
+      const pointUid = text(r.pointUid, `options.aerodromeRequests[${j}].pointUid`, 64);
+      if (!pointUid) throw badRequest(`options.aerodromeRequests[${j}].pointUid is required`);
+      if (r.kind === 'touch-and-go') return { pointUid, kind: 'touch-and-go' };
+      if (r.kind === 'stop') {
+        const m = optNumber(r.stopMin, `options.aerodromeRequests[${j}].stopMin`, 1, MAX_STOP_MIN);
+        return { pointUid, kind: 'stop', stopMin: m ?? 10 };
+      }
+      throw badRequest(`options.aerodromeRequests[${j}].kind must be touch-and-go or stop`);
+    });
+  }
   return o;
 }
 

@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { aircraftFromTypeJson } from '../../../src/shared/templates';
-import { aerodromePerformance, landingDistances, pressureAltitudeFt } from '../../../src/calc';
+import { aerodromePerformance, landingDistances, pressureAltitudeFt, takeoffDistances } from '../../../src/calc';
 import type { RefRunway } from '../../../src/shared';
 
 const type = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../data/aircraft/reims-f172m.json'), 'utf8'));
@@ -96,12 +96,51 @@ describe('landing: both methods, the longer LDR used', () => {
     }
   });
 
-  test('an explicit method computes that method only; take-off stays on the club method', () => {
+  test('an explicit method computes that method only', () => {
     const p = aerodromePerformance({ ...hot, method: 'club' });
     expect(p.distances!.method).toBe('club');
     expect(p.alternative).toBeNull();
-    const to = aerodromePerformance({ ...hot, phase: 'takeoff' });
+    const to = aerodromePerformance({ ...hot, phase: 'takeoff', method: 'club' });
     expect(to.distances!.method).toBe('club');
     expect(to.alternative).toBeNull();
+  });
+});
+
+describe('take-off: both methods, the longer TODR used', () => {
+  // Review case: LGKZ (elevation 2165 ft), QNH 1013, calm, 1043 kg, paved, no slope. Below ISA the
+  // club enters the table at DA < PA (no credit floor but 0 ft), the AFM enters at PA and gives no
+  // credit for cold, so the AFM figure is the longer one. Independent figures (a separate Python
+  // trilinear interpolation of data/aircraft/reims-f172m.json, 1043 kg, PA 2165 ft, 0 kt column):
+  // TODR 754 m, TORR 412 m after × 1.33.
+  const cold = { ...base, phase: 'takeoff' as const, aerodromeElevFt: 2165, qnhHpa: 1013, wind: null, massKg: 1043, runways: [rwy('03', { toraM: 1000, todaM: 1000, slopePct: 0 })] };
+
+  test.each([-10, -5, 0, 5])('OAT %i °C: AFM TODR/TORR (≈ 754/412 m) used, the club figure kept as the alternative', (oatC) => {
+    const p = aerodromePerformance({ ...cold, oatC });
+    const afm = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'afm' });
+    const club = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'club' });
+    expect(p.distances!.method).toBe('afm');
+    expect(p.alternative!.method).toBe('club');
+    expect(p.distances!.requiredTotalM).toBeCloseTo(afm.requiredTotalM, 9);
+    expect(p.alternative!.requiredTotalM).toBeCloseTo(club.requiredTotalM, 9);
+    expect(Math.round(p.distances!.requiredTotalM)).toBeGreaterThanOrEqual(753);
+    expect(Math.round(p.distances!.requiredTotalM)).toBeLessThanOrEqual(755);
+    expect(Math.round(p.distances!.requiredGroundM)).toBeGreaterThanOrEqual(411);
+    expect(Math.round(p.distances!.requiredGroundM)).toBeLessThanOrEqual(413);
+    expect(p.distances!.requiredTotalM).toBeGreaterThan(club.requiredTotalM);
+    expect(p.marginM).toBeCloseTo(Math.min(1000 - afm.requiredTotalM, 1000 - afm.requiredGroundM), 9);
+    expect(p.warnings.join(' ')).toMatch(/AFM method .*no credit for cold.* TODR \d+ m used: longer than the club method's \d+ m/);
+  });
+
+  test('-10 °C: the club method alone would be 18–22 % short of the AFM', () => {
+    const p = aerodromePerformance({ ...cold, oatC: -10 });
+    expect(p.densityAltFt).toBeLessThan(0);
+    expect(p.distances!.requiredTotalM / p.alternative!.requiredTotalM).toBeGreaterThan(1.18);
+  });
+
+  test('headwind: the club figure (no AFM 10/20 kt column credit) is the longer and is used', () => {
+    const p = aerodromePerformance({ ...cold, aerodromeElevFt: 0, qnhHpa: 1013.25, oatC: 15, wind: { dirTrueDeg: 35, speedKt: 15 } });
+    expect(p.distances!.method).toBe('club');
+    expect(p.alternative!.method).toBe('afm');
+    expect(p.distances!.requiredTotalM).toBeGreaterThanOrEqual(p.alternative!.requiredTotalM);
   });
 });

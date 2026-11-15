@@ -5,27 +5,40 @@ import type { Db } from './db.js';
 import type { ApiConfig, Ctx, Req, Res, Route } from './http.js';
 import { compilePath, HttpError, readJsonObject, Reply, send } from './http.js';
 import { googleKeys, localPilotRow, sessionPilotRow } from './auth.js';
+import type { Pilot } from '../../src/shared/types.js';
 import { toPilot } from './rows.js';
 import { ROUTES } from './routes/index.js';
 import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
 
+const emailList = (v: string | undefined) => (v || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiConfig, 'googleKeys' | 'secureCookie'> {
   return {
     googleClientId: env.GOOGLE_CLIENT_ID || '',
-    allowedEmails: (env.ALLOWED_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
+    allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
+    // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots; unset → ALLOWED_EMAILS.
+    ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
   };
 }
 
 export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[] = ROUTES): (req: Req, res: Res) => Promise<void> {
+  const allowedEmails = (opts.allowedEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean);
   const config: ApiConfig = {
     googleClientId: opts.googleClientId || '',
-    allowedEmails: (opts.allowedEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),
+    allowedEmails,
+    autorouterPilots: (opts.autorouterPilots ?? allowedEmails).map((e) => e.trim().toLowerCase()).filter(Boolean),
     googleKeys: opts.googleKeys || googleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
   };
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter) : null;
+  if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {
+    console.warn('autorouter: neither AUTOROUTER_PILOTS nor ALLOWED_EMAILS is set; NOTAMs and filing are disabled for every pilot');
+  }
+  /** The shared autorouter account is for the listed pilots only (local mode: the local pilot). */
+  const autorouterFor = (p: Pilot | null): boolean =>
+    !!p && (!config.googleClientId || config.autorouterPilots!.includes(String(p.email || '').trim().toLowerCase()));
   const db = opts.db;
   const compiled = routes.map((r) => ({ ...r, match: compilePath(r.path) }));
 
@@ -46,7 +59,12 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
           pilot = toPilot(row);
         }
         let bodyP: Promise<any> | null = null;
-        const ctx: Ctx = { req, db, config, params, query: url.searchParams, pilot: pilot!, headers: {}, autorouter, body: () => (bodyP ||= readJsonObject(req)) };
+        const arOk = autorouterFor(pilot);
+        const ctx: Ctx = {
+          req, db, config, params, query: url.searchParams, pilot: pilot!, headers: {},
+          autorouter: arOk ? autorouter : null, autorouterDenied: !!autorouter && !arOk,
+          body: () => (bodyP ||= readJsonObject(req)),
+        };
         const out = await r.handler(ctx);
         if (out instanceof Reply) return send(res, out.status, out.body, { ...ctx.headers, ...out.headers });
         if (out === undefined) return send(res, 204, undefined, ctx.headers);

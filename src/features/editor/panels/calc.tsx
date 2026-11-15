@@ -11,6 +11,7 @@ import {
   isaTempC,
   magneticVariation,
   navlogAircraft,
+  performanceMass,
   pickCompassCard,
   planFuel,
   wbLoadsFromManifest,
@@ -20,7 +21,7 @@ import {
   type NavlogResult,
   type WbResult,
 } from '../../../calc';
-import { CARD_EXPIRY_WARN_DAYS, seatLayout, validateCrew, type RoutePoint } from '../../../shared';
+import { CARD_EXPIRY_WARN_DAYS, requestTiming, seatLayout, validateCrew, type RoutePoint } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
 import { endpointAerodrome } from '../../../data/atc';
@@ -59,6 +60,8 @@ export interface EndpointCalc {
   /** Mass used for the performance figures, kg, and where it came from. */
   massKg: number | null;
   massSource: 'wb' | 'mtow' | null;
+  /** Why MTOW stands in: no W&B, or someone on the manifest has no weight. */
+  massReason: 'weight-missing' | 'no-wb' | null;
 }
 
 export interface FlightCalc {
@@ -69,8 +72,11 @@ export interface FlightCalc {
   navlog: NavlogResult | null;
   fuel: FuelPlan | null;
   wb: WbResult | null;
-  /** W&B status for the flight's category at take-off and landing. */
+  /** W&B status for the flight's category at take-off and landing (envelope and mass limits only). */
   wbOk: { takeoff: boolean; landing: boolean } | null;
+  /** Names of the people on the manifest with no weight (counted as 0 kg in the W&B): the
+   *  balance is incomplete until they are set, whatever wbOk says. */
+  wbMissingWeights: string[];
   departure: EndpointCalc;
   arrival: EndpointCalc;
   crewErrors: string[];
@@ -180,6 +186,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
 
   // ---- navlog
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]), [legs, doc.legOverrides]);
+  const timing = useMemo(() => requestTiming(doc.route, doc.options), [doc.route, doc.options]);
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
   const navlog = useMemo(() => {
     if (!legs.length || !aircraft) return null;
@@ -196,8 +203,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       aircraft: navlogAircraft(aircraft, doc.options.compassCard),
       winds: haveAny ? windProviderFromLegs(perLeg) : null,
       sunTables: SUN_TABLES,
+      patternLegs: timing.patternLegs,
+      groundAfterLegMin: timing.groundAfterLegMin,
     }));
-  }, [legs, aircraft, byMid, doc.date, doc.blockOff, doc.taxiOutMin, doc.taxiInMin, altitudesFt, overrides, doc.options.compassCard]);
+  }, [legs, aircraft, byMid, doc.date, doc.blockOff, doc.taxiOutMin, doc.taxiInMin, altitudesFt, overrides, doc.options.compassCard, timing]);
 
   // ---- fuel
   const fuel = useMemo(() => {
@@ -212,14 +221,15 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       usableL: aircraft.fuel.usableL,
       tripMin: navlog ? navlog.flightMin : 0,
       localFlight: isLocalFlight(doc.route),
+      stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
     }));
-  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL, doc.route]);
+  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL, doc.route, timing]);
 
   // ---- weight and balance
   const wbAll = useMemo(() => {
     if (!aircraft) return null;
     const mb = aircraft.massBalance;
-    const { loads, warnings } = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
+    const { loads, warnings, missingWeights } = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
     const fob = fuel ? fuel.fobL : 0;
     const landingL = fuel ? Math.max(0, fuel.landingFuelL) : fob;
     const r = safe(() => weightAndBalance({
@@ -232,9 +242,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
       category: doc.options.category,
     }));
-    return r ? { wb: r, loadWarnings: warnings } : null;
+    return r ? { wb: r, loadWarnings: warnings, missingWeights } : null;
   }, [aircraft, doc.crew, doc.baggageKg, fuel, doc.options.category]);
   const wb = wbAll?.wb ?? null;
+  const wbMissingWeights = useMemo(() => wbAll?.missingWeights ?? [], [wbAll]);
   const wbOk = useMemo(() => {
     if (!wb) return null;
     const checks = doc.options.category === 'utility' && wb.utility ? wb.utility : wb.normal;
@@ -253,10 +264,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     const reports = ad?.icao && metar ? metar.stations[ad.icao] ?? null : null;
     const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs, modelLabel) : null;
     const surface = fin(timeMs) ? chooseSurface({ metar: reports?.metar ?? null, forecast, timeMs }) : null;
-    let massKg: number | null = null;
-    let massSource: EndpointCalc['massSource'] = null;
-    if (wb) { massKg = phase === 'takeoff' ? wb.takeoff.massKg : wb.landing.massKg; massSource = 'wb'; }
-    else if (aircraft) { massKg = aircraft.massBalance.mtowKg; massSource = 'mtow'; }
+    const { massKg, massSource, reason: massReason } = performanceMass(wb, phase, aircraft?.massBalance.mtowKg, wbMissingWeights.length);
     let perf: AerodromePerf | null = null;
     if (ad && aircraft && massKg != null) {
       const elev = ad.elevFt ?? 0;
@@ -274,14 +282,14 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         surface: phase === 'takeoff' ? doc.options.departureSurface : doc.options.arrivalSurface,
       }));
     }
-    return { phase, aerodrome: ad, timeMs, surface, reports, perf, massKg, massSource };
+    return { phase, aerodrome: ad, timeMs, surface, reports, perf, massKg, massSource, massReason };
   };
   const departure = useMemo(() => endpoint('takeoff', dep, weather?.departure ?? null, takeoffMs),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dep, weather, takeoffMs, metar, wb, aircraft, doc.date, doc.options]);
+    [dep, weather, takeoffMs, metar, wb, wbMissingWeights, aircraft, doc.date, doc.options]);
   const arrival = useMemo(() => endpoint('landing', arr, weather?.destination ?? null, landingMs),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [arr, weather, landingMs, metar, wb, aircraft, doc.date, doc.options]);
+    [arr, weather, landingMs, metar, wb, wbMissingWeights, aircraft, doc.date, doc.options]);
 
   // ---- weather hazards at the planned times and altitudes
   const hazards = useMemo(() => safe(() => computeRouteHazards({
@@ -328,7 +336,11 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     } else if (aircraft && !card) add('info', 'aircraft', `${aircraft.registration} has no compass card: no DEV/CH.`);
     if (fuel) for (const t of fuel.issues) add(t.level, 'fuel', t.text);
     if (fuel && fuel.landingFuelL < 0) add('danger', 'fuel', 'Fuel on board does not cover the trip.');
-    if (wbAll) for (const t of wbAll.loadWarnings) add('warn', 'wb', t);
+    if (wbAll) {
+      for (const t of wbAll.loadWarnings) add('warn', 'wb', t);
+      const n = wbAll.missingWeights.length;
+      if (n) add('warn', 'wb', `W&B incomplete: weight missing for ${n} ${n > 1 ? 'people' : 'person'} (counted as 0 kg).`);
+    }
     if (wb) {
       for (const t of wb.warnings) add('danger', 'wb', t);
       const cat = doc.options.category === 'utility' ? 'utility' : 'normal';
@@ -348,7 +360,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         const avail = p.availableTotalM ?? 0;
         if (avail > 0 && p.marginM < avail * 0.15) add('warn', 'performance', `${label}: margin only ${Math.round(p.marginM)} m.`);
       }
-      if (e.massSource === 'mtow') add('info', 'performance', `${label}: mass unknown, MTOW used.`);
+      if (e.massSource === 'mtow') {
+        add(e.massReason === 'weight-missing' ? 'warn' : 'info', 'performance',
+          e.massReason === 'weight-missing' ? `${label}: W&B incomplete (weight missing), MTOW used.` : `${label}: mass unknown, MTOW used.`);
+      }
       if (fin(e.timeMs) && !e.surface && !weatherLoading) add('info', 'performance', `${label}: no surface forecast, ISA and calm assumed.`);
     }
     if (navlog && !navlog.blockOffSet && (departure.perf || arrival.perf)) add('info', 'performance', 'Block-off time not set: take-off and landing distances use ISA and calm wind.');
@@ -357,7 +372,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       else if (hazardWeather && hazardWeather.status !== 'ok' && hazardWeather.message) add('info', 'weather', hazardWeather.message);
       const legName = (i: number) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '');
       const endName = (e: 'departure' | 'destination') => { const a = e === 'departure' ? dep : arr; return a ? a.icao || a.name : ''; };
-      for (const h of hazards) add(h.level, 'weather', `${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}; advisory).`);
+      for (const h of hazards) add(h.level, 'weather', `${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}).`);
     }
     if (fin(dayMs) && navlog && (fin(takeoffMs) ? takeoffMs : dayMs + DAY) < Date.now() - DAY) add('info', 'time', 'This flight is in the past.');
     return w;
@@ -374,7 +389,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
 
   const value: FlightCalc = {
     weather, weatherLoading, refreshWeather, metar,
-    navlog, fuel, wb, wbOk, departure, arrival, crewErrors, dayMs, hazards, hazardWeather, warnings,
+    navlog, fuel, wb, wbOk, wbMissingWeights, departure, arrival, crewErrors, dayMs, hazards, hazardWeather, warnings,
   };
   return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
 }

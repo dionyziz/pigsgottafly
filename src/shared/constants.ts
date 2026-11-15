@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: PilotSettings = {
   finalReserveMin: 0,
   windModel: 'ecmwf_ifs025',
   enrouteAerodromeRadiusNm: 2,
+  // handledAerodromes: optional, missing = none (kept out of the defaults: migration 003 embeds them)
 };
 
 /** Generic suggestions shown as input PLACEHOLDERS only; never stored without the pilot typing them. */
@@ -55,6 +56,10 @@ export function seatStation(stations: Station[], seatId: string): Station | unde
 }
 /** Seat ids used when a flight has no aircraft yet (the four-seat single layout). */
 export const FALLBACK_SEATS = ['front-left', 'front-right', 'rear-left', 'rear-right'];
+/** The PIC's default seat: front left if the aircraft has it, else its first seat (API and client). */
+export function picSeat(seatIds: string[]): string {
+  return seatIds.includes('front-left') ? 'front-left' : seatIds[0] ?? 'front-left';
+}
 
 /**
  * Manifest validation shared by the API and the client. Returns problems ([] = valid).
@@ -77,7 +82,7 @@ export function validateCrew(crew: { role: string; seat: string }[], seats: stri
 }
 
 /** Export kinds: route /flights/:id/export/:kind. */
-export const EXPORT_KINDS = ['navlog', 'form731', 'gendec', 'fpl', 'wb', 'performance'] as const;
+export const EXPORT_KINDS = ['navlog', 'form731', 'gendec', 'fpl', 'wb', 'performance', 'briefing'] as const;
 export type ExportKind = (typeof EXPORT_KINDS)[number];
 export const EXPORT_LABEL: Record<ExportKind, string> = {
   navlog: 'Navigation log',
@@ -86,6 +91,7 @@ export const EXPORT_LABEL: Record<ExportKind, string> = {
   fpl: 'Flight plan (AFTN)',
   wb: 'Weight & balance',
   performance: 'Take-off & landing performance',
+  briefing: 'NOTAM briefing',
 };
 
 /** Legs per MD4.2 navlog sheet. */
@@ -114,6 +120,7 @@ export const DEFAULT_FLIGHT_OPTIONS: FlightOptions = {
   arrivalRunway: null,
   departureSurface: null,
   arrivalSurface: null,
+  aerodromeRequests: [],
 };
 
 export const EMPTY_SUMMARY: FlightSummary = {

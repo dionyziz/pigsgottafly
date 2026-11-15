@@ -2,7 +2,7 @@
 // station/combined/seat limits and the utility category rules.
 import { describe, expect, test } from 'vitest';
 import { fleetSeed } from '../../../tools/build_seed';
-import { weightAndBalance, wbLoadsFromManifest, insidePolygon, type WbInput } from '../../../src/calc';
+import { weightAndBalance, wbLoadsFromManifest, performanceMass, insidePolygon, type WbInput } from '../../../src/calc';
 
 const [ASV, ASG] = fleetSeed();
 
@@ -150,7 +150,7 @@ test('point in polygon: inside, outside, edges and vertices count as inside', ()
 });
 
 test('manifest → loads: people by seat, baggage by station, missing weights warned', () => {
-  const { loads, warnings } = wbLoadsFromManifest(
+  const { loads, warnings, missingWeights } = wbLoadsFromManifest(
     [
       { role: 'PIC', seat: 'front-left', snapshot: { fullName: 'Pilot', weightKg: 80 } },
       { role: 'PAX', seat: 'rear-left', snapshot: { fullName: 'Guest', weightKg: null } },
@@ -163,5 +163,14 @@ test('manifest → loads: people by seat, baggage by station, missing weights wa
     { stationId: 'rear', seatId: 'rear-left', label: 'PAX Guest', massKg: 0 },
     { stationId: 'bag1', label: 'Baggage area 1', massKg: 12 },
   ]);
-  expect(warnings).toEqual(['Weight of Guest is not set.', 'Baggage at unknown station nowhere.']);
+  expect(warnings).toEqual(['Weight of Guest is not set.', 'Baggage at unknown station nowhere.']);  expect(missingWeights).toEqual(['Guest']);
+});
+
+test('performance mass: W&B when complete, MTOW when a weight is missing or there is no W&B', () => {
+  const wb = { takeoff: { massKg: 900, armM: 1, momentKgM: 900 }, landing: { massKg: 870, armM: 1, momentKgM: 870 } };
+  expect(performanceMass(wb, 'takeoff', 1043, 0)).toEqual({ massKg: 900, massSource: 'wb', reason: null });
+  expect(performanceMass(wb, 'landing', 1043, 0)).toEqual({ massKg: 870, massSource: 'wb', reason: null });
+  expect(performanceMass(wb, 'takeoff', 1043, 1)).toEqual({ massKg: 1043, massSource: 'mtow', reason: 'weight-missing' });
+  expect(performanceMass(null, 'landing', 1043, 0)).toEqual({ massKg: 1043, massSource: 'mtow', reason: 'no-wb' });
+  expect(performanceMass(null, 'takeoff', 0, 0)).toEqual({ massKg: null, massSource: null, reason: null });
 });

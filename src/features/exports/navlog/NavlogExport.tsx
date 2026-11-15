@@ -114,7 +114,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     });
     const hazardStatus = !computed.navlog.blockOffSet ? 'not checked (block-off time not set)'
       : hazardWx && hazardWx.status !== 'ok' ? hazardWx.message
-      : hazardWx && hazardWx.status === 'ok' ? `none found (${hazardWx.sourceLabel}; advisory)` : undefined;
+      : hazardWx && hazardWx.status === 'ok' ? `none found (${hazardWx.sourceLabel})` : undefined;
     return buildNavlogDocument({ doc: flight, aircraft, computed, atc, aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now(), hazards, hazardStatus });
   }, [loading, flight, aircraft, pilot, weather, metar, hazardWx]);
 
@@ -166,6 +166,13 @@ export function NavlogExport({ flight }: { flight: Flight }) {
         style={{ ['--fit' as string]: `${fitPx}px`, ['--hair' as string]: snap(fitPx, 1), ['--thick' as string]: snap(fitPx * 1.6, 2) }}
       >
         {doc.sheets.map((s) => <Sheet key={s.index} sheet={s} doc={doc} />)}
+        {doc.hazardPage && (
+          <section className="md42-hazards" data-testid="navlog-hazard-page" aria-label="Weather hazards">
+            <h2>Weather hazards along the route</h2>
+            <p className="md42-hazards-src">{doc.hazardPage.source}</p>
+            <ol>{doc.hazardPage.items.map((t, i) => <li key={i}>{t}</li>)}</ol>
+          </section>
+        )}
       </div>
     </div>
   );

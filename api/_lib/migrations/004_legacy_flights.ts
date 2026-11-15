@@ -20,6 +20,12 @@
 //   - fuelFlow / fuelExtra (v3 takes the burn rate and the start-up/taxi allowance from the
 //     aircraft; v2's defaults, 30 L/h and 4 L, are the seeded values);
 //   - variation (v3 uses the World Magnetic Model) and the Windy URL (dropped).
+//
+// Every converted value is kept within what PUT /flights accepts (api/_lib/flightDoc.ts and
+// routes/flights.ts checkDoc), because the editor saves the whole document back: one value it
+// refuses (e.g. a v2 altitude override typed as 999999) would make every save of the flight fail.
+// Out-of-range numbers are dropped (the computed value applies), over-long texts are cut, and the
+// result is checked with the same validators (fitLegacyDoc).
 import type { Queryable } from '../db.js';
 import type { AtcEntry, FlightDoc, FlightOptions, LegOverride, PersonDetails, RoutePoint, WindModel } from '../../../src/shared/types.js';
 import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../../src/shared/ref.js';
@@ -27,6 +33,7 @@ import { DEFAULT_FLIGHT_OPTIONS, DEFAULT_SETTINGS, EMPTY_SUMMARY, autoTitle } fr
 import { distanceNm, parseClock, fmtClock } from '../../../src/calc/nav.js';
 import { defaultAltitudes } from '../../../src/calc/altitudes.js';
 import { atcInput, generateAtcList } from '../../../src/data/atc.js';
+import { LEG_OVERRIDE_LIMITS, MAX_ROUTE_POINTS, checkAtc, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 
 const FREQ = /\b1[1-3]\d\.\d{1,3}\b/g;
 const TERM_CELL = /^T\.(.+)\.(field|elev|rwy|freq)$/;
@@ -126,6 +133,84 @@ const num = (v: unknown): number => {
   return isFinite(n) ? n : NaN;
 };
 
+const V2_OVERRIDE_CELLS: [string, keyof LegOverride][] = [['alt', 'altFt'], ['tas', 'tasKt'], ['wd', 'windDirDeg'], ['ws', 'windKt'], ['temp', 'tempC']];
+
+/**
+ * v2 per-leg cells (`L<i>.alt|tas|wd|ws|temp`) → v3 leg overrides keyed '<uid>><uid>'. A value
+ * outside LEG_OVERRIDE_LIMITS (what PUT /flights accepts) is dropped: the computed value applies.
+ */
+export function legacyLegOverrides(ov: Record<string, unknown>, route: Pick<RoutePoint, 'uid'>[]): Record<string, LegOverride> {
+  const out: Record<string, LegOverride> = {};
+  for (let i = 0; i + 1 < route.length; i++) {
+    const o: LegOverride = {};
+    for (const [cell, field] of V2_OVERRIDE_CELLS) {
+      const n = num(ov[`L${i}.${cell}`]);
+      const [min, max] = LEG_OVERRIDE_LIMITS[field];
+      if (isFinite(n) && n >= min && n <= max) o[field] = n;
+    }
+    if (Object.keys(o).length) out[`${route[i].uid}>${route[i + 1].uid}`] = o;
+  }
+  return out;
+}
+
+const cut = (s: unknown, max: number): string => String(s ?? '').trim().slice(0, max).trim();
+const optRange = (v: unknown, min: number, max: number): number | null => {
+  const n = typeof v === 'number' ? v : num(v);
+  return isFinite(n) && n >= min && n <= max ? n : null;
+};
+const validDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z'));
+/** Runs a PUT validator; on a refusal, the fallback (logged: it means a gap in fitLegacyDoc). */
+const passes = <T>(what: string, check: () => T, fallback: T): T => {
+  try {
+    return check();
+  } catch (e) {
+    console.warn(`migration 004: converted ${what} refused by the PUT checks (${(e as Error).message}); using the fallback`);
+    return fallback;
+  }
+};
+
+/**
+ * Brings a converted v2 flight within what PUT /flights accepts, so that the editor (which saves
+ * the whole document) can save it. Mirrors routes/flights.ts checkDoc and the flightDoc.ts checks:
+ * numbers out of range → not set, texts cut to their maximum length, then each sub-document is run
+ * through its validator (a refusal there falls back to an empty value instead of failing the run).
+ */
+export function fitLegacyDoc(doc: FlightDoc, fallbackTaxiMin: number | null): FlightDoc {
+  const route = doc.route
+    .filter((p) => p.lat >= -90 && p.lat <= 90 && p.lon >= -180 && p.lon <= 180)
+    .slice(0, MAX_ROUTE_POINTS)
+    .map((p) => ({ ...p, uid: cut(p.uid, 40), refId: p.refId === null ? null : cut(p.refId, 100), name: cut(p.name, 60) }));
+  const uids = new Set(route.map((p) => p.uid));
+  // overrides of legs whose points were dropped above no longer apply
+  const legOverrides = Object.fromEntries(Object.entries(doc.legOverrides).filter(([k]) => k.split('>').every((u) => uids.has(u))));
+  const atc = doc.atc === null ? null : doc.atc.slice(0, 200).map((e) => ({
+    ...e, id: cut(e.id, 100), group: cut(e.group, 200), callsign: cut(e.callsign, 100), service: cut(e.service, 50),
+    primary: cut(e.primary, 20), backups: e.backups.slice(0, 10).map((b) => cut(b, 20)), remark: cut(e.remark, 500),
+    sourceKey: e.sourceKey === null ? null : cut(e.sourceKey, 200),
+  }));
+  const s = doc.summary;
+  const summary = {
+    ...s, title: cut(s.title, 300), date: validDate(s.date) ? s.date : '', blockOff: cut(s.blockOff, 5), aircraft: cut(s.aircraft, 20),
+    route: s.route.filter(([la, lo]) => la >= -90 && la <= 90 && lo >= -180 && lo <= 180).slice(0, MAX_ROUTE_POINTS),
+    from: cut(s.from, 60), to: cut(s.to, 60),
+    distNm: optRange(s.distNm, 0, 1e5), eteMin: optRange(s.eteMin, 0, 1e5), fuelL: optRange(s.fuelL, 0, 1e5),
+  } as FlightDoc['summary'];
+  const options = { ...doc.options, compassCard: doc.options.compassCard === null ? null : cut(doc.options.compassCard, 100) || null };
+  const taxi = (v: number | null) => (v === null ? null : optRange(v, 0, 600) ?? optRange(fallbackTaxiMin, 0, 600));
+  return {
+    ...doc,
+    title: cut(doc.title, 200),
+    blockOff: /^([01]\d|2[0-3]):[0-5]\d$/.test(doc.blockOff) ? doc.blockOff : '',
+    taxiOutMin: taxi(doc.taxiOutMin),
+    taxiInMin: taxi(doc.taxiInMin),
+    route: passes('route', () => checkRoute(route), []),
+    legOverrides: passes('leg overrides', () => checkLegOverrides(legOverrides), {}),
+    atc: passes('ATC list', () => checkAtc(atc), null),
+    options: passes('options', () => checkOptions(options), { ...DEFAULT_FLIGHT_OPTIONS }),
+    summary: passes('summary', () => checkSummary(summary), { ...EMPTY_SUMMARY }),
+  };
+}
+
 export async function convertLegacyFlights(q: Queryable): Promise<void> {
   const exists = await q.query(`SELECT to_regclass('public.legacy_flights') IS NOT NULL AS ok`);
   if (!exists[0]?.ok) return;
@@ -155,9 +240,9 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
     const settings = { ...DEFAULT_SETTINGS, ...(pilot.settings || {}) };
 
     const route: RoutePoint[] = (Array.isArray(d.waypoints) ? d.waypoints : [])
-      .filter((w: any) => isFinite(w?.lat) && isFinite(w?.lon))
+      .filter((w: any) => w && typeof w === 'object' && Math.abs(num(w.lat)) <= 90 && Math.abs(num(w.lon)) <= 180)
       .map((w: any, i: number): RoutePoint => {
-        const p = { lat: +w.lat, lon: +w.lon };
+        const p = { lat: num(w.lat), lon: num(w.lon) };
         const name = String(w.name || '').trim();
         const ad = ads.find((a) => distanceNm(p, a) <= 1 && (!name || name === a.icao || a.name.includes(name) || name.includes(a.name) || distanceNm(p, a) <= 0.3));
         if (ad) return { uid: `m${i}`, kind: 'aerodrome', refId: ad.id, name: name || ad.icao || ad.name, ...p };
@@ -166,18 +251,8 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
         return { uid: `m${i}`, kind: 'custom', refId: null, name: name || `WP${i}`, ...p };
       });
 
-    const legOverrides: Record<string, LegOverride> = {};
-    const ov = (d.ov || {}) as Record<string, string>;
-    for (let i = 0; i + 1 < route.length; i++) {
-      const o: LegOverride = {};
-      const get = (k: string) => num(ov[`L${i}.${k}`]);
-      if (isFinite(get('alt'))) o.altFt = get('alt');
-      if (isFinite(get('tas'))) o.tasKt = get('tas');
-      if (isFinite(get('wd'))) o.windDirDeg = get('wd');
-      if (isFinite(get('ws'))) o.windKt = get('ws');
-      if (isFinite(get('temp'))) o.tempC = get('temp');
-      if (Object.keys(o).length) legOverrides[`${route[i].uid}>${route[i + 1].uid}`] = o;
-    }
+    const ov = (d.ov && typeof d.ov === 'object' ? d.ov : {}) as Record<string, unknown>;
+    const legOverrides = legacyLegOverrides(ov, route);
 
     // ATC list: only materialised when the v2 list was edited (see legacyAtc)
     let atc: AtcEntry[] | null = null;
@@ -196,7 +271,8 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
     const reg = d.aircraft === 'OTHER' ? String(d.aircraftOther || '').toUpperCase() : String(d.aircraft || '');
     const [ac] = reg ? await q.query('SELECT id FROM aircraft WHERE pilot_id = $1 AND registration = $2', [r.owner, reg]) : [];
     const block = parseClock(d.blockStart);
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || '') ? d.date : new Date(Number(r.created)).toISOString().slice(0, 10);
+    const created = new Date(Number(r.created));
+    const date = validDate(d.date) ? d.date : (isNaN(created.getTime()) ? new Date() : created).toISOString().slice(0, 10);
     const models: WindModel[] = ['ecmwf_ifs025', 'gfs_seamless', 'icon_seamless', 'best_match'];
     const options: FlightOptions = {
       ...DEFAULT_FLIGHT_OPTIONS,
@@ -217,7 +293,7 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
       eteMin: s.ete ?? null,
       fuelL: s.fuel ?? null,
     };
-    const doc: FlightDoc = {
+    const doc: FlightDoc = fitLegacyDoc({
       title: String(d.title || '').trim(),
       date,
       blockOff: isFinite(block) ? fmtClock(block) : '',
@@ -232,18 +308,18 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
       baggageKg: {},
       options,
       summary,
-    };
+    }, settings.taxiOutMin ?? null);
     await q.query(
       `INSERT INTO flights (id, pilot_id, title, date, block_off, aircraft_id, taxi_out_min, taxi_in_min, fob_l, route, leg_overrides,
          atc, baggage_kg, options, summary, version, created, updated, opened, deleted)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, $9::jsonb, $10::jsonb, $18::jsonb, '{}'::jsonb, $11::jsonb, $12::jsonb, $13, $14, $15, $16, $17)
        ON CONFLICT (id) DO NOTHING`,
       [r.id, r.owner, doc.title, doc.date, doc.blockOff, doc.aircraftId, doc.taxiOutMin === null ? null : Math.round(doc.taxiOutMin), doc.taxiInMin === null ? null : Math.round(doc.taxiInMin),
-        JSON.stringify(route), JSON.stringify(legOverrides), JSON.stringify(options), JSON.stringify(summary),
-        Number(r.version) || 1, Number(r.created), Number(r.updated), Number(r.opened) || 0, !!r.deleted, atc === null ? null : JSON.stringify(atc)],
+        JSON.stringify(doc.route), JSON.stringify(doc.legOverrides), JSON.stringify(doc.options), JSON.stringify(doc.summary),
+        Number(r.version) || 1, Number(r.created), Number(r.updated), Number(r.opened) || 0, !!r.deleted, doc.atc === null ? null : JSON.stringify(doc.atc)],
     );
     const pic: PersonDetails = {
-      fullName: pilot.full_name || pilot.name || '', phone: pilot.phone || '', dateOfBirth: pilot.date_of_birth ?? null,
+      fullName: cut(pilot.full_name || pilot.name, 200), phone: cut(pilot.phone, 50), dateOfBirth: pilot.date_of_birth ?? null,
       weightKg: pilot.weight_kg ?? null, idNumber: pilot.id_number || '', idType: pilot.id_type || '',
       nationality: pilot.nationality || '', relation: pilot.relation || '',
     };

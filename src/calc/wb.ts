@@ -255,15 +255,19 @@ export function wbLoadsFromManifest(
   crew: { role: string; seat: string; snapshot: { fullName: string; weightKg: number | null } }[],
   baggageKg: Record<string, number>,
   stations: Station[],
-): { loads: WbLoad[]; warnings: string[] } {
+): { loads: WbLoad[]; warnings: string[]; missingWeights: string[] } {
   const loads: WbLoad[] = [];
   const warnings: string[] = [];
+  const missingWeights: string[] = [];
   const seatToStation = new Map<string, Station>();
   for (const s of stations) if (s.kind === 'seat') for (const seat of s.seats || []) seatToStation.set(seat.id, s);
   for (const c of crew) {
     const name = c.snapshot.fullName || (c.role === 'PIC' ? 'PIC' : 'Passenger');
     const st = seatToStation.get(c.seat);
-    if (c.snapshot.weightKg == null) warnings.push(`Weight of ${name} is not set.`);
+    if (c.snapshot.weightKg == null) {
+      warnings.push(`Weight of ${name} is not set.`);
+      missingWeights.push(name);
+    }
     loads.push({ stationId: st?.id ?? '', seatId: c.seat, label: `${c.role} ${name}`, massKg: c.snapshot.weightKg ?? 0 });
   }
   for (const st of stations) {
@@ -272,5 +276,21 @@ export function wbLoadsFromManifest(
     if (m && m > 0) loads.push({ stationId: st.id, label: st.name, massKg: m });
   }
   for (const id of Object.keys(baggageKg)) if (baggageKg[id] > 0 && !stations.some((s) => s.id === id && s.kind === 'baggage')) warnings.push(`Baggage at unknown station ${id}.`);
-  return { loads, warnings };
+  return { loads, warnings, missingWeights };
+}
+
+/**
+ * The mass the take-off / landing performance uses. The W&B mass when the balance is complete;
+ * MTOW (the conservative bound) when there is no W&B or when someone on the manifest has no
+ * weight: the W&B total would then be too light by that person's weight.
+ */
+export function performanceMass(
+  wb: Pick<WbResult, 'takeoff' | 'landing'> | null,
+  phase: 'takeoff' | 'landing',
+  mtowKg: number | null | undefined,
+  missingWeights: number,
+): { massKg: number | null; massSource: 'wb' | 'mtow' | null; reason: 'weight-missing' | 'no-wb' | null } {
+  if (wb && missingWeights === 0) return { massKg: phase === 'takeoff' ? wb.takeoff.massKg : wb.landing.massKg, massSource: 'wb', reason: null };
+  if (typeof mtowKg === 'number' && mtowKg > 0) return { massKg: mtowKg, massSource: 'mtow', reason: wb ? 'weight-missing' : 'no-wb' };
+  return { massKg: null, massSource: null, reason: null };
 }

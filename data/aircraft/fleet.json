@@ -4,7 +4,7 @@
     "type": "reims-f172m",
     "serial": "F172M01513",
     "colours": "",
-    "_coloursNote": "FPL item 19 A/ (e.g. WHITE BLUE STRIPES). Not stated in the AFM, weighing or compass swing reports: to be filled by the pilot in the hangar (or here, followed by npm exec tsx tools/build_seed.ts, only while migration 003 has not yet been applied in production).",
+    "_coloursNote": "FPL item 19 A/ (e.g. WHITE BLUE STRIPES). No source found: not in the AFM, weighing or compass swing reports, and the club website (mesogeion-aeroclub.gr/ourplane_eng.php) shows only its panel. Left empty for the pilot to fill in the hangar; the FPL export warns until then.",
     "operator": "Aeroclub Mesogeion",
     "cruiseTasKt": 92,
     "patternTasKt": 80,
@@ -31,8 +31,18 @@
   "SX-ASG": {
     "type": "reims-f172m",
     "serial": "F172M1091",
-    "colours": "",
-    "_coloursNote": "FPL item 19 A/ (e.g. WHITE BLUE STRIPES). Not stated in the AFM, weighing or compass swing reports: to be filled by the pilot in the hangar (or here, followed by npm exec tsx tools/build_seed.ts, only while migration 003 has not yet been applied in production).",
+    "colours": "WHITE RED BLACK STRIPES",
+    "_coloursNote": "FPL item 19 A/. From the club's exterior photo of SX-ASG after its repaint (mesogeion-aeroclub.gr/images/ground-to-ground/SXASG_reborn_20141028.jpg, linked from ourplane_eng.php): white, with red and black fuselage cheat lines and tail flash. To be confirmed by the pilot in the hangar.",
+    "equipment": {
+      "jackets": {
+        "present": true,
+        "light": false,
+        "fluorescein": false,
+        "uhf": false,
+        "vhf": false
+      },
+      "_source": "FPL item 19 J/: the 2024 weighing report lists 4 life vests on board (emptyMass._note). Light, fluorescein and radios are not stated, so only J/ is declared."
+    },
     "operator": "Aeroclub Mesogeion",
     "cruiseTasKt": 92,
     "patternTasKt": 80,

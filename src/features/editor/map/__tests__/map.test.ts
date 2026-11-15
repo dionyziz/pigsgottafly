@@ -11,7 +11,11 @@ import {
   type SnapCandidate,
 } from '../snap';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from '../labels';
-import { insertPoint, mercatorMid, pruneOverrides, removePoint, renamePoint, replacePoint, setAltitudeOverride } from '../routeEdit';
+import {
+  addDrawnPoint, drawIndex, insertPoint, isBareRoundTrip, isRoundTrip, mercatorMid, pruneOverrides, removeDrawnPoint, removePoint,
+  renamePoint, replacePoint, setAltitudeOverride,
+} from '../routeEdit';
+import { hazardsByLeg, mapHazards, type MapHazard } from '../hazardLayer';
 import { airspaceFeatures, circleRing, destination, fmtLimit, fmtRouteAltitude, midpointFeatures, runwayHeading, vfrRouteFeatures, zoneFeatures } from '../features';
 import { airspaceInfos, airspaceLabel, airspacesAt, fmtVertical, fmtVLimit, legsThrough, limitFt, pointInRing, shortClass } from '../airspace';
 
@@ -347,5 +351,74 @@ describe('map style', () => {
     const { style } = buildStyle('light', false, null);
     const errors = validateStyleMin(style).map((e: { message: string }) => e.message);
     expect(errors).toEqual([]);
+  });
+});
+
+describe('drawing on a round trip (home → home)', () => {
+  const ad = (uid: string, icao: string, lat = 37.92, lon = 23.73): RoutePoint => ({ uid, kind: 'aerodrome', refId: icao, name: icao, lat, lon });
+  const names = (r: RoutePoint[]) => r.map((p) => p.name).join(' > ');
+  it('recognises a route that returns to its start', () => {
+    expect(isRoundTrip([ad('a', 'LGTT'), ad('b', 'LGTT')])).toBe(true);
+    expect(isBareRoundTrip([ad('a', 'LGTT'), ad('b', 'LGTT')])).toBe(true);
+    expect(isRoundTrip([ad('a', 'LGTT'), pt('x', 38.1, 23.5), ad('b', 'LGTT')])).toBe(true);
+    expect(isBareRoundTrip([ad('a', 'LGTT'), pt('x', 38.1, 23.5), ad('b', 'LGTT')])).toBe(false);
+    expect(isRoundTrip([pt('a', 38, 23), pt('b', 38, 23)])).toBe(true);
+    expect(isRoundTrip([ad('a', 'LGTT'), ad('b', 'LGMG', 37.98, 23.37)])).toBe(false);
+    expect(isRoundTrip([ad('a', 'LGTT')])).toBe(false);
+    expect(isRoundTrip([])).toBe(false);
+  });
+  it('adds drawn points before the closing aerodrome (LGTT > ABLONAS > LGTT, not LGTT > LGTT > ABLONAS)', () => {
+    let r = [ad('a', 'LGTT'), ad('b', 'LGTT')];
+    expect(drawIndex(r)).toBe(1);
+    r = addDrawnPoint(r, pt('ablonas', 38.03, 23.62, 'ABLONAS'));
+    expect(names(r)).toBe('LGTT > ABLONAS > LGTT');
+    r = addDrawnPoint(r, pt('zofri', 38.3, 23.9, 'ZOFRI'));
+    expect(names(r)).toBe('LGTT > ABLONAS > ZOFRI > LGTT');
+    expect(r[0].uid).toBe('a');
+    expect(r[3].uid).toBe('b');
+  });
+  it('appends at the end of a one-way route, and on a round trip when continuing from its last point', () => {
+    const oneWay = [ad('a', 'LGTT'), ad('b', 'LGMG', 37.98, 23.37)];
+    expect(names(addDrawnPoint(oneWay, pt('x', 38, 23, 'X')))).toBe('LGTT > LGMG > X');
+    expect(names(addDrawnPoint([], ad('a', 'LGTT')))).toBe('LGTT');
+    expect(names(addDrawnPoint([ad('a', 'LGTT')], pt('x', 38, 23, 'X')))).toBe('LGTT > X');
+    const loop = [ad('a', 'LGTT'), pt('x', 38, 23, 'X'), ad('b', 'LGTT')];
+    expect(names(addDrawnPoint(loop, pt('y', 38.5, 22, 'Y'), true))).toBe('LGTT > X > LGTT > Y');
+  });
+  it('Backspace removes the point drawn last, keeping the return home', () => {
+    const loop = [ad('a', 'LGTT'), pt('x', 38, 23, 'X'), pt('y', 38.2, 23.2, 'Y'), ad('b', 'LGTT')];
+    expect(names(removeDrawnPoint(loop))).toBe('LGTT > X > LGTT');
+    expect(names(removeDrawnPoint(removeDrawnPoint(loop)))).toBe('LGTT > LGTT');
+    // a bare home → home keeps its departure
+    expect(names(removeDrawnPoint([ad('a', 'LGTT'), ad('b', 'LGTT')]))).toBe('LGTT');
+    expect(names(removeDrawnPoint(loop, true))).toBe('LGTT > X > Y');
+    expect(names(removeDrawnPoint([ad('a', 'LGTT'), pt('x', 38, 23, 'X')]))).toBe('LGTT');
+  });
+});
+
+describe('weather hazards on the map', () => {
+  const legs = [
+    { from: { lat: 38, lon: 23 }, to: { lat: 38.5, lon: 23.5 } },
+    { from: { lat: 38.5, lon: 23.5 }, to: { lat: 39, lon: 24 } },
+  ];
+  const hz = (scope: unknown, level: 'danger' | 'warn', text: string) =>
+    ({ scope, level, text, fromFrac: 0.2, toFrac: 0.6 }) as unknown as Parameters<typeof mapHazards>[0][number];
+  it('keeps the leg of each mark (aerodrome hazards: first / last leg) and drops the time range', () => {
+    const marks = mapHazards([
+      hz({ type: 'leg', legIndex: 1 }, 'warn', 'BKN 1400 ft · planned 1900 ft, 09:00–10:00Z'),
+      hz({ type: 'departure' }, 'danger', 'TS at LGTT'),
+      hz({ type: 'destination' }, 'warn', 'Visibility 4 km'),
+      hz({ type: 'leg', legIndex: 5 }, 'warn', 'nowhere'),
+    ], legs);
+    expect(marks.map((m) => [m.legIndex, m.label])).toEqual([[1, 'BKN 1400 ft · planned 1900 ft'], [0, 'TS at LGTT'], [1, 'Visibility 4 km']]);
+    expect(marks[0].coords).toHaveLength(2);
+    expect(marks[1].coords).toHaveLength(1);
+  });
+  it('summarises the hazards per leg for the label badges: worst level, danger first, no repeats', () => {
+    const m = (legIndex: number | null, level: 'danger' | 'warn', label: string): MapHazard => ({ level, label, legIndex, coords: [[0, 0]] });
+    const by = hazardsByLeg([m(1, 'warn', 'BKN 1400 ft'), m(1, 'danger', 'TS'), m(1, 'warn', 'BKN 1400 ft'), m(0, 'warn', 'VIS'), m(null, 'danger', 'x')]);
+    expect([...by.keys()].sort()).toEqual([0, 1]);
+    expect(by.get(1)).toEqual({ level: 'danger', labels: ['TS', 'BKN 1400 ft'] });
+    expect(by.get(0)).toEqual({ level: 'warn', labels: ['VIS'] });
   });
 });

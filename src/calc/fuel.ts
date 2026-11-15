@@ -1,4 +1,7 @@
 // Fuel planning.
+//   taxi = the aircraft's start-up/taxi/take-off/landing allowance × (1 + intermediate full stops):
+//     a stop (shut-down, start-up, taxi, another take-off) costs the same allowance again; a
+//     touch-and-go costs nothing extra (its pattern time is already in the trip legs at pattern TAS).
 //   required = taxi allowance + trip + final reserve (PilotSettings.finalReserveMin, default 0)
 //   default FOB = required + reserve (PilotSettings.reserveMin at the planning burn; null = not set)
 //   legal floor: whatever the profile says, the fuel left at landing must last at least the EASA
@@ -29,6 +32,11 @@ export interface FuelPlanInput {
   tripMin: number;
   /** Take-off and landing at the same aerodrome (isLocalFlight): the legal floor is 10 min, not 30. */
   localFlight?: boolean;
+  /**
+   * Intermediate full stops (AerodromeRequest kind 'stop'): each adds one more taxi allowance.
+   * Fuel at landing (landingFuelL) is at the FINAL landing.
+   */
+  stops?: number;
 }
 
 /** EASA NCO.OP.125 day VFR final reserve, minutes: 30, or 10 for a local flight. */
@@ -88,7 +96,8 @@ export const minutesFor = (litres: number, burnLph: number): number =>
 
 export function planFuel(input: FuelPlanInput): FuelPlan {
   const warnings: string[] = [];
-  const taxiL = fin(input.taxiAllowanceL) ? Math.max(0, input.taxiAllowanceL) : 0;
+  const stops = fin(input.stops) ? Math.max(0, Math.floor(input.stops)) : 0;
+  const taxiL = (fin(input.taxiAllowanceL) ? Math.max(0, input.taxiAllowanceL) : 0) * (1 + stops);
   const tripL = fin(input.tripFuelL) ? Math.max(0, input.tripFuelL) : 0;
   const finalReserveL = litresFor(fin(input.finalReserveMin) ? input.finalReserveMin : 0, input.burnLph);
   const requiredL = taxiL + tripL + finalReserveL;

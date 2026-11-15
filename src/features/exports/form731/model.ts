@@ -7,6 +7,8 @@ export const ROWS_PER_SHEET = 6;
 export interface Form731Row {
   /** 1-based row number, continuing across sheets. */
   no: number;
+  /** The person's signing key (FormPerson.key). */
+  key: string;
   role: 'PIC' | 'PAX';
   name: string;
   relation: string;
@@ -36,6 +38,7 @@ export function form731Model(props: FormExportProps): Form731Model {
   const people = formPeople(props);
   const rows: Form731Row[] = people.map((p, i) => ({
     no: i + 1,
+    key: p.key,
     role: p.role,
     name: p.details.fullName.trim(),
     relation: p.details.relation.trim(),

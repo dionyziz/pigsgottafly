@@ -14,6 +14,7 @@
 //   - Rounding is that of the paper sheet (calc/nav.ts computeLeg, summarize).
 // Weather sources (winds aloft model run, METAR or forecast at each end) are printed in the notes.
 import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
+import { requestTiming } from '../../../shared';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
   buildLegs, defaultAltitudes, fmtClock, hazardWhere, fmtHdg, fmtHmm, fmtSigned, isLocalFlight, magneticVariation, navlogAircraft, planFuel,
@@ -56,7 +57,8 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
   const { doc, aircraft, settings, weather, ref } = input;
   const legs = buildLegs(doc.route, doc.date);
   const altOverrides = legs.map((l) => doc.legOverrides[l.key]?.altFt);
-  const defaults = defaultAltitudes(doc.route, { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes }, altOverrides);
+  const timing = requestTiming(doc.route, doc.options);
+  const defaults = defaultAltitudes(doc.route, { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes }, altOverrides, timing.patternPoints);
   const altitudesFt = defaults.map((d, i) => (typeof altOverrides[i] === 'number' && isFinite(altOverrides[i]!) ? altOverrides[i]! : d.altFt));
   const ac = aircraft
     ? navlogAircraft(aircraft, doc.options.compassCard)
@@ -72,6 +74,8 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     aircraft: ac,
     winds: weather && weather.status === 'ok' ? windProviderFromLegs(weather.legs) : null,
     sunTables: ref.sunTables,
+    patternLegs: timing.patternLegs,
+    groundAfterLegMin: timing.groundAfterLegMin,
   });
   if (!aircraft) navlog.warnings.unshift('No aircraft selected: speeds, fuel and deviation are missing.');
   const fuel = aircraft && legs.length
@@ -85,6 +89,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
         usableL: aircraft.fuel.usableL,
         tripMin: navlog.flightMin,
         localFlight: isLocalFlight(doc.route),
+        stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
       })
     : null;
   return { legs, altitudesFt, navlog, fuel };
@@ -139,6 +144,51 @@ export interface NavlogDocument {
   warnings: string[];
   /** Weather sources, one line each (also in the notes). */
   sources: string[];
+  /**
+   * Weather hazards that did not fit the notes lines, in full, for a printed list after the
+   * sheets (null when every hazard is on the sheet).
+   */
+  hazardPage: { source: string; items: string[] } | null;
+}
+
+/** Characters per notes line that still print at a readable size (≈ 10 u, ~6.5 pt). */
+export const NOTE_LINE_CHARS = 100;
+/** Notes lines the weather hazards may take (the rest keep times, fuel, DEV/VAR). */
+export const HAZARD_NOTE_LINES = 3;
+
+const hhmm = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`;
+};
+
+/** One hazard in a few words for the ruled notes line: 'L2 BKN 1700 ft, plan 1800 ft, 0800–0900Z'. */
+export function compactHazard(h: Hazard, where: string): string {
+  let t = h.text.replace(/,\s*\d\d:\d\d\s*[–-]\s*\d\d:\d\dZ\s*$/, '').replace(/,\s*\d\d:\d\dZ\s*$/, '');
+  t = t.replace(/\s*\([^)]*\)/g, '').replace(/ · planned /, ', plan ');
+  if (h.suggestedMaxAltFt != null) t += `, max ${h.suggestedMaxAltFt} ft`;
+  const time = isFinite(h.timeFromMs) && isFinite(h.timeToMs)
+    ? (hhmm(h.timeFromMs) === hhmm(h.timeToMs) ? `${hhmm(h.timeFromMs)}Z` : `${hhmm(h.timeFromMs)}–${hhmm(h.timeToMs)}Z`) : '';
+  return [where, t].filter(Boolean).join(' ') + (time ? `, ${time}` : '');
+}
+
+/**
+ * Packs pieces into lines of at most `width` characters, joined with ' · ' (a piece longer than a
+ * line gets a line of its own). Returns the lines and how many pieces were placed.
+ */
+export function packLines(pieces: string[], width: number, maxLines: number): { lines: string[]; placed: number } {
+  const lines: string[] = [];
+  let cur = '';
+  let placed = 0;
+  for (const p of pieces) {
+    const next = cur ? `${cur} · ${p}` : p;
+    if (!cur || next.length <= width) { cur = next; placed++; continue; }
+    if (lines.length + 1 >= maxLines) break;
+    lines.push(cur);
+    cur = p;
+    placed++;
+  }
+  if (cur) lines.push(cur);
+  return { lines, placed };
 }
 
 export interface EndpointWeather {
@@ -233,7 +283,7 @@ export function endpointWeather(
   const timeMs = dayMs + minutes * 60000;
   const label = o.weather?.source?.modelLabel ?? 'Forecast';
   const forecast = isFinite(timeMs) ? surfaceConditions(loc, timeMs, label) : null;
-  const sample = loc && loc.hourly && isFinite(timeMs) ? sampleSurface(loc.hourly, timeMs) : null;
+  const sample = loc && loc.hourly && isFinite(timeMs) ? sampleSurface(loc.hourly, timeMs, loc.elevation) : null;
   const metar = ad?.icao ? o.metar?.stations[ad.icao]?.metar ?? null : null;
   const conditions = isFinite(timeMs) ? chooseSurface({ metar, forecast, timeMs, nowMs: o.nowMs }) : null;
   return { aerodrome: ad, conditions, sample, metar };
@@ -408,6 +458,7 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const sources: string[] = [];
   const notes: string[] = [];
   const warnings0: string[] = [];
+  let hazardPage: NavlogDocument['hazardPage'] = null;
   if (nLegs) {
     const typed = navlog.legs.filter((l) => l.windSource === 'override').map((l) => l.index + 1);
     const typedText = typed.length ? `wind typed by hand on leg${typed.length > 1 ? 's' : ''} ${typed.join(', ')}` : '';
@@ -429,15 +480,34 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
     if (metar && metar.status === 'error' && metar.message) sources.push(metar.message);
 
     const on = navlog.blockOffSet;
-    // Weather hazards first: the notes keep NOTE_LINES lines, the last ones give way.
+    // Weather hazards first, one short item each, packed on up to HAZARD_NOTE_LINES lines that
+    // print at a readable size; what does not fit is listed in full on a page after the sheets.
     const hz = input.hazards ?? [];
     if (hz.length) {
       const legName = (i: number) => (legs[i] ? `${legs[i].from.name}–${legs[i].to.name}` : '');
       const endName = (e: 'departure' | 'destination') => (e === 'departure' ? dep : arr).aerodrome?.icao ?? '';
-      const sorted = [...hz].sort((a, b) => (a.level === b.level ? 0 : a.level === 'danger' ? -1 : 1));
+      // Most severe first, then in route order (departure, legs, destination).
+      const pos = (h: Hazard) => (h.scope.type === 'departure' ? -1 : h.scope.type === 'leg' ? h.scope.legIndex : 1e6);
+      const sorted = [...hz].sort((a, b) => (a.level !== b.level ? (a.level === 'danger' ? -1 : 1) : pos(a) - pos(b)));
       const srcs = [...new Set(hz.map((h) => h.source))].join('; ');
-      notes.push(`WX HAZARDS (advisory, ${srcs}): ` + sorted.map((h) => `${h.scope.type === 'leg' ? `L${h.scope.legIndex + 1}` : endName(h.scope.type)} ${h.text}`).join(' · '));
-      for (const h of sorted) warnings0.push(`${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}; advisory).`);
+      const items = sorted.map((h) => compactHazard(h, h.scope.type === 'leg' ? `L${h.scope.legIndex + 1}` : endName(h.scope.type)));
+      const head = `WX ${srcs}:`;
+      let packed = packLines([head, ...items], NOTE_LINE_CHARS, HAZARD_NOTE_LINES);
+      const full = sorted.map((h) => `${hazardWhere(h, legName, endName)}: ${h.text}`);
+      if (packed.placed < items.length + 1) {
+        // Leave room on the last line for the pointer to the full list.
+        const more = (n: number) => `+${n} more: see the hazard list`;
+        let lines = packed.lines;
+        let placed = packed.placed - 1;
+        while (placed > 0 && (lines[lines.length - 1] + ' · ' + more(items.length - placed)).length > NOTE_LINE_CHARS) {
+          placed--;
+          lines = packLines([head, ...items.slice(0, placed)], NOTE_LINE_CHARS, HAZARD_NOTE_LINES).lines;
+        }
+        lines[lines.length - 1] += ` · ${more(items.length - placed)}`;
+        notes.push(...lines);
+        hazardPage = { source: srcs, items: full };
+      } else notes.push(...packed.lines);
+      for (const h of sorted) warnings0.push(`${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}).`);
     } else if (input.hazardStatus) notes.push(`WX hazards: ${input.hazardStatus}`);
     notes.push(`Block-off ${on ? clockZ(t.blockOffMin) : '—'} · T/O ${on ? clockZ(t.takeoffMin) : '—'} · LDG ${on ? clockZ(t.landingMin) : '—'} · Block-on ${on ? clockZ(t.blockOnMin) : '—'} · taxi ${doc.taxiOutMin ?? '—'}/${doc.taxiInMin ?? '—'} min`);
     if (fuel) {
@@ -461,5 +531,5 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const warnings = [...warnings0, ...navlog.warnings, ...(fuel?.warnings ?? [])];
   if (nLegs && weather && weather.status !== 'ok' && weather.message) warnings.push(weather.message);
 
-  return { sheets, terminal: terminalRows(input.atc, input.aerodromes), notes: notes.slice(0, NOTE_LINES), warnings: [...new Set(warnings)], sources };
+  return { sheets, terminal: terminalRows(input.atc, input.aerodromes), notes: notes.slice(0, NOTE_LINES), warnings: [...new Set(warnings)], sources, hazardPage };
 }

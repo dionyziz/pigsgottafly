@@ -9,6 +9,8 @@
 //     returned; a failed upstream falls back to cached reports up to 3 h old; only when nothing at
 //     all can be had does the route answer 502.
 //   - aviationweather.gov answers 204 when no station in the list has a report.
+//   - Slow upstream: the first request from a cold instance has been seen to take ~12 s (later ones
+//     ~0.2 s). Each attempt may take TIMEOUT_MS; a timeout, network error or 5xx is retried once.
 import type { Route } from '../http.js';
 import { HttpError, reply } from '../http.js';
 import type { MetarTafResponse } from '../../../src/shared/api.js';
@@ -19,7 +21,10 @@ export const TAF_TTL_MS = 10 * 60 * 1000;
 /** Cached reports are served this long when the upstream fails. */
 export const STALE_MAX_MS = 3 * 60 * 60 * 1000;
 const UPSTREAM = 'https://aviationweather.gov/api/data';
-const TIMEOUT_MS = 8000;
+/** Per-attempt upstream timeout. */
+export const TIMEOUT_MS = 15000;
+/** Extra attempts after a timeout, network error or 5xx. */
+export const RETRIES = 1;
 
 interface MetarRow { icaoId?: string; rawOb?: string; obsTime?: number; reportTime?: string }
 interface TafRow { icaoId?: string; rawTAF?: string; issueTime?: string; mostRecent?: number }
@@ -30,6 +35,14 @@ interface MetarValue { raw: string; observed: number | null }
 export interface WeatherProxyOptions {
   fetch?: typeof fetch;
   now?: () => number;
+  /** Per-attempt timeout, ms (default TIMEOUT_MS). */
+  timeoutMs?: number;
+  /** Retries after a timeout, network error or 5xx (default RETRIES). */
+  retries?: number;
+}
+
+class UpstreamError extends Error {
+  constructor(message: string, readonly retryable: boolean) { super(message); }
 }
 
 /** Parses ?ids= (comma or space separated), upper-cased, de-duplicated, valid ICAO only. */
@@ -67,18 +80,36 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
   const metarCache = new Map<string, Entry<MetarValue>>();
   const tafCache = new Map<string, Entry<string>>();
 
-  async function upstream(kind: 'metar' | 'taf', ids: string[]): Promise<unknown[]> {
+  async function attempt(kind: 'metar' | 'taf', ids: string[]): Promise<unknown[]> {
     const doFetch = opts.fetch || fetch;
     const url = `${UPSTREAM}/${kind}?ids=${ids.join(',')}&format=json`;
-    const res = await doFetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'vfr-planner-weather-proxy' },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    let res: Response;
+    try {
+      res = await doFetch(url, {
+        headers: { Accept: 'application/json', 'User-Agent': 'vfr-planner-weather-proxy' },
+        signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
+      });
+    } catch (e) {
+      throw new UpstreamError(`${kind}: ${String((e as Error)?.message || e)}`, true); // timeout or network error
+    }
     if (res.status === 204) return [];
-    if (!res.ok) throw new Error(`${kind} HTTP ${res.status}`);
-    const body = await res.json();
-    if (!Array.isArray(body)) throw new Error(`${kind}: unexpected response`);
+    if (!res.ok) throw new UpstreamError(`${kind} HTTP ${res.status}`, res.status >= 500 || res.status === 429);
+    let body: unknown;
+    try { body = await res.json(); } catch (e) { throw new UpstreamError(`${kind}: ${String((e as Error)?.message || e)}`, true); }
+    if (!Array.isArray(body)) throw new UpstreamError(`${kind}: unexpected response`, false);
     return body;
+  }
+
+  async function upstream(kind: 'metar' | 'taf', ids: string[]): Promise<unknown[]> {
+    const retries = opts.retries ?? RETRIES;
+    for (let i = 0; ; i++) {
+      try {
+        return await attempt(kind, ids);
+      } catch (e) {
+        if (!(e instanceof UpstreamError) || !e.retryable || i >= retries) throw e;
+        console.warn(`weather proxy: ${e.message}; retrying`);
+      }
+    }
   }
 
   /** Refreshes one cache for the ids that are missing or expired; false if the upstream failed. */

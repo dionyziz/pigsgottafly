@@ -29,7 +29,7 @@ function numParam(v: string | null, field: string, min: number, max: number): nu
 export const routes: Route[] = [
   {
     method: 'GET', path: '/flights/:id/notams',
-    async handler({ db, pilot, params, query, autorouter }): Promise<NotamBriefing> {
+    async handler({ db, pilot, params, query, autorouter, autorouterDenied }): Promise<NotamBriefing> {
       const ctx = await flightContext(db, pilot.id, params.id);
       const planned = ctx.altitudesFt.filter(Number.isFinite);
       const maxAltFt = numParam(query.get('maxAltFt'), 'maxAltFt', 0, 60000) ?? (planned.length ? Math.max(...planned) : DEFAULT_MAX_ALT_FT);
@@ -49,7 +49,9 @@ export const routes: Route[] = [
       if (!autorouter) {
         return {
           ...base, status: 'not-configured', source: null, fetched: null, notams: [], relevantCount: 0, hiddenCount: 0,
-          message: 'NOTAMs are not available yet: the autorouter NOTAM source is not configured (API access pending). Get the NOTAM briefing from AIS before flight.',
+          message: autorouterDenied
+            ? 'NOTAMs are not available for this account: the server’s autorouter NOTAM source is limited to its listed pilots. Get the NOTAM briefing from AIS before flight.'
+            : 'NOTAMs are not available yet: the autorouter NOTAM source is not configured (API access pending). Get the NOTAM briefing from AIS before flight.',
         };
       }
       let notams: Notam[];

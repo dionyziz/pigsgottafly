@@ -3,14 +3,18 @@
 // Rules (PLAN-v3 "Calculations", ported from the v2 app js/app.js calc()):
 //   - block-off + taxi out = take-off; legs flown in sequence; landing + taxi in = block-on.
 //   - first and last legs at pattern TAS, the others at cruise TAS (LegOverride.tasKt wins); a
-//     single-leg route is both first and last, so pattern TAS.
+//     single-leg route is both first and last, so pattern TAS. Legs into and out of an
+//     intermediate aerodrome with a touch-and-go or stop request (NavlogInput.patternLegs) are at
+//     pattern TAS too, and a stop's minutes on the ground (groundAfterLegMin) are added to the
+//     timeline after the leg that lands there.
 //   - wind/temperature per leg sampled at the leg midpoint, leg altitude and mid-leg time; since GS
 //     depends on the wind and the mid-leg time on GS, iterate (4 passes, as v2). The sampled wind
 //     is rounded as written on the sheet (direction 1..360, speed kt) before the wind triangle.
 //   - variation per leg from WMM2025 at the midpoint on the flight date (LegGeometry.variation);
 //     deviation from the compass card.
 //   - rounding as on the paper sheet: nav.computeLeg(); totals with nav.summarize().
-//   - trip fuel = Σ leg fuel (each rounded up); fuel total on the sheet = trip + taxi allowance.
+//   - trip fuel = Σ leg fuel (each rounded up); fuel total on the sheet = trip + taxi allowance
+//     (× (1 + intermediate full stops): each stop is another start-up, taxi and take-off).
 //   - the timeline (leg start/end, landing, block-on) uses the unrounded leg minutes (as v2); the
 //     written ETE column rounds each leg.
 //   - sunset at the destination (AIP GEN 2.7 tables when given, else NOAA).
@@ -66,6 +70,10 @@ export interface NavlogInput {
   winds: WindProvider | null;
   /** AIP GEN 2.7 sunset tables (REF SUN_TABLES); omitted → NOAA sunset. */
   sunTables?: Record<string, RefSunTable>;
+  /** Per leg: also flown at pattern TAS (touch-and-go / stop requests: requestTiming()). */
+  patternLegs?: boolean[];
+  /** Per leg: minutes on the ground after the leg (intermediate stops). */
+  groundAfterLegMin?: number[];
 }
 
 export interface NavlogLeg extends ComputedLeg {
@@ -155,7 +163,7 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   const tas = legs.map((_, i) => {
     const o = input.overrides[i]?.tasKt;
     if (fin(o) && o > 0) return o;
-    return i === 0 || i === n - 1 ? ac.patternTasKt : ac.cruiseTasKt;
+    return i === 0 || i === n - 1 || input.patternLegs?.[i] ? ac.patternTasKt : ac.cruiseTasKt;
   });
   const alt = legs.map((_, i) => (fin(input.altitudesFt[i]) ? input.altitudesFt[i] : NaN));
 
@@ -185,6 +193,9 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
       if (!(ac.burnLph > 0)) delete r.fuel;
       const flown = fin(r.minutesExact) ? r.minutesExact : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
       t = startMin + flown;
+      const endMin = t;
+      const ground = input.groundAfterLegMin?.[i];
+      if (fin(ground) && ground > 0 && i < n - 1) t += ground;
       return {
         ...r,
         index: i,
@@ -198,12 +209,15 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
         mc: norm360(Math.round(L.mcMag)) || 360,
         variation: L.variation,
         startMin,
-        endMin: t,
+        endMin,
       };
     });
   }
 
-  const totals = summarize(rows, ac.taxiAllowanceL || 0);
+  // One start-up/taxi/take-off/landing allowance, plus one per intermediate full stop (a leg
+  // followed by ground time), as planFuel({ stops }).
+  const stops = n ? (input.groundAfterLegMin ?? []).slice(0, n - 1).filter((m) => fin(m) && m > 0).length : 0;
+  const totals = summarize(rows, (ac.taxiAllowanceL || 0) * (1 + stops));
   const landingMin = n ? rows[n - 1].endMin : takeoffMin;
   const blockOnMin = landingMin + taxiIn;
 

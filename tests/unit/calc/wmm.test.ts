@@ -148,5 +148,5 @@ test('legs take the variation at the great-circle midpoint on the flight date', 
   expect(leg.mid.lat).toBeCloseTo(m.lat, 9);
   expect(leg.mid.lon).toBeCloseTo(m.lon, 9);
   expect(leg.variation).toBeCloseTo(wmmField(m.lat, m.lon, 0, decimalYear('2028-03-01')).decl, 9);
-  expect(leg.mcMag).toBeCloseTo(((leg.tcTrue - leg.variation) % 360 + 360) % 360, 9);
+  expect(leg.mcMag).toBe(((Math.round(leg.tcTrue) - Math.round(leg.variation)) % 360 + 360) % 360);
 });

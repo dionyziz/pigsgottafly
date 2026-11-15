@@ -1,7 +1,9 @@
 // Weather hazards on the map: each hazard of a leg is drawn as a wide translucent band over the
-// stretch of the leg it affects (amber = warn, red = danger) with a short label on it ("BKN 1700 ft ·
-// planned 1900 ft"); aerodrome hazards as a ring around the aerodrome. No leg reference: the mark
-// sits on the affected stretch (PLAN-v3). Self-contained: adds its own source and layers on demand.
+// stretch of the leg it affects (amber = warn, red = danger); aerodrome hazards as a ring around the
+// aerodrome. The texts ("BKN 1700 ft · planned 1900 ft") are not printed on the chart, where they
+// would collide with the leg labels and each other: the leg label carries a small warning badge
+// (hazardsByLeg) and hovering a band, a ring or the badge shows the texts. Self-contained: adds its
+// own source and layers on demand.
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 import type { Hazard } from '../../../calc';
 import type { LatLon } from '../../../shared';
@@ -11,10 +13,12 @@ export interface MapHazard {
   /** Line (leg stretch) or a single point (aerodrome). */
   coords: [number, number][];
   label: string;
+  /** Leg the hazard is on (aerodrome hazards: the first / last leg), or null. */
+  legIndex: number | null;
 }
 
 const SRC = 'wx-hazards';
-export const HAZARD_LAYER_IDS = ['wx-hazards-band', 'wx-hazards-ring', 'wx-hazards-label'] as const;
+export const HAZARD_LAYER_IDS = ['wx-hazards-band', 'wx-hazards-ring'] as const;
 
 const lerp = (a: LatLon, b: LatLon, f: number): [number, number] => [a.lon + (b.lon - a.lon) * f, a.lat + (b.lat - a.lat) * f];
 
@@ -28,15 +32,55 @@ export function mapHazards(hazards: Hazard[], legs: { from: LatLon; to: LatLon }
       const l = legs[h.scope.legIndex];
       if (!l) continue;
       const a = h.fromFrac, b = Math.max(h.toFrac, a + 0.02);
-      out.push({ level: h.level, coords: [lerp(l.from, l.to, a), lerp(l.from, l.to, Math.min(1, b))], label });
+      out.push({ level: h.level, coords: [lerp(l.from, l.to, a), lerp(l.from, l.to, Math.min(1, b))], label, legIndex: h.scope.legIndex });
     } else {
       const l = h.scope.type === 'departure' ? legs[0] : legs[legs.length - 1];
       if (!l) continue;
       const p = h.scope.type === 'departure' ? l.from : l.to;
-      out.push({ level: h.level, coords: [[p.lon, p.lat]], label });
+      out.push({ level: h.level, coords: [[p.lon, p.lat]], label, legIndex: h.scope.type === 'departure' ? 0 : legs.length - 1 });
     }
   }
   return out;
+}
+
+export interface LegHazards {
+  /** Worst level on the leg. */
+  level: 'danger' | 'warn';
+  /** Hazard texts, danger first, without repeats. */
+  labels: string[];
+}
+
+/** The hazards of each leg (by leg index) for the leg-label badges; legs without hazards are absent. */
+export function hazardsByLeg(list: MapHazard[]): Map<number, LegHazards> {
+  const out = new Map<number, LegHazards>();
+  const sorted = [...list].sort((a, b) => (a.level === b.level ? 0 : a.level === 'danger' ? -1 : 1));
+  for (const h of sorted) {
+    if (h.legIndex === null) continue;
+    const cur = out.get(h.legIndex);
+    if (!cur) out.set(h.legIndex, { level: h.level, labels: [h.label] });
+    else if (!cur.labels.includes(h.label)) cur.labels.push(h.label);
+  }
+  return out;
+}
+
+/** Texts of the hazard marks under a screen point (deduplicated, danger first), or []. */
+export function hazardLabelsAt(m: MlMap, point: { x: number; y: number }, list: MapHazard[]): { level: 'danger' | 'warn'; label: string }[] {
+  if (!list.length || !m.getLayer('wx-hazards-band')) return [];
+  let feats: { id?: string | number }[];
+  try {
+    feats = m.queryRenderedFeatures([[point.x - 3, point.y - 3], [point.x + 3, point.y + 3]], { layers: [...HAZARD_LAYER_IDS] });
+  } catch {
+    return [];
+  }
+  const seen = new Set<string>();
+  const out: { level: 'danger' | 'warn'; label: string }[] = [];
+  for (const f of feats) {
+    const h = typeof f.id === 'number' ? list[f.id] : undefined;
+    if (!h || seen.has(h.label)) continue;
+    seen.add(h.label);
+    out.push({ level: h.level, label: h.label });
+  }
+  return out.sort((a, b) => (a.level === b.level ? 0 : a.level === 'danger' ? -1 : 1));
 }
 
 function featureCollection(list: MapHazard[]) {
@@ -64,14 +108,6 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
     id: 'wx-hazards-ring', type: 'circle', source: SRC, filter: ['==', ['geometry-type'], 'Point'],
     paint: { 'circle-radius': 18, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': color, 'circle-stroke-width': 3, 'circle-stroke-opacity': 0.75 },
   }, before);
-  m.addLayer({
-    id: 'wx-hazards-label', type: 'symbol', source: SRC,
-    layout: {
-      'text-field': ['get', 'label'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] as never,
-      'symbol-placement': 'point', 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-max-width': 14, 'text-optional': true,
-    } as never,
-    paint: { 'text-color': color, 'text-halo-color': '#ffffff', 'text-halo-width': 1.6 },
-  });
 }
 
 /** Sets the hazard marks (adds the layers the first time). */

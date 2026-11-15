@@ -5,6 +5,7 @@ import { aircraftInput, toAircraft } from '../rows.js';
 import { blankAircraft } from '../../../src/shared/templates.js';
 import type { AircraftInput } from '../../../src/shared/types.js';
 import type { Queryable } from '../db.js';
+import { checkReports, deleteAttachments } from './attachments.js';
 
 async function get(db: Queryable, pilotId: string, id: string) {
   const [r] = await db.query('SELECT * FROM aircraft WHERE id = $1 AND pilot_id = $2', [id, pilotId]);
@@ -42,6 +43,8 @@ export const routes: Route[] = [
     method: 'POST', path: '/aircraft',
     async handler({ db, pilot, body }) {
       const a = aircraftInput(await body(), blankAircraft());
+      // a new aircraft has no files yet: references copied from another aircraft are dropped
+      a.compassCards = a.compassCards.map(({ report: _r, ...c }) => c);
       const created = await write(db, pilot.id, await newId('ac'), a, true);
       // A pilot without a default aircraft (an empty hangar, or the default was deleted) gets this one,
       // so new flights open with an aircraft. An existing default is never replaced.
@@ -54,7 +57,13 @@ export const routes: Route[] = [
     method: 'PUT', path: '/aircraft/:id',
     async handler({ db, pilot, params, body }) {
       const { id: _i, created: _c, updated: _u, ...cur } = await get(db, pilot.id, params.id);
-      return write(db, pilot.id, params.id, aircraftInput(await body(), cur), false);
+      const a = aircraftInput(await body(), cur);
+      const { cards, unused } = await checkReports(db, pilot.id, params.id, a.compassCards);
+      a.compassCards = cards;
+      const saved = await write(db, pilot.id, params.id, a, false);
+      // swing reports no card refers to any more (replaced, removed, or uploaded and never saved)
+      await deleteAttachments(db, pilot.id, unused);
+      return saved;
     },
   },
   {

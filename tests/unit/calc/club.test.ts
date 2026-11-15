@@ -283,6 +283,10 @@ describe('club performance (MD 4.4)', () => {
   //                                    while the AFM gives no credit below standard)
   //   take-off, headwind:  0.72–1.10  (AFM 10/20 kt columns credit more than −10 %/5 kt)
   //   landing:             1.00–1.10  (same wind rule; PA + 10 %/15 °C ≥ DA entry in heat)
+  // These bounds hold over the fixture (low aerodromes, mild temperatures). Outside it the AFM can be
+  // much longer: at an elevated aerodrome on a cold day the club's DA falls well below PA (LGKZ,
+  // 2165 ft, −10 °C: TODR AFM/club = 1.22). aerodromePerformance therefore computes both methods
+  // for take-off as for landing and uses the longer (perfWindMethod.test.ts).
   test('AFM method vs the club: differs as explained (temperature model; take-off headwind columns)', () => {
     for (const c of CASES) {
       for (const ph of PHASES) {

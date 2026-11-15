@@ -22,7 +22,7 @@ const FALLBACK_LABELS: Record<string, string> = { 'front-left': 'Front left', 'f
 
 export function ManifestSection() {
   const { doc, update, aircraft, passengers, pilot, reloadLists } = useEditor();
-  const { wb, wbOk, crewErrors, fuel } = useFlightCalc();
+  const { wb, wbOk, wbMissingWeights, crewErrors, fuel } = useFlightCalc();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
@@ -103,7 +103,9 @@ export function ManifestSection() {
     <>
       <span className="muted">{doc.crew.length} POB</span>
       {crewErrors.length > 0 && <Chip tone="danger">Check</Chip>}
-      {wbOk && (wbOk.takeoff && wbOk.landing ? <Chip tone="ok">W&amp;B ok</Chip> : <Chip tone="danger">W&amp;B out</Chip>)}
+      {wbOk && (!(wbOk.takeoff && wbOk.landing) ? <Chip tone="danger">W&amp;B out</Chip>
+        : wbMissingWeights.length ? <Chip tone="warn">W&amp;B incomplete</Chip>
+        : <Chip tone="ok">W&amp;B ok</Chip>)}
     </>
   );
 
@@ -225,7 +227,9 @@ export function ManifestSection() {
           {wb && (
             <div className="ep-wb" data-testid="wb-summary">
               <div className="ep-kvs">
-                <KV k="People" v={<span className="mono">{total.toFixed(0)} kg</span>} />
+                <KV k="People" v={<span className="mono">{total.toFixed(0)} kg</span>}
+                  tone={wbMissingWeights.length ? 'warn' : undefined}
+                  sub={wbMissingWeights.length ? <span data-testid="wb-missing">weight missing: {wbMissingWeights.join(', ')}</span> : undefined} />
                 <KV k="Fuel at take-off" v={<span className="mono">{fuel ? `${fuel.fobL} L` : '–'}</span>} />
                 <KV k="Take-off" tone={wbOk && !wbOk.takeoff ? 'danger' : undefined}
                   v={<span className="mono">{wb.takeoff.massKg.toFixed(1)} kg</span>} sub={<span className="mono">CG {wb.takeoff.armM.toFixed(3)} m</span>} />

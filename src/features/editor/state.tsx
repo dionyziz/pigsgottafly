@@ -5,7 +5,7 @@
 // and change the flight only through update().
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Aircraft, Flight, FlightDoc, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
-import { autoTitle, EMPTY_SUMMARY } from '../../shared';
+import { autoTitle, EMPTY_SUMMARY, requestTiming } from '../../shared';
 import { buildLegs, defaultAltitudes, type AltitudeDefault, type LegGeometry } from '../../calc';
 import { REF } from '../../data/ref';
 import { flightStore, type SaveStatus } from '../../data/flightStore';
@@ -93,9 +93,10 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
   const aircraft = useMemo(() => hangar.find((a) => a.id === doc.aircraftId) ?? null, [hangar, doc.aircraftId]);
   const legs = useMemo(() => buildLegs(doc.route, doc.date), [doc.route, doc.date]);
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]?.altFt), [legs, doc.legOverrides]);
+  const requestTimes = useMemo(() => requestTiming(doc.route, doc.options), [doc.route, doc.options]);
   const altitudeDefaults = useMemo(
-    () => defaultAltitudes(doc.route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }, overrides),
-    [doc.route, overrides],
+    () => defaultAltitudes(doc.route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }, overrides, requestTimes.patternPoints),
+    [doc.route, overrides, requestTimes],
   );
   const altitudesFt = useMemo(() => altitudeDefaults.map((d, i) => overrides[i] ?? d.altFt), [altitudeDefaults, overrides]);
 

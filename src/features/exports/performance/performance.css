@@ -51,4 +51,5 @@
 @media print {
   .perf-rows th { padding-top: 0.45mm; padding-bottom: 0.45mm; }
   .perf-rows td { padding-top: 0.45mm; padding-bottom: 0.45mm; }
+  .perf-rows .perf-note { line-height: 1.1; }
 }

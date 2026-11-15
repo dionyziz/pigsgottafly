@@ -7,6 +7,47 @@ export function appendPoint(route: RoutePoint[], p: RoutePoint): RoutePoint[] {
   return [...route, p];
 }
 
+/**
+ * True when the route comes back to where it started (A … A), as a new flight home → home does.
+ * Points are the same when they reference the same aerodrome / VFR point / waypoint, or sit at the
+ * same position.
+ */
+export function isRoundTrip(route: RoutePoint[]): boolean {
+  if (route.length < 2) return false;
+  const a = route[0], b = route[route.length - 1];
+  if (a.kind !== 'custom' && a.refId && a.kind === b.kind && a.refId === b.refId) return true;
+  return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
+}
+
+/** A route that only goes from a point back to itself (the home → home of a new flight). */
+export function isBareRoundTrip(route: RoutePoint[]): boolean {
+  return route.length === 2 && isRoundTrip(route);
+}
+
+/**
+ * Where drawing adds its next point. On a round trip it goes before the closing point, so drawing
+ * from LGTT → LGTT gives LGTT → A → B → LGTT (the flight still returns home); otherwise, or when the
+ * pilot explicitly continues from the last point (`toEnd`), at the end.
+ */
+export function drawIndex(route: RoutePoint[], toEnd = false): number {
+  return !toEnd && isRoundTrip(route) ? route.length - 1 : route.length;
+}
+
+/** Add a drawn point where drawing adds points (drawIndex). */
+export function addDrawnPoint(route: RoutePoint[], p: RoutePoint, toEnd = false): RoutePoint[] {
+  return insertPoint(route, drawIndex(route, toEnd), p);
+}
+
+/**
+ * Backspace while drawing: remove the point drawn last (the one just before the closing point of a
+ * round trip). The departure of a bare round trip is never removed this way: then the closing point goes.
+ */
+export function removeDrawnPoint(route: RoutePoint[], toEnd = false): RoutePoint[] {
+  const i = drawIndex(route, toEnd) - 1;
+  if (i >= 1 && i < route.length - 1) return [...route.slice(0, i), ...route.slice(i + 1)];
+  return route.slice(0, -1);
+}
+
 /** Insert p before index i (i = leg index + 1 when splitting leg i). */
 export function insertPoint(route: RoutePoint[], i: number, p: RoutePoint): RoutePoint[] {
   const k = Math.max(0, Math.min(route.length, i));

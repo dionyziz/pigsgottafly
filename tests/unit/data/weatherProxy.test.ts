@@ -89,6 +89,42 @@ describe('weather proxy', () => {
     await expect(q.get(['LGAV'])).rejects.toMatchObject({ status: 502 });
   });
 
+  test('a slow or failed first upstream call is retried once (cold instance: ~12 s first answer)', async () => {
+    const up = upstream();
+    let n = 0;
+    // the first call of each kind hangs past the timeout, the retry answers at once
+    const seen = new Set<string>();
+    const slowFirst = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      n++;
+      const kind = String(input).includes('/metar') ? 'metar' : 'taf';
+      if (!seen.has(kind)) {
+        seen.add(kind);
+        return new Promise<Response>((_, reject) => init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason)));
+      }
+      return up.f(input, init);
+    }) as typeof fetch;
+    const p = createWeatherProxy({ fetch: slowFirst, now: () => T0, timeoutMs: 50 });
+    const r = await p.get(['LGAV']);
+    expect(r.stations.LGAV.metar).toBe(metars.find((m) => m.icaoId === 'LGAV')!.rawOb);
+    expect(r.stations.LGAV.taf).toBeTruthy();
+    expect(n).toBe(4);
+    // 5xx is retried, then given up (one retry by default)
+    const down = upstream();
+    down.state.metarDown = true;
+    const q = createWeatherProxy({ fetch: down.f, now: () => T0 });
+    const r2 = await q.get(['LGAV']);
+    expect(r2.stations.LGAV.metar).toBeNull();
+    expect(down.calls.filter((c) => c.startsWith('metar'))).toHaveLength(2);
+    // a 4xx is not retried
+    const bad = upstream();
+    const f400 = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/metar')) { bad.calls.push('metar'); return new Response('bad', { status: 400 }); }
+      return bad.f(input, init);
+    }) as typeof fetch;
+    await createWeatherProxy({ fetch: f400, now: () => T0 }).get(['LGAV']);
+    expect(bad.calls.filter((c) => c === 'metar')).toHaveLength(1);
+  });
+
   test('validates ids', async () => {
     const p = createWeatherProxy({ fetch: upstream().f, now: () => T0 });
     await expect(p.routes[0].handler(ctx(''))).rejects.toMatchObject({ status: 400 });

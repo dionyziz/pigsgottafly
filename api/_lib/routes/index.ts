@@ -4,6 +4,7 @@ import type { Route } from '../http.js';
 import { routes as session } from './session.js';
 import { routes as me } from './me.js';
 import { routes as aircraft } from './aircraft.js';
+import { routes as attachments } from './attachments.js';
 import { routes as passengers } from './passengers.js';
 import { routes as waypoints } from './waypoints.js';
 import { routes as flights } from './flights.js';
@@ -11,5 +12,6 @@ import { routes as ref } from './ref.js';
 import { routes as weather } from './weather.js';
 import { routes as notams } from './notams.js';
 import { routes as filing } from './filing.js';
+import { routes as forms } from './forms.js';
 
-export const ROUTES: Route[] = [...session, ...me, ...aircraft, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing];
+export const ROUTES: Route[] = [...session, ...me, ...aircraft, ...attachments, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing, ...forms];

@@ -1,7 +1,7 @@
 // The editor's map slot: binds the controlled <RouteMap> to the editor state. Every edit is one
 // update() call (one undo step); leg overrides of legs that no longer exist are dropped with it.
 import { useCallback, useMemo } from 'react';
-import type { RoutePoint } from '../../../shared';
+import { setRequest, type AerodromeRequest, type RoutePoint } from '../../../shared';
 import { api } from '../../../data/api';
 import { aerodrome } from '../../../data/ref';
 import { useEditor } from '../state';
@@ -9,12 +9,26 @@ import { RouteMap, type LegAltitude } from './RouteMap';
 import { pruneOverrides, setAltitudeOverride } from './routeEdit';
 import { mapHazards } from './hazardLayer';
 import { useFlightCalc } from '../panels/calc';
+import { useNotams } from '../notams';
+import { visibleNotams } from '../../../data/notams';
 
 export function MapView() {
   const { doc, update, undo, redo, canUndo, canRedo, waypoints, ref, legs, altitudeDefaults, altitudesFt, pilot, reloadLists } = useEditor();
 
   const { hazards } = useFlightCalc();
   const hazardMarks = useMemo(() => mapHazards(hazards, legs), [hazards, legs]);
+  const { briefing, showAll, selected: selectedNotam, select: selectNotam } = useNotams();
+  const notams = useMemo(() => visibleNotams(briefing, showAll), [briefing, showAll]);
+  const notamSource = useMemo(() => ({ source: briefing?.source === 'autorouter' ? 'autorouter (EAD)' : briefing?.source ?? '', fetched: briefing?.fetched ?? null }), [briefing]);
+
+  const requests = useMemo(() => {
+    const out: Record<string, AerodromeRequest> = {};
+    for (const r of doc.options.aerodromeRequests ?? []) out[r.pointUid] = r;
+    return out;
+  }, [doc.options.aerodromeRequests]);
+  const onRequest = useCallback((uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) => {
+    update((d) => ({ ...d, options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) } }));
+  }, [update]);
 
   const altitudes = useMemo(() => {
     const out: Record<string, LegAltitude> = {};
@@ -69,6 +83,12 @@ export function MapView() {
       canUndo={canUndo}
       canRedo={canRedo}
       hazards={hazardMarks}
+      notams={notams}
+      selectedNotam={selectedNotam}
+      onNotamSelect={selectNotam}
+      notamSource={notamSource}
+      requests={requests}
+      onRequest={onRequest}
     />
   );
 }

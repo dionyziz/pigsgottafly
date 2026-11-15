@@ -2,9 +2,10 @@
 // the take-off at the departure, one for the landing at the destination, in the form's order,
 // with the weather used, the factors applied and a pass/fail. Pure: no I/O, no DOM.
 //
-// All figures come from calc/performance.ts aerodromePerformance (club MD 4.4 method: AFM table at
-// the density altitude, mass interpolation, headwind −10 %/5 kt, tailwind +10 %/2 kt, condition ×
-// slope, safety 1.33 / 1.43), fed by exportCalc.ts with the W&B masses and the surface conditions
+// All figures come from calc/performance.ts aerodromePerformance (both the club MD 4.4 method: AFM
+// table at the density altitude, mass interpolation, headwind −10 %/5 kt, tailwind +10 %/2 kt; and
+// the AFM method: table at the pressure altitude, +10 %/15 °C; the longer TODR / LDR is used and the
+// other printed as "other method"; then condition × slope, safety 1.33 / 1.43), fed by exportCalc.ts with the W&B masses and the surface conditions
 // at the take-off / landing time (METAR when current, else the Open-Meteo forecast; ISA and calm
 // when neither). Required distances are printed rounded UP to the metre.
 import type { Aircraft, FlightDoc, Pilot } from '../../../shared';
@@ -170,32 +171,45 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
     add('cross', 'Crosswind', '');
   }
   add('mass', takeoff ? 'Take-off mass' : 'Landing mass', fin(e.massKg) ? `${(e.massKg as number).toFixed(1)} kg` : '',
-    e.massSource === 'mtow' ? 'W&B not available: MTOW used' : e.massSource === 'wb' ? 'from the loading sheet' : '', e.massSource === 'mtow' ? 'warn' : null);
+    e.massSource === 'mtow' ? (e.massReason === 'weight-missing' ? 'weight missing on the manifest: MTOW used' : 'W&B not available: MTOW used') : e.massSource === 'wb' ? 'from the loading sheet' : '', e.massSource === 'mtow' ? 'warn' : null);
   const d = p?.distances ?? null;
   if (d) {
     const parts = [surfaceLabel(e.surface, rw) + ` ${f2(d.factors.surface)}`];
     if (Math.abs(d.factors.slope - 1) > 1e-9) parts.push(`× ${takeoff ? 'upslope' : 'downslope'} ${f2(d.factors.slope)}`);
     add('cond', 'Condition of RWY factor', f2(d.factors.condition ?? d.factors.surface * d.factors.slope), parts.join(' '));
     add('safety', 'Safety factor', f2(d.factors.safety));
-    const afm = `AFM ${r0(d.groundM)} / ${r0(d.totalM)} m at ${d.method === 'afm' ? 'PA' : 'DA'} ${r0(d.tableAltFt ?? 0)} ft`;
-    const windF = d.factors.wind != null && Math.abs(d.factors.wind - 1) > 1e-9 ? `, wind × ${f2(d.factors.wind)}` : '';
-    const tempF = Math.abs(d.factors.temperature - 1) > 1e-9 ? `, temp × ${f2(d.factors.temperature)}` : '';
+    // The table figures as read, then each factor still to apply up to the corrected AFM distance;
+    // condition and safety follow in their own rows, so a hand check multiplies every factor once:
+    // TODR = table × wind × temp × condition × safety.
+    const afm = `AFM ${r0(d.tableGroundM)}/${r0(d.tableTotalM)} m at ${d.method === 'afm' ? 'PA' : 'DA'} ${r0(d.tableAltFt ?? 0)} ft`;
+    // A factor that prints as 1.00 is left out (it changes the distance by under 0.5 %).
+    const windOn = d.factors.wind != null && f2(d.factors.wind) !== '1.00';
+    const tempOn = f2(d.factors.temperature) !== '1.00';
+    const windF = windOn ? ` × wind ${f2(d.factors.wind!)}` : '';
+    const tempF = tempOn ? ` × temp ${f2(d.factors.temperature)}` : '';
+    const corrected = windOn || tempOn ? ` → ${r0(d.totalM)} m` : '';
     const availT = p!.availableTotalM;
     const availG = p!.availableGroundM;
     if (takeoff) {
       const okT = fin(availT) ? d.requiredTotalM <= availT + 1e-9 : null;
       const okG = fin(availG) ? d.requiredGroundM <= availG + 1e-9 : null;
-      add('todr', 'T.O.D.R.', `${ceilM(d.requiredTotalM)} m`, `${afm}${windF}${tempF}` + (fin(availT) ? ` · TODA ${r0(availT)} m` : ''), okT == null ? 'warn' : okT ? 'ok' : 'bad');
+      add('todr', 'T.O.D.R.', `${ceilM(d.requiredTotalM)} m`, `${afm}${windF}${tempF}${corrected}`, okT == null ? 'warn' : okT ? 'ok' : 'bad');
       add('torr', 'T.O.R.R.', `${ceilM(d.requiredGroundM)} m`, fin(availG) ? `TORA ${r0(availG)} m` : '', okG == null ? 'warn' : okG ? 'ok' : 'bad');
+      const alt = p!.alternative;
+      if (alt) {
+        const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'club method (DA)');
+        add('todr-alt', 'T.O.D.R. other method', `${ceilM(alt.requiredTotalM)} m`,
+          `${name(alt.method)}, TORR ${ceilM(alt.requiredGroundM)} m; shorter, not used`);
+      }
     } else {
       const okT = fin(availT) ? d.requiredTotalM <= availT + 1e-9 : null;
-      add('ldr', 'L.D.R.', `${ceilM(d.requiredTotalM)} m`, `${afm}${windF}${tempF}` + (fin(availT) ? ` · LDA ${r0(availT)} m` : ''), okT == null ? 'warn' : okT ? 'ok' : 'bad');
+      add('ldr', 'L.D.R.', `${ceilM(d.requiredTotalM)} m`, `${afm}${windF}${tempF}${corrected}`, okT == null ? 'warn' : okT ? 'ok' : 'bad');
       add('lrr', 'L.R.R.', `${ceilM(d.requiredGroundM)} m`, 'landing roll');
       const alt = p!.alternative;
       if (alt) {
         const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'club method (DA)');
         add('ldr-alt', 'L.D.R. other method', `${ceilM(alt.requiredTotalM)} m`,
-          `${name(alt.method)}; the longer, by the ${d.method === 'afm' ? 'AFM' : 'club'} method, is used above`);
+          `${name(alt.method)}; shorter, not used`);
       }
     }
     if (fin(p!.marginM)) add('margin', 'Margin', `${r0(p!.marginM as number)} m`, takeoff ? 'least of TODA − TODR, TORA − TORR' : 'LDA − LDR', (p!.marginM as number) < 0 ? 'bad' : 'ok');
@@ -229,12 +243,31 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
 
   if (p) for (const t of p.warnings) if (!warnings.includes(t)) warnings.push(t);
 
+  // Mass limit: take-off against MTOW, landing against MLW (MTOW when no MLW is published).
+  const mb = aircraft?.massBalance ?? null;
+  const limitKg = mb ? (takeoff ? mb.mtowKg : mb.mlwKg ?? mb.mtowKg) : null;
+  const overMass = fin(e.massKg) && fin(limitKg) && (limitKg as number) > 0 && (e.massKg as number) > (limitKg as number) + 1e-9;
+  if (overMass) {
+    const m = rows.find((r) => r.key === 'mass');
+    if (m) { m.status = 'bad'; m.note = `above ${takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW'} ${limitKg} kg`; }
+    warnings.unshift(`${takeoff ? 'Take-off' : 'Landing'} mass ${(e.massKg as number).toFixed(1)} kg is ${((e.massKg as number) - (limitKg as number)).toFixed(1)} kg above the ${takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW'} of ${limitKg} kg.`);
+  }
+
   let verdict: PerfBlock['verdict'];
   let verdictText: string;
-  if (!p || !d) { verdict = 'incomplete'; verdictText = ad ? 'Cannot be computed' : 'Not an aerodrome'; }
+  if (overMass) {
+    verdict = 'fail';
+    verdictText = `${takeoff ? 'Take-off' : 'Landing'} mass above ${takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW'}`;
+  } else if (!p || !d) { verdict = 'incomplete'; verdictText = ad ? 'Cannot be computed' : 'Not an aerodrome'; }
   else if ((fin(p.marginM) && (p.marginM as number) < 0) || !p.crosswindOk) {
     verdict = 'fail';
     verdictText = !p.crosswindOk ? 'Crosswind above the limit' : takeoff ? 'Take-off distance not available' : 'Landing distance not available';
+  } else if (d.extrapolated) {
+    // Beyond the AFM data (mass above the heaviest row, density altitude above the top row,
+    // tailwind above 10 kt): the distances are extrapolations, not AFM figures, so no PASS.
+    verdict = 'fail';
+    verdictText = 'Outside the AFM table';
+    for (const r of rows) if ((r.key === 'todr' || r.key === 'torr' || r.key === 'ldr') && r.status === 'ok') r.status = 'warn';
   } else if (!fin(p.marginM)) { verdict = 'incomplete'; verdictText = 'Declared distances unknown'; }
   else { verdict = 'pass'; verdictText = takeoff ? 'Take-off distances available' : 'Landing distance available'; }
 

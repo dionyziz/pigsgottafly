@@ -5,13 +5,15 @@ import './gendec.css';
 import { FormWarnings } from '../form731/FormWarnings';
 import type { FormExportProps } from '../form731/common';
 import { genDecModel } from './model';
+import type { ReactNode } from 'react';
 
 const DOTS = ' .'.repeat(120);
 
-export function GenDec(props: FormExportProps) {
+export function GenDec(props: FormExportProps & { panel?: ReactNode }) {
   const m = genDecModel(props);
   return (
     <div className="pgf-forms" data-testid="gendec">
+      {props.panel}
       <FormWarnings warnings={m.warnings} />
       <section className="pgf-sheet gd-sheet" aria-label="General Declaration">
         <h1 className="gd-title">GENERAL DECLARATION</h1>

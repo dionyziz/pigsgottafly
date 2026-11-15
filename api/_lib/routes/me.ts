@@ -12,6 +12,14 @@ function settingsPatch(s: unknown): Partial<PilotSettings> {
   for (const k of ['taxiOutMin', 'taxiInMin', 'reserveMin'] as const) if (k in i) out[k] = optNum(i[k], k, 0, 600);
   if ('finalReserveMin' in i) out.finalReserveMin = optNum(i.finalReserveMin, 'finalReserveMin', 0, 600) ?? 0;
   if ('enrouteAerodromeRadiusNm' in i) out.enrouteAerodromeRadiusNm = optNum(i.enrouteAerodromeRadiusNm, 'enrouteAerodromeRadiusNm', 0, 50) ?? 2;
+  if ('handledAerodromes' in i) {
+    const v = i.handledAerodromes ?? [];
+    if (!Array.isArray(v) || v.length > 100) throw badRequest('handledAerodromes must be a list of ICAO codes');
+    out.handledAerodromes = [...new Set(v.map((x) => String(x).trim().toUpperCase()))].filter((x) => {
+      if (!/^[A-Z]{4}$/.test(x)) throw badRequest(`handledAerodromes: ${x.slice(0, 10)} is not an ICAO code`);
+      return true;
+    });
+  }
   if ('windModel' in i) {
     if (!(String(i.windModel) in WIND_MODELS)) throw badRequest('unknown windModel');
     out.windModel = i.windModel as PilotSettings['windModel'];

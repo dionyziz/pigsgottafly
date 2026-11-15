@@ -1,6 +1,7 @@
 // /flights/:id/export/:kind: print-ready A4 pages, one route per document.
 //   navlog (MD 4.2 sheet), form731 (HCAA Form 731), gendec (MD 4.7 General Declaration),
-//   fpl (ICAO 2012 message + form view), wb (MD 4.3 loading sheet + envelope), performance (MD 4.4).
+//   fpl (ICAO 2012 message + form view), wb (MD 4.3 loading sheet + envelope), performance (MD 4.4),
+//   briefing (NOTAMs relevant to the flight).
 // Each export component loads what it needs (aircraft, weather) itself; the forms get it from here.
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../data/api';
@@ -10,9 +11,12 @@ import { EXPORT_KINDS, EXPORT_LABEL, type Aircraft, type ExportKind, type Flight
 import { NavlogExport } from './navlog';
 import { Form731 } from './form731';
 import { GenDec } from './gendec';
+import { SignaturesPanel, shownSignatures, useFormsState } from './form731/SignaturesPanel';
+import { GenDecSendPanel } from './gendec/SendPanel';
 import { FplExport } from './fpl';
 import { WbExport } from './wb';
 import { PerformanceExport } from './performance';
+import { BriefingExport } from './briefing';
 import './export.css';
 
 function FormExport({ flight, kind }: { flight: Flight; kind: 'form731' | 'gendec' }) {
@@ -22,9 +26,13 @@ function FormExport({ flight, kind }: { flight: Flight; kind: 'form731' | 'gende
     [flight.aircraftId],
   );
   const pax = useAsync<Passenger[]>(() => api.passengers.list().catch(() => []), []);
+  // signatures (Form 731) and the e-mail to HCAA (both forms)
+  const forms = useFormsState(flight.id);
   if (ac.loading || pax.loading) return <div className="loading-screen">Loading…</div>;
   const props = { flight, aircraft: ac.data ?? null, pilot, passengers: pax.data ?? [] };
-  return kind === 'form731' ? <Form731 {...props} /> : <GenDec {...props} />;
+  return kind === 'form731'
+    ? <Form731 {...props} signatures={shownSignatures(forms.st)} panel={<SignaturesPanel flightId={flight.id} forms={forms} />} />
+    : <GenDec {...props} panel={<GenDecSendPanel flightId={flight.id} forms={forms} />} />;
 }
 
 function Body({ flight, kind }: { flight: Flight; kind: ExportKind }) {
@@ -35,6 +43,7 @@ function Body({ flight, kind }: { flight: Flight; kind: ExportKind }) {
     case 'fpl': return <FplExport flight={flight} />;
     case 'wb': return <WbExport flight={flight} />;
     case 'performance': return <PerformanceExport flight={flight} />;
+    case 'briefing': return <BriefingExport flight={flight} />;
   }
 }
 

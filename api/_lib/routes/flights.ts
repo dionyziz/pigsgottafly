@@ -8,7 +8,7 @@ import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, ch
 import type { Queryable } from '../db.js';
 import type { FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
-import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
+import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
 import { findAerodrome } from './ref.js';
 
 async function load(db: Queryable, pilotId: string, id: string) {
@@ -16,6 +16,22 @@ async function load(db: Queryable, pilotId: string, id: string) {
   if (!r) throw notFound('no such flight');
   const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [id, pilotId]);
   return toFlight(r, crew);
+}
+
+/**
+ * Seat ids of one of the pilot's aircraft (null when it has no seat stations). Throws 400 when the
+ * aircraft is not the pilot's. Tolerates a malformed stored seat layout (rows written before the
+ * aircraft documents were validated): anything that is not a station with a seats array is skipped.
+ */
+async function aircraftSeats(db: Queryable, pilotId: string, aircraftId: string): Promise<string[] | null> {
+  const [ac] = await db.query('SELECT mass_balance FROM aircraft WHERE id = $1 AND pilot_id = $2', [aircraftId, pilotId]);
+  if (!ac) throw badRequest('no such aircraft');
+  const raw = ac.mass_balance?.stations;
+  const stations = (Array.isArray(raw) ? raw : [])
+    .filter((s) => s && typeof s === 'object' && Array.isArray(s.seats))
+    .map((s) => ({ ...s, seats: s.seats.filter((q: any) => q && typeof q.id === 'string' && q.id) }));
+  const seats = seatLayout(stations).map((s) => s.id);
+  return seats.length ? seats : null;
 }
 
 /** Validates and normalises a full FlightDoc (merged over `base`). */
@@ -39,13 +55,8 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
   if ('options' in input) d.options = checkOptions(input.options, DEFAULT_FLIGHT_OPTIONS);
   if ('summary' in input) d.summary = checkSummary(input.summary);
 
-  let seats: string[] | null = null;
-  if (d.aircraftId) {
-    const [ac] = await db.query('SELECT mass_balance FROM aircraft WHERE id = $1 AND pilot_id = $2', [d.aircraftId, pilotId]);
-    if (!ac) throw badRequest('no such aircraft');
-    seats = seatLayout(ac.mass_balance?.stations ?? []).map((s) => s.id);
-    if (!seats.length) seats = null;
-  }
+  if (d.aircraftId !== null && typeof d.aircraftId !== 'string') throw badRequest('aircraftId must be a string');
+  const seats = d.aircraftId ? await aircraftSeats(db, pilotId, d.aircraftId) : null;
   if (d.crew.length > 50) throw badRequest('crew has too many entries');
   d.crew = d.crew.map((c, i) => {
     obj(c, `crew[${i}]`);
@@ -125,7 +136,11 @@ export const routes: Route[] = [
       base.taxiInMin = pilot.settings.taxiInMin;
       base.aircraftId = pilot.defaultAircraftId;
       base.options = { ...base.options, windModel: pilot.settings.windModel };
-      base.crew = [{ role: 'PIC', passengerId: null, seat: 'front-left', snapshot: picSnapshot(pilot) }];
+      // PIC in the PIC seat of the aircraft the flight starts with (front left, else its first seat),
+      // the same rule as the editor's picSeat(): a hangar-built aircraft may have no 'front-left'.
+      const acId = 'aircraftId' in input ? input.aircraftId : base.aircraftId;
+      const seats = typeof acId === 'string' && acId ? await aircraftSeats(db, pilot.id, acId) : null;
+      base.crew = [{ role: 'PIC', passengerId: null, seat: picSeat(seats ?? FALLBACK_SEATS), snapshot: picSnapshot(pilot) }];
       const home = pilot.homeAerodrome ? await findAerodrome(db, pilot.homeAerodrome) : null;
       if (home) {
         const p = (): RoutePoint => ({ uid: uid(), kind: 'aerodrome', refId: home.id, name: home.icao || home.name, lat: home.lat, lon: home.lon });

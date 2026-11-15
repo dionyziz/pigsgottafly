@@ -1,4 +1,4 @@
-// The editor's left panel: When, Aircraft, Manifest & loading, Fuel, Take-off & landing, ATC,
+// The editor's left panel: When, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
 // Flight plan (alternates, remarks), Exports. Numbers come from useFlightCalc() (src/calc); edits
 // go through useEditor().update().
 import { EXPORT_KINDS, EXPORT_LABEL, type ExportKind } from '../../../shared';
@@ -10,6 +10,7 @@ import { useFlightCalc } from './calc';
 import { FplSection } from './FplSection';
 import { FuelSection } from './FuelSection';
 import { ManifestSection } from './ManifestSection';
+import { NotamSection } from './NotamSection';
 import { PerformanceSection } from './PerformanceSection';
 import { Chip, Icon, Section } from './ui';
 import { WhenSection } from './WhenSection';
@@ -21,6 +22,7 @@ const EXPORT_HINT: Record<ExportKind, string> = {
   fpl: 'ICAO FPL for AFTN',
   wb: 'MD 4.3 loading + envelope',
   performance: 'MD 4.4 departure + destination',
+  briefing: 'NOTAMs along the route',
 };
 
 function ExportsSection() {
@@ -59,6 +61,7 @@ export function FlightPanel() {
       <ManifestSection />
       <FuelSection />
       <PerformanceSection />
+      <NotamSection />
       <AtcSection />
       <FplSection />
       <ExportsSection />

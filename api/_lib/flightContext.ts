@@ -8,6 +8,7 @@ import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from
 import type { RoutePoint } from '../../src/shared/types.js';
 import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
 import { defaultAltitudes } from '../../src/calc/altitudes.js';
+import { requestTiming } from '../../src/shared/requests.js';
 import { distanceNm, parseClock } from '../../src/calc/nav.js';
 import { distanceToRoute } from './notams.js';
 
@@ -55,6 +56,8 @@ export interface FlightContext {
   /** Aerodromes used: ICAO → 'departure' | 'destination' | 'intermediate stop' | 'alternate'. */
   used: Map<string, string>;
   ref: RefDocs;
+  /** Registration of the flight's aircraft (e.g. 'SX-ASV'), or null when it has none. */
+  registration: string | null;
 }
 
 /** Default cruise speed for the time window when neither the summary nor the aircraft gives one. */
@@ -62,7 +65,7 @@ const FALLBACK_TAS_KT = 90;
 
 export async function flightContext(db: Queryable, pilotId: string, id: string): Promise<FlightContext> {
   const [f] = await db.query(
-    `SELECT f.id, f.date, f.block_off, f.taxi_out_min, f.taxi_in_min, f.route, f.leg_overrides, f.options, f.summary, a.cruise_tas_kt
+    `SELECT f.id, f.date, f.block_off, f.taxi_out_min, f.taxi_in_min, f.route, f.leg_overrides, f.options, f.summary, a.cruise_tas_kt, a.registration
      FROM flights f LEFT JOIN aircraft a ON a.id = f.aircraft_id AND a.pilot_id = f.pilot_id
      WHERE f.id = $1 AND f.pilot_id = $2`, [id, pilotId]);
   if (!f) throw notFound('no such flight');
@@ -71,7 +74,7 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
   const overrides = (f.leg_overrides || {}) as Record<string, { altFt?: number }>;
   const typed = route.slice(1).map((_, i) => overrides[`${route[i].uid}>${route[i + 1].uid}`]?.altFt);
   const altitudesFt = route.length > 1
-    ? defaultAltitudes(route, ref, typed).map((d, i) => (Number.isFinite(typed[i]) ? (typed[i] as number) : d.altFt))
+    ? defaultAltitudes(route, ref, typed, requestTiming(route, f.options).patternPoints).map((d, i) => (Number.isFinite(typed[i]) ? (typed[i] as number) : d.altFt))
     : [];
   const options = { ...DEFAULT_FLIGHT_OPTIONS, ...(f.options || {}) };
   const alternates: string[] = (Array.isArray(options.alternates) ? options.alternates : []).filter((a: unknown) => typeof a === 'string' && /^[A-Z]{4}$/.test(a));
@@ -109,7 +112,7 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
   }
   for (const a of alternates) if (!used.has(a)) used.set(a, 'alternate');
 
-  return { id: f.id, route, alternates, altitudesFt, blockOff, blockOn, timed, used, ref };
+  return { id: f.id, route, alternates, altitudesFt, blockOff, blockOn, timed, used, ref, registration: f.registration ?? null };
 }
 
 /** Aerodromes (ICAO) within `radiusNm` of the route, not counting the ones the flight uses. */

@@ -41,3 +41,5 @@
 .f731-pic-name { position: absolute; left: 190mm; width: 56mm; top: 170.5mm; text-align: center; font-size: 10pt; }
 .f731-sig { position: absolute; left: 229.3mm; top: 177.8mm; font-size: 9pt; }
 .f731-formno { position: absolute; left: 7.6mm; top: 185.7mm; font-size: 9pt; }
+.f731-pic-signature { position: absolute; left: 190mm; width: 38mm; top: 175.5mm; text-align: center; }
+.f731-table td[data-field='signature'] { text-align: center; padding: 0 1mm; overflow: hidden; }

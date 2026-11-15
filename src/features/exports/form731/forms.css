@@ -32,3 +32,22 @@
   body:has(.pgf-forms) .page { padding: 0 !important; margin: 0 !important; max-width: none !important; }
   body:has(.pgf-forms) .card { padding: 0 !important; border: 0 !important; box-shadow: none !important; background: none !important; }
 }
+
+/* Handwriting signatures (Homemade Apple, Apache 2.0: public/fonts/HomemadeApple-LICENSE.txt) */
+@font-face { font-family: 'PGF Signature'; font-style: normal; font-weight: 400; font-display: block; src: url('/fonts/HomemadeApple-Regular.ttf') format('truetype'); }
+.pgf-signature { font-family: 'PGF Signature', cursive; color: #13296f; line-height: 1.1; white-space: nowrap; }
+.pgf-signature-when { display: block; font: 2mm/1.1 Arial, Helvetica, sans-serif; color: #333; white-space: nowrap; }
+
+/* Signatures / send panel above the sheets (screen only) */
+.pgf-panel { width: 100%; max-width: 900px; padding: 14px 16px; border-radius: 10px; background: var(--surface, #fff); border: 1px solid var(--line, #e3e6ea); font-size: 13.5px; display: grid; gap: 10px; }
+.pgf-panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pgf-panel-head h3 { margin: 0; font-size: 15px; }
+.pgf-panel-head .spacer { flex: 1; }
+.pgf-panel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pgf-person { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.pgf-person-name { font-weight: 600; min-width: 11em; }
+.pgf-person .muted { font-size: 12.5px; }
+.pgf-link { display: flex; gap: 6px; align-items: center; flex-basis: 100%; }
+.pgf-link input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.pgf-note { color: var(--ink-2, #4a5059); font-size: 12.5px; }
+.pgf-err { color: var(--danger, #b42318); }

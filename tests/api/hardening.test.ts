@@ -150,3 +150,112 @@ describe('sign-in hardening', () => {
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
 });
+
+// ---------------------------------------------------------------- aircraft documents and the PIC seat
+
+describe('aircraft documents are validated (they feed W&B, navlog and the manifest)', () => {
+  let c: Client;
+  let template: any;
+  beforeAll(async () => {
+    c = client(api.base);
+    expect((await c.login('sub-ac', 'ac@example.com')).status).toBe(200);
+    const { aircraftFromTypeJson } = await import('../../src/shared/templates');
+    template = aircraftFromTypeJson(JSON.parse(fs.readFileSync(path.join(__dirname, '../../data/aircraft/reims-f172m.json'), 'utf8')));
+  });
+  const post = (body: unknown) => c.call('POST', 'aircraft', body);
+  const withMb = (mb: Record<string, unknown>) => ({ registration: 'SX-BAD', massBalance: { ...template.massBalance, ...mb } });
+
+  test('malformed documents are 400 and nothing is stored', async () => {
+    const bad: unknown[] = [
+      { registration: 'SX-BAD', cruiseTasKt: -1 },
+      { registration: 'SX-BAD', cruiseTasKt: '92' },
+      { registration: 'SX-BAD', patternTasKt: 'x' },
+      { registration: 'SX-BAD', climbTasKt: '' },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, burnLph: 'x' } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, burnLph: -5 } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, densityKgPerL: 7.2 } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, type: 'DIESEL' } },
+      withMb({ stations: 5 }),
+      withMb({ stations: [null] }),
+      withMb({ stations: [{ id: 'front', name: 'Front', kind: 'seat', armM: 0.94, seats: 'x' }] }),
+      withMb({ stations: [{ id: 'front', name: 'Front', kind: 'seat', armM: 0.94 }] }),
+      withMb({ stations: [{ id: 'front', name: 'Front', kind: 'seat', armM: '0.94', seats: [] }] }),
+      withMb({ stations: [{ id: 'front', name: 'Front', kind: 'cabin', armM: 0.94, seats: [] }] }),
+      withMb({ stations: [{ id: 'a', name: 'A', kind: 'seat', armM: 1, seats: [{ id: 's', label: '' }] }, { id: 'a', name: 'B', kind: 'fuel', armM: 1 }] }),
+      withMb({ stations: [{ id: 'a', name: 'A', kind: 'seat', armM: 1, seats: [{ id: 's', label: '' }, { id: 's', label: '' }] }] }),
+      withMb({ emptyMassKg: 'abc' }),
+      withMb({ mtowKg: -5 }),
+      withMb({ emptyArmM: 1e9 }),
+      withMb({ envelopes: { normal: { category: 'normal', maxKg: 1043, polygon: [[0.89, 'x']] }, utility: null } }),
+      withMb({ envelopes: { normal: { category: 'normal', maxKg: 1043, polygon: [[0.89]] }, utility: null } }),
+      withMb({ envelopes: { normal: { category: 'normal', maxKg: 1043, polygon: 'x' }, utility: null } }),
+      withMb({ combinedLimits: [{ stations: ['nope'], maxKg: 54 }] }),
+      { registration: 'SX-BAD', performance: { ...template.performance, takeoff: { ...template.performance.takeoff, altitudesFt: [0, 'x'] } } },
+      { registration: 'SX-BAD', performance: { ...template.performance, takeoff: { ...template.performance.takeoff, standardTempC: [15] } } },
+      { registration: 'SX-BAD', performance: { ...template.performance, landing: { ...template.performance.landing, distances: [[1, 2]] } } },
+      { registration: 'SX-BAD', performance: { ...template.performance, factors: { ...template.performance.factors, safetyFactorTakeoff: 0 } } },
+      { registration: 'SX-BAD', equipment: { ...template.equipment, item10a: 5 } },
+      { registration: 'SX-BAD', compassCards: [1, 'x', null] },
+      { registration: 'SX-BAD', compassCards: [{ name: 'C', swung: '2026-01-01', expires: '2028-01-01', source: '', points: [[0, 'x']] }] },
+      { registration: 'SX-BAD', compassCards: [{ name: 'C', swung: '2026-01-01', expires: '2028-01-01', source: '', points: [[400, 2]] }] },
+      { registration: 'SX-BAD', compassCards: [{ name: 'C', swung: 'soon', expires: '2028-01-01', source: '', points: [] }] },
+    ];
+    for (const body of bad) {
+      const r = await post(body);
+      expect(r.status, JSON.stringify(body).slice(0, 200)).toBe(400);
+    }
+    expect((await c.call('GET', 'aircraft')).body).toEqual([]);
+  });
+
+  test('the seeded fleet and the type template are stored unchanged (round trip)', async () => {
+    const { fleetSeed } = await import('../../tools/build_seed');
+    for (const a of [...fleetSeed(), { ...template, registration: 'SX-TPL' }]) {
+      const r = await post(a);
+      expect(r.status).toBe(201);
+      const { id: _i, created: _c, updated: _u, ...stored } = r.body;
+      expect(stored).toEqual(a);
+    }
+  });
+
+  test('an update cannot break a stored aircraft', async () => {
+    const [ac] = (await c.call('GET', 'aircraft')).body;
+    expect((await c.call('PUT', `aircraft/${ac.id}`, { massBalance: { ...ac.massBalance, stations: [null] } })).status).toBe(400);
+    expect((await c.call('PUT', `aircraft/${ac.id}`, { cruiseTasKt: 'fast' })).status).toBe(400);
+    expect((await c.call('GET', `aircraft/${ac.id}`)).body.massBalance).toEqual(ac.massBalance);
+  });
+});
+
+describe('new flight: the PIC sits in the aircraft’s PIC seat', () => {
+  test('an aircraft without a front-left seat (built in the hangar) as the default', async () => {
+    const c = client(api.base);
+    expect((await c.login('sub-seat', 'seat@example.com')).status).toBe(200);
+    const stations = [
+      { id: 'seats', name: 'Seats', kind: 'seat', armM: 1, armRangeM: null, maxKg: null, seats: [{ id: 'seats-1', label: 'Seats 1' }, { id: 'seats-2', label: 'Seats 2' }] },
+      { id: 'fuel', name: 'Fuel', kind: 'fuel', armM: 1.2, armRangeM: null, maxKg: null, seats: null },
+    ];
+    const ac = await c.call('POST', 'aircraft', { registration: 'SX-NEW' });
+    expect(ac.status).toBe(201);
+    expect((await c.call('PUT', `aircraft/${ac.body.id}`, { massBalance: { ...ac.body.massBalance, stations } })).status).toBe(200);
+    const f = await c.call('POST', 'flights', {});
+    expect(f.status).toBe(201);
+    expect(f.body.aircraftId).toBe(ac.body.id);
+    expect(f.body.crew).toMatchObject([{ role: 'PIC', seat: 'seats-1' }]);
+    // the aircraft named in the request decides, not the default
+    const c172 = (await c.call('POST', 'aircraft', { registration: 'SX-FOUR', massBalance: { ...ac.body.massBalance, stations: [
+      { ...stations[0], id: 'front', seats: [{ id: 'front-right', label: 'R' }, { id: 'front-left', label: 'L' }] }, stations[1]] } })).body;
+    expect((await c.call('POST', 'flights', { aircraftId: c172.id })).body.crew[0].seat).toBe('front-left');
+    // no aircraft: the fallback layout's front left
+    expect((await c.call('POST', 'flights', { aircraftId: null })).body.crew[0].seat).toBe('front-left');
+  });
+
+  test('a malformed seat layout stored before validation does not make new flights fail with 500', async () => {
+    const c = client(api.base);
+    expect((await c.login('sub-old', 'old@example.com')).status).toBe(200);
+    const ac = (await c.call('POST', 'aircraft', { registration: 'SX-OLD' })).body;
+    const { db } = await api.server.ready;
+    await db.query(`UPDATE aircraft SET mass_balance = jsonb_set(mass_balance, '{stations}', '[null, 5, {"kind":"seat","seats":"x"}]'::jsonb) WHERE id = $1`, [ac.id]);
+    const f = await c.call('POST', 'flights', {});
+    expect(f.status).toBe(201);
+    expect(f.body.crew[0].seat).toBe('front-left');
+  });
+});

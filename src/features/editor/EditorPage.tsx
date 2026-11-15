@@ -13,6 +13,7 @@ import { flightStore } from '../../data/flightStore';
 import { autoTitle, type Aircraft, type Flight, type FlightDoc, type Passenger, type Waypoint } from '../../shared';
 import { EditorProvider, useEditor } from './state';
 import { MapView } from './map';
+import { NotamProvider } from './notams';
 import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
 import { Icon } from './panels/ui';
 import './editor.css';
@@ -130,6 +131,7 @@ export function EditorPage() {
   return (
     <EditorProvider key={state.flight.id} flight={state.flight} initialDoc={state.doc} pilot={pilot} {...lists} reloadLists={reloadLists}>
       <FlightCalcProvider>
+      <NotamProvider>
         <Keys />
         <div className="editor" data-testid="editor">
           <header className="editor-top">
@@ -148,6 +150,7 @@ export function EditorPage() {
             </div>
           </div>
         </div>
+      </NotamProvider>
       </FlightCalcProvider>
     </EditorProvider>
   );

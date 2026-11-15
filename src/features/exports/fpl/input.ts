@@ -1,6 +1,6 @@
 // FplInput from the app's records: flight, aircraft (hangar), pilot (profile), navlog and fuel plan.
 import type { FuelPlan, NavlogResult } from '../../../calc';
-import type { Aircraft, Flight, Pilot } from '../../../shared';
+import { requestRemarks, type Aircraft, type Flight, type Pilot } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { endpointAerodrome } from '../../../data/atc';
 import { REF, aerodrome } from '../../../data/ref';
@@ -77,6 +77,7 @@ export function fplInputFrom(o: {
     // the profile is current; the manifest snapshot of the PIC fills what the profile lacks
     pic: { fullName: pilot.fullName || picSnap?.fullName || '', phone: pilot.phone || picSnap?.phone || '' },
     remarks: flight.options.remarks || '',
+    requests: requestRemarks(route, flight.options, (p) => endpointAerodrome(p, REF.aerodromes)?.icao ?? null),
     options: o.options,
   };
 }

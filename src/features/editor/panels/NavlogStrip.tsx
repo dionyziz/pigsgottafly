@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { fmtHdg } from '../../../calc';
 import { WIND_MODELS, type WindModel } from '../../../shared';
 import { useEditor } from '../state';
+import { useNotams } from '../notams';
 import { fmtDur, fmtMin, useFlightCalc, type CalcWarning } from './calc';
 import { Icon } from './ui';
 
@@ -32,6 +33,8 @@ function Warnings({ list }: { list: CalcWarning[] }) {
 export function NavlogStrip() {
   const { doc, legs, update, aircraft } = useEditor();
   const { navlog, weather, weatherLoading, refreshWeather, warnings, dayMs } = useFlightCalc();
+  const { selectedNotam } = useNotams();
+  const notamLeg = selectedNotam?.legIndex ?? null;
   const [state, setState] = useState<StripState>(load);
   const set = (s: StripState) => { setState(s); save(s); };
   const danger = warnings.filter((w) => w.level === 'danger').length;
@@ -95,7 +98,8 @@ export function NavlogStrip() {
                   const L = legs[i];
                   const noWind = r.windMissing;
                   return (
-                    <tr key={L?.key ?? i} data-testid="navlog-row">
+                    <tr key={L?.key ?? i} data-testid="navlog-row" className={notamLeg === i ? 'is-notam' : undefined}
+                      title={notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined}>
                       <td className="ns-leg"><span>{L?.from.name}</span><span className="muted"> → </span><span>{L?.to.name}</span></td>
                       <td className={'num' + (fin(r.altFt) ? '' : ' warn')}>{fin(r.altFt) ? r.altFt : '?'}</td>
                       <td className="num">{r.tasKt}</td>

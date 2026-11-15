@@ -10,6 +10,7 @@ import {
   type Hourly, type OpenMeteoLocation,
 } from '../../../src/data/weather';
 import { parseMetar } from '../../../src/data/weatherMetar';
+import { pressureAltitudeFt, qnhFromStationPressure } from '../../../src/calc';
 
 const locs = fixture as unknown as OpenMeteoLocation[];
 const h0 = locs[0].hourly as Hourly;
@@ -81,6 +82,28 @@ describe('surface', () => {
     expect(surfaceConditions(null, T('2026-11-15T08:00Z'))).toBeNull();
   });
 
+  test('forecast QNH from surface_pressure reduced through the ISA, not the model MSL pressure', () => {
+    // Elevated grid point (LGKZ-like, 660 m) on a cold day: station pressure 940 hPa. Independent
+    // ISA reduction (hypsometric form QNH = p·(1 + p0^n·L/T0 · h / p^n)^(1/n), n = 0.190263,
+    // L = 0.0065 K/m, T0 = 288.15 K): 1017.05 hPa. The model's MSLP (reduced with the actual cold
+    // column) is a few hPa higher; using it would make the pressure altitude too low.
+    const hours = ['2026-01-10T08:00', '2026-01-10T09:00'];
+    const hourly = { time: hours, pressure_msl: [1023, 1023], surface_pressure: [940, 940], temperature_2m: [-10, -10], dew_point_2m: [-12, -12], wind_speed_10m: [0, 0], wind_direction_10m: [0, 0] } as unknown as Hourly;
+    const loc: OpenMeteoLocation = { hourly, latitude: 40.45, longitude: 21.28, elevation: 660 };
+    const s = sampleSurface(hourly, T('2026-01-10T08:30Z'), 660)!;
+    near(s.qnh, 1017.05, 0.05);
+    near(s.mslp, 1023, 1e-9);
+    near(s.psfc, 940, 1e-9);
+    const c = surfaceConditions(loc, T('2026-01-10T08:30Z'))!;
+    near(c.qnhHpa!, 1017.05, 0.05);
+    // Pressure altitude at the grid elevation from that QNH = the station pressure's own PA.
+    near(pressureAltitudeFt(660 * M_TO_FT, c.qnhHpa!), 145366.45 * (1 - Math.pow(940 / 1013.25, 0.190284)), 1e-6);
+    // Without the elevation (or without surface_pressure) the MSL pressure is used as before.
+    near(sampleSurface(hourly, T('2026-01-10T08:30Z'))!.qnh, 1023, 1e-9);
+    // At sea level the station pressure is the QNH.
+    near(qnhFromStationPressure(1009.3, 0), 1009.3, 1e-9);
+  });
+
   test('chooseSurface: current METAR near the time wins (gaps filled from the forecast); else the forecast', () => {
     const metar = parseMetar('METAR LGAV 151320Z 05009KT 010V070 9999 FEW025 SCT050 17/12 Q1024 NOSIG', NOW);
     const fc = surfaceConditions(locs[1], T('2026-11-15T14:00Z'), 'ECMWF IFS 0.25°');
@@ -133,7 +156,8 @@ describe('availability and fetching', () => {
     expect(u.searchParams.get('longitude')).toBe('23.7838,23.9445');
     expect(u.searchParams.get('models')).toBe('gfs_seamless');
     expect(u.searchParams.get('wind_speed_unit')).toBe('kn');
-    expect(u.searchParams.get('hourly')!.split(',')).toHaveLength(9 * 4 + 8);
+    expect(u.searchParams.get('hourly')!.split(',')).toHaveLength(9 * 4 + 9);
+    expect(u.searchParams.get('hourly')!.split(',')).toContain('surface_pressure');
     expect(buildUrl([{ lat: 1, lon: 2 }], '2026-01-01', '2026-01-01', 'ecmwf_ifs025', 'historical')).toMatch(/^https:\/\/historical-forecast-api\.open-meteo\.com\/v1\/forecast\?/);
   });
 

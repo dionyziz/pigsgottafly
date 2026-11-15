@@ -12,6 +12,8 @@ import existingPilots003 from './migrations/003_existing_pilot_data.js';
 import { convertLegacyFlights } from './migrations/004_legacy_flights.js';
 import refRunways005 from './migrations/005_ref_runways_2609.js';
 import briefingFiling006 from './migrations/006_briefing_filing.js';
+import aircraftAttachments007 from './migrations/007_aircraft_attachments.js';
+import formSignatures008 from './migrations/008_form_signatures.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -31,6 +33,8 @@ export const MIGRATIONS: Migration[] = [
   { name: '004_legacy_flights', run: convertLegacyFlights },
   { name: '005_ref_runways_2609', sql: refRunways005 },
   { name: '006_briefing_filing', sql: briefingFiling006 },
+  { name: '007_aircraft_attachments', sql: aircraftAttachments007 },
+  { name: '008_form_signatures', sql: formSignatures008 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

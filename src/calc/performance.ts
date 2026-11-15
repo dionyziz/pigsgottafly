@@ -21,10 +21,15 @@
 //     +10 % per 15 °C above the table's standard temperature (proportional), landing −10 % per
 //     5 kt headwind; then the same club condition, slope and safety factors.
 //
-// aerodromePerformance (one MD 4.4 block) uses 'club' for take-off (it is the more conservative of
-// the two there: DA without the AFM's headwind columns) and, for landing, computes BOTH and uses the
-// longer LDR (on hot days the AFM's +10 %/15 °C at PA is longer than the club's table-at-DA figure);
-// the other is returned as `alternative` so the pilot sees both.
+// aerodromePerformance (one MD 4.4 block), when no method is forced, computes BOTH methods for both
+// take-off and landing and uses the longer distance (TODR, or LDR); the other is returned as
+// `alternative` so the pilot sees both. Neither method is always the longer one:
+//   - hot day: the AFM's +10 %/15 °C at PA is longer than the club's table-at-DA landing figure;
+//   - cold day: the club enters the table at DA, which is BELOW PA (e.g. LGKZ 2165 ft at −10 °C:
+//     DA ≈ −310 ft), while the AFM gives no credit for cold, so the AFM take-off distance is up to
+//     ~20 % longer (TODR 754 m vs 618 m at 1043 kg, calm);
+//   - headwind: the club's −10 %/5 kt is less generous than the AFM's 10/20 kt take-off columns,
+//     so the club figure is the longer one.
 //
 // Both methods: TAILWIND (no AFM data): +10 % per 2 kt of tailwind (the usual Cessna POH rule),
 // warned above 10 kt. Headwind credit is capped at 50 % (25 kt). Below the lightest table mass the
@@ -67,6 +72,17 @@ export function windComponents(runwayHdgDeg: number, windDirDeg: number, windKt:
  */
 export function pressureAltitudeFt(elevFt: number, qnhHpa: number): number {
   return elevFt + 145366.45 * (1 - Math.pow(qnhHpa / 1013.25, 0.190284));
+}
+
+/**
+ * QNH from a station pressure: the pressure reduced from the station elevation to sea level through
+ * the ISA, i.e. the inverse of pressureAltitudeFt (pressureAltitudeFt(elev, qnh) = the pressure
+ * altitude of stationHpa). Used for forecast surface pressure (Open-Meteo surface_pressure at the
+ * grid point's elevation).
+ */
+export function qnhFromStationPressure(stationHpa: number, elevFt: number): number {
+  const paStation = 145366.45 * (1 - Math.pow(stationHpa / 1013.25, 0.190284));
+  return 1013.25 * Math.pow(1 - (paStation - elevFt) / 145366.45, 1 / 0.190284);
 }
 
 /** ISA temperature at a pressure altitude, °C (15 − 1.98/1000 ft). */
@@ -144,6 +160,12 @@ export interface PerfDistances {
   groundM: number;
   totalM: number;
   /**
+   * The table figures as read (interpolated in altitude and mass, and in headwind for the AFM
+   * take-off method) BEFORE the wind and temperature factors: groundM = tableGroundM × wind × temperature.
+   */
+  tableGroundM: number;
+  tableTotalM: number;
+  /**
    * Each factor applied, for the MD 4.4 printout. wind: headwind/tailwind factor (1 in the AFM
    * take-off method, where the headwind is a table column); condition = surface × slope.
    */
@@ -218,10 +240,14 @@ function tempFactor(tableAlts: number[], stdTemps: number[], pa: number, oat: nu
   return 1 + per15 * Math.max(0, oat - std) / 15;
 }
 
-function finish(groundM: number, totalM: number, f: { temperature: number; wind: number }, cond: { surface: number; slope: number; condition: number }, safety: number, extrapolated: boolean, method: PerfMethod, tableAltFt: number, notes: string[]): PerfDistances {
+function finish(tableGroundM: number, tableTotalM: number, f: { temperature: number; wind: number }, cond: { surface: number; slope: number; condition: number }, safety: number, extrapolated: boolean, method: PerfMethod, tableAltFt: number, notes: string[]): PerfDistances {
+  const groundM = tableGroundM * (f.temperature * f.wind);
+  const totalM = tableTotalM * (f.temperature * f.wind);
   return {
     groundM,
     totalM,
+    tableGroundM,
+    tableTotalM,
     factors: { temperature: f.temperature, surface: cond.surface, slope: cond.slope, safety, wind: f.wind, condition: cond.condition },
     requiredGroundM: groundM * cond.condition * safety,
     requiredTotalM: totalM * cond.condition * safety,
@@ -269,8 +295,6 @@ export function takeoffDistances(tables: PerformanceTables, c: PerfConditions): 
     temperature = tempFactor(t.altitudesFt, t.standardTempC, c.pressureAltFt, c.oatC, t.tempIncreasePer15C);
   }
   if (c.headwindKt < -10) extrapolated = true;
-  ground *= temperature * wind;
-  total *= temperature * wind;
   const cond = conditionFactors(tables, c.surface, c.slopePct, notes);
   return finish(ground, total, { temperature, wind }, cond, tables.factors.safetyFactorTakeoff || 1, extrapolated, method, alt, notes);
 }
@@ -287,8 +311,8 @@ export function landingDistances(tables: PerformanceTables, c: PerfConditions): 
   if (l.massKg > 0 && c.massKg > l.massKg + 1e-9) { extrapolated = true; notes.push(`Landing mass above the table mass ${l.massKg} kg.`); }
   const wind = windFactor(c.headwindKt, l.headwindDecreasePer5Kt || 0.1, notes);
   const temperature = method === 'club' ? 1 : tempFactor(l.altitudesFt, l.standardTempC, c.pressureAltFt, c.oatC, l.tempIncreasePer15C);
-  const ground = p.v[0] * wind * temperature;
-  const total = p.v[1] * wind * temperature;
+  const ground = p.v[0];
+  const total = p.v[1];
   // Downhill is adverse for landing.
   const cond = conditionFactors(tables, c.surface, -c.slopePct, notes);
   return finish(ground, total, { temperature, wind }, cond, tables.factors.safetyFactorLanding || 1, extrapolated, method, alt, notes);
@@ -314,9 +338,9 @@ export interface AerodromePerfInput {
   runway: string | null;
   surface: string | null;
   /**
-   * Omitted: take-off by DEFAULT_PERF_METHOD ('club'); landing by BOTH methods and the longer LDR
-   * is used (the club method, entered at DA with no temperature correction, is shorter than the
-   * AFM's +10 %/15 °C rule on hot days). Given: that method only.
+   * Omitted: BOTH methods and the longer distance is used (TODR for take-off, LDR for landing;
+   * see the header: the club method is shorter than the AFM on hot days for landing and on cold
+   * days for take-off). Given: that method only.
    */
   method?: PerfMethod;
 }
@@ -347,8 +371,8 @@ export interface AerodromePerf {
   variableWind: boolean;
   tailwind: boolean;
   /**
-   * Landing with no method given: the other method's result (the one not used because it is
-   * shorter), for display next to the one used. Null otherwise.
+   * No method given: the other method's result (the one not used because it is shorter), for
+   * display next to the one used. Null when a method was forced.
    */
   alternative: PerfDistances | null;
   warnings: string[];
@@ -437,17 +461,20 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
       slopePct: slopeForPhase(runway, takeoff) ?? 0,
       method: input.method,
     };
-    if (takeoff) distances = takeoffDistances(input.tables, cond);
-    else if (input.method) distances = landingDistances(input.tables, cond);
+    const compute = takeoff ? takeoffDistances : landingDistances;
+    if (input.method) distances = compute(input.tables, cond);
     else {
-      // Both methods; the longer LDR is used (conservative), the other is kept for display.
-      const club = landingDistances(input.tables, { ...cond, method: 'club' });
-      const afm = landingDistances(input.tables, { ...cond, method: 'afm' });
+      // Both methods; the longer TODR / LDR is used (conservative), the other is kept for display.
+      // (Take-off: TODR and TORR come from the same table row, so they order the same way.)
+      const club = compute(input.tables, { ...cond, method: 'club' });
+      const afm = compute(input.tables, { ...cond, method: 'afm' });
       const afmLonger = afm.requiredTotalM > club.requiredTotalM + 1e-9;
       distances = afmLonger ? afm : club;
       alternative = afmLonger ? club : afm;
       if (afmLonger) {
-        distances.notes = [...(distances.notes || []), `AFM method (PA ${Math.round(pa)} ft, +10 %/15 °C) LDR ${Math.ceil(afm.requiredTotalM - 1e-9)} m used: longer than the club method's ${Math.ceil(club.requiredTotalM - 1e-9)} m.`];
+        const what = takeoff ? 'TODR' : 'LDR';
+        const why = takeoff && isaDevC < 0 ? ', no credit for cold' : '';
+        distances.notes = [...(distances.notes || []), `AFM method (PA ${Math.round(pa)} ft, +10 %/15 °C${why}) ${what} ${Math.ceil(afm.requiredTotalM - 1e-9)} m used: longer than the club method's ${Math.ceil(club.requiredTotalM - 1e-9)} m.`];
       }
     }
     warnings.push(...(distances.notes || []));

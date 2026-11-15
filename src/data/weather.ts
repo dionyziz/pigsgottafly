@@ -13,10 +13,11 @@
 import type { IsoDate, LatLon, WindModel } from '../shared';
 import { WIND_MODELS } from '../shared';
 import type { WindProvider, WindSample } from '../calc';
+import { qnhFromStationPressure } from '../calc/performance';
 import type { MetarWind, ParsedMetar } from './weatherMetar';
 
 export const LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600] as const;
-export const SURFACE = ['pressure_msl', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high'] as const;
+export const SURFACE = ['pressure_msl', 'surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high'] as const;
 export const DEFAULT_MODEL: WindModel = 'ecmwf_ifs025';
 export const MODEL_LABELS = WIND_MODELS;
 
@@ -123,7 +124,18 @@ export function sampleAt(h: Hourly, altFt: number, timeMs: number): WindSample |
 }
 
 export interface SurfaceSample {
+  /**
+   * QNH, hPa. With the grid point's elevation and surface_pressure: the surface pressure reduced to
+   * sea level through the ISA (the definition of QNH; qnhFromStationPressure). Otherwise the
+   * model's mean-sea-level pressure, which is reduced through the model's ACTUAL temperature
+   * profile and differs from QNH at elevated points on days away from ISA (LGKZ, 660 m, −10 °C:
+   * MSLP ≈ QNH + 6 hPa, i.e. pressure altitude ≈ 170 ft too low, the non-conservative way).
+   */
   qnh: number;
+  /** Model mean-sea-level pressure, hPa (NaN if not returned). */
+  mslp: number;
+  /** Model surface pressure at the grid point, hPa (NaN if not returned). */
+  psfc: number;
   temp: number;
   dew: number;
   wind: { dir: number; spd: number } | null;
@@ -133,8 +145,12 @@ export interface SurfaceSample {
   high: number;
 }
 
-/** Surface conditions at a time, or null. */
-export function sampleSurface(h: Hourly, timeMs: number): SurfaceSample | null {
+/**
+ * Surface conditions at a time, or null.
+ * @param elevationM the grid point's elevation (OpenMeteoLocation.elevation): with it and
+ *   surface_pressure, qnh is the ISA-reduced station pressure; without, the model's MSL pressure.
+ */
+export function sampleSurface(h: Hourly, timeMs: number, elevationM?: number | null): SurfaceSample | null {
   const br = bracket(h, timeMs);
   if (!br) return null;
   const { i, j, f } = br;
@@ -157,7 +173,10 @@ export function sampleSurface(h: Hourly, timeMs: number): SurfaceSample | null {
     const a = (A || B)!, b = (B || A)!;
     wind = toDirSpd(a.u + (b.u - a.u) * f, a.v + (b.v - a.v) * f);
   }
-  const out: SurfaceSample = { qnh: at('pressure_msl'), temp: at('temperature_2m'), dew: at('dew_point_2m'), wind, low: at('cloud_cover_low'), mid: at('cloud_cover_mid'), high: at('cloud_cover_high') };
+  const mslp = at('pressure_msl');
+  const psfc = at('surface_pressure');
+  const qnh = isFinite(psfc) && psfc > 0 && typeof elevationM === 'number' && isFinite(elevationM) ? qnhFromStationPressure(psfc, elevationM / 0.3048) : mslp;
+  const out: SurfaceSample = { qnh, mslp, psfc, temp: at('temperature_2m'), dew: at('dew_point_2m'), wind, low: at('cloud_cover_low'), mid: at('cloud_cover_mid'), high: at('cloud_cover_high') };
   return isFinite(out.temp) || wind ? out : null;
 }
 
@@ -390,7 +409,7 @@ export interface SurfaceConditions {
   timeMs: number;
   tempC: number | null;
   dewC: number | null;
-  /** QNH (METAR) or mean-sea-level pressure (forecast; equal to QNH within ~1 hPa at low elevations). */
+  /** QNH: METAR, or the forecast surface pressure reduced to sea level through the ISA (SurfaceSample.qnh). */
   qnhHpa: number | null;
   /** Direction FROM, TRUE; dirTrueDeg null = variable. Null wind = not known. */
   wind: { dirTrueDeg: number | null; speedKt: number; gustKt: number | null } | null;
@@ -402,7 +421,7 @@ const fin = (x: number) => (isFinite(x) ? x : null);
 
 /** Forecast surface conditions at a time from an Open-Meteo location. */
 export function surfaceConditions(loc: OpenMeteoLocation | null, timeMs: number, modelLabel = 'Forecast'): SurfaceConditions | null {
-  const s = loc && loc.hourly ? sampleSurface(loc.hourly, timeMs) : null;
+  const s = loc && loc.hourly ? sampleSurface(loc.hourly, timeMs, loc.elevation) : null;
   if (!s) return null;
   return {
     source: 'forecast', label: `${modelLabel} forecast for ${hhmmZ(timeMs)}`, timeMs,

@@ -8,6 +8,8 @@
 //      altitude of the closest charted VFR route leg, within CLOSEST_ROUTE_MAX_NM of the custom point
 //      (of the leg midpoint when both ends are custom). Among charted legs at the same place (a
 //      direction-specific pair), the one flown in the leg's direction wins.
+//   2b. An intermediate aerodrome with a touch-and-go or stop request (patternPoints) is passed at
+//      its pattern altitude: the legs into and out of it take it, as the last and first legs do.
 //   4. Otherwise (v2): the first leg flies the departure's pattern altitude; other legs keep the
 //      previous leg's effective (possibly overridden) altitude.
 // Every default can be overridden per leg (LegOverride.altFt).
@@ -140,7 +142,7 @@ const isCustom = (p: RoutePoint) => p.kind === 'custom' || p.kind === 'waypoint'
  * @param overrides altitude typed for each leg (NaN/undefined = none); "previous leg" uses the
  *                  effective (possibly overridden) altitude of the previous leg.
  */
-export function defaultAltitudes(route: RoutePoint[], ctx: AltitudeContext, overrides: (number | undefined)[] = []): AltitudeDefault[] {
+export function defaultAltitudes(route: RoutePoint[], ctx: AltitudeContext, overrides: (number | undefined)[] = [], patternPoints: boolean[] = []): AltitudeDefault[] {
   const n = Math.max(0, route.length - 1);
   const out: AltitudeDefault[] = [];
   const effective: number[] = [];
@@ -149,7 +151,8 @@ export function defaultAltitudes(route: RoutePoint[], ctx: AltitudeContext, over
     const r = vfrRouteBetween(a, b, ctx);
     let d: AltitudeDefault | null = null;
     if (r) d = { altFt: r.maxFt, source: 'vfr-route', route: r };
-    else if (i === n - 1 && isFinite(patternAltitudeFt(b, ctx))) d = { altFt: patternAltitudeFt(b, ctx), source: 'pattern', route: null };
+    else if ((i === n - 1 || patternPoints[i + 1]) && isFinite(patternAltitudeFt(b, ctx))) d = { altFt: patternAltitudeFt(b, ctx), source: 'pattern', route: null };
+    else if (i > 0 && patternPoints[i] && isFinite(patternAltitudeFt(a, ctx))) d = { altFt: patternAltitudeFt(a, ctx), source: 'pattern', route: null };
     else if (isCustom(a) || isCustom(b)) {
       const ref = isCustom(a) && isCustom(b) ? midpoint(a, b) : isCustom(a) ? a : b;
       const c = closestVfrRoute(ref, ctx, trueCourse(a, b));

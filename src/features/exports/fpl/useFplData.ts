@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, planFuel, type FuelPlan, type NavlogResult } from '../../../calc';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
+import { requestTiming } from '../../../shared';
 import { api } from '../../../data/api';
 import { REF, SUN_TABLES } from '../../../data/ref';
 import { fetchRouteWeather, windProviderFromLegs, type RouteWeather } from '../../../data/weather';
@@ -42,11 +43,12 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
 
   const legs = useMemo(() => buildLegs(flight.route, flight.date), [flight.route, flight.date]);
   const overrides = useMemo(() => legs.map((l) => flight.legOverrides[l.key]), [legs, flight.legOverrides]);
+  const timing = useMemo(() => requestTiming(flight.route, flight.options), [flight.route, flight.options]);
   const altitudesFt = useMemo(() => {
     const ov = overrides.map((o) => o?.altFt);
-    const d = defaultAltitudes(flight.route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }, ov);
+    const d = defaultAltitudes(flight.route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }, ov, timing.patternPoints);
     return d.map((x, i) => ov[i] ?? x.altFt);
-  }, [flight.route, overrides]);
+  }, [flight.route, overrides, timing]);
 
   const [weather, setWeather] = useState<RouteWeather | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(legs.length > 0);
@@ -78,8 +80,10 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
       aircraft: navlogAircraft(aircraft, flight.options.compassCard),
       winds: perLeg.some(Boolean) ? windProviderFromLegs(perLeg) : null,
       sunTables: SUN_TABLES,
+      patternLegs: timing.patternLegs,
+      groundAfterLegMin: timing.groundAfterLegMin,
     }));
-  }, [legs, aircraft, weather, flight.date, flight.blockOff, flight.taxiOutMin, flight.taxiInMin, altitudesFt, overrides, flight.options.compassCard]);
+  }, [legs, aircraft, weather, flight.date, flight.blockOff, flight.taxiOutMin, flight.taxiInMin, altitudesFt, overrides, flight.options.compassCard, timing]);
 
   const fuel = useMemo(() => {
     if (!aircraft) return null;
@@ -92,8 +96,9 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
       fobL: flight.fobL,
       usableL: aircraft.fuel.usableL,
       tripMin: navlog ? navlog.flightMin : 0,
+      stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
     }));
-  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, flight.fobL]);
+  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, flight.fobL, timing]);
 
   return { aircraft, aircraftLoading, weather, weatherLoading, navlog, fuel };
 }

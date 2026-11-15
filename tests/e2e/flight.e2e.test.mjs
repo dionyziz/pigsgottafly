@@ -73,11 +73,30 @@ before(async () => {
 after(async () => { await page?.close(); await browser?.close(); await server?.close(); });
 
 const shot = (name) => page.screenshot('flight-' + name, { fullPage: false });
-/** Page coordinates of a lat/lon on the map (after layout settles: the strip below can resize the map). */
-const mapPx = async (lat, lon) => { await sleep(400); return page.eval((lat, lon) => {
-  const c = document.querySelector('.pgf-map-canvas'); const m = c.__pgfMap; const r = c.getBoundingClientRect(); const p = m.project([lon, lat]);
-  return { x: r.left + p.x, y: r.top + p.y };
-}, lat, lon); };
+/** Page coordinates of a lat/lon on the map, once the layout has settled. The navlog strip below
+ *  grows a row per leg, which shrinks the map; MapLibre picks the new size up from a ResizeObserver
+ *  (throttled to 50 ms) that only runs at a rendering opportunity, and with SwiftShader WebGL on a
+ *  busy machine frames can be hundreds of ms apart. So each sample waits for real animation frames
+ *  and the 50 ms throttle, and only counts when MapLibre's own size matches its container; the
+ *  position must then read the same on consecutive samples. */
+const mapPx = async (lat, lon) => {
+  const at = () => page.eval(async (lat, lon) => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+    await frame(); await new Promise((r) => setTimeout(r, 60)); await frame(); await frame();
+    const c = document.querySelector('.pgf-map-canvas'); const m = c.__pgfMap; const r = c.getBoundingClientRect();
+    const sized = Math.abs(m.transform.width - c.clientWidth) < 1 && Math.abs(m.transform.height - c.clientHeight) < 1;
+    const p = m.project([lon, lat]);
+    return { sized, x: Math.round((r.left + p.x) * 10) / 10, y: Math.round((r.top + p.y) * 10) / 10 };
+  }, lat, lon);
+  let prev = await at(), same = 0;
+  for (let i = 0; i < 60 && same < 2; i++) {
+    const cur = await at();
+    same = cur.sized && prev.sized && cur.x === prev.x && cur.y === prev.y ? same + 1 : 0;
+    prev = cur;
+  }
+  assert.ok(prev.sized, 'map size settled');
+  return { x: prev.x, y: prev.y };
+};
 async function mouse(type, x, y, { modifiers = 0, clickCount = 1, button = 'left' } = {}) {
   await page.send('Input.dispatchMouseEvent', { type, x, y, modifiers, clickCount, button: type === 'mouseMoved' ? 'none' : button });
 }
@@ -100,7 +119,22 @@ async function pdfCheck(name, pages, orientation) {
   assert.ok(Math.abs(r.width - w) < 2 && Math.abs(r.height - h) < 2, `${name}: page ${r.width}×${r.height} pt, expected A4 ${orientation}`);
   return r;
 }
-const snapTip = () => page.eval(() => document.querySelector('[data-testid=snap-tip] b')?.textContent || '');
+/** Hovers (x, y) and returns the snap tip's name once the tip shows this cursor position. Mouse
+ *  moves are handled on the next animation frame and then rendered by React, so right after another
+ *  interaction (e.g. the name prompt closing) the tip can still show the previous hover for a while:
+ *  wait until the tip sits at this position (it is drawn 16 px right of the cursor) instead of
+ *  reading it after a fixed delay. */
+async function hoverSnap(x, y) {
+  await hover(x, y);
+  const r = await page.waitFor((x, y) => {
+    const tip = document.querySelector('[data-testid=snap-tip]');
+    if (!tip) return null;
+    const c = document.querySelector('.pgf-map-canvas').getBoundingClientRect();
+    if (Math.abs(parseFloat(tip.style.left) - (x - c.left + 16)) > 1 || Math.abs(parseFloat(tip.style.top) - (y - c.top + 14)) > 1) return null;
+    return { name: tip.querySelector('b')?.textContent || '' };
+  }, { args: [x, y], timeout: 5000 });
+  return r.name;
+}
 const flightId = () => page.eval(() => location.pathname.split('/')[2]);
 const waitSaved = () => page.waitFor(() => document.querySelector('[data-testid=save-state]')?.textContent === 'Saved', { timeout: 15000 });
 const text = (sel) => page.eval((s) => document.querySelector(s)?.textContent ?? null, sel);
@@ -155,13 +189,11 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
 
   // LGTT: click 6 px off the aerodrome: it snaps
   let p = await mapPx(LGTT.lat, LGTT.lon);
-  await hover(p.x + 5, p.y - 4);
-  assert.match(await snapTip(), /LGTT/);
+  assert.match(await hoverSnap(p.x + 5, p.y - 4), /LGTT/);
   await clickAt(p.x + 5, p.y - 4);
   // ABLONAS (VFR point)
   p = await mapPx(ABLONAS.lat, ABLONAS.lon);
-  await hover(p.x - 4, p.y + 5);
-  assert.match(await snapTip(), /ABLONAS/);
+  assert.match(await hoverSnap(p.x - 4, p.y + 5), /ABLONAS/);
   await clickAt(p.x - 4, p.y + 5);
   await shot('1-drawing');
   // custom point ZOFRI: Shift-click, name it
@@ -173,8 +205,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => !document.querySelector('[data-testid=name-prompt]'));
   // LGMG (aerodrome; the MEGARA reporting point shares its position: the aerodrome wins)
   p = await mapPx(LGMG.lat, LGMG.lon);
-  await hover(p.x + 6, p.y + 3);
-  assert.match(await snapTip(), /LGMG|MEGARA/);
+  assert.match(await hoverSnap(p.x + 6, p.y + 3), /LGMG|MEGARA/);
   await clickAt(p.x + 6, p.y + 3);
   await page.key('Enter'); // stop drawing
   await page.waitFor(() => document.querySelectorAll('[data-testid=leg-label]').length === 3);

@@ -201,3 +201,8 @@ ul.notes { margin: 0; padding-left: 18px; font-size: var(--fs-sm); color: var(--
 .issue-pop li { display: grid; grid-template-columns: 150px 1fr; gap: var(--s3); padding: 6px 14px; font-size: var(--fs-sm); }
 .issue-pop li.error span { color: var(--danger); }
 .issue-pop li.warning span { color: var(--warn); }
+.cc-report { display: flex; flex-direction: column; gap: var(--s1); }
+.cc-report-label { font-size: var(--fs-sm); font-weight: 500; color: var(--ink-2); }
+.cc-report-row { gap: var(--s2); align-items: center; padding: 6px 10px; border: 1px dashed var(--line-strong); border-radius: var(--r); }
+.cc-report-name { font-weight: 600; min-width: 0; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-report-img { max-width: 100%; max-height: 420px; object-fit: contain; align-self: flex-start; border: 1px solid var(--line); border-radius: var(--r); }

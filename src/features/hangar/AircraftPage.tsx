@@ -149,7 +149,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a
           <FuelSection {...props} />
           <MassBalanceSection {...props} />
           <PerformanceSection {...props} />
-          <CompassSection {...props} today={today} />
+          <CompassSection {...props} today={today} aircraftId={aircraft.id} />
 
           <div className={'ac-savebar card' + (dirty ? ' dirty' : '')} role="region" aria-label="Save">
             <button type="button" className="issue-sum" onClick={() => setShowIssues((v) => !v)} aria-expanded={showIssues} disabled={!issues.length}>

@@ -47,16 +47,19 @@
 .pgf-legend .lg-vfr { border-color: #1e6b46; }
 .pgf-legend .lg-route { border-color: #c2185b; border-top-width: 3px; }
 
-/* hint bar */
+/* hint bubble: top left, under the toolbar (out of the way of the route and the snap tooltip, which
+   follow the cursor below it); it fades out while the cursor is near it */
 .pgf-map-hint {
-  position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); z-index: 2;
-  max-width: min(760px, calc(100% - 140px)); padding: 6px 12px; border-radius: 999px;
-  background: rgba(22, 25, 29, 0.78); color: #fff; font-size: var(--fs-xs); line-height: 1.4;
-  pointer-events: none; text-align: center; backdrop-filter: blur(4px);
-  display: flex; align-items: center; gap: 8px;
+  position: absolute; top: calc(var(--s3) + 48px); left: var(--s3); z-index: 2;
+  max-width: min(400px, calc(100% - 80px)); padding: 6px 10px 6px 12px; border-radius: 8px;
+  background: rgba(22, 25, 29, 0.74); color: #fff; font-size: var(--fs-xs); line-height: 1.45;
+  pointer-events: none; backdrop-filter: blur(4px);
+  display: flex; align-items: flex-start; gap: 8px; transition: opacity 0.15s ease;
 }
+.pgf-map-hint.is-away { opacity: 0; }
+.pgf-map-hint.is-away .pgf-map-hint-x { pointer-events: none; }
 .pgf-map-hint-x {
-  pointer-events: auto; flex: none; width: 18px; height: 18px; padding: 0; margin-right: -6px;
+  pointer-events: auto; flex: none; width: 18px; height: 18px; padding: 0; margin-right: -4px;
   border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff;
   font: 600 13px/18px var(--font); cursor: pointer;
 }
@@ -70,6 +73,12 @@
 }
 .pgf-snap-tip b { color: #c2185b; font-size: var(--fs-sm); letter-spacing: 0.02em; }
 .pgf-snap-leg { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* weather hazard tooltip (hover a hazard band or ring) */
+.pgf-wx-tip { gap: 3px; }
+.pgf-wx-tip span { font-size: var(--fs-xs); }
+.pgf-wx-tip .is-danger { color: var(--danger); }
+.pgf-wx-tip .is-warn { color: var(--warn); }
 
 /* airspace hover tooltip and click popover */
 .pgf-air-tip {
@@ -133,6 +142,17 @@
 }
 .pgf-leg-inner > * { padding: 4px 6px; }
 .pgf-leg-mc { color: #c2185b; font-weight: 700; }
+/* weather badge at the start of a leg label (texts on hover) */
+.pgf-leg-inner > .pgf-leg-wx {
+  pointer-events: auto; cursor: help; align-self: center; flex: none; display: grid; place-items: center;
+  width: 13px; height: 13px; margin-left: 4px; padding: 0; border-radius: 50%;
+  font: 800 9px/1 var(--font); color: #fff;
+}
+.pgf-leg-wx.is-danger { background: #d64545; }
+.pgf-leg-wx.is-warn { background: #d49a06; }
+.pgf-leg[data-mode='compact'] .pgf-leg-inner > .pgf-leg-wx { position: absolute; top: -6px; left: -6px; margin: 0; padding: 0; box-shadow: 0 0 0 1.5px #fff; }
+.pgf-leg[data-drawing='1'] .pgf-leg-wx { pointer-events: none; }
+.pgf-map-canvas.is-dragging .pgf-leg-wx { pointer-events: none; }
 .pgf-leg-dist { color: var(--ink-2); font-weight: 500; border-left: 1px solid rgba(194, 24, 91, 0.25); }
 .pgf-leg-alt {
   pointer-events: auto; border: 0; border-left: 1px solid rgba(194, 24, 91, 0.25); border-radius: 0 3px 3px 0;
@@ -148,7 +168,7 @@
 }
 .pgf-leg-input.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger-soft); }
 /* compact: course and distance on top, altitude below, smaller type (never only the altitude) */
-.pgf-leg[data-mode='compact'] .pgf-leg-inner { display: grid; grid-template-columns: auto auto; font-size: 10px; }
+.pgf-leg[data-mode='compact'] .pgf-leg-inner { position: relative; display: grid; grid-template-columns: auto auto; font-size: 10px; }
 .pgf-leg[data-mode='compact'] .pgf-leg-inner > * { padding: 3px 4px; text-align: center; }
 .pgf-leg[data-mode='compact'] .pgf-leg-alt {
   grid-column: 1 / -1; border-left: 0; border-top: 1px solid rgba(194, 24, 91, 0.25); border-radius: 0 0 3px 3px; font-size: 10px;
@@ -195,6 +215,15 @@
 
 @media (max-width: 720px) {
   .pgf-map-btn span { display: none; }
-  .pgf-map-hint { max-width: calc(100% - 32px); bottom: 40px; }
+  .pgf-map-hint { max-width: calc(100% - 80px); }
 }
 @media print { .pgf-map { display: none; } }
+
+/* NOTAM areas: tooltip and popover (shares the airspace popover's look) */
+.pgf-air-type.t-notam { background: #c77700; }
+.pgf-air-type.t-notam.is-hidden { background: #7a828c; }
+.pgf-notam-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pgf-notam-raw {
+  margin: 4px 0 0; padding: 6px 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink);
+}

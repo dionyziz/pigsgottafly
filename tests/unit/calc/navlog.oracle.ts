@@ -41,7 +41,8 @@ export interface OracleRow { tc: number; dist: number; wca: number; th: number; 
 /** Expected written cells per leg (+ totals), from the paper rules. */
 export function navlog(legs: OracleLeg[], { steer = null as number[] | null, flow = 30, extra = 4 } = {}) {
   const rows: OracleRow[] = legs.map((L) => {
-    const tc = Math.round(course(L.a, L.b));
+    // TC at the leg midpoint (as read off a VFR chart): the course from the midpoint to the end.
+    const tc = Math.round(course(midpoint(L.a, L.b), L.b));
     const dist = Math.round(haversineNm(L.a, L.b));
     const awa = rad(L.wd - tc);
     const wcaExact = deg(Math.asin((L.ws * Math.sin(awa)) / L.tas));

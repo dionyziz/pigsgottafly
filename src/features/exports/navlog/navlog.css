@@ -105,6 +105,13 @@
 .md42 .foot .note-lines .nv { height: 100%; width: 100%; display: flex; align-items: flex-end; padding: 0 calc(6*var(--u)) calc(4*var(--u)); white-space: nowrap; overflow: hidden;
   font-size: calc(11.5 * var(--u)); font-weight: 500; color: var(--md42-ink, #17418f); }
 
+/* weather hazards that did not fit the notes lines: a plain list after the sheets */
+.md42-hazards { background: #fff; color: #111; max-width: calc(1145 * var(--fit, 0.9px)); width: 100%; margin: 0 auto; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.18); font-size: 13px; line-height: 1.45; }
+.md42-hazards h2 { font-size: 16px; margin: 0 0 2px; }
+.md42-hazards-src { color: #555; margin: 0 0 8px; font-size: 12px; }
+.md42-hazards ol { margin: 0; padding-left: 22px; columns: 2; column-gap: 28px; }
+.md42-hazards li { break-inside: avoid; margin-bottom: 3px; }
+
 /* ---------------- print: A4 landscape, one sheet per page */
 @page md42 { size: A4 landscape; margin: 5mm; }
 @media print {
@@ -113,5 +120,8 @@
   .md42-stage { display: block; gap: 0; }
   .md42 { --u: 0.226mm; --hair: 0.2mm; --thick: 0.4mm; box-shadow: none; margin: 0 auto; break-inside: avoid; }
   .md42 + .md42 { break-before: page; }
+  .md42-hazards { break-before: page; box-shadow: none; max-width: none; padding: 0; font-size: 10pt; }
+  .md42-hazards h2 { font-size: 12pt; }
+  .md42-hazards-src { font-size: 9pt; }
   .md42 .v.need, .md42 .v.calm { background: transparent !important; }
 }

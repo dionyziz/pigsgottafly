@@ -93,7 +93,7 @@ test('hand-computed leg: TC 000, 60 NM, wind 270/20, TAS 80, VAR 5E', () => {
   // TH 346, MH 341; time 60/77 h = 46.75 min → 0:47; fuel 46.75 × 0.5 = 23.4 → 24 L (rounded up)
   const leg: LegGeometry = {
     index: 0, key: 'a>b', from: { uid: 'a', kind: 'custom', refId: null, name: 'A', lat: 37, lon: 23 }, to: { uid: 'b', kind: 'custom', refId: null, name: 'B', lat: 38, lon: 23 },
-    mid: { lat: 37.5, lon: 23 }, tcTrue: 0, distNm: 60, variation: 5, mcMag: 355,
+    mid: { lat: 37.5, lon: 23 }, tcTrue: 0, tcInitial: 0, distNm: 60, variation: 5, mcMag: 355,
   };
   const r = computeNavlog({ date: DATE, blockOff: '10:00', taxiOutMin: 10, taxiInMin: 5, legs: [leg], altitudesFt: [2500], overrides: [],
     aircraft: { ...ASV, card: null }, winds: () => ({ dirDeg: 270, speedKt: 20, tempC: 10 }) });

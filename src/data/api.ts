@@ -3,6 +3,9 @@
 import type {
   Aircraft,
   AircraftInput,
+  Attachment,
+  AttachmentInput,
+  AttachmentRef,
   Flight,
   FlightCopyRequest,
   FlightCreateRequest,
@@ -21,6 +24,8 @@ import type {
   Waypoint,
   WaypointInput,
 } from '../shared';
+import type { FileRequest, FilingState } from '../shared/briefing';
+import type { FormsState, SigningView } from '../shared/forms';
 
 export class ApiRequestError extends Error {
   constructor(public status: number, message: string, public body: unknown) {
@@ -71,6 +76,12 @@ export const api = {
     update: (patch: PilotUpdate) => request<Pilot>('PUT', 'me', patch),
   },
   aircraft: crud<Aircraft, AircraftInput>('aircraft'),
+  /** Files stored with an aircraft (compass swing reports). */
+  attachments: {
+    upload: (aircraftId: string, input: AttachmentInput) => request<AttachmentRef>('POST', `aircraft/${encodeURIComponent(aircraftId)}/attachments`, input),
+    get: (aircraftId: string, fileId: string) => request<Attachment>('GET', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
+    remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
+  },
   passengers: crud<Passenger, PassengerInput>('passengers'),
   waypoints: crud<Waypoint, WaypointInput>('waypoints'),
 
@@ -90,6 +101,28 @@ export const api = {
   ref: {
     airac: () => request<RefAirac>('GET', 'ref/airac'),
     bundle: () => request<RefBundle>('GET', 'ref/bundle'),
+  },
+  /** Form 731 signatures and the forms e-mailed to HCAA (api/_lib/routes/forms.ts). */
+  forms: {
+    get: (id: string) => request<FormsState>('GET', `flights/${encodeURIComponent(id)}/forms`),
+    requestLinks: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links`),
+    renewLink: (id: string, key: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/renew`),
+    revokeLink: (id: string, key: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/revoke`),
+    send731: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/send`),
+    sendGenDec: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/send`),
+  },
+  /** The signing page (no sign-in). */
+  sign: {
+    view: (token: string) => request<SigningView>('GET', `sign/${encodeURIComponent(token)}`),
+    sign: (token: string) => request<SigningView>('POST', `sign/${encodeURIComponent(token)}`),
+  },
+  /** Flight-plan filing through autorouter (api/_lib/routes/filing.ts). 503 = filing not enabled. */
+  filing: {
+    get: (id: string) => request<FilingState>('GET', `flights/${encodeURIComponent(id)}/filing`),
+    file: (id: string, req: FileRequest) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing`, req),
+    delay: (id: string, eobt: number) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/delay`, { eobt }),
+    cancel: (id: string, reason?: string) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/cancel`, { reason }),
+    refresh: (id: string) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/refresh`),
   },
   weather: {
     metar: (icaos: string[]) => request<MetarTafResponse>('GET', `weather/metar?ids=${icaos.map(encodeURIComponent).join(',')}`),

@@ -44,7 +44,14 @@ export async function launch() {
       await p.init();
       return p;
     },
-    async close() { proc.kill(); await sleep(200); fs.rmSync(profile, { recursive: true, force: true }); },
+    async close() {
+      // Wait for Chrome to exit before removing its profile: it keeps writing there while shutting
+      // down (ENOTEMPTY on a busy machine). A profile that still cannot be removed is left in tmp.
+      const exited = proc.exitCode !== null ? Promise.resolve() : new Promise((r) => proc.once('exit', r));
+      proc.kill();
+      await Promise.race([exited, sleep(5000)]);
+      try { fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); } catch (e) { console.warn(`e2e: could not remove ${profile}: ${e.message}`); }
+    },
   };
 }
 

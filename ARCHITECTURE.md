@@ -49,6 +49,8 @@ src/
     weather.ts             Open-Meteo (port of v2 js/weather.js): buildUrl, fetchPoints, sampleAt, sampleSurface,
                            fetchRouteWeather, surfaceConditions, chooseSurface (METAR vs forecast), windProviderFromLegs()
     weatherMetar.ts        parseMetar, parseTaf, fetchMetarTaf (through GET /api/weather/metar)
+    notams.ts              NOTAM briefing: fetchNotams (GET /api/flights/:id/notams), texts (validity, limits, decoded
+                           subject), Q-line circle rings for the map, visibleNotams (relevant / show all)
     hazardWeather.ts       Open-Meteo corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid cells cached one by
                            one): fetchHazardWeather, computeRouteHazards (editor strip + map, navlog export notes)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
@@ -66,11 +68,14 @@ src/
     waypoints/             WaypointsPage
     editor/                EditorPage (layout), state.tsx (EditorProvider/useEditor: SHARED EDITOR CONTRACT),
                            map/ (MapView → RouteMap: VFR-chart layers, drawing, snapping, leg labels; airspace.ts +
-                           AirspacePopover: TMA/CTR/ATZ shapes, hover tooltip, click details with the legs entering),
+                           AirspacePopover: TMA/CTR/ATZ shapes, hover tooltip, click details with the legs entering;
+                           notamLayer.ts + NotamPopover: NOTAM areas, hover tooltip, click details),
+                           notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
                            panels/ (FlightPanel sections, NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
                            fuel, W&B, performance, warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
-                           fpl/ (ICAO 2012 message + form), wb/ (MD 4.3 + envelope chart), performance/ (MD 4.4)
+                           fpl/ (ICAO 2012 message + form), wb/ (MD 4.3 + envelope chart), performance/ (MD 4.4),
+                           briefing/ (NOTAM briefing)
 api/
   index.ts                 Vercel entry: restores the path from ?__path=, refuses to run without DATABASE_URL and
                            GOOGLE_CLIENT_ID, runs pending migrations on cold start, then serves
@@ -81,8 +86,10 @@ api/
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry
   _lib/migrations/         001_schema.ts, 002_ref_2609.ts (generated), 003_existing_pilot_data.ts (generated),
-                           004_legacy_flights.ts, 005_ref_runways_2609.ts (generated: AIP runway data)
-  _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts
+                           004_legacy_flights.ts, 005_ref_runways_2609.ts (generated: AIP runway data),
+                           006_briefing_filing.ts, 007_aircraft_attachments.ts (compass swing report files)
+  _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
+                           attachments.ts, notams.ts, filing.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
@@ -131,7 +138,9 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /logout | Ends this session only. |
 | GET, PUT | /me | Profile (`PilotUpdate`; settings are merged). `defaultAircraftId` must be one of your own aircraft. |
 | GET, POST | /aircraft | List (by registration); create from `AircraftInput`. 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
-| GET, PUT, DELETE | /aircraft/:id | PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. |
+| GET, PUT, DELETE | /aircraft/:id | PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); files no card references are deleted on PUT. POST drops `report` references. |
+| POST | /aircraft/:id/attachments | `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
+| GET, DELETE | /aircraft/:id/attachments/:fileId | GET returns `Attachment` (`AttachmentRef` + base64 `data`). |
 | GET, POST | /passengers | List (by name); create. |
 | GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`). |
 | GET, POST | /waypoints | Saved custom points (names upper-cased). |
@@ -151,7 +160,7 @@ Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's reco
 
 ## Database, migrations and seeds
 
-- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`; shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`; `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
+- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64); shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`; `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
 - Migrations are TS modules (SQL as a default-exported string, or a `run(q)` function) listed in `api/_lib/migrate.ts`, so the Vercel bundle contains them. The runner records each one in `schema_migrations`, applies each in its own transaction, and serialises runners with a session advisory lock (plus an in-process queue for PGlite). It runs from `openDb()`: on server start, in tests, and on the Vercel cold start before serving.
   - `001_schema` converts the v2 production schema in place: `users` → `pilots` (same ids), `sessions.user_id` → `pilot_id` (sessions survive), `flights` → `legacy_flights` (kept as a backup). It then creates the new tables.
   - `002_ref_2609` (generated by `tools/build_ref.ts`) loads the reference data for AIRAC 09/26.

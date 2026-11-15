@@ -18,6 +18,12 @@ export interface ApiConfig {
   secureCookie: boolean;
   /** autorouter account (NOTAMs, filing); null/undefined = not configured. Tests inject a mocked fetch. */
   autorouter?: AutorouterSettings | null;
+  /**
+   * Lower-cased e-mails of the pilots who may use the autorouter account (NOTAMs, filing). The
+   * account is the deployment's own, and filing sends real ATC messages, so in Google mode an empty
+   * list means NOBODY (never "anyone"). Default: allowedEmails. Local mode: the local pilot.
+   */
+  autorouterPilots?: string[];
 }
 
 export interface Ctx {
@@ -33,8 +39,10 @@ export interface Ctx {
   body(): Promise<any>;
   /** Extra response headers (e.g. Set-Cookie). */
   headers: Record<string, string>;
-  /** The autorouter client of this API instance, or null when not configured. */
+  /** The autorouter client of this API instance, or null when not configured or not for this pilot. */
   autorouter: AutorouterClient | null;
+  /** True when autorouter is configured but this pilot is not on the autorouter allow-list. */
+  autorouterDenied: boolean;
 }
 
 /** A handler returns the JSON body (status 200), a Reply (other status/headers), or undefined (204). */

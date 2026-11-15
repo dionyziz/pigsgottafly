@@ -3,20 +3,44 @@ import './form731.css';
 import { form731Model, ROWS_PER_SHEET, type Form731Row } from './model';
 import type { FormExportProps } from './common';
 import { FormWarnings } from './FormWarnings';
+import { signatureName } from '../../../shared/forms';
+import { transliterate } from '../../../shared/translit';
+import type { ReactNode } from 'react';
 
-export function Form731(props: FormExportProps) {
+/** A signature on the current version of the form: the signer's name and when (epoch ms). */
+export interface ShownSignature { name: string; signedAt: number }
+
+export function Form731(props: FormExportProps & { signatures?: Record<string, ShownSignature>; panel?: ReactNode }) {
   const m = form731Model(props);
   return (
     <div className="pgf-forms" data-testid="form731">
+      {props.panel}
       <FormWarnings warnings={m.warnings} />
       {m.sheets.map((rows, i) => (
-        <Sheet key={i} rows={rows} m={m} index={i} />
+        <Sheet key={i} rows={rows} m={m} index={i} signatures={props.signatures ?? {}} />
       ))}
     </div>
   );
 }
 
-function Sheet({ rows, m, index }: { rows: Form731Row[]; m: ReturnType<typeof form731Model>; index: number }) {
+const pad2 = (n: number) => String(n).padStart(2, '0');
+function stamp(ms: number): string {
+  const d = new Date(ms);
+  return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
+}
+
+/** "D. Zindros" in the handwriting font, with the time it was signed. */
+export function Signature({ s, size = 4.6 }: { s: ShownSignature; size?: number }) {
+  return (
+    <span className="pgf-signature-wrap" data-testid="signature">
+      <span className="pgf-signature" style={{ fontSize: `${size}mm` }}>{transliterate(signatureName(s.name), { keepCase: true })}</span>
+      <span className="pgf-signature-when">signed {stamp(s.signedAt)}</span>
+    </span>
+  );
+}
+
+function Sheet({ rows, m, index, signatures }: { rows: Form731Row[]; m: ReturnType<typeof form731Model>; index: number; signatures: Record<string, ShownSignature> }) {
+  const picKey = rows.find((r) => r.role === 'PIC')?.key ?? 'PIC';
   const blanks = Array.from({ length: ROWS_PER_SHEET - rows.length }, (_, k) => index * ROWS_PER_SHEET + rows.length + k + 1);
   return (
     <section className="pgf-sheet f731-sheet" aria-label={`Form 731, sheet ${index + 1} of ${m.sheets.length}`}>
@@ -64,7 +88,7 @@ function Sheet({ rows, m, index }: { rows: Form731Row[]; m: ReturnType<typeof fo
               <td className="pgf-fill" data-field="relation">{r.relation}</td>
               <td className="pgf-fill" data-field="id">{r.idPassport}</td>
               <td className="pgf-fill" data-field="contact">{r.contact}</td>
-              <td />
+              <td data-field="signature">{signatures[r.key] && <Signature s={signatures[r.key]} size={3.8} />}</td>
             </tr>
           ))}
           {blanks.map((no) => (
@@ -87,6 +111,7 @@ function Sheet({ rows, m, index }: { rows: Form731Row[]; m: ReturnType<typeof fo
       <div className="f731-pic">The Pilot in Command</div>
       <div className="f731-verified">It is verified by</div>
       <div className="f731-pic-name pgf-fill" data-field="pic">{m.picName}</div>
+      {signatures[picKey] && <div className="f731-pic-signature"><Signature s={signatures[picKey]} /></div>}
       <div className="f731-sig">(Fullname-signature)</div>
       <div className="f731-formno">FORM&nbsp; 731</div>
     </section>

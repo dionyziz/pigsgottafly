@@ -55,12 +55,17 @@ export function fleetSeed(): AircraftInput[] {
       mb.envelopes.utility.momentPolygon = momentUtility;
       mb.envelopes.utility.notes = f.utilityNote ?? '';
     } else mb.envelopes.utility = null;
-    // Colours and markings (FPL item 19 A/): from fleet.json when known. Neither the AFMs, the weighing
-    // reports nor the compass swing reports state them, so they are not invented: the hangar flags
-    // the empty field ('Colours and markings not set') and the FPL export warns until the pilot fills it.
+    // Colours and markings (FPL item 19 A/): from fleet.json when a source is known (its _coloursNote
+    // says which). Where none is, they are not invented: the hangar flags the empty field ('Colours and
+    // markings not set') and the FPL export warns until the pilot fills it.
     a.colours = typeof f.colours === 'string' ? f.colours : '';
-    // Equipment: to be confirmed by the pilot in the hangar (not in the source data).
-    a.equipment = { ...a.equipment, item10a: 'S', item10b: 'C', emergencyRadio: { uhf: false, vhf: false, elt: true } };
+    // Equipment: to be confirmed by the pilot in the hangar. Per-aircraft facts from fleet.json
+    // (e.g. SX-ASG's life vests listed in its weighing report → item 19 J/).
+    const jackets = f.equipment?.jackets;
+    a.equipment = {
+      ...a.equipment, item10a: 'S', item10b: 'C', emergencyRadio: { uhf: false, vhf: false, elt: true },
+      ...(jackets ? { jackets: { ...a.equipment.jackets, ...jackets } } : {}),
+    };
     a.compassCards = cards[reg];
     a.notes = [f.emptyMass._note, f.utilityNote].filter(Boolean).join('\n');
     return a;

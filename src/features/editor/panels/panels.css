@@ -168,3 +168,31 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-fpl { display: flex; flex-direction: column; gap: var(--s3); }
 .ep-fpl textarea { width: 100%; resize: vertical; min-height: 52px; }
 .ep-fpl .hint { font-size: var(--fs-xs); color: var(--muted); }
+
+/* NOTAMs */
+.ep-notams { display: flex; flex-direction: column; gap: var(--s2); }
+.ep-notam-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.ep-notam { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-left: 3px solid var(--warn-line); border-radius: var(--r); background: var(--surface); font-size: var(--fs-sm); }
+.ep-notam.hidden-notam { border-left-color: var(--line-strong); background: var(--surface-2); }
+.ep-notam.selected { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.ep-notam-head { display: flex; align-items: baseline; gap: var(--s2); border: 0; background: none; padding: 0; text-align: left; width: 100%; color: var(--ink); font-size: var(--fs-sm); }
+.ep-notam-head:hover { background: none; }
+.ep-notam-head:hover .ep-notam-key { text-decoration: underline; }
+.ep-notam-key { font-weight: 600; }
+.ep-notam-where { color: var(--ink-2); }
+.ep-notam-leg { font-size: var(--fs-xs); color: var(--ink-2); background: var(--hover); border-radius: var(--r-sm); padding: 0 6px; }
+.ep-notam-subject { font-weight: 600; }
+.ep-notam-meta { display: flex; flex-wrap: wrap; column-gap: var(--s3); font-size: var(--fs-xs); color: var(--ink-2); }
+.ep-notam-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ep-notam-why { font-size: var(--fs-xs); color: var(--ink-2); }
+.ep-notam-rawbtn { align-self: flex-start; font-size: var(--fs-xs); }
+.ep-notam-raw { margin: 0; padding: 6px 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); font-family: var(--mono); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ns-table tr.is-notam td { background: var(--accent-soft); }
+
+/* touch-and-go / stop requests (Flight plan section) */
+.ep-requests ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.ep-requests li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; }
+.ep-requests .ep-req-name { font-weight: 600; min-width: 4.5em; }
+.ep-requests label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
+.ep-requests .ep-req-min { width: 4.2em; margin-left: 4px; }
+.ep-requests li .hint { flex-basis: 100%; }

@@ -21,6 +21,7 @@ Production runs on Vercel. `vite build` produces `dist/`, and `/api/…` runs as
   - `DATABASE_URL` (set by the Neon integration)
   - `GOOGLE_CLIENT_ID` (required: the function refuses to serve without it)
   - optionally `ALLOWED_EMAILS` (comma-separated)
+  - optionally `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD` (NOTAM briefing) and `AUTOROUTER_FILING=1` (flight-plan filing). This is one shared autorouter account, so only the pilots on `AUTOROUTER_PILOTS` (comma-separated; default `ALLOWED_EMAILS`) may use it. With both lists empty nobody can, and filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
 - Migrations run on cold start (`api/_lib/migrate.ts`). Migration 001 converts the v2 schema in place, keeping accounts, sessions and flights.
 
 ## Reference data

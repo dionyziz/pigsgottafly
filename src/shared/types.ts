@@ -51,6 +51,11 @@ export interface PilotSettings {
   windModel: WindModel;
   /** Aerodromes within this distance of the route are listed in the ATC list (default 2 NM). */
   enrouteAerodromeRadiusNm: number;
+  /**
+   * ICAO codes of aerodromes where a handler submits the General Declaration: no "Send to HCAA"
+   * for a flight between two of them. Missing = none.
+   */
+  handledAerodromes?: string[];
 }
 
 /** Identity details used on the forms (Form 731, GenDec, FPL item 19 C/). */
@@ -290,6 +295,34 @@ export interface CompassCard {
   expires: IsoDate;
   source: string;
   points: [number, number][];
+  /** The compass swing report as a file (PDF or image) stored with the aircraft; null/absent = none. */
+  report?: AttachmentRef | null;
+}
+
+/** File types accepted as aircraft attachments (compass swing reports). */
+export const ATTACHMENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'] as const;
+export type AttachmentType = (typeof ATTACHMENT_TYPES)[number];
+/** Largest attachment, bytes (base64 in a JSON body stays under the API's 5 MB body limit). */
+export const ATTACHMENT_MAX_BYTES = 3 * 1024 * 1024;
+
+/** A file stored with an aircraft (GET /api/aircraft/:id/attachments/:fileId gives its content). */
+export interface AttachmentRef {
+  id: Id;
+  name: string;
+  mime: AttachmentType;
+  /** Bytes. */
+  size: number;
+  uploaded: EpochMs;
+}
+/** POST /api/aircraft/:id/attachments body; GET returns AttachmentRef & { data }. */
+export interface AttachmentInput {
+  name: string;
+  mime: AttachmentType;
+  /** File content, base64 (no data: prefix). */
+  data: string;
+}
+export interface Attachment extends AttachmentRef {
+  data: string;
 }
 
 export interface Aircraft {
@@ -424,6 +457,19 @@ export interface AtcEntry {
   sourceKey: string | null;
 }
 
+/**
+ * A request at an aerodrome of the route (PLAN-v3 "Touch-and-go and intermediate-stop requests"):
+ * written into FPL item 18 RMK/ in the club's format, and timed (pattern TAS on the legs either
+ * side of an intermediate aerodrome, plus the stop's minutes on the ground).
+ */
+export interface AerodromeRequest {
+  /** RoutePoint.uid of the aerodrome point (the request goes when the point is removed). */
+  pointUid: string;
+  kind: 'touch-and-go' | 'stop';
+  /** Minutes on the ground, kind 'stop' only. */
+  stopMin?: number;
+}
+
 export interface FlightOptions {
   windModel: WindModel;
   /** CompassCard.name to use; null = the aircraft's first card. */
@@ -439,6 +485,8 @@ export interface FlightOptions {
   /** Key of PerformanceFactors.runwayCondition; null = paved, dry. */
   departureSurface: string | null;
   arrivalSurface: string | null;
+  /** Touch-and-go / intermediate-stop requests (missing on older flights = none). */
+  aerodromeRequests?: AerodromeRequest[];
 }
 
 /** Lobby row data, computed by the client on save. */

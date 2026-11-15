@@ -1,0 +1,341 @@
+// What the filled forms say (Form 731 and the General Declaration), as plain data shared by the
+// client (print sheets, signature panel) and the API (signing page, server-side PDF, e-mail to
+// HCAA, the "form changed since signing" check). Pure: the aerodrome lookup is passed in.
+import type { Aircraft, FlightCrew, IsoDate, Passenger, PersonDetails, Pilot, RoutePoint, Station } from './types.js';
+import { seatLayout } from './constants.js';
+
+/** Minimal aerodrome record for the forms. */
+export interface FormAerodrome { id: string; icao: string | null; name: string }
+export type AerodromeLookup = (idOrIcao: string | null | undefined) => FormAerodrome | undefined;
+
+/** 'YYYY-MM-DD' → ['DD', 'MM', 'YYYY'], or blanks. */
+export function dateParts(d: IsoDate | '' | null | undefined): [string, string, string] {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
+  return m ? [m[3], m[2], m[1]] : ['', '', ''];
+}
+
+/** 'YYYY-MM-DD' → 'DD/MM/YYYY' ('' when unset). */
+export function formatDate(d: IsoDate | '' | null | undefined): string {
+  const [dd, mm, yyyy] = dateParts(d);
+  return dd ? `${dd}/${mm}/${yyyy}` : '';
+}
+
+/** A place on the forms: short code (ICAO where there is one) and full name. */
+export interface Place {
+  code: string;
+  name: string;
+  icao: string | null;
+  /** The route point is an aerodrome. */
+  aerodrome: boolean;
+}
+
+export function aerodromeCode(a: FormAerodrome): string {
+  return a.icao || a.name.split('/').pop()!.trim();
+}
+
+export function placeOfWith(p: RoutePoint, lookup: AerodromeLookup): Place {
+  const a = p.kind === 'aerodrome' ? lookup(p.refId) ?? lookup(p.name) : undefined;
+  if (a) return { code: aerodromeCode(a), name: a.name, icao: a.icao, aerodrome: true };
+  return { code: p.name, name: p.name, icao: null, aerodrome: false };
+}
+
+/** "DEKELIA / TATOI (LGTT)"; a non-ICAO place is just its name. */
+export function placeLong(pl: Place): string {
+  return pl.icao ? `${pl.name} (${pl.icao})` : pl.name;
+}
+
+/**
+ * The places a form lists for a route: origin, every aerodrome on the way (taken as an en-route
+ * stop) and destination. VFR reporting points and custom points in between are not places.
+ * Consecutive repeats are dropped (a local flight LGTT → … → LGTT stays [LGTT, LGTT]).
+ */
+export function routePlacesWith(route: RoutePoint[], lookup: AerodromeLookup): Place[] {
+  if (!route.length) return [];
+  const out: Place[] = [];
+  route.forEach((p, i) => {
+    const first = i === 0;
+    const last = i === route.length - 1;
+    if (!first && !last && p.kind !== 'aerodrome') return;
+    const pl = placeOfWith(p, lookup);
+    if (!last && out.length && out[out.length - 1].code === pl.code) return;
+    if (last && out.length > 1 && out[out.length - 1].code === pl.code) return;
+    out.push(pl);
+  });
+  return out;
+}
+
+/** One person of the manifest, with details resolved for the forms. */
+export interface FormPerson {
+  /** Stable key of the person on this flight: 'PIC', the passenger id, or 'seat:<id>'. */
+  key: string;
+  role: 'PIC' | 'PAX';
+  seat: string;
+  seatLabel: string;
+  details: PersonDetails;
+}
+
+/** The signing key of a manifest entry (a signature belongs to this person on this flight). */
+export function crewKey(c: Pick<FlightCrew, 'role' | 'passengerId' | 'seat'>): string {
+  return c.role === 'PIC' ? 'PIC' : c.passengerId ?? `seat:${c.seat}`;
+}
+
+const pick = (a: string, b: string | undefined) => (a && a.trim() ? a : b || '');
+
+/**
+ * Snapshot details first (they keep a sent form reproducible), each empty field filled from the
+ * live record: the pilot for the PIC, the passenger list for a PAX.
+ */
+function resolveDetails(c: FlightCrew, pilot: Pilot, passengers: Passenger[] | undefined): PersonDetails {
+  const live: Partial<PersonDetails> | undefined = c.role === 'PIC' ? pilot : passengers?.find((p) => p.id === c.passengerId);
+  const s = c.snapshot;
+  if (!live) return { ...s };
+  return {
+    fullName: pick(s.fullName, live.fullName),
+    phone: pick(s.phone, live.phone),
+    dateOfBirth: s.dateOfBirth ?? live.dateOfBirth ?? null,
+    weightKg: s.weightKg ?? live.weightKg ?? null,
+    idNumber: pick(s.idNumber, live.idNumber),
+    idType: s.idType || live.idType || '',
+    nationality: pick(s.nationality, live.nationality),
+    relation: pick(s.relation, live.relation),
+  };
+}
+
+export function pilotDetails(p: Pilot): PersonDetails {
+  return {
+    fullName: p.fullName, phone: p.phone, dateOfBirth: p.dateOfBirth, weightKg: p.weightKg,
+    idNumber: p.idNumber, idType: p.idType, nationality: p.nationality, relation: p.relation,
+  };
+}
+
+/**
+ * The manifest for the forms: the PIC first, then the PAX in seat order (the aircraft's seat
+ * layout; manifest order when there is no aircraft). A flight without a PIC row still lists the
+ * pilot as PIC, since the pilot is always on board.
+ */
+export function formPeopleOf(crewIn: FlightCrew[], stations: Station[] | null, pilot: Pilot, passengers?: Passenger[]): FormPerson[] {
+  const layout = stations ? seatLayout(stations) : [];
+  const seatIndex = (id: string) => {
+    const i = layout.findIndex((s) => s.id === id);
+    return i < 0 ? layout.length : i;
+  };
+  const seatLabel = (id: string) => layout.find((s) => s.id === id)?.label ?? id;
+  const crew = [...crewIn];
+  if (!crew.some((c) => c.role === 'PIC')) {
+    crew.unshift({ role: 'PIC', passengerId: null, seat: layout[0]?.id ?? 'front-left', snapshot: { ...pilotDetails(pilot) } });
+  }
+  return crew
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => (a.c.role === b.c.role ? seatIndex(a.c.seat) - seatIndex(b.c.seat) || a.i - b.i : a.c.role === 'PIC' ? -1 : 1))
+    .map(({ c }) => ({ key: crewKey(c), role: c.role, seat: c.seat, seatLabel: seatLabel(c.seat), details: resolveDetails(c, pilot, passengers) }));
+}
+
+/** "ID AB 123456" / "PASSPORT X1234567" / the bare number when the type is unknown. */
+export function idText(d: Pick<PersonDetails, 'idType' | 'idNumber'>): string {
+  const n = d.idNumber.trim();
+  if (!n) return '';
+  return d.idType ? `${d.idType} ${n}` : n;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Form 731
+
+export interface Form731Person {
+  key: string;
+  role: 'PIC' | 'PAX';
+  name: string;
+  relation: string;
+  idPassport: string;
+  contact: string;
+}
+
+/** Everything printed on Form 731 (the signatures aside). */
+export interface Form731Content {
+  /** "DEKELIA / TATOI (LGTT)": the departure aerodrome, where the form is submitted. */
+  airport: string;
+  /** DD/MM/YYYY */
+  date: string;
+  registration: string;
+  /** "LGTT – LGMG – LGTT" */
+  route: string;
+  people: Form731Person[];
+}
+
+export interface FormFlightInput {
+  date: IsoDate | '';
+  route: RoutePoint[];
+  crew: FlightCrew[];
+}
+
+export function form731Content(flight: FormFlightInput, aircraft: Pick<Aircraft, 'registration' | 'massBalance'> | null, pilot: Pilot, passengers: Passenger[] | undefined, lookup: AerodromeLookup): Form731Content {
+  const places = routePlacesWith(flight.route, lookup);
+  const people = formPeopleOf(flight.crew, aircraft ? aircraft.massBalance.stations : null, pilot, passengers);
+  return {
+    airport: places[0] ? placeLong(places[0]) : '',
+    date: formatDate(flight.date),
+    registration: aircraft?.registration ?? '',
+    route: places.map((p) => p.code).join(' – '),
+    people: people.map((p) => ({
+      key: p.key,
+      role: p.role,
+      name: p.details.fullName.trim(),
+      relation: p.details.relation.trim(),
+      idPassport: idText(p.details),
+      contact: p.details.phone.trim(),
+    })),
+  };
+}
+
+/**
+ * The text a signature is given for: every field of the form, in a fixed order. Any change
+ * (date, registration, route, a person, their details) changes it and so clears the signatures.
+ */
+export function form731SigningText(c: Form731Content): string {
+  return JSON.stringify([c.airport, c.date, c.registration, c.route, c.people.map((p) => [p.key, p.role, p.name, p.relation, p.idPassport, p.contact])]);
+}
+
+/** "D. Zindros": the signer's first initial and last name. */
+export function signatureName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0].charAt(0).toUpperCase()}. ${parts[parts.length - 1]}`;
+}
+
+/** Masks all but the last 2 characters of an ID or phone number: '•••••56'. */
+export function maskTail(s: string, keep = 2): string {
+  const t = s.trim();
+  if (!t) return '';
+  if (t.length <= keep) return '•'.repeat(t.length);
+  return '•'.repeat(Math.min(8, t.length - keep)) + t.slice(-keep);
+}
+
+// ---------------------------------------------------------------------------------------------
+// General Declaration
+
+/** Rows of the flight routing table on the form. */
+export const GENDEC_ROUTING_ROWS = 9;
+
+export interface GenDecContent {
+  operator: string;
+  registration: string;
+  flightNo: string;
+  /** [DD, MM, YYYY] */
+  date: [string, string, string];
+  departure: string;
+  arrival: string;
+  routing: { place: string; crew: string }[];
+  departureCode: string;
+  arrivalCode: string;
+  /** ICAO codes of the departure and destination (null when not an ICAO aerodrome). */
+  departureIcao: string | null;
+  arrivalIcao: string | null;
+  embarking: number;
+  throughDeparture: number;
+  disembarking: number;
+  throughArrival: number;
+  picName: string;
+  placeCount: number;
+}
+
+export function genDecContent(flight: FormFlightInput, aircraft: Pick<Aircraft, 'registration' | 'massBalance' | 'operator'> | null, pilot: Pilot, passengers: Passenger[] | undefined, lookup: AerodromeLookup): GenDecContent {
+  const places = routePlacesWith(flight.route, lookup);
+  const people = formPeopleOf(flight.crew, aircraft ? aircraft.massBalance.stations : null, pilot, passengers);
+  const crew = people.filter((p) => p.role === 'PIC').map((p) => (p.details.fullName.trim() ? `${p.details.fullName.trim()} (PIC)` : ''));
+  const pax = people.filter((p) => p.role === 'PAX').length;
+  const picName = people.find((p) => p.role === 'PIC')?.details.fullName.trim() ?? '';
+  const n = GENDEC_ROUTING_ROWS;
+  const routing = Array.from({ length: n }, (_, i) => ({ place: places[i]?.code ?? '', crew: crew[i] ?? '' }));
+  if (places.length > n) routing[n - 1].place = places[places.length - 1].code;
+  const first = places[0];
+  const last = places.length > 1 ? places[places.length - 1] : undefined;
+  return {
+    operator: aircraft ? aircraft.operator.trim() || picName : '',
+    registration: aircraft?.registration ?? '',
+    flightNo: '',
+    date: dateParts(flight.date),
+    departure: first ? placeLong(first) : '',
+    arrival: last ? placeLong(last) : '',
+    routing,
+    departureCode: first?.code ?? '',
+    arrivalCode: last?.code ?? '',
+    departureIcao: first?.icao ?? null,
+    arrivalIcao: last?.icao ?? null,
+    embarking: pax,
+    throughDeparture: 0,
+    disembarking: pax,
+    throughArrival: 0,
+    picName: picName || pilot.fullName.trim(),
+    placeCount: places.length,
+  };
+}
+
+/** The text the GenDec was sent with (re-send is offered when it changes). */
+export function genDecText(c: GenDecContent): string {
+  return JSON.stringify(c);
+}
+
+// ---------------------------------------------------------------------------------------------
+// API bodies (api/_lib/routes/forms.ts)
+//   GET  /flights/:id/forms                         → FormsState
+//   POST /flights/:id/forms/731/links               → FormsState (+ links: one new link per PAX without one)
+//   POST /flights/:id/forms/731/links/:key/renew    → FormsState (+ links: that person's new link; the old one stops working)
+//   POST /flights/:id/forms/731/links/:key/revoke   → FormsState
+//   POST /flights/:id/forms/731/send                → FormsState (e-mail to HCAA; 409 until everyone has signed)
+//   POST /flights/:id/forms/gendec/send             → FormsState
+//   GET  /sign/:token                               → SigningView (no sign-in)
+//   POST /sign/:token                               → SigningView (signs)
+
+export interface SignatureState {
+  key: string;
+  role: 'PIC' | 'PAX';
+  name: string;
+  /** The current form is signed by this person (a signature on an older version is not). */
+  signed: boolean;
+  /** When the current signature was given (epoch ms). */
+  signedAt: number | null;
+  /** Signed an earlier version of the form: has to sign again. */
+  needsResign: boolean;
+  /** Link state (PAX only). */
+  link: { created: number; firstOpened: number | null; lastOpened: number | null; revoked: boolean; expires: number } | null;
+}
+
+export interface SubmissionState {
+  sentAt: number;
+  messageId: string;
+  to: string;
+  /** The form changed since it was sent: offer a re-send. */
+  changed: boolean;
+}
+
+export interface FormsState {
+  form731: {
+    content: Form731Content;
+    signatures: SignatureState[];
+    allSigned: boolean;
+    submission: SubmissionState | null;
+  };
+  gendec: {
+    content: GenDecContent;
+    submission: SubmissionState | null;
+    /** The departure or destination has no handler (per the pilot's "handled" aerodromes): the PIC sends it. */
+    pilotSends: boolean;
+  };
+  /** E-mail sending is configured on this server. */
+  emailEnabled: boolean;
+  emailReason: string | null;
+  /** New links made by this request (the token is only ever returned here), by person key. */
+  links?: Record<string, string>;
+}
+
+export interface SigningView {
+  content: Form731Content;
+  /** The signer's key; their row is shown in full, other people's ID and contact are masked. */
+  me: string;
+  signatures: { key: string; name: string; signedAt: number | null }[];
+  flightDate: string;
+  expired: boolean;
+}
+
+export const FORM731_TO = '731@hcaa.gov.gr';
+export const GENDEC_TO = 'gendec@hcaa.gov.gr';

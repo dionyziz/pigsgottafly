@@ -10,6 +10,7 @@ import { usePilot } from '../../../app/session';
 import { buildFpl, oneLine, MISSING, type FplOptions, type FplResult } from './fpl';
 import { fplInputFrom } from './input';
 import { useFplData } from './useFplData';
+import { FilingPanel } from './FilingPanel';
 import './fpl.css';
 
 async function copyText(text: string): Promise<boolean> {
@@ -42,6 +43,7 @@ export function FplExport({ flight }: { flight: Flight }) {
     [flight, data.aircraft, data.navlog, data.fuel, pilot, opts],
   );
   const [copied, setCopied] = useState<'' | 'lines' | 'one' | 'error'>('');
+  const [addresses, setAddresses] = useState<string[]>([]);
   const copy = async (kind: 'lines' | 'one') => {
     const ok = await copyText(kind === 'one' ? oneLine(fpl) : fpl.message);
     setCopied(ok ? kind : 'error');
@@ -68,6 +70,7 @@ export function FplExport({ flight }: { flight: Flight }) {
             <div className="fpl-panel-sub" data-testid="fpl-altn-rmk">
               {flight.options.alternates?.length ? `Alternates: ${flight.options.alternates.join(', ')}.` : 'No alternate.'}
               {flight.options.remarks?.trim() ? ` Remarks: ${flight.options.remarks.trim()}.` : ''}
+              {(flight.options.aerodromeRequests?.length ?? 0) > 0 ? ` Requests: ${fplInputRequests(fpl)}.` : ''}
               {' '}Set alternates and remarks under “Flight plan” in the flight editor.
             </div>
           </div>
@@ -103,8 +106,9 @@ export function FplExport({ flight }: { flight: Flight }) {
             </ul>
           </div>
         )}
+        <FilingPanel flight={flight} message={fpl.message} complete={fpl.complete && !loading} onAddresses={setAddresses} />
       </div>
-      <FplForm fpl={fpl} />
+      <FplForm fpl={fpl} addressees={addresses} />
       <section className="fpl-sheet fpl-msg-sheet print-only" aria-hidden>
         <header className="fpl-title"><div className="fpl-title-main">FPL MESSAGE</div><div className="fpl-title-sub">{opts.includeItem19 ? 'With item 19 (ARO / web-form variant, not for AFTN)' : 'As filed (AFTN text, items 7–18)'}</div></header>
         <pre className="fpl-message">{fpl.message}</pre>
@@ -155,7 +159,20 @@ function Lines({ text, rows }: { text: string; rows: number }) {
   );
 }
 
-export function FplForm({ fpl }: { fpl: FplResult }) {
+/** The touch-and-go / stop remarks as they stand in RMK/ (for the panel's summary line). */
+function fplInputRequests(fpl: FplResult): string {
+  const rmk = fpl.fields.item18Parts.find((p) => p.indicator === 'RMK')?.text ?? '';
+  return rmk.match(/(?:INITIALLY )?REQUEST (?:TOUCH N GO|INTERMEDIATE STOP) AT \S+(?: FOR \d+ MIN)?/g)?.join(', ') || 'none';
+}
+
+/** AFTN addressees, 8 letters each, 7 to a line as on the form. */
+function addresseeLines(a: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < a.length; i += 7) out.push(a.slice(i, i + 7).join(' '));
+  return out;
+}
+
+export function FplForm({ fpl, addressees = [] }: { fpl: FplResult; addressees?: string[] }) {
   const f = fpl.fields;
   const i19 = f.item19;
   const has = (s: string) => !!s;
@@ -168,7 +185,11 @@ export function FplForm({ fpl }: { fpl: FplResult }) {
 
       <div className="fpl-row fpl-addr">
         <Field label="PRIORITY"><span className="fpl-fixed">{'<<≡ FF →'}</span></Field>
-        <Field label="ADDRESSEE(S)" grow><div className="fpl-blank-line" /><div className="fpl-blank-line" /></Field>
+        <Field label="ADDRESSEE(S)" grow>
+          {addressees.length
+            ? <div className="fpl-addr-lines" data-testid="fpl-form-addressees">{addresseeLines(addressees).map((l, i) => <div key={i} className="fpl-typed-line">{l}</div>)}</div>
+            : <><div className="fpl-blank-line" /><div className="fpl-blank-line" /></>}
+        </Field>
       </div>
       <div className="fpl-row fpl-addr">
         <Field label="FILING TIME"><Cells value="" n={6} /></Field>

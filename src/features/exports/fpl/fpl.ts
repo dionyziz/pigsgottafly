@@ -40,7 +40,8 @@
 //   - Item 19: E/ endurance from the fuel on board at the planning burn (HHMM), P/ persons on board
 //     (3 digits), R/ S/ J/ D/ from the hangar's emergency and survival equipment (only what is
 //     carried is written), A/ colours and markings, N/ remarks, C/ pilot in command.
-//   - Free text (names, remarks, colours) is transliterated from Greek (ELOT 743), upper-cased and
+//   - Free text (names, remarks, colours) is transliterated from Greek (ELOT 743, digraphs and
+//     diphthongs included: see transliterate), upper-cased and
 //     reduced to the characters allowed in ATS messages, without the field separators: hyphens,
 //     parentheses and oblique strokes become spaces.
 //   - Lines are wrapped at 69 characters (AFTN line length); each field starts a new line.
@@ -112,8 +113,13 @@ export interface FplInput {
   /** Persons on board (PIC + PAX); null/0 = unknown (TBN). */
   personsOnBoard: number | null;
   pic: FplPerson;
-  /** Flight's own remarks (FlightOptions.remarks) for RMK/. */
+  /**
+   * Flight's own remarks (FlightOptions.remarks). Parsed like the hangar's item 18 extras: text
+   * after an indicator (STS/, PER/, RMK/ …) goes to that indicator, text without one to RMK/.
+   */
   remarks: string;
+  /** Touch-and-go / intermediate-stop requests, in the club's words ('REQUEST TOUCH N GO AT LGMG'), first in RMK/. */
+  requests?: string[];
 
   options?: FplOptions;
 }
@@ -172,16 +178,8 @@ export interface FplResult {
 // ------------------------------------------------------------------------------------------------
 // Text
 
-const GREEK: Record<string, string> = {
-  Α: 'A', Β: 'V', Γ: 'G', Δ: 'D', Ε: 'E', Ζ: 'Z', Η: 'I', Θ: 'TH', Ι: 'I', Κ: 'K', Λ: 'L', Μ: 'M', Ν: 'N', Ξ: 'X',
-  Ο: 'O', Π: 'P', Ρ: 'R', Σ: 'S', Τ: 'T', Υ: 'Y', Φ: 'F', Χ: 'CH', Ψ: 'PS', Ω: 'O',
-};
-
-/** Greek → Latin (ELOT 743, simplified: ΟΥ → OU, every other letter one-to-one). Upper-cases. */
-export function transliterate(s: string): string {
-  const up = (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/ς/g, 'Σ');
-  return up.replace(/ΟΥ/g, 'OU').replace(/[Α-Ω]/g, (c) => GREEK[c] ?? '');
-}
+export { transliterate } from '../../../shared/translit';
+import { transliterate } from '../../../shared/translit';
 
 /**
  * Free text for an FPL field: transliterated, upper case, only A-Z 0-9 space and . , ? : ' = +
@@ -453,23 +451,30 @@ export function buildFpl(input: FplInput): FplResult {
   const zAlts = alts.filter((a, i) => altn[i] === 'ZZZZ');
   if (zAlts.length) add('ALTN', zAlts.map(zzzzText).join(' '));
 
-  // hangar extras: generated indicators win over the same ones typed in the hangar
-  const hangarRmk: string[] = [];
+  // The flight's remarks, then the hangar's extras: generated indicators win over the same ones
+  // typed by hand; RMK/ text is collected and written once, in one RMK/ field.
   const OWN = new Set(['DOF', 'REG', 'DEP', 'DEST', 'ALTN', 'EET']);
-  for (const p of parseItem18(eq?.item18Extras || '')) {
-    if (OWN.has(p.indicator)) { warnings.push(`Item 18 ${p.indicator}/ from the hangar is ignored: it is generated from the flight.`); continue; }
-    if (p.indicator === 'PBN' && pbn) continue;
-    if (p.indicator === 'TYP' && !typeOk) continue;
-    if (p.indicator === 'OPR' && gen.OPR) continue;
-    if (p.indicator === 'RMK') { hangarRmk.push(p.text); continue; }
-    add(p.indicator, p.text);
-  }
+  const typed = (src: string, where: string, rmkOut: string[]) => {
+    for (const p of parseItem18(src)) {
+      if (OWN.has(p.indicator)) { warnings.push(`Item 18 ${p.indicator}/ ${where} is ignored: it is generated from the flight.`); continue; }
+      if (p.indicator === 'PBN' && pbn) continue;
+      if (p.indicator === 'TYP' && !typeOk) continue;
+      if (p.indicator === 'OPR' && gen.OPR) continue;
+      if (p.indicator === 'RMK') { rmkOut.push(p.text); continue; }
+      if (gen[p.indicator]?.includes(p.text)) continue;
+      add(p.indicator, p.text);
+    }
+  };
+  const flightRmk: string[] = [];
+  typed(input.remarks || '', 'in the flight remarks', flightRmk);
+  const hangarRmk: string[] = [];
+  typed(eq?.item18Extras || '', 'from the hangar', hangarRmk);
   if (a10.includes('Z') && !gen.NAV && !gen.COM && !gen.DAT) warnings.push('Item 10a contains Z: NAV/, COM/ or DAT/ is required in item 18.');
 
-  // RMK: flight remarks, PIC phone, route point names
+  // RMK: touch-and-go / stop requests, flight remarks, hangar remarks, PIC phone, route point names
   const rmk: string[] = [];
-  if (cleanText(input.remarks)) rmk.push(cleanText(input.remarks));
-  rmk.push(...hangarRmk);
+  for (const r of input.requests ?? []) { const t = cleanText(r); if (t && !rmk.includes(t)) rmk.push(t); }
+  for (const t of [...flightRmk, ...hangarRmk]) if (t && !rmk.includes(t)) rmk.push(t);
   const phone = cleanPhone(input.pic.phone);
   if (!phone) warnings.push('Pilot phone number not set in the profile.');
   const n19: string[] = [];
