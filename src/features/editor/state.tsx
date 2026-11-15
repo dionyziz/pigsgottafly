@@ -18,6 +18,11 @@ export interface EditorValue {
    * `coalesce` key within 1.5 s (e.g. typing in one field, dragging one point).
    */
   update(fn: (d: FlightDoc) => FlightDoc, opts?: { coalesce?: string }): void;
+  /**
+   * Set derived summary values (navlog ETE and fuel for the lobby). Saved with the flight, but not
+   * an undo step and never a reason for a save on its own if nothing changed.
+   */
+  setDerived(v: { eteMin: number | null; fuelL: number | null }): void;
   undo(): void;
   redo(): void;
   canUndo: boolean;
@@ -122,6 +127,16 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
     commit({ ...raw, summary: { ...sum, eteMin: raw.summary.eteMin, fuelL: raw.summary.fuelL } });
   }, [commit, hangar]);
 
+  const setDerived = useCallback<EditorValue['setDerived']>(({ eteMin, fuelL }) => {
+    const cur = docRef.current;
+    if (cur.summary.eteMin === eteMin && cur.summary.fuelL === fuelL) return;
+    const next = { ...cur, summary: { ...cur.summary, eteMin, fuelL } };
+    // history entries keep their own summaries; the next recompute fixes them up after undo/redo
+    docRef.current = next;
+    setDoc(next);
+    flightStore.save(flight.id, next);
+  }, [flight.id]);
+
   const undo = useCallback(() => {
     const h = hist.current;
     const prev = h.past.pop();
@@ -140,7 +155,7 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
   }, [commit]);
 
   const value: EditorValue = {
-    flight, doc, update, undo, redo,
+    flight, doc, update, setDerived, undo, redo,
     canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0, saveStatus,
     pilot, hangar, passengers, waypoints, reloadLists, aircraft, ref: REF,
     legs, altitudeDefaults, altitudesFt,

@@ -1,0 +1,54 @@
+/* Performance export (MD 4.4 performance log). Shared sheet styles in ../wb/xp.css. */
+
+.perf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+.perf-block { border: 0.3mm solid #111; border-radius: 1mm; display: flex; flex-direction: column; min-width: 0; }
+.perf-block-head { display: flex; justify-content: space-between; align-items: baseline; padding: 1.4mm 2.4mm; background: #eef1f6; border-bottom: 0.3mm solid #111; }
+.perf-block-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 9pt; }
+.perf-block-time { font-size: 9pt; font-variant-numeric: tabular-nums; }
+
+.perf-rows { width: 100%; border-collapse: collapse; font-size: 8.4pt; table-layout: fixed; }
+.perf-rows col.c-label { width: 35%; }
+.perf-rows col.c-val { width: 26%; }
+.perf-rows th { text-align: left; font-weight: 700; text-transform: uppercase; font-size: 7.2pt; letter-spacing: 0.01em; padding: 0.7mm 1.2mm 0.7mm 2.4mm; vertical-align: top; }
+.perf-rows td { padding: 0.7mm 1.2mm; vertical-align: top; }
+.perf-rows tr + tr th, .perf-rows tr + tr td { border-top: 0.2mm dotted #bbb; }
+.perf-rows .perf-val { font-size: 9pt; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.perf-rows .perf-note { font-size: 6.6pt; color: #666; line-height: 1.2; padding-right: 2.4mm; }
+.perf-rows .perf-val.perf-wide { white-space: normal; }
+.perf-rows tr[data-row='todr'] .perf-val, .perf-rows tr[data-row='torr'] .perf-val, .perf-rows tr[data-row='ldr'] .perf-val { font-weight: 700; }
+.perf-rows tr[data-row='todr'] th, .perf-rows tr[data-row='ldr'] th { border-top: 0.3mm solid #111; }
+.perf-rows tr.st-bad .perf-val, .perf-rows tr.st-bad .perf-note { color: #b4231a; font-weight: 700; }
+.perf-rows tr.st-warn .perf-note { color: #8a5a00; }
+.perf-rows tr.st-ok .perf-val::after { content: ' ✓'; color: #1e7b46; font-weight: 700; }
+
+.perf-block-foot { margin-top: auto; display: flex; gap: 2.4mm; align-items: flex-start; padding: 1.6mm 2.4mm 2mm; border-top: 0.3mm solid #111; }
+.perf-block-wx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.8mm; }
+.perf-verdict { font-size: 8pt; }
+.perf-verdict b { letter-spacing: 0.05em; }
+.perf-verdict.pass { color: #1e7b46; }
+.perf-verdict.fail { color: #b4231a; }
+.perf-verdict.incomplete { color: #8a5a00; }
+.perf-metar { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 6.6pt; color: #10265c; word-break: break-word; }
+
+.perf-wind { width: 30mm; height: 30mm; flex: none; font-family: Arial, Helvetica, sans-serif; }
+.perf-wind-ring { fill: none; stroke: #c9cfda; stroke-width: 1; stroke-dasharray: 2 3; }
+.perf-wind-rwy { fill: #4b5563; }
+.perf-wind-cl { stroke: #fff; stroke-width: 1; stroke-dasharray: 4 3; }
+.perf-wind-num { font-size: 7px; font-weight: 700; fill: #fff; }
+.perf-wind-arrow line { stroke: #10265c; stroke-width: 2.4; }
+.perf-wind-arrow polygon { fill: #10265c; }
+.perf-wind-txt { font-size: 9px; font-weight: 700; fill: #10265c; }
+
+.perf-bottom { display: grid; grid-template-columns: 82mm 1fr; gap: 5mm; align-items: start; }
+.perf-factors { width: 100%; border-collapse: collapse; font-size: 7.6pt; }
+.perf-factors th, .perf-factors td { border: 0.25mm solid #111; padding: 0.5mm 1.6mm; text-align: left; }
+.perf-factors th { background: #eef1f6; font-size: 7.2pt; }
+.perf-factors td + td { width: 18mm; }
+.perf-limits { font-size: 8pt; }
+.perf-limits p { margin: 0 0 1mm; }
+
+/* Print: a little tighter, so a longer list of notes still fits the one A4 page. */
+@media print {
+  .perf-rows th { padding-top: 0.45mm; padding-bottom: 0.45mm; }
+  .perf-rows td { padding-top: 0.45mm; padding-bottom: 0.45mm; }
+}

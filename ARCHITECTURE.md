@@ -26,14 +26,17 @@ src/
     templates.ts           aircraft TYPE templates (AFM data, blank airframe): aircraftFromTypeJson(), blankAircraft()
   calc/                    pure calculations (no I/O, no DOM)
     nav.ts                 port of v2 js/nav.js: geodesy, wind triangle, deviation, NOAA sunset, computeLeg, summarize
-    wmm.ts                 magneticVariation(lat, lon, date, altFt): STUB (fixed 5°E)
+    wmm.ts                 World Magnetic Model WMM2025: magneticVariation(lat, lon, date, altFt), wmmField, wmmValid
     legs.ts                buildLegs(route, date) → LegGeometry[] (TC, distance, variation, MC)
-    altitudes.ts           defaultAltitudes(route, ctx, overrides), vfrRouteBetween, patternAltitudeFt
-    navlog.ts              computeNavlog(NavlogInput) → NavlogResult: STUB (throws)
-    fuel.ts                planFuel(FuelPlanInput) → FuelPlan: STUB
-    wb.ts                  weightAndBalance(WbInput) → WbResult: STUB
-    performance.ts         windComponents, pressureAltitudeFt, isaTempC, densityAltitudeFt (done);
-                           selectRunway, takeoffDistances, landingDistances, aerodromePerformance: STUBS
+    altitudes.ts           defaultAltitudes(route, ctx, overrides): charted VFR route, pattern, closest charted leg
+                           (custom points, ≤ 10 NM), previous leg; vfrRouteBetween, patternAltitudeFt
+    navlog.ts              computeNavlog(NavlogInput) → NavlogResult (times, winds per leg, paper rounding, warnings),
+                           navlogAircraft(), pickCompassCard()
+    fuel.ts                planFuel(FuelPlanInput) → FuelPlan (required, default FOB = required + reserve, endurance)
+    wb.ts                  weightAndBalance(WbInput) → WbResult (per-seat stations, CG + moment envelopes), wbLoadsFromManifest
+    performance.ts         windComponents, pressureAltitudeFt (ISA), isaTempC, densityAltitudeFt, selectRunway,
+                           takeoffDistances/landingDistances (method 'club' = MD 4.4 as the club calculator, or 'afm'),
+                           aerodromePerformance
     atc.ts                 AtcGenInput / AtcGenOutput types (generator lives in src/data/atc.ts)
     sun.ts                 sunsetMinutes(date, point, tables): AIP GEN 2.7, else NOAA
   data/                    client services
@@ -42,8 +45,9 @@ src/
                            api.ref, api.weather.metar; ApiRequestError(status, auth, offline)
     flightStore.ts         offline-tolerant flight saving (port of v2 js/store.js): load(id), save(id, doc), onStatus
     weather.ts             Open-Meteo (port of v2 js/weather.js): buildUrl, fetchPoints, sampleAt, sampleSurface,
-                           METAR-style formatters, windProviderFromLegs()
-    atc.ts                 generateAtcList(AtcGenInput): STUB
+                           fetchRouteWeather, surfaceConditions, chooseSurface (METAR vs forecast), windProviderFromLegs()
+    weatherMetar.ts        parseMetar, parseTaf, fetchMetarTaf (through GET /api/weather/metar)
+    atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
     useAsync.ts            small loading hook
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
                            AIRAC, AERODROMES, RUNWAYS, AIRSPACES, FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
@@ -57,8 +61,11 @@ src/
     passengers/            PassengersPage
     waypoints/             WaypointsPage
     editor/                EditorPage (layout), state.tsx (EditorProvider/useEditor: SHARED EDITOR CONTRACT),
-                           map/ (MapView), panels/ (FlightPanel, NavlogStrip)
-    exports/               ExportPage: /flights/:id/export/:kind
+                           map/ (MapView → RouteMap: VFR-chart layers, drawing, snapping, leg labels),
+                           panels/ (FlightPanel sections, NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
+                           fuel, W&B, performance, warnings)
+    exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
+                           fpl/ (ICAO 2012 message + form), wb/ (MD 4.3 + envelope chart), performance/ (MD 4.4)
 api/
   index.ts                 Vercel entry: restores the path from ?__path=, refuses to run without DATABASE_URL and
                            GOOGLE_CLIENT_ID, runs pending migrations on cold start, then serves
@@ -69,19 +76,23 @@ api/
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry
   _lib/migrations/         001_schema.ts, 002_ref_2609.ts (generated), 003_existing_pilot_data.ts (generated),
-                           004_legacy_flights.ts
+                           004_legacy_flights.ts, 005_ref_runways_2609.ts (generated: AIP runway data)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
-tools/build_ref.ts         data/aip.js, vfr.js, sun.js → src/data/ref/*.json + migration 002
+tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json → src/data/ref/*.json + migrations 002, 005
+tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
 tools/build_seed.ts        data/aircraft/*.json → migration 003 (one-time hangar/profile of the EXISTING pilot)
 data/                      aip.js, vfr.js, sun.js (made by the Python tools from the eAIP; sources for build_ref.ts),
                            aircraft/{reims-f172m,fleet,compass-cards}.json
-tests/unit/                vitest: calc/, data/
+tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calculator cases), data/, exports/, screens/
+src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
 tests/api/                 vitest: API, auth, migrations (PGlite in memory)
-tests/e2e/                 harness.mjs (CDP), oracle.mjs (independent v2 navlog reference), png.mjs, firefox.mjs,
-                           smoke.e2e.test.mjs
+tests/e2e/                 harness.mjs (CDP), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs,
+                           smoke.e2e.test.mjs, lists.e2e.test.mjs (lobby and account lists),
+                           flight.e2e.test.mjs (whole workflow: map drawing/snapping, panels, navlog vs oracle,
+                           every export + PDF page size, W&B vs an independent sum, take-off vs club case 60)
 tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr/wbp.php, used to cross-check W&B and performance
 ```
 
@@ -100,8 +111,9 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 1. **AuthGate** calls `GET /api/session`. In Google mode without a session it shows the GIS button, then `POST /api/login {credential}`, which sets an HttpOnly cookie. Local mode signs you in as the `local` pilot. Any 401 later dispatches `pgf:unauthorized` and brings the sign-in screen back.
 2. **Lobby** calls `GET /api/flights`. "New flight" goes to `/flights/new`, which calls `POST /api/flights {}`; the server fills in the profile defaults: home → home route, taxi times, default aircraft, wind model, PIC on the manifest.
 3. **Editor**: `flightStore.load(id)` returns the server copy, or the local copy while offline. `EditorProvider` holds the `FlightDoc`. Every `update(fn)` is an undo step, unless calls share a `coalesce` key within 1.5 s; it also recomputes the summary and calls `flightStore.save()`, which saves to localStorage at once and sends a debounced `PUT {flight, version}`. On 409 our copy wins on top of the server version (last writer wins, as in v2). Derived values come from the context: `legs` (buildLegs), `altitudeDefaults`, `altitudesFt`.
-4. **Calculations** run on the client (`src/calc`). Weather comes from Open-Meteo directly from the browser (`src/data/weather.ts`). METAR/TAF come through `GET /api/weather/metar` (data agent).
-5. **Exports**: `/flights/:id/export/:kind` loads the flight and renders print-ready A4 pages (`@media print`).
+   Derived values the lobby shows (navlog ETE and fuel) are written with `setDerived()`: saved, but no undo step.
+4. **Calculations** run on the client (`src/calc`), wired in `panels/calc.tsx` (`useFlightCalc`). Weather comes from Open-Meteo directly from the browser (`src/data/weather.ts`). METAR/TAF come through `GET /api/weather/metar`; a METAR is used for performance when it is at most 90 min old and within 90 min of the take-off/landing time, otherwise the forecast.
+5. **Exports**: `/flights/:id/export/:kind` loads the flight and renders print-ready A4 pages (`@media print`, named `@page`s: navlog landscape, Form 731 landscape, the others portrait). The editor, exports and waypoints routes are lazy-loaded chunks (MapLibre is only fetched with the map).
 
 ## API routes (all JSON, under /api)
 
@@ -124,7 +136,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | DELETE | /flights/:id | Moves to trash. |
 | POST | /flights/:id/restore, /copy, /opened | |
 | GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units} | Current AIRAC, read-only. |
-| GET | /weather/metar?ids=… | STUB 501 (data agent). |
+| GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 20 ICAO ids), cached per station; stale reports up to 3 h when upstream fails. |
 
 Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flights → aircraft, flight_crew → passengers, pilots.default_aircraft_id → aircraft), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
 
@@ -157,14 +169,8 @@ With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`) set, local runs use Go
 
 Deployment (not done by agents): Vercel builds with `vite build` to `dist/`. `vercel.json` rewrites `/api/*` to the function and every other non-file path to `index.html` (the SPA). HTML is served with no-cache, `/assets/*` is immutable, and www redirects to the apex. `.vercelignore` drops aip/, trn-docs/, tools/, tests/ and server/.
 
-## Ownership (parallel phase)
+## Ownership
 
-| Agent | Owns | Notes |
-|---|---|---|
-| calc | `src/calc/**`, `tests/unit/calc/**` | Implement wmm.ts (WMM2025), navlog.ts, fuel.ts, wb.ts, performance.ts stubs, and the custom-waypoint rule in altitudes.ts. Keep signatures; extend types only in a backward-compatible way. Cross-check W&B/performance with `tests/fixtures/club-wbp-cases.json` and the navlog with `tests/e2e/oracle.mjs`. |
-| data | `src/data/weather*`, `src/data/atc*`, `api/_lib/routes/weather.ts`, `api/_lib/routes/ref.ts`, `tools/build_ref*`, `src/data/ref/**` generation incl. AIP runway declared distances/slopes | METAR/TAF proxy; generateAtcList (port v2 terminalRows); runway data needs a NEW migration (005+): list it in openIssues for the integrator, who registers it in migrate.ts. |
-| map | `src/features/editor/map/**` | MapView via `useEditor()`; VFR-chart layers from `ref`; drawing/snapping/custom points/drag/insert/delete; leg labels; changes only through `update()`. |
-| screens | `src/features/{lobby,profile,hangar,passengers,waypoints}/**`, `src/features/editor/panels/**`, `src/features/editor/EditorPage.tsx` | Includes onboarding (`/profile?welcome=1`), add-aircraft-from-template, manifest UI with `validateCrew`. |
-| exports | `src/features/exports/**` | One component per ExportKind; print CSS; A4. |
-
-Frozen until integration (ask in openIssues): `src/shared/**`, `src/app/**`, `src/features/editor/state.tsx`, `src/data/api.ts`, `src/data/flightStore.ts`, `api/index.ts`, `api/_lib/{app,http,auth,db,rows,migrate}.ts`, `api/_lib/routes/{index,session,me,aircraft,passengers,waypoints,flights}.ts`, `api/_lib/migrations/**`, `package.json`, the tsconfigs, the vite/vitest configs, `vercel.json`, `server/**`, `tests/api/**`, `tests/e2e/harness.mjs`.
+The parallel build phase is over and everything is integrated (one commit). From here on, any agent may
+change any file, but the contracts above (`src/shared/**`, `state.tsx`'s `useEditor()`, the API routes)
+change only together with their users, and an applied migration is never edited.

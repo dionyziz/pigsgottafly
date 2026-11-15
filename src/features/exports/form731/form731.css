@@ -1,0 +1,43 @@
+/* Form 731, landscape A4. Positions in mm from the top-left corner, measured on trn-docs/Form_731.pdf. */
+@import './forms.css';
+
+@page f731 { size: A4 landscape; margin: 0; }
+
+.f731-sheet {
+  page: f731; width: 297mm; height: 210mm;
+  font-family: 'Book Antiqua', Palatino, 'Palatino Linotype', 'URW Palladio L', 'P052', Georgia, serif;
+  font-size: 11pt; line-height: 1.2;
+}
+.f731-sheet .f731-title {
+  position: absolute; left: 0; right: 0; top: 25.4mm; margin: 0; text-align: center;
+  font-size: 11pt; font-weight: 700; text-decoration: underline; text-underline-offset: 0.6mm;
+}
+.f731-to { position: absolute; left: 13.5mm; right: 8mm; top: 34.7mm; margin: 0; font-weight: 700; white-space: nowrap; }
+.f731-to .pgf-fill { font-size: 10pt; }
+.f731-decl { position: absolute; left: 13.5mm; right: 8mm; top: 44.3mm; margin: 0; line-height: 4.75mm; white-space: nowrap; }
+.f731-decl .pgf-fill { font-size: 10pt; }
+
+.f731-table {
+  position: absolute; left: 11.7mm; top: 63mm; width: 268.3mm; table-layout: fixed;
+  border-collapse: collapse;
+}
+.f731-table th, .f731-table td { border: 0.2mm solid #000; padding: 0 1.5mm; }
+.f731-table th {
+  height: 7.8mm; vertical-align: bottom; padding-bottom: 0.2mm; text-align: center;
+  font-family: Calibri, Carlito, 'Segoe UI', Arial, sans-serif; font-size: 8pt; font-weight: 700; line-height: 1.25;
+}
+.f731-table th:first-child { text-align: left; padding-left: 1.2mm; }
+.f731-table td { height: 14.4mm; vertical-align: middle; font-size: 10pt; line-height: 1.2; overflow-wrap: anywhere; }
+.f731-table td[data-field='id'] { font-size: 9pt; }
+.f731-table td.f731-no { text-align: center; vertical-align: middle; font-size: 9.5pt; padding: 0; }
+
+.f731-guide { position: absolute; left: 13.5mm; top: 157.4mm; font-size: 9pt; line-height: 4.05mm; }
+.f731-guide b { display: block; }
+.f731-guide-a { margin-left: 1.4mm; }
+.f731-indent { padding-left: 5.1mm; }
+.f731-guide-b { margin-left: 2.1mm; }
+.f731-pic { position: absolute; left: 198mm; top: 161.2mm; font-size: 12pt; font-weight: 700; }
+.f731-verified { position: absolute; left: 248.4mm; top: 161.2mm; font-size: 12pt; font-weight: 700; }
+.f731-pic-name { position: absolute; left: 190mm; width: 56mm; top: 170.5mm; text-align: center; font-size: 10pt; }
+.f731-sig { position: absolute; left: 229.3mm; top: 177.8mm; font-size: 9pt; }
+.f731-formno { position: absolute; left: 7.6mm; top: 185.7mm; font-size: 9pt; }

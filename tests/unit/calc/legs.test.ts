@@ -28,7 +28,8 @@ test('wind components and pressure/density altitude', () => {
   expect(w.crosswindKt).toBeCloseTo(10, 6);
   expect(w.crossFrom).toBe('R');
   expect(windComponents(30, 210, 10).headwindKt).toBeCloseTo(-10, 6);
-  expect(pressureAltitudeFt(861, 1003.25)).toBeCloseTo(1161, 6);
+  // ISA barometric formula (calc-perf); the club's 27 ft/hPa gives 1131, v2's 30 ft/hPa gave 1161.
+  expect(pressureAltitudeFt(861, 1003.25)).toBeCloseTo(1135.09, 1);
   expect(densityAltitudeFt(0, 15)).toBeCloseTo(0, 6);
   expect(densityAltitudeFt(0, 25)).toBeCloseTo(1200, 6);
 });

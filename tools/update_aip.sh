@@ -38,6 +38,7 @@ sed -i '' "s|^AIRAC = .*|AIRAC = '$LABEL'|" "$ROOT/tools/build_aip.py"
 python3 -I "$ROOT/tools/parse_ad.py" "$WORK/txt" "$WORK/ad_raw.json"
 python3 -I "$ROOT/tools/build_aip.py" "$WORK/ad_raw.json" "$ROOT/data/aip.js"
 python3 -I "$ROOT/tools/parse_sun.py" "$WORK/txt/LG_GEN_2_7_en.txt" "$ROOT/data/sun.js"
+python3 -I "$ROOT/tools/parse_runways.py" "$WORK/txt" "$ROOT/tools/runways.json"   # AD 2.12/2.13, AD 1.6.N.12/13 (+ OVR corrections)
 
 echo "== 5. VFR points and routes"
 python3 -I "$ROOT/tools/parse_vfr.py" "$WORK/vfr" "$ROOT/tools/vfr_points.json"
@@ -55,7 +56,10 @@ for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
 done
 python3 -I "$ROOT/tools/build_vfr.py" "$ROOT/tools/vfr_points.json" "$ROOT/tools/vfr_charts" "$ROOT/tools/vfr_ocr" "$ROOT/tools/ofm_points.json" "$ROOT/data/vfr.js"
 
-echo "== 6. stamp and test"
-(cd "$ROOT" && node tools/stamp.mjs && npm test && npm run test:e2e)
+echo "== 6. reference data"
+# The new cycle's reference data goes into NEW migrations: never edit an applied one (002, 005).
+# Point MIGRATION / RUNWAY_MIGRATION in tools/build_ref.ts at new files (e.g. 006_ref_<cycle>.ts),
+# register them in api/_lib/migrate.ts, then run:  npm run ref && npm test && npm run test:e2e
+echo "data/*.js and tools/runways.json updated. Next: new ref migrations in tools/build_ref.ts, then npm run ref && npm test && npm run test:e2e"
 python3 -I "$ROOT/tools/vfr_manifest.py" write "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
 echo "done. Chart renders and overlays: $WORK/charts"

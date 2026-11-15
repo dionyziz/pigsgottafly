@@ -5,7 +5,7 @@
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wb | performance)
 //   /profile  /hangar  /hangar/:id  /passengers  /waypoints
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
-import { useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -17,9 +17,11 @@ import { NewFlightPage } from '../features/lobby/NewFlightPage';
 import { ProfilePage } from '../features/profile';
 import { HangarPage, AircraftPage } from '../features/hangar';
 import { PassengersPage } from '../features/passengers';
-import { WaypointsPage } from '../features/waypoints';
-import { EditorPage } from '../features/editor';
-import { ExportPage } from '../features/exports';
+
+// The map (MapLibre) and the export sheets are loaded on demand, so the lobby and lists load fast.
+const EditorPage = lazy(() => import('../features/editor').then((m) => ({ default: m.EditorPage })));
+const ExportPage = lazy(() => import('../features/exports').then((m) => ({ default: m.ExportPage })));
+const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
   const navigate = useNavigate();
@@ -47,6 +49,7 @@ export function App() {
         <AuthGate>
           <LegacyHashRedirect />
           <Onboarding>
+            <Suspense fallback={<div className="loading-screen">Loading…</div>}>
             <Routes>
               <Route path="/" element={<LobbyPage />} />
               <Route path="/flights/new" element={<NewFlightPage />} />
@@ -59,6 +62,7 @@ export function App() {
               <Route path="/waypoints" element={<WaypointsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
           </Onboarding>
         </AuthGate>
       </ToastProvider>

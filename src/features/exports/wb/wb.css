@@ -1,0 +1,79 @@
+/* W&B export (MD 4.3 loading sheet). Shared sheet styles in xp.css. */
+
+.wb-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.wb-table col.c-num { width: 25mm; }
+.wb-table th, .wb-table td { border: 0.25mm solid #111; padding: 0.8mm 2mm; vertical-align: middle; }
+.wb-table thead th { background: #eef1f6; font-weight: 700; text-align: center; font-size: 8.5pt; }
+.wb-table thead th:first-child { text-align: left; }
+.wb-table tbody th { text-align: left; font-weight: 400; }
+.wb-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wb-label { display: block; }
+.wb-note { display: block; font-size: 7pt; color: #666; line-height: 1.2; }
+.wb-row-empty th .wb-label, .wb-row-fuel th .wb-label, .wb-row-station th .wb-label { font-weight: 600; }
+
+/* people under a seat station: lighter rules, indented */
+.wb-person th, .wb-person td { border-top: 0; border-bottom-style: dotted; border-bottom-color: #aaa; padding-top: 0.5mm; padding-bottom: 0.5mm; }
+.wb-person th { padding-left: 6mm; }
+.wb-person-name { display: inline; font-size: 8.5pt; margin-right: 2mm; }
+.wb-person .wb-note { display: inline; }
+.wb-person td.num { font-size: 8.5pt; }
+.wb-table tr.wb-person + tr:not(.wb-person) th, .wb-table tr.wb-person + tr:not(.wb-person) td { border-top: 0.25mm solid #111; }
+
+.wb-totals th, .wb-totals td { background: #f6f7fa; }
+.wb-totals .wb-row-total th .wb-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.wb-totals .wb-row-total td { font-weight: 700; }
+.wb-totals tr:first-child th, .wb-totals tr:first-child td { border-top: 0.6mm solid #111; }
+.wb-row-burn th, .wb-row-burn td { color: #444; }
+.wb-table tr.over td, .wb-table tr.over th .wb-label { color: #b4231a !important; }
+.wb-table tr.over td.num { font-weight: 700; }
+
+.wb-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.wb-check { border: 0.35mm solid #1e7b46; border-radius: 1.2mm; padding: 1.4mm 2.4mm; }
+.wb-check.bad { border-color: #b4231a; }
+.wb-check-head { display: flex; justify-content: space-between; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.05em; }
+.wb-check-head b { color: #1e7b46; }
+.wb-check.bad .wb-check-head b { color: #b4231a; }
+.wb-check-body { font-size: 10pt; font-variant-numeric: tabular-nums; margin: 0.6mm 0; }
+.wb-check-cats { display: flex; gap: 5mm; font-size: 7.6pt; color: #444; }
+.wb-check-cats .bad { color: #b4231a; font-weight: 700; }
+
+.wb-figure { margin: 0; display: flex; flex-direction: column; gap: 1mm; }
+.wb-figure figcaption { font-size: 8pt; font-weight: 700; letter-spacing: 0.06em; }
+.wb-chart { width: 100%; height: 96mm; display: block; font-family: Arial, Helvetica, sans-serif; }
+.wb-grid-minor line { stroke: #e9ecf2; stroke-width: 1; }
+.wb-grid line { stroke: #c9cfda; stroke-width: 1.2; }
+.wb-frame { fill: none; stroke: #111; stroke-width: 1.6; }
+.wb-hatch-line { stroke: #2f7a55; stroke-width: 1.4; opacity: 0.35; }
+.wb-env-normal .wb-env-fill { fill: #10265c; fill-opacity: 0.07; }
+.wb-env-normal .wb-env-line { fill: none; stroke: #10265c; stroke-width: 2.6; stroke-linejoin: round; }
+.wb-env-utility .wb-env-line { fill: none; stroke: #2f7a55; stroke-width: 2.2; stroke-dasharray: 10 5; stroke-linejoin: round; }
+.wb-env-cg { fill: none; stroke: #6b7280; stroke-width: 1.2; stroke-dasharray: 3 4; }
+.wb-env-label { font-size: 17px; font-weight: 700; letter-spacing: 0.08em; fill: #10265c; opacity: 0.75; }
+.wb-env-label-utility { fill: #2f7a55; font-size: 15px; }
+.wb-burn { stroke: #10265c; stroke-width: 3.5; stroke-linecap: round; }
+.wb-burn-rest { stroke: #10265c; stroke-width: 1.8; stroke-dasharray: 6 5; opacity: 0.7; }
+.wb-pt circle, .wb-pt rect { fill: #10265c; stroke: #fff; stroke-width: 2; }
+.wb-pt circle.hollow { fill: #fff; stroke: #10265c; stroke-width: 2.4; }
+.wb-pt.bad circle, .wb-pt.bad rect { fill: #b4231a; }
+.wb-pt-label { font-size: 16px; font-weight: 700; fill: #10265c; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+.wb-pt-zerofuel .wb-pt-label { font-weight: 400; font-size: 14px; }
+.wb-pt.bad .wb-pt-label { fill: #b4231a; }
+.wb-axis text { font-size: 15px; fill: #222; }
+.wb-axis .wb-axis-title { font-size: 14px; font-weight: 700; letter-spacing: 0.05em; }
+
+.wb-legend { display: flex; gap: 5mm; font-size: 7.6pt; color: #333; flex-wrap: wrap; }
+.wb-legend span { display: inline-flex; align-items: center; gap: 1.4mm; }
+.wb-legend i { display: inline-block; width: 3mm; height: 3mm; }
+.wb-legend .lg-to { background: #10265c; border-radius: 50%; }
+.wb-legend .lg-ldg { background: #10265c; }
+.wb-legend .lg-zf { border: 0.45mm solid #10265c; border-radius: 50%; }
+.wb-legend .lg-burn { width: 6mm; height: 0; border-top: 0.8mm solid #10265c; }
+.wb-legend .lg-cg { width: 6mm; height: 0; border-top: 0.35mm dashed #6b7280; }
+
+/* Print: the sheet is exactly one A4 page; the envelope chart takes whatever height the loading
+   table leaves (a full manifest adds rows), keeping its aspect ratio inside that box. */
+@media print {
+  .xp-sheet.wb-sheet { height: 296mm; min-height: 0; }
+  .wb-sheet .wb-figure { flex: 1 1 0; min-height: 55mm; }
+  .wb-sheet .wb-chart { flex: 1 1 0; min-height: 0; height: auto; }
+}

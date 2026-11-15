@@ -1,0 +1,373 @@
+// Live flight calculations for the editor panels and the navlog strip: winds aloft (Open-Meteo),
+// METAR/TAF at the departure and destination, navlog, fuel, W&B, take-off/landing performance and
+// one list of warnings. Everything numeric comes from src/calc; this file only wires inputs.
+//
+// <FlightCalcProvider> sits inside <EditorProvider> (EditorPage); read with useFlightCalc().
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  aerodromePerformance,
+  computeNavlog,
+  isaTempC,
+  magneticVariation,
+  navlogAircraft,
+  pickCompassCard,
+  planFuel,
+  wbLoadsFromManifest,
+  weightAndBalance,
+  type AerodromePerf,
+  type FuelPlan,
+  type NavlogResult,
+  type WbResult,
+} from '../../../calc';
+import { CARD_EXPIRY_WARN_DAYS, seatLayout, validateCrew, type RoutePoint } from '../../../shared';
+import type { RefAerodrome } from '../../../shared/ref';
+import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
+import { endpointAerodrome } from '../../../data/atc';
+import {
+  chooseSurface,
+  fetchRouteWeather,
+  surfaceConditions,
+  toPerfWind,
+  windProviderFromLegs,
+  type OpenMeteoLocation,
+  type RouteWeather,
+  type SurfaceConditions,
+} from '../../../data/weather';
+import { fetchMetarTaf, type MetarTafResult, type StationReports } from '../../../data/weatherMetar';
+import { useEditor } from '../state';
+
+export type WarningLevel = 'danger' | 'warn' | 'info';
+export type WarningArea = 'navlog' | 'weather' | 'fuel' | 'wb' | 'performance' | 'manifest' | 'aircraft' | 'time';
+export interface CalcWarning {
+  level: WarningLevel;
+  area: WarningArea;
+  text: string;
+}
+
+export interface EndpointCalc {
+  phase: 'takeoff' | 'landing';
+  aerodrome: RefAerodrome | null;
+  /** Time of take-off / landing, epoch ms (NaN if unknown). */
+  timeMs: number;
+  /** Conditions used (METAR when current, else forecast). */
+  surface: SurfaceConditions | null;
+  reports: StationReports | null;
+  perf: AerodromePerf | null;
+  /** Mass used for the performance figures, kg, and where it came from. */
+  massKg: number | null;
+  massSource: 'wb' | 'mtow' | null;
+}
+
+export interface FlightCalc {
+  weather: RouteWeather | null;
+  weatherLoading: boolean;
+  refreshWeather(): void;
+  metar: MetarTafResult | null;
+  navlog: NavlogResult | null;
+  fuel: FuelPlan | null;
+  wb: WbResult | null;
+  /** W&B status for the flight's category at take-off and landing. */
+  wbOk: { takeoff: boolean; landing: boolean } | null;
+  departure: EndpointCalc;
+  arrival: EndpointCalc;
+  crewErrors: string[];
+  /** Epoch ms of 00:00 UTC of the flight date (NaN if no date). */
+  dayMs: number;
+  warnings: CalcWarning[];
+}
+
+const CalcContext = createContext<FlightCalc | null>(null);
+export function useFlightCalc(): FlightCalc {
+  const v = useContext(CalcContext);
+  if (!v) throw new Error('useFlightCalc outside <FlightCalcProvider>');
+  return v;
+}
+
+const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
+const midKey = (p: { lat: number; lon: number }) => `${p.lat.toFixed(3)},${p.lon.toFixed(3)}`;
+const DAY = 86400000;
+
+function safe<T>(f: () => T): T | null {
+  try {
+    return f();
+  } catch (e) {
+    if (typeof console !== 'undefined') console.warn('calculation failed', e);
+    return null;
+  }
+}
+
+/** The aerodrome a route endpoint stands for (the point's own aerodrome, else one within 2 NM). */
+export function endpointOf(p: RoutePoint | undefined): RefAerodrome | null {
+  if (!p) return null;
+  return endpointAerodrome(p, REF.aerodromes);
+}
+
+export function FlightCalcProvider({ children }: { children: ReactNode }) {
+  const { doc, legs, altitudesFt, aircraft, pilot, setDerived } = useEditor();
+
+  const dep = useMemo(() => endpointOf(doc.route[0]), [doc.route]);
+  const arr = useMemo(() => (doc.route.length > 1 ? endpointOf(doc.route[doc.route.length - 1]) : null), [doc.route]);
+  const dayMs = doc.date ? Date.parse(doc.date + 'T00:00:00Z') : NaN;
+
+  // ---- winds aloft: fetched per leg midpoint, kept by midpoint so unchanged legs keep their data
+  const model = doc.options.windModel;
+  const mids = useMemo(() => legs.map((l) => ({ lat: +l.mid.lat.toFixed(3), lon: +l.mid.lon.toFixed(3) })), [legs]);
+  const fetchKey = JSON.stringify([doc.date, model, mids, dep && [dep.lat, dep.lon], arr && [arr.lat, arr.lon]]);
+  const [weather, setWeather] = useState<RouteWeather | null>(null);
+  const [byMid, setByMid] = useState<Map<string, OpenMeteoLocation | null>>(new Map());
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [force, setForce] = useState(0);
+  const seq = useRef(0);
+  useEffect(() => {
+    if (!mids.length && !dep && !arr) { setWeather(null); setWeatherLoading(false); return; }
+    const my = ++seq.current;
+    setWeatherLoading(true);
+    const t = setTimeout(() => {
+      fetchRouteWeather({
+        date: doc.date,
+        model,
+        legMidpoints: mids,
+        departure: dep ? { lat: dep.lat, lon: dep.lon } : null,
+        destination: arr ? { lat: arr.lat, lon: arr.lon } : null,
+        force: force > 0,
+      }).then((w) => {
+        if (my !== seq.current) return;
+        setWeather(w);
+        setByMid(new Map(mids.map((m, i) => [midKey(m), w.legs[i] ?? null])));
+        setWeatherLoading(false);
+      });
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchKey, force]);
+  const refreshWeather = useCallback(() => setForce((x) => x + 1), []);
+
+  // ---- METAR/TAF at the endpoints
+  const icaos = [dep?.icao, arr?.icao].filter((x): x is string => !!x);
+  const icaoKey = icaos.join(',');
+  const [metar, setMetar] = useState<MetarTafResult | null>(null);
+  useEffect(() => {
+    if (!icaoKey) { setMetar(null); return; }
+    let live = true;
+    fetchMetarTaf(icaoKey.split(','), { force: force > 0 }).then((m) => { if (live) setMetar(m); });
+    return () => { live = false; };
+  }, [icaoKey, force]);
+
+  // ---- navlog
+  const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]), [legs, doc.legOverrides]);
+  const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
+  const navlog = useMemo(() => {
+    if (!legs.length || !aircraft) return null;
+    const perLeg = legs.map((l) => byMid.get(midKey(l.mid)) ?? null);
+    const haveAny = perLeg.some(Boolean);
+    return safe(() => computeNavlog({
+      date: doc.date,
+      blockOff: doc.blockOff,
+      taxiOutMin: doc.taxiOutMin,
+      taxiInMin: doc.taxiInMin,
+      legs,
+      altitudesFt,
+      overrides,
+      aircraft: navlogAircraft(aircraft, doc.options.compassCard),
+      winds: haveAny ? windProviderFromLegs(perLeg) : null,
+      sunTables: SUN_TABLES,
+    }));
+  }, [legs, aircraft, byMid, doc.date, doc.blockOff, doc.taxiOutMin, doc.taxiInMin, altitudesFt, overrides, doc.options.compassCard]);
+
+  // ---- fuel
+  const fuel = useMemo(() => {
+    if (!aircraft) return null;
+    return safe(() => planFuel({
+      tripFuelL: navlog ? navlog.totals.tripFuel : 0,
+      taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+      burnLph: aircraft.fuel.burnLph,
+      finalReserveMin: pilot.settings.finalReserveMin ?? 0,
+      reserveMin: pilot.settings.reserveMin,
+      fobL: doc.fobL,
+      usableL: aircraft.fuel.usableL,
+      tripMin: navlog ? navlog.flightMin : 0,
+    }));
+  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL]);
+
+  // ---- weight and balance
+  const wbAll = useMemo(() => {
+    if (!aircraft) return null;
+    const mb = aircraft.massBalance;
+    const { loads, warnings } = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
+    const fob = fuel ? fuel.fobL : 0;
+    const landingL = fuel ? Math.max(0, fuel.landingFuelL) : fob;
+    const r = safe(() => weightAndBalance({
+      massBalance: mb,
+      loads,
+      fuelTakeoffL: fob,
+      fuelLandingL: landingL,
+      fuelDensityKgPerL: aircraft.fuel.densityKgPerL,
+      unusableFuelL: aircraft.fuel.unusableL,
+      unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
+      category: doc.options.category,
+    }));
+    return r ? { wb: r, loadWarnings: warnings } : null;
+  }, [aircraft, doc.crew, doc.baggageKg, fuel, doc.options.category]);
+  const wb = wbAll?.wb ?? null;
+  const wbOk = useMemo(() => {
+    if (!wb) return null;
+    const checks = doc.options.category === 'utility' && wb.utility ? wb.utility : wb.normal;
+    return { takeoff: checks.takeoff.inEnvelope && checks.takeoff.massOk, landing: checks.landing.inEnvelope && checks.landing.massOk };
+  }, [wb, doc.options.category]);
+
+  // ---- surface conditions and performance at both ends
+  const times = navlog?.times;
+  const takeoffMs = fin(dayMs) && times ? dayMs + times.takeoffMin * 60000 : NaN;
+  const landingMs = fin(dayMs) && times ? dayMs + times.landingMin * 60000 : NaN;
+  const modelLabel = weather?.source?.modelLabel ?? 'Forecast';
+  const endpoint = (phase: 'takeoff' | 'landing', ad: RefAerodrome | null, loc: OpenMeteoLocation | null, timeMs: number): EndpointCalc => {
+    const reports = ad?.icao && metar ? metar.stations[ad.icao] ?? null : null;
+    const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs, modelLabel) : null;
+    const surface = fin(timeMs) ? chooseSurface({ metar: reports?.metar ?? null, forecast, timeMs }) : null;
+    let massKg: number | null = null;
+    let massSource: EndpointCalc['massSource'] = null;
+    if (wb) { massKg = phase === 'takeoff' ? wb.takeoff.massKg : wb.landing.massKg; massSource = 'wb'; }
+    else if (aircraft) { massKg = aircraft.massBalance.mtowKg; massSource = 'mtow'; }
+    let perf: AerodromePerf | null = null;
+    if (ad && aircraft && massKg != null) {
+      const elev = ad.elevFt ?? 0;
+      perf = safe(() => aerodromePerformance({
+        phase,
+        aerodromeElevFt: elev,
+        runways: runwaysOf(ad.id),
+        wind: toPerfWind(surface),
+        qnhHpa: surface?.qnhHpa ?? 1013.25,
+        oatC: surface?.tempC ?? isaTempC(elev),
+        variationDeg: magneticVariation(ad.lat, ad.lon, doc.date || new Date().toISOString().slice(0, 10)),
+        massKg: massKg as number,
+        tables: aircraft.performance,
+        runway: phase === 'takeoff' ? doc.options.departureRunway : doc.options.arrivalRunway,
+        surface: phase === 'takeoff' ? doc.options.departureSurface : doc.options.arrivalSurface,
+      }));
+    }
+    return { phase, aerodrome: ad, timeMs, surface, reports, perf, massKg, massSource };
+  };
+  const departure = useMemo(() => endpoint('takeoff', dep, weather?.departure ?? null, takeoffMs),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dep, weather, takeoffMs, metar, wb, aircraft, doc.date, doc.options]);
+  const arrival = useMemo(() => endpoint('landing', arr, weather?.destination ?? null, landingMs),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [arr, weather, landingMs, metar, wb, aircraft, doc.date, doc.options]);
+
+  // ---- manifest
+  const crewErrors = useMemo(
+    () => validateCrew(doc.crew, aircraft ? seatLayout(aircraft.massBalance.stations).map((s) => s.id) : null),
+    [doc.crew, aircraft],
+  );
+
+  // ---- warnings
+  const warnings = useMemo(() => {
+    const w: CalcWarning[] = [];
+    const add = (level: WarningLevel, area: WarningArea, text: string) => { if (!w.some((x) => x.text === text)) w.push({ level, area, text }); };
+    if (!aircraft) add('warn', 'aircraft', doc.route.length > 1 ? 'Choose an aircraft to compute the navlog, fuel, W&B and performance.' : 'No aircraft chosen.');
+    for (const e of crewErrors) add('danger', 'manifest', `Manifest: ${e}.`);
+    if (weather && (weather.status === 'unavailable' || weather.status === 'error')) add('warn', 'weather', weather.message);
+    if (navlog) {
+      for (const t of navlog.warnings) {
+        if (/No winds aloft/i.test(t) && (weatherLoading || !weather)) continue;
+        add(/exceed|cannot/i.test(t) ? 'danger' : 'warn', /wind/i.test(t) ? 'weather' : 'navlog', t);
+      }
+      const missing = navlog.legs.filter((l) => l.windMissing).length;
+      if (missing && missing < navlog.legs.length && !weatherLoading) add('warn', 'weather', `No wind forecast for ${missing} of ${navlog.legs.length} legs: calm wind assumed there.`);
+      const unknownAlt = navlog.legs.filter((l) => !fin(l.altFt)).length;
+      if (unknownAlt) add('warn', 'navlog', `Altitude unknown on ${unknownAlt} leg${unknownAlt > 1 ? 's' : ''}: set it on the map.`);
+      if (navlog.sunsetMin != null && navlog.blockOffSet && navlog.times.landingMin > navlog.sunsetMin) {
+        add('danger', 'time', `Landing ${fmtMin(navlog.times.landingMin)}Z is after sunset at the destination (${fmtMin(navlog.sunsetMin)}Z).`);
+      } else if (navlog.sunsetMin != null && navlog.blockOffSet && navlog.times.landingMin > navlog.sunsetMin - 30) {
+        add('warn', 'time', `Landing ${fmtMin(navlog.times.landingMin)}Z is within 30 min of sunset (${fmtMin(navlog.sunsetMin)}Z).`);
+      }
+    }
+    if (aircraft && card && doc.date) {
+      const exp = Date.parse(card.expires + 'T00:00:00Z');
+      if (fin(exp) && fin(dayMs)) {
+        if (dayMs > exp) add('danger', 'aircraft', `Compass card "${card.name}" expired on ${card.expires}.`);
+        else if (exp - dayMs <= CARD_EXPIRY_WARN_DAYS * DAY) add('warn', 'aircraft', `Compass card "${card.name}" expires on ${card.expires}.`);
+      }
+    } else if (aircraft && !card) add('info', 'aircraft', `${aircraft.registration} has no compass card: no DEV/CH.`);
+    if (fuel) for (const t of fuel.warnings) add(fuel.overCapacity || fuel.belowRequired ? 'danger' : 'warn', 'fuel', t);
+    if (fuel && fuel.landingFuelL < 0) add('danger', 'fuel', 'Fuel on board does not cover the trip.');
+    if (wbAll) for (const t of wbAll.loadWarnings) add('warn', 'wb', t);
+    if (wb) {
+      for (const t of wb.warnings) add('danger', 'wb', t);
+      const cat = doc.options.category === 'utility' ? 'utility' : 'normal';
+      if (wbOk && !wbOk.takeoff) add('danger', 'wb', `Take-off mass/CG outside the ${cat} envelope (${wb.takeoff.massKg.toFixed(1)} kg, CG ${wb.takeoff.armM.toFixed(3)} m).`);
+      if (wbOk && !wbOk.landing) add('danger', 'wb', `Landing mass/CG outside the ${cat} envelope (${wb.landing.massKg.toFixed(1)} kg, CG ${wb.landing.armM.toFixed(3)} m).`);
+    }
+    for (const e of [departure, arrival]) {
+      const name = e.aerodrome ? e.aerodrome.icao || e.aerodrome.name : '';
+      const p = e.perf;
+      if (!p) continue;
+      const label = `${e.phase === 'takeoff' ? 'Take-off' : 'Landing'} ${name}`;
+      for (const t of p.warnings) {
+        const level: WarningLevel = /does not fit|exceeds/i.test(t) ? 'danger' : /No surface wind|unknown|not published|choose/i.test(t) ? 'info' : 'warn';
+        add(level, 'performance', `${label}: ${t}`);
+      }
+      if (p.marginM != null && p.marginM >= 0 && p.distances) {
+        const avail = p.availableTotalM ?? 0;
+        if (avail > 0 && p.marginM < avail * 0.15) add('warn', 'performance', `${label}: margin only ${Math.round(p.marginM)} m.`);
+      }
+      if (e.massSource === 'mtow') add('info', 'performance', `${label}: mass unknown, MTOW used.`);
+      if (fin(e.timeMs) && !e.surface && !weatherLoading) add('info', 'performance', `${label}: no surface forecast, ISA and calm assumed.`);
+    }
+    if (fin(dayMs) && navlog && fin(takeoffMs) && takeoffMs < Date.now() - DAY) add('info', 'time', 'This flight is in the past.');
+    return w;
+  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, takeoffMs]);
+
+  // ---- lobby summary: ETE and fuel come from the navlog (setDerived: no undo step).
+  const eteMin = navlog && navlog.legs.length ? navlog.totals.ete : null;
+  const fuelL = navlog && navlog.legs.length && aircraft ? navlog.totals.fuel : null;
+  useEffect(() => {
+    if (doc.summary.eteMin === eteMin && doc.summary.fuelL === fuelL) return;
+    if (weatherLoading) return;
+    setDerived({ eteMin, fuelL });
+  }, [doc.summary.eteMin, doc.summary.fuelL, eteMin, fuelL, weatherLoading, setDerived]);
+
+  const value: FlightCalc = {
+    weather, weatherLoading, refreshWeather, metar,
+    navlog, fuel, wb, wbOk, departure, arrival, crewErrors, dayMs, warnings,
+  };
+  return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+/** Minutes after 00:00 UTC → 'HH:MM' (wraps past midnight). */
+export function fmtMin(min: number): string {
+  if (!fin(min)) return '--:--';
+  const m = ((Math.round(min) % 1440) + 1440) % 1440;
+  return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+}
+/** Duration in minutes → 'H:MM'. */
+export function fmtDur(min: number | null | undefined): string {
+  if (!fin(min) || min < 0) return '–';
+  const m = Math.round(min);
+  return `${Math.floor(m / 60)}:${pad2(m % 60)}`;
+}
+
+/** Local (Greece) clock time of a UTC instant, e.g. '14:30'. */
+const LOCAL_TZ = 'Europe/Athens';
+let fmtCache: Intl.DateTimeFormat | null = null;
+export function localClock(ms: number): string {
+  if (!fin(ms)) return '';
+  try {
+    fmtCache ??= new Intl.DateTimeFormat('en-GB', { timeZone: LOCAL_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    return fmtCache.format(new Date(ms));
+  } catch {
+    return '';
+  }
+}
+/** Offset label of local time at an instant, e.g. 'UTC+2'. */
+export function localOffsetLabel(ms: number): string {
+  if (!fin(ms)) return 'LT';
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: LOCAL_TZ, timeZoneName: 'shortOffset' }).formatToParts(new Date(ms));
+    const tz = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    return tz.replace('GMT', 'UTC') || 'LT';
+  } catch {
+    return 'LT';
+  }
+}

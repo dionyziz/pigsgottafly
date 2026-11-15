@@ -1,0 +1,66 @@
+/* General Declaration (MD 4.7), portrait A4. Positions in mm from the top-left corner, measured on
+   trn-docs/MD4_7_General_Declaration.pdf (Verdana 7 pt body, 10/12 pt bold headings). */
+@import '../form731/forms.css';
+
+@page gendec { size: A4 portrait; margin: 0; }
+
+.gd-sheet {
+  page: gendec; width: 210mm; height: 297mm;
+  font-family: Verdana, 'DejaVu Sans', Geneva, Tahoma, sans-serif; font-size: 7pt; line-height: 3mm;
+}
+.gd-sheet .pgf-fill { font-size: 8pt; }
+.gd-sheet .gd-title { position: absolute; left: 0; right: 0; top: 15.1mm; margin: 0; text-align: center; font-size: 10pt; font-weight: 700; line-height: 4mm; }
+.gd-sub { position: absolute; left: 0; right: 0; top: 19.1mm; text-align: center; font-size: 5.6pt; line-height: 2.4mm; }
+.gd-line { position: absolute; left: 25.4mm; white-space: nowrap; line-height: 3mm; }
+.gd-line .pgf-blank { border-bottom-width: 0.2mm; text-align: center; padding: 0 0.5mm; }
+.gd-place { position: absolute; top: 38.1mm; transform: translateX(-50%); }
+.pgf-blank-left { text-align: left !important; padding-left: 1mm !important; }
+
+.gd-box {
+  position: absolute; left: 25.4mm; top: 45mm; width: 158.8mm; height: 168.7mm;
+  border: 0.45mm solid #000; display: flex; flex-direction: column;
+}
+.gd-routing-head { height: 8.9mm; text-align: center; padding-top: 0.6mm; line-height: 3mm; }
+.gd-h2 { font-size: 12pt; font-weight: 700; line-height: 4.6mm; }
+
+.gd-grid { display: flex; border-top: 0.25mm solid #000; }
+.gd-crew { flex: none; width: 106mm; border-right: 0.35mm solid #000; }
+.gd-row { display: flex; height: 6.13mm; border-top: 0.25mm solid #000; }
+.gd-row:first-child { border-top: 0; }
+.gd-row-head { height: 6.2mm; }
+.gd-place-col { width: 15.2mm; border-right: 0.35mm solid #000; display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+.gd-crew-col { flex: 1; display: flex; align-items: center; padding: 0 2mm; overflow: hidden; white-space: nowrap; }
+.gd-row-head .gd-crew-col { justify-content: center; }
+.gd-pax { flex: 1; min-width: 0; }
+.gd-pax-head { height: 6.2mm; text-align: center; line-height: 2.9mm; padding-top: 0.2mm; border-bottom: 0.25mm solid #000; }
+.gd-pax-body { padding: 0.1mm 5.2mm 0 3.4mm; line-height: 3mm; white-space: nowrap; }
+.gd-pax-line { display: flex; align-items: baseline; }
+.gd-pax-line .pgf-blank { flex: 1; min-width: 0 !important; }
+.gd-pax-body .pgf-blank { border-bottom: 0; padding: 0; }
+.gd-pax-body .pgf-blank .pgf-fill { border-bottom: 0.2mm solid #000; display: inline-block; width: 100%; padding-left: 1mm; line-height: 2.8mm; }
+.gd-u { text-decoration: underline; }
+.gd-gap { height: 3mm; }
+
+.gd-health-grid { height: 60.5mm; border-top: 0.45mm double #000; }
+.gd-health { flex: none; width: 106mm; border-right: 0.35mm solid #000; padding: 0.4mm 0 0 0.4mm; position: relative; }
+.gd-center { text-align: center; margin-bottom: 3mm; }
+.gd-just { margin: 0; text-align: justify; hyphens: none; }
+/* the original's line breaks, each line justified to the column */
+.gd-jl { display: block; text-align: justify; text-align-last: justify; white-space: nowrap; }
+.gd-dots { white-space: nowrap; overflow: hidden; letter-spacing: 0.12mm; }
+.gd-signed { position: absolute; left: 8mm; top: 54.6mm; white-space: nowrap; }
+.gd-signed .pgf-blank { border-bottom-width: 0.2mm; }
+.gd-concerned { position: absolute; left: 62.4mm; top: 57.5mm; }
+.gd-official { flex: 1; text-align: center; padding-top: 0.4mm; }
+
+.gd-declare { flex: 1; position: relative; border-top: 0.45mm double #000; padding: 3.6mm 2mm 0 3.7mm; }
+.gd-declare .gd-just { text-align-last: left; }
+.gd-indent { display: inline-block; width: 5.1mm; }
+.gd-signature { position: absolute; left: 44mm; top: 22mm; white-space: nowrap; display: flex; align-items: flex-end; }
+.gd-sigline { display: inline-block; width: 89.6mm; border-bottom: 0.2mm solid #000; margin-left: 0.3mm; height: 2.6mm; }
+.gd-agent { position: absolute; left: 77.9mm; top: 28.1mm; white-space: nowrap; }
+.gd-pic-name { position: absolute; left: 60mm; width: 85mm; top: 31.6mm; text-align: center; }
+
+.gd-foot { position: absolute; left: 25.4mm; white-space: nowrap; }
+.gd-annex { position: absolute; left: 25.4mm; top: 223.6mm; font-size: 10pt; line-height: 4mm; }
+.gd-md { position: absolute; left: 0; right: 0; top: 232.2mm; text-align: center; font-size: 10pt; line-height: 4mm; }

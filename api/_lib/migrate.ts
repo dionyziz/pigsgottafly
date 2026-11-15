@@ -10,6 +10,7 @@ import schema001 from './migrations/001_schema.js';
 import ref002 from './migrations/002_ref_2609.js';
 import existingPilots003 from './migrations/003_existing_pilot_data.js';
 import { convertLegacyFlights } from './migrations/004_legacy_flights.js';
+import refRunways005 from './migrations/005_ref_runways_2609.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -27,6 +28,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '002_ref_2609', sql: ref002 },
   { name: '003_existing_pilot_data', sql: existingPilots003 },
   { name: '004_legacy_flights', run: convertLegacyFlights },
+  { name: '005_ref_runways_2609', sql: refRunways005 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

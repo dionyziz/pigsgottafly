@@ -1,17 +1,25 @@
 // The navlog: times, winds, WCA/TH/MH/DEV/CH/GS/ETE/fuel per leg.
 //
-// Rules (PLAN-v3 "Calculations"):
+// Rules (PLAN-v3 "Calculations", ported from the v2 app js/app.js calc()):
 //   - block-off + taxi out = take-off; legs flown in sequence; landing + taxi in = block-on.
-//   - first and last legs at pattern TAS, the others at cruise TAS (LegOverride.tasKt wins).
-//   - wind/temperature per leg sampled at the leg midpoint, leg altitude and mid-leg time; since
-//     GS depends on the wind and the mid-leg time on GS, iterate (the v2 app did 4 passes).
-//   - variation per leg from WMM at the midpoint (LegGeometry.variation); deviation from the card.
+//   - first and last legs at pattern TAS, the others at cruise TAS (LegOverride.tasKt wins); a
+//     single-leg route is both first and last, so pattern TAS.
+//   - wind/temperature per leg sampled at the leg midpoint, leg altitude and mid-leg time; since GS
+//     depends on the wind and the mid-leg time on GS, iterate (4 passes, as v2). The sampled wind
+//     is rounded as written on the sheet (direction 1..360, speed kt) before the wind triangle.
+//   - variation per leg from WMM2025 at the midpoint on the flight date (LegGeometry.variation);
+//     deviation from the compass card.
 //   - rounding as on the paper sheet: nav.computeLeg(); totals with nav.summarize().
 //   - trip fuel = Σ leg fuel (each rounded up); fuel total on the sheet = trip + taxi allowance.
-import type { ClockUtc, IsoDate, LegOverride } from '../shared/types.js';
+//   - the timeline (leg start/end, landing, block-on) uses the unrounded leg minutes (as v2); the
+//     written ETE column rounds each leg.
+//   - sunset at the destination (AIP GEN 2.7 tables when given, else NOAA).
+import type { ClockUtc, CompassCard, IsoDate, LegOverride } from '../shared/types.js';
+import type { RefSunTable } from '../shared/ref.js';
 import type { LegGeometry } from './legs.js';
 import type { ComputedLeg, NavTotals } from './nav.js';
-import { NotImplementedError } from './errors.js';
+import { computeLeg, fmtClock, norm360, parseClock, summarize } from './nav.js';
+import { sunsetMinutes } from './sun.js';
 
 /** Wind/temperature at a point; dir = FROM, true. */
 export interface WindSample {
@@ -36,14 +44,19 @@ export interface NavlogAircraft {
   taxiAllowanceL: number;
   /** Compass card points, or null (no DEV/CH columns). */
   card: [number, number][] | null;
+  /** Expiry of the card used (CompassCard.expires); a warning is raised when expired on the flight date. */
+  cardExpires?: IsoDate | null;
+  /** Name of the card used, for the warning text. */
+  cardName?: string | null;
 }
 
 export interface NavlogInput {
   date: IsoDate;
   /** Block-off 'HH:MM' UTC; '' → 12:00 assumed and NavlogResult.blockOffSet = false. */
   blockOff: ClockUtc;
-  taxiOutMin: number;
-  taxiInMin: number;
+  /** Minutes; null = not set (0 used, with a warning). */
+  taxiOutMin: number | null;
+  taxiInMin: number | null;
   legs: LegGeometry[];
   /** Effective altitude of each leg, ft (default or override); NaN = unknown. */
   altitudesFt: number[];
@@ -51,6 +64,8 @@ export interface NavlogInput {
   overrides: (LegOverride | undefined)[];
   aircraft: NavlogAircraft;
   winds: WindProvider | null;
+  /** AIP GEN 2.7 sunset tables (REF SUN_TABLES); omitted → NOAA sunset. */
+  sunTables?: Record<string, RefSunTable>;
 }
 
 export interface NavlogLeg extends ComputedLeg {
@@ -63,8 +78,12 @@ export interface NavlogLeg extends ComputedLeg {
   tempC: number;
   /** True when no forecast was available and no override given (calm wind assumed). */
   windMissing: boolean;
-  /** Magnetic course, rounded, as on the map label. */
+  /** Where the wind came from. */
+  windSource: 'forecast' | 'override' | 'none';
+  /** Magnetic course, rounded, as on the map label (1..360). */
   mc: number;
+  /** Variation used, E positive (unrounded; the sheet's VAR column is −round(variation)). */
+  variation: number;
   /** Minutes after 00:00 UTC of the flight date: start and end of the leg (unrounded). */
   startMin: number;
   endMin: number;
@@ -76,16 +95,143 @@ export interface NavlogResult {
   totals: NavTotals;
   /** Minutes after 00:00 UTC of the flight date (may exceed 1440 past midnight). */
   times: { blockOffMin: number; takeoffMin: number; landingMin: number; blockOnMin: number };
+  /** Unrounded flight time, take-off → landing, minutes. */
+  flightMin: number;
   blockOffSet: boolean;
+  /** Sunset at the destination, minutes after 00:00 UTC of the flight date; null if unknown. */
+  sunsetMin: number | null;
   /** Human-readable warnings: missing winds, crosswind > TAS, unknown altitude… */
   warnings: string[];
 }
 
+/** The card a flight uses: FlightOptions.compassCard by name, else the aircraft's first card. */
+export function pickCompassCard(cards: CompassCard[] | null | undefined, name: string | null | undefined): CompassCard | null {
+  if (!cards || !cards.length) return null;
+  return (name ? cards.find((c) => c.name === name) : undefined) ?? cards[0];
+}
+
+/** NavlogAircraft from the hangar record and the chosen card. */
+export function navlogAircraft(
+  a: { cruiseTasKt: number; patternTasKt: number; fuel: { burnLph: number; taxiAllowanceL: number }; compassCards: CompassCard[] },
+  cardName: string | null = null,
+): NavlogAircraft {
+  const card = pickCompassCard(a.compassCards, cardName);
+  return {
+    cruiseTasKt: a.cruiseTasKt,
+    patternTasKt: a.patternTasKt,
+    burnLph: a.fuel.burnLph,
+    taxiAllowanceL: a.fuel.taxiAllowanceL,
+    card: card && card.points.length ? card.points : null,
+    cardExpires: card ? card.expires : null,
+    cardName: card ? card.name : null,
+  };
+}
+
+const PASSES = 4;
+const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
+
 /**
  * Computes the whole navlog. Pure and synchronous.
- * @throws NotImplementedError until the calc agent implements it.
  */
 export function computeNavlog(input: NavlogInput): NavlogResult {
-  void input;
-  throw new NotImplementedError('computeNavlog');
+  const { legs, aircraft: ac } = input;
+  const n = legs.length;
+  const warnings: string[] = [];
+
+  const bo = parseClock(input.blockOff);
+  const blockOffSet = isFinite(bo);
+  const blockOffMin = blockOffSet ? bo : 12 * 60;
+  if (n && !blockOffSet) warnings.push('Block-off time not set: 12:00Z assumed.');
+  const taxiOut = fin(input.taxiOutMin) && input.taxiOutMin >= 0 ? input.taxiOutMin : 0;
+  const taxiIn = fin(input.taxiInMin) && input.taxiInMin >= 0 ? input.taxiInMin : 0;
+  if (n && !fin(input.taxiOutMin)) warnings.push('Taxi-out time not set: 0 min used.');
+  if (n && !fin(input.taxiInMin)) warnings.push('Taxi-in time not set: 0 min used.');
+  const takeoffMin = blockOffMin + taxiOut;
+  const dayMs = input.date ? Date.parse(input.date + 'T00:00:00Z') : NaN;
+  if (n && !isFinite(dayMs)) warnings.push('Flight date not set: winds cannot be looked up.');
+  if (n && !input.winds) warnings.push('No winds aloft forecast: calm wind assumed.');
+  if (n && !(ac.burnLph > 0)) warnings.push('Aircraft burn rate not set: leg fuel cannot be computed.');
+
+  const tas = legs.map((_, i) => {
+    const o = input.overrides[i]?.tasKt;
+    if (fin(o) && o > 0) return o;
+    return i === 0 || i === n - 1 ? ac.patternTasKt : ac.cruiseTasKt;
+  });
+  const alt = legs.map((_, i) => (fin(input.altitudesFt[i]) ? input.altitudesFt[i] : NaN));
+
+  let rows: NavlogLeg[] = [];
+  for (let pass = 0; pass < PASSES; pass++) {
+    let t = takeoffMin;
+    const prev = rows;
+    rows = legs.map((L, i) => {
+      const o = input.overrides[i] ?? {};
+      const startMin = t;
+      const guess = prev[i] && fin(prev[i].minutesExact) ? prev[i].minutesExact! : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
+      const timeMs = dayMs + (startMin + guess / 2) * 60000;
+      let w: WindSample | null = null;
+      if (input.winds && isFinite(alt[i]) && isFinite(timeMs)) {
+        w = input.winds({ legIndex: i, lat: L.mid.lat, lon: L.mid.lon, altFt: alt[i], timeMs });
+        if (w && !(fin(w.dirDeg) && fin(w.speedKt))) w = null;
+      }
+      const wd = fin(o.windDirDeg) ? o.windDirDeg : w ? Math.round(w.dirDeg) % 360 || 360 : NaN;
+      const ws = fin(o.windKt) ? o.windKt : w ? Math.round(w.speedKt) : NaN;
+      const tempC = fin(o.tempC) ? o.tempC : w && fin(w.tempC) ? Math.round(w.tempC) : NaN;
+      const overridden = fin(o.windDirDeg) && fin(o.windKt);
+      const windMissing = !w && !overridden;
+      const r = computeLeg(
+        { tc: L.tcTrue, dist: L.distNm, tas: tas[i], wd: isFinite(wd) ? wd : 0, ws: isFinite(ws) ? ws : 0 },
+        { variation: L.variation, card: ac.card, fuelPerHour: ac.burnLph > 0 ? ac.burnLph : 0 },
+      );
+      if (!(ac.burnLph > 0)) delete r.fuel;
+      const flown = fin(r.minutesExact) ? r.minutesExact : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
+      t = startMin + flown;
+      return {
+        ...r,
+        index: i,
+        altFt: alt[i],
+        tasKt: tas[i],
+        windDirDeg: wd,
+        windKt: ws,
+        tempC,
+        windMissing,
+        windSource: overridden ? 'override' : w ? 'forecast' : fin(o.windDirDeg) || fin(o.windKt) ? 'override' : 'none',
+        mc: norm360(Math.round(L.mcMag)) || 360,
+        variation: L.variation,
+        startMin,
+        endMin: t,
+      };
+    });
+  }
+
+  const totals = summarize(rows, ac.taxiAllowanceL || 0);
+  const landingMin = n ? rows[n - 1].endMin : takeoffMin;
+  const blockOnMin = landingMin + taxiIn;
+
+  rows.forEach((r, i) => {
+    const name = `${legs[i].from.name || '?'} → ${legs[i].to.name || '?'}`;
+    if (!isFinite(r.altFt)) warnings.push(`${name}: altitude unknown (enter one).`);
+    if (r.wca === undefined) warnings.push(`${name}: crosswind exceeds TAS; leg cannot be flown as planned.`);
+    else if (!(fin(r.gs) && r.gs > 0)) warnings.push(`${name}: ground speed is zero or negative.`);
+    if (input.winds && r.windMissing && isFinite(r.altFt) && isFinite(dayMs)) warnings.push(`${name}: no wind forecast; calm wind assumed.`);
+    if (!(r.tasKt > 0)) warnings.push(`${name}: TAS not set.`);
+  });
+
+  let sunsetMin: number | null = null;
+  if (n && input.date && isFinite(dayMs)) {
+    sunsetMin = sunsetMinutes(input.date, legs[n - 1].to, input.sunTables ?? {});
+    if (sunsetMin !== null && blockOffSet && landingMin > sunsetMin)
+      warnings.push(`Landing at ${fmtClock(landingMin)}Z is after sunset (${fmtClock(sunsetMin)}Z) at ${legs[n - 1].to.name}.`);
+  }
+  if (n && ac.cardExpires && input.date && ac.cardExpires < input.date)
+    warnings.push(`Compass card${ac.cardName ? ` "${ac.cardName}"` : ''} expired on ${ac.cardExpires}: swing required.`);
+
+  return {
+    legs: rows,
+    totals,
+    times: { blockOffMin, takeoffMin, landingMin, blockOnMin },
+    flightMin: landingMin - takeoffMin,
+    blockOffSet,
+    sunsetMin,
+    warnings,
+  };
 }
