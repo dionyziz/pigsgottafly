@@ -31,7 +31,7 @@
 .resize-handle::after { content: ''; position: absolute; transition: background .12s; }
 .resize-handle.x::after { top: 0; bottom: 0; left: 2px; width: 2px; }
 .resize-handle.y::after { left: 0; right: 0; top: 2px; height: 2px; }
-.resize-handle:hover::after, .resize-handle:focus-visible::after, .resize-handle.dragging::after { background: var(--accent, #3b6fd8); }
+.resize-handle:hover::after, .resize-handle:focus-visible::after, .resize-handle.dragging::after { background: var(--accent); }
 .ns { position: relative; }
 .ns.sized { max-height: none; }
 @media (max-width: 900px) { .resize-handle { display: none; } }

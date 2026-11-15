@@ -13,7 +13,7 @@ export interface ShownSignature { name: string; signedAt: number }
 export function Form731(props: FormExportProps & { signatures?: Record<string, ShownSignature>; panel?: ReactNode }) {
   const m = form731Model(props);
   return (
-    <div className="pgf-forms" data-testid="form731">
+    <div className="pgf-forms print-sheet-page" data-testid="form731">
       {props.panel}
       <FormWarnings warnings={m.warnings} fixes={m.fixes} />
       {m.sheets.map((rows, i) => (

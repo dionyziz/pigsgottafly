@@ -46,7 +46,7 @@ export function PassengersPage() {
         <h1>Passengers</h1>
         <span className="spacer" />
         {data && data.length > 0 && (
-          <div className="searchbox" style={{ width: 300 }}>
+          <div className="searchbox sm">
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" strokeWidth="1.6" /><path d="M11 11l3.5 3.5" strokeWidth="1.6" strokeLinecap="round" /></svg>
             <input type="search" placeholder="Search passengers" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search passengers" />
           </div>

@@ -58,7 +58,7 @@ export function NavlogStrip() {
           <b>Navlog</b>
         </button>
         {navlog && navlog.legs.length > 0 ? (
-          <span className="ns-totals mono" data-testid="navlog-totals">
+          <span className="ns-totals tnum" data-testid="navlog-totals">
             <span>{navlog.totals.dist} NM</span>
             <span>{fmtDur(navlog.totals.ete)}</span>
             <span>{navlog.totals.tripFuel} L trip</span>

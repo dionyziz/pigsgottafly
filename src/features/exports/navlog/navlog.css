@@ -6,9 +6,9 @@
 .md42-doc-loading { padding: 40px 0; text-align: center; }
 
 /* ---------------- screen chrome (not printed) */
-.md42-status { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s3, 12px); margin: 0 0 var(--s3, 12px); font-size: var(--fs-sm, 13px); }
-.md42-sources { flex: 1; min-width: 0; color: var(--muted, #666); }
-.md42-warnings { flex-basis: 100%; margin: 4px 0 0; padding: 0 0 0 18px; color: var(--warn, #8a5a00); }
+.md42-status { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s3); margin: 0 0 var(--s3); font-size: var(--fs-sm); }
+.md42-sources { flex: 1; min-width: 0; color: var(--muted); }
+.md42-warnings { flex-basis: 100%; margin: 4px 0 0; padding: 0 0 0 18px; color: var(--warn); }
 .md42-warnings li { margin: 1px 0; }
 .md42-stage { --hair: 1px; --thick: 2px; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
 
@@ -117,7 +117,6 @@
 /* ---------------- print: A4 landscape, one sheet per page */
 @page md42 { size: A4 landscape; margin: 5mm; }
 @media print {
-  .page:has(.md42-doc) { max-width: none !important; margin: 0 !important; padding: 0 !important; }
   .md42-doc { --md42-ink: #000; }
   .md42-stage { display: block; gap: 0; }
   .md42 { --u: 0.226mm; --hair: 0.2mm; --thick: 0.4mm; box-shadow: none; margin: 0 auto; break-inside: avoid; }

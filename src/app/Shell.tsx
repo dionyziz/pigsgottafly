@@ -8,7 +8,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   return (
     <header className="topbar">
       <Link to="/" className="brand"><img src="/icon.svg" alt="" /><span>Pig's Gotta Fly</span></Link>
-      <div className="row" style={{ flex: 1, justifyContent: 'center' }}>{children}</div>
+      <div className="topbar-mid">{children}</div>
       <AccountMenu />
     </header>
   );

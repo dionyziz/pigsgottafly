@@ -13,4 +13,4 @@
 /* A warning that links to where it is fixed (WarningList) */
 .pgf-warn-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
 .pgf-warn-link:hover { text-decoration: underline; }
-.pgf-warn-link .pgf-fix { margin-left: 8px; font-weight: 600; white-space: nowrap; color: var(--accent, #2563eb); display: inline-block; }
+.pgf-warn-link .pgf-fix { margin-left: 8px; font-weight: 600; white-space: nowrap; color: var(--accent); display: inline-block; }

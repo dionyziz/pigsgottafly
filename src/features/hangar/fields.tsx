@@ -55,7 +55,7 @@ export function NumInput({ value, onChange, optional, integer, min, max, unit, p
   const title = bad ? `Enter ${integer ? 'a whole number' : 'a number'}${min != null && max != null ? ` from ${min} to ${max}` : min != null ? ` of at least ${min}` : max != null ? ` up to ${max}` : ''}` : undefined;
   const input = (
     <input
-      className={[className, bad || invalid ? 'invalid' : ''].filter(Boolean).join(' ') || undefined}
+      className={['tnum', className, bad || invalid ? 'invalid' : ''].filter(Boolean).join(' ')}
       inputMode={integer && (min ?? 0) >= 0 ? 'numeric' : 'decimal'}
       value={text}
       name={name}

@@ -120,7 +120,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   const snap = (w: number, min: number) => `${Math.max(min, Math.round(w * dpr)) / dpr}px`;
 
   return (
-    <div className="md42-doc" data-testid="navlog-export" data-ready={wxPending ? 'false' : 'true'} data-sheets={doc.sheets.length}>
+    <div className="md42-doc print-sheet-page" data-testid="navlog-export" data-ready={wxPending ? 'false' : 'true'} data-sheets={doc.sheets.length}>
       {legs.length > 0 && (
         <div className="md42-status no-print">
           <div className="md42-sources" data-testid="navlog-sources">{wxPending ? 'Loading weather…' : doc.sources.join(' · ')}</div>

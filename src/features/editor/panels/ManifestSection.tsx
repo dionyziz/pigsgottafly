@@ -238,20 +238,20 @@ export function ManifestSection() {
           {wb && (
             <div className="ep-wb" data-testid="wb-summary">
               <div className="ep-kvs">
-                <KV k="People" v={<span className="mono">{total.toFixed(0)} kg</span>}
+                <KV k="People" v={<span className="tnum">{total.toFixed(0)} kg</span>}
                   tone={wbMissingWeights.length ? 'warn' : undefined}
                   sub={wbMissingWeights.length ? <span data-testid="wb-missing">weight missing: {wbMissingWeights.join(', ')}</span> : undefined} />
-                <KV k="Fuel at take-off" v={<span className="mono">{fuel ? `${fuel.fobL} L` : '–'}</span>} />
+                <KV k="Fuel at take-off" v={<span className="tnum">{fuel ? `${fuel.fobL} L` : '–'}</span>} />
                 <KV k="Take-off" tone={wbOk && !wbOk.takeoff ? 'danger' : undefined}
-                  v={<span className="mono">{wb.takeoff.massKg.toFixed(1)} kg</span>} sub={<span className="mono">CG {wb.takeoff.armM.toFixed(3)} m</span>} />
+                  v={<span className="tnum">{wb.takeoff.massKg.toFixed(1)} kg</span>} sub={<span className="tnum">CG {wb.takeoff.armM.toFixed(3)} m</span>} />
                 {stops.filter((x) => x.wb).map((x) => (
                   <KV key={x.point.uid} k={`Stop ${stopName(x)}`} testId="wb-stop" tone={x.wbOk === false ? 'danger' : undefined}
-                    v={<span className="mono">{x.wb!.massKg.toFixed(1)} kg</span>}
-                    sub={<span className="mono">CG {x.wb!.armM.toFixed(3)} m{x.fuelL != null ? ` · ${x.fuelL} L` : ''}</span>} />
+                    v={<span className="tnum">{x.wb!.massKg.toFixed(1)} kg</span>}
+                    sub={<span className="tnum">CG {x.wb!.armM.toFixed(3)} m{x.fuelL != null ? ` · ${x.fuelL} L` : ''}</span>} />
                 ))}
                 <KV k="Landing" tone={wbOk && !wbOk.landing ? 'danger' : undefined}
-                  v={<span className="mono">{wb.landing.massKg.toFixed(1)} kg</span>} sub={<span className="mono">CG {wb.landing.armM.toFixed(3)} m</span>} />
-                <KV k="MTOW" v={<span className="mono">{aircraft.massBalance.mtowKg} kg</span>}
+                  v={<span className="tnum">{wb.landing.massKg.toFixed(1)} kg</span>} sub={<span className="tnum">CG {wb.landing.armM.toFixed(3)} m</span>} />
+                <KV k="MTOW" v={<span className="tnum">{aircraft.massBalance.mtowKg} kg</span>}
                   sub={<span className={wb.takeoff.massKg > aircraft.massBalance.mtowKg ? 'danger-text' : 'muted'}>{(aircraft.massBalance.mtowKg - wb.takeoff.massKg).toFixed(1)} kg spare</span>} />
               </div>
               <EnvelopeChart massBalance={aircraft.massBalance} category={doc.options.category} takeoff={wb.takeoff} landing={wb.landing}

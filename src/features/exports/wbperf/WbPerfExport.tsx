@@ -34,7 +34,7 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
     .flatMap((b) => b.warnings.map((w) => `${blockName(b)}: ${w}`))];
   const warnings = [...wb.warnings.map((w) => `W&B: ${w}`), ...perfWarnings.map((w) => `Performance: ${w}`)];
   return (
-    <div className="xp-doc" data-testid="wbperf-export" data-ready={st.weatherPending ? 'false' : 'true'}
+    <div className="xp-doc print-sheet-page" data-testid="wbperf-export" data-ready={st.weatherPending ? 'false' : 'true'}
       data-wb-verdict={wb.verdict} data-perf-verdict={perf.verdict} data-pages={1 + perf.pages.length}>
       <div className="xp-status no-print">
         <div className="xp-status-row">

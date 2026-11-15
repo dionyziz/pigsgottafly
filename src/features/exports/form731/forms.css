@@ -20,7 +20,7 @@
 
 .pgf-form-warnings {
   width: 100%; max-width: 900px; padding: 12px 16px; border-radius: 8px;
-  background: var(--warn-soft, #fff4d6); border: 1px solid var(--warn-line, #e0b14a); color: var(--warn, #8a5a00); font-size: 13px;
+  background: var(--warn-soft); border: 1px solid var(--warn-line); color: var(--warn); font-size: 13px;
 }
 .pgf-form-warnings ul { margin: 4px 0 0; padding-left: 20px; }
 
@@ -28,9 +28,6 @@
   .pgf-forms { display: block; gap: 0; padding: 0; overflow: visible; }
   .pgf-sheet { box-shadow: none; margin: 0; break-inside: avoid; }
   .pgf-sheet:not(:last-child) { break-after: page; }
-  /* The sheets are measured from the page's top-left corner: drop the export page's padding. */
-  body:has(.pgf-forms) .page { padding: 0 !important; margin: 0 !important; max-width: none !important; }
-  body:has(.pgf-forms) .card { padding: 0 !important; border: 0 !important; box-shadow: none !important; background: none !important; }
 }
 
 /* Handwriting signatures (Homemade Apple, Apache 2.0: public/fonts/HomemadeApple-LICENSE.txt) */
@@ -46,7 +43,7 @@
 @media print { .pgf-signature-mark { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
 /* Signatures / send panel above the sheets (screen only) */
-.pgf-panel { width: 100%; max-width: 900px; padding: 14px 16px; border-radius: 10px; background: var(--surface, #fff); border: 1px solid var(--line, #e3e6ea); font-size: 13.5px; display: grid; gap: 10px; }
+.pgf-panel { width: 100%; max-width: 900px; padding: 14px 16px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 13.5px; display: grid; gap: 10px; }
 .pgf-panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pgf-panel-head h3 { margin: 0; font-size: 15px; }
 .pgf-panel-head .spacer { flex: 1; }
@@ -55,12 +52,10 @@
 .pgf-person-name { font-weight: 600; min-width: 11em; }
 .pgf-person .muted { font-size: 12.5px; }
 .pgf-link { display: flex; gap: 6px; align-items: center; flex-basis: 100%; }
-.pgf-link input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-.pgf-note { color: var(--ink-2, #4a5059); font-size: 12.5px; }
-.pgf-err { color: var(--danger, #b42318); }
+.pgf-link input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; }
+.pgf-note { color: var(--ink-2); font-size: 12.5px; }
+.pgf-err { color: var(--danger); }
 /* General Declaration: handling at each end and the per-flight override */
 .pgf-handling li { display: block; }
-.pgf-handling .is-unhandled { color: var(--warn, #8a5a00); }
-.pgf-panel button.linkish { border: 0; background: none; padding: 0; color: var(--accent, #2563eb); font-size: inherit; cursor: pointer; }
-.pgf-panel button.linkish:hover { text-decoration: underline; }
+.pgf-handling .is-unhandled { color: var(--warn); }
 .pgf-form-warnings .pgf-fix { margin-left: 6px; font-weight: 600; white-space: nowrap; }

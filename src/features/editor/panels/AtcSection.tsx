@@ -122,7 +122,7 @@ export function AtcSection() {
                 <div className="ep-atc-row" data-testid="atc-row">
                   <div className="ep-atc-main" onDoubleClick={() => setEditing(e.id)}>
                     <span className="ep-atc-cs">{e.callsign}{e.service && <span className="ep-atc-svc">{e.service}</span>}</span>
-                    <span className="ep-atc-freq mono">{atcFreqText(e) || <span className="muted">no frequency</span>}</span>
+                    <span className="ep-atc-freq tnum">{atcFreqText(e) || <span className="muted">no frequency</span>}</span>
                     {e.remark && <span className="ep-atc-remark muted">{e.remark}</span>}
                   </div>
                   <div className="ep-row-actions">

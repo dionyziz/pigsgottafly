@@ -79,9 +79,9 @@ function Endpoint({ e }: { e: EndpointCalc }) {
         </div>
       )}
       <div className="ep-kvs">
-        <KV k={to ? 'Take-off' : 'Landing'} v={<span className="mono">{isFinite(timeMin) ? `${fmtMin(timeMin)}Z` : '–'}</span>}
+        <KV k={to ? 'Take-off' : 'Landing'} v={<span className="tnum">{isFinite(timeMin) ? `${fmtMin(timeMin)}Z` : '–'}</span>}
           sub={e.surface ? e.surface.label : 'no conditions'} />
-        <KV k="Wind" v={<span className="mono">{windText(e)}</span>}
+        <KV k="Wind" v={<span className="tnum">{windText(e)}</span>}
           sub={e.surface ? `${e.surface.tempC != null ? `${Math.round(e.surface.tempC)}°C` : '–'} · Q${e.surface.qnhHpa != null ? Math.round(e.surface.qnhHpa) : '–'}` : 'ISA, calm'} />
         {e.reports?.metar && <div className="ep-metar mono" title="METAR">{e.reports.metar.raw}</div>}
       </div>
@@ -101,24 +101,24 @@ function Endpoint({ e }: { e: EndpointCalc }) {
       </div>
       {p && (
         <div className="ep-kvs">
-          <KV k="Components" v={<span className="mono">{p.wind.headwindKt >= 0 ? 'H' : 'T'} {Math.abs(p.wind.headwindKt).toFixed(0)} · X {p.wind.crosswindKt.toFixed(0)}{p.wind.crossFrom}{p.crosswindGustKt != null ? ` G${p.crosswindGustKt.toFixed(0)}` : ''} kt</span>}
+          <KV k="Components" v={<span className="tnum">{p.wind.headwindKt >= 0 ? 'H' : 'T'} {Math.abs(p.wind.headwindKt).toFixed(0)} · X {p.wind.crosswindKt.toFixed(0)}{p.wind.crossFrom}{p.crosswindGustKt != null ? ` G${p.crosswindGustKt.toFixed(0)}` : ''} kt</span>}
             sub={p.variableWind ? 'variable: full crosswind' : undefined}
             tone={!p.crosswindOk || p.tailwind ? 'danger' : undefined} />
-          <KV k="PA / DA" v={<span className="mono">{Math.round(p.pressureAltFt)} / {Math.round(p.densityAltFt)} ft</span>} sub={`ISA ${p.isaDevC >= 0 ? '+' : ''}${p.isaDevC.toFixed(0)}°C`} />
-          {e.massKg != null && <KV k="Mass" testId={`perf-mass-${tid}`} v={<span className="mono">{e.massKg.toFixed(0)} kg</span>}
+          <KV k="PA / DA" v={<span className="tnum">{Math.round(p.pressureAltFt)} / {Math.round(p.densityAltFt)} ft</span>} sub={`ISA ${p.isaDevC >= 0 ? '+' : ''}${p.isaDevC.toFixed(0)}°C`} />
+          {e.massKg != null && <KV k="Mass" testId={`perf-mass-${tid}`} v={<span className="tnum">{e.massKg.toFixed(0)} kg</span>}
             sub={v.overMass ? `above ${v.overMass.limitName} ${v.overMass.limitKg} kg` : e.massSource === 'mtow' ? (e.massReason === 'weight-missing' ? 'MTOW (weight missing)' : 'MTOW (no W&B)') : undefined}
             tone={v.overMass ? 'danger' : e.massReason === 'weight-missing' ? 'warn' : undefined} />}
           {p.distances && (to ? (
             <>
               <KV k="TORR / TORA" tone={p.availableGroundM != null && p.distances.requiredGroundM > p.availableGroundM ? 'danger' : extrap ? 'warn' : undefined}
-                v={<span className="mono">{m(p.distances.requiredGroundM)} / {m(p.availableGroundM)}</span>} />
+                v={<span className="tnum">{m(p.distances.requiredGroundM)} / {m(p.availableGroundM)}</span>} />
               <KV k="TODR / TODA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : extrap ? 'warn' : undefined}
-                v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
+                v={<span className="tnum">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
                 sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="todr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="todr-methods">{p.distances.method === 'afm' ? 'AFM' : 'DA'} method; {p.alternative.method === 'afm' ? 'AFM' : 'DA'} {m(p.alternative.requiredTotalM)}</span>}</>} />
             </>
           ) : (
             <KV k="LDR / LDA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : extrap ? 'warn' : undefined}
-              v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
+              v={<span className="tnum">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
               sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="ldr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="ldr-methods">{p.distances.method === 'afm' ? 'AFM' : 'DA'} method; {p.alternative.method === 'afm' ? 'AFM' : 'DA'} {m(p.alternative.requiredTotalM)}</span>}</>} />
           ))}
         </div>

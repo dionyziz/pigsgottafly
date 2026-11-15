@@ -30,7 +30,7 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
           <NumInput value={mb.emptyArmM} zeroAsEmpty min={-10} max={50} unit="m" placeholder="not set"
             onChange={(v) => m((q) => { q.emptyArmM = v ?? 0; q.emptyMomentKgM = r2(q.emptyMassKg * q.emptyArmM); })} />
         </Field>
-        <Field label="Empty moment" issues={at('massBalance.emptyMomentKgM')} hint={mb.emptyMassKg > 0 && mb.emptyArmM > 0 && Math.abs(product - mb.emptyMomentKgM) > 0.005 ? <>mass × arm = {product} <button type="button" className="link" onClick={() => m((q) => { q.emptyMomentKgM = product; })}>use</button></> : 'Editing it recomputes the arm'}>
+        <Field label="Empty moment" issues={at('massBalance.emptyMomentKgM')} hint={mb.emptyMassKg > 0 && mb.emptyArmM > 0 && Math.abs(product - mb.emptyMomentKgM) > 0.005 ? <>mass × arm = {product} <button type="button" className="linkish" onClick={() => m((q) => { q.emptyMomentKgM = product; })}>use</button></> : 'Editing it recomputes the arm'}>
           <NumInput value={mb.emptyMomentKgM} zeroAsEmpty min={-1e6} max={1e7} unit="kg·m" placeholder="not set"
             onChange={(v) => m((q) => { q.emptyMomentKgM = v ?? 0; if (q.emptyMassKg > 0) q.emptyArmM = r4(q.emptyMomentKgM / q.emptyMassKg); })} />
         </Field>

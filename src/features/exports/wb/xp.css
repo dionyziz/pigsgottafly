@@ -9,9 +9,9 @@
 .xp-status-row .spacer { flex: 1; }
 .xp-warnings {
   margin: 0; padding: 10px 14px 10px 30px; border-radius: 8px; font-size: 13px;
-  background: var(--warn-soft, #fff4d6); border: 1px solid var(--warn-line, #e0b14a); color: var(--warn, #8a5a00);
+  background: var(--warn-soft); border: 1px solid var(--warn-line); color: var(--warn);
 }
-.xp-sources { margin: 0; padding-left: 18px; font-size: 12px; color: var(--ink-2, #555); }
+.xp-sources { margin: 0; padding-left: 18px; font-size: 12px; color: var(--ink-2); }
 
 .xp-stage { overflow-x: auto; padding: 2px 2px 16px; }
 .xp-sheet {
@@ -59,8 +59,6 @@
 
 @page xp { size: A4 portrait; margin: 0; }
 @media print {
-  .page:has(.xp-doc) { max-width: none !important; margin: 0 !important; padding: 0 !important; }
-  .card:has(.xp-doc) { padding: 0 !important; border: 0 !important; box-shadow: none !important; background: none !important; }
   .xp-doc { display: block; }
   .xp-stage { overflow: visible; padding: 0; }
   /* a little under the page height so a full sheet never spills a blank page; longer content flows on */

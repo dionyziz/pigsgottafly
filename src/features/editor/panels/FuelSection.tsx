@@ -24,7 +24,7 @@ export function FuelSection() {
   const tone = fuel.issues.some((i) => i.level === 'danger') || fuel.landingFuelL < 0 ? 'danger' : fuel.fobIsDefault && fuel.defaultOverCapacity ? 'warn' : undefined;
   const badge = (
     <>
-      <span className="mono">{fuel.fobL} L</span>
+      <span className="tnum">{fuel.fobL} L</span>
       {tone === 'danger' && <Chip tone="danger">Check</Chip>}
       {tone === 'warn' && <Chip tone="warn">Capacity</Chip>}
     </>
@@ -32,7 +32,7 @@ export function FuelSection() {
   const pct = aircraft.fuel.usableL > 0 ? Math.min(100, (fuel.fobL / aircraft.fuel.usableL) * 100) : 0;
   const reqPct = aircraft.fuel.usableL > 0 ? Math.min(100, (fuel.requiredL / aircraft.fuel.usableL) * 100) : 0;
   /** Litres as flight time at the planning burn, shown pale beside every amount. */
-  const time = (l: number) => (burn > 0 && Number.isFinite(l) ? <span className="mono">{fmtDur((l / burn) * 60)}</span> : undefined);
+  const time = (l: number) => (burn > 0 && Number.isFinite(l) ? <span className="tnum">{fmtDur((l / burn) * 60)}</span> : undefined);
   const types = aircraft.fuel.types.map((g) => g.type);
   const primary = primaryFuel(aircraft.fuel).type;
   const multi = types.length > 1;
@@ -54,13 +54,13 @@ export function FuelSection() {
   return (
     <Section id="fuel" title="Fuel" badge={badge}>
       <div className="ep-kvs" data-testid="fuel-plan">
-        <KV k="Start-up, taxi, TO & landing" v={<span className="mono">{fuel.taxiL} L</span>} sub={time(fuel.taxiL)} />
-        <KV k="Trip" v={<span className="mono">{fuel.tripL} L</span>} sub={navlog ? <span className="mono">{fmtDur(navlog.flightMin)}</span> : time(fuel.tripL)} />
-        {fuel.finalReserveL > 0 && <KV k="Final reserve" v={<span className="mono">{fuel.finalReserveL} L</span>} sub={time(fuel.finalReserveL)} />}
-        <KV k={<b>Required</b>} v={<b className="mono" data-testid="fuel-required">{fuel.requiredL} L</b>} sub={time(fuel.requiredL)} />
-        <KV k="Reserve" v={<span className="mono">{fuel.reserveL} L</span>}
+        <KV k="Start-up, taxi, TO & landing" v={<span className="tnum">{fuel.taxiL} L</span>} sub={time(fuel.taxiL)} />
+        <KV k="Trip" v={<span className="tnum">{fuel.tripL} L</span>} sub={navlog ? <span className="tnum">{fmtDur(navlog.flightMin)}</span> : time(fuel.tripL)} />
+        {fuel.finalReserveL > 0 && <KV k="Final reserve" v={<span className="tnum">{fuel.finalReserveL} L</span>} sub={time(fuel.finalReserveL)} />}
+        <KV k={<b>Required</b>} v={<b className="tnum" data-testid="fuel-required">{fuel.requiredL} L</b>} sub={time(fuel.requiredL)} />
+        <KV k="Reserve" v={<span className="tnum">{fuel.reserveL} L</span>}
           sub={fuel.reserveUnset ? <Link to="/profile">set in your profile</Link> : time(fuel.reserveL)} tone={fuel.reserveUnset ? 'warn' : undefined} />
-        <KV k="Required + reserve" v={<span className="mono">{fuel.defaultFobL} L</span>} sub={time(fuel.defaultFobL)} tone={fuel.defaultOverCapacity ? 'warn' : undefined} />
+        <KV k="Required + reserve" v={<span className="tnum">{fuel.defaultFobL} L</span>} sub={time(fuel.defaultFobL)} tone={fuel.defaultOverCapacity ? 'warn' : undefined} />
       </div>
       <div className="ep-fob" data-focus="fob">
         {multi ? (
@@ -74,7 +74,7 @@ export function FuelSection() {
                     testId={t === primary ? 'fob' : `fob-${t}`} onCommit={(v) => setType(t, v)} />
                 </label>
               ))}
-              <span className="mono ep-fob-total" data-testid="fob-total">= {fuel.fobL} L</span>
+              <span className="tnum ep-fob-total" data-testid="fob-total">= {fuel.fobL} L</span>
             </span>
             <span className="row">
               {doc.fobL != null
@@ -112,10 +112,10 @@ export function FuelSection() {
         </div>
       </div>
       <div className="ep-kvs">
-        <KV k="Endurance at block-off" v={<span className="mono">{fmtDur(fuel.enduranceMin)}</span>} sub="FPL item 19 E/" />
+        <KV k="Endurance at block-off" v={<span className="tnum">{fmtDur(fuel.enduranceMin)}</span>} sub="FPL item 19 E/" />
         <KV k="Fuel at landing" tone={fuel.landingReserveShort ? 'danger' : undefined}
-          v={<span className="mono">{fuel.landingFuelL} L</span>}
-          sub={<span className="mono" data-testid="fuel-landing-endurance">{fmtDur(fuel.landingEnduranceMin)} left</span>} />
+          v={<span className="tnum">{fuel.landingFuelL} L</span>}
+          sub={<span className="tnum" data-testid="fuel-landing-endurance">{fmtDur(fuel.landingEnduranceMin)} left</span>} />
       </div>
       {fuel.issues.filter((w) => !/reserve not set/i.test(w.text)).map((w) => (
         <p key={w.text} className={'ep-note ' + (w.level === 'danger' ? 'danger-text' : 'warn-text')}>{w.text}</p>

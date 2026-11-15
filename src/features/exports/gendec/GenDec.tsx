@@ -28,7 +28,7 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?:
   if (dest) rows.push({ place: <DownArrow />, crew: '' }, { place: dest.place, crew: '', field: 'destination' });
   while (rows.length < ROUTING_ROWS) rows.push({ place: '', crew: '' });
   return (
-    <div className="pgf-forms" data-testid="gendec">
+    <div className="pgf-forms print-sheet-page" data-testid="gendec">
       {props.panel}
       <FormWarnings warnings={m.warnings} fixes={m.fixes} />
       <section className="pgf-sheet gd-sheet" aria-label="General Declaration">

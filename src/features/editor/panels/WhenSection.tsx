@@ -27,8 +27,8 @@ function TimeRow({ label, min, dayMs, testId, tone }: { label: string; min: numb
       k={label}
       tone={tone}
       testId={testId}
-      v={<><span className="mono">{fmtMin(min)}Z</span>{nextDay && <sup className="muted">+1</sup>}</>}
-      sub={isFinite(ms) ? <span className="mono">{localClock(ms)}LT</span> : undefined}
+      v={<><span className="tnum">{fmtMin(min)}Z</span>{nextDay && <sup className="muted">+1</sup>}</>}
+      sub={isFinite(ms) ? <span className="tnum">{localClock(ms)}LT</span> : undefined}
     />
   );
 }
@@ -96,7 +96,7 @@ export function WhenSection() {
           <TimeRow label="Landing" min={t.landingMin} dayMs={dayMs} testId="time-landing" tone={late(t.landingMin)} />
           <TimeRow label="Block-on" min={t.blockOnMin} dayMs={dayMs} testId="time-blockon" tone={late(t.blockOnMin)} />
           {navlog && navlog.legs.length > 0 && (
-            <KV k="Flight / block time" v={<span className="mono">{fmtDur(navlog.flightMin)} / {fmtDur(t.blockOnMin - t.blockOffMin)}</span>} />
+            <KV k="Flight / block time" v={<span className="tnum">{fmtDur(navlog.flightMin)} / {fmtDur(t.blockOnMin - t.blockOffMin)}</span>} />
           )}
           {sunset != null && <TimeRow label="Sunset at destination" min={sunset} dayMs={dayMs} testId="time-sunset" />}
         </div>

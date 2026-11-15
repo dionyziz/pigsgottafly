@@ -164,7 +164,7 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
               <Field label="Swung" issues={issuesAt(issues, `${p}.swung`, true)}>
                 <DateInput value={c.swung} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.swung = v; }); }} />
               </Field>
-              <Field label="Expires" issues={issuesAt(issues, `${p}.expires`, true)} hint={c.swung ? <button type="button" className="link" onClick={() => cc(i, (x) => { x.expires = addYears(x.swung, 2); })}>Swung + 2 years</button> : undefined}>
+              <Field label="Expires" issues={issuesAt(issues, `${p}.expires`, true)} hint={c.swung ? <button type="button" className="linkish" onClick={() => cc(i, (x) => { x.expires = addYears(x.swung, 2); })}>Swung + 2 years</button> : undefined}>
                 <DateInput value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
               </Field>
               <Field label="Reference" hint="Report number or who swung it">

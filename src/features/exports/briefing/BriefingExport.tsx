@@ -36,7 +36,7 @@ export function BriefingExport({ flight }: { flight: Flight }) {
 
   const m = briefingModel({ doc: flight, title: flight.summary.title || flight.title, briefing });
   return (
-    <div className="xp-doc" data-testid="briefing-export" data-ready={busy ? 'false' : 'true'} data-status={m.status}>
+    <div className="xp-doc print-sheet-page" data-testid="briefing-export" data-ready={busy ? 'false' : 'true'} data-status={m.status}>
       <div className="xp-status no-print">
         <div className="xp-status-row">
           <span className={`chip ${busy ? '' : m.status === 'ok' ? (m.relevant.length ? 'warn' : 'ok') : 'warn'}`}>

@@ -219,7 +219,7 @@ export function FuelSection({ a, edit, issues }: SectionProps) {
                 </td>
                 <td>{i === 0
                   ? (f.types.length > 1 ? <span className="hint" title="A flight that gives only a total carries this fuel">Default</span> : null)
-                  : <button type="button" className="link" onClick={() => fu((q) => makePrimaryFuel(q, g.type))}>Make default</button>}</td>
+                  : <button type="button" className="linkish" onClick={() => fu((q) => makePrimaryFuel(q, g.type))}>Make default</button>}</td>
                 <td className="row-tools">
                   <button type="button" className="icon sm danger" aria-label={`Remove ${g.type}`} title="Remove" disabled={f.types.length <= 1}
                     onClick={() => fu((q) => removeFuelType(q, g.type))}>×</button>

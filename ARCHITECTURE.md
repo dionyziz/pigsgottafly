@@ -70,7 +70,11 @@ src/
                            AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
                            REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context
-                           (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (tokens)
+                           (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (design tokens, base
+                           elements, shell, list tables, the print-sheet-page rule; no var(--token, fallback) anywhere)
+  ui/                      ui.css: global component classes (button variants sm/icon/ghost.danger/danger-fill/linkish; hint,
+                           form-error, warn-text, danger-text, ellipsis, num, tnum; grid2/grid3/span2, hide-sm, unit-input,
+                           field/check; dialogs, menus, empty, searchbox, tabs, combo). Mono only for codes; tnum for measurements
   features/
     lobby/                 LobbyPage, NewFlightPage
     profile/               ProfilePage (?welcome=1 = first-use onboarding)

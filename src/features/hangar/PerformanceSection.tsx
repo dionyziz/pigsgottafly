@@ -272,21 +272,23 @@ function Stall({ a, edit }: SectionProps) {
           : <button type="button" className="ghost sm" onClick={() => edit((d) => addStallSpeeds(d.performance))}>Add stall speeds</button>}
       </div>
       {s && (
-        <table className="perf compact">
-          <thead><tr><th>Bank</th>{BANKS.map((b) => <th key={b}>{b}°</th>)}</tr></thead>
-          <tbody>
-            {FLAPS.map(({ k, label }) => (
-              <tr key={k}>
-                <th>{label}</th>
-                {BANKS.map((b, i) => (
-                  <td key={b}>
-                    <NumInput value={s[k][i] ?? null} min={0} max={500} width={64} ariaLabel={`${label} ${b}° bank`} onChange={(v) => edit((d) => { d.performance.stallIasKt![k][i] = v ?? 0; })} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="tbl-wrap">
+          <table className="perf compact">
+            <thead><tr><th>Bank</th>{BANKS.map((b) => <th key={b}>{b}°</th>)}</tr></thead>
+            <tbody>
+              {FLAPS.map(({ k, label }) => (
+                <tr key={k}>
+                  <th>{label}</th>
+                  {BANKS.map((b, i) => (
+                    <td key={b}>
+                      <NumInput value={s[k][i] ?? null} min={0} max={500} width={64} ariaLabel={`${label} ${b}° bank`} onChange={(v) => edit((d) => { d.performance.stallIasKt![k][i] = v ?? 0; })} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </>
   );

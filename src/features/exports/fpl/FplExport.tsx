@@ -68,7 +68,7 @@ export function FplExport({ flight }: { flight: Flight }) {
   const ctx = { flightId: id ?? flight.id, aircraftId: flight.aircraftId };
 
   return (
-    <div className="fpl-export" data-testid="fpl-export">
+    <div className="fpl-export print-sheet-page" data-testid="fpl-export">
       <div className="fpl-panel no-print">
         <div className="fpl-panel-head">
           <div className="fpl-panel-title">FPL message</div>
