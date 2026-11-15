@@ -24,6 +24,13 @@ export interface ApiConfig {
    * list means NOBODY (never "anyone"). Default: allowedEmails. Local mode: the local pilot.
    */
   autorouterPilots?: string[];
+  /**
+   * Lower-cased e-mails of the pilots who may send forms to HCAA through the deployment's e-mail
+   * account (RESEND_API_KEY, sender forms@…). The messages go to official HCAA mailboxes in the
+   * service's name, so in Google mode an empty list means NOBODY (never "anyone"). Default:
+   * allowedEmails. Local mode: the local pilot.
+   */
+  formsPilots?: string[];
 }
 
 export interface Ctx {
@@ -43,6 +50,8 @@ export interface Ctx {
   autorouter: AutorouterClient | null;
   /** True when autorouter is configured but this pilot is not on the autorouter allow-list. */
   autorouterDenied: boolean;
+  /** True when this pilot may not send forms through the deployment's e-mail account (formsPilots). */
+  formsMailDenied: boolean;
 }
 
 /** A handler returns the JSON body (status 200), a Reply (other status/headers), or undefined (204). */

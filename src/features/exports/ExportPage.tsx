@@ -32,7 +32,7 @@ function FormExport({ flight, kind }: { flight: Flight; kind: 'form731' | 'gende
   const props = { flight, aircraft: ac.data ?? null, pilot, passengers: pax.data ?? [] };
   return kind === 'form731'
     ? <Form731 {...props} signatures={shownSignatures(forms.st)} panel={<SignaturesPanel flightId={flight.id} forms={forms} />} />
-    : <GenDec {...props} panel={<GenDecSendPanel flightId={flight.id} forms={forms} />} />;
+    : <GenDec {...props} signature={forms.st?.gendec.picSignature ?? null} panel={<GenDecSendPanel flightId={flight.id} forms={forms} />} />;
 }
 
 function Body({ flight, kind }: { flight: Flight; kind: ExportKind }) {

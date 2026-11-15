@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
 import { buildLegs } from '../../../calc';
+import { stopPointIndices } from '../../../shared';
 import { api } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
@@ -41,9 +42,12 @@ export function useExportCalc(flight: Flight): ExportCalcState {
   const model = flight.options.windModel || pilot?.settings.windModel;
   const dep = flight.route[0] ?? null;
   const dest = flight.route.length > 1 ? flight.route[flight.route.length - 1] : null;
+  // Intermediate full stops: surface weather and METAR there too (landing and take-off checks).
+  const stopPts = useMemo(() => stopPointIndices(flight.route, flight.options).map((i) => flight.route[i]), [flight.route, flight.options]);
   const wxKey = JSON.stringify([
     flight.date, model, legs.map((l) => [l.mid.lat.toFixed(3), l.mid.lon.toFixed(3)]),
     dep && [dep.lat.toFixed(3), dep.lon.toFixed(3)], dest && [dest.lat.toFixed(3), dest.lon.toFixed(3)],
+    stopPts.map((p) => [p.lat.toFixed(3), p.lon.toFixed(3)]),
   ]);
   const [weather, setWeather] = useState<RouteWeather | null>(null);
   const [wxBusy, setWxBusy] = useState(false);
@@ -55,7 +59,7 @@ export function useExportCalc(flight: Flight): ExportCalcState {
     fetchRouteWeather({
       date: flight.date, model,
       legMidpoints: legs.map((l) => l.mid),
-      departure: dep, destination: dest,
+      departure: dep, destination: dest, stops: stopPts,
       force: refresh > 0,
     }).then(
       (w) => { if (live) { setWeather(w); setWxBusy(false); } },
@@ -66,9 +70,10 @@ export function useExportCalc(flight: Flight): ExportCalcState {
   }, [wxKey, refresh]);
 
   const endIcaos = useMemo(() => {
-    return [dep, dest].map((p) => (p ? endpointAerodrome(p, REF.aerodromes)?.icao ?? null : null)).filter((x): x is string => !!x);
+    const ids = [dep, ...stopPts, dest].map((p) => (p ? endpointAerodrome(p, REF.aerodromes)?.icao ?? null : null)).filter((x): x is string => !!x);
+    return [...new Set(ids)];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flight.route]);
+  }, [flight.route, stopPts]);
   const nearNow = useMemo(() => {
     const day = Date.parse(flight.date + 'T00:00:00Z');
     return isFinite(day) && Math.abs(day + 12 * 3600000 - Date.now()) < 12 * 3600000 + METAR_HORIZON_MS;

@@ -327,6 +327,8 @@ export interface RouteWeatherRequest {
   legMidpoints: LatLon[];
   departure: LatLon | null;
   destination: LatLon | null;
+  /** Intermediate full-stop aerodromes (surface conditions for their landing and take-off). */
+  stops?: LatLon[];
   /** Ignore the cache (the pilot's "refresh winds"). */
   force?: boolean;
   fetch?: typeof fetch;
@@ -341,6 +343,8 @@ export interface RouteWeather {
   legs: (OpenMeteoLocation | null)[];
   departure: OpenMeteoLocation | null;
   destination: OpenMeteoLocation | null;
+  /** One per RouteWeatherRequest.stops, in order (missing on older results = none). */
+  stops?: (OpenMeteoLocation | null)[];
   source: ForecastSource | null;
 }
 
@@ -358,7 +362,7 @@ export function describeSource(s: ForecastSource): string {
 }
 
 const empty = (status: RouteWeather['status'], message: string, n: number): RouteWeather =>
-  ({ status, message, legs: Array(n).fill(null), departure: null, destination: null, source: null });
+  ({ status, message, legs: Array(n).fill(null), departure: null, destination: null, stops: [], source: null });
 
 /**
  * Winds aloft at every leg midpoint plus surface conditions at departure and destination, for the
@@ -375,6 +379,7 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
   const points: LatLon[] = [...req.legMidpoints];
   const depIdx = req.departure ? points.push(req.departure) - 1 : -1;
   const destIdx = req.destination ? points.push(req.destination) - 1 : -1;
+  const stopIdx = (req.stops ?? []).map((p) => points.push(p) - 1);
   const next = isoDay(dayMs(req.date) + DAY);
   const d1 = next <= av.lastDate ? next : req.date;
   if (req.force) for (const k of [...cache.keys()]) if (k.includes(`start_date=${req.date}`)) cache.delete(k);
@@ -392,7 +397,7 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
     };
     return {
       status: 'ok', message: describeSource(source),
-      legs: req.legMidpoints.map((_, i) => at(i)), departure: at(depIdx), destination: at(destIdx), source,
+      legs: req.legMidpoints.map((_, i) => at(i)), departure: at(depIdx), destination: at(destIdx), stops: stopIdx.map(at), source,
     };
   } catch (e) {
     return empty('error', `Winds unavailable: ${String((e as Error)?.message || e)}`, n);

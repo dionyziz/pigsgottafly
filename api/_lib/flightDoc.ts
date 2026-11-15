@@ -162,7 +162,14 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
       if (r.kind === 'touch-and-go') return { pointUid, kind: 'touch-and-go' };
       if (r.kind === 'stop') {
         const m = optNumber(r.stopMin, `options.aerodromeRequests[${j}].stopMin`, 1, MAX_STOP_MIN);
-        return { pointUid, kind: 'stop', stopMin: m ?? 10 };
+        const stop: AerodromeRequest = { pointUid, kind: 'stop', stopMin: m ?? 10 };
+        for (const k of ['landingRunway', 'takeoffRunway'] as const) {
+          const v = optText(r[k], `options.aerodromeRequests[${j}].${k}`, 10);
+          if (v) stop[k] = v;
+        }
+        const sf = optText(r.surface, `options.aerodromeRequests[${j}].surface`, 60);
+        if (sf) stop.surface = sf;
+        return stop;
       }
       throw badRequest(`options.aerodromeRequests[${j}].kind must be touch-and-go or stop`);
     });

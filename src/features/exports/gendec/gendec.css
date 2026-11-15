@@ -57,7 +57,9 @@
 .gd-declare .gd-just { text-align-last: left; }
 .gd-indent { display: inline-block; width: 5.1mm; }
 .gd-signature { position: absolute; left: 44mm; top: 22mm; white-space: nowrap; display: flex; align-items: flex-end; }
-.gd-sigline { display: inline-block; width: 89.6mm; border-bottom: 0.2mm solid #000; margin-left: 0.3mm; height: 2.6mm; }
+.gd-sigline { display: inline-block; position: relative; width: 89.6mm; border-bottom: 0.2mm solid #000; margin-left: 0.3mm; height: 2.6mm; }
+/* The PIC's e-signature sits on the line (name in handwriting, then the time it was signed). */
+.gd-pic-signature { position: absolute; left: 18mm; bottom: 0.4mm; text-align: left; }
 .gd-agent { position: absolute; left: 77.9mm; top: 28.1mm; white-space: nowrap; }
 .gd-pic-name { position: absolute; left: 60mm; width: 85mm; top: 31.6mm; text-align: center; }
 

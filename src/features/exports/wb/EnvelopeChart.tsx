@@ -1,12 +1,14 @@
 // CG moment envelope (moment vs mass), as the AFM chart on the MD 4.3 form: normal and utility
-// envelopes, the take-off and landing points joined by the fuel-burn line, and the zero-fuel point
-// at the end of a dashed continuation (where the aircraft would be with all fuel burnt).
+// envelopes, the take-off and landing points joined by the fuel-burn line (through the point at
+// each intermediate stop), and the zero-fuel point at the end of a dashed continuation (where the
+// aircraft would be with all fuel burnt).
 import type { WbPoint } from '../../../calc';
 import { chartDomain, fmtKg, type ChartEnvelope } from './model';
 import { layoutChartLabels, type Box, type Segment } from './chartLayout';
 
 export interface ChartPoint {
-  key: 'takeoff' | 'landing' | 'zerofuel';
+  /** stop0, stop1…: intermediate full stops, in flight order. */
+  key: 'takeoff' | 'landing' | 'zerofuel' | `stop${number}`;
   label: string;
   point: WbPoint;
   ok: boolean | null;
@@ -26,18 +28,24 @@ export function envelopeChartGeometry(envelopes: ChartEnvelope[], points: ChartP
   const to = byKey.get('takeoff');
   const ldg = byKey.get('landing');
   const zf = byKey.get('zerofuel');
+  const stops = valid.filter((p) => p.key.startsWith('stop'));
+  // fuel burn: take-off → each stop → landing
+  const burnPath = [to, ...stops, ldg].filter((p): p is ChartPoint => !!p);
 
   // Captions and value labels placed clear of each other, the markers and the fuel-burn line.
   const px = (pts: [number, number][]): [number, number][] => pts.map(([x, y]) => [sx(x), sy(y)]);
   const burn: Segment[] = [];
-  if (to && ldg) burn.push([sx(to.point.momentKgM), sy(to.point.massKg), sx(ldg.point.momentKgM), sy(ldg.point.massKg)]);
+  if (to && ldg) for (let i = 0; i + 1 < burnPath.length; i++) {
+    const a = burnPath[i].point, b = burnPath[i + 1].point;
+    burn.push([sx(a.momentKgM), sy(a.massKg), sx(b.momentKgM), sy(b.massKg)]);
+  }
   if (ldg && zf) burn.push([sx(ldg.point.momentKgM), sy(ldg.point.massKg), sx(zf.point.momentKgM), sy(zf.point.massKg)]);
   const bounds: Box = { x0: M.l + 2, y0: M.t + 2, x1: W - M.r - 2, y1: H - M.b - 2 };
   const pointInputs = valid.map((p) => ({
     key: p.key,
     x: sx(p.point.momentKgM),
     y: sy(p.point.massKg),
-    r: MARK_R[p.key],
+    r: markR(p.key),
     lines: [`${p.label} ${fmtKg(p.point.massKg)} kg`, `${p.point.momentKgM.toFixed(1)} kg·m`],
     fontPx: p.key === 'zerofuel' ? 14 : 16,
   }));
@@ -58,13 +66,14 @@ export function envelopeChartGeometry(envelopes: ChartEnvelope[], points: ChartP
     points: pointInputs,
     burn,
   });
-  return { d, sx, sy, valid, to, ldg, zf, burn, bounds, markers: pointInputs, layout };
+  return { d, sx, sy, valid, to, ldg, zf, stops, burnPath, burn, bounds, markers: pointInputs, layout };
 }
 
 const MARK_R = { takeoff: 8, landing: 7, zerofuel: 6 } as const;
+const markR = (key: ChartPoint['key']) => (key in MARK_R ? MARK_R[key as keyof typeof MARK_R] : 7);
 
 export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[]; points: ChartPoint[] }) {
-  const { d, sx, sy, valid, to, ldg, zf, layout } = envelopeChartGeometry(envelopes, points);
+  const { d, sx, sy, valid, to, ldg, zf, burnPath, layout } = envelopeChartGeometry(envelopes, points);
   const path = (pts: [number, number][]) => (pts.length ? `M${pts.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join('L')}Z` : '');
 
   const minor: number[] = [];
@@ -113,7 +122,10 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[
       {/* fuel burn: take-off → landing, then on to zero fuel (dashed) */}
       <g clipPath="url(#wb-plot)">
         {ldg && zf && <line className="wb-burn-rest" x1={sx(ldg.point.momentKgM)} y1={sy(ldg.point.massKg)} x2={sx(zf.point.momentKgM)} y2={sy(zf.point.massKg)} />}
-        {to && ldg && <line className="wb-burn" x1={sx(to.point.momentKgM)} y1={sy(to.point.massKg)} x2={sx(ldg.point.momentKgM)} y2={sy(ldg.point.massKg)} />}
+        {to && ldg && burnPath.slice(1).map((b, i) => {
+          const a = burnPath[i];
+          return <line key={`burn${i}`} className="wb-burn" x1={sx(a.point.momentKgM)} y1={sy(a.point.massKg)} x2={sx(b.point.momentKgM)} y2={sy(b.point.massKg)} />;
+        })}
       </g>
 
       {/* points */}
@@ -125,7 +137,9 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[
           ? <circle cx={x} cy={y} r={8} />
           : p.key === 'landing'
             ? <rect x={x - 7} y={y - 7} width={14} height={14} />
-            : <circle cx={x} cy={y} r={6} className="hollow" />;
+            : p.key === 'zerofuel'
+              ? <circle cx={x} cy={y} r={6} className="hollow" />
+              : <polygon points={`${x},${y - 8} ${x + 8},${y} ${x},${y + 8} ${x - 8},${y}`} />;
         const l = ptLabel.get(p.key);
         return (
           <g key={p.key} className={cls}>

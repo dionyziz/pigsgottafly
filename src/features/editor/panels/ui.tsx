@@ -56,8 +56,16 @@ export function KV({ k, v, sub, tone, testId }: { k: ReactNode; v: ReactNode; su
 }
 
 /**
- * Number input that keeps what is typed until it parses; commits null for an empty field.
- * `onCommit` is called on every valid change (pass a coalesce key to the update).
+ * Number input that keeps what is typed while editing; commits null for an empty field.
+ *
+ * Every keystroke that leaves an in-range number commits it (the panel updates live; pass a
+ * coalesce key to the update so a typed number is one undo step). A draft outside [min, max] is
+ * never dropped: the field turns red with the limit in its tooltip and, on blur or Enter, the
+ * value is clamped to the limit and committed, so the stored value always matches what the field
+ * shows. (Committing only valid keystrokes and reverting on blur used to keep the first digits of
+ * an over-limit entry: typing 60 into a max-54 field stored 6.) `min`/`max` are therefore sanity
+ * bounds; a limit the pilot may legitimately exceed (a placard) belongs in the calculation that
+ * flags it, not here.
  */
 export function NumberInput({ value, onCommit, min, max, step, placeholder, width, testId, ariaLabel, allowEmpty = true, decimals }: {
   value: number | null;
@@ -76,35 +84,55 @@ export function NumberInput({ value, onCommit, min, max, step, placeholder, widt
   const [draft, setDraft] = useState(show(value));
   const [focused, setFocused] = useState(false);
   useEffect(() => { if (!focused) setDraft(show(value)); }, [value, focused]); // eslint-disable-line react-hooks/exhaustive-deps
-  const parse = (s: string): number | null | undefined => {
-    const t = s.trim().replace(',', '.');
-    if (!t) return allowEmpty ? null : undefined;
-    const n = Number(t);
-    if (!isFinite(n)) return undefined;
-    if (min != null && n < min) return undefined;
-    if (max != null && n > max) return undefined;
-    return n;
+  const p = parseNumberDraft(draft, { min, max, allowEmpty });
+  const settle = () => {
+    // Out of range: clamp to the limit and commit it; unparseable: back to the stored value.
+    const v = p.kind === 'ok' ? p.value : p.kind === 'range' ? p.clamped : value;
+    if (v !== value) onCommit(v);
+    setDraft(show(v));
   };
-  const p = parse(draft);
+  const limitText = p.kind === 'range'
+    ? (max != null && p.value > max ? `Maximum ${max}` : `Minimum ${min}`)
+    : p.kind === 'bad' ? 'Not a number' : undefined;
   return (
     <input
-      className={'ep-num' + (p === undefined ? ' invalid' : '')}
+      className={'ep-num' + (p.kind !== 'ok' ? ' invalid' : '')}
       inputMode="decimal"
       value={draft}
       placeholder={placeholder}
       style={width ? { width } : undefined}
       step={step}
       aria-label={ariaLabel}
+      aria-invalid={p.kind !== 'ok' || undefined}
+      title={limitText}
       data-testid={testId}
       onFocus={() => setFocused(true)}
-      onBlur={() => { setFocused(false); setDraft(show(value)); }}
+      onBlur={() => { settle(); setFocused(false); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') settle(); }}
       onChange={(e) => {
         setDraft(e.target.value);
-        const v = parse(e.target.value);
-        if (v !== undefined && v !== value) onCommit(v);
+        const r = parseNumberDraft(e.target.value, { min, max, allowEmpty });
+        if (r.kind === 'ok' && r.value !== value) onCommit(r.value);
       }}
     />
   );
+}
+
+export type NumberDraft =
+  | { kind: 'ok'; value: number | null }
+  /** A number outside [min, max]; `clamped` is the nearest allowed value. */
+  | { kind: 'range'; value: number; clamped: number }
+  | { kind: 'bad' };
+
+/** Parses what is typed in a NumberInput (accepts a decimal comma). */
+export function parseNumberDraft(s: string, { min, max, allowEmpty = true }: { min?: number; max?: number; allowEmpty?: boolean }): NumberDraft {
+  const t = s.trim().replace(',', '.');
+  if (!t) return allowEmpty ? { kind: 'ok', value: null } : { kind: 'bad' };
+  const n = Number(t);
+  if (!isFinite(n)) return { kind: 'bad' };
+  if (min != null && n < min) return { kind: 'range', value: n, clamped: min };
+  if (max != null && n > max) return { kind: 'range', value: n, clamped: max };
+  return { kind: 'ok', value: n };
 }
 
 export function Chip({ tone, children, title }: { tone?: 'warn' | 'danger' | 'ok'; children: ReactNode; title?: string }) {

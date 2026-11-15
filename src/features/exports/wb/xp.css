@@ -22,6 +22,7 @@
   display: flex; flex-direction: column; gap: 2.6mm;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
+.xp-sheet + .xp-sheet { margin-top: 18px; }
 .xp-sheet *, .xp-sheet *::before, .xp-sheet *::after { box-sizing: border-box; }
 .xp-sheet h1 { margin: 0; font-size: 16pt; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 
@@ -63,5 +64,5 @@
   .xp-stage { overflow: visible; padding: 0; }
   /* a little under the page height so a full sheet never spills a blank page; longer content flows on */
   .xp-sheet { box-shadow: none; margin: 0; width: 210mm; min-height: 296mm; }
-  .xp-sheet + .xp-sheet { break-before: page; }
+  .xp-sheet + .xp-sheet { break-before: page; margin-top: 0; }
 }

@@ -1,6 +1,9 @@
 // The MD 4.4 performance log (trn-docs/MD4_4_Performance_Log_C172M.pdf) as data: one block for
 // the take-off at the departure, one for the landing at the destination, in the form's order,
-// with the weather used, the factors applied and a pass/fail. Pure: no I/O, no DOM.
+// with the weather used, the factors applied and a pass/fail. With intermediate full stops the
+// flight has several sectors (take-off → landing), and each one gets its own page: the landing at
+// the stop and the take-off from it are checked like the departure and the destination, with the
+// sector's masses and the stop's weather and runways. Pure: no I/O, no DOM.
 //
 // All figures come from calc/performance.ts aerodromePerformance (both the club MD 4.4 method: AFM
 // table at the density altitude, mass interpolation, headwind −10 %/5 kt, tailwind +10 %/2 kt; and
@@ -42,6 +45,16 @@ export interface PerfBlock {
   warnings: string[];
 }
 
+/** One sector of the flight (one take-off, one landing): one MD 4.4 page. */
+export interface PerfPage {
+  takeoff: PerfBlock;
+  landing: PerfBlock;
+  /** Speeds at the sector's take-off mass and pressure altitude. */
+  speeds: PerfSpeeds;
+  /** e.g. 'LGTT → LGSY'; '' for a flight without stops. */
+  label: string;
+}
+
 export interface PerfSheetModel {
   date: string;
   registration: string;
@@ -49,6 +62,10 @@ export interface PerfSheetModel {
   pilot: string;
   departure: PerfBlock;
   arrival: PerfBlock;
+  /** Intermediate full stops: the landing there and the take-off from there. */
+  stops: { landing: PerfBlock; takeoff: PerfBlock }[];
+  /** One per sector, in flight order (a single page without stops: departure and destination). */
+  pages: PerfPage[];
   speeds: PerfSpeeds;
   /** The club's condition factor table, from the aircraft's performance factors. */
   conditionTable: { label: string; factor: string }[];
@@ -96,7 +113,7 @@ function runwayHdgMag(r: RefRunway): number {
   return fin(n) ? n * 10 : 0;
 }
 
-function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, forcedRunway: string | null): PerfBlock {
+function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, forcedRunway: string | null, stop = false): PerfBlock {
   const takeoff = e.phase === 'takeoff';
   const rows: PerfRow[] = [];
   const add = (key: string, label: string, value: string, note = '', status: RowStatus = null) => rows.push({ key, label, value, note, status });
@@ -105,7 +122,7 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
   const ad = e.aerodrome;
   const warnings: string[] = [];
   const adName = ad ? `${ad.icao ? ad.icao + ' ' : ''}${ad.name}` : e.point ? e.point.name : '';
-  const title = takeoff ? 'Departure' : 'Destination';
+  const title = stop ? (takeoff ? 'Take-off from stop' : 'Landing at stop') : takeoff ? 'Departure' : 'Destination';
 
   if (!e.point) warnings.push(takeoff ? 'No route.' : 'No destination: the route has a single point.');
   else if (!ad) warnings.push(`${e.point.name} is not an aerodrome: no ${takeoff ? 'take-off' : 'landing'} performance.`);
@@ -282,9 +299,27 @@ export interface PerfSheetInput {
 
 export function perfSheetModel(input: PerfSheetInput): PerfSheetModel {
   const { doc, aircraft, pilot, calc } = input;
-  const speeds = perfSpeeds(aircraft, calc.departure.massKg, calc.departure.perf?.pressureAltFt ?? null);
+  const speedsAt = (e: EndpointPerf) => perfSpeeds(aircraft, e.massKg, e.perf?.pressureAltFt ?? null);
+  const speeds = speedsAt(calc.departure);
   const departure = block(calc.departure, aircraft, speeds, doc.options.departureRunway);
-  const arrival = block(calc.arrival, aircraft, speeds, doc.options.arrivalRunway);
+  // Sector k takes off from the departure (k = 0) or from stop k − 1, and lands at stop k or at the
+  // destination (the last sector). The landing block prints the speeds of its sector's take-off.
+  const takeoffs = [calc.departure, ...calc.stops.map((x) => x.takeoff)];
+  const sectorSpeeds = takeoffs.map((e, k) => (k === 0 ? speeds : speedsAt(e)));
+  const arrival = block(calc.arrival, aircraft, sectorSpeeds[sectorSpeeds.length - 1], doc.options.arrivalRunway);
+  const stops = calc.stops.map((x, k) => ({
+    landing: block(x.landing, aircraft, sectorSpeeds[k], x.landing.forcedRunway, true),
+    takeoff: block(x.takeoff, aircraft, sectorSpeeds[k + 1], x.takeoff.forcedRunway, true),
+  }));
+  const tos = [departure, ...stops.map((x) => x.takeoff)];
+  const ldgs = [...stops.map((x) => x.landing), arrival];
+  const name = (b: PerfBlock, e: EndpointPerf) => e.aerodrome?.icao || e.point?.name || b.aerodrome;
+  const pages: PerfPage[] = tos.map((t, k) => ({
+    takeoff: t,
+    landing: ldgs[k],
+    speeds: sectorSpeeds[k],
+    label: stops.length ? `${name(t, takeoffs[k])} → ${name(ldgs[k], k < calc.stops.length ? calc.stops[k].landing : calc.arrival)}` : '',
+  }));
   const f = aircraft?.performance.factors ?? null;
   const conditionTable: { label: string; factor: string }[] = [];
   if (f) {
@@ -295,12 +330,17 @@ export function perfSheetModel(input: PerfSheetInput): PerfSheetModel {
   const slopeRule = per2 && per2 !== 1 ? `2.0 % adverse slope: × ${per2} (upslope for take-off, downslope for landing; linear)` : '';
   const warnings: string[] = [];
   if (!navReady(calc)) warnings.push('Block-off time not set: take-off and landing times, and so the weather, are unknown.');
-  if (calc.departure.massSource === 'mtow' || calc.arrival.massSource === 'mtow') warnings.push('Masses are not from the loading sheet (MTOW used): complete the manifest and the aircraft.');
+  const allEnds = [calc.departure, ...calc.stops.flatMap((x) => [x.landing, x.takeoff]), calc.arrival];
+  if (allEnds.some((e) => e.massSource === 'mtow')) warnings.push('Masses are not from the loading sheet (MTOW used): complete the manifest and the aircraft.');
 
   const order = { fail: 2, incomplete: 1, pass: 0 } as const;
-  const worst = [departure, arrival].reduce((a, b) => (order[b.verdict] > order[a.verdict] ? b : a));
+  const blocks = [departure, ...stops.flatMap((x) => [x.landing, x.takeoff]), arrival];
+  const worst = blocks.reduce((a, b) => (order[b.verdict] > order[a.verdict] ? b : a));
   const verdict = worst.verdict;
-  const verdictText = verdict === 'pass' ? 'Take-off and landing within limits' : `${worst.title}: ${worst.verdictText.toLowerCase()}`;
+  const where = (b: PerfBlock) => (b === departure || b === arrival ? b.title : `${b.title} ${b.aerodrome.split(' ')[0]}`);
+  const verdictText = verdict === 'pass'
+    ? (stops.length ? `All ${blocks.length} take-offs and landings within limits` : 'Take-off and landing within limits')
+    : `${where(worst)}: ${worst.verdictText.toLowerCase()}`;
   const picName = pilot?.fullName || doc.crew.find((c) => c.role === 'PIC')?.snapshot.fullName || '';
 
   return {
@@ -310,6 +350,8 @@ export function perfSheetModel(input: PerfSheetInput): PerfSheetModel {
     pilot: picName,
     departure,
     arrival,
+    stops,
+    pages,
     speeds,
     conditionTable,
     slopeRule,

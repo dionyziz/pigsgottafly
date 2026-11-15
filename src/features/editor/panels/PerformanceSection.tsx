@@ -1,9 +1,11 @@
 // Take-off and landing: conditions (METAR when current, else forecast), runway (from the wind, or
-// chosen), surface condition, wind components, and required vs available distances.
+// chosen), surface condition, wind components, and required vs available distances. At the
+// departure, at each intermediate full stop (the landing there and the take-off from there, with the
+// sector masses) and at the destination.
 import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
 import type { Aircraft } from '../../../shared';
-import type { FlightOptions } from '../../../shared';
+import { setStopChoice, type FlightOptions } from '../../../shared';
 import { useEditor } from '../state';
 import { fmtMin, useFlightCalc, type EndpointCalc } from './calc';
 import { Chip, KV, Section } from './ui';
@@ -42,25 +44,36 @@ function Endpoint({ e }: { e: EndpointCalc }) {
   const ad = e.aerodrome;
   const rwKey: keyof FlightOptions = to ? 'departureRunway' : 'arrivalRunway';
   const sfKey: keyof FlightOptions = to ? 'departureSurface' : 'arrivalSurface';
+  // A stop keeps its runway (landing / take-off) and surface on its AerodromeRequest.
+  const stopReq = e.stopUid ? (doc.options.aerodromeRequests ?? []).find((r) => r.pointUid === e.stopUid && r.kind === 'stop') : undefined;
+  const runwayValue = e.stopUid ? (to ? stopReq?.takeoffRunway : stopReq?.landingRunway) ?? null : (doc.options[rwKey] as string | null);
+  const surfaceValue = e.stopUid ? stopReq?.surface ?? null : (doc.options[sfKey] as string | null);
+  const setRunway = (v: string | null) => update((d) => ({ ...d, options: e.stopUid
+    ? { ...d.options, aerodromeRequests: setStopChoice(d.options.aerodromeRequests, e.stopUid, to ? 'takeoffRunway' : 'landingRunway', v) }
+    : { ...d.options, [rwKey]: v } }));
+  const setSurface = (v: string | null) => update((d) => ({ ...d, options: e.stopUid
+    ? { ...d.options, aerodromeRequests: setStopChoice(d.options.aerodromeRequests, e.stopUid, 'surface', v) }
+    : { ...d.options, [sfKey]: v } }));
+  const tid = e.stopUid ? `stop-${e.phase}` : e.phase;
   const runways = ad ? runwaysOf(ad.id) : [];
   const conditions = Object.keys(aircraft?.performance.factors.runwayCondition ?? {});
   const p = e.perf;
   const v = endpointVerdict(e, aircraft);
   const extrap = v.extrapolated ? 'extrapolated beyond the AFM table' : undefined;
-  const title = to ? 'Departure' : 'Destination';
+  const title = e.stopUid ? (to ? 'Take-off from stop' : 'Landing at stop') : to ? 'Departure' : 'Destination';
   const timeMin = isFinite(e.timeMs) && isFinite(dayMs) ? (e.timeMs - dayMs) / 60000 : NaN;
 
   if (!ad) return <div className="ep-perf"><div className="ep-perf-head"><b>{title}</b><span className="muted">not an aerodrome</span></div></div>;
   return (
-    <div className="ep-perf" data-testid={`perf-${e.phase}`}>
+    <div className="ep-perf" data-testid={`perf-${tid}`}>
       <div className="ep-perf-head">
         <b>{title} {ad.icao ?? ''}</b>
         <span className="muted ellipsis">{ad.name}</span>
         <span className="spacer" />
-        {(p || v.overMass) && <span data-testid={`perf-verdict-${e.phase}`} data-verdict={v.verdict}><VerdictChip v={v} /></span>}
+        {(p || v.overMass) && <span data-testid={`perf-verdict-${tid}`} data-verdict={v.verdict}><VerdictChip v={v} /></span>}
       </div>
       {(p || v.overMass) && v.verdict !== 'pass' && (
-        <div className={`ep-note ${v.verdict === 'fail' ? 'danger-text' : 'warn-text'}`} data-testid={`perf-reason-${e.phase}`}>
+        <div className={`ep-note ${v.verdict === 'fail' ? 'danger-text' : 'warn-text'}`} data-testid={`perf-reason-${tid}`}>
           {reasonText(v)}
         </div>
       )}
@@ -73,13 +86,13 @@ function Endpoint({ e }: { e: EndpointCalc }) {
       </div>
       <div className="ep-grid2">
         <label className="field">Runway
-          <select value={(doc.options[rwKey] as string | null) ?? ''} onChange={(ev) => update((d) => ({ ...d, options: { ...d.options, [rwKey]: ev.target.value || null } }))}>
-            <option value="">Auto (wind){p?.runway && !doc.options[rwKey] ? `: ${p.runway.designator}` : ''}</option>
+          <select value={runwayValue ?? ''} onChange={(ev) => setRunway(ev.target.value || null)}>
+            <option value="">Auto (wind){p?.runway && !runwayValue ? `: ${p.runway.designator}` : ''}</option>
             {runways.map((r) => <option key={r.designator} value={r.designator}>{r.designator}{r.surface ? ` · ${r.surface}` : ''}</option>)}
           </select>
         </label>
         <label className="field">Surface
-          <select value={(doc.options[sfKey] as string | null) ?? ''} onChange={(ev) => update((d) => ({ ...d, options: { ...d.options, [sfKey]: ev.target.value || null } }))}>
+          <select value={surfaceValue ?? ''} onChange={(ev) => setSurface(ev.target.value || null)}>
             <option value="">Paved, dry</option>
             {conditions.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -91,7 +104,7 @@ function Endpoint({ e }: { e: EndpointCalc }) {
             sub={p.variableWind ? 'variable: full crosswind' : undefined}
             tone={!p.crosswindOk || p.tailwind ? 'danger' : undefined} />
           <KV k="PA / DA" v={<span className="mono">{Math.round(p.pressureAltFt)} / {Math.round(p.densityAltFt)} ft</span>} sub={`ISA ${p.isaDevC >= 0 ? '+' : ''}${p.isaDevC.toFixed(0)}°C`} />
-          {e.massKg != null && <KV k="Mass" testId={`perf-mass-${e.phase}`} v={<span className="mono">{e.massKg.toFixed(0)} kg</span>}
+          {e.massKg != null && <KV k="Mass" testId={`perf-mass-${tid}`} v={<span className="mono">{e.massKg.toFixed(0)} kg</span>}
             sub={v.overMass ? `above ${v.overMass.limitName} ${v.overMass.limitKg} kg` : e.massSource === 'mtow' ? (e.massReason === 'weight-missing' ? 'MTOW (weight missing)' : 'MTOW (no W&B)') : undefined}
             tone={v.overMass ? 'danger' : e.massReason === 'weight-missing' ? 'warn' : undefined} />}
           {p.distances && (to ? (
@@ -115,14 +128,21 @@ function Endpoint({ e }: { e: EndpointCalc }) {
 }
 
 export function PerformanceSection() {
-  const { departure, arrival } = useFlightCalc();
+  const { departure, arrival, stops } = useFlightCalc();
   const { aircraft } = useEditor();
-  const bad = [departure, arrival].some((e) => e.aerodrome && endpointVerdict(e, aircraft).verdict === 'fail');
+  const all = [departure, ...stops.flatMap((x) => [x.landing, x.takeoff]), arrival];
+  const bad = all.some((e) => e.aerodrome && endpointVerdict(e, aircraft).verdict === 'fail');
   const has = departure.aerodrome || arrival.aerodrome;
   return (
     <Section id="performance" title="Take-off & landing" badge={bad ? <Chip tone="danger">No-go</Chip> : undefined}>
       {!has && <p className="muted ep-note">Start and end the route at an aerodrome.</p>}
       {departure.aerodrome && <Endpoint e={departure} />}
+      {stops.map((x) => x.aerodrome && (
+        <div key={x.point.uid} className="ep-stop" data-testid="perf-stop">
+          <Endpoint e={x.landing} />
+          <Endpoint e={x.takeoff} />
+        </div>
+      ))}
       {arrival.aerodrome && <Endpoint e={arrival} />}
     </Section>
   );

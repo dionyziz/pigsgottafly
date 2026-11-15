@@ -6,7 +6,9 @@
 // it), fuel, then the loading stations in the aircraft's order (PIC and front passenger, rear
 // passengers, baggage areas), with the people of each seat station listed under it.
 // Take-off = fuel on board at block-off (no taxi burn, as MD 4.3 and the club calculator);
-// landing = take-off − (taxi allowance + trip fuel) at the fuel arm.
+// landing = take-off − (taxi allowance + trip fuel) at the fuel arm. An intermediate full stop
+// adds a total at the stop (landing there, and the take-off from there with the same fuel: no
+// refuelling, no taxi burn before take-off) and its own check against MLW, MTOW and the envelope.
 import type { Aircraft, Envelope, FlightDoc, Pilot, WbCategory } from '../../../shared';
 import { seatLayout } from '../../../shared';
 import type { WbCheck, WbPoint, WbResult } from '../../../calc';
@@ -37,7 +39,8 @@ export interface WbLine {
 }
 
 export interface WbPhaseCheck {
-  phase: 'takeoff' | 'landing';
+  /** 'stop': landing at an intermediate stop and the take-off from it (the same mass and CG). */
+  phase: 'takeoff' | 'landing' | 'stop';
   label: string;
   point: WbPoint;
   normal: WbCheck;
@@ -70,8 +73,12 @@ export interface WbSheetModel {
   fuelLabel: string;
   lines: WbLine[];
   takeoff: WbLine;
+  /** Fuel used over the whole flight (all sectors). */
   burn: WbLine;
   landing: WbLine;
+  /** The totals block as printed: take-off, then per sector its fuel used and the total at its
+   *  landing (the stops' totals between): [takeoff, burn, landing] without stops. */
+  totals: WbLine[];
   zeroFuel: WbPoint | null;
   checks: WbPhaseCheck[];
   /** pass: both phases inside the flight's category; fail: a phase is outside; incomplete: no aircraft or missing weights. */
@@ -196,7 +203,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
       registration: '', makeModel: '', date: fmtDate(doc.date), pilot: pilotName, route, category, categoryLabel,
       datum: '', weighing: '', fuelLabel: '', lines: [],
       takeoff: emptyLine('to', 'total', 'Total at take-off'), burn: emptyLine('burn', 'burn', 'Fuel used (taxi + trip)'),
-      landing: emptyLine('ldg', 'total', 'Total at landing'), zeroFuel: null, checks: [],
+      landing: emptyLine('ldg', 'total', 'Total at landing'), totals: [], zeroFuel: null, checks: [],
       verdict: 'incomplete', verdictText: 'No aircraft', mtowKg: NaN, limits: [], envelopes: [], warnings,
     };
   }
@@ -275,22 +282,69 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   const mlw = mb.mlwKg ?? mb.mtowKg;
   const landing: WbLine = { key: 'ldg', kind: 'total', label: 'Total at landing', note: `${trimNum(Math.max(0, calc.fuelLandingL))} L remaining`, ...pt(wb?.landing), people: [], over: !!wb && mlw > 0 && wb.landing.massKg > mlw + 1e-9 };
 
-  // Checks.
+  // Intermediate full stops: per sector, the fuel used and the total at its landing.
+  const stops = wb ? calc.stops.filter((x) => x.wbBefore && x.wbAfter) : [];
+  const stopName = (x: (typeof stops)[number]) => x.landing.aerodrome?.icao || x.point.name;
+  const totals: WbLine[] = [takeoff];
+  if (wb && stops.length === calc.stops.length && stops.length) {
+    const sectorBurn = (key: string, to: WbPoint, ldg: WbPoint, litres: number, where: string, short: boolean): WbLine => ({
+      key, kind: 'burn', label: `Fuel used to ${where}: taxi + trip`,
+      note: `${trimNum(litres)} L${short ? ' (all fuel on board: not enough for the sector)' : ''}`,
+      massKg: -(to.massKg - ldg.massKg), armM: fuelArm, momentKgM: -(to.momentKgM - ldg.momentKgM), people: [], over: false,
+    });
+    stops.forEach((x, k) => {
+      const at = x.wbBefore!.landing;
+      const limit = Math.min(mlw > 0 ? mlw : Infinity, mb.mtowKg > 0 ? mb.mtowKg : Infinity);
+      totals.push(sectorBurn(`burn${k}`, k === 0 ? wb.takeoff : stops[k - 1].wbAfter!.takeoff, at, x.before.fuelTakeoffL - Math.max(0, x.before.fuelLandingL), stopName(x), x.before.fuelLandingL < 0));
+      totals.push({
+        key: `stop${k}`, kind: 'total', label: `Total at ${stopName(x)} (stop)`,
+        note: `${trimNum(Math.max(0, x.before.fuelLandingL))} L remaining · landing and take-off`,
+        massKg: at.massKg, armM: at.armM, momentKgM: at.momentKgM, people: [], over: at.massKg > limit + 1e-9,
+      });
+    });
+    const lastSector = calc.sectors[calc.sectors.length - 1];
+    const fromLast = stops[stops.length - 1].wbAfter!.takeoff;
+    const destName = calc.arrival.aerodrome?.icao || calc.arrival.point?.name || 'landing';
+    totals.push(sectorBurn('burnLast', fromLast, wb.landing, lastSector.fuelTakeoffL - Math.max(0, lastSector.fuelLandingL), destName, lastSector.fuelLandingL < 0));
+  } else totals.push(burn);
+  totals.push(landing);
+
+  // Checks: take-off, each stop (landing there with the sector's mass, and the take-off from there
+  // with the same mass: MLW, MTOW and the envelope), landing.
   const checks: WbPhaseCheck[] = [];
   if (wb) {
-    for (const phase of ['takeoff', 'landing'] as const) {
+    const both = (a: WbCheck, b: WbCheck): WbCheck => ({ inEnvelope: a.inEnvelope && b.inEnvelope, massOk: a.massOk && b.massOk });
+    const phaseCheck = (phase: 'takeoff' | 'landing'): WbPhaseCheck => {
       const normal = wb.normal[phase];
       const utility = wb.utility ? wb.utility[phase] : null;
       const chosen = category === 'utility' ? utility : normal;
       const breached = wb.limitBreaches.some((b) => b.phase === phase);
-      checks.push({ phase, label: phase === 'takeoff' ? 'Take-off' : 'Landing', point: wb[phase], normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached });
+      return { phase, label: phase === 'takeoff' ? 'Take-off' : 'Landing', point: wb[phase], normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached };
+    };
+    checks.push(phaseCheck('takeoff'));
+    for (const x of stops) {
+      const b = x.wbBefore!, a = x.wbAfter!;
+      const normal = both(b.normal.landing, a.normal.takeoff);
+      const utility = b.utility && a.utility ? both(b.utility.landing, a.utility.takeoff) : null;
+      const chosen = category === 'utility' ? utility : normal;
+      const breached = b.limitBreaches.some((r) => r.phase === 'landing') || a.limitBreaches.some((r) => r.phase === 'takeoff');
+      checks.push({ phase: 'stop', label: `Stop ${stopName(x)}`, point: b.landing, normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached });
     }
+    checks.push(phaseCheck('landing'));
   }
 
   // Warnings: manifest problems first, then the calculation's.
   const missingWeights = doc.crew.filter((c) => c.snapshot.weightKg == null);
   for (const t of calc.wbLoadWarnings) warnings.push(t);
   if (wb) for (const t of wb.warnings) if (!warnings.includes(t)) warnings.push(t);
+  for (const x of stops) {
+    // The stop's own phase breaches (MLW / MTOW / envelope there); loading limits are already listed.
+    const own = [...x.wbBefore!.limitBreaches.filter((r) => r.phase === 'landing'), ...x.wbAfter!.limitBreaches.filter((r) => r.phase === 'takeoff')];
+    for (const r of own) {
+      const t = `At ${stopName(x)} (stop): ${r.text}`;
+      if (!warnings.includes(t)) warnings.push(t);
+    }
+  }
   if (!wb) warnings.push('The weight and balance could not be computed for this aircraft.');
   if (!doc.crew.length) warnings.push('The manifest is empty: no pilot or passengers in the balance.');
   const fuel = calc.computed.fuel;
@@ -300,7 +354,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   let verdict: WbSheetModel['verdict'];
   let verdictText: string;
   if (!wb || !(mb.emptyMassKg > 0)) { verdict = 'incomplete'; verdictText = 'Cannot be computed'; }
-  else if (wb.limitBreaches.length || checks.some((c) => !c.ok) || takeoff.over || landing.over || lines.some((l) => l.over)) {
+  else if (wb.limitBreaches.length || checks.some((c) => !c.ok) || totals.some((l) => l.over) || lines.some((l) => l.over)) {
     // Every published limit counts: envelope and mass, MTOW/MLW, station and combined maxima,
     // seat counts and the utility-category restrictions (wb.limitBreaches).
     verdict = 'fail';
@@ -339,6 +393,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     takeoff,
     burn,
     landing,
+    totals,
     zeroFuel: wb?.zeroFuel ?? null,
     checks,
     verdict,

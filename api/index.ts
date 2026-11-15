@@ -4,6 +4,8 @@
 // briefing) and AUTOROUTER_FILING=1 (flight-plan filing, once autorouter grants API access).
 // The autorouter account is used only for the pilots on AUTOROUTER_PILOTS (default ALLOWED_EMAILS;
 // both empty = nobody).
+// Optional RESEND_API_KEY / FORMS_FROM e-mail forms to HCAA, only for the pilots on FORMS_PILOTS
+// (default ALLOWED_EMAILS; both empty = nobody).
 // Pending migrations run on cold start, before the first request is served.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { openDb } from './_lib/db.js';

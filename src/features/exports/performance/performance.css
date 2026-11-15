@@ -52,4 +52,12 @@
   .perf-rows th { padding-top: 0.45mm; padding-bottom: 0.45mm; }
   .perf-rows td { padding-top: 0.45mm; padding-bottom: 0.45mm; }
   .perf-rows .perf-note { line-height: 1.1; }
+  /* both alternative-method rows and wrapped notes (a sector page of a flight with stops) */
+  .xp-sheet.perf-sheet { gap: 2mm; padding-top: 9mm; padding-bottom: 8mm; }
+  .perf-wind { width: 26mm; height: 26mm; }
+  .perf-factors th, .perf-factors td { padding-top: 0.3mm; padding-bottom: 0.3mm; }
 }
+
+/* a flight with intermediate stops: which sector this page is */
+.perf-sector { font-size: 9pt; text-transform: uppercase; letter-spacing: 0.05em; color: #444; margin-right: auto; margin-left: 4mm; }
+.perf-sector b { font-weight: 700; letter-spacing: 0.02em; }

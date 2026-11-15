@@ -78,6 +78,7 @@ export function WbSheet({ m }: { m: WbSheetModel }) {
   const ldg = m.checks.find((c) => c.phase === 'landing');
   if (m.zeroFuel && to) points.push({ key: 'zerofuel', label: 'ZFW', point: m.zeroFuel, ok: null });
   if (ldg) points.push({ key: 'landing', label: 'LDG', point: ldg.point, ok: ldg.ok });
+  m.checks.filter((c) => c.phase === 'stop').forEach((c, i) => points.push({ key: `stop${i}`, label: c.label.replace(/^Stop /, ''), point: c.point, ok: c.ok }));
   if (to) points.push({ key: 'takeoff', label: 'T/O', point: to.point, ok: to.ok });
 
   return (
@@ -108,16 +109,14 @@ export function WbSheet({ m }: { m: WbSheetModel }) {
           {m.lines.map((l) => <LineRow key={l.key} l={l} />)}
         </tbody>
         <tbody className="wb-totals">
-          <LineRow l={m.takeoff} />
-          <LineRow l={m.burn} />
-          <LineRow l={m.landing} />
+          {m.totals.map((l) => <LineRow key={l.key} l={l} />)}
         </tbody>
       </table>
-      <p className="xp-small">Arm of a total = centre of gravity, m aft of the datum{m.datum ? ` (${m.datum.toLowerCase()})` : ''}. Take-off with the fuel on board at block-off; landing after the taxi allowance and trip fuel.</p>
+      <p className="xp-small">Arm of a total = centre of gravity, m aft of the datum{m.datum ? ` (${m.datum.toLowerCase()})` : ''}. Take-off with the fuel on board at block-off; landing after the taxi allowance and trip fuel{m.checks.some((c) => c.phase === 'stop') ? '; each stop: one more taxi allowance, no refuelling, the take-off there with the fuel it landed with' : ''}.</p>
 
       <div className="wb-checks">
-        {m.checks.map((c) => (
-          <div key={c.phase} className={`wb-check ${c.ok ? 'ok' : 'bad'}`} data-phase={c.phase}>
+        {m.checks.map((c, i) => (
+          <div key={`${c.phase}${i}`} className={`wb-check ${c.ok ? 'ok' : 'bad'}`} data-phase={c.phase}>
             <div className="wb-check-head"><span>{c.label}</span><b>{c.ok ? 'WITHIN LIMITS' : 'OUTSIDE LIMITS'}</b></div>
             <div className="wb-check-body xp-fill">
               {fmtKg(c.point.massKg)} kg · CG {fmtCg(c.point.armM)} m · {fmtMoment(c.point.momentKgM)} kg·m
@@ -137,6 +136,7 @@ export function WbSheet({ m }: { m: WbSheetModel }) {
           <div className="wb-legend">
             <span><i className="lg-to" /> Take-off</span>
             <span><i className="lg-ldg" /> Landing</span>
+            {m.checks.some((c) => c.phase === 'stop') && <span><i className="lg-stop" /> Stop</span>}
             <span><i className="lg-burn" /> Fuel burn</span>
             <span><i className="lg-zf" /> Zero fuel</span>
             {m.envelopes.some((e) => e.cgOutline) && <span><i className="lg-cg" /> CG limits (AFM)</span>}

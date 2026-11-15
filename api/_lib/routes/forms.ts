@@ -6,6 +6,9 @@
 //   POST /flights/:id/forms/731/links/:key/revoke  that person's link stops working
 //   POST /flights/:id/forms/731/send               PDF to 731@hcaa.gov.gr, cc/reply-to the pilot (409 until all signed)
 //   POST /flights/:id/forms/gendec/send            PDF to gendec@hcaa.gov.gr, cc/reply-to the pilot
+// Sending uses the deployment's e-mail account, so only the pilots on FORMS_PILOTS (default
+// ALLOWED_EMAILS; empty = nobody in Google mode) may send (403 otherwise). A version already sent is
+// refused (409) unless the body is {"resend": true}; concurrent sends of one form are refused (409).
 //   GET  /sign/:token                              the signing page's view (no sign-in): own row in full, others masked
 //   POST /sign/:token                              signs the current version of the form
 // A signature is for one version of the form (SHA-256 of every field, form731SigningText): when
@@ -22,10 +25,10 @@ import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
 import { loadRef } from '../flightContext.js';
 import { hashToken } from '../auth.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
-import { form731Pdf, genDecPdf } from '../formPdf.js';
+import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
 import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
 import {
-  FORM731_TO, GENDEC_TO, form731Content, form731SigningText, genDecContent, genDecText, maskTail,
+  FORM731_TO, GENDEC_PIC_KEY, GENDEC_TO, form731Content, form731SigningText, genDecContent, genDecText, maskTail,
   type AerodromeLookup, type Form731Content, type Form731Person, type FormsState, type GenDecContent, type SignatureState, type SigningView, type SubmissionState,
 } from '../../../src/shared/forms.js';
 
@@ -45,9 +48,13 @@ export function personHash(p: Pick<Form731Person, 'key' | 'name' | 'idPassport'>
 const holderOf = (L: Loaded, l: Record<string, any>) =>
   L.c731.people.find((x) => x.role === 'PAX' && x.key === l.person_key && l.person_hash != null && l.person_hash === personHash(x));
 
-interface Loaded { flight: Flight; aircraft: Aircraft | null; pilot: Pilot; c731: Form731Content; gendec: GenDecContent; hash731: string; hashGendec: string }
+interface Loaded {
+  flight: Flight; aircraft: Aircraft | null; pilot: Pilot; c731: Form731Content; gendec: GenDecContent; hash731: string; hashGendec: string;
+  /** This pilot may not send forms through the deployment's e-mail account (ApiConfig.formsPilots). */
+  mailDenied: boolean;
+}
 
-async function loadForms(db: Queryable, pilot: Pilot, flightId: string): Promise<Loaded> {
+async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDenied = true): Promise<Loaded> {
   const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [flightId, pilot.id]);
   if (!r) throw notFound('no such flight');
   const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilot.id]);
@@ -61,7 +68,7 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string): Promise
   const lookup: AerodromeLookup = (k) => (k ? byId.get(k.toUpperCase()) ?? byIcao.get(k.toUpperCase()) : undefined);
   const c731 = form731Content(flight, aircraft, pilot, passengers, lookup);
   const gendec = genDecContent(flight, aircraft, pilot, passengers, lookup);
-  return { flight, aircraft, pilot, c731, gendec, hash731: sha(form731SigningText(c731)), hashGendec: sha(genDecText(gendec)) };
+  return { flight, aircraft, pilot, c731, gendec, hash731: sha(form731SigningText(c731)), hashGendec: sha(genDecText(gendec)), mailDenied };
 }
 
 /** The end of the day after the flight (UTC); a flight without a date: a week from now. */
@@ -81,6 +88,22 @@ async function signPic(db: Queryable, L: Loaded): Promise<void> {
     [L.flight.id, L.pilot.id, pic.key, pic.name, Date.now(), L.hash731]);
 }
 
+/**
+ * The PIC signs the General Declaration's current version automatically, like Form 731: the
+ * signature (and its time) stays while the declaration is unchanged and is renewed when it changes.
+ */
+async function signGenDecPic(db: Queryable, L: Loaded): Promise<PdfSignature | null> {
+  const name = L.gendec.picName.trim();
+  if (!name) return null;
+  await db.query(
+    `INSERT INTO form_signatures (flight_id, pilot_id, person_key, signer_name, signed_at, text_hash) VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (flight_id, person_key) DO UPDATE SET signer_name = EXCLUDED.signer_name, signed_at = EXCLUDED.signed_at, text_hash = EXCLUDED.text_hash
+     WHERE form_signatures.pilot_id = EXCLUDED.pilot_id AND form_signatures.text_hash <> EXCLUDED.text_hash`,
+    [L.flight.id, L.pilot.id, GENDEC_PIC_KEY, name, Date.now(), L.hashGendec]);
+  const [s] = await db.query('SELECT * FROM form_signatures WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [L.flight.id, L.pilot.id, GENDEC_PIC_KEY]);
+  return s && s.text_hash === L.hashGendec ? { key: GENDEC_PIC_KEY, name: s.signer_name, signedAt: Number(s.signed_at) } : null;
+}
+
 async function signatureRows(db: Queryable, pilotId: string, flightId: string) {
   return db.query('SELECT * FROM form_signatures WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilotId]);
 }
@@ -98,6 +121,7 @@ const pilotSendsGenDec = (L: Loaded) => {
 
 async function state(db: Queryable, L: Loaded, links?: Record<string, string>): Promise<FormsState> {
   await signPic(db, L);
+  const gdSig = await signGenDecPic(db, L);
   const sigs = await signatureRows(db, L.pilot.id, L.flight.id);
   const linkRows = await db.query('SELECT * FROM form_links WHERE flight_id = $1 AND pilot_id = $2 ORDER BY created DESC', [L.flight.id, L.pilot.id]);
   const signatures: SignatureState[] = L.c731.people.map((p) => {
@@ -114,10 +138,11 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
       } : null,
     };
   });
-  const mail = mailAvailability();
+  const mail = mailFor(L);
   return {
     form731: { content: L.c731, signatures, allSigned: signatures.every((s) => s.signed), submission: await submission(db, L.pilot.id, L.flight.id, '731', L.hash731) },
-    gendec: { content: L.gendec, submission: await submission(db, L.pilot.id, L.flight.id, 'gendec', L.hashGendec), pilotSends: pilotSendsGenDec(L) },
+    gendec: { content: L.gendec, submission: await submission(db, L.pilot.id, L.flight.id, 'gendec', L.hashGendec), pilotSends: pilotSendsGenDec(L),
+      picSignature: gdSig ? { name: gdSig.name, signedAt: gdSig.signedAt } : null },
     emailEnabled: mail.enabled,
     emailReason: mail.reason,
     ...(links ? { links } : {}),
@@ -138,9 +163,48 @@ const fmtDay = (date: string) => {
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '';
 };
 
+const MAIL_DENIED = 'Sending forms to HCAA by e-mail is not available for this account.';
+/** Whether this pilot can send forms by e-mail: configured on the server, and the pilot on FORMS_PILOTS. */
+function mailFor(L: Loaded): { enabled: boolean; reason: string | null } {
+  return L.mailDenied ? { enabled: false, reason: MAIL_DENIED } : mailAvailability();
+}
+/** 403 for a pilot not on FORMS_PILOTS, 503 when e-mail is not configured. */
+function requireMail(L: Loaded): void {
+  const mail = mailFor(L);
+  if (!mail.enabled) throw new HttpError(L.mailDenied ? 403 : 503, mail.reason!, { error: mail.reason, emailEnabled: false });
+}
+
+const CLAIM_MS = 60e3; // longer than the mail provider's timeout (20 s)
+
+/**
+ * Sends a form once per version. Claims (flight, form) first so that concurrent requests cannot both
+ * send, then refuses a version that was already sent unless the client asked for it again (resend).
+ */
+async function sendOnce(db: Queryable, L: Loaded, form: '731' | 'gendec', hash: string, resend: boolean, pdf: () => Promise<Buffer> | Buffer): Promise<void> {
+  requireMail(L);
+  const now = Date.now();
+  const until = now + CLAIM_MS;
+  const claimed = await db.query(
+    `INSERT INTO form_send_claims (flight_id, pilot_id, form, until) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (flight_id, form) DO UPDATE SET until = EXCLUDED.until
+     WHERE form_send_claims.pilot_id = EXCLUDED.pilot_id AND form_send_claims.until < $5
+     RETURNING flight_id`,
+    [L.flight.id, L.pilot.id, form, until, now]);
+  if (!claimed.length) throw conflict('this form is being sent right now');
+  try {
+    const prev = await submission(db, L.pilot.id, L.flight.id, form, hash);
+    if (prev && !prev.changed && !resend) {
+      throw conflict('this version of the form was already sent; send {"resend": true} to send it again');
+    }
+    const sent = await mailForm(L, form, await pdf());
+    await recordSent(db, L, form, sent.id, sent.to, hash);
+  } finally {
+    await db.query('DELETE FROM form_send_claims WHERE flight_id = $1 AND pilot_id = $2 AND form = $3 AND until = $4', [L.flight.id, L.pilot.id, form, until]);
+  }
+}
+
 async function mailForm(L: Loaded, form: '731' | 'gendec', pdf: Buffer): Promise<{ id: string; to: string }> {
-  const mail = mailAvailability();
-  if (!mail.enabled) throw new HttpError(503, mail.reason!, { error: mail.reason, emailEnabled: false });
+  requireMail(L);
   const to = form === '731' ? FORM731_TO : GENDEC_TO;
   const route = L.c731.route.split(' – ').join(' → ');
   const what = form === '731' ? 'Form 731' : 'General Declaration';
@@ -212,12 +276,12 @@ async function signingView(db: Queryable, L: Loaded, holder: Form731Person): Pro
 export const routes: Route[] = [
   {
     method: 'GET', path: '/flights/:id/forms',
-    handler: async ({ db, pilot, params }) => state(db, await loadForms(db, pilot, params.id)),
+    handler: async ({ db, pilot, params, formsMailDenied }) => state(db, await loadForms(db, pilot, params.id, formsMailDenied)),
   },
   {
     method: 'POST', path: '/flights/:id/forms/731/links',
-    async handler({ db, pilot, params }) {
-      const L = await loadForms(db, pilot, params.id);
+    async handler({ db, pilot, params, formsMailDenied }) {
+      const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const existing = await db.query('SELECT person_key, person_hash FROM form_links WHERE flight_id = $1 AND pilot_id = $2 AND NOT revoked AND expires > $3', [L.flight.id, pilot.id, Date.now()]);
       // a link given to whoever held this key before does not count (newLink revokes it)
       const have = new Set(existing.filter((r) => holderOf(L, r)).map((r) => r.person_key as string));
@@ -228,8 +292,8 @@ export const routes: Route[] = [
   },
   {
     method: 'POST', path: '/flights/:id/forms/731/links/:key/renew',
-    async handler({ db, pilot, params }) {
-      const L = await loadForms(db, pilot, params.id);
+    async handler({ db, pilot, params, formsMailDenied }) {
+      const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
       if (!person) throw notFound('no such passenger on this flight');
       return state(db, L, { [params.key]: await newLink(db, L, person) });
@@ -237,33 +301,31 @@ export const routes: Route[] = [
   },
   {
     method: 'POST', path: '/flights/:id/forms/731/links/:key/revoke',
-    async handler({ db, pilot, params }) {
-      const L = await loadForms(db, pilot, params.id);
+    async handler({ db, pilot, params, formsMailDenied }) {
+      const L = await loadForms(db, pilot, params.id, formsMailDenied);
       await db.query('UPDATE form_links SET revoked = TRUE WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [L.flight.id, pilot.id, params.key]);
       return state(db, L);
     },
   },
   {
     method: 'POST', path: '/flights/:id/forms/731/send',
-    async handler({ db, pilot, params }) {
-      const L = await loadForms(db, pilot, params.id);
+    async handler({ db, pilot, params, body, formsMailDenied }) {
+      const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const st = await state(db, L);
       const missing = st.form731.signatures.filter((s) => !s.signed).map((s) => s.name || s.key);
       if (missing.length) throw conflict(`not everyone has signed: ${missing.join(', ')}`);
-      const sigs = (await signatureRows(db, pilot.id, L.flight.id)).filter((s) => s.text_hash === L.hash731)
+      const sigs = (await signatureRows(db, pilot.id, L.flight.id)).filter((s) => s.person_key !== GENDEC_PIC_KEY && s.text_hash === L.hash731)
         .map((s) => ({ key: s.person_key as string, name: s.signer_name as string, signedAt: Number(s.signed_at) }));
-      const sent = await mailForm(L, '731', form731Pdf(L.c731, sigs));
-      await recordSent(db, L, '731', sent.id, sent.to, L.hash731);
+      await sendOnce(db, L, '731', L.hash731, (await body()).resend === true, () => form731Pdf(L.c731, sigs));
       return state(db, L);
     },
   },
   {
     method: 'POST', path: '/flights/:id/forms/gendec/send',
-    async handler({ db, pilot, params }) {
-      const L = await loadForms(db, pilot, params.id);
+    async handler({ db, pilot, params, body, formsMailDenied }) {
+      const L = await loadForms(db, pilot, params.id, formsMailDenied);
       if (L.gendec.placeCount < 2) throw conflict('the route needs a departure and a destination');
-      const sent = await mailForm(L, 'gendec', genDecPdf(L.gendec));
-      await recordSent(db, L, 'gendec', sent.id, sent.to, L.hashGendec);
+      await sendOnce(db, L, 'gendec', L.hashGendec, (await body()).resend === true, async () => genDecPdf(L.gendec, await signGenDecPic(db, L)));
       return state(db, L);
     },
   },

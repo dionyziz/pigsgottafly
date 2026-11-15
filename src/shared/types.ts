@@ -468,6 +468,11 @@ export interface AerodromeRequest {
   kind: 'touch-and-go' | 'stop';
   /** Minutes on the ground, kind 'stop' only. */
   stopMin?: number;
+  /** Kind 'stop': runways chosen by hand for the landing and the take-off at the stop; null/missing = from the wind. */
+  landingRunway?: string | null;
+  takeoffRunway?: string | null;
+  /** Kind 'stop': key of PerformanceFactors.runwayCondition; null/missing = paved, dry. */
+  surface?: string | null;
 }
 
 export interface FlightOptions {

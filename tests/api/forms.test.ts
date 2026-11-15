@@ -10,7 +10,8 @@ import { parseTtf, PdfDoc, winAnsi } from '../../api/_lib/pdf';
 import handTtf from '../../api/_lib/fonts/homemadeApple';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import type { RefAerodrome } from '../../src/shared/ref';
-import type { FormsState, SigningView } from '../../src/shared/forms';
+import { GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES, type FormsState, type SigningView } from '../../src/shared/forms';
+import { stampZ } from '../../api/_lib/formPdf';
 import type { RoutePoint } from '../../src/shared/types';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
@@ -22,7 +23,8 @@ let A: Client, B: Client, anon: Client;
 const sent: (Mail & { from: string })[] = [];
 
 beforeAll(async () => {
-  api = await startApi();
+  // sending forms by e-mail is for the listed pilots only (FORMS_PILOTS, default ALLOWED_EMAILS): see formsMail.test.ts
+  api = await startApi({ allowedEmails: ['pilot.a@example.com', 'pilot.b@example.com'] });
   A = client(api.base); B = client(api.base); anon = client(api.base);
   expect((await A.login('sa', 'pilot.a@example.com')).status).toBe(200);
   expect((await B.login('sb', 'pilot.b@example.com')).status).toBe(200);
@@ -225,13 +227,28 @@ describe('sending the forms to HCAA', () => {
     const { flightId } = await setup();
     let st = (await forms(A, flightId)).body;
     expect(st.gendec.pilotSends).toBe(true);
+    // signed once per version: the time stays while the declaration is unchanged
+    expect((await forms(A, flightId)).body.gendec.picSignature).toEqual(st.gendec.picSignature);
     setMailTransport(async (m) => { sent.push(m); return { id: 'gd-1' }; });
     const r = await A.call<FormsState>('POST', `flights/${flightId}/forms/gendec/send`);
     expect(r.status).toBe(200);
     const m = sent[sent.length - 1];
     expect(m.to).toEqual(['gendec@hcaa.gov.gr']);
     expect(m.subject).toMatch(/^General Declaration · /);
-    expect(pdfText(m.attachments![0].content)).toContain('GENERAL DECLARATION');
+    const text = pdfText(m.attachments![0].content);
+    expect(text).toContain('GENERAL DECLARATION');
+    // the PIC's e-signature on the declaration, as on Form 731 (handwriting font + time signed)
+    expect(st.gendec.picSignature).toMatchObject({ name: 'Dionysis Zindros' });
+    expect(text).toContain('D. Zindros');
+    expect(text).toContain(`signed ${stampZ(st.gendec.picSignature!.signedAt)}`);
+    expect(m.attachments![0].content.toString('latin1')).toContain('/FontFile2');
+    // the official Annex 9 text, the same lines as the print sheet
+    for (const l of [...GENDEC_HEALTH_LINES, ...GENDEC_DISINSECT_LINES]) expect(text).toContain(winAnsi(l).toString('latin1'));
+    expect(text).toContain('stop');
+    expect(text).toContain('details of most recent disinsecting');
+    expect(text).toContain('Signed, if required, with time and date');
+    expect(text).toContain('Crew member concerned');
+    expect(text).toContain('ICAO ANNEX 9 - APPENDIX 1.1');
     expect(r.body.gendec.submission).toMatchObject({ messageId: 'gd-1', changed: false });
 
     await A.call('PUT', 'me', { settings: { handledAerodromes: ['lgmg'] } });
@@ -276,7 +293,7 @@ function pdfText(pdf: Buffer): string {
     const end = s.indexOf('\nendstream', begin);
     try {
       const raw = zlib.inflateSync(pdf.subarray(begin, end)).toString('latin1');
-      for (const t of raw.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)) out.push(t[1].replace(/\\([()\\])/g, '$1'));
+      for (const t of raw.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)) out.push(t[1].replace(/\\([0-7]{3}|[()\\])/g, (_, e: string) => (e.length === 3 ? String.fromCharCode(parseInt(e, 8)) : e)));
     } catch { /* the font stream */ }
   }
   return out.join('\n');

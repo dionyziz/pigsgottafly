@@ -1,22 +1,25 @@
-// Compact CG envelope chart (mass vs CG arm) with the take-off and landing points, for the panel.
+// Compact CG envelope chart (mass vs CG arm) with the take-off and landing points (and the point at
+// each intermediate stop, on the fuel-burn line between them), for the panel.
 // The full-size MD 4.3 chart is in the W&B export.
 import type { MassBalance, WbCategory } from '../../../shared';
 import type { WbPoint } from '../../../calc';
 
 const W = 296, H = 150, PAD = { l: 34, r: 8, t: 8, b: 22 };
 
-export function EnvelopeChart({ massBalance, category, takeoff, landing }: {
+export function EnvelopeChart({ massBalance, category, takeoff, landing, stops = [] }: {
   massBalance: MassBalance;
   category: WbCategory;
   takeoff: WbPoint;
   landing: WbPoint;
+  /** Intermediate stops in flight order, with a short label (ICAO). */
+  stops?: { label: string; point: WbPoint }[];
 }) {
   const normal = massBalance.envelopes.normal;
   const utility = massBalance.envelopes.utility;
   const polys = [normal.polygon, ...(utility ? [utility.polygon] : [])].filter((p) => p.length > 2);
   if (!polys.length) return null;
-  const xs = [...polys.flat().map((p) => p[0]), takeoff.armM, landing.armM].filter(isFinite);
-  const ys = [...polys.flat().map((p) => p[1]), takeoff.massKg, landing.massKg].filter(isFinite);
+  const xs = [...polys.flat().map((p) => p[0]), takeoff.armM, landing.armM, ...stops.map((s) => s.point.armM)].filter(isFinite);
+  const ys = [...polys.flat().map((p) => p[1]), takeoff.massKg, landing.massKg, ...stops.map((s) => s.point.massKg)].filter(isFinite);
   const x0 = Math.min(...xs) - 0.02, x1 = Math.max(...xs) + 0.02;
   const y0 = Math.min(...ys) - 20, y1 = Math.max(...ys) + 20;
   const sx = (x: number) => PAD.l + ((x - x0) / (x1 - x0)) * (W - PAD.l - PAD.r);
@@ -49,7 +52,11 @@ export function EnvelopeChart({ massBalance, category, takeoff, landing }: {
       ))}
       <path d={path(normal.polygon)} className={'env normal' + (category === 'normal' ? ' active' : '')} />
       {utility && utility.polygon.length > 2 && <path d={path(utility.polygon)} className={'env utility' + (category === 'utility' ? ' active' : '')} />}
-      <line x1={sx(takeoff.armM)} y1={sy(takeoff.massKg)} x2={sx(landing.armM)} y2={sy(landing.massKg)} className="burn" />
+      {[takeoff, ...stops.map((s) => s.point), landing].slice(1).map((b, i, rest) => {
+        const a = i === 0 ? takeoff : rest[i - 1];
+        return <line key={i} x1={sx(a.armM)} y1={sy(a.massKg)} x2={sx(b.armM)} y2={sy(b.massKg)} className="burn" />;
+      })}
+      {stops.map((s, i) => <g key={i}>{pt(s.point, s.label, 'stop')}</g>)}
       {pt(takeoff, 'TO', 'to')}
       {pt(landing, 'LDG', 'ldg')}
     </svg>

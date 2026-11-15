@@ -108,3 +108,14 @@ describe('perfVerdict', () => {
     expect(perfVerdict({ ...base, perf: perf({ marginM: null }) }).verdict).toBe('incomplete');
   });
 });
+
+describe('baggage above the placard is kept and flagged', () => {
+  test('SX-ASG, 60 kg in baggage area 1 (max 54): station breach, W&B not ok', async () => {
+    const { wbStatus } = await import('../../../src/calc/wb');
+    const doc = flight(ASG, { baggageKg: { bag1: 60 } });
+    const calc = calcOf(doc, ASG);
+    expect(calc.wb).toBeTruthy();
+    expect(calc.wb!.limitBreaches.some((b) => b.kind === 'station' && /60 kg exceeds the 54 kg/.test(b.text))).toBe(true);
+    expect(wbStatus(calc.wb!).loading).toBe(false);
+  });
+});

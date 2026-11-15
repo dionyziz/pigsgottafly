@@ -414,6 +414,10 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.match(tx, /Departure from DEKELIA \/ TATOI \(LGTT\) Arrival at MEGARA \(LGMG\)/);
   assert.match(tx, /Test Pilot \(PIC\)/);
   assert.match(tx, /Departure place: LGTT\s+Embarking\s+1\s+Through on same flight\s+0\s+Arrival place: LGMG\s+Disembarking\s+1/);
+  assert.match(tx, /If no disinsecting has been carried out during the flight/);
+  // the PIC's e-signature on the declaration's signature line (as on Form 731)
+  await page.waitFor(() => !!document.querySelector('.gd-sigline [data-testid=signature]'));
+  assert.match(await page.eval(() => document.querySelector('.gd-sigline').innerText), /T\. Pilot\s*signed \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}Z/);
   await page.screenshot('flight-export-gendec');
   await pdfCheck('gendec', 1, 'portrait');
 

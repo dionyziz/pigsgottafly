@@ -22,7 +22,9 @@ const FALLBACK_LABELS: Record<string, string> = { 'front-left': 'Front left', 'f
 
 export function ManifestSection() {
   const { doc, update, aircraft, passengers, pilot, reloadLists } = useEditor();
-  const { wb, wbOk, wbMissingWeights, crewErrors, fuel } = useFlightCalc();
+  const { wb, wbOk, wbMissingWeights, crewErrors, fuel, stops } = useFlightCalc();
+  const stopsOut = stops.some((x) => x.wbOk === false);
+  const stopName = (x: (typeof stops)[number]) => x.aerodrome?.icao || x.point.name;
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
@@ -103,7 +105,7 @@ export function ManifestSection() {
     <>
       <span className="muted">{doc.crew.length} POB</span>
       {crewErrors.length > 0 && <Chip tone="danger">Check</Chip>}
-      {wbOk && (!(wbOk.takeoff && wbOk.landing && wbOk.loading) ? <Chip tone="danger">W&amp;B out</Chip>
+      {wbOk && (!(wbOk.takeoff && wbOk.landing && wbOk.loading) || stopsOut ? <Chip tone="danger">W&amp;B out</Chip>
         : wbMissingWeights.length ? <Chip tone="warn">W&amp;B incomplete</Chip>
         : <Chip tone="ok">W&amp;B ok</Chip>)}
     </>
@@ -204,18 +206,25 @@ export function ManifestSection() {
               {bags.map((s) => (
                 <label key={s.id} className="field">{s.name}
                   <span className="ep-weight">
-                    <NumberInput value={doc.baggageKg[s.id] ?? null} min={0} max={s.maxKg ?? 500} width={70} placeholder="0" testId={`bag-${s.id}`}
+                    {/* The placard limit is not the input's max: an over-limit load is kept as typed and
+                        flagged by the W&B (station breach), never cut to fit. 500 kg is a typo guard. */}
+                    <NumberInput value={doc.baggageKg[s.id] ?? null} min={0} max={500} width={70} placeholder="0" testId={`bag-${s.id}`}
                       onCommit={(v) => update((d) => {
                         const baggageKg = { ...d.baggageKg };
                         if (v == null || v === 0) delete baggageKg[s.id]; else baggageKg[s.id] = v;
                         return { ...d, baggageKg };
                       }, { coalesce: `bag-${s.id}` })} />
-                    <span className="muted">kg{s.maxKg ? ` (max ${s.maxKg})` : ''}</span>
+                    <span className={s.maxKg != null && (doc.baggageKg[s.id] ?? 0) > s.maxKg ? 'danger-text' : 'muted'} data-testid={`bag-${s.id}-limit`}>
+                      kg{s.maxKg ? ` (max ${s.maxKg})` : ''}
+                    </span>
                   </span>
                 </label>
               ))}
             </div>
           )}
+          {wb && wb.limitBreaches.filter((b) => b.kind === 'station' || b.kind === 'combined').map((b) => (
+            <p key={b.text} className="ep-note danger-text" data-testid="wb-load-breach">{b.text}</p>
+          ))}
           {hasUtility && (
             <div className="ep-seg" role="radiogroup" aria-label="Category">
               {(['normal', 'utility'] as const).map((k) => (
@@ -233,12 +242,18 @@ export function ManifestSection() {
                 <KV k="Fuel at take-off" v={<span className="mono">{fuel ? `${fuel.fobL} L` : '–'}</span>} />
                 <KV k="Take-off" tone={wbOk && !wbOk.takeoff ? 'danger' : undefined}
                   v={<span className="mono">{wb.takeoff.massKg.toFixed(1)} kg</span>} sub={<span className="mono">CG {wb.takeoff.armM.toFixed(3)} m</span>} />
+                {stops.filter((x) => x.wb).map((x) => (
+                  <KV key={x.point.uid} k={`Stop ${stopName(x)}`} testId="wb-stop" tone={x.wbOk === false ? 'danger' : undefined}
+                    v={<span className="mono">{x.wb!.massKg.toFixed(1)} kg</span>}
+                    sub={<span className="mono">CG {x.wb!.armM.toFixed(3)} m{x.fuelL != null ? ` · ${x.fuelL} L` : ''}</span>} />
+                ))}
                 <KV k="Landing" tone={wbOk && !wbOk.landing ? 'danger' : undefined}
                   v={<span className="mono">{wb.landing.massKg.toFixed(1)} kg</span>} sub={<span className="mono">CG {wb.landing.armM.toFixed(3)} m</span>} />
                 <KV k="MTOW" v={<span className="mono">{aircraft.massBalance.mtowKg} kg</span>}
                   sub={<span className={wb.takeoff.massKg > aircraft.massBalance.mtowKg ? 'danger-text' : 'muted'}>{(aircraft.massBalance.mtowKg - wb.takeoff.massKg).toFixed(1)} kg spare</span>} />
               </div>
-              <EnvelopeChart massBalance={aircraft.massBalance} category={doc.options.category} takeoff={wb.takeoff} landing={wb.landing} />
+              <EnvelopeChart massBalance={aircraft.massBalance} category={doc.options.category} takeoff={wb.takeoff} landing={wb.landing}
+                stops={stops.filter((x) => x.wb).map((x) => ({ label: stopName(x), point: x.wb! }))} />
             </div>
           )}
         </>

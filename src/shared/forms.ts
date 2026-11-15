@@ -270,6 +270,35 @@ export function genDecContent(flight: FormFlightInput, aircraft: Pick<Aircraft, 
   };
 }
 
+/**
+ * The Declaration of Health of the General Declaration (ICAO Annex 9 Appendix 1, MD 4.7), line by
+ * line as on the form. Shared by the print sheet and the PDF e-mailed to HCAA so both carry the
+ * official text. The last line of each block continues on the first dotted line ('stop',
+ * 'details of most recent disinsecting').
+ */
+export const GENDEC_HEALTH_LINES = [
+  'Name and seat number or function of persons on board with illnesses other than',
+  'airsickness or the effects of accidents, who may be suffering from a communicable',
+  'disease (a fever \u2014 temperature 38\u00b0C/100\u00b0F or greater \u2014 associated with one or',
+  'more of the following signs or symptoms, e.g. appearing obviously unwell;',
+  'persistent coughing; impaired breathing; persistent diarrhoea; persistent vomiting;',
+  'skin rash; bruising or bleeding without previous injury; or confusion of recent',
+  'onset, increases the likelihood that the person is suffering a communicable disease)',
+  'as well as such cases of illness disembarked during a previous',
+] as const;
+export const GENDEC_HEALTH_CONT = 'stop';
+export const GENDEC_DISINSECT_LINES = [
+  'Details of each disinsecting or sanitary treatment (place, date, time, method)',
+  'during the flight. If no disinsecting has been carried out during the flight, give',
+] as const;
+export const GENDEC_DISINSECT_CONT = 'details of most recent disinsecting';
+
+/**
+ * The form_signatures key of the PIC's signature on the General Declaration (kept apart from the
+ * Form 731 keys: 'PIC', passenger ids, 'seat:<id>').
+ */
+export const GENDEC_PIC_KEY = 'gendec:PIC';
+
 /** The text the GenDec was sent with (re-send is offered when it changes). */
 export function genDecText(c: GenDecContent): string {
   return JSON.stringify(c);
@@ -283,6 +312,8 @@ export function genDecText(c: GenDecContent): string {
 //   POST /flights/:id/forms/731/links/:key/revoke   → FormsState
 //   POST /flights/:id/forms/731/send                → FormsState (e-mail to HCAA; 409 until everyone has signed)
 //   POST /flights/:id/forms/gendec/send             → FormsState
+//   Both sends: body {} or {resend: true}. 409 when this version was already sent (unless resend) or a send
+//   of the same form is in progress; 403 for a pilot not on FORMS_PILOTS (emailEnabled false, emailReason says so).
 //   GET  /sign/:token                               → SigningView (no sign-in)
 //   POST /sign/:token                               → SigningView (signs)
 
@@ -320,6 +351,11 @@ export interface FormsState {
     submission: SubmissionState | null;
     /** The departure or destination has no handler (per the pilot's "handled" aerodromes): the PIC sends it. */
     pilotSends: boolean;
+    /**
+     * The PIC's signature on the current version of the declaration ("Authorized Agent or
+     * Pilot-in-Command"), given automatically like on Form 731; null without a PIC name.
+     */
+    picSignature: { name: string; signedAt: number } | null;
   };
   /** E-mail sending is configured on this server. */
   emailEnabled: boolean;

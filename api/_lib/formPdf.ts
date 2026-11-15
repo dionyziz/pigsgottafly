@@ -3,7 +3,9 @@
 // and gendec/GenDec.tsx, positions in mm measured from the originals in trn-docs/).
 import { PdfDoc, type PdfPage } from './pdf.js';
 import handTtf from './fonts/homemadeApple.js';
-import { signatureName, type Form731Content, type GenDecContent } from '../../src/shared/forms.js';
+import {
+  GENDEC_DISINSECT_CONT, GENDEC_DISINSECT_LINES, GENDEC_HEALTH_CONT, GENDEC_HEALTH_LINES, signatureName, type Form731Content, type GenDecContent,
+} from '../../src/shared/forms.js';
 
 /** Rows printed on one Form 731 sheet. */
 const ROWS_731 = 6;
@@ -92,8 +94,12 @@ export function form731Pdf(c: Form731Content, sigs: PdfSignature[]): Buffer {
   return doc.bytes({ title: `Form 731 ${c.registration} ${c.date}` });
 }
 
-export function genDecPdf(c: GenDecContent): Buffer {
-  const doc = new PdfDoc();
+/**
+ * The General Declaration (MD 4.7 = ICAO Annex 9 Appendix 1) with the PIC's e-signature on the
+ * declaration's signature line (`sig`, the same handwriting signature as on Form 731).
+ */
+export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
+  const doc = new PdfDoc(Buffer.from(handTtf, 'base64'));
   const p = doc.page(false);
   const fill = (x: number, y: number, w: number, v: string) => { p.text(x + 1, y - 0.6, v, { size: 10, maxW: w - 2 }); p.line(x, y + 0.6, x + w, y + 0.6, 0.15); };
   p.text(105, 18, 'GENERAL DECLARATION', { font: 'bold', size: 14, align: 'center' });
@@ -113,21 +119,21 @@ export function genDecPdf(c: GenDecContent): Buffer {
   p.text(72, 51, '(Place)', { size: 7, align: 'center' });
   p.text(158, 51, '(Place)', { size: 7, align: 'center' });
 
-  const top = 56;
-  p.rect(15, top, 180, 150, 0.3);
+  const top = 56, boxH = 162;
+  p.rect(15, top, 180, boxH, 0.3);
   p.text(105, top + 6, 'FLIGHT ROUTING', { font: 'bold', size: 10, align: 'center' });
   p.text(105, top + 10.5, '("Place" Column always to list origin every en-route stop and destination)', { size: 7.5, align: 'center' });
-  const tTop = top + 13, rowH = 9;
+  const tTop = top + 13, rowH = 7.5;
   p.line(15, tTop, 195, tTop, 0.3);
   p.line(45, tTop, 45, tTop + rowH * (c.routing.length + 1), 0.2);
-  p.line(125, tTop, 125, top + 150, 0.3);
-  p.text(30, tTop + 6, 'PLACE', { font: 'bold', size: 8.5, align: 'center' });
-  p.text(85, tTop + 6, 'NAMES OF CREW*', { font: 'bold', size: 8.5, align: 'center' });
+  p.line(125, tTop, 125, top + boxH, 0.3);
+  p.text(30, tTop + 5, 'PLACE', { font: 'bold', size: 8.5, align: 'center' });
+  p.text(85, tTop + 5, 'NAMES OF CREW*', { font: 'bold', size: 8.5, align: 'center' });
   c.routing.forEach((r, i) => {
     const y = tTop + rowH * (i + 1);
     p.line(15, y, 125, y, 0.15);
-    p.text(17, y + 6.2, r.place, { size: 10, maxW: 27 });
-    p.text(47, y + 6.2, r.crew, { size: 10, maxW: 76 });
+    p.text(17, y + 5.3, r.place, { size: 10, maxW: 27 });
+    p.text(47, y + 5.3, r.crew, { size: 10, maxW: 76 });
   });
   p.text(160, tTop + 5, 'NUMBER OF PASSENGERS', { font: 'bold', size: 8, align: 'center' });
   p.text(160, tTop + 9, 'ON THIS STAGE**', { font: 'bold', size: 8, align: 'center' });
@@ -140,29 +146,39 @@ export function genDecPdf(c: GenDecContent): Buffer {
   p.text(px, y, `Disembarking: ${c.disembarking}`, { size: 9 }); y += 6;
   p.text(px, y, `Through on same flight: ${c.throughArrival}`, { size: 9 });
 
-  // Declaration of health (left blank, as on the print sheet) and the declaration.
+  // Declaration of health: the full Annex 9 text, left blank (as on the print sheet).
   const hTop = tTop + rowH * (c.routing.length + 1);
   p.line(15, hTop, 125, hTop, 0.3);
   p.text(70, hTop + 5, 'DECLARATION OF HEALTH', { font: 'bold', size: 8.5, align: 'center' });
-  const health = [
-    'Name and seat number or function of persons on board with illnesses other than',
-    'airsickness or the effects of accidents, who may be suffering from a communicable',
-    'disease, as well as such cases of illness disembarked during a previous stop:',
-  ];
-  health.forEach((l, i) => p.text(17, hTop + 9.5 + 3.6 * i, l, { size: 7.2, maxW: 106 }));
-  for (let i = 0; i < 2; i++) p.line(17, hTop + 24 + 5.5 * i, 123, hTop + 24 + 5.5 * i, 0.1);
-  p.text(17, hTop + 35, 'Details of each disinsecting or sanitary treatment (place, date, time, method):', { size: 7.2, maxW: 106 });
-  p.line(17, hTop + 41, 123, hTop + 41, 0.1);
+  const lh = 3.3, x0 = 17, w = 106;
+  const dotted = (yy: number, lead: string) => {
+    if (lead) p.text(x0, yy, lead, { size: 7.2 });
+    const from = lead ? x0 + doc.widthMm(Buffer.from(lead + ' ', 'latin1'), 'regular', 7.2) : x0;
+    p.line(from, yy + 0.4, x0 + w, yy + 0.4, 0.1);
+  };
+  let hy = hTop + 9.5;
+  for (const l of GENDEC_HEALTH_LINES) { p.text(x0, hy, l, { size: 7.2, maxW: w }); hy += lh; }
+  dotted(hy, GENDEC_HEALTH_CONT); hy += 4.6;
+  dotted(hy, ''); hy += 5.2;
+  for (const l of GENDEC_DISINSECT_LINES) { p.text(x0, hy, l, { size: 7.2, maxW: w }); hy += lh; }
+  dotted(hy, GENDEC_DISINSECT_CONT); hy += 4.6;
+  dotted(hy, ''); hy += 6.5;
+  p.text(x0, hy, 'Signed, if required, with time and date', { size: 7.2 });
+  p.line(x0 + 50, hy + 0.4, x0 + 98, hy + 0.4, 0.15);
+  p.text(x0 + 74, hy + 3.6, 'Crew member concerned', { size: 7.2, align: 'center' });
   p.text(160, hTop + 30, 'FOR OFFICIAL USE ONLY', { size: 8, align: 'center' });
 
-  const b = top + 150 + 8;
+  const b = top + boxH + 8;
   p.text(15, b, 'I declare that all statements and particulars contained in this General Declaration, and in any supplementary forms required to be', { size: 8, maxW: 180 });
   p.text(15, b + 4, 'presented with this General Declaration, are complete, exact and true to the best of my knowledge and that all through passengers', { size: 8, maxW: 180 });
   p.text(15, b + 8, 'will continue/have continued on the flight.', { size: 8 });
-  p.text(120, b + 22, c.picName, { size: 10, maxW: 75 });
+  if (sig) signature(p, 136, b + 19, 56, sig);
   p.line(118, b + 23, 195, b + 23, 0.15);
   p.text(156, b + 27, 'Signature: Authorized Agent or Pilot-in-Command', { size: 7, align: 'center' });
-  p.text(15, 284, '* To be completed when required by the State.  ** Not to be completed when passenger manifests are presented and to be completed only when required by the State.', { size: 6.5 });
-  p.text(195, 290, 'MD 4.7', { font: 'bold', size: 8, align: 'right' });
+  p.text(156, b + 32, c.picName, { size: 10, align: 'center', maxW: 75 });
+  p.text(15, 278, '* To be completed when required by the State.', { size: 6.5 });
+  p.text(15, 281, '** Not to be completed when passenger manifests are presented and to be completed only when required by the State.', { size: 6.5 });
+  p.text(15, 287, 'ICAO ANNEX 9 - APPENDIX 1.1', { size: 8 });
+  p.text(105, 291, 'MD 4.7', { font: 'bold', size: 8, align: 'center' });
   return doc.bytes({ title: `General Declaration ${c.registration} ${c.date.join('/')}` });
 }

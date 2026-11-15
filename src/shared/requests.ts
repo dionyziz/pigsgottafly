@@ -86,7 +86,43 @@ export function requestTiming(route: RoutePoint[], options: Pick<FlightOptions, 
 
 /** Sets (or, with kind null, removes) the request on a point; returns the new list. */
 export function setRequest(list: AerodromeRequest[] | undefined, pointUid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number): AerodromeRequest[] {
+  const prev = (list ?? []).find((r) => r.pointUid === pointUid);
   const rest = (list ?? []).filter((r) => r.pointUid !== pointUid);
   if (!kind) return rest;
-  return [...rest, kind === 'stop' ? { pointUid, kind, stopMin: Math.max(1, Math.min(MAX_STOP_MIN, Math.round(stopMin ?? DEFAULT_STOP_MIN))) } : { pointUid, kind }];
+  if (kind !== 'stop') return [...rest, { pointUid, kind }];
+  // A stop keeps the runway / surface chosen for it when only its minutes change.
+  const keep = prev?.kind === 'stop' ? stopChoices(prev) : {};
+  return [...rest, { pointUid, kind, stopMin: Math.max(1, Math.min(MAX_STOP_MIN, Math.round(stopMin ?? DEFAULT_STOP_MIN))), ...keep }];
+}
+
+type StopChoices = Pick<AerodromeRequest, 'landingRunway' | 'takeoffRunway' | 'surface'>;
+const stopChoices = (r: AerodromeRequest): StopChoices => {
+  const o: StopChoices = {};
+  if (r.landingRunway) o.landingRunway = r.landingRunway;
+  if (r.takeoffRunway) o.takeoffRunway = r.takeoffRunway;
+  if (r.surface) o.surface = r.surface;
+  return o;
+};
+
+/** Sets the runway (landing / take-off) or surface chosen at a stop; null = automatic / paved, dry. */
+export function setStopChoice(list: AerodromeRequest[] | undefined, pointUid: string, key: keyof StopChoices, value: string | null): AerodromeRequest[] {
+  return (list ?? []).map((r) => {
+    if (r.pointUid !== pointUid || r.kind !== 'stop') return r;
+    const next: AerodromeRequest = { ...r };
+    if (value) next[key] = value;
+    else delete next[key];
+    return next;
+  });
+}
+
+/**
+ * Route point indices of the intermediate full stops (a landing and a new take-off there), in
+ * route order: the points after which requestTiming() puts ground time. The calculations'
+ * sectors (src/calc/sectors.ts) end at exactly these points.
+ */
+export function stopPointIndices(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined): number[] {
+  const g = requestTiming(route, options).groundAfterLegMin;
+  const out: number[] = [];
+  for (let i = 0; i < g.length - 1; i++) if (g[i] > 0) out.push(i + 1);
+  return out;
 }

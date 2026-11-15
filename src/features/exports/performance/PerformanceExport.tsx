@@ -1,13 +1,15 @@
 // Export (f): take-off and landing performance, laid out like the club's MD 4.4 performance log
 // (trn-docs/MD4_4_Performance_Log_C172M.pdf): departure and destination blocks in the form's
 // order, a runway/wind diagram for each, the condition-factor table, crosswind limits, the
-// weather used and a pass/fail. One A4 portrait page.
+// weather used and a pass/fail. One A4 portrait page per sector: a flight with an intermediate
+// full stop gets a page for each take-off → landing (the landing at the stop and the take-off
+// from it included).
 //
 // Usage (ExportPage): <PerformanceExport flight={flight} />. Loads the pilot, the aircraft and the
 // weather (surface forecast / METAR at the take-off and landing times) itself.
 import type { Flight } from '../../../shared';
 import { useExportCalc } from '../wb/useExportCalc';
-import { perfSheetModel, type PerfBlock, type PerfSheetModel } from './model';
+import { perfSheetModel, type PerfBlock, type PerfPage, type PerfSheetModel } from './model';
 import '../wb/xp.css';
 import './performance.css';
 
@@ -15,8 +17,10 @@ export function PerformanceExport({ flight }: { flight: Flight }) {
   const st = useExportCalc(flight);
   if (st.loading || !st.calc) return <div className="xp-loading muted">Loading…</div>;
   const m = perfSheetModel({ doc: flight, aircraft: st.aircraft, pilot: st.pilot, calc: st.calc });
-  const screenWarnings = [...m.warnings, ...m.departure.warnings.map((w) => `Departure: ${w}`), ...m.arrival.warnings.map((w) => `Destination: ${w}`)];
-  const anyWx = !!(st.calc.departure.conditions || st.calc.arrival.conditions);
+  const screenWarnings = [...m.warnings, ...m.pages.flatMap((pg) => [pg.takeoff, pg.landing])
+    .filter((b, i, all) => all.indexOf(b) === i)
+    .flatMap((b) => b.warnings.map((w) => `${blockName(b)}: ${w}`))];
+  const anyWx = !!(st.calc.departure.conditions || st.calc.arrival.conditions || st.calc.stops.some((x) => x.landing.conditions || x.takeoff.conditions));
   return (
     <div className="xp-doc" data-testid="performance-export" data-ready={st.weatherPending ? 'false' : 'true'} data-verdict={m.verdict}>
       <div className="xp-status no-print">
@@ -30,16 +34,28 @@ export function PerformanceExport({ flight }: { flight: Flight }) {
         </div>
         {screenWarnings.length > 0 && <ul className="xp-warnings" data-testid="performance-warnings">{screenWarnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
       </div>
-      <div className="xp-stage"><PerfSheet m={m} /></div>
+      <div className="xp-stage">
+        {m.pages.map((pg, i) => <PerfSheet key={i} m={m} page={pg} pageNo={i + 1} />)}
+      </div>
     </div>
   );
 }
 
-export function PerfSheet({ m }: { m: PerfSheetModel }) {
+/** 'Departure', or 'Landing at stop LGSY' for a stop's block. */
+function blockName(b: PerfBlock): string {
+  return b.title === 'Departure' || b.title === 'Destination' ? b.title : `${b.title} ${b.aerodrome.split(' ')[0]}`;
+}
+
+/** One MD 4.4 page: the take-off and landing of one sector (the first page by default). */
+export function PerfSheet({ m, page = m.pages[0], pageNo = 1 }: { m: PerfSheetModel; page?: PerfPage; pageNo?: number }) {
+  const pg = page ?? { takeoff: m.departure, landing: m.arrival, speeds: m.speeds, label: '' };
+  const pages = m.pages.length;
+  const blocks = [pg.takeoff, pg.landing];
   return (
-    <section className="xp-sheet perf-sheet" aria-label="Performance log">
+    <section className="xp-sheet perf-sheet" aria-label={pages > 1 ? `Performance log, sector ${pageNo} of ${pages}` : 'Performance log'} data-sector={pageNo}>
       <header className="xp-head">
         <h1>PERFORMANCE LOG</h1>
+        {pages > 1 && <span className="perf-sector" data-testid="perf-sector">Sector {pageNo} of {pages} <b className="xp-fill">{pg.label}</b></span>}
         <div className={`xp-verdict ${m.verdict}`} data-testid="performance-verdict">
           <span className="xp-verdict-mark">{m.verdict === 'pass' ? 'PASS' : m.verdict === 'fail' ? 'FAIL' : 'INCOMPLETE'}</span>
           <span>{m.verdictText}</span>
@@ -54,8 +70,8 @@ export function PerfSheet({ m }: { m: PerfSheetModel }) {
       </dl>
 
       <div className="perf-cols">
-        <Block b={m.departure} />
-        <Block b={m.arrival} />
+        <Block b={pg.takeoff} />
+        <Block b={pg.landing} />
       </div>
 
       <div className="perf-bottom">
@@ -72,24 +88,23 @@ export function PerfSheet({ m }: { m: PerfSheetModel }) {
           {(m.crosswindLimits.takeoff != null || m.crosswindLimits.landing != null) && (
             <p><b>Crosswind limits</b>{m.registration ? ` ${m.makeModel || m.registration}` : ''}: take-off {m.crosswindLimits.takeoff ?? '–'} kt, landing {m.crosswindLimits.landing ?? '–'} kt</p>
           )}
-          {(m.speeds.vsKt != null || m.speeds.vsoKt != null) && (
-            <p><b>Stall IAS</b> (power off, wings level, MTOW): flaps up {m.speeds.vsKt ?? '–'} kt, landing flaps {m.speeds.vsoKt ?? '–'} kt</p>
+          {(pg.speeds.vsKt != null || pg.speeds.vsoKt != null) && (
+            <p><b>Stall IAS</b> (power off, wings level, MTOW): flaps up {pg.speeds.vsKt ?? '–'} kt, landing flaps {pg.speeds.vsoKt ?? '–'} kt</p>
           )}
           {m.conditionNotes.map((n, i) => <p key={i} className="xp-small">{n}</p>)}
           <p className="xp-small">
             Distances: AFM tables at the density altitude, interpolated in mass; headwind −10 % per 5 kt, tailwind +10 % per 2 kt;
             then × condition × safety factor. Required distances rounded up to the metre.
-            {m.speeds.source ? ` Vx, Vy, Vglide: ${m.speeds.source}.` : ''}
+            {pg.speeds.source ? ` Vx, Vy, Vglide: ${pg.speeds.source}.` : ''}
           </p>
         </div>
       </div>
 
-      {m.warnings.length + m.departure.warnings.length + m.arrival.warnings.length > 0 && (
+      {m.warnings.length + blocks.reduce((s, b) => s + b.warnings.length, 0) > 0 && (
         <div className="xp-notes">
           <ul>
             {m.warnings.map((w, i) => <li key={`g${i}`}>{w}</li>)}
-            {m.departure.warnings.map((w, i) => <li key={`d${i}`}>Departure: {w}</li>)}
-            {m.arrival.warnings.map((w, i) => <li key={`a${i}`}>Destination: {w}</li>)}
+            {blocks.map((b, j) => b.warnings.map((w, i) => <li key={`b${j}-${i}`}>{blockName(b)}: {w}</li>))}
           </ul>
         </div>
       )}

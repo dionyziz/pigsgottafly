@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { GenDec, genDecModel, ROUTING_ROWS } from '..';
+import { GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES } from '../../../../shared/forms';
 import { ad, aircraft, flight, pilot, vfr } from '../../form731/__tests__/fixtures';
 
 describe('general declaration model', () => {
@@ -59,5 +60,24 @@ describe('general declaration sheet', () => {
     expect(html).toMatch(/data-field="operator"><span class="pgf-fill">Example Aeroclub</);
     expect(html).toMatch(/data-field="embarking"><span class="pgf-fill">2</);
     expect(html).toMatch(/data-field="pic">Pat Pilot</);
+  });
+
+  it('reproduces the full Annex 9 Declaration of Health', () => {
+    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    for (const l of GENDEC_HEALTH_LINES) expect(html).toContain(l);
+    for (const l of GENDEC_DISINSECT_LINES) expect(html).toContain(l);
+    expect(html).toContain('temperature 38°C/100°F or greater');
+    expect(html).toContain('If no disinsecting has been carried out during the flight');
+    expect(html).toContain('Crew member concerned');
+  });
+
+  it('draws the PIC e-signature on the declaration signature line, like Form 731', () => {
+    const unsigned = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    expect(unsigned).not.toContain('data-testid="signature"');
+    const signedAt = Date.UTC(2026, 10, 15, 16, 51);
+    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} signature={{ name: 'Pat Pilot', signedAt }} />);
+    expect(html).toMatch(/class="gd-sigline"><span class="gd-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/);
+    expect(html).toContain('>P. Pilot<');
+    expect(html).toContain('signed 15/11/2026 16:51Z');
   });
 });

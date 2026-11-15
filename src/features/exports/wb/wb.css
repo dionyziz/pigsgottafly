@@ -27,7 +27,7 @@
 .wb-table tr.over td, .wb-table tr.over th .wb-label { color: #b4231a !important; }
 .wb-table tr.over td.num { font-weight: 700; }
 
-.wb-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.wb-checks { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4mm; }
 .wb-check { border: 0.35mm solid #1e7b46; border-radius: 1.2mm; padding: 1.4mm 2.4mm; }
 .wb-check.bad { border-color: #b4231a; }
 .wb-check-head { display: flex; justify-content: space-between; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -52,9 +52,9 @@
 .wb-env-label-utility { fill: #2f7a55; font-size: 15px; }
 .wb-burn { stroke: #10265c; stroke-width: 3.5; stroke-linecap: round; }
 .wb-burn-rest { stroke: #10265c; stroke-width: 1.8; stroke-dasharray: 6 5; opacity: 0.7; }
-.wb-pt circle, .wb-pt rect { fill: #10265c; stroke: #fff; stroke-width: 2; }
+.wb-pt circle, .wb-pt rect, .wb-pt polygon { fill: #10265c; stroke: #fff; stroke-width: 2; }
 .wb-pt circle.hollow { fill: #fff; stroke: #10265c; stroke-width: 2.4; }
-.wb-pt.bad circle, .wb-pt.bad rect { fill: #b4231a; }
+.wb-pt.bad circle, .wb-pt.bad rect, .wb-pt.bad polygon { fill: #b4231a; }
 .wb-pt-label { font-size: 16px; font-weight: 700; fill: #10265c; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
 .wb-pt-zerofuel .wb-pt-label { font-weight: 400; font-size: 14px; }
 .wb-pt-label .wb-pt-sub { font-weight: 400; }
@@ -69,6 +69,7 @@
 .wb-legend i { display: inline-block; width: 3mm; height: 3mm; }
 .wb-legend .lg-to { background: #10265c; border-radius: 50%; }
 .wb-legend .lg-ldg { background: #10265c; }
+.wb-legend .lg-stop { background: #10265c; transform: rotate(45deg) scale(0.85); }
 .wb-legend .lg-zf { border: 0.45mm solid #10265c; border-radius: 50%; }
 .wb-legend .lg-burn { width: 6mm; height: 0; border-top: 0.8mm solid #10265c; }
 .wb-legend .lg-cg { width: 6mm; height: 0; border-top: 0.35mm dashed #6b7280; }

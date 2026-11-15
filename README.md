@@ -22,6 +22,7 @@ Production runs on Vercel. `vite build` produces `dist/`, and `/api/…` runs as
   - `GOOGLE_CLIENT_ID` (required: the function refuses to serve without it)
   - optionally `ALLOWED_EMAILS` (comma-separated)
   - optionally `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD` (NOTAM briefing) and `AUTOROUTER_FILING=1` (flight-plan filing). This is one shared autorouter account, so only the pilots on `AUTOROUTER_PILOTS` (comma-separated; default `ALLOWED_EMAILS`) may use it. With both lists empty nobody can, and filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
+  - optionally `RESEND_API_KEY` (and `FORMS_FROM`, default `Pig's Gotta Fly <forms@pigsgottafly.com>`) to e-mail Form 731 and the General Declaration to HCAA. These messages go out in the service's name, so only the pilots on `FORMS_PILOTS` (comma-separated; default `ALLOWED_EMAILS`) may send them. With both lists empty nobody can. A form version that was already sent is not sent again unless the pilot asks to re-send it.
 - Migrations run on cold start (`api/_lib/migrate.ts`). Migration 001 converts the v2 schema in place, keeping accounts, sessions and flights.
 
 ## Reference data

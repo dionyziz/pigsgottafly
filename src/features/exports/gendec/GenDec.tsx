@@ -3,13 +3,19 @@
 // left out; the form itself (ICAO Annex 9 Appendix 1, MD 4.7) is reproduced.
 import './gendec.css';
 import { FormWarnings } from '../form731/FormWarnings';
+import { Signature, type ShownSignature } from '../form731/Form731';
+import { GENDEC_DISINSECT_CONT, GENDEC_DISINSECT_LINES, GENDEC_HEALTH_CONT, GENDEC_HEALTH_LINES } from '../../../shared/forms';
 import type { FormExportProps } from '../form731/common';
 import { genDecModel } from './model';
 import type { ReactNode } from 'react';
 
 const DOTS = ' .'.repeat(120);
 
-export function GenDec(props: FormExportProps & { panel?: ReactNode }) {
+/**
+ * `signature`: the PIC's signature on the current version (GET /flights/:id/forms
+ * gendec.picSignature), drawn on the signature line as on Form 731 and in the PDF sent to HCAA.
+ */
+export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?: ShownSignature | null }) {
   const m = genDecModel(props);
   return (
     <div className="pgf-forms" data-testid="gendec">
@@ -83,27 +89,11 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode }) {
           <div className="gd-grid gd-health-grid">
             <div className="gd-health">
               <div className="gd-center">DECLARATION OF HEALTH</div>
-              <Lines
-                lines={[
-                  'Name and seat number or function of persons on board with illnesses other than',
-                  'airsickness or the effects of accidents, who may be suffering from a communicable',
-                  'disease (a fever — temperature 38°C/100°F or greater — associated with one or',
-                  'more of the following signs or symptoms, e.g. appearing obviously unwell;',
-                  'persistent coughing; impaired breathing; persistent diarrhoea; persistent vomiting;',
-                  'skin rash; bruising or bleeding without previous injury; or confusion of recent',
-                  'onset, increases the likelihood that the person is suffering a communicable disease)',
-                  'as well as such cases of illness disembarked during a previous',
-                ]}
-              />
-              <div className="gd-dots">stop{DOTS}</div>
+              <Lines lines={GENDEC_HEALTH_LINES} />
+              <div className="gd-dots">{GENDEC_HEALTH_CONT}{DOTS}</div>
               <div className="gd-dots">{DOTS.slice(1)}</div>
-              <Lines
-                lines={[
-                  'Details of each disinsecting or sanitary treatment (place, date, time, method)',
-                  'during the flight. If no disinsecting has been carried out during the flight, give',
-                ]}
-              />
-              <div className="gd-dots">details of most recent disinsecting{DOTS}</div>
+              <Lines lines={GENDEC_DISINSECT_LINES} />
+              <div className="gd-dots">{GENDEC_DISINSECT_CONT}{DOTS}</div>
               <div className="gd-dots">{DOTS.slice(1)}</div>
               <div className="gd-signed">
                 Signed, if required, with time and date <Blank w={41} value="" />
@@ -119,7 +109,7 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode }) {
               will continue/have continued on the flight.
             </p>
             <div className="gd-signature">
-              Signature<span className="gd-sigline" />
+              Signature<span className="gd-sigline">{props.signature && <span className="gd-pic-signature"><Signature s={props.signature} size={4.2} /></span>}</span>
             </div>
             <div className="gd-agent">Authorized Agent or Pilot-in-Command</div>
             <div className="gd-pic-name pgf-fill" data-field="pic">{m.picName}</div>
@@ -135,7 +125,7 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode }) {
   );
 }
 
-function Lines({ lines }: { lines: string[] }) {
+function Lines({ lines }: { lines: readonly string[] }) {
   return (
     <div>
       {lines.map((l) => (
