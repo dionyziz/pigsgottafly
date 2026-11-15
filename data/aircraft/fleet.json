@@ -1,0 +1,27 @@
+{
+  "_comment": "Seed data for the hangar. Type data in reims-f172m.json; compass cards in js/aircraft.js.",
+  "SX-ASV": {
+    "type": "reims-f172m",
+    "serial": "F172M01513",
+    "operator": "Aeroclub Mesogeion",
+    "cruiseTasKt": 92, "patternTasKt": 80,
+    "emptyMass": {
+      "_source": "DAS (EL.145.0078) weight and balance report, 14-11-2024 (trn-docs/SXASV_WB_FORM_2024.pdf)",
+      "kg": 691.20, "armM": 1.0403, "momentKgM": 719.12,
+      "includesUnusableFuel": true, "includesOil": true,
+      "_note": "Report prints 103.97 cm in the SUM row and 104.03 cm as the C.G.; 71911.59 / 691.20 = 104.04 cm."
+    }
+  },
+  "SX-ASG": {
+    "type": "reims-f172m",
+    "serial": "F172M1091",
+    "operator": "Aeroclub Mesogeion",
+    "cruiseTasKt": 92, "patternTasKt": 80,
+    "emptyMass": {
+      "_source": "Weight and balance report signed 28 FEB 2024, scales calibrated 22-JAN-24 (trn-docs/SXASG_WB_FORM_2024.pdf)",
+      "kg": 692.00, "armM": 1.1398, "momentKgM": 788.77,
+      "includesUnusableFuel": false, "includesOil": true,
+      "_note": "Weighed with fuel tanks and fuel system empty, oil full (8 qt), 4 life vests, fire extinguisher, flight manual. Unusable fuel (15 L) must be added. CG 113.98 cm is ~10 cm aft of SX-ASV's."
+    }
+  }
+}
