@@ -88,6 +88,13 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
     g.beginPath(); g.moveTo(s / 2 - 3, s / 2 - 4); g.lineTo(s / 2 + 3, s / 2); g.lineTo(s / 2 - 3, s / 2 + 4);
     g.lineWidth = 2; g.strokeStyle = CHART.vfr; g.stroke();
   }),
+  // restricted-area hatching (a fill-pattern tile: diagonal lines that join across tiles)
+  'pgf-hatch-r': () => make(8, (g, s) => {
+    g.strokeStyle = CHART.restricted; g.globalAlpha = 0.45; g.lineWidth = 1; g.lineCap = 'butt';
+    g.beginPath();
+    for (const o of [-s, 0, s]) { g.moveTo(o, s); g.lineTo(o + s, 0); }
+    g.stroke();
+  }),
 };
 
 /** Register every chart symbol on the map (idempotent). */

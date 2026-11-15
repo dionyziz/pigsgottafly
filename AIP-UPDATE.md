@@ -21,10 +21,12 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `data/vfr.js`: VFR points and route altitudes | VFR charts + open flightmaps | `parse_vfr.py`, `fetch_ofm.py`, `vfr_chart.py`, `build_vfr.py` |
 | `tools/runways.json`: runway bearings, lengths, surfaces, thresholds, declared distances, slopes | AD 2.12/2.13, AD 1.6.N.12/13 | `parse_runways.py` (corrections in its `OVR` table, e.g. LGBL TORA from the AD 2.13 remark) |
 | `src/data/ref/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
+| `tools/enr5_areas.json`: prohibited, restricted, danger, military training and local flying areas | ENR 5.1, 5.2, 5.3.1 | `parse_enr5.ts` (prints what it draws approximately; hand corrections in its `OVERRIDES` table) |
+| `src/data/ref/aip-files.json` + `AIP_EAIP_BASE` in `src/data/aipLinks.ts`: links to the AIP PDFs | the eAIP's `side.htm`, the AIRAC label | `aip_files.ts`, `sed` in the script |
 | `tools/ad_hours.json`: operational hours, ATS, handling, customs and remarks as printed | AD 2.3, AD 1.6.N.3 (+ AD 1.6.N.4 handling) | `extract_ad_hours.ts`, run after `npm run ref`, then `npm run ref` again (parsed by `src/calc/adHours.ts` into `RefAerodrome.hours`) |
 
 Then it stops before the reference data: a new cycle's data goes into NEW migrations (never edit an applied
-one such as 002, 005 or 012). Point `MIGRATION` / `RUNWAY_MIGRATION` / `HOURS_MIGRATION` in `tools/build_ref.ts` at new files, register
+one such as 002, 005 or 012). Point `MIGRATION` / `RUNWAY_MIGRATION` / `HOURS_MIGRATION` / `AREAS_MIGRATION` in `tools/build_ref.ts` at new files, register
 them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test:e2e`.
 
 ## 2. Check by hand what the script flags
@@ -42,7 +44,9 @@ them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test
 5. **Aerodrome CTR/ATZ.** `parse_ad_airspace.py` prints each designation it cannot read. Lateral limits with arcs are written out by hand in its `ARCS` table (quote the AIP text next to them); check them when an AD 2.17 changes. `tests/unit/data/adAirspaces.test.ts` checks radii, closed rings and limits.
 6. **Runways.** `tools/build_ref.ts` prints a warning for each slope it cannot sign (same unsigned value both ways and no threshold elevations). Spot-check a few aerodromes' declared distances against the PDFs; `tests/unit/data/runways.test.ts` checks bearings, reciprocals, thresholds and distances for consistency.
 7. **Operational hours.** `tests/unit/calc/adHours.test.ts` lists what every aerodrome's AD 2.3 / AD 1.6 text parses to (AD hours, ATS, handling, customs). A changed text shows up there: check the new parse against the AIP and update the table. Text the parser cannot represent exactly is marked partial (shown as the AIP text, evaluated as unknown); keep that list short and deliberate.
-8. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
+8. **ENR 5 areas.** `parse_enr5.ts` prints each area it draws approximately (e.g. "excluding … ATZ" not cut out) or cannot draw; `tests/unit/data/enr5.test.ts` holds verbatim pages and the expected parse, and minimum counts per kind. A new layout or a new kind of lateral limit shows up there.
+9. **AIP links.** The script points `AIP_EAIP_BASE` at `https://aisgr.hasp.gov.gr/aipgr_incl_amdt_<NNYY>_wef_<ddmonyyyy>/cd/ais/`; open one link to check HASP kept that pattern (`tests/unit/data/aipLinks.test.ts` checks it matches the AIRAC).
+10. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
 
 ## 3. Ship
 

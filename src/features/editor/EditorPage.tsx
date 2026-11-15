@@ -157,15 +157,42 @@ export function EditorPage() {
   );
 }
 
-/** The flight panel on the left; its width is set by dragging its right edge. */
+const COLLAPSED_KEY = 'pgf.editor.panelCollapsed';
+const readCollapsed = () => { try { return localStorage.getItem(COLLAPSED_KEY) === '1'; } catch { return false; } };
+
+/**
+ * The flight panel on the left; its width is set by dragging its right edge. It collapses (the map takes
+ * the space) with the tab on its edge, or by dragging the edge well past its narrowest width; remembered
+ * per browser.
+ */
 function ResizablePanel() {
-  const r = useResizable({ key: 'pgf.editor.panelWidth', axis: 'x', dir: 1, min: 280, max: () => Math.max(320, Math.round(window.innerWidth * 0.6)), initial: null });
+  const [collapsed, setCollapsedState] = useState(readCollapsed);
+  const setCollapsed = (v: boolean) => {
+    setCollapsedState(v);
+    try { localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+  };
+  const r = useResizable({
+    key: 'pgf.editor.panelWidth', axis: 'x', dir: 1, min: 280, max: () => Math.max(320, Math.round(window.innerWidth * 0.6)), initial: null,
+    collapseBelow: 180, onCollapse: () => setCollapsed(true),
+  });
+  const label = collapsed ? 'Show the flight panel' : 'Hide the flight panel';
   return (
     <>
-      <aside className="editor-panel" ref={(el) => { r.panelRef.current = el; }} style={r.size != null ? { width: r.size } : undefined}>
+      <aside
+        id="editor-panel" className={'editor-panel' + (collapsed ? ' is-collapsed' : '')} ref={(el) => { r.panelRef.current = el; }}
+        style={r.size != null ? { width: r.size } : undefined} hidden={collapsed} data-testid="editor-panel"
+      >
         <ErrorBoundary label="The panel failed"><FlightPanel /></ErrorBoundary>
       </aside>
-      <div {...r.handleProps} aria-label="Resize the flight panel" data-testid="resize-panel" />
+      <div className={'editor-edge' + (collapsed ? ' is-collapsed' : '')}>
+        {!collapsed && <div {...r.handleProps} aria-label="Resize the flight panel" data-testid="resize-panel" />}
+        <button
+          type="button" className="editor-collapse" onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed} aria-controls="editor-panel" aria-label={label} title={label} data-testid="panel-collapse"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d={collapsed ? 'M3.5 1.5 7 5l-3.5 3.5' : 'M6.5 1.5 3 5l3.5 3.5'} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </button>
+      </div>
     </>
   );
 }

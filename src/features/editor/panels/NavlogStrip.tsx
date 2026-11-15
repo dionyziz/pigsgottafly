@@ -9,6 +9,7 @@ import { useNotams } from '../notams';
 import { fmtDur, fmtMin, useFlightCalc, type CalcWarning } from './calc';
 import { Icon } from './ui';
 import { useResizable } from '../resizable';
+import { AipRefText } from '../../../app/AipLink';
 
 const LS_KEY = 'pgf.editor.strip';
 type StripState = 'open' | 'closed' | 'warnings';
@@ -25,7 +26,7 @@ function Warnings({ list }: { list: CalcWarning[] }) {
   return (
     <ul className="ns-warnings" data-testid="navlog-warnings">
       {[...list].sort((a, b) => order[a.level] - order[b.level]).map((w) => (
-        <li key={w.text} className={w.level}><Icon name="warn" size={14} /><span>{w.text}</span></li>
+        <li key={w.text} className={w.level}><Icon name="warn" size={14} /><span><AipRefText text={w.text} /></span></li>
       ))}
     </ul>
   );

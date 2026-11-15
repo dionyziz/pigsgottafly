@@ -46,6 +46,14 @@
 .pgf-legend .lg-zone-g { border-color: #4f7d86; border-top-style: dotted; }
 .pgf-legend .lg-vfr { border-color: #1e6b46; }
 .pgf-legend .lg-route { border-color: #c2185b; border-top-width: 3px; }
+.pgf-legend .lg-p, .pgf-legend .lg-r { height: 8px; border: 2px solid #c62828; border-radius: 1px; }
+.pgf-legend .lg-p { background: rgba(183, 28, 28, 0.2); }
+.pgf-legend .lg-r { background: repeating-linear-gradient(135deg, rgba(198, 40, 40, 0.5) 0 1px, transparent 1px 4px); }
+.pgf-legend .lg-d { border-color: #b45309; border-top-style: dashed; }
+.pgf-legend .lg-mil { border-color: #5b4a8a; border-top-style: dashed; }
+.pgf-legend .lg-act { border-color: #2e7d32; border-top-style: dotted; }
+.pgf-map-pop-sub { display: flex; flex-direction: column; gap: 6px; padding-left: 22px; margin-top: -4px; font-size: var(--fs-xs); }
+.pgf-map-pop-sub input:disabled + * , .pgf-map-pop-sub label:has(input:disabled) { opacity: 0.55; cursor: default; }
 
 /* hint bubble: top left, under the toolbar (out of the way of the route and the snap tooltip, which
    follow the cursor below it); it fades out while the cursor is near it */
@@ -125,13 +133,9 @@
 .pgf-air-body dd { margin: 0; color: var(--ink); line-height: 1.45; }
 .pgf-air-body .muted { color: var(--muted); }
 .pgf-air-text { color: var(--ink-2) !important; }
-.pgf-air-units, .pgf-air-legs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.pgf-air-units { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .pgf-air-cs { font-weight: 600; }
 .pgf-air-fq { margin-left: 6px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.pgf-air-alt { font-weight: 700; font-variant-numeric: tabular-nums; }
-.pgf-air-legs .v-inside .pgf-air-what { color: #b4235a; font-weight: 600; }
-.pgf-air-legs .v-above .pgf-air-what, .pgf-air-legs .v-below .pgf-air-what { color: var(--ink-2); }
-.pgf-air-legs .v-unknown .pgf-air-what { color: var(--warn); }
 
 /* leg labels (MapLibre markers) */
 .pgf-leg { pointer-events: none; }
@@ -236,6 +240,14 @@
 .pgf-ad-tip-line { display: block; font-size: var(--fs-xs); color: var(--ink-2); }
 .pgf-air-type.t-ad { background: #1f2a44; }
 .pgf-ad-tip-line.is-danger { color: var(--danger); }
-.pgf-ad-src { font-size: 10.5px; margin: 0 6px 8px; }
+.pgf-ad-src { font-size: 11.5px; margin: 0 6px 8px; }
 div.pgf-air-h { cursor: default; }
 div.pgf-air-h:hover { background: none; }
+
+/* ENR 5 areas (prohibited / restricted / danger / military / other activities): popover badges */
+.pgf-air-type.t-p { background: #b71c1c; }
+.pgf-air-type.t-r { background: #fff; color: #c62828; box-shadow: inset 0 0 0 1px #c62828; background-image: repeating-linear-gradient(135deg, rgba(198, 40, 40, 0.18) 0 2px, transparent 2px 5px); }
+.pgf-air-type.t-d { background: #b45309; }
+.pgf-air-type.t-mil { background: #5b4a8a; }
+.pgf-air-type.t-act { background: #2e7d32; }
+.pgf-air-pre { white-space: pre-line; overflow-wrap: anywhere; }

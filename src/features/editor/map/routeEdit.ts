@@ -59,6 +59,23 @@ export function replacePoint(route: RoutePoint[], uid: string, p: Omit<RoutePoin
   return route.map((q) => (q.uid === uid ? { ...p, uid } : q));
 }
 
+/** True when two route points refer to the same thing (the same aerodrome / VFR point / waypoint, or both custom). */
+export function sameIdentity(a: Pick<RoutePoint, 'kind' | 'refId'>, b: Pick<RoutePoint, 'kind' | 'refId'>): boolean {
+  return a.kind === b.kind && (a.kind === 'custom' || a.refId === b.refId);
+}
+
+/**
+ * A route point dragged and dropped as `p` (snapped to a known point, or a custom point). Moving a
+ * point keeps its uid (and the overrides of its legs); when it becomes another point (snapped to a
+ * different aerodrome / VFR point / waypoint, or a known point dropped as a custom one) it gets a new
+ * uid, so its legs are new legs: their overrides and the old point's requests are dropped.
+ */
+export function movePoint(route: RoutePoint[], uid: string, p: Omit<RoutePoint, 'uid'>, newUid: () => string): RoutePoint[] {
+  const old = route.find((q) => q.uid === uid);
+  const id = old && !sameIdentity(old, p) ? newUid() : uid;
+  return route.map((q) => (q.uid === uid ? { ...p, uid: id } : q));
+}
+
 export function removePoint(route: RoutePoint[], uid: string): RoutePoint[] {
   return route.filter((q) => q.uid !== uid);
 }

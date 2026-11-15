@@ -5,6 +5,7 @@
 // flight's NOTAMs at the flight's time there (the server decides: src/calc/aerodromeStatus.ts
 // genDecHandling); the reason is shown per end. A per-flight checkbox overrides the decision.
 import { useState } from 'react';
+import { AipRefText } from '../../../app/AipLink';
 import { api, ApiRequestError } from '../../../data/api';
 import type { FormsState } from '../../../shared/forms';
 import type { useFormsState } from '../form731/SignaturesPanel';
@@ -58,7 +59,7 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
         <ul className="pgf-note pgf-handling" data-testid="gendec-handling">
           {h.ends.map((e) => (
             <li key={e.role} data-testid={`gendec-handling-${e.role}`} className={e.handled ? undefined : 'is-unhandled'}>
-              {e.role === 'departure' ? 'Departure' : 'Destination'} {e.reason}
+              {e.role === 'departure' ? 'Departure' : 'Destination'} <AipRefText text={e.reason} />
             </li>
           ))}
         </ul>
