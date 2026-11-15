@@ -334,7 +334,7 @@ describe('migrations', () => {
     await ins('f2', 'u2', 'SX-FR2', 'FRIENDS CLUB', 'call the club first'); // same operator (case, spaces)
     await ins('f3', 'u2', 'SX-FR3', '', '');
     await ins('f4', 'u2', 'SX-FR4', 'Other Owner', 'OPR TEL +30 210 0000000 and ask for Bob'); // not only numbers: no phone
-    expect(await migrate(db, withOwner(OWNER))).toEqual(['018_operators']);
+    expect((await migrate(db, withOwner(OWNER))).filter((n) => n < '019')).toEqual(['018_operators']);
 
     const ops = await db.query(`SELECT pilot_id, name, phone FROM operators ORDER BY pilot_id, name`);
     expect(ops).toEqual([

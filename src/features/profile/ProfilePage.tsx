@@ -14,6 +14,7 @@ import { api } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { profileMissing, SETTING_SUGGESTIONS, WIND_MODELS, type Pilot, type PilotUpdate, type WindModel } from '../../shared';
 import { AerodromePicker, resolveAerodrome } from './AerodromePicker';
+import { AccountSection } from './AccountSection';
 import '../lobby/lists.css';
 
 interface Form {
@@ -235,6 +236,7 @@ export function ProfilePage() {
           <button className="primary" type="submit" disabled={busy || (!welcome && !dirty)}>{welcome ? 'Continue' : busy ? 'Saving…' : 'Save'}</button>
         </div>
       </form>
+      {!welcome && <AccountSection />}
     </Shell>
   );
 }

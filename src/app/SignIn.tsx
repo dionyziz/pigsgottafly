@@ -1,5 +1,6 @@
 // Sign in with Google (Google Identity Services); the server verifies the ID token.
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, ApiRequestError } from '../data/api';
 
 declare global {
@@ -38,12 +39,20 @@ export function SignIn({ clientId, onSignedIn }: { clientId: string | null; onSi
 
   return (
     <div className="center-screen">
-      <div className="card stack" style={{ padding: 40, alignItems: 'center', width: 380, textAlign: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div className="card stack" style={{ padding: '40px 24px', alignItems: 'center', width: 380, maxWidth: '100%', textAlign: 'center' }}>
         <img src="/icon.svg" alt="" width={56} height={56} />
         <h1>Pig's Gotta Fly</h1>
         <p className="muted" style={{ margin: 0 }}>VFR flight planning for the Athinai FIR.</p>
         <div ref={button} style={{ minHeight: 44 }} />
+        <p className="muted" style={{ margin: 0, fontSize: 'var(--fs-xs)' }} data-testid="signin-consent">
+          By signing in you agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
+        </p>
         {error && <p style={{ color: 'var(--danger)', margin: 0 }}>{error}</p>}
+      </div>
+      <footer className="muted" style={{ marginTop: 16, fontSize: 'var(--fs-sm)', textAlign: 'center' }} data-testid="signin-footer">
+        <Link to="/terms">Terms</Link> · <Link to="/privacy">Privacy</Link>
+      </footer>
       </div>
     </div>
   );
