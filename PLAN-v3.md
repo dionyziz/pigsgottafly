@@ -119,3 +119,14 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 
 ### No disclaimers
 - The UI carries no legal disclaimers, "advisory" labels, "not for operational use" notes or similar boilerplate — anywhere (screens, map, exports, README-derived text). The pilot uses this daily and knows what it is. Show flight-relevant facts only.
+
+### Form 731: signatures and submission to HCAA
+- **Signatures:** a signature is the signer's first initial and last name ("D. Zindros") rendered in a handwriting-style font (self-hosted, OFL/Apache licensed, e.g. Caveat or Homemade Apple), with the date/time it was signed.
+- **Pilot:** signed automatically when the form is prepared (the PIC's signature also fills "The Pilot in Command" box).
+- **Passengers:** a "Request signatures" button creates one unguessable link per passenger (`/sign/<token>`, no account needed). The pilot sends each link with one tap via the phone's share sheet (WhatsApp/SMS/…), or copies it. The link opens a read-only view of the filled form with a single "Sign" button; on a phone it must look good.
+- **Privacy on the signing page:** a passenger sees their own row in full; other people's ID numbers and contact details are masked.
+- **Tracking:** per person: link created, opened (first/last time), signed (time). Shown in the editor's Form 731 panel ("2 of 3 signed · Maria opened 10:42, not signed"), with resend and revoke.
+- **Changes after signing:** if anything on the form changes (date, registration, route, people, their details), existing signatures are cleared and the panel shows who needs to sign again.
+- **Links** expire after the flight date and can be revoked; they give access to nothing else. Tokens are stored hashed.
+- **Submit:** when everyone has signed, "Send to HCAA" emails the signed Form 731 as a PDF (generated server-side with pdf-lib, laid out like the original) to 731@hcaa.gov.gr, cc the pilot, reply-to the pilot, subject "Form 731 · SX-ASV · LGTT → LGSY · 20 Nov 2026". Sent from the app's address (e.g. forms@pigsgottafly.com) through a transactional email provider (Vercel-compatible, e.g. Resend), with SPF/DKIM set up for pigsgottafly.com. The sent time and provider message ID are stored on the flight; re-sending is possible after changes.
+- Tests: token access control (other flights/pilots unreachable), masking, invalidation on change, PDF content, email sending mocked.
