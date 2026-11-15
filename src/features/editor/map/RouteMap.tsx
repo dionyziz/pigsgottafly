@@ -1097,7 +1097,7 @@ export function RouteMap(props: RouteMapProps) {
       {hint && prefs.tips && !failed && (
         <div ref={hintEl} className={'pgf-map-hint' + (hintAway ? ' is-away' : '')} data-testid="map-hint">
           <span>{hint}</span>
-          <button type="button" className="pgf-map-hint-x" onClick={() => setPrefs({ ...prefs, tips: false })} title="Hide tips (turn them back on under Map layers)" aria-label="Hide tips" data-testid="map-hint-close">×</button>
+          <button type="button" className="pgf-map-hint-x" onClick={() => setPrefs({ ...prefs, tips: false })} title="Hide tips (turn them back on under Map layers)" aria-label="Hide tips" data-testid="map-hint-close"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button>
         </div>
       )}
 
