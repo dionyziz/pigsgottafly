@@ -4,7 +4,7 @@ The design is in PLAN-v3.md. This file covers how the code is laid out, the cont
 
 ## Stack
 
-- **Client**: TypeScript, Vite, React 18, react-router 6 (BrowserRouter), MapLibre GL 4.
+- **Client**: TypeScript, Vite, React 18, react-router 7 (react-router-dom, BrowserRouter), MapLibre GL 6 (ES modules; imported through src/app/maplibre.ts, which sets the worker URL).
 - **API**: one Vercel Node function (`api/index.ts`) that dispatches to a route registry. Postgres runs on Neon (`@neondatabase/serverless`) in production, and on PGlite (`@electric-sql/pglite`) locally and in tests.
 - **Tests**: vitest for unit and API tests (in-memory PGlite), plus a dependency-free headless-Chrome CDP harness for end-to-end tests.
 
