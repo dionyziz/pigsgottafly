@@ -118,7 +118,6 @@ export function WbSheet({ m, signature }: { m: WbSheetModel; signature?: ShownSi
       <div className="xp-notes">
         {m.limits.length > 0 && <p><b>Limits:</b> {m.limits.join(' · ')}</p>}
         {m.weighing && <p><b>Empty mass:</b> {m.weighing}</p>}
-        {m.warnings.length > 0 && <ul>{m.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
       </div>
 
       <footer className="xp-sign">

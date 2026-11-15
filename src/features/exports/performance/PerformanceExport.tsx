@@ -20,7 +20,6 @@ export function blockName(b: PerfBlock): string {
 export function PerfSheet({ m, page = m.pages[0], pageNo = 1, signature }: { m: PerfSheetModel; page?: PerfPage; pageNo?: number; signature?: ShownSignature | null }) {
   const pg = page ?? { takeoff: m.departure, landing: m.arrival, speeds: m.speeds, label: '' };
   const pages = m.pages.length;
-  const blocks = [pg.takeoff, pg.landing];
   return (
     <section className="xp-sheet perf-sheet" aria-label={pages > 1 ? `Performance log, sector ${pageNo} of ${pages}` : 'Performance log'} data-sector={pageNo}>
       <header className="xp-head">
@@ -69,15 +68,6 @@ export function PerfSheet({ m, page = m.pages[0], pageNo = 1, signature }: { m: 
           </p>
         </div>
       </div>
-
-      {m.warnings.length + blocks.reduce((s, b) => s + b.warnings.length, 0) > 0 && (
-        <div className="xp-notes">
-          <ul>
-            {m.warnings.map((w, i) => <li key={`g${i}`}>{w}</li>)}
-            {blocks.map((b, j) => b.warnings.map((w, i) => <li key={`b${j}-${i}`}>{blockName(b)}: {w}</li>))}
-          </ul>
-        </div>
-      )}
 
       <footer className="xp-sign">
         <span>DATE <b className="xp-fill">{m.date}</b></span>

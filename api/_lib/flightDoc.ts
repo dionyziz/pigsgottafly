@@ -3,9 +3,10 @@
 // known fields only, so a stale or buggy client cannot store values that later turn the safety
 // numbers (W&B, altitudes, fuel) into NaN or nonsense. Numbers must be JSON numbers: strings,
 // booleans and null are not coerced (null / absent means "not set" where a field is optional).
-import type { AerodromeRequest, AtcEntry, AtcRole, FlightOptions, FlightSummary, LegOverride, RoutePoint, WbCategory, WindModel } from '../../src/shared/types.js';
+import type { AerodromeRequest, AtcEntry, AtcRole, FlightOptions, FuelType, FlightSummary, LegOverride, RoutePoint, WbCategory, WindModel } from '../../src/shared/types.js';
 import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
 import { MAX_STOP_MIN } from '../../src/shared/requests.js';
+import { FUEL_TYPES } from '../../src/shared/fuel.js';
 import { badRequest } from './http.js';
 import { arr, obj } from './rows.js';
 
@@ -173,6 +174,19 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
       }
       throw badRequest(`options.aerodromeRequests[${j}].kind must be touch-and-go or stop`);
     });
+  }
+  if ('fuelL' in i) {
+    if (i.fuelL === null || i.fuelL === undefined) o.fuelL = null;
+    else {
+      const f = obj<Record<string, unknown>>(i.fuelL, 'options.fuelL');
+      const out: Partial<Record<FuelType, number>> = {};
+      for (const [k, v] of Object.entries(f)) {
+        if (!(FUEL_TYPES as string[]).includes(k)) throw badRequest(`options.fuelL: unknown fuel type ${k}`);
+        const n = optNumber(v, `options.fuelL.${k}`, 0, 10000);
+        if (n !== null) out[k as FuelType] = n;
+      }
+      o.fuelL = Object.keys(out).length ? out : null;
+    }
   }
   return o;
 }

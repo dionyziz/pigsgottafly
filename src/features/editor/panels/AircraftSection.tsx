@@ -1,7 +1,7 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
 import { Link } from 'react-router-dom';
 import { pickCompassCard } from '../../../calc';
-import { seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';
+import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';
 import { useEditor } from '../state';
 import { Chip, KV, Section } from './ui';
 
@@ -45,6 +45,8 @@ function sharedBy(a: Aircraft): string {
 
 export function AircraftSection() {
   const { doc, update, hangar, aircraft } = useEditor();
+  // A compass card is only worth a line when it has expired by the day of the flight.
+  const expiredOn = (expires: string) => !!expires && expires < (doc.date || new Date().toISOString().slice(0, 10));
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
   const missing = doc.aircraftId && !aircraft;
 
@@ -73,17 +75,17 @@ export function AircraftSection() {
             <KV k="Type" v={<>{aircraft.icaoType}/{aircraft.wake}</>} sub={aircraft.colours || undefined} />
             <KV k="TAS cruise / pattern" v={<span className="mono">{aircraft.cruiseTasKt} / {aircraft.patternTasKt} kt</span>} />
             <KV k="Planning burn" v={<span className="mono">{aircraft.fuel.burnLph} L/h</span>} sub={`+${aircraft.fuel.taxiAllowanceL} L allowance`} />
-            <KV k="Usable fuel" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={aircraft.fuel.type} />
+            <KV k="Usable fuel" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
           </div>
           {aircraft.compassCards.length > 1 ? (
             <label className="field">Compass card
               <select value={card?.name ?? ''} onChange={(e) => update((d) => ({ ...d, options: { ...d.options, compassCard: e.target.value || null } }))}>
-                {aircraft.compassCards.map((c) => <option key={c.name} value={c.name}>{c.name} (expires {c.expires})</option>)}
+                {aircraft.compassCards.map((c) => <option key={c.name} value={c.name}>{c.name}{expiredOn(c.expires) ? ` (expired ${c.expires})` : ''}</option>)}
               </select>
             </label>
-          ) : (
-            <KV k="Compass card" v={card ? card.name : <span className="muted">None</span>} sub={card ? `expires ${card.expires}` : undefined} />
-          )}
+          ) : card && expiredOn(card.expires) ? (
+            <KV k="Compass card" tone="danger" v={card.name} sub={`expired ${card.expires}`} />
+          ) : null}
           <Link to={`/hangar/${aircraft.id}`} className="ep-link">Open {aircraft.registration} in the hangar</Link>
         </>
       )}

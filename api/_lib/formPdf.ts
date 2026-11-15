@@ -206,12 +206,10 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   p.line(x0 + w(signed, 'regular', fs) + 1.5, sy + 0.4, split - 2, sy + 0.4, 0.2);
   p.text(split - 12, bottom - 3.2, 'Crew member concerned', { size: fs, align: 'right' });
   const hx0 = L + 2, hy0 = bottom - 2, hx1 = split - 2, hy1 = healthTop + 2;
-  p.color(0.12, 0.31, 0.75);
-  p.line(hx0, hy0, hx1, hy1, 0.5);
-  const ang = (Math.atan2(hy0 - hy1, hx1 - hx0) * 180) / Math.PI;
-  const a = (ang * Math.PI) / 180;
-  // NIL along the line, just above it
-  p.text((hx0 + hx1) / 2 - 2 * Math.sin(a), (hy0 + hy1) / 2 - 2 * Math.cos(a), 'NIL', { font: 'bold', size: 32, align: 'center', rotate: ang });
+  p.color(0.29, 0.56, 0.85);
+  p.line(hx0, hy0, hx1, hy1, 0.9);
+  // NIL written level on the middle of the stroke
+  p.text((hx0 + hx1) / 2, (hy0 + hy1) / 2 + 2, 'NIL', { font: 'bold', size: 18, align: 'center' });
   p.color(0, 0, 0);
 
   // the declaration, full width

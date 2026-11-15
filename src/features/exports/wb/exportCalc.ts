@@ -5,7 +5,7 @@
 // each intermediate full stop (its landing and its take-off, with the sector masses: sectors.ts).
 // Pure: no I/O, no DOM (the hook in useExportCalc.ts fetches the inputs).
 import type { Aircraft, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { activeRequests, requestTiming, stopPointIndices } from '../../../shared';
+import { activeRequests, fuelLoad, requestTiming, stopPointIndices, type FuelLoad } from '../../../shared';
 import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
   aerodromePerformance, flightSectors, isaTempC, magneticVariation, performanceMass, sectorBalances, stopsOf,
@@ -81,6 +81,8 @@ export interface ExportCalc {
   missingWeights: string[];
   /** Fuel at take-off / landing used for the W&B, L. */
   fuelTakeoffL: number;
+  /** Fuel on board at block-off by type (litres, mass, the mix's density); null without an aircraft. */
+  fuelLoad: FuelLoad | null;
   fuelLandingL: number;
   /** Fuel burnt between take-off and landing in the W&B (taxi allowance + trip), L. */
   fuelBurnL: number;
@@ -108,6 +110,8 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
   const rawLanding = fuel ? fuel.landingFuelL : fuelTakeoffL;
   const fuelLandingL = rawLanding;
   const fuelBurnL = fuel ? fuel.taxiL + fuel.tripL : 0;
+  // Mixed tanks: the mass is Σ litres × density; the fuel burnt comes from the mix (its average density).
+  const load = aircraft ? fuelLoad(aircraft.fuel, fuelTakeoffL, doc.options.fuelL) : null;
   if (aircraft) {
     const mb = aircraft.massBalance;
     const m = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
@@ -120,7 +124,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
         loads,
         fuelTakeoffL,
         fuelLandingL,
-        fuelDensityKgPerL: aircraft.fuel.densityKgPerL,
+        fuelDensityKgPerL: load!.densityKgPerL,
         unusableFuelL: aircraft.fuel.unusableL,
         unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
         category: doc.options.category,
@@ -140,7 +144,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
       sectorWb = sectorBalances({
         massBalance: aircraft.massBalance,
         loads: wbLoadsFromManifest(doc.crew, doc.baggageKg, aircraft.massBalance.stations).loads,
-        fuelDensityKgPerL: aircraft.fuel.densityKgPerL,
+        fuelDensityKgPerL: load!.densityKgPerL,
         unusableFuelL: aircraft.fuel.unusableL,
         unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
         category: doc.options.category,
@@ -219,5 +223,5 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
       takeoff: endpoint('takeoff', point, loc, blockOffSet ? s.after.takeoffMin : NaN, wbAfter, req?.takeoffRunway ?? null, req?.surface ?? null),
     };
   });
-  return { computed, wb, wbLoadWarnings, missingWeights, fuelTakeoffL, fuelLandingL, fuelBurnL, departure, arrival, sectors, stops };
+  return { computed, wb, wbLoadWarnings, missingWeights, fuelTakeoffL, fuelLoad: load, fuelLandingL, fuelBurnL, departure, arrival, sectors, stops };
 }

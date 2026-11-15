@@ -19,6 +19,8 @@ import formSendClaims010 from './migrations/010_form_send_claims.js';
 import fleetFplEquipment011 from './migrations/011_fleet_fpl_equipment.js';
 import refAdHours012 from './migrations/012_ref_ad_hours_2609.js';
 import aircraftShares013 from './migrations/013_aircraft_shares.js';
+import aircraftFuels014 from './migrations/014_aircraft_fuels_provenance.js';
+import aircraftPhotoDocuments015 from './migrations/015_aircraft_photo_documents.js';
 import refAreas017 from './migrations/017_ref_areas_2609.js';
 
 export interface Migration {
@@ -46,6 +48,8 @@ export const MIGRATIONS: Migration[] = [
   { name: '011_fleet_fpl_equipment', sql: fleetFplEquipment011 },
   { name: '012_ref_ad_hours_2609', sql: refAdHours012 },
   { name: '013_aircraft_shares', sql: aircraftShares013 },
+  { name: '014_aircraft_fuels_provenance', sql: aircraftFuels014 },
+  { name: '015_aircraft_photo_documents', sql: aircraftPhotoDocuments015 },
   { name: '017_ref_areas_2609', sql: refAreas017 },
 ];
 

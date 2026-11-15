@@ -28,7 +28,7 @@ import {
   type WbResult,
   type WbStatus,
 } from '../../../calc';
-import { CARD_EXPIRY_WARN_DAYS, activeRequests, requestTiming, seatLayout, stopPointIndices, validateCrew, type RoutePoint } from '../../../shared';
+import { CARD_EXPIRY_WARN_DAYS, activeRequests, fuelLoad, requestTiming, seatLayout, stopPointIndices, validateCrew, type RoutePoint } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
 import { endpointAerodrome } from '../../../data/atc';
@@ -274,19 +274,20 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     const mb = aircraft.massBalance;
     const { loads, warnings, missingWeights } = wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations);
     const fob = fuel ? fuel.fobL : 0;
+    const load = fuelLoad(aircraft.fuel, fob, doc.options.fuelL);
     const landingL = fuel ? Math.max(0, fuel.landingFuelL) : fob;
     const r = safe(() => weightAndBalance({
       massBalance: mb,
       loads,
       fuelTakeoffL: fob,
       fuelLandingL: landingL,
-      fuelDensityKgPerL: aircraft.fuel.densityKgPerL,
+      fuelDensityKgPerL: load.densityKgPerL,
       unusableFuelL: aircraft.fuel.unusableL,
       unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
       category: doc.options.category,
     }));
     return r ? { wb: r, loadWarnings: warnings, missingWeights } : null;
-  }, [aircraft, doc.crew, doc.baggageKg, fuel, doc.options.category]);
+  }, [aircraft, doc.crew, doc.baggageKg, fuel, doc.options.category, doc.options.fuelL]);
   const wb = wbAll?.wb ?? null;
   // Sectors between intermediate full stops: each one's W&B with its own take-off / landing fuel.
   const sectorCalc = useMemo(() => {
@@ -297,13 +298,13 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     const wbs = safe(() => sectorBalances({
       massBalance: mb,
       loads: wbLoadsFromManifest(doc.crew, doc.baggageKg, mb.stations).loads,
-      fuelDensityKgPerL: aircraft.fuel.densityKgPerL,
+      fuelDensityKgPerL: fuelLoad(aircraft.fuel, fuel.fobL, doc.options.fuelL).densityKgPerL,
       unusableFuelL: aircraft.fuel.unusableL,
       unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
       category: doc.options.category,
     }, sectors)) ?? [];
     return { sectors, wbs };
-  }, [aircraft, navlog, fuel, wb, timing, doc.crew, doc.baggageKg, doc.options.category]);
+  }, [aircraft, navlog, fuel, wb, timing, doc.crew, doc.baggageKg, doc.options.category, doc.options.fuelL]);
   const wbMissingWeights = useMemo(() => wbAll?.missingWeights ?? [], [wbAll]);
   const wbOk = useMemo(() => {
     if (!wb) return null;
@@ -448,6 +449,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       }
     } else if (aircraft && !card) add('info', 'aircraft', `${aircraft.registration} has no compass card: no DEV/CH.`);
     if (fuel) for (const t of fuel.issues) add(t.level, 'fuel', t.text);
+    if (aircraft && fuel) {
+      const un = fuelLoad(aircraft.fuel, fuel.fobL, doc.options.fuelL).unapproved;
+      if (un.length) add('danger', 'fuel', `${un.join(' and ')} ${un.length > 1 ? 'are' : 'is'} not an approved fuel of ${aircraft.registration || 'this aircraft'}.`);
+    }
     if (fuel && fuel.landingFuelL < 0) add('danger', 'fuel', 'Fuel on board does not cover the trip.');
     if (wbAll) {
       for (const t of wbAll.loadWarnings) add('warn', 'wb', t);
@@ -499,7 +504,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     for (const x of aerodromeWarnings(aerodromeChecks, doc.route.length)) add(x.level, 'aerodrome', x.text);
     if (fin(dayMs) && navlog && (fin(takeoffMs) ? takeoffMs : dayMs + DAY) < Date.now() - DAY) add('info', 'time', 'This flight is in the past.');
     return w;
-  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, stops, takeoffMs, hazards, hazardWeather, legs, dep, arr, aerodromeChecks]);
+  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, doc.options.fuelL, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, stops, takeoffMs, hazards, hazardWeather, legs, dep, arr, aerodromeChecks]);
 
   // ---- lobby summary: ETE and fuel come from the navlog (setDerived: no undo step).
   const eteMin = navlog && navlog.legs.length ? navlog.totals.ete : null;

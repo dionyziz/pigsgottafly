@@ -7,14 +7,8 @@ import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type AttachmentRef, type AttachmentType, type CompassCard } from '../../shared/types';
 import { api } from '../../data/api';
 import { Field, IssueList, PointTable, Section } from './fields';
-import { blankCardPoints, cardStatus, deviationOf, issuesAt } from './model';
+import { addCompassCard, addYears, cardStatus, deviationOf, issuesAt } from './model';
 import type { SectionProps } from './sections';
-
-function addYears(d: string, n: number): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
-  if (!m) return '';
-  return `${+m[1] + n}-${m[2]}-${m[3] === '29' && m[2] === '02' ? '28' : m[3]}`;
-}
 
 export function StatusChip({ card, today }: { card: Pick<CompassCard, 'expires'>; today: string }) {
   const st = cardStatus(card, today, CARD_EXPIRY_WARN_DAYS);
@@ -149,11 +143,7 @@ export function SwingReport({ aircraftId, report, onChange }: { aircraftId: stri
 export function CompassSection({ a, edit, issues, today, aircraftId = null }: SectionProps & { today: string; aircraftId?: string | null }) {
   const cards = a.compassCards;
   const cc = (i: number, fn: (c: CompassCard) => void) => edit((d) => fn(d.compassCards[i]));
-  const add = () => edit((d) => {
-    const names = new Set(d.compassCards.map((c) => c.name));
-    const name = !names.has('Magnetic compass') ? 'Magnetic compass' : `Card ${d.compassCards.length + 1}`;
-    d.compassCards.push({ name, swung: today, expires: addYears(today, 2), source: '', points: blankCardPoints() });
-  });
+  const add = () => edit((d) => { addCompassCard(d, today); });
   return (
     <Section id="compass" title="Compass swing" intro="Deviation cards from the compass swing report. The navigation log turns magnetic heading (for) into compass heading (steer) by interpolating the card. The first card is the default for new flights."
       actions={<button type="button" className="sm" onClick={add}>+ Add card</button>}>
@@ -178,7 +168,7 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
                 <DateInput value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
               </Field>
               <Field label="Reference" hint="Report number or who swung it">
-                <input value={c.source} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.source = v; }); }} />
+                <input value={c.source} placeholder="optional" onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.source = v; }); }} />
               </Field>
             </div>
             <SwingReport aircraftId={aircraftId} report={c.report}

@@ -107,10 +107,30 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .ed-table td, .pt-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .ed-table input, .pt-table input { padding: 5px 8px; font-size: var(--fs-sm); }
 .ed-table .num, .ed-table th.num { text-align: right; }
-.ed-table.stations td:first-child input { width: 100%; min-width: 150px; }
-.ed-table .range { display: inline-flex; align-items: center; gap: 4px; }
+/* stations: one fixed grid, rows top-aligned, every control one height (--cell-h) */
+.ed-table.stations { --cell-h: 32px; table-layout: fixed; min-width: 880px; }
+.ed-table.stations col.c-name { width: 172px; }
+.ed-table.stations col.c-kind { width: 108px; }
+.ed-table.stations col.c-arm { width: 80px; }
+.ed-table.stations col.c-range { width: 152px; }
+.ed-table.stations col.c-max { width: 88px; }
+.ed-table.stations col.c-seats { width: auto; }
+.ed-table.stations col.c-tools { width: 84px; }
+.ed-table.stations td { vertical-align: top; padding-top: 8px; padding-bottom: 8px; }
+.ed-table.stations th { padding-top: 6px; padding-bottom: 6px; }
+.ed-table.stations input, .ed-table.stations select { width: 100%; height: var(--cell-h); box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
+.ed-table.stations input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ed-table.stations .st-id { margin-top: 3px; }
+.ed-table.stations .cell-na { display: block; height: var(--cell-h); line-height: var(--cell-h); color: var(--muted); padding: 0 9px; }
+.ed-table.stations td.num .cell-na { text-align: right; }
+.ed-table.stations .range { display: grid; grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr); align-items: center; gap: 4px; text-align: center; }
+.ed-table.stations td.row-tools button { height: var(--cell-h); }
+.ed-table.stations .seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.ed-table.stations .seat { height: var(--cell-h); box-sizing: border-box; }
+.ed-table.stations .seat input { height: 100%; width: 100%; border: 0; background: transparent; padding: 0 6px; }
+.ed-table.stations .add-seat { height: var(--cell-h); justify-content: flex-start; padding-left: 10px; border: 1px dashed var(--line-strong); border-radius: var(--r); }
 .seats { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.seat { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r); padding-right: 2px; background: var(--surface); }
+.seat { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r); padding-right: 2px; background: var(--surface); min-width: 0; }
 .seat input { border: 0; padding: 4px 6px; background: transparent; min-width: 0; }
 .seat input:focus { outline: none; }
 .seat:focus-within { border-color: var(--accent); }
@@ -126,9 +146,11 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .empty-inline { display: flex; align-items: center; gap: var(--s3); padding: var(--s3); border: 1px dashed var(--line-strong); border-radius: var(--r); }
 
 /* envelopes */
-.env-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s4) var(--s5); align-items: start; }
-@media (max-width: 1000px) { .env-layout { grid-template-columns: 1fr; } }
-.chart-col { position: sticky; top: calc(var(--topbar-h) + 16px); }
+/* each limits table with its own chart on the right, in normal flow; stacked on narrow screens */
+.env-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s4) var(--s5); align-items: start; }
+.env-row + .env-row { padding-top: var(--s3); border-top: 1px dashed var(--line); }
+@media (max-width: 1000px) { .env-row { grid-template-columns: 1fr; } }
+.chart-col { min-width: 0; }
 .chart-empty { height: 160px; display: grid; place-items: center; border: 1px dashed var(--line-strong); border-radius: var(--r); font-size: var(--fs-sm); }
 .env-chart, .arm-ruler, .dev-curve { width: 100%; height: auto; display: block; font-family: var(--font); }
 .env-chart .plot-bg, .dev-curve .plot-bg { fill: var(--surface-2); stroke: var(--line); }
@@ -157,6 +179,14 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .arm-ruler .empty-cg path { fill: var(--ink); }
 .arm-ruler .empty-cg text { font-size: 10px; fill: var(--ink); }
 
+/* approved fuels */
+.fuel-types { display: flex; flex-direction: column; gap: 6px; }
+.ed-table.fuel-tbl { width: auto; min-width: 380px; }
+.ed-table.fuel-tbl td { vertical-align: middle; }
+.ed-table.fuel-tbl td.num { width: 110px; }
+.ed-table.fuel-tbl td:nth-child(3) { min-width: 100px; }
+.fuel-tbl td.mono { font-weight: 600; width: 90px; }
+
 /* performance */
 table.perf { width: auto; }
 table.perf th, table.perf td { border: 1px solid var(--line); padding: 5px 8px; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -175,7 +205,8 @@ table.perf .pair-ed { display: inline-flex; gap: 4px; }
 table.perf .pair-ed input { padding: 4px 6px; font-size: var(--fs-sm); text-align: right; }
 table.perf .alt-ed { display: inline-flex; gap: 2px; align-items: center; }
 table.perf input { font-size: var(--fs-sm); padding: 4px 6px; }
-.conds { width: auto; min-width: 360px; }
+.ed-table.conds { width: auto; min-width: 360px; }
+.ed-table.conds td:first-child input { width: 240px; }
 ul.notes { margin: 0; padding-left: 18px; font-size: var(--fs-sm); color: var(--ink-2); }
 
 /* compass */
@@ -206,3 +237,34 @@ ul.notes { margin: 0; padding-left: 18px; font-size: var(--fs-sm); color: var(--
 .cc-report-row { gap: var(--s2); align-items: center; padding: 6px 10px; border: 1px dashed var(--line-strong); border-radius: var(--r); }
 .cc-report-name { font-weight: 600; min-width: 0; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cc-report-img { max-width: 100%; max-height: 420px; object-fit: contain; align-self: flex-start; border: 1px solid var(--line); border-radius: var(--r); }
+
+/* aircraft photo: hangar cards, page header; documents and the PDF viewer */
+.ac-photo { position: relative; overflow: hidden; background: var(--surface-2); color: var(--line-strong); display: grid; place-items: center; }
+.ac-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ac-photo .ac-photo-ph { width: 46%; max-width: 120px; height: auto; opacity: 0.9; }
+.ac-photo.card { aspect-ratio: 16 / 7; border-radius: var(--r-lg) var(--r-lg) 0 0; border-bottom: 1px solid var(--line); }
+.ac-card-photo { display: block; }
+.ac-photo.head { width: 112px; height: 72px; border-radius: var(--r); border: 1px solid var(--line); }
+.ac-head-photo { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.ac-photo-tools { display: flex; gap: 2px; }
+.ac-photo-tools button.sm { padding: 2px 6px; font-size: var(--fs-xs); }
+.doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.doc-list li { display: flex; align-items: center; gap: var(--s3); padding: 8px 0; border-bottom: 1px solid var(--line); }
+.doc-list li:first-child { border-top: 1px solid var(--line); }
+.doc-ico { width: 22px; height: 26px; color: var(--danger); flex: none; }
+.doc-main { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; font-size: var(--fs-sm); }
+.doc-main .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-title { font-weight: 600; font-size: var(--fs); }
+input.doc-title { border-color: transparent; padding: 3px 6px; margin-left: -6px; max-width: 420px; }
+input.doc-title:hover { border-color: var(--line); }
+.doc-add { gap: var(--s2); align-items: center; }
+.doc-add input { width: 240px; }
+.doc-upload { display: flex; flex-direction: column; gap: 4px; max-width: 420px; }
+.file-progress { height: 6px; border-radius: 999px; background: var(--hover); overflow: hidden; }
+.file-progress > div { height: 100%; background: var(--accent); }
+.pdf-viewer { position: fixed; inset: 0; z-index: 100; background: var(--surface); display: flex; flex-direction: column; }
+.pdf-bar { display: flex; align-items: center; gap: var(--s3); padding: 10px 16px; border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+.pdf-body { flex: 1; min-height: 0; background: var(--surface-2); display: flex; }
+.pdf-body iframe { flex: 1; border: 0; width: 100%; height: 100%; }
+.pdf-loading { margin: auto; width: min(360px, 80vw); display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 640px) { .ac-photo.head { width: 72px; height: 48px; } }

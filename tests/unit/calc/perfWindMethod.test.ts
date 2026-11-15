@@ -77,7 +77,6 @@ describe('landing: both methods, the longer LDR used', () => {
     expect(p.distances!.requiredTotalM).toBeCloseTo(638.3, 0);
     expect(Math.round(p.alternative!.requiredTotalM)).toBe(586);
     expect(p.marginM).toBeCloseTo(1000 - p.distances!.requiredTotalM, 9);
-    expect(p.warnings.join(' ')).toMatch(/AFM method \(PA 868 ft, \+10 %\/15 °C\) LDR 639 m used: longer than the club method's 586 m/);
     // matches landingDistances by method
     const pa = pressureAltitudeFt(861, 1013);
     const c = { massKg: 1043, pressureAltFt: pa, oatC: 36, headwindKt: 0, surface: null, slopePct: 0 };
@@ -128,7 +127,6 @@ describe('take-off: both methods, the longer TODR used', () => {
     expect(Math.round(p.distances!.requiredGroundM)).toBeLessThanOrEqual(413);
     expect(p.distances!.requiredTotalM).toBeGreaterThan(club.requiredTotalM);
     expect(p.marginM).toBeCloseTo(Math.min(1000 - afm.requiredTotalM, 1000 - afm.requiredGroundM), 9);
-    expect(p.warnings.join(' ')).toMatch(/AFM method .*no credit for cold.* TODR \d+ m used: longer than the club method's \d+ m/);
   });
 
   test('-10 °C: the club method alone would be 18–22 % short of the AFM', () => {

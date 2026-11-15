@@ -57,6 +57,7 @@ import {
   type PerfMethod,
 } from '../../../src/calc';
 import type { AircraftInput, PerformanceTables } from '../../../src/shared';
+import { fuelLoad } from '../../../src/shared';
 
 interface ClubInput {
   Registration: 'SXASV' | 'SXASG';
@@ -78,10 +79,14 @@ const CLUB_FUEL_ARM = 1.21539; // 47.85 in
 const CLUB_EMPTY_KG: Record<string, number> = { SXASV: 691.0, SXASG: 692.0 };
 const UNUSABLE_L = 15;
 
-function fuelOf(i: ClubInput): { litres: number; density: number } {
-  // No case mixes the two; a mix would be computed per type by the club.
-  if (i.AVGAS > 0 && i.MOGAS > 0) throw new Error('mixed fuel case');
-  return i.MOGAS > 0 ? { litres: i.MOGAS, density: 0.75 } : { litres: i.AVGAS, density: 0.72 };
+/**
+ * The club's MOGAS and AVGAS litres as fuel on board by type (both aircraft approve both), through
+ * the app's own fuelLoad: litres = the sum, density = the mix's (Σ litres × density / litres).
+ * The fixture has no mixed case (each case has one of the two); the mixed cases below are ours.
+ */
+function fuelOf(i: Pick<ClubInput, 'Registration' | 'AVGAS' | 'MOGAS'>): { litres: number; density: number } {
+  const load = fuelLoad(aircraftOf(i.Registration).fuel, i.AVGAS + i.MOGAS, { AVGAS: i.AVGAS, MOGAS: i.MOGAS });
+  return { litres: load.totalL, density: load.densityKgPerL };
 }
 
 /** Our W&B for a club case. clubConventions: fuel arm 1.21539 and no unusable fuel added. */
@@ -119,9 +124,28 @@ const CLUB_ROW: Record<string, string> = {
 };
 
 describe('club W&B (mesogeion-aeroclub.gr/wbp.php)', () => {
-  test('fixture has the 90 cases for both aircraft', () => {
+  test('fixture has the 90 cases for both aircraft, with MOGAS and AVGAS', () => {
     expect(CASES).toHaveLength(90);
     expect(new Set(CASES.map((c) => c.input.Registration))).toEqual(new Set(['SXASV', 'SXASG']));
+    expect(CASES.some((c) => c.input.MOGAS > 0) && CASES.some((c) => c.input.AVGAS > 0)).toBe(true);
+    expect(CASES.filter((c) => c.input.MOGAS > 0 && c.input.AVGAS > 0)).toHaveLength(0); // no mixed answer to compare with
+  });
+
+  test.each([[0, 40, 30], [17, 100, 44], [50, 20, 120]])('mixed tanks (case %i with AVGAS %i L + MOGAS %i L): fuel = Σ litres × density, landing from the mix', (n, avgas, mogas) => {
+    const base = CASES[n];
+    const c: ClubCase = { ...base, input: { ...base.input, AVGAS: avgas, MOGAS: mogas } };
+    const r = wbFor(c, true);
+    const fuelKg = avgas * 0.72 + mogas * 0.75;
+    const fuel = r.stationRows![r.stationRows!.length - 1];
+    expect(fuel.massKg).toBeCloseTo(fuelKg, 6);
+    expect(fuel.momentKgM).toBeCloseTo(fuelKg * CLUB_FUEL_ARM, 6);
+    // the same loading with the fuel as one type of the same mass: identical take-off
+    const single = wbFor({ ...c, input: { ...c.input, AVGAS: fuelKg / 0.72, MOGAS: 0 } }, true);
+    expect(r.takeoff.massKg).toBeCloseTo(single.takeoff.massKg, 6);
+    expect(r.takeoff.momentKgM).toBeCloseTo(single.takeoff.momentKgM, 6);
+    // landing: the block fuel is taken from the mix, at its average density
+    const rho = fuelKg / (avgas + mogas);
+    expect(r.landing.massKg).toBeCloseTo(r.takeoff.massKg - Math.min(c.input.BlockFuel, avgas + mogas) * rho, 6);
   });
 
   test.each(CASES.map((c, n) => [n, c] as const))('case %i: rows, totals, take-off and landing mass (club conventions: exact to 0.01)', (_n, c) => {
