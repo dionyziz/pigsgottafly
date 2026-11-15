@@ -106,3 +106,8 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 ### Map interaction for weather and NOTAMs
 - Weather hazards (thunderstorm areas, low-visibility areas, per-leg winds/hazard markers) and NOTAM areas/points are drawn as map layers that can be toggled.
 - Hovering shows a compact tooltip (e.g. "TS forecast 10:40–11:30Z, ECMWF" or the NOTAM's ID, validity and limits); clicking opens a details popover with the full decoded content, raw text and source/time, and highlights the affected leg in the navlog strip.
+
+### Airspace on the map
+- Draw every TMA (and MTMA) sector, CTR and ATZ from the AIP reference data with its exact lateral boundary (polygons, arcs and circles as published; ATZ/CTR circles from the aerodrome zone radii), styled like VFR charts by type and class.
+- Label each with its name, class and vertical limits (e.g. "ATHINAI TMA · C · 1500 ft – FL195"; "TATOI ATZ · GND – 2000 ft"); labels stay readable at each zoom level.
+- Hover shows name, class and limits; click shows the full details (lateral definition, vertical limits, controlling unit, callsign and frequencies, AIP source) and the legs of the route that enter it at their planned altitude.
