@@ -102,3 +102,7 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 - Server-side autorouter API client using the app account credentials (Vercel secrets AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD; OAuth client credentials). API access has been requested from autorouter; until granted, the feature must show a clear "filing not enabled yet" state.
 - AFTN addressees for Greek VFR plans generated from AIP Greece ENR 1.11 (and ENR 1.10/1.2.13 rules) per route — departure ARO/ATSU, FICs (ATHINAI/MAKEDONIA), TMAs/CTRs and military units affected — shown to the pilot for review and passed in the `addresses` field.
 - File / Delay / Cancel buttons on the flight plan export; status (filed, manual correction, rejected, …) polled and stored on the flight; DEP/ARR messages optional. Every action logged per pilot. Tests mock the autorouter API; nothing is filed for real in tests.
+
+### Map interaction for weather and NOTAMs
+- Weather hazards (thunderstorm areas, low-visibility areas, per-leg winds/hazard markers) and NOTAM areas/points are drawn as map layers that can be toggled.
+- Hovering shows a compact tooltip (e.g. "TS forecast 10:40–11:30Z, ECMWF" or the NOTAM's ID, validity and limits); clicking opens a details popover with the full decoded content, raw text and source/time, and highlights the affected leg in the navlog strip.
