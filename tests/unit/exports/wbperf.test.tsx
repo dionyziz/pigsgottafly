@@ -288,6 +288,20 @@ describe('performance sheet (MD 4.4)', () => {
     const html = renderToStaticMarkup(<PerfSheet m={m} />);
     for (const t of ['PERFORMANCE LOG', 'T.O.D.A.', 'T.O.R.R.', 'L.D.A.', 'L.R.R.', 'Vglide', 'Vapr', 'MD 4.4', 'Short dry grass']) expect(html).toContain(t);
   });
+
+  test('both sheets carry the PIC e-signature on their SIGN line', () => {
+    const doc = flight();
+    const calc = calcOf(doc, ASV);
+    const s = { name: 'Pat Pilot', signedAt: Date.UTC(2026, 10, 15, 16, 51) };
+    const perf = renderToStaticMarkup(<PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} signature={s} />);
+    const wb = renderToStaticMarkup(<WbSheet m={wbSheetModel({ doc, aircraft: ASV, pilot, calc, route: 'LGTT – LGMG' })} signature={s} />);
+    for (const html of [perf, wb]) {
+      expect(html).toMatch(/class="xp-sigline" data-field="signature"><span class="xp-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/);
+      expect(html).toContain('>P. Pilot<');
+      expect(html).toContain('signed 2026-11-15 16:51Z');
+    }
+    expect(renderToStaticMarkup(<PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} />)).not.toContain('data-testid="signature"');
+  });
 });
 
 // ---------------------------------------------------------------------------------------------

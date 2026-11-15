@@ -3,7 +3,7 @@
 // The pilot is a passenger too: <PilotDetailsDialog /> edits the pilot's own person details (plus the
 // licence number) with the same form, saved to the profile (PUT /api/me).
 import { DateInput } from '../../app/DateInput';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../data/api';
 import { EMPTY_PERSON, type Passenger, type PassengerInput, type Pilot } from '../../shared';
 import { useSession } from '../../app/session';
@@ -19,12 +19,31 @@ export interface PassengerForm {
 type SetField = <K extends keyof PassengerForm>(k: K) => (e: { target: { value: string } }) => void;
 
 /** The person form shared by passengers and the pilot (pilot: licence number instead of notes). */
-function PersonFields({ f, set, onSubmit, pilot = false }: { f: PassengerForm; set: SetField; onSubmit: (e?: React.FormEvent) => void; pilot?: boolean }) {
+/** Draw attention to the named inputs (from a "missing details" link): highlight them and focus the first. */
+function useAttention(form: React.RefObject<HTMLFormElement | null>, names: string[]) {
+  const key = names.join(',');
+  useEffect(() => {
+    const el = form.current;
+    if (!el || !key) return;
+    const inputs = key.split(',').map((n) => el.querySelector<HTMLInputElement>(`[name="${n}"]`)).filter((x): x is HTMLInputElement => !!x);
+    inputs.forEach((i) => {
+      i.classList.add('attention');
+      i.addEventListener('input', () => i.classList.remove('attention'), { once: true });
+    });
+    // after the dialog's own autofocus
+    const t = setTimeout(() => { inputs[0]?.focus(); inputs[0]?.select(); }, 60);
+    return () => clearTimeout(t);
+  }, [form, key]);
+}
+
+function PersonFields({ f, set, onSubmit, pilot = false, focus = [] }: { f: PassengerForm; set: SetField; onSubmit: (e?: React.FormEvent) => void; pilot?: boolean; focus?: string[] }) {
+  const ref = useRef<HTMLFormElement>(null);
+  useAttention(ref, focus);
   return (
-  <form className="stack" onSubmit={onSubmit}>
+  <form className="stack" onSubmit={onSubmit} ref={ref}>
       <div className="grid2">
         <label className="field"><span>Full name<span className="req" aria-hidden>*</span></span>
-          <input name="fullName" value={f.fullName} onChange={set('fullName')} required data-autofocus placeholder={pilot ? 'As on your licence' : 'As on their ID'} />
+          <input name="fullName" value={f.fullName} onChange={set('fullName')} required data-autofocus={focus.length ? undefined : true} placeholder={pilot ? 'As on your licence' : 'As on their ID'} />
         </label>
         <label className="field">Phone<input name="phone" type="tel" value={f.phone} onChange={set('phone')} placeholder="+30 …" /></label>
       </div>
@@ -73,7 +92,9 @@ export function passengerInputOf(f: PassengerForm): PassengerInput {
   };
 }
 
-export function PassengerDialog({ passenger, initialName, onClose, onSaved }: {
+export function PassengerDialog({ passenger, initialName, onClose, onSaved, focus }: {
+  /** Inputs to highlight and focus (names), from a missing-details link. */
+  focus?: string[];
   passenger: Passenger | null;
   initialName?: string;
   onClose: () => void;
@@ -104,13 +125,13 @@ export function PassengerDialog({ passenger, initialName, onClose, onSaved }: {
       <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
       <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>{passenger ? 'Save' : 'Add passenger'}</button>
     </>}>
-      <PersonFields f={f} set={set} onSubmit={submit} />
+      <PersonFields f={f} set={set} onSubmit={submit} focus={focus} />
     </Dialog>
   );
 }
 
 /** The pilot's own person details (as on the forms and for W&B), edited like a passenger's. */
-export function PilotDetailsDialog({ onClose, onSaved }: { onClose: () => void; onSaved?: (p: Pilot) => void }) {
+export function PilotDetailsDialog({ onClose, onSaved, focus }: { onClose: () => void; onSaved?: (p: Pilot) => void; focus?: string[] }) {
   const { pilot, setPilot } = useSession();
   const [f, setF] = useState<PassengerForm>(() => ({ ...passengerForm({ ...pilot, id: pilot.id, notes: '', created: 0, updated: 0 }), licenceNo: pilot.licenceNo }));
   const [busy, setBusy] = useState(false);
@@ -140,7 +161,7 @@ export function PilotDetailsDialog({ onClose, onSaved }: { onClose: () => void; 
       <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
       <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>Save</button>
     </>}>
-      <PersonFields f={f} set={set} onSubmit={submit} pilot />
+      <PersonFields f={f} set={set} onSubmit={submit} pilot focus={focus} />
     </Dialog>
   );
 }

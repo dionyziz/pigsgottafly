@@ -60,7 +60,7 @@ src/
     notams.ts              NOTAM briefing: fetchNotams (GET /api/flights/:id/notams), texts (validity, limits, decoded
                            subject), Q-line circle rings for the map, visibleNotams (relevant / show all)
     hazardWeather.ts       Open-Meteo corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid cells cached one by
-                           one): fetchHazardWeather, computeRouteHazards (editor strip + map, navlog export notes)
+                           one): fetchHazardWeather, computeRouteHazards (editor strip + map)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
     useAsync.ts            small loading hook
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
@@ -84,7 +84,8 @@ src/
                            panels/ (FlightPanel sections, NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
                            fuel, W&B, performance, aerodrome hours at the planned times (aerodromeChecks.ts), warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
-                           fpl/ (ICAO 2012 message + form), wb/ (MD 4.3 + envelope chart), performance/ (MD 4.4),
+                           fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope
+                           chart, then performance/ MD 4.4; /export/wb and /export/performance redirect to it),
                            briefing/ (NOTAM briefing)
 api/
   index.ts                 Vercel entry: restores the path from ?__path=, refuses to run without DATABASE_URL and

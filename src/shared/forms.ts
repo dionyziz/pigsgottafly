@@ -212,17 +212,24 @@ export function maskTail(s: string, keep = 2): string {
 // ---------------------------------------------------------------------------------------------
 // General Declaration
 
-/** Rows of the flight routing table on the form. */
+/** Ruled rows of the flight routing table (origin, the arrow, destination, then blank rows). */
 export const GENDEC_ROUTING_ROWS = 9;
 
 export interface GenDecContent {
   operator: string;
+  /** Marks of nationality and registration as one word ("SXASG"). */
   registration: string;
+  /** "PVT": a private flight has no flight number. */
   flightNo: string;
-  /** [DD, MM, YYYY] */
-  date: [string, string, string];
+  /** 'YYYY-MM-DD' ('' when unset). */
+  date: string;
+  /** Departure and destination codes (ICAO where there is one): "LGTT". */
   departure: string;
   arrival: string;
+  /**
+   * The routing table: the origin with the crew (the PIC, in capitals), then the destination.
+   * Only the two ends are listed: intermediate points and stops are not.
+   */
   routing: { place: string; crew: string }[];
   departureCode: string;
   arrivalCode: string;
@@ -240,21 +247,19 @@ export interface GenDecContent {
 export function genDecContent(flight: FormFlightInput, aircraft: Pick<Aircraft, 'registration' | 'massBalance' | 'operator'> | null, pilot: Pilot, passengers: Passenger[] | undefined, lookup: AerodromeLookup): GenDecContent {
   const places = routePlacesWith(flight.route, lookup);
   const people = formPeopleOf(flight.crew, aircraft ? aircraft.massBalance.stations : null, pilot, passengers);
-  const crew = people.filter((p) => p.role === 'PIC').map((p) => (p.details.fullName.trim() ? `${p.details.fullName.trim()} (PIC)` : ''));
   const pax = people.filter((p) => p.role === 'PAX').length;
   const picName = people.find((p) => p.role === 'PIC')?.details.fullName.trim() ?? '';
-  const n = GENDEC_ROUTING_ROWS;
-  const routing = Array.from({ length: n }, (_, i) => ({ place: places[i]?.code ?? '', crew: crew[i] ?? '' }));
-  if (places.length > n) routing[n - 1].place = places[places.length - 1].code;
   const first = places[0];
   const last = places.length > 1 ? places[places.length - 1] : undefined;
+  const crew = (picName || pilot.fullName.trim()).toUpperCase();
+  const routing = first ? [{ place: first.code, crew }, ...(last ? [{ place: last.code, crew: '' }] : [])] : [];
   return {
     operator: aircraft ? aircraft.operator.trim() || picName : '',
-    registration: aircraft?.registration ?? '',
-    flightNo: '',
-    date: dateParts(flight.date),
-    departure: first ? placeLong(first) : '',
-    arrival: last ? placeLong(last) : '',
+    registration: (aircraft?.registration ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(),
+    flightNo: 'PVT',
+    date: formatDate(flight.date),
+    departure: first?.code ?? '',
+    arrival: last?.code ?? '',
     routing,
     departureCode: first?.code ?? '',
     arrivalCode: last?.code ?? '',

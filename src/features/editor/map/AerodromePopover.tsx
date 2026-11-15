@@ -1,6 +1,7 @@
 // Aerodrome hover tooltip and click popover on the route map: name, elevation and the hours on the
 // flight's date (with handling) on hover; on click the hours, ATS, handling, customs, the NOTAMs that
 // change them (by NOTAM id) and the AIP text (AerodromeHours.tsx).
+import { XIcon } from '../../../app/XIcon';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { RefAerodrome } from '../../../shared/ref';
 import { AdHoursDetail, adHandlingLine, adHoursLine, type AdDayInfo } from '../AerodromeHours';
@@ -37,7 +38,7 @@ export function AerodromePopover({ x, y, a, info, airac, onClose }: { x: number;
   }, [x, y, info]);
   return (
     <div ref={ref} className="pgf-air-pop" style={pos} role="dialog" aria-label="Aerodrome" data-testid="aerodrome-pop" onMouseDown={(e) => e.stopPropagation()}>
-      <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close">×</button>
+      <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close"><XIcon /></button>
       <section className="pgf-air-sec is-open">
         <div className="pgf-air-h">
           <b className="pgf-air-type t-ad">AD</b>

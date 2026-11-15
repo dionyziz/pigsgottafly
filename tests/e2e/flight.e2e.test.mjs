@@ -290,9 +290,10 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => !document.querySelector('[data-testid=aerodrome-pop]'));
   await shot('3-panels');
 
-  // ---- 6a. take-off performance at LGTT against the club calculator (case 60)
+  // ---- 6a. take-off performance at LGTT against the club calculator (case 60). The old
+  // /export/performance link redirects to the merged W&B and performance export.
   await page.goto(`${server.url}/flights/${id}/export/performance`);
-  await page.waitFor(() => document.querySelector('[data-testid=performance-export]')?.dataset.ready === 'true', { timeout: 20000 });
+  await page.waitFor(() => location.pathname.endsWith('/export/wbperf') && document.querySelector('[data-testid=wbperf-export]')?.dataset.ready === 'true', { timeout: 20000 });
   await sleep(300);
   const perfRow = (phase, key) => page.eval((ph, k) => document.querySelector(`[data-testid=perf-${ph}] tr[data-row="${k}"] td`)?.textContent.trim() ?? null, phase, key);
   const club60 = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/club-wbp-cases.json'), 'utf8')).cases[60];
@@ -305,7 +306,8 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   const todr = parseFloat(await perfRow('takeoff', 'todr')), torr = parseFloat(await perfRow('takeoff', 'torr'));
   assert.ok(Math.abs(todr / club60.club.takeoff.todrM - 1) <= 0.03, `TODR ${todr} vs club ${club60.club.takeoff.todrM}`);
   assert.ok(Math.abs(torr / club60.club.takeoff.torrM - 1) <= 0.03, `TORR ${torr} vs club ${club60.club.takeoff.torrM}`);
-  assert.equal(await page.eval(() => document.querySelector('[data-testid=performance-export]').dataset.verdict), 'pass');
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=wbperf-export]').dataset.perfVerdict), 'pass');
+  await page.eval(() => document.querySelector('.perf-sheet').scrollIntoView());
   await page.screenshot('flight-export-performance');
 
   // ---- 3b. back in the editor: add the passenger by type-ahead, seat her rear left
@@ -385,9 +387,10 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.screenshot('flight-export-navlog');
   await pdfCheck('navlog', 1, 'landscape');
 
-  // ---- 5/6. W&B (MD 4.3): every row and total against an independent sum of mass × arm
+  // ---- 5/6. W&B (MD 4.3): every row and total against an independent sum of mass × arm (the old
+  // /export/wb link redirects to the merged export: loading sheet first, then performance)
   await page.goto(`${server.url}/flights/${id}/export/wb`);
-  await page.waitFor(() => document.querySelector('[data-testid=wb-export]')?.dataset.ready === 'true', { timeout: 20000 });
+  await page.waitFor(() => location.pathname.endsWith('/export/wbperf') && document.querySelector('[data-testid=wbperf-export]')?.dataset.ready === 'true', { timeout: 20000 });
   const wb = Object.fromEntries(await page.eval(() => [...document.querySelectorAll('[data-line]')].map((r) => [r.dataset.line, [...r.cells].slice(1).map((c) => c.textContent.trim())])));
   const mb = asv.massBalance, arm = (id) => mb.stations.find((s) => s.id === id).armM;
   const fuelKg = 144 * asv.fuel.types[0].densityKgPerL, burnKg = (4 + exp.totals.trip) * asv.fuel.types[0].densityKgPerL;
@@ -404,15 +407,17 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.equal(wb.to[1], (toM[1] / toM[0]).toFixed(3), 'take-off CG');
   assert.deepEqual([wb.burn[0], wb.burn[2]], fmt([-burnKg, -burnKg * arm('fuel')]), 'fuel burn');
   assert.deepEqual([wb.ldg[0], wb.ldg[2]], fmt(ldgM), 'landing total');
-  assert.equal(await page.eval(() => document.querySelector('[data-testid=wb-export]').dataset.verdict), 'pass');
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=wbperf-export]').dataset.wbVerdict), 'pass');
+  assert.equal(await perfRow('landing', 'mass'), `${ldgM[0].toFixed(1)} kg`, 'landing mass on MD 4.4 = W&B landing mass');
+  // one document: the loading sheet, then the performance log, each signed by the PIC
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.xp-sheet')].map((s) => s.classList.contains('wb-sheet') ? 'wb' : 'perf')), ['wb', 'perf']);
+  const sigs = await page.eval(() => [...document.querySelectorAll('.xp-sheet .xp-sigline')].map((l) => l.innerText.replace(/\s+/g, ' ').trim()));
+  assert.equal(sigs.length, 2);
+  for (const t of sigs) assert.match(t, /T\. Pilot Electronically signed \d{4}-\d{2}-\d{2} \d{2}:\d{2}Z/);
   await page.screenshot('flight-export-wb');
-  await pdfCheck('wb', 1, 'portrait');
+  await pdfCheck('wbperf', 2, 'portrait');
 
   // ---- 5. the other exports: key fields and print layout
-  await page.goto(`${server.url}/flights/${id}/export/performance`);
-  await page.waitFor(() => document.querySelector('[data-testid=performance-export]')?.dataset.ready === 'true', { timeout: 20000 });
-  assert.equal(await perfRow('landing', 'mass'), `${ldgM[0].toFixed(1)} kg`, 'landing mass on MD 4.4 = W&B landing mass');
-  await pdfCheck('performance', 1, 'portrait');
 
   const pageText = () => page.eval(() => document.querySelector('[data-testid=export-page]').innerText);
 
@@ -429,11 +434,14 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.goto(`${server.url}/flights/${id}/export/gendec`);
   await page.waitFor(() => !!document.querySelector('[data-testid=gendec]'));
   tx = await pageText();
-  assert.match(tx, /Registration SX-ASV/);
-  assert.match(tx, /Date\s*\d{4}\s*-\s*\d{2}\s*-\s*\d{2}/);
-  assert.match(tx, /Departure from DEKELIA \/ TATOI \(LGTT\) Arrival at MEGARA \(LGMG\)/);
-  assert.match(tx, /Test Pilot \(PIC\)/);
-  assert.match(tx, /Departure place: LGTT\s+Embarking\s+1\s+Through on same flight\s+0\s+Arrival place: LGMG\s+Disembarking\s+1/);
+  assert.match(tx, /Registration: SXASV\s+Flight No\.: PVT\s+Date: \d{4}-\d{2}-\d{2}/);
+  assert.match(tx, /Departure from: LGTT\s+\(Place\)\s+Arrival at: LGMG\s+\(Place\)/);
+  // routing: origin with the PIC, the arrow, destination; no intermediate points
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.gd-routing tbody tr')].slice(0, 3).map((r) => [...r.cells].map((c) => (c.querySelector('[data-testid=gendec-arrow]') ? '⇩' : c.textContent.trim())))),
+    [['LGTT', 'TEST PILOT'], ['⇩', ''], ['LGMG', '']]);
+  assert.doesNotMatch(await page.eval(() => document.querySelector('.gd-routing').innerText), /ABLONAS|ZOFRI/);
+  assert.match(tx, /Departure place:\s+Embarking\s+1\s+Through on same flight\s+0\s+Arrival place:\s+Disembarking\s+1/);
+  assert.ok(await page.eval(() => !!document.querySelector('[data-testid=gendec-nil]')), 'Declaration of Health struck through NIL');
   assert.match(tx, /If no disinsecting has been carried out during the flight/);
   // the PIC's e-signature on the declaration's signature line (as on Form 731)
   await page.waitFor(() => !!document.querySelector('.gd-sigline [data-testid=signature]'));

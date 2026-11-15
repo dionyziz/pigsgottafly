@@ -6,12 +6,10 @@
 .md42-doc-loading { padding: 40px 0; text-align: center; }
 
 /* ---------------- screen chrome (not printed) */
-.md42-status { margin-bottom: 14px; font-size: 13px; }
-.md42-status-row { display: flex; align-items: center; gap: 8px; }
-.md42-status .chip.ok { background: #e6f4ea; color: #137333; }
-.md42-sources, .md42-warnings { margin: 8px 0 0; padding: 0 0 0 18px; color: var(--muted, #666); }
-.md42-warnings { color: var(--warn, #8a5a00); }
-.md42-warnings li, .md42-sources li { margin: 2px 0; }
+.md42-status { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s3, 12px); margin: 0 0 var(--s3, 12px); font-size: var(--fs-sm, 13px); }
+.md42-sources { flex: 1; min-width: 0; color: var(--muted, #666); }
+.md42-warnings { flex-basis: 100%; margin: 4px 0 0; padding: 0 0 0 18px; color: var(--warn, #8a5a00); }
+.md42-warnings li { margin: 1px 0; }
 .md42-stage { --hair: 1px; --thick: 2px; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
 
 /* ---------------- the sheet */
@@ -40,20 +38,20 @@
 .md42 .g { display: grid; border: var(--thick) solid var(--line); border-bottom: none; }
 .md42 .g > div { border-right: var(--hair) solid var(--line); border-bottom: var(--hair) solid var(--line); position: relative; min-width: 0; overflow: hidden; }
 
-/* printed values: filled in by the planner (blue ink on screen, black on paper) */
+/* printed values: filled in by the planner (blue ink on screen, black on paper), fixed-width figures */
 .md42 .v { height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; padding: 0 calc(2 * var(--u)); white-space: nowrap; overflow: hidden;
-  font-size: calc(13 * var(--u)); font-weight: 500; color: var(--md42-ink, #17418f); font-variant-numeric: tabular-nums; letter-spacing: -0.005em; }
+  font-family: var(--mono); font-size: calc(13 * var(--u)); font-weight: 500; line-height: 1; color: var(--md42-ink, #17418f); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .md42 .v.need { background: #fff3c4; }
 .md42 .v.calm { background: #fde4e1; }
 
-/* header block */
+/* header block: captions and values vertically centred in their boxes */
 .md42 .hdr { grid-template-columns: calc(570 * var(--u)) calc(70 * var(--u)) calc(56 * var(--u)) calc(74 * var(--u)) calc(73 * var(--u)) calc(77 * var(--u)) calc(70 * var(--u)) calc(80 * var(--u)) 1fr;
   grid-template-rows: calc(24 * var(--u)) calc(26 * var(--u)) calc(25 * var(--u)); }
-.md42 .hdr .title { grid-row: 1 / 4; display: flex; align-items: flex-start; justify-content: center; font-weight: 800; font-size: calc(40 * var(--u)); line-height: 1.2; padding-top: calc(2 * var(--u)); border-right-color: transparent !important; }
-.md42 .hdr .lbl { font-size: calc(8.8 * var(--u)); font-weight: 600; letter-spacing: .02em; padding: calc(5.5 * var(--u)) calc(3 * var(--u)) 0; white-space: nowrap; }
-.md42 .hdr .lbl.big { font-size: calc(19 * var(--u)); font-weight: 800; padding-top: calc(2 * var(--u)); line-height: 1; }
-.md42 .hdr .est { font-size: calc(10.5 * var(--u)); text-align: right; padding: calc(6 * var(--u)) calc(8 * var(--u)) 0; grid-column: span 2; white-space: nowrap; }
-.md42 .hdr .val .v { font-weight: 700; }
+.md42 .hdr .title { grid-row: 1 / 4; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: calc(40 * var(--u)); line-height: 1; border-right-color: transparent !important; }
+.md42 .hdr .lbl { display: flex; align-items: center; font-size: calc(8.8 * var(--u)); font-weight: 600; letter-spacing: .02em; line-height: 1; padding: 0 calc(4 * var(--u)); white-space: nowrap; }
+.md42 .hdr .lbl.big { font-size: calc(19 * var(--u)); font-weight: 800; }
+.md42 .hdr .est { display: flex; align-items: center; justify-content: flex-end; font-size: calc(10.5 * var(--u)); line-height: 1; padding: 0 calc(6 * var(--u)); grid-column: span 2; white-space: nowrap; }
+.md42 .hdr .val .v { font-weight: 600; }
 
 /* main table */
 .md42 .tbl { grid-template-columns:
@@ -64,11 +62,9 @@
 .md42 .h.c { text-align: center; }
 .md42 .h.big { font-size: calc(13.5 * var(--u)); line-height: 1; text-transform: none; font-weight: 500; letter-spacing: 0; padding: 0 calc(3 * var(--u)); display: flex; align-items: center; white-space: nowrap; }
 .md42 .tbl .fold { border-right-color: transparent !important; }
-.md42 .tbl .dep { position: relative; min-height: 0; }
-.md42 .tbl .dep .cpn { position: absolute; inset: 0; }
 .md42 .tbl .tot-label { font-size: calc(9.5 * var(--u)); font-weight: 600; letter-spacing: .02em; display: flex; align-items: center; padding: 0 calc(4 * var(--u)); }
-.md42 .tbl .ti-title { font-size: calc(19 * var(--u)); line-height: 1; font-weight: 800; padding: calc(5 * var(--u)) calc(4 * var(--u)) 0; border-bottom-width: var(--thick); }
-.md42 .tbl .sunset .v { font-weight: 700; text-transform: uppercase; }
+.md42 .tbl .ti-title { display: flex; align-items: center; font-size: calc(19 * var(--u)); line-height: 1; font-weight: 800; padding: 0 calc(5 * var(--u)); border-bottom-width: var(--thick); }
+.md42 .tbl .sunset .v { font-weight: 600; text-transform: uppercase; }
 .md42 .tbl .total-row { border-bottom-width: var(--thick); }
 .md42 .tbl .total-row .v { font-weight: 600; }
 
@@ -80,12 +76,15 @@
 .md42 .tbl .cpn-cell { z-index: 2; overflow: visible; border: 0 !important; background: transparent; }
 .md42 .cpn { height: 100%; width: 100%; padding: 0 calc(8 * var(--u)); font-weight: 700; font-size: calc(12.5 * var(--u)); line-height: 1.08; text-align: center;
   white-space: normal; word-break: normal; overflow-wrap: normal; overflow: hidden; color: var(--md42-ink, #17418f); }
+/* the origin: the same tip-to-tip box as the names between legs, centred on the top of the first leg */
+.md42 .cpn.cpn-origin { position: absolute; left: 0; right: 0; top: calc(-27 * var(--u)); height: calc(54 * var(--u)); }
+.md42 .tbl .end-lbl { padding: calc(2.5 * var(--u)) calc(3 * var(--u)); line-height: 1; }
+.md42 .tbl .end-name { position: absolute; inset: 0; }
+.md42 .tbl .end-name.under-lbl { top: calc(10 * var(--u)); }
 
 .md42 .sub2 { display: grid; grid-template-rows: 1fr 1fr; height: 100%; }
 .md42 .sub2 > div:first-child { border-bottom: var(--hair) solid var(--line); }
 .md42 .sub2 > div { overflow: hidden; min-height: 0; }
-.md42 .sub2.end { grid-template-rows: auto 1fr; }
-.md42 .sub2.end > div:first-child { border: 0; min-height: calc(10 * var(--u)); }
 
 /* terminal information + notes */
 .md42 .foot { grid-template-columns: calc(570 * var(--u)) 1fr; border-top: none; border-bottom: var(--thick) solid var(--line); }
@@ -94,23 +93,20 @@
 .md42 .foot .ti > div { border-right: var(--hair) solid var(--line); border-bottom: var(--hair) solid var(--line); min-width: 0; overflow: hidden; position: relative; }
 .md42 .foot .ti > div:nth-child(4n) { border-right: none; }
 .md42 .foot .th { font-size: calc(11 * var(--u)); font-weight: 600; display: flex; align-items: center; padding: 0 calc(5*var(--u)); height: calc(28*var(--u)); }
-.md42 .foot .tv { height: 100%; overflow: hidden; text-align: left; font-size: calc(10.5 * var(--u)); line-height: 1.12; padding: calc(2*var(--u)) calc(4*var(--u));
-  color: var(--md42-ink, #17418f); font-weight: 500; white-space: normal; overflow-wrap: anywhere; }
+.md42 .foot .tv { height: 100%; display: flex; align-items: center; overflow: hidden; padding: calc(1.5*var(--u)) calc(5*var(--u));
+  font-size: calc(12 * var(--u)); line-height: 1.1; color: var(--md42-ink, #17418f); font-weight: 500; }
+.md42 .foot .tv .tx { min-width: 0; white-space: normal; overflow-wrap: normal; }
+.md42 .foot .tv.num { justify-content: flex-end; font-family: var(--mono); padding-right: calc(8*var(--u)); }
+.md42 .foot .tv.num .tx { white-space: nowrap; }
+/* radio frequencies: one unit per line, units and frequencies in columns */
+.md42 .foot .tv .fq { display: grid; column-gap: 0.6em; row-gap: 0.04em; align-items: baseline; white-space: nowrap; }
+.md42 .foot .fq-u { font-weight: 600; }
+.md42 .foot .fq-f { font-family: var(--mono); }
 .md42 .foot .notes { position: relative; }
-.md42 .foot .notes .th { font-size: calc(19 * var(--u)); line-height: 1; font-weight: 800; padding: calc(4*var(--u)) calc(5*var(--u)) 0; align-items: flex-start; border-bottom: var(--hair) solid var(--line); }
+.md42 .foot .notes .th { font-size: calc(19 * var(--u)); line-height: 1; font-weight: 800; border-bottom: var(--hair) solid var(--line); }
 /* ruled lines for writing in flight: real borders, so they print without "background graphics" */
 .md42 .foot .note-lines { position: absolute; left: 0; right: 0; bottom: 0; top: calc(28*var(--u)); overflow: hidden; }
 .md42 .foot .note-lines > div { height: calc(33 * var(--u)); border-bottom: var(--hair) solid var(--line); }
-.md42 .foot .note-lines .v { justify-content: flex-start; align-items: flex-end; padding: 0 calc(6*var(--u)) calc(4*var(--u)); font-size: calc(11.5 * var(--u)); }
-.md42 .foot .note-lines .nv { height: 100%; width: 100%; display: flex; align-items: flex-end; padding: 0 calc(6*var(--u)) calc(4*var(--u)); white-space: nowrap; overflow: hidden;
-  font-size: calc(11.5 * var(--u)); font-weight: 500; color: var(--md42-ink, #17418f); }
-
-/* weather hazards that did not fit the notes lines: a plain list after the sheets */
-.md42-hazards { background: #fff; color: #111; max-width: calc(1145 * var(--fit, 0.9px)); width: 100%; margin: 0 auto; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.18); font-size: 13px; line-height: 1.45; }
-.md42-hazards h2 { font-size: 16px; margin: 0 0 2px; }
-.md42-hazards-src { color: #555; margin: 0 0 8px; font-size: 12px; }
-.md42-hazards ol { margin: 0; padding-left: 22px; columns: 2; column-gap: 28px; }
-.md42-hazards li { break-inside: avoid; margin-bottom: 3px; }
 
 /* ---------------- print: A4 landscape, one sheet per page */
 @page md42 { size: A4 landscape; margin: 5mm; }
@@ -120,12 +116,5 @@
   .md42-stage { display: block; gap: 0; }
   .md42 { --u: 0.226mm; --hair: 0.2mm; --thick: 0.4mm; box-shadow: none; margin: 0 auto; break-inside: avoid; }
   .md42 + .md42 { break-before: page; }
-  .md42-hazards { break-before: page; box-shadow: none; max-width: none; padding: 0; font-size: 10pt; }
-  .md42-hazards h2 { font-size: 12pt; }
-  .md42-hazards-src { font-size: 9pt; }
   .md42 .v.need, .md42 .v.calm { background: transparent !important; }
 }
-
-/* leg values: fixed-width digits, one size per column (fit.ts) */
-.md42 .tbl .v { font-family: var(--mono); letter-spacing: 0; }
-.md42 .foot .tv.num { text-align: right; font-family: var(--mono); padding-right: calc(8*var(--u)); }

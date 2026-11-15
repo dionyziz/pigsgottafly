@@ -82,15 +82,16 @@ export function validateCrew(crew: { role: string; seat: string }[], seats: stri
 }
 
 /** Export kinds: route /flights/:id/export/:kind. */
-export const EXPORT_KINDS = ['navlog', 'form731', 'gendec', 'fpl', 'wb', 'performance', 'briefing'] as const;
+export const EXPORT_KINDS = ['navlog', 'form731', 'gendec', 'fpl', 'wbperf', 'briefing'] as const;
 export type ExportKind = (typeof EXPORT_KINDS)[number];
+/** Export kinds that were merged into another one: old links redirect there. */
+export const EXPORT_REDIRECTS: Readonly<Record<string, ExportKind>> = { wb: 'wbperf', performance: 'wbperf' };
 export const EXPORT_LABEL: Record<ExportKind, string> = {
   navlog: 'Navigation log',
   form731: 'Form 731',
   gendec: 'General Declaration',
   fpl: 'Flight plan (AFTN)',
-  wb: 'Weight & balance',
-  performance: 'Take-off & landing performance',
+  wbperf: 'Weight & balance and performance',
   briefing: 'NOTAM briefing',
 };
 

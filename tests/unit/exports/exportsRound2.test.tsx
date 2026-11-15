@@ -1,5 +1,5 @@
 // Exports, review round 2: performance verdict above MTOW / outside the AFM table and the
-// hand-checkable TODR note; weather hazards on the printed navlog notes; FPL item 18 remarks with
+// hand-checkable TODR note; FPL item 18 remarks with
 // indicators, touch-and-go / stop requests (remarks and timing); ELOT 743 transliteration.
 import { describe, expect, test } from 'vitest';
 import { fleetSeed } from '../../../tools/build_seed';
@@ -8,14 +8,10 @@ import {
   activeRequests, emptyFlightDoc, legKey, requestRemarks, requestTiming, setRequest,
   type Aircraft, type AircraftInput, type FlightCrew, type FlightDoc, type PersonDetails, type Pilot, type RoutePoint,
 } from '../../../src/shared';
-import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, takeoffDistances, landingDistances, type Hazard } from '../../../src/calc';
+import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, takeoffDistances, landingDistances } from '../../../src/calc';
 import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
 import { perfSheetModel } from '../../../src/features/exports/performance/model';
 import { buildFpl, transliterate, type FplInput } from '../../../src/features/exports/fpl/fpl';
-import {
-  buildNavlogDocument, compactHazard, computeFlightNavlog, HAZARD_NOTE_LINES, NOTE_LINE_CHARS, NOTE_LINES, packLines,
-} from '../../../src/features/exports/navlog/model';
-import { generateAtcList, atcInput } from '../../../src/data/atc';
 
 const [ASV_IN] = fleetSeed();
 const ASV: Aircraft = { ...structuredClone(ASV_IN as AircraftInput), id: 'ac_asv', created: 0, updated: 0 };
@@ -123,57 +119,6 @@ describe('performance log (MD 4.4) verdict', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-
-describe('navlog notes: weather hazards readable on the printed sheet', () => {
-  const route = [adPoint('LGTT'), vfr('LGAV/DAPORI'), vfr('LGAV/KORINTHOS'), adPoint('LGMG')];
-  const day = Date.parse('2026-11-20T00:00:00Z');
-  const hz = (leg: number, text: string): Hazard => ({
-    kind: 'cloud', level: 'danger', scope: { type: 'leg', legIndex: leg }, fromFrac: 0, toFrac: 1,
-    text: `${text}, 08:00–09:00Z`, timeFromMs: day + 8 * 3600e3, timeToMs: day + 9 * 3600e3, source: 'ECMWF IFS 0.25°, run 15 Nov 12Z', cloudBaseFt: 1700,
-  });
-  const build = (hazards: Hazard[]) => {
-    const doc: FlightDoc = { ...emptyFlightDoc('2026-11-20'), blockOff: '09:00', taxiOutMin: 15, taxiInMin: 15, aircraftId: 'ac', route };
-    const computed = computeFlightNavlog({ doc, aircraft: ASV, settings: pilot.settings, weather: null, ref: baseRef });
-    const atc = generateAtcList(atcInput(doc.route, computed.altitudesFt, REF, 2));
-    return buildNavlogDocument({ doc, aircraft: ASV, computed, atc, aerodromes: REF.aerodromes, weather: null, metar: null, nowMs: day, hazards });
-  };
-
-  test('compact hazard text', () => {
-    expect(compactHazard(hz(0, 'BKN 1700 ft · planned 1800 ft (no VFR altitude below it)'), 'L1')).toBe('L1 BKN 1700 ft, plan 1800 ft, 0800–0900Z');
-  });
-
-  test('packLines keeps every line within the width', () => {
-    const r = packLines(['aaaa', 'bbbb', 'cccc', 'dddd'], 11, 2);
-    expect(r.lines).toEqual(['aaaa · bbbb', 'cccc · dddd']);
-    expect(r.placed).toBe(4);
-    expect(packLines(['aaaa', 'bbbb', 'cccc', 'dddd', 'eeee'], 11, 2).placed).toBe(4);
-  });
-
-  test('a few hazards: on the notes lines, each line short enough to print readably; times and fuel stay', () => {
-    const out = build([0, 1, 2].map((i) => hz(i, `BKN 1700 ft · planned ${1800 + i * 100} ft (no VFR altitude below it)`)));
-    expect(out.notes.length).toBeLessThanOrEqual(NOTE_LINES);
-    for (const l of out.notes.filter((x) => x.startsWith('WX') || /^L\d/.test(x))) expect(l.length).toBeLessThanOrEqual(NOTE_LINE_CHARS);
-    const wx = out.notes.join(' ');
-    expect(wx).toContain('L1 BKN 1700 ft, plan 1800 ft');
-    expect(wx).toContain('L3 BKN 1700 ft, plan 2000 ft');
-    expect(wx).not.toMatch(/advisory/i);
-    expect(out.notes.some((x) => x.startsWith('Block-off'))).toBe(true);
-    expect(out.notes.some((x) => x.startsWith('Fuel:'))).toBe(true);
-    expect(out.hazardPage).toBeNull();
-  });
-
-  test('many hazards: the notes point to a printed hazard list that has every one in full', () => {
-    const many: Hazard[] = [];
-    for (let i = 0; i < 3; i++) for (const t of ['BKN 1700 ft · planned 1800 ft (no VFR altitude below it)', 'Visibility 4 km forecast', 'CAPE 800 J/kg: thunderstorms possible']) many.push({ ...hz(i, t), kind: t.startsWith('V') ? 'vis' : t.startsWith('C') ? 'ts' : 'cloud' });
-    const out = build(many);
-    const hzLines = out.notes.slice(0, HAZARD_NOTE_LINES);
-    for (const l of hzLines) expect(l.length).toBeLessThanOrEqual(NOTE_LINE_CHARS);
-    expect(hzLines[hzLines.length - 1]).toMatch(/\+\d+ more: see the hazard list$/);
-    expect(out.hazardPage).not.toBeNull();
-    expect(out.hazardPage!.items).toHaveLength(many.length);
-    expect(out.notes.some((x) => x.startsWith('Block-off'))).toBe(true);
-  });
-});
 
 // ---------------------------------------------------------------------------------------------
 

@@ -114,7 +114,7 @@ export function FuelSection() {
         <KV k="Endurance at block-off" v={<span className="mono">{fmtDur(fuel.enduranceMin)}</span>} sub="FPL item 19 E/" />
         <KV k="Fuel at landing" tone={fuel.landingReserveShort ? 'danger' : undefined}
           v={<span className="mono">{fuel.landingFuelL} L</span>}
-          sub={<span className="mono" data-testid="fuel-landing-endurance">{fmtDur(fuel.landingEnduranceMin)} · min {fmtDur(fuel.minLandingReserveMin)}</span>} />
+          sub={<span className="mono" data-testid="fuel-landing-endurance">{fmtDur(fuel.landingEnduranceMin)} left · reserve {fmtDur(fuel.minLandingReserveMin)}</span>} />
       </div>
       {fuel.issues.filter((w) => !/reserve not set/i.test(w.text)).map((w) => (
         <p key={w.text} className={'ep-note ' + (w.level === 'danger' ? 'danger-text' : 'warn-text')}>{w.text}</p>

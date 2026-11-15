@@ -1,53 +1,23 @@
-// Export (f): take-off and landing performance, laid out like the club's MD 4.4 performance log
+// Take-off and landing performance, laid out like the club's MD 4.4 performance log
 // (trn-docs/MD4_4_Performance_Log_C172M.pdf): departure and destination blocks in the form's
 // order, a runway/wind diagram for each, the condition-factor table, crosswind limits, the
 // weather used and a pass/fail. One A4 portrait page per sector: a flight with an intermediate
 // full stop gets a page for each take-off → landing (the landing at the stop and the take-off
-// from it included).
-//
-// Usage (ExportPage): <PerformanceExport flight={flight} />. Loads the pilot, the aircraft and the
-// weather (surface forecast / METAR at the take-off and landing times) itself.
-import type { Flight } from '../../../shared';
-import { useExportCalc } from '../wb/useExportCalc';
-import { perfSheetModel, type PerfBlock, type PerfPage, type PerfSheetModel } from './model';
+// from it included). Each page carries the PIC's signature. These pages follow the loading sheet
+// in the "Weight & balance and performance" export (../wbperf).
+import { SignLine } from '../wb/SignLine';
+import type { ShownSignature } from '../form731/Form731';
+import type { PerfBlock, PerfPage, PerfSheetModel } from './model';
 import '../wb/xp.css';
 import './performance.css';
 
-export function PerformanceExport({ flight }: { flight: Flight }) {
-  const st = useExportCalc(flight);
-  if (st.loading || !st.calc) return <div className="xp-loading muted">Loading…</div>;
-  const m = perfSheetModel({ doc: flight, aircraft: st.aircraft, pilot: st.pilot, calc: st.calc });
-  const screenWarnings = [...m.warnings, ...m.pages.flatMap((pg) => [pg.takeoff, pg.landing])
-    .filter((b, i, all) => all.indexOf(b) === i)
-    .flatMap((b) => b.warnings.map((w) => `${blockName(b)}: ${w}`))];
-  const anyWx = !!(st.calc.departure.conditions || st.calc.arrival.conditions || st.calc.stops.some((x) => x.landing.conditions || x.takeoff.conditions));
-  return (
-    <div className="xp-doc" data-testid="performance-export" data-ready={st.weatherPending ? 'false' : 'true'} data-verdict={m.verdict}>
-      <div className="xp-status no-print">
-        <div className="xp-status-row">
-          <span className={`chip ${m.verdict === 'pass' ? 'ok' : m.verdict === 'fail' ? 'danger' : 'warn'}`}>{m.verdictText}</span>
-          <span className={`chip ${st.weatherPending ? '' : anyWx ? 'ok' : 'warn'}`}>
-            {st.weatherPending ? 'Loading weather…' : anyWx ? 'Surface weather loaded' : 'No surface weather: ISA and calm'}
-          </span>
-          <span className="spacer" />
-          <button className="ghost" onClick={st.refresh} disabled={st.weatherPending}>Refresh weather</button>
-        </div>
-        {screenWarnings.length > 0 && <ul className="xp-warnings" data-testid="performance-warnings">{screenWarnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
-      </div>
-      <div className="xp-stage">
-        {m.pages.map((pg, i) => <PerfSheet key={i} m={m} page={pg} pageNo={i + 1} />)}
-      </div>
-    </div>
-  );
-}
-
 /** 'Departure', or 'Landing at stop LGSY' for a stop's block. */
-function blockName(b: PerfBlock): string {
+export function blockName(b: PerfBlock): string {
   return b.title === 'Departure' || b.title === 'Destination' ? b.title : `${b.title} ${b.aerodrome.split(' ')[0]}`;
 }
 
 /** One MD 4.4 page: the take-off and landing of one sector (the first page by default). */
-export function PerfSheet({ m, page = m.pages[0], pageNo = 1 }: { m: PerfSheetModel; page?: PerfPage; pageNo?: number }) {
+export function PerfSheet({ m, page = m.pages[0], pageNo = 1, signature }: { m: PerfSheetModel; page?: PerfPage; pageNo?: number; signature?: ShownSignature | null }) {
   const pg = page ?? { takeoff: m.departure, landing: m.arrival, speeds: m.speeds, label: '' };
   const pages = m.pages.length;
   const blocks = [pg.takeoff, pg.landing];
@@ -113,7 +83,7 @@ export function PerfSheet({ m, page = m.pages[0], pageNo = 1 }: { m: PerfSheetMo
         <span>DATE <b className="xp-fill">{m.date}</b></span>
         <span>REGISTRATION <b className="xp-fill">{m.registration}</b></span>
         <span>PILOT <b className="xp-fill">{m.pilot}</b></span>
-        <span className="sign">SIGN</span>
+        <SignLine signature={signature} />
         <span className="xp-form">MD 4.4</span>
       </footer>
     </section>
