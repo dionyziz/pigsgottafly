@@ -114,4 +114,8 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 - Hover shows name, class and limits; click shows the full details (lateral definition, vertical limits, controlling unit, callsign and frequencies, AIP source) and the legs of the route that enter it at their planned altitude.
 
 ### Weather model
-- ECMWF IFS via Open-Meteo is the model for everything (winds aloft, temperatures, clouds, visibility, thunderstorms) — the pilot's long-standing choice. No multi-model comparison. All weather shown is advisory: a quiet "Advisory · ECMWF, run hh Z" note next to weather values and warnings; official briefing (TAF/METAR/GAMET/SIGMET) remains the pilot's responsibility.
+- ECMWF IFS via Open-Meteo is the model for everything (winds aloft, temperatures, clouds, visibility, thunderstorms). No multi-model comparison.
+- The forecast run time is available where it matters (hover/details on weather values and warnings), not as a banner.
+
+### No disclaimers
+- The UI carries no legal disclaimers, "advisory" labels, "not for operational use" notes or similar boilerplate — anywhere (screens, map, exports, README-derived text). The pilot uses this daily and knows what it is. Show flight-relevant facts only.
