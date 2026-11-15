@@ -215,7 +215,7 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
       add('torr', 'T.O.R.R.', `${ceilM(d.requiredGroundM)} m`, fin(availG) ? `TORA ${r0(availG)} m` : '', okG == null ? 'warn' : okG ? 'ok' : 'bad');
       const alt = p!.alternative;
       if (alt) {
-        const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'club method (DA)');
+        const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'DA method (table at density altitude)');
         add('todr-alt', 'T.O.D.R. other method', `${ceilM(alt.requiredTotalM)} m`,
           `${name(alt.method)}, TORR ${ceilM(alt.requiredGroundM)} m; shorter, not used`);
       }
@@ -225,7 +225,7 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
       add('lrr', 'L.R.R.', `${ceilM(d.requiredGroundM)} m`, 'landing roll');
       const alt = p!.alternative;
       if (alt) {
-        const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'club method (DA)');
+        const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'DA method (table at density altitude)');
         add('ldr-alt', 'L.D.R. other method', `${ceilM(alt.requiredTotalM)} m`,
           `${name(alt.method)}; shorter, not used`);
       }

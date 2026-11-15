@@ -74,7 +74,6 @@ export function PerfSheet({ m, page = m.pages[0], pageNo = 1, signature }: { m: 
         <span>REGISTRATION <b className="xp-fill">{m.registration}</b></span>
         <span>PILOT <b className="xp-fill">{m.pilot}</b></span>
         <SignLine signature={signature} />
-        <span className="xp-form">MD 4.4</span>
       </footer>
     </section>
   );

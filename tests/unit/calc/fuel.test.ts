@@ -64,7 +64,7 @@ describe('legal final reserve at landing (NCO.OP.125 day VFR: 30 min, 10 min loc
   test('FOB covering taxi + trip but landing with 4 L (8 min) is a danger', () => {
     const p = planFuel(trip);
     expect(p).toMatchObject({ requiredL: 26, belowRequired: false, landingFuelL: 4, landingEnduranceMin: 8, minLandingReserveMin: 30, landingReserveShort: true });
-    expect(p.issues).toEqual([{ level: 'danger', text: 'Fuel at landing 4 L lasts 8 min: below the 30 min legal final reserve for day VFR (NCO.OP.125).' }]);
+    expect(p.issues).toEqual([{ level: 'danger', text: 'Fuel at landing 4 L lasts 0h08: below the 30 min legal final reserve for day VFR (NCO.OP.125).' }]);
     expect(p.warnings).toEqual(p.issues.map((i) => i.text));
   });
 

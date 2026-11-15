@@ -76,11 +76,12 @@
 .md42 .tbl .cpn-cell { z-index: 2; overflow: visible; border: 0 !important; background: transparent; }
 .md42 .cpn { height: 100%; width: 100%; padding: 0 calc(8 * var(--u)); font-weight: 700; font-size: calc(12.5 * var(--u)); line-height: 1.08; text-align: center;
   white-space: normal; word-break: normal; overflow-wrap: normal; overflow: hidden; color: var(--md42-ink, #17418f); }
-/* the origin: the same tip-to-tip box as the names between legs, centred on the top of the first leg */
-.md42 .cpn.cpn-origin { position: absolute; left: 0; right: 0; top: calc(-27 * var(--u)); height: calc(54 * var(--u)); }
+/* the origin and the name after the last row: the same tip-to-tip box as the names between legs,
+   centred on the top line of the first leg / the line above the totals */
+.md42 .cpn.cpn-origin, .md42 .cpn.cpn-bottom { position: absolute; left: 0; right: 0; top: calc(-27 * var(--u)); height: calc(54 * var(--u)); }
 .md42 .tbl .end-lbl { padding: calc(2.5 * var(--u)) calc(3 * var(--u)); line-height: 1; }
-.md42 .tbl .end-name { position: absolute; inset: 0; }
-.md42 .tbl .end-name.under-lbl { top: calc(10 * var(--u)); }
+/* 'ARRIVAL' in the bottom corner of the totals box, clear of the name on the line above it */
+.md42 .tbl .end-lbl.end-lbl-bottom { position: absolute; left: 0; bottom: 0; }
 
 .md42 .sub2 { display: grid; grid-template-rows: 1fr 1fr; height: 100%; }
 .md42 .sub2 > div:first-child { border-bottom: var(--hair) solid var(--line); }

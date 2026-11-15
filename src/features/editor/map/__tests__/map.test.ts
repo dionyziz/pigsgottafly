@@ -139,11 +139,14 @@ describe('leg label text', () => {
     expect(fmtDistance(9.96)).toBe('10 NM');
     expect(fmtDistance(0.04)).toBe('0.0 NM');
   });
-  it('altitude in hundreds of feet', () => {
-    expect(fmtAltitude(3000)).toBe('A030');
-    expect(fmtAltitude(2549)).toBe('A025');
-    expect(fmtAltitude(12500)).toBe('A125');
-    expect(fmtAltitude(NaN)).toBe('A---');
+  it('altitude in feet, flight levels from the transition altitude', () => {
+    expect(fmtAltitude(3000)).toBe('3000');
+    expect(fmtAltitude(2549)).toBe('2549');
+    expect(fmtAltitude(6000)).toBe('6000');
+    expect(fmtAltitude(6500)).toBe('FL065');
+    expect(fmtAltitude(9500)).toBe('FL095');
+    expect(fmtAltitude(12500)).toBe('FL125');
+    expect(fmtAltitude(NaN)).toBe('---');
   });
   it('parses what the pilot types', () => {
     expect(parseAltitudeInput('')).toBeNull();

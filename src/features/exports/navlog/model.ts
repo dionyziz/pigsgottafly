@@ -3,8 +3,14 @@
 //
 // Ported from the v2 sheet (js/app.js calc() "vals" + sheetHtml()):
 //   - 9 legs per sheet; longer routes continue on further sheets. A continuation sheet starts at
-//     the checkpoint that ended the previous sheet; the totals (whole flight) and the terminal
-//     information are repeated on every sheet; the notes box is left blank.
+//     the checkpoint that ended the previous sheet; the totals (whole flight) are repeated on every
+//     sheet; the notes box is left blank.
+//   - Checkpoint names sit on the line between two legs, the origin on the top line of the first
+//     leg and the name after the ninth leg on the line above the totals: all at the same spacing.
+//     The destination is printed once, after its leg ('ARRIVAL' marks it when it ends a full sheet).
+//   - Terminal information: each sheet lists only the units its legs touch (the aerodromes they
+//     start from, end at or pass, the airspace and FIS sectors they enter); rows added by hand,
+//     and rows whose legs are not known, go on every sheet.
 //   - Header TEMP / WIND / SKY / QNH / RUNWAY: the departure on the first sheet, the destination
 //     on the last sheet (a single sheet shows the departure, as v2), blank on middle sheets.
 //   - BLOCK START is the planned block-off; TAKE-OFF, BLOCK END, ATIS, ETA/ATA, actual GS, fuel
@@ -17,10 +23,10 @@ import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '.
 import { requestTiming } from '../../../shared';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
-  buildLegs, defaultAltitudes, fmtClock, fmtHdg, fmtHmm, fmtSigned, isLocalFlight, magneticVariation, navlogAircraft, planFuel,
+  buildLegs, defaultAltitudes, fmtAltitude, fmtClock, fmtDuration, fmtHdg, fmtSigned, isLocalFlight, magneticVariation, navlogAircraft, planFuel,
   computeNavlog, type FuelPlan, type LegGeometry, type NavlogResult,
 } from '../../../calc';
-import { endpointAerodrome } from '../../../data/atc';
+import { atcEntryLegs, endpointAerodrome } from '../../../data/atc';
 import {
   chooseSurface, sampleSurface, surfaceConditions, windProviderFromLegs, fmtSky,
   type RouteWeather, type SurfaceConditions, type SurfaceSample,
@@ -132,13 +138,18 @@ export interface NavlogSheet {
   legs: (SheetLeg | null)[];
   /** LEGS_PER_SHEET − 1 checkpoint names between the rows ('' = none). */
   checkpoints: string[];
+  /** 'ARRIVAL' when the destination ends this sheet's last row. */
   bottomLabel: string;
+  /** The checkpoint ending the sheet's last row ('' when that row is unused). */
   bottomName: string;
+  /** Terminal information for this sheet's legs. */
+  terminal: TerminalRow[];
   totals: { dist: string; ete: string; fuel: string; sunset: string };
 }
 
 export interface NavlogDocument {
   sheets: NavlogSheet[];
+  /** Terminal information of the whole flight (each sheet has its own subset). */
   terminal: TerminalRow[];
   /** Planning warnings (shown on screen, not printed). */
   warnings: string[];
@@ -161,6 +172,8 @@ export interface SheetBuildInput {
   computed: NavlogComputed;
   /** The flight's ATC list (doc.atc, or the generated one). */
   atc: AtcEntry[];
+  /** Legs each generated ATC row relates to (data/atc atcLegRelevance); absent = every row on every sheet. */
+  atcRelevance?: Map<string, number[]>;
   aerodromes: RefAerodrome[];
   weather: RouteWeather | null;
   metar: MetarTafResult | null;
@@ -304,11 +317,20 @@ export function terminalRows(atc: AtcEntry[], aerodromes: RefAerodrome[]): Termi
   });
 }
 
+/** The ATC rows for the legs [from, to) of one sheet (all of them when the legs are not known). */
+export function sheetAtc(atc: AtcEntry[], relevance: Map<string, number[]> | undefined, from: number, to: number): AtcEntry[] {
+  if (!relevance || to <= from) return atc;
+  return atc.filter((e) => {
+    const legs = atcEntryLegs(e, relevance);
+    return legs === null || legs.some((i) => i >= from && i < to);
+  });
+}
+
 function legRow(nl: NavlogResult['legs'][number]): SheetLeg {
   const windShown = !nl.windMissing && isFinite(nl.windDirDeg) && isFinite(nl.windKt);
   return {
     tc: fmtHdg(nl.tc),
-    alt: isFinite(nl.altFt) ? String(nl.altFt) : '',
+    alt: isFinite(nl.altFt) ? fmtAltitude(nl.altFt) : '',
     wd: windShown ? fmtHdg(nl.windDirDeg) : '',
     ws: windShown ? String(nl.windKt) : '',
     temp: isFinite(nl.tempC) ? String(nl.tempC) : '',
@@ -322,8 +344,8 @@ function legRow(nl: NavlogResult['legs'][number]): SheetLeg {
     dist: num(nl.dist),
     rem: num(nl.distRem),
     gs: num(nl.gs),
-    ete: nl.ete === undefined ? '' : fmtHmm(nl.ete),
-    ate: nl.ateRem === undefined ? '' : fmtHmm(nl.ateRem),
+    ete: nl.ete === undefined ? '' : fmtDuration(nl.ete),
+    ate: nl.ateRem === undefined ? '' : fmtDuration(nl.ateRem),
     fuel: num(nl.fuel),
     altMissing: !isFinite(nl.altFt),
     windMissing: nl.windMissing,
@@ -363,7 +385,7 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const rows = navlog.legs.map(legRow);
   const totals = {
     dist: nLegs ? String(navlog.totals.dist) : '',
-    ete: nLegs ? fmtHmm(navlog.totals.ete) : '',
+    ete: nLegs ? fmtDuration(navlog.totals.ete) : '',
     fuel: nLegs && burn && burn > 0 ? String(navlog.totals.fuel) : '',
     sunset: navlog.sunsetMin !== null && nLegs ? `SUNSET ${fmtClock(navlog.sunsetMin)}Z` : '',
   };
@@ -395,8 +417,9 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
       topName: s === 0 ? name(0) : name(off),
       legs: sheetLegs,
       checkpoints: cps,
-      bottomLabel: last ? 'ARRIVAL' : '',
-      bottomName: last ? (route.length > 1 ? name(route.length - 1) : '') : name(off + LEGS_PER_SHEET),
+      bottomLabel: last && off + LEGS_PER_SHEET === nLegs ? 'ARRIVAL' : '',
+      bottomName: off + LEGS_PER_SHEET <= nLegs ? name(off + LEGS_PER_SHEET) : '',
+      terminal: terminalRows(sheetAtc(input.atc, input.atcRelevance, off, Math.min(nLegs, off + LEGS_PER_SHEET)), input.aerodromes),
       totals,
     });
   }

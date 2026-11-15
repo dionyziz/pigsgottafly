@@ -113,12 +113,10 @@ export function fitSheets(root: HTMLElement | null) {
     // Header block: one size for every value.
     for (const els of groupBy(lines, (el) => el.dataset.fitGroup)) shareSize(els);
 
-    // Checkpoint names between the legs and the origin (same box: tip to tip) at one size; the
-    // arrival box under its label at that size or smaller.
-    const cps = [...sheet.querySelectorAll<HTMLElement>('.cpn:not(.cpn-end)')];
+    // Checkpoint names (origin, between the legs, after the last row: the same box, tip to tip) at one size.
+    const cps = [...sheet.querySelectorAll<HTMLElement>('.cpn')];
     const px = Math.min(...cps.map((el) => fitCheckpoint(el, uPx)));
     if (Number.isFinite(px)) cps.forEach((el) => fitCheckpoint(el, uPx, px));
-    sheet.querySelectorAll<HTMLElement>('.cpn-end').forEach((el) => fitCheckpoint(el, uPx, Number.isFinite(px) ? px : Infinity, 0.8, 0.95));
 
     // Terminal information: one size for the one-line cells (field, elevation, runways, a single
     // radio unit), one per number of radio units for the others, never larger than the one-line size.

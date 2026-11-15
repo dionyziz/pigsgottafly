@@ -21,6 +21,11 @@ function settingsPatch(s: unknown): Partial<PilotSettings> {
       return true;
     });
   }
+  if ('defaultAlternate' in i) {
+    const v = i.defaultAlternate == null ? '' : String(i.defaultAlternate).trim().toUpperCase();
+    if (v && !/^[A-Z0-9]{2,8}$/.test(v)) throw badRequest('defaultAlternate must be an aerodrome code');
+    out.defaultAlternate = v || null;
+  }
   if ('windModel' in i) {
     if (!(String(i.windModel) in WIND_MODELS)) throw badRequest('unknown windModel');
     out.windModel = i.windModel as PilotSettings['windModel'];

@@ -3,7 +3,7 @@
 //
 // Two methods (PerfMethod), both on the same AFM tables (data/aircraft/reims-f172m.json):
 //
-//   'club' (default): the Aeroclub Mesogeion MD 4.4 method, reverse-engineered from 90 answers of
+//   'da' (default; was 'club'): the Aeroclub Mesogeion MD 4.4 method, reverse-engineered from 90 answers of
 //     its online calculator (tests/fixtures/club-wbp-cases.json, tests/unit/calc/club.test.ts):
 //       - enter the AFM table at the DENSITY altitude (the MD 4.4 sheet lists DA), no separate
 //         temperature correction; DA below 0 ft uses the 0 ft column;
@@ -40,8 +40,9 @@ import type { PerformanceTables, DistancePair } from '../shared/types.js';
 import type { RefRunway } from '../shared/ref.js';
 import { norm180, norm360, rad } from './nav.js';
 
-export type PerfMethod = 'club' | 'afm';
-export const DEFAULT_PERF_METHOD: PerfMethod = 'club';
+/** 'da': AFM table at density altitude with the planning factors (the default); 'afm': the AFM method at pressure altitude. */
+export type PerfMethod = 'da' | 'afm';
+export const DEFAULT_PERF_METHOD: PerfMethod = 'da';
 
 export interface WindComponents {
   /** Positive = headwind, negative = tailwind, kt. */
@@ -151,7 +152,7 @@ export interface PerfConditions {
   surface: string | null;
   /** Slope in the direction of travel, %: positive uphill. */
   slopePct: number;
-  /** Default DEFAULT_PERF_METHOD ('club'). */
+  /** Default DEFAULT_PERF_METHOD ('da'). */
   method?: PerfMethod;
 }
 
@@ -266,7 +267,7 @@ export function takeoffDistances(tables: PerformanceTables, c: PerfConditions): 
   const rows = [...t.rows].sort((a, b) => a.massKg - b.massKg);
   if (!rows.length || !t.altitudesFt.length) throw new Error('no take-off table');
   const masses = rows.map((r) => r.massKg);
-  const alt = method === 'club' ? densityAltitudeFt(c.pressureAltFt, c.oatC) : c.pressureAltFt;
+  const alt = method === 'da' ? densityAltitudeFt(c.pressureAltFt, c.oatC) : c.pressureAltFt;
   let extrapolated = alt > t.altitudesFt[t.altitudesFt.length - 1] || c.massKg > masses[masses.length - 1];
 
   /** Distances for headwind column index hi, at (mass, alt). */
@@ -278,7 +279,7 @@ export function takeoffDistances(tables: PerformanceTables, c: PerfConditions): 
   };
 
   let ground: number, total: number, temperature = 1, wind = 1;
-  if (method === 'club') {
+  if (method === 'da') {
     [ground, total] = atColumn(0);
     wind = windFactor(c.headwindKt, tables.landing.headwindDecreasePer5Kt || 0.1, notes);
   } else {
@@ -305,12 +306,12 @@ export function landingDistances(tables: PerformanceTables, c: PerfConditions): 
   const l = tables.landing;
   const notes: string[] = [];
   if (!l.altitudesFt.length) throw new Error('no landing table');
-  const alt = method === 'club' ? densityAltitudeFt(c.pressureAltFt, c.oatC) : c.pressureAltFt;
+  const alt = method === 'da' ? densityAltitudeFt(c.pressureAltFt, c.oatC) : c.pressureAltFt;
   const p = interpPair(l.altitudesFt, l.distances, alt);
   let extrapolated = p.extrapolated || c.headwindKt < -10;
   if (l.massKg > 0 && c.massKg > l.massKg + 1e-9) { extrapolated = true; notes.push(`Landing mass above the table mass ${l.massKg} kg.`); }
   const wind = windFactor(c.headwindKt, l.headwindDecreasePer5Kt || 0.1, notes);
-  const temperature = method === 'club' ? 1 : tempFactor(l.altitudesFt, l.standardTempC, c.pressureAltFt, c.oatC, l.tempIncreasePer15C);
+  const temperature = method === 'da' ? 1 : tempFactor(l.altitudesFt, l.standardTempC, c.pressureAltFt, c.oatC, l.tempIncreasePer15C);
   const ground = p.v[0];
   const total = p.v[1];
   // Downhill is adverse for landing.
@@ -466,11 +467,11 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
     else {
       // Both methods; the longer TODR / LDR is used (conservative), the other is kept for display.
       // (Take-off: TODR and TORR come from the same table row, so they order the same way.)
-      const club = compute(input.tables, { ...cond, method: 'club' });
+      const da = compute(input.tables, { ...cond, method: 'da' });
       const afm = compute(input.tables, { ...cond, method: 'afm' });
-      const afmLonger = afm.requiredTotalM > club.requiredTotalM + 1e-9;
-      distances = afmLonger ? afm : club;
-      alternative = afmLonger ? club : afm;
+      const afmLonger = afm.requiredTotalM > da.requiredTotalM + 1e-9;
+      distances = afmLonger ? afm : da;
+      alternative = afmLonger ? da : afm;
     }
     warnings.push(...(distances.notes || []));
     if (distances.extrapolated) warnings.push('Outside the AFM table: distances extrapolated.');

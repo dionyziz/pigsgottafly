@@ -89,7 +89,7 @@ describe('take-off and landing, club method (default)', () => {
     expect(da).toBeCloseTo(1800, 9);
     const f = da / 2500;
     const d = takeoffDistances(T, { ...base, oatC: 30, headwindKt: 10 });
-    expect(d.method).toBe('club');
+    expect(d.method).toBe('da');
     expect(d.factors.temperature).toBe(1);
     expect(d.groundM).toBeCloseTo((263 + f * (317 - 263)) * 0.8, 9);
     expect(d.totalM).toBeCloseTo((465 + f * (582 - 465)) * 0.8, 9);

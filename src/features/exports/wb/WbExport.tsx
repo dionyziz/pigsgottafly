@@ -125,7 +125,6 @@ export function WbSheet({ m, signature }: { m: WbSheetModel; signature?: ShownSi
         <span>REGISTR <b className="xp-fill">{m.registration}</b></span>
         <span>PILOT <b className="xp-fill">{m.pilot}</b></span>
         <SignLine signature={signature} />
-        <span className="xp-form">MD 4.3</span>
       </footer>
     </section>
   );

@@ -1,6 +1,6 @@
-// Leg label text and placement (VFR-chart style: "062°  24 NM" along the leg, altitude "A030").
+// Leg label text and placement (VFR-chart style: "062°  24 NM" along the leg, altitude "3000").
 // Pure functions, unit-tested.
-import { fmtHdg } from '../../../calc';
+import { fmtAltitude as fmtAlt, fmtHdg } from '../../../calc';
 import type { ScreenPoint } from './snap';
 
 /** Magnetic course as on VFR charts: '062°', 0 → '360°'; '---°' when unknown. */
@@ -15,17 +15,16 @@ export function fmtDistance(nm: number): string {
   return `${Math.round(nm)} NM`;
 }
 
-/** Altitude label: hundreds of feet with an 'A' (altitude, QNH), e.g. 3000 → 'A030'; 'A---' if unknown. */
+/** Altitude label: the app-wide altitude format (calc fmtAltitude): '3000', 'FL065'; '---' if unknown. */
 export function fmtAltitude(ft: number): string {
-  if (!isFinite(ft)) return 'A---';
-  return `A${String(Math.max(0, Math.round(ft / 100))).padStart(3, '0')}`;
+  return fmtAlt(ft);
 }
 
 /**
  * Parse what the pilot typed in the altitude box.
  *   ''                → null (remove the override: back to the default)
  *   '3500', '3500ft'  → 3500
- *   '35', 'A035'      → 3500 (hundreds of feet, as on the label)
+ *   '35', 'A035'      → 3500 (hundreds of feet)
  *   'FL055'           → 5500
  * Anything else (or outside 0…20 000 ft) → NaN.
  */
@@ -46,8 +45,8 @@ export type LabelMode = 'full' | 'compact' | 'hidden';
 /**
  * How a leg label is laid out along a leg of this many screen pixels. Every visible label carries the
  * magnetic course, the distance and the altitude (as on VFR charts):
- *   full     one row, "062° │ 24 NM │ A030" (about 120 px wide)
- *   compact  two smaller rows, "062° 24 NM" over "A030" (about 64 px wide)
+ *   full     one row, "062° │ 24 NM │ 3000" (about 120 px wide)
+ *   compact  two smaller rows, "062° 24 NM" over "3000" (about 64 px wide)
  *   hidden   the leg is too short on screen for any label (zoom in)
  */
 export function labelMode(screenLenPx: number): LabelMode {

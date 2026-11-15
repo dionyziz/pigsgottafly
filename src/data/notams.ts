@@ -4,6 +4,7 @@
 // circle. No DOM here; unit-tested in tests/unit/data/notams.test.ts.
 import type { Notam, NotamBriefing } from '../shared/briefing';
 import { request } from './api';
+import { TRANSITION_ALTITUDE_FT } from '../calc';
 
 export type { Notam, NotamBriefing };
 
@@ -49,7 +50,7 @@ export function fmtNotamLevel(ft: number, upper: boolean): string {
   if (!upper && ft <= 0) return 'SFC';
   if (upper && ft >= 99900) return 'UNL';
   // Q-line limits are flight levels; below the usual Greek transition altitude say feet
-  if (ft < 6000) return `${Math.round(ft)} ft`;
+  if (ft < TRANSITION_ALTITUDE_FT) return `${Math.round(ft)} ft`;
   return `FL${String(Math.round(ft / 100)).padStart(3, '0')}`;
 }
 

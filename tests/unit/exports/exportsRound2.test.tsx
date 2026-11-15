@@ -46,7 +46,7 @@ const calcOf = (doc: FlightDoc) =>
 // ---------------------------------------------------------------------------------------------
 
 describe('performance distances: raw table figures', () => {
-  test.each(['club', 'afm'] as const)('%s: corrected = table × wind × temperature; required = corrected × condition × safety', (method) => {
+  test.each(['da', 'afm'] as const)('%s: corrected = table × wind × temperature; required = corrected × condition × safety', (method) => {
     const c = { massKg: 1000, pressureAltFt: 800, oatC: 30, headwindKt: 10, surface: null, slopePct: 2, method };
     for (const d of [takeoffDistances(ASV.performance, c), landingDistances(ASV.performance, c)]) {
       expect(d.totalM).toBeCloseTo(d.tableTotalM * d.factors.temperature * (d.factors.wind ?? 1), 6);

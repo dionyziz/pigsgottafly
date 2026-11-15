@@ -22,6 +22,7 @@
 // map can mark that stretch without naming the leg; the strip/export prefix the leg.
 //
 // Everything here is advisory (model guidance); the official briefing remains the pilot's job.
+import { fmtAltitude } from './nav.js';
 
 /** Cloud cover on one pressure level. */
 export interface HazardLevel {
@@ -180,7 +181,7 @@ function aggregate(hits: Hit[], altFt: number, scope: Hazard['scope'], source: s
       h.level = COVER_RANK[cover] >= 3 ? 'danger' : 'warn';
       h.cloudBaseFt = round100(base);
       if (usable) h.suggestedMaxAltFt = maxAlt;
-      text = `${cover} ${round100(base)} ft · planned ${Math.round(altFt)} ft` + (usable ? ` (highest VFR ≈ ${maxAlt} ft)` : ' (no VFR altitude below it)');
+      text = `${cover} ${round100(base)} ft · planned ${fmtAltitude(altFt, { unit: true })}` + (usable ? ` (highest VFR ≈ ${fmtAltitude(maxAlt, { unit: true })})` : ' (no VFR altitude below it)');
     }
     h.text = `${text}, ${timeRange(tFrom, tTo)}`;
     out.push(h);
@@ -290,7 +291,7 @@ export function reportHazards(r: ReportHazardInput, o: { end: 'departure' | 'des
       const maxAlt = floor100(low.baseMsl - VFR_CLOUD_CLEARANCE_FT);
       const usable = maxAlt >= o.elevFt + MIN_HEIGHT_FT;
       out.push({ ...base, kind: 'cloud', level: COVER_RANK[worst.cover] >= 3 ? 'danger' : 'warn',
-        text: `${low.cover} ${round100(low.baseMsl)} ft in ${r.label.split(' ')[0]} · planned ${Math.round(o.altFt)} ft` + (usable ? ` (highest VFR ≈ ${maxAlt} ft)` : ' (no VFR altitude below it)'),
+        text: `${low.cover} ${round100(low.baseMsl)} ft in ${r.label.split(' ')[0]} · planned ${fmtAltitude(o.altFt, { unit: true })}` + (usable ? ` (highest VFR ≈ ${fmtAltitude(maxAlt, { unit: true })})` : ' (no VFR altitude below it)'),
         cloudBaseFt: round100(low.baseMsl), ...(usable ? { suggestedMaxAltFt: maxAlt } : {}) });
     }
   }

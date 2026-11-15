@@ -68,6 +68,20 @@ describe('profile', () => {
     expect((await a.call('PUT', 'me', { dateOfBirth: '1990-13-45' })).status).toBe(400);
     expect((await b.call('GET', 'me')).body.fullName).toBe('');
   });
+  test('default alternate: pre-filled on new flights, not when the flight ends there or alternates are given', async () => {
+    const c = client(api.base);
+    await c.login('sub-altn', 'altn@example.com');
+    expect((await c.call('PUT', 'me', { settings: { defaultAlternate: 'not an aerodrome!' } })).status).toBe(400);
+    const me = await c.call('PUT', 'me', { homeAerodrome: 'LGTT', settings: { defaultAlternate: 'lgav' } });
+    expect(me.body.settings.defaultAlternate).toBe('LGAV');
+    expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual(['LGAV']);
+    expect((await c.call('POST', 'flights', { options: { alternates: ['LGMG'] } })).body.options.alternates).toEqual(['LGMG']);
+    await c.call('PUT', 'me', { homeAerodrome: 'LGAV' });
+    expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
+    await c.call('PUT', 'me', { settings: { defaultAlternate: null } });
+    await c.call('PUT', 'me', { homeAerodrome: 'LGTT' });
+    expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
+  });
 });
 
 describe('hangar default aircraft', () => {

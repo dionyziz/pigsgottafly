@@ -113,12 +113,12 @@ function Endpoint({ e }: { e: EndpointCalc }) {
                 v={<span className="mono">{m(p.distances.requiredGroundM)} / {m(p.availableGroundM)}</span>} />
               <KV k="TODR / TODA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : extrap ? 'warn' : undefined}
                 v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
-                sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="todr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="todr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span>}</>} />
+                sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="todr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="todr-methods">{p.distances.method === 'afm' ? 'AFM' : 'DA'} method; {p.alternative.method === 'afm' ? 'AFM' : 'DA'} {m(p.alternative.requiredTotalM)}</span>}</>} />
             </>
           ) : (
             <KV k="LDR / LDA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : extrap ? 'warn' : undefined}
               v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
-              sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="ldr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="ldr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span>}</>} />
+              sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="ldr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="ldr-methods">{p.distances.method === 'afm' ? 'AFM' : 'DA'} method; {p.alternative.method === 'afm' ? 'AFM' : 'DA'} {m(p.alternative.requiredTotalM)}</span>}</>} />
           ))}
         </div>
       )}

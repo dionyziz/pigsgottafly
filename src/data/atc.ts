@@ -302,6 +302,75 @@ export function generateAtcList(input: AtcGenInput): AtcGenOutput {
 }
 
 /**
+ * Which legs each generated ATC row relates to, by the row's source (the part of its sourceKey
+ * before the callsigns): 'ad:LGTT' (departure: first leg; destination: last leg; an aerodrome
+ * passed or used as a stop: the legs passing it, as generateAtcList finds them), 'as:ATHINAI TMA'
+ * (the legs entering it at their altitude), 'fis:ATHINAI INFORMATION' (the legs in that sector).
+ * Leg indices are 0-based. Used to print on each navlog sheet only the units its legs touch.
+ */
+export function atcLegRelevance(input: AtcGenInput): Map<string, number[]> {
+  const { route, aerodromes, airspaces, fis, enrouteRadiusNm } = input;
+  const legs =
+    input.legs.length || route.length < 2
+      ? input.legs
+      : route.slice(1).map((to, i) => ({ from: route[i], to, altFt: NaN }));
+  const out = new Map<string, number[]>();
+  const add = (k: string, i: number) => {
+    const v = out.get(k) ?? [];
+    if (!v.includes(i)) v.push(i);
+    out.set(k, v);
+  };
+  if (!legs.length) return out;
+  const last = legs.length - 1;
+  const dep = route.length ? endpointAerodrome(route[0], aerodromes) : null;
+  const arr = route.length > 1 ? endpointAerodrome(route[route.length - 1], aerodromes) : null;
+  if (dep) add(`ad:${aerodromeKey(dep)}`, 0);
+  if (arr) add(`ad:${aerodromeKey(arr)}`, last);
+  for (const a of aerodromes) {
+    if (a.water || !a.freqs.length || a.id === dep?.id || a.id === arr?.id) continue;
+    const zone = a.zones.reduce((m, z) => Math.max(m, z.radiusNm), 0);
+    legs.forEach((L, i) => {
+      const d = pointSegDistNm(a, L.from, L.to).dist;
+      if ((enrouteRadiusNm >= 0 && d <= enrouteRadiusNm) || (zone > 0 && d <= zone)) add(`ad:${aerodromeKey(a)}`, i);
+    });
+  }
+  legs.forEach((L, i) => {
+    for (const v of airspaces) {
+      const lo = parseLevelFt(v.lower);
+      const hi = parseLevelFt(v.upper);
+      const alt = L.altFt;
+      const altOk = !Number.isFinite(alt) || ((Number.isNaN(lo) || alt >= lo) && (Number.isNaN(hi) || alt <= hi));
+      if (altOk && segmentEntersPolygon(L.from, L.to, v.polygon)) add(`as:${v.name}`, i);
+    }
+    for (let k = 0; k <= 8; k++) {
+      const p = { lat: L.from.lat + ((L.to.lat - L.from.lat) * k) / 8, lon: L.from.lon + ((L.to.lon - L.from.lon) * k) / 8 };
+      const u = fis.units.find((x) => x.side === fisSide(p, fis.boundary));
+      if (u) add(`fis:${u.callsign}`, i);
+    }
+  });
+  return out;
+}
+
+/**
+ * The legs an ATC row relates to (see atcLegRelevance), or null when that is not known: a row
+ * added by hand (no sourceKey) or one the current route no longer generates. Null rows belong on
+ * every navlog sheet.
+ */
+export function atcEntryLegs(e: Pick<AtcEntry, 'sourceKey'>, relevance: Map<string, number[]>): number[] | null {
+  const k = e.sourceKey;
+  if (!k) return null;
+  let keys: string[];
+  const ad = /^ad:([^:]+)/.exec(k);
+  if (ad) keys = [`ad:${ad[1]}`];
+  else if (k.startsWith('as:')) keys = [k.slice(0, k.lastIndexOf(':') > 2 ? k.lastIndexOf(':') : k.length)];
+  else if (k.startsWith('fis:')) keys = k.slice(4).split('+').map((cs) => `fis:${cs}`);
+  else return null;
+  const found = keys.filter((x) => relevance.has(x));
+  if (!found.length) return null;
+  return [...new Set(found.flatMap((x) => relevance.get(x)!))].sort((a, b) => a - b);
+}
+
+/**
  * Regenerate an edited list: generated rows are replaced by the new generation; rows added by hand
  * (sourceKey null) are kept, at the end, in their order. Generated rows the pilot edited are kept
  * as edited when the generator still produces their sourceKey.

@@ -56,7 +56,6 @@
 /* the signature line, with the PIC's e-signature standing on it */
 .xp-sign .xp-sigline { position: relative; flex: 1; border-bottom: 0.25mm solid #111; min-width: 30mm; height: 1em; }
 .xp-pic-signature { position: absolute; left: 4mm; bottom: 0.4mm; font-weight: 400; text-align: left; }
-.xp-sign .xp-form { font-weight: 400; color: #555; }
 
 @page xp { size: A4 portrait; margin: 0; }
 @media print {

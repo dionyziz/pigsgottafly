@@ -73,7 +73,7 @@ describe('landing: both methods, the longer LDR used', () => {
   test('hot day: the AFM figure (longer) is used, the club one is kept as the alternative', () => {
     const p = aerodromePerformance(hot);
     expect(p.distances!.method).toBe('afm');
-    expect(p.alternative!.method).toBe('club');
+    expect(p.alternative!.method).toBe('da');
     expect(p.distances!.requiredTotalM).toBeCloseTo(638.3, 0);
     expect(Math.round(p.alternative!.requiredTotalM)).toBe(586);
     expect(p.marginM).toBeCloseTo(1000 - p.distances!.requiredTotalM, 9);
@@ -81,7 +81,7 @@ describe('landing: both methods, the longer LDR used', () => {
     const pa = pressureAltitudeFt(861, 1013);
     const c = { massKg: 1043, pressureAltFt: pa, oatC: 36, headwindKt: 0, surface: null, slopePct: 0 };
     expect(p.distances!.requiredTotalM).toBeCloseTo(landingDistances(T, { ...c, method: 'afm' }).requiredTotalM, 9);
-    expect(p.alternative!.requiredTotalM).toBeCloseTo(landingDistances(T, { ...c, method: 'club' }).requiredTotalM, 9);
+    expect(p.alternative!.requiredTotalM).toBeCloseTo(landingDistances(T, { ...c, method: 'da' }).requiredTotalM, 9);
   });
 
   test('cold or ISA day: the methods agree within ~2 %; never shorter than the club figure', () => {
@@ -89,18 +89,18 @@ describe('landing: both methods, the longer LDR used', () => {
     // only by the DA/PA column interpolation.
     for (const oatC of [-10, 0, 10, 15]) {
       const p = aerodromePerformance({ ...hot, oatC });
-      const club = p.distances!.method === 'club' ? p.distances! : p.alternative!;
+      const club = p.distances!.method === 'da' ? p.distances! : p.alternative!;
       expect(p.distances!.requiredTotalM).toBeGreaterThanOrEqual(club.requiredTotalM);
       expect(p.distances!.requiredTotalM / club.requiredTotalM).toBeLessThan(1.02);
     }
   });
 
   test('an explicit method computes that method only', () => {
-    const p = aerodromePerformance({ ...hot, method: 'club' });
-    expect(p.distances!.method).toBe('club');
+    const p = aerodromePerformance({ ...hot, method: 'da' });
+    expect(p.distances!.method).toBe('da');
     expect(p.alternative).toBeNull();
-    const to = aerodromePerformance({ ...hot, phase: 'takeoff', method: 'club' });
-    expect(to.distances!.method).toBe('club');
+    const to = aerodromePerformance({ ...hot, phase: 'takeoff', method: 'da' });
+    expect(to.distances!.method).toBe('da');
     expect(to.alternative).toBeNull();
   });
 });
@@ -116,9 +116,9 @@ describe('take-off: both methods, the longer TODR used', () => {
   test.each([-10, -5, 0, 5])('OAT %i °C: AFM TODR/TORR (≈ 754/412 m) used, the club figure kept as the alternative', (oatC) => {
     const p = aerodromePerformance({ ...cold, oatC });
     const afm = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'afm' });
-    const club = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'club' });
+    const club = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'da' });
     expect(p.distances!.method).toBe('afm');
-    expect(p.alternative!.method).toBe('club');
+    expect(p.alternative!.method).toBe('da');
     expect(p.distances!.requiredTotalM).toBeCloseTo(afm.requiredTotalM, 9);
     expect(p.alternative!.requiredTotalM).toBeCloseTo(club.requiredTotalM, 9);
     expect(Math.round(p.distances!.requiredTotalM)).toBeGreaterThanOrEqual(753);
@@ -137,7 +137,7 @@ describe('take-off: both methods, the longer TODR used', () => {
 
   test('headwind: the club figure (no AFM 10/20 kt column credit) is the longer and is used', () => {
     const p = aerodromePerformance({ ...cold, aerodromeElevFt: 0, qnhHpa: 1013.25, oatC: 15, wind: { dirTrueDeg: 35, speedKt: 15 } });
-    expect(p.distances!.method).toBe('club');
+    expect(p.distances!.method).toBe('da');
     expect(p.alternative!.method).toBe('afm');
     expect(p.distances!.requiredTotalM).toBeGreaterThanOrEqual(p.alternative!.requiredTotalM);
   });
