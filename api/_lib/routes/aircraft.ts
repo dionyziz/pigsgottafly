@@ -1,17 +1,13 @@
-// Hangar CRUD: /aircraft, /aircraft/:id. Scoped to the session pilot.
+// Hangar CRUD: /aircraft, /aircraft/:id. The session pilot's own aircraft and those shared with them
+// (access.ts): viewers read, editors also write, only the owner deletes. Writes keep the owner's pilot_id.
 import type { Route } from '../http.js';
 import { HttpError, newId, notFound, reply } from '../http.js';
 import { aircraftInput, toAircraft } from '../rows.js';
+import { aircraftFor, listAircraft, toHangarAircraft } from '../access.js';
 import { blankAircraft } from '../../../src/shared/templates.js';
 import type { AircraftInput } from '../../../src/shared/types.js';
 import type { Queryable } from '../db.js';
 import { checkReports, deleteAttachments } from './attachments.js';
-
-async function get(db: Queryable, pilotId: string, id: string) {
-  const [r] = await db.query('SELECT * FROM aircraft WHERE id = $1 AND pilot_id = $2', [id, pilotId]);
-  if (!r) throw notFound('no such aircraft');
-  return toAircraft(r);
-}
 
 async function write(db: Queryable, pilotId: string, id: string, a: AircraftInput, insert: boolean) {
   const now = Date.now();
@@ -35,10 +31,7 @@ async function write(db: Queryable, pilotId: string, id: string, a: AircraftInpu
 }
 
 export const routes: Route[] = [
-  {
-    method: 'GET', path: '/aircraft',
-    handler: async ({ db, pilot }) => (await db.query('SELECT * FROM aircraft WHERE pilot_id = $1 ORDER BY registration', [pilot.id])).map(toAircraft),
-  },
+  { method: 'GET', path: '/aircraft', handler: async ({ db, pilot }) => listAircraft(db, pilot.id) },
   {
     method: 'POST', path: '/aircraft',
     async handler({ db, pilot, body }) {
@@ -49,26 +42,29 @@ export const routes: Route[] = [
       // A pilot without a default aircraft (an empty hangar, or the default was deleted) gets this one,
       // so new flights open with an aircraft. An existing default is never replaced.
       await db.query('UPDATE pilots SET default_aircraft_id = $1 WHERE id = $2 AND default_aircraft_id IS NULL', [created.id, pilot.id]);
-      return reply(201, created);
+      return reply(201, toHangarAircraft(await aircraftFor(db, pilot.id, created.id)));
     },
   },
-  { method: 'GET', path: '/aircraft/:id', handler: async ({ db, pilot, params }) => get(db, pilot.id, params.id) },
+  { method: 'GET', path: '/aircraft/:id', handler: async ({ db, pilot, params }) => toHangarAircraft(await aircraftFor(db, pilot.id, params.id)) },
   {
     method: 'PUT', path: '/aircraft/:id',
     async handler({ db, pilot, params, body }) {
-      const { id: _i, created: _c, updated: _u, ...cur } = await get(db, pilot.id, params.id);
+      const row = await aircraftFor(db, pilot.id, params.id, 'edit');
+      const ownerId: string = row.pilot_id;
+      const { id: _i, created: _c, updated: _u, ...cur } = toAircraft(row);
       const a = aircraftInput(await body(), cur);
-      const { cards, unused } = await checkReports(db, pilot.id, params.id, a.compassCards);
+      const { cards, unused } = await checkReports(db, ownerId, params.id, a.compassCards);
       a.compassCards = cards;
-      const saved = await write(db, pilot.id, params.id, a, false);
+      await write(db, ownerId, params.id, a, false);
       // swing reports no card refers to any more (replaced, removed, or uploaded and never saved)
-      await deleteAttachments(db, pilot.id, unused);
-      return saved;
+      await deleteAttachments(db, ownerId, unused);
+      return toHangarAircraft(await aircraftFor(db, pilot.id, params.id));
     },
   },
   {
     method: 'DELETE', path: '/aircraft/:id',
     async handler({ db, pilot, params }) {
+      await aircraftFor(db, pilot.id, params.id, 'owner');
       const r = await db.query('DELETE FROM aircraft WHERE id = $1 AND pilot_id = $2 RETURNING id', [params.id, pilot.id]);
       if (!r.length) throw notFound('no such aircraft');
       return undefined;

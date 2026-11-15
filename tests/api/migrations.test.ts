@@ -221,6 +221,45 @@ describe('migrations', () => {
     expect(r[1].remark).toMatch(/123\.5 A\/A/);
   });
 
+  test('013 (shared aircraft) on a database stopped at 012 keeps aircraft, flights and defaults', async () => {
+    const db = await connect('memory://');
+    const upTo012 = MIGRATIONS.filter((m) => m.name < '013');
+    expect(upTo012.at(-1)!.name).toBe('012_ref_ad_hours_2609');
+    await migrate(db, upTo012);
+    await db.query(`INSERT INTO pilots (id, email, created, last_login, seeded_at) VALUES ('p1', 'one@example.com', 1, 1, 1), ('p2', 'two@example.com', 1, 1, 1)`);
+    const ac = (id: string, pilot: string, reg: string) => db.query(
+      `INSERT INTO aircraft (id, pilot_id, registration, cruise_tas_kt, pattern_tas_kt, fuel, mass_balance, performance, equipment, created, updated)
+       VALUES ($1, $2, $3, 95, 80, '{}', '{}', '{}', '{}', 1, 1)`, [id, pilot, reg]);
+    await ac('a1', 'p1', 'SX-ONE');
+    await ac('a2', 'p2', 'SX-TWO');
+    await db.query(`UPDATE pilots SET default_aircraft_id = 'a1' WHERE id = 'p1'`);
+    await db.query(`INSERT INTO flights (id, pilot_id, date, aircraft_id, created, updated) VALUES ('f1', 'p1', '2026-11-20', 'a1', 1, 1)`);
+    // before 013 a flight cannot use another pilot's aircraft
+    await expect(db.query(`INSERT INTO flights (id, pilot_id, date, aircraft_id, created, updated) VALUES ('f2', 'p1', '2026-11-20', 'a2', 1, 1)`)).rejects.toThrow();
+
+    expect(await migrate(db)).toEqual(MIGRATIONS.filter((m) => m.name >= '013').map((m) => m.name));
+    expect((await db.query(`SELECT aircraft_id FROM flights WHERE id = 'f1'`))[0].aircraft_id).toBe('a1');
+    expect((await db.query(`SELECT default_aircraft_id FROM pilots WHERE id = 'p1'`))[0].default_aircraft_id).toBe('a1');
+    const fks = await db.query<{ t: string; d: string }>(
+      `SELECT conrelid::regclass::text AS t, pg_get_constraintdef(oid) AS d FROM pg_constraint WHERE contype = 'f' AND confrelid = 'aircraft'::regclass ORDER BY 1, 2`);
+    expect(fks.filter((f) => f.t === 'flights' || f.t === 'pilots').map((f) => f.d)).toEqual([
+      'FOREIGN KEY (aircraft_id) REFERENCES aircraft(id) ON DELETE SET NULL',
+      'FOREIGN KEY (default_aircraft_id) REFERENCES aircraft(id) ON DELETE SET NULL',
+    ]);
+    // now a flight and a default may reference a shared aircraft (the API checks access) …
+    await db.query(`INSERT INTO aircraft_shares (aircraft_id, pilot_id, role, created, created_by) VALUES ('a2', 'p1', 'view', 2, 'p2')`);
+    await db.query(`INSERT INTO flights (id, pilot_id, date, aircraft_id, created, updated) VALUES ('f2', 'p1', '2026-11-20', 'a2', 1, 1)`);
+    await db.query(`UPDATE pilots SET default_aircraft_id = 'a2' WHERE id = 'p1'`);
+    await expect(db.query(`INSERT INTO aircraft_shares (aircraft_id, pilot_id, role, created) VALUES ('a2', 'p1', 'edit', 3)`)).rejects.toThrow();
+    await expect(db.query(`INSERT INTO aircraft_shares (aircraft_id, pilot_id, role, created) VALUES ('a1', 'p2', 'admin', 3)`)).rejects.toThrow();
+    // … and deleting the aircraft still clears it everywhere and drops its shares
+    await db.query(`DELETE FROM aircraft WHERE id = 'a2'`);
+    expect((await db.query(`SELECT aircraft_id FROM flights WHERE id = 'f2'`))[0].aircraft_id).toBeNull();
+    expect((await db.query(`SELECT default_aircraft_id FROM pilots WHERE id = 'p1'`))[0].default_aircraft_id).toBeNull();
+    expect(await db.query(`SELECT * FROM aircraft_shares`)).toEqual([]);
+    await db.close();
+  });
+
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {
     const db = await connect('memory://');
     await migrate(db);
