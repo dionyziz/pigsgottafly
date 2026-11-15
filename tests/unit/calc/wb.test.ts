@@ -2,7 +2,7 @@
 // station/combined/seat limits and the utility category rules.
 import { describe, expect, test } from 'vitest';
 import { fleetSeed } from '../../../tools/build_seed';
-import { weightAndBalance, wbLoadsFromManifest, performanceMass, insidePolygon, type WbInput } from '../../../src/calc';
+import { weightAndBalance, wbLoadsFromManifest, wbStatus, performanceMass, insidePolygon, type WbInput } from '../../../src/calc';
 
 const [ASV, ASG] = fleetSeed();
 
@@ -127,6 +127,65 @@ describe('limits and warnings', () => {
     expect(bad.warnings.join('\n')).toMatch(/no baggage/);
     const asg = weightAndBalance(input(ASG, { category: 'utility' }));
     expect(asg.warnings.join(' ')).toMatch(/no utility category/);
+  });
+
+  test('limit breaches beyond the envelope fail the status: combined baggage, utility rules, MLW', () => {
+    // Review case: PIC 80 kg, bag1 40 kg, bag2 20 kg, 100 L. Each area is within its own maximum
+    // (54 / 23 kg) and the point is inside the normal envelope, but 60 kg > the combined 54 kg.
+    const comb = weightAndBalance(input(ASV, {
+      loads: [
+        { stationId: '', seatId: 'front-left', label: 'PIC', massKg: 80 },
+        { stationId: 'bag1', label: 'Bag 1', massKg: 40 },
+        { stationId: 'bag2', label: 'Bag 2', massKg: 20 },
+      ],
+      fuelTakeoffL: 100,
+    }));
+    expect(comb.takeoff.massKg).toBeCloseTo(903.2, 9);
+    expect(comb.normal.takeoff).toMatchObject({ inEnvelope: true, massOk: true });
+    expect(comb.limitBreaches).toEqual([{ kind: 'combined', text: 'Baggage area 1 + Baggage area 2: 60 kg exceeds the combined 54 kg limit.' }]);
+    expect(wbStatus(comb)).toEqual({ takeoff: true, landing: true, loading: false });
+
+    // Utility: inside the utility envelope, but 1 kg of baggage is not allowed.
+    const util = weightAndBalance(input(ASV, {
+      category: 'utility',
+      loads: [{ stationId: 'front', label: 'PIC', massKg: 80, armM: 0.9 }, { stationId: 'front', label: 'P2', massKg: 80, armM: 0.9 }, { stationId: 'bag1', label: 'Bag', massKg: 1 }],
+      fuelTakeoffL: 40, fuelLandingL: 30,
+    }));
+    expect(util.utility!.takeoff.inEnvelope).toBe(true);
+    expect(util.limitBreaches.map((b) => b.kind)).toEqual(['utility']);
+    expect(wbStatus(util).loading).toBe(false);
+
+    // MLW below the landing mass: a landing-phase breach only.
+    const mlw = weightAndBalance(input(ASV, {
+      massBalance: { ...ASV.massBalance, mlwKg: 850 },
+      loads: [{ stationId: '', seatId: 'front-left', label: 'PIC', massKg: 80 }, { stationId: '', seatId: 'front-right', label: 'P2', massKg: 80 }],
+      fuelTakeoffL: 100, fuelLandingL: 90,
+    }));
+    expect(mlw.limitBreaches.map((b) => [b.kind, b.phase])).toEqual([['mlw', 'landing']]);
+    expect(wbStatus(mlw)).toEqual({ takeoff: true, landing: false, loading: true });
+
+    // Station max, seats, MTOW and envelope all reported as breaches.
+    const over = weightAndBalance(input(ASV, {
+      loads: [
+        { stationId: '', seatId: 'front-left', label: 'A', massKg: 120 },
+        { stationId: '', seatId: 'front-left', label: 'B', massKg: 120 },
+        { stationId: 'rear', label: 'R', massKg: 160 },
+        { stationId: 'bag2', label: 'Bag 2', massKg: 25 },
+      ],
+      fuelTakeoffL: 144,
+    }));
+    const kinds = new Set(over.limitBreaches.map((b) => b.kind));
+    for (const k of ['seats', 'station', 'mtow', 'envelope'] as const) expect(kinds.has(k)).toBe(true);
+    expect(wbStatus(over).takeoff).toBe(false);
+    // Every breach is also a warning.
+    for (const b of over.limitBreaches) expect(over.warnings).toContain(b.text);
+
+    // A clean loading has none.
+    const clean = weightAndBalance(input(ASV, { loads: [{ stationId: '', seatId: 'front-left', label: 'PIC', massKg: 80 }] }));
+    expect(clean.limitBreaches).toEqual([]);
+    expect(wbStatus(clean)).toEqual({ takeoff: true, landing: true, loading: true });
+    // No utility category: the loading cannot be flown as utility.
+    expect(weightAndBalance(input(ASG, { category: 'utility' })).limitBreaches.map((b) => b.kind)).toContain('category');
   });
 
   test('adjustable seat arm outside the range is warned', () => {

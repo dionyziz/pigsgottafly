@@ -132,6 +132,17 @@ describe('W&B sheet (MD 4.3)', () => {
     expect(m.warnings.join(' ')).toMatch(/MTOW/);
   });
 
+  test('a combined baggage limit breach fails the sheet although the point is in the envelope', () => {
+    const doc = flight({ crew: [crew('PIC', 'front-left', 'A', 80)], baggageKg: { bag1: 40, bag2: 20 }, fobL: 100 });
+    const calc = calcOf(doc, ASV);
+    const m = wbSheetModel({ doc, aircraft: ASV, pilot, calc, route: '' });
+    expect(calc.wb!.normal.takeoff).toMatchObject({ inEnvelope: true, massOk: true });
+    expect(m.lines.some((l) => l.over)).toBe(false); // each area within its own maximum
+    expect(m.warnings.join(' ')).toMatch(/combined 54 kg limit/);
+    expect(m.verdict).toBe('fail');
+    expect(m.verdictText).toMatch(/Outside limits/);
+  });
+
   test('utility category is checked against the utility envelope', () => {
     const doc = flight({ options: { ...flight().options, category: 'utility' }, crew: [crew('PIC', 'front-left', 'A', 80)], baggageKg: {}, fobL: 80 });
     const m = wbSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV), route: '' });

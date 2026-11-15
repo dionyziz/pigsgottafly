@@ -282,7 +282,8 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
       const normal = wb.normal[phase];
       const utility = wb.utility ? wb.utility[phase] : null;
       const chosen = category === 'utility' ? utility : normal;
-      checks.push({ phase, label: phase === 'takeoff' ? 'Take-off' : 'Landing', point: wb[phase], normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk });
+      const breached = wb.limitBreaches.some((b) => b.phase === phase);
+      checks.push({ phase, label: phase === 'takeoff' ? 'Take-off' : 'Landing', point: wb[phase], normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached });
     }
   }
 
@@ -299,7 +300,9 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   let verdict: WbSheetModel['verdict'];
   let verdictText: string;
   if (!wb || !(mb.emptyMassKg > 0)) { verdict = 'incomplete'; verdictText = 'Cannot be computed'; }
-  else if (checks.some((c) => !c.ok) || takeoff.over || landing.over || lines.some((l) => l.over)) {
+  else if (wb.limitBreaches.length || checks.some((c) => !c.ok) || takeoff.over || landing.over || lines.some((l) => l.over)) {
+    // Every published limit counts: envelope and mass, MTOW/MLW, station and combined maxima,
+    // seat counts and the utility-category restrictions (wb.limitBreaches).
     verdict = 'fail';
     verdictText = `Outside limits (${categoryLabel.toLowerCase()} category)`;
   } else if (missingWeights.length) { verdict = 'incomplete'; verdictText = `Weight missing for ${missingWeights.length} ${missingWeights.length > 1 ? 'people' : 'person'}`; }

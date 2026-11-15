@@ -1,6 +1,8 @@
 // Take-off and landing: conditions (METAR when current, else forecast), runway (from the wind, or
 // chosen), surface condition, wind components, and required vs available distances.
+import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
+import type { Aircraft } from '../../../shared';
 import type { FlightOptions } from '../../../shared';
 import { useEditor } from '../state';
 import { fmtMin, useFlightCalc, type EndpointCalc } from './calc';
@@ -16,6 +18,23 @@ function windText(e: EndpointCalc): string {
   return `${dir}°T / ${Math.round(w.speedKt)} kt${w.gustKt ? ` G${Math.round(w.gustKt)}` : ''}`;
 }
 
+/** The same verdict as the MD 4.4 export (mass limit, distances, crosswind, AFM table range). */
+export function endpointVerdict(e: EndpointCalc, aircraft: Aircraft | null): PerfVerdictResult {
+  return perfVerdict({ phase: e.phase, massKg: e.massKg, perf: e.perf, massBalance: aircraft?.massBalance ?? null, hasAerodrome: !!e.aerodrome });
+}
+
+function VerdictChip({ v }: { v: PerfVerdictResult }) {
+  if (v.verdict === 'pass') return <Chip tone="ok" title={v.text}>Fits</Chip>;
+  if (v.verdict === 'fail') return <Chip tone="danger" title={v.text}>No-go</Chip>;
+  return <Chip tone="warn" title={v.text}>?</Chip>;
+}
+
+function reasonText(v: PerfVerdictResult): string {
+  if (!v.overMass && v.text === 'Outside the AFM table') return 'Outside the AFM table: distances extrapolated.';
+  const head = v.overMass ? v.overMass.text : `${v.text}.`;
+  return v.extrapolated ? `${head} Distances extrapolated beyond the AFM table.` : head;
+}
+
 function Endpoint({ e }: { e: EndpointCalc }) {
   const { doc, update, aircraft } = useEditor();
   const { dayMs } = useFlightCalc();
@@ -26,7 +45,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
   const runways = ad ? runwaysOf(ad.id) : [];
   const conditions = Object.keys(aircraft?.performance.factors.runwayCondition ?? {});
   const p = e.perf;
-  const fits = p && p.marginM != null ? p.marginM >= 0 : null;
+  const v = endpointVerdict(e, aircraft);
+  const extrap = v.extrapolated ? 'extrapolated beyond the AFM table' : undefined;
   const title = to ? 'Departure' : 'Destination';
   const timeMin = isFinite(e.timeMs) && isFinite(dayMs) ? (e.timeMs - dayMs) / 60000 : NaN;
 
@@ -37,8 +57,13 @@ function Endpoint({ e }: { e: EndpointCalc }) {
         <b>{title} {ad.icao ?? ''}</b>
         <span className="muted ellipsis">{ad.name}</span>
         <span className="spacer" />
-        {p && (fits === false || !p.crosswindOk ? <Chip tone="danger">No-go</Chip> : fits ? <Chip tone="ok">Fits</Chip> : <Chip>?</Chip>)}
+        {(p || v.overMass) && <span data-testid={`perf-verdict-${e.phase}`} data-verdict={v.verdict}><VerdictChip v={v} /></span>}
       </div>
+      {(p || v.overMass) && v.verdict !== 'pass' && (
+        <div className={`ep-note ${v.verdict === 'fail' ? 'danger-text' : 'warn-text'}`} data-testid={`perf-reason-${e.phase}`}>
+          {reasonText(v)}
+        </div>
+      )}
       <div className="ep-kvs">
         <KV k={to ? 'Take-off' : 'Landing'} v={<span className="mono">{isFinite(timeMin) ? `${fmtMin(timeMin)}Z` : '–'}</span>}
           sub={e.surface ? e.surface.label : 'no conditions'} />
@@ -66,20 +91,21 @@ function Endpoint({ e }: { e: EndpointCalc }) {
             sub={p.variableWind ? 'variable: full crosswind' : undefined}
             tone={!p.crosswindOk || p.tailwind ? 'danger' : undefined} />
           <KV k="PA / DA" v={<span className="mono">{Math.round(p.pressureAltFt)} / {Math.round(p.densityAltFt)} ft</span>} sub={`ISA ${p.isaDevC >= 0 ? '+' : ''}${p.isaDevC.toFixed(0)}°C`} />
-          {e.massKg != null && <KV k="Mass" v={<span className="mono">{e.massKg.toFixed(0)} kg</span>} sub={e.massSource === 'mtow' ? (e.massReason === 'weight-missing' ? 'MTOW (weight missing)' : 'MTOW (no W&B)') : undefined}
-            tone={e.massReason === 'weight-missing' ? 'warn' : undefined} />}
+          {e.massKg != null && <KV k="Mass" testId={`perf-mass-${e.phase}`} v={<span className="mono">{e.massKg.toFixed(0)} kg</span>}
+            sub={v.overMass ? `above ${v.overMass.limitName} ${v.overMass.limitKg} kg` : e.massSource === 'mtow' ? (e.massReason === 'weight-missing' ? 'MTOW (weight missing)' : 'MTOW (no W&B)') : undefined}
+            tone={v.overMass ? 'danger' : e.massReason === 'weight-missing' ? 'warn' : undefined} />}
           {p.distances && (to ? (
             <>
-              <KV k="TORR / TORA" tone={p.availableGroundM != null && p.distances.requiredGroundM > p.availableGroundM ? 'danger' : undefined}
+              <KV k="TORR / TORA" tone={p.availableGroundM != null && p.distances.requiredGroundM > p.availableGroundM ? 'danger' : extrap ? 'warn' : undefined}
                 v={<span className="mono">{m(p.distances.requiredGroundM)} / {m(p.availableGroundM)}</span>} />
-              <KV k="TODR / TODA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : undefined}
+              <KV k="TODR / TODA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : extrap ? 'warn' : undefined}
                 v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
-                sub={p.alternative ? <span data-testid="todr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span> : undefined} />
+                sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="todr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="todr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span>}</>} />
             </>
           ) : (
-            <KV k="LDR / LDA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : undefined}
+            <KV k="LDR / LDA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : extrap ? 'warn' : undefined}
               v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
-              sub={p.alternative ? <span data-testid="ldr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span> : undefined} />
+              sub={!extrap && !p.alternative ? undefined : <>{extrap && <span data-testid="ldr-extrapolated">{extrap}</span>}{extrap && p.alternative ? '; ' : ''}{p.alternative && <span data-testid="ldr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span>}</>} />
           ))}
         </div>
       )}
@@ -90,7 +116,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
 
 export function PerformanceSection() {
   const { departure, arrival } = useFlightCalc();
-  const bad = [departure, arrival].some((e) => e.perf && ((e.perf.marginM != null && e.perf.marginM < 0) || !e.perf.crosswindOk));
+  const { aircraft } = useEditor();
+  const bad = [departure, arrival].some((e) => e.aerodrome && endpointVerdict(e, aircraft).verdict === 'fail');
   const has = departure.aerodrome || arrival.aerodrome;
   return (
     <Section id="performance" title="Take-off & landing" badge={bad ? <Chip tone="danger">No-go</Chip> : undefined}>

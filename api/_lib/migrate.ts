@@ -14,6 +14,7 @@ import refRunways005 from './migrations/005_ref_runways_2609.js';
 import briefingFiling006 from './migrations/006_briefing_filing.js';
 import aircraftAttachments007 from './migrations/007_aircraft_attachments.js';
 import formSignatures008 from './migrations/008_form_signatures.js';
+import formLinkPerson009 from './migrations/009_form_link_person.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -35,6 +36,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '006_briefing_filing', sql: briefingFiling006 },
   { name: '007_aircraft_attachments', sql: aircraftAttachments007 },
   { name: '008_form_signatures', sql: formSignatures008 },
+  { name: '009_form_link_person', sql: formLinkPerson009 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

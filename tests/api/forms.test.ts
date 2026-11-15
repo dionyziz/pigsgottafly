@@ -120,6 +120,59 @@ describe('Form 731 signatures', () => {
     expect((await anon.call('GET', `flights/${flightId}/forms`)).status).toBe(401);
   });
 
+  test('a link given to a passenger without a saved record does not reach the next person put in that seat', async () => {
+    const snap = (fullName: string, idNumber: string, phone: string) => ({ fullName, phone, dateOfBirth: null, weightKg: 70, idNumber, idType: 'ID', nationality: '', relation: '' });
+    const pic = { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: snap('', '', '') };
+    const f = (await A.call('POST', 'flights', {
+      date: tomorrow, blockOff: '08:00', route: [pt('LGTT', 'a'), pt('LGMG', 'b')],
+      crew: [pic, { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: snap('Xavier X', 'XX111111', '+30 690 XX111111') }],
+    })).body;
+    const key = 'seat:front-right';
+    const tx = (await A.call<FormsState>('POST', `flights/${f.id}/forms/731/links`)).body.links![key];
+    expect(tx).toBeTruthy();
+    expect((await anon.call<SigningView>('GET', `sign/${tx}`)).body.content.people.find((p) => p.key === key)!.name).toBe('Xavier X');
+    await anon.call('POST', `sign/${tx}`);
+
+    // the pilot puts Yvonne in that seat instead
+    const cur = (await A.call('GET', `flights/${f.id}`)).body;
+    const { id, version, created, updated, opened, trashed, pilotId, ...doc } = cur;
+    const crew = [pic, { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: snap('Yvonne Y', 'YY999999', '+30 690 YY999999') }];
+    expect((await A.call('PUT', `flights/${f.id}`, { flight: { ...doc, crew }, version })).status).toBe(200);
+
+    // Xavier's link neither shows Yvonne's details nor signs for her
+    const g = await anon.call('GET', `sign/${tx}`);
+    expect(g.status).toBe(410);
+    expect(JSON.stringify(g.body)).not.toContain('YY999999');
+    expect((await anon.call('POST', `sign/${tx}`)).status).toBe(410);
+    let st = (await forms(A, f.id)).body;
+    let y = st.form731.signatures.find((s) => s.key === key)!;
+    expect(y.name).toBe('Yvonne Y');
+    expect(y.signed).toBe(false);
+    expect(y.needsResign).toBe(false); // Xavier's signature is not hers
+    expect(y.link).toBeNull(); // Xavier's link is not shown as hers
+    expect(st.form731.allSigned).toBe(false);
+    expect((await A.call('POST', `flights/${f.id}/forms/731/send`)).status).toBe(409);
+
+    // Yvonne gets her own link (Xavier's is revoked) and signs
+    const ty = (await A.call<FormsState>('POST', `flights/${f.id}/forms/731/links`)).body.links![key];
+    expect(ty).toBeTruthy();
+    const v = (await anon.call<SigningView>('GET', `sign/${ty}`)).body;
+    expect(v.content.people.find((p) => p.key === key)!.idPassport).toBe('ID YY999999');
+    await anon.call('POST', `sign/${ty}`);
+    st = (await forms(A, f.id)).body;
+    y = st.form731.signatures.find((s) => s.key === key)!;
+    expect(y.signed).toBe(true);
+    expect(y.link!.revoked).toBe(false);
+    expect(st.form731.allSigned).toBe(true);
+    expect((await anon.call('GET', `sign/${tx}`)).status).toBe(404); // revoked
+
+    // a saved passenger keeps their link when the pilot corrects their details
+    const { flightId, paxKey } = await setup();
+    const tm = (await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links`)).body.links![paxKey];
+    await A.call('PUT', `passengers/${paxKey}`, { fullName: 'Maria Papadopoulou', phone: '+30 690 111 2299', idNumber: 'AB987654', idType: 'ID', relation: 'FRIEND' });
+    expect((await anon.call('GET', `sign/${tm}`)).status).toBe(200);
+  });
+
   test('links expire after the flight date', async () => {
     const past = new Date(Date.now() - 5 * 24 * 3600e3).toISOString().slice(0, 10);
     const { flightId, paxKey } = await setup(past);

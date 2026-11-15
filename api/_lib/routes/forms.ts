@@ -11,7 +11,9 @@
 // A signature is for one version of the form (SHA-256 of every field, form731SigningText): when
 // anything on the form changes, earlier signatures no longer count and the panel shows who must sign
 // again. Links give access to that one form only, are stored hashed, can be revoked and expire at the
-// end of the day after the flight.
+// end of the day after the flight. A link is bound to the person it was given to (personHash): a
+// passenger without a saved record is keyed by seat, and whoever later takes that seat is a different
+// person whom the old link must not reach.
 import crypto from 'node:crypto';
 import type { Route } from '../http.js';
 import { conflict, HttpError, newId, notFound } from '../http.js';
@@ -24,11 +26,24 @@ import { form731Pdf, genDecPdf } from '../formPdf.js';
 import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
 import {
   FORM731_TO, GENDEC_TO, form731Content, form731SigningText, genDecContent, genDecText, maskTail,
-  type AerodromeLookup, type Form731Content, type FormsState, type GenDecContent, type SignatureState, type SigningView, type SubmissionState,
+  type AerodromeLookup, type Form731Content, type Form731Person, type FormsState, type GenDecContent, type SignatureState, type SigningView, type SubmissionState,
 } from '../../../src/shared/forms.js';
 
 const DAY = 86400e3;
 const sha = (s: string) => crypto.createHash('sha256').update(s).digest('base64url');
+
+const norm = (s: string) => s.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase();
+/**
+ * Who a link (or a signature) belongs to. A saved passenger is their record (the key is the
+ * passenger id, and editing their details keeps the link); the PIC is the pilot; a passenger without
+ * a record (keyed 'seat:<id>') is their name and ID document as on the form.
+ */
+export function personHash(p: Pick<Form731Person, 'key' | 'name' | 'idPassport'>): string {
+  return p.key.startsWith('seat:') ? sha(JSON.stringify(['seat', p.key, norm(p.name), norm(p.idPassport)])) : sha(JSON.stringify(['key', p.key]));
+}
+/** The person on the manifest a link row belongs to, if they are still on it. */
+const holderOf = (L: Loaded, l: Record<string, any>) =>
+  L.c731.people.find((x) => x.role === 'PAX' && x.key === l.person_key && l.person_hash != null && l.person_hash === personHash(x));
 
 interface Loaded { flight: Flight; aircraft: Aircraft | null; pilot: Pilot; c731: Form731Content; gendec: GenDecContent; hash731: string; hashGendec: string }
 
@@ -86,8 +101,10 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
   const sigs = await signatureRows(db, L.pilot.id, L.flight.id);
   const linkRows = await db.query('SELECT * FROM form_links WHERE flight_id = $1 AND pilot_id = $2 ORDER BY created DESC', [L.flight.id, L.pilot.id]);
   const signatures: SignatureState[] = L.c731.people.map((p) => {
-    const s = sigs.find((x) => x.person_key === p.key);
-    const l = linkRows.find((x) => x.person_key === p.key);
+    const s0 = sigs.find((x) => x.person_key === p.key);
+    // a seat-keyed signature by whoever sat there before is not this person's
+    const s = s0 && (!p.key.startsWith('seat:') || norm(s0.signer_name) === norm(p.name)) ? s0 : undefined;
+    const l = linkRows.find((x) => x.person_key === p.key && holderOf(L, x) === p);
     const signed = !!s && s.text_hash === L.hash731;
     return {
       key: p.key, role: p.role, name: p.name, signed, signedAt: signed ? Number(s.signed_at) : null, needsResign: !!s && !signed,
@@ -107,12 +124,12 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
   };
 }
 
-async function newLink(db: Queryable, L: Loaded, key: string): Promise<string> {
+async function newLink(db: Queryable, L: Loaded, person: Form731Person): Promise<string> {
   const token = crypto.randomBytes(24).toString('base64url');
   const now = Date.now();
-  await db.query('UPDATE form_links SET revoked = TRUE WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [L.flight.id, L.pilot.id, key]);
-  await db.query('INSERT INTO form_links (id, pilot_id, flight_id, person_key, token_hash, created, expires) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-    [await newId('fl'), L.pilot.id, L.flight.id, key, hashToken(token), now, linkExpiry(L.flight.date, now)]);
+  await db.query('UPDATE form_links SET revoked = TRUE WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [L.flight.id, L.pilot.id, person.key]);
+  await db.query('INSERT INTO form_links (id, pilot_id, flight_id, person_key, person_hash, token_hash, created, expires) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    [await newId('fl'), L.pilot.id, L.flight.id, person.key, personHash(person), hashToken(token), now, linkExpiry(L.flight.date, now)]);
   return token;
 }
 
@@ -168,13 +185,15 @@ async function linkOf(db: Queryable, token: string) {
     if (e instanceof HttpError && e.status === 404) throw notFound('This signing link is not valid.');
     throw e;
   });
-  if (!L.c731.people.some((x) => x.key === l.person_key && x.role === 'PAX')) throw new HttpError(410, 'You are no longer on this flight’s manifest.');
-  return { l, L };
+  // the same key held by someone else (another person in that seat) is not the holder
+  const me = holderOf(L, l);
+  if (!me) throw new HttpError(410, 'You are no longer on this flight’s manifest.');
+  return { l, L, me };
 }
 
-async function signingView(db: Queryable, l: Record<string, any>, L: Loaded): Promise<SigningView> {
+async function signingView(db: Queryable, L: Loaded, holder: Form731Person): Promise<SigningView> {
   const sigs = await signatureRows(db, L.pilot.id, L.flight.id);
-  const me = l.person_key as string;
+  const me = holder.key;
   return {
     content: {
       ...L.c731,
@@ -199,10 +218,11 @@ export const routes: Route[] = [
     method: 'POST', path: '/flights/:id/forms/731/links',
     async handler({ db, pilot, params }) {
       const L = await loadForms(db, pilot, params.id);
-      const existing = await db.query('SELECT person_key FROM form_links WHERE flight_id = $1 AND pilot_id = $2 AND NOT revoked AND expires > $3', [L.flight.id, pilot.id, Date.now()]);
-      const have = new Set(existing.map((r) => r.person_key as string));
+      const existing = await db.query('SELECT person_key, person_hash FROM form_links WHERE flight_id = $1 AND pilot_id = $2 AND NOT revoked AND expires > $3', [L.flight.id, pilot.id, Date.now()]);
+      // a link given to whoever held this key before does not count (newLink revokes it)
+      const have = new Set(existing.filter((r) => holderOf(L, r)).map((r) => r.person_key as string));
       const links: Record<string, string> = {};
-      for (const p of L.c731.people) if (p.role === 'PAX' && !have.has(p.key)) links[p.key] = await newLink(db, L, p.key);
+      for (const p of L.c731.people) if (p.role === 'PAX' && !have.has(p.key)) links[p.key] = await newLink(db, L, p);
       return state(db, L, links);
     },
   },
@@ -210,8 +230,9 @@ export const routes: Route[] = [
     method: 'POST', path: '/flights/:id/forms/731/links/:key/renew',
     async handler({ db, pilot, params }) {
       const L = await loadForms(db, pilot, params.id);
-      if (!L.c731.people.some((p) => p.key === params.key && p.role === 'PAX')) throw notFound('no such passenger on this flight');
-      return state(db, L, { [params.key]: await newLink(db, L, params.key) });
+      const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
+      if (!person) throw notFound('no such passenger on this flight');
+      return state(db, L, { [params.key]: await newLink(db, L, person) });
     },
   },
   {
@@ -249,17 +270,16 @@ export const routes: Route[] = [
   {
     method: 'GET', path: '/sign/:token', auth: false,
     async handler({ db, params }) {
-      const { l, L } = await linkOf(db, params.token);
+      const { l, L, me } = await linkOf(db, params.token);
       const now = Date.now();
       await db.query('UPDATE form_links SET first_opened = COALESCE(first_opened, $2), last_opened = $2 WHERE id = $1', [l.id, now]);
-      return signingView(db, l, L);
+      return signingView(db, L, me);
     },
   },
   {
     method: 'POST', path: '/sign/:token', auth: false,
     async handler({ db, params }) {
-      const { l, L } = await linkOf(db, params.token);
-      const me = L.c731.people.find((p) => p.key === l.person_key)!;
+      const { l, L, me } = await linkOf(db, params.token);
       const now = Date.now();
       await db.query(
         `INSERT INTO form_signatures (flight_id, pilot_id, person_key, signer_name, signed_at, text_hash) VALUES ($1,$2,$3,$4,$5,$6)
@@ -267,7 +287,7 @@ export const routes: Route[] = [
          WHERE form_signatures.pilot_id = EXCLUDED.pilot_id`,
         [L.flight.id, L.pilot.id, me.key, me.name, now, L.hash731]);
       await db.query('UPDATE form_links SET first_opened = COALESCE(first_opened, $2), last_opened = $2 WHERE id = $1', [l.id, now]);
-      return signingView(db, l, L);
+      return signingView(db, L, me);
     },
   },
 ];

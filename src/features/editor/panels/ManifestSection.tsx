@@ -103,7 +103,7 @@ export function ManifestSection() {
     <>
       <span className="muted">{doc.crew.length} POB</span>
       {crewErrors.length > 0 && <Chip tone="danger">Check</Chip>}
-      {wbOk && (!(wbOk.takeoff && wbOk.landing) ? <Chip tone="danger">W&amp;B out</Chip>
+      {wbOk && (!(wbOk.takeoff && wbOk.landing && wbOk.loading) ? <Chip tone="danger">W&amp;B out</Chip>
         : wbMissingWeights.length ? <Chip tone="warn">W&amp;B incomplete</Chip>
         : <Chip tone="ok">W&amp;B ok</Chip>)}
     </>

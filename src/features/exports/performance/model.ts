@@ -11,6 +11,7 @@
 import type { Aircraft, FlightDoc, Pilot } from '../../../shared';
 import type { RefRunway } from '../../../shared/ref';
 import type { EndpointPerf, ExportCalc } from '../wb/exportCalc';
+import { perfVerdict } from '../../../calc/perfVerdict';
 import { perfSpeeds, type PerfSpeeds } from './speeds';
 
 export type RowStatus = 'ok' | 'bad' | 'warn' | null;
@@ -243,33 +244,18 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
 
   if (p) for (const t of p.warnings) if (!warnings.includes(t)) warnings.push(t);
 
-  // Mass limit: take-off against MTOW, landing against MLW (MTOW when no MLW is published).
-  const mb = aircraft?.massBalance ?? null;
-  const limitKg = mb ? (takeoff ? mb.mtowKg : mb.mlwKg ?? mb.mtowKg) : null;
-  const overMass = fin(e.massKg) && fin(limitKg) && (limitKg as number) > 0 && (e.massKg as number) > (limitKg as number) + 1e-9;
-  if (overMass) {
+  // Verdict (shared with the editor's take-off & landing cards): mass limit, distances, crosswind,
+  // AFM table range.
+  const v = perfVerdict({ phase: e.phase, massKg: e.massKg, perf: p, massBalance: aircraft?.massBalance ?? null, hasAerodrome: !!ad });
+  if (v.overMass) {
     const m = rows.find((r) => r.key === 'mass');
-    if (m) { m.status = 'bad'; m.note = `above ${takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW'} ${limitKg} kg`; }
-    warnings.unshift(`${takeoff ? 'Take-off' : 'Landing'} mass ${(e.massKg as number).toFixed(1)} kg is ${((e.massKg as number) - (limitKg as number)).toFixed(1)} kg above the ${takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW'} of ${limitKg} kg.`);
+    if (m) { m.status = 'bad'; m.note = `above ${v.overMass.limitName} ${v.overMass.limitKg} kg`; }
+    warnings.unshift(v.overMass.text);
   }
-
-  let verdict: PerfBlock['verdict'];
-  let verdictText: string;
-  if (overMass) {
-    verdict = 'fail';
-    verdictText = `${takeoff ? 'Take-off' : 'Landing'} mass above ${takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW'}`;
-  } else if (!p || !d) { verdict = 'incomplete'; verdictText = ad ? 'Cannot be computed' : 'Not an aerodrome'; }
-  else if ((fin(p.marginM) && (p.marginM as number) < 0) || !p.crosswindOk) {
-    verdict = 'fail';
-    verdictText = !p.crosswindOk ? 'Crosswind above the limit' : takeoff ? 'Take-off distance not available' : 'Landing distance not available';
-  } else if (d.extrapolated) {
-    // Beyond the AFM data (mass above the heaviest row, density altitude above the top row,
-    // tailwind above 10 kt): the distances are extrapolations, not AFM figures, so no PASS.
-    verdict = 'fail';
-    verdictText = 'Outside the AFM table';
-    for (const r of rows) if ((r.key === 'todr' || r.key === 'torr' || r.key === 'ldr') && r.status === 'ok') r.status = 'warn';
-  } else if (!fin(p.marginM)) { verdict = 'incomplete'; verdictText = 'Declared distances unknown'; }
-  else { verdict = 'pass'; verdictText = takeoff ? 'Take-off distances available' : 'Landing distance available'; }
+  const verdict: PerfBlock['verdict'] = v.verdict;
+  const verdictText = v.text;
+  // Extrapolated distances are not AFM figures: never shown as 'ok'.
+  if (v.extrapolated) for (const r of rows) if ((r.key === 'todr' || r.key === 'torr' || r.key === 'ldr') && r.status === 'ok') r.status = 'warn';
 
   let diagram: PerfBlock['diagram'] = null;
   if (p && rw) {

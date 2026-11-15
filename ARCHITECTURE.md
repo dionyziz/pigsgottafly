@@ -37,6 +37,8 @@ src/
     performance.ts         windComponents, pressureAltitudeFt (ISA), isaTempC, densityAltitudeFt, selectRunway,
                            takeoffDistances/landingDistances (method 'club' = MD 4.4 as the club calculator, or 'afm'),
                            aerodromePerformance
+    perfVerdict.ts         perfVerdict: one take-off/landing verdict (mass vs MTOW/MLW, distances, crosswind, AFM
+                           table range) shared by the editor's take-off & landing cards and the MD 4.4 export
     hazards.ts             weather hazards: legHazards (corridor samples ±1 h, planned altitude), aerodromeModelHazards,
                            reportHazards/tafHazardContent (METAR/TAF), modelCloudBase; TS/CB, visibility, cloud vs alt + 1000 ft
     atc.ts                 AtcGenInput / AtcGenOutput types (generator lives in src/data/atc.ts)

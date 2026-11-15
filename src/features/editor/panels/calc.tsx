@@ -15,11 +15,13 @@ import {
   pickCompassCard,
   planFuel,
   wbLoadsFromManifest,
+  wbStatus,
   weightAndBalance,
   type AerodromePerf,
   type FuelPlan,
   type NavlogResult,
   type WbResult,
+  type WbStatus,
 } from '../../../calc';
 import { CARD_EXPIRY_WARN_DAYS, requestTiming, seatLayout, validateCrew, type RoutePoint } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
@@ -72,8 +74,9 @@ export interface FlightCalc {
   navlog: NavlogResult | null;
   fuel: FuelPlan | null;
   wb: WbResult | null;
-  /** W&B status for the flight's category at take-off and landing (envelope and mass limits only). */
-  wbOk: { takeoff: boolean; landing: boolean } | null;
+  /** W&B status for the flight's category: take-off and landing (envelope, mass, MTOW/MLW) and the
+   *  loading (station and combined maxima, seat counts, utility restrictions). See wbStatus. */
+  wbOk: WbStatus | null;
   /** Names of the people on the manifest with no weight (counted as 0 kg in the W&B): the
    *  balance is incomplete until they are set, whatever wbOk says. */
   wbMissingWeights: string[];
@@ -249,7 +252,12 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const wbOk = useMemo(() => {
     if (!wb) return null;
     const checks = doc.options.category === 'utility' && wb.utility ? wb.utility : wb.normal;
-    return { takeoff: checks.takeoff.inEnvelope && checks.takeoff.massOk, landing: checks.landing.inEnvelope && checks.landing.massOk };
+    const s = wbStatus(wb);
+    return {
+      takeoff: s.takeoff && checks.takeoff.inEnvelope && checks.takeoff.massOk,
+      landing: s.landing && checks.landing.inEnvelope && checks.landing.massOk,
+      loading: s.loading,
+    };
   }, [wb, doc.options.category]);
 
   // ---- surface conditions and performance at both ends
@@ -344,8 +352,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     if (wb) {
       for (const t of wb.warnings) add('danger', 'wb', t);
       const cat = doc.options.category === 'utility' ? 'utility' : 'normal';
-      if (wbOk && !wbOk.takeoff) add('danger', 'wb', `Take-off mass/CG outside the ${cat} envelope (${wb.takeoff.massKg.toFixed(1)} kg, CG ${wb.takeoff.armM.toFixed(3)} m).`);
-      if (wbOk && !wbOk.landing) add('danger', 'wb', `Landing mass/CG outside the ${cat} envelope (${wb.landing.massKg.toFixed(1)} kg, CG ${wb.landing.armM.toFixed(3)} m).`);
+      // wbOk also fails on MTOW/MLW (their own text is in wb.warnings): name the envelope only when it is the envelope.
+      const env = doc.options.category === 'utility' && wb.utility ? wb.utility : wb.normal;
+      if (!(env.takeoff.inEnvelope && env.takeoff.massOk)) add('danger', 'wb', `Take-off mass/CG outside the ${cat} envelope (${wb.takeoff.massKg.toFixed(1)} kg, CG ${wb.takeoff.armM.toFixed(3)} m).`);
+      if (!(env.landing.inEnvelope && env.landing.massOk)) add('danger', 'wb', `Landing mass/CG outside the ${cat} envelope (${wb.landing.massKg.toFixed(1)} kg, CG ${wb.landing.armM.toFixed(3)} m).`);
     }
     for (const e of [departure, arrival]) {
       const name = e.aerodrome ? e.aerodrome.icao || e.aerodrome.name : '';

@@ -78,6 +78,41 @@ export interface WbResult {
   utility: { takeoff: WbCheck; landing: WbCheck } | null;
   /** Station or combined limits exceeded, utility restrictions (no rear pax/baggage)… */
   warnings: string[];
+  /**
+   * The published limits this loading breaks (each one's text is also in warnings): station and
+   * combined station maxima, seat counts, MTOW, MLW, the chosen category's mass and envelope, and
+   * the utility-category restrictions. Empty when the loading is within every limit; any entry
+   * makes the W&B a fail.
+   */
+  limitBreaches: WbLimitBreach[];
+}
+
+export type WbLimitKind = 'station' | 'combined' | 'seats' | 'mtow' | 'mlw' | 'category' | 'envelope' | 'utility';
+
+export interface WbLimitBreach {
+  kind: WbLimitKind;
+  /** The flight phase the breach belongs to; absent for loading limits that hold in every phase. */
+  phase?: 'takeoff' | 'landing';
+  text: string;
+}
+
+/** W&B status for one category: per phase (envelope, mass, MTOW/MLW) and for the loading itself
+ *  (station, combined, seat and category restrictions). All three true = within every limit. */
+export interface WbStatus {
+  takeoff: boolean;
+  landing: boolean;
+  loading: boolean;
+}
+
+/** Summarises a W&B result as pass/fail per phase and for the loading, counting every breach in
+ *  limitBreaches, not only the envelope check. */
+export function wbStatus(wb: WbResult): WbStatus {
+  const b = wb.limitBreaches;
+  return {
+    takeoff: !b.some((x) => x.phase === 'takeoff'),
+    landing: !b.some((x) => x.phase === 'landing'),
+    loading: !b.some((x) => !x.phase),
+  };
 }
 
 const EPS = 1e-9;
@@ -115,6 +150,11 @@ const fmt = (n: number) => (Math.round(n * 10) / 10).toString();
 export function weightAndBalance(input: WbInput): WbResult {
   const mb = input.massBalance;
   const warnings: string[] = [];
+  const limitBreaches: WbLimitBreach[] = [];
+  const breach = (kind: WbLimitKind, text: string, phase?: 'takeoff' | 'landing') => {
+    warnings.push(text);
+    limitBreaches.push(phase ? { kind, phase, text } : { kind, text });
+  };
   const stations = mb.stations;
   const byId = new Map(stations.map((s) => [s.id, s]));
   const seatToStation = new Map<string, Station>();
@@ -169,20 +209,20 @@ export function weightAndBalance(input: WbInput): WbResult {
     perStation.set(st.id, agg);
     if (st.kind === 'seat') peoplePerStation.set(st.id, (peoplePerStation.get(st.id) || 0) + 1);
   }
-  for (const [seat, n] of seatsUsed) if (n > 1) warnings.push(`${n} people in seat ${seat}.`);
+  for (const [seat, n] of seatsUsed) if (n > 1) breach('seats', `${n} people in seat ${seat}.`);
   for (const st of stations) {
     const agg = perStation.get(st.id);
     if (st.kind === 'seat' && st.seats && st.seats.length) {
       const n = peoplePerStation.get(st.id) || 0;
-      if (n > st.seats.length) warnings.push(`${st.name}: ${n} people for ${st.seats.length} seats.`);
+      if (n > st.seats.length) breach('seats', `${st.name}: ${n} people for ${st.seats.length} seats.`);
     }
-    if (agg && st.maxKg != null && agg.mass > st.maxKg + EPS) warnings.push(`${st.name}: ${fmt(agg.mass)} kg exceeds the ${st.maxKg} kg limit.`);
+    if (agg && st.maxKg != null && agg.mass > st.maxKg + EPS) breach('station', `${st.name}: ${fmt(agg.mass)} kg exceeds the ${st.maxKg} kg limit.`);
   }
   for (const lim of mb.combinedLimits || []) {
     const m = lim.stations.reduce((s, id) => s + (perStation.get(id)?.mass || 0), 0);
     if (m > lim.maxKg + EPS) {
       const names = lim.stations.map((id) => byId.get(id)?.name ?? id).join(' + ');
-      warnings.push(`${names}: ${fmt(m)} kg exceeds the combined ${lim.maxKg} kg limit.`);
+      breach('combined', `${names}: ${fmt(m)} kg exceeds the combined ${lim.maxKg} kg limit.`);
     }
   }
 
@@ -220,9 +260,9 @@ export function weightAndBalance(input: WbInput): WbResult {
   stationRows.push(fuelRow);
 
   // Limits.
-  if (mb.mtowKg > 0 && takeoff.massKg > mb.mtowKg + EPS) warnings.push(`Take-off mass ${fmt(takeoff.massKg)} kg exceeds MTOW ${mb.mtowKg} kg by ${fmt(takeoff.massKg - mb.mtowKg)} kg.`);
+  if (mb.mtowKg > 0 && takeoff.massKg > mb.mtowKg + EPS) breach('mtow', `Take-off mass ${fmt(takeoff.massKg)} kg exceeds MTOW ${mb.mtowKg} kg by ${fmt(takeoff.massKg - mb.mtowKg)} kg.`, 'takeoff');
   const mlw = mb.mlwKg ?? mb.mtowKg;
-  if (mlw > 0 && landing.massKg > mlw + EPS) warnings.push(`Landing mass ${fmt(landing.massKg)} kg exceeds the maximum landing mass ${mlw} kg.`);
+  if (mlw > 0 && landing.massKg > mlw + EPS) breach('mlw', `Landing mass ${fmt(landing.massKg)} kg exceeds the maximum landing mass ${mlw} kg.`, 'landing');
 
   const normalEnv = mb.envelopes.normal;
   const normal = { takeoff: checkEnvelope(normalEnv, takeoff), landing: checkEnvelope(normalEnv, landing) };
@@ -231,11 +271,14 @@ export function weightAndBalance(input: WbInput): WbResult {
 
   const chosen = input.category === 'utility' ? utility : normal;
   const catName = input.category === 'utility' ? 'utility' : 'normal';
-  if (input.category === 'utility' && !utilEnv) warnings.push('This aircraft has no utility category.');
+  if (input.category === 'utility' && !utilEnv) {
+    // No utility limits to check against: the flight cannot be in the utility category.
+    breach('category', 'This aircraft has no utility category.');
+  }
   if (chosen) {
-    for (const [phase, c] of [['Take-off', chosen.takeoff], ['Landing', chosen.landing]] as const) {
-      if (!c.massOk) warnings.push(`${phase} mass is above the ${catName} category maximum.`);
-      else if (!c.inEnvelope) warnings.push(`${phase} CG is outside the ${catName} envelope.`);
+    for (const [phase, label, c] of [['takeoff', 'Take-off', chosen.takeoff], ['landing', 'Landing', chosen.landing]] as const) {
+      if (!c.massOk) breach('envelope', `${label} mass is above the ${catName} category maximum.`, phase);
+      else if (!c.inEnvelope) breach('envelope', `${label} CG is outside the ${catName} envelope.`, phase);
     }
   }
   if (input.category === 'utility' && utilEnv) {
@@ -243,11 +286,11 @@ export function weightAndBalance(input: WbInput): WbResult {
     const rear = stations.filter((s) => s.kind === 'seat' && s.id !== stations.find((x) => x.kind === 'seat')?.id);
     const rearMass = rear.reduce((s, st) => s + (perStation.get(st.id)?.mass || 0), 0);
     const bagMass = stations.filter((s) => s.kind === 'baggage').reduce((s, st) => s + (perStation.get(st.id)?.mass || 0), 0);
-    if (rearMass > 0) warnings.push('Utility category: no rear passengers allowed.');
-    if (bagMass > 0) warnings.push('Utility category: no baggage allowed.');
+    if (rearMass > 0) breach('utility', 'Utility category: no rear passengers allowed.');
+    if (bagMass > 0) breach('utility', 'Utility category: no baggage allowed.');
   }
 
-  return { rows, stationRows, zeroFuel, takeoff, landing, normal, utility, warnings };
+  return { rows, stationRows, zeroFuel, takeoff, landing, normal, utility, warnings, limitBreaches };
 }
 
 /** Manifest + baggage → W&B loads (people by seat, baggage by station). */
