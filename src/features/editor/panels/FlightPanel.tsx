@@ -21,8 +21,7 @@ const EXPORT_HINT: Record<ExportKind, string> = {
   form731: 'HCAA persons on board',
   gendec: 'MD 4.7, ICAO Annex 9',
   fpl: 'ICAO FPL for AFTN',
-  wb: 'MD 4.3 loading + envelope',
-  performance: 'MD 4.4 departure + destination',
+  wbperf: 'MD 4.3 loading + MD 4.4 take-off/landing',
   briefing: 'NOTAMs along the route',
 };
 

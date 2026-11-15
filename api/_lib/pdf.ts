@@ -1,6 +1,6 @@
 // A small PDF 1.4 writer for the forms the server e-mails to HCAA (Form 731, General Declaration):
-// A4 pages with text, lines and rectangles; Helvetica and Helvetica-Bold (standard fonts,
-// WinAnsiEncoding) and one embedded TrueType font (the handwriting signatures). Streams are
+// A4 pages with text (optionally rotated), lines and rectangles; Helvetica, Helvetica-Bold and
+// Helvetica-Oblique, WinAnsiEncoding) and one embedded TrueType font (the handwriting signatures). Streams are
 // Flate-compressed. Text is WinAnsi: Greek is transliterated (ELOT 743) before it is written.
 //
 // (PLAN-v3 names pdf-lib; this writer covers the little the two forms need without adding a
@@ -12,7 +12,7 @@ import { transliterate } from '../../src/shared/translit.js';
 export const MM = 72 / 25.4;
 export const A4 = { w: 210, h: 297 };
 
-export type FontName = 'regular' | 'bold' | 'hand';
+export type FontName = 'regular' | 'bold' | 'italic' | 'hand';
 
 /** Glyph widths (1/1000 em) of Helvetica and Helvetica-Bold for WinAnsi 32..126 (Adobe AFM). */
 const HELV: number[] = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584];
@@ -111,7 +111,11 @@ const pdfString = (b: Buffer) => {
 };
 const n = (x: number) => (Math.round(x * 100) / 100).toString();
 
-export interface TextOpts { size?: number; font?: FontName; align?: 'left' | 'center' | 'right'; /** shrink to fit this width (mm) */ maxW?: number }
+export interface TextOpts {
+  size?: number; font?: FontName; align?: 'left' | 'center' | 'right'; /** shrink to fit this width (mm) */ maxW?: number;
+  /** Degrees counter-clockwise about (x, y); alignment is along the rotated baseline. */
+  rotate?: number;
+}
 
 export class PdfPage {
   ops: string[] = [];
@@ -125,9 +129,16 @@ export class PdfPage {
     const bytes = winAnsi(s);
     let w = this.doc.widthMm(bytes, font, size);
     if (o.maxW && w > o.maxW) { size = Math.max(4, (size * o.maxW) / w); w = this.doc.widthMm(bytes, font, size); }
-    const x0 = o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x;
-    const f = font === 'bold' ? 'F2' : font === 'hand' ? 'F3' : 'F1';
-    this.ops.push(`BT /${f} ${n(size)} Tf ${n(x0 * MM)} ${n(this.y(y))} Td ${pdfString(bytes)} Tj ET`);
+    const dx = o.align === 'center' ? -w / 2 : o.align === 'right' ? -w : 0;
+    const f = font === 'bold' ? 'F2' : font === 'hand' ? 'F3' : font === 'italic' ? 'F4' : 'F1';
+    if (o.rotate) {
+      const a = (o.rotate * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+      // the start of the (aligned) text, rotated about (x, y); y grows downwards on the page
+      const tx = x + dx * c, ty = y - dx * s;
+      this.ops.push(`BT /${f} ${n(size)} Tf ${c.toFixed(4)} ${s.toFixed(4)} ${(-s).toFixed(4)} ${c.toFixed(4)} ${n(tx * MM)} ${n(this.y(ty))} Tm ${pdfString(bytes)} Tj ET`);
+      return;
+    }
+    this.ops.push(`BT /${f} ${n(size)} Tf ${n((x + dx) * MM)} ${n(this.y(y))} Td ${pdfString(bytes)} Tj ET`);
   }
   line(x1: number, y1: number, x2: number, y2: number, width = 0.2): void {
     this.ops.push(`${n(width * MM)} w ${n(x1 * MM)} ${n(this.y(y1))} m ${n(x2 * MM)} ${n(this.y(y2))} l S`);
@@ -172,6 +183,7 @@ export class PdfDoc {
     const pagesId = add('');
     const f1 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
     const f2 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+    const f4 = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>');
     let f3 = 0;
     if (this.hand) {
       const { info, data } = this.hand;
@@ -179,7 +191,7 @@ export class PdfDoc {
       const desc = add(`<< /Type /FontDescriptor /FontName /HomemadeApple /Flags 32 /FontBBox [${info.bbox.join(' ')}] /ItalicAngle 0 /Ascent ${info.ascent} /Descent ${info.descent} /CapHeight ${info.capHeight} /StemV 80 /FontFile2 ${file} 0 R >>`);
       f3 = add(`<< /Type /Font /Subtype /TrueType /BaseFont /HomemadeApple /FirstChar 32 /LastChar 255 /Widths [${info.widths.join(' ')}] /Encoding /WinAnsiEncoding /FontDescriptor ${desc} 0 R >>`);
     }
-    const fonts = `/Font << /F1 ${f1} 0 R /F2 ${f2} 0 R${f3 ? ` /F3 ${f3} 0 R` : ''} >>`;
+    const fonts = `/Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F4 ${f4} 0 R${f3 ? ` /F3 ${f3} 0 R` : ''} >>`;
     const kids: number[] = [];
     for (const p of this.pages) {
       const content = add(stream('', Buffer.from(p.ops.join('\n'), 'latin1')));

@@ -1,43 +1,14 @@
-// Export (e): weight and balance, laid out like the club's MD 4.3 loading sheet
+// Weight and balance, laid out like the club's MD 4.3 loading sheet
 // (trn-docs/MD4_3_Loading_Sheet_C172M.pdf): the loading table (empty, fuel, each station with the
 // people in it, baggage), totals at take-off and landing, the CG moment envelope chart with both
-// points and the burn line, and a pass/fail verdict. One A4 portrait page.
-//
-// Usage (ExportPage): <WbExport flight={flight} />. Loads the pilot, the aircraft and the weather
-// (trip fuel depends on the winds aloft) itself.
-import type { Flight } from '../../../shared';
-import { routeText } from '../form731/common';
+// points and the burn line, a pass/fail verdict and the PIC's signature. One A4 portrait page,
+// the first page of the "Weight & balance and performance" export (../wbperf).
 import { EnvelopeChart, type ChartPoint } from './EnvelopeChart';
-import { fmtArm, fmtCg, fmtKg, fmtMoment, wbSheetModel, type WbLine, type WbSheetModel } from './model';
-import { useExportCalc } from './useExportCalc';
+import { fmtArm, fmtCg, fmtKg, fmtMoment, type WbLine, type WbSheetModel } from './model';
+import { SignLine } from './SignLine';
+import type { ShownSignature } from '../form731/Form731';
 import './xp.css';
 import './wb.css';
-
-export function WbExport({ flight }: { flight: Flight }) {
-  const st = useExportCalc(flight);
-  if (st.loading || !st.calc) return <div className="xp-loading muted">Loading…</div>;
-  const m = wbSheetModel({ doc: flight, aircraft: st.aircraft, pilot: st.pilot, calc: st.calc, route: routeText(flight.route) });
-  const legs = st.calc.computed.navlog.legs.length;
-  const windsOk = st.weather?.status === 'ok';
-  return (
-    <div className="xp-doc" data-testid="wb-export" data-ready={st.weatherPending ? 'false' : 'true'} data-verdict={m.verdict}>
-      <div className="xp-status no-print">
-        <div className="xp-status-row">
-          <span className={`chip ${m.verdict === 'pass' ? 'ok' : m.verdict === 'fail' ? 'danger' : 'warn'}`}>{m.verdictText}</span>
-          {legs > 0 && (
-            <span className={`chip ${st.weatherPending ? '' : windsOk ? 'ok' : 'warn'}`}>
-              {st.weatherPending ? 'Loading winds…' : windsOk ? 'Trip fuel with forecast winds' : 'Trip fuel without winds (calm)'}
-            </span>
-          )}
-          <span className="spacer" />
-          <button className="ghost" onClick={st.refresh} disabled={st.weatherPending || !legs}>Refresh weather</button>
-        </div>
-        {m.warnings.length > 0 && <ul className="xp-warnings" data-testid="wb-warnings">{m.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
-      </div>
-      <div className="xp-stage"><WbSheet m={m} /></div>
-    </div>
-  );
-}
 
 function Num({ v, cls = '' }: { v: string; cls?: string }) {
   return <td className={`num ${cls}`}>{v}</td>;
@@ -72,7 +43,7 @@ function LineRow({ l }: { l: WbLine }) {
 
 const tick = (ok: boolean | null | undefined) => (ok == null ? '–' : ok ? 'within' : 'OUTSIDE');
 
-export function WbSheet({ m }: { m: WbSheetModel }) {
+export function WbSheet({ m, signature }: { m: WbSheetModel; signature?: ShownSignature | null }) {
   const points: ChartPoint[] = [];
   const to = m.checks.find((c) => c.phase === 'takeoff');
   const ldg = m.checks.find((c) => c.phase === 'landing');
@@ -154,7 +125,7 @@ export function WbSheet({ m }: { m: WbSheetModel }) {
         <span>DATE <b className="xp-fill">{m.date}</b></span>
         <span>REGISTR <b className="xp-fill">{m.registration}</b></span>
         <span>PILOT <b className="xp-fill">{m.pilot}</b></span>
-        <span className="sign">SIGN</span>
+        <SignLine signature={signature} />
         <span className="xp-form">MD 4.3</span>
       </footer>
     </section>

@@ -1,7 +1,7 @@
 // The PDFs e-mailed to HCAA: Form 731 (landscape, with the handwriting signatures) and the General
 // Declaration (portrait), laid out like the print sheets (src/features/exports/form731/Form731.tsx
 // and gendec/GenDec.tsx, positions in mm measured from the originals in trn-docs/).
-import { PdfDoc, type PdfPage } from './pdf.js';
+import { PdfDoc, winAnsi, type PdfPage } from './pdf.js';
 import handTtf from './fonts/homemadeApple.js';
 import {
   GENDEC_DISINSECT_CONT, GENDEC_DISINSECT_LINES, GENDEC_HEALTH_CONT, GENDEC_HEALTH_LINES, signatureName, type Form731Content, type GenDecContent,
@@ -100,91 +100,144 @@ export function form731Pdf(c: Form731Content, sigs: PdfSignature[]): Buffer {
   return doc.bytes({ title: `Form 731 ${c.registration} ${c.date}` });
 }
 
+/** Rows of the routing table (origin, the arrow, destination, blank rows). */
+const GD_ROWS = 9;
+
 /**
- * The General Declaration (MD 4.7 = ICAO Annex 9 Appendix 1) with the PIC's e-signature on the
- * declaration's signature line (`sig`, the same handwriting signature as on Form 731).
+ * The General Declaration (MD 4.7 = ICAO Annex 9 Appendix 1), one A4 page laid out like the print
+ * sheet (src/features/exports/gendec/GenDec.tsx + gendec.css, same mm positions): header lines
+ * with the values in bold, the routing box (origin ⇩ destination with the PIC), passengers on this
+ * stage, the Declaration of Health struck through "NIL" in blue, the declaration with the PIC's
+ * e-signature on its signature line (`sig`, the same handwriting signature as on Form 731).
  */
 export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   const doc = new PdfDoc(Buffer.from(handTtf, 'base64'));
   const p = doc.page(false);
-  const fill = (x: number, y: number, w: number, v: string) => { p.text(x + 1, y - 0.6, v, { size: 10, maxW: w - 2 }); p.line(x, y + 0.6, x + w, y + 0.6, 0.15); };
-  p.text(105, 18, 'GENERAL DECLARATION', { font: 'bold', size: 14, align: 'center' });
-  p.text(105, 23, '(OUTWARD/INWARD)', { size: 9, align: 'center' });
-  p.text(15, 33, 'Operator', { size: 9.5 });
-  fill(31, 33, 164, c.operator);
-  p.text(15, 40, 'Marks of Nationality and Registration', { size: 9.5 });
-  fill(76, 40, 42, c.registration);
-  p.text(120, 40, 'Flight No.', { size: 9.5 });
-  fill(137, 40, 20, c.flightNo);
-  p.text(159, 40, 'Date', { size: 9.5 });
-  fill(167, 40, 28, c.date.every(Boolean) ? [c.date[2], c.date[1], c.date[0]].join('-') : '');
-  p.text(15, 47, 'Departure from', { size: 9.5 });
-  fill(41, 47, 62, c.departure);
-  p.text(105, 47, 'Arrival at', { size: 9.5 });
-  fill(122, 47, 73, c.arrival);
-  p.text(72, 51, '(Place)', { size: 7, align: 'center' });
-  p.text(158, 51, '(Place)', { size: 7, align: 'center' });
-
-  const top = 56, boxH = 162;
-  p.rect(15, top, 180, boxH, 0.3);
-  p.text(105, top + 6, 'FLIGHT ROUTING', { font: 'bold', size: 10, align: 'center' });
-  p.text(105, top + 10.5, '("Place" Column always to list origin every en-route stop and destination)', { size: 7.5, align: 'center' });
-  const tTop = top + 13, rowH = 7.5;
-  p.line(15, tTop, 195, tTop, 0.3);
-  p.line(45, tTop, 45, tTop + rowH * (c.routing.length + 1), 0.2);
-  p.line(125, tTop, 125, top + boxH, 0.3);
-  p.text(30, tTop + 5, 'PLACE', { font: 'bold', size: 8.5, align: 'center' });
-  p.text(85, tTop + 5, 'NAMES OF CREW*', { font: 'bold', size: 8.5, align: 'center' });
-  c.routing.forEach((r, i) => {
-    const y = tTop + rowH * (i + 1);
-    p.line(15, y, 125, y, 0.15);
-    p.text(17, y + 5.3, r.place, { size: 10, maxW: 27 });
-    p.text(47, y + 5.3, r.crew, { size: 10, maxW: 76 });
-  });
-  p.text(160, tTop + 5, 'NUMBER OF PASSENGERS', { font: 'bold', size: 8, align: 'center' });
-  p.text(160, tTop + 9, 'ON THIS STAGE**', { font: 'bold', size: 8, align: 'center' });
-  const px = 128;
-  let y = tTop + 20;
-  p.text(px, y, `Departure place: ${c.departureCode}`, { size: 9 }); y += 7;
-  p.text(px, y, `Embarking: ${c.embarking}`, { size: 9 }); y += 6;
-  p.text(px, y, `Through on same flight: ${c.throughDeparture}`, { size: 9 }); y += 12;
-  p.text(px, y, `Arrival place: ${c.arrivalCode}`, { size: 9 }); y += 7;
-  p.text(px, y, `Disembarking: ${c.disembarking}`, { size: 9 }); y += 6;
-  p.text(px, y, `Through on same flight: ${c.throughArrival}`, { size: 9 });
-
-  // Declaration of health: the full Annex 9 text, left blank (as on the print sheet).
-  const hTop = tTop + rowH * (c.routing.length + 1);
-  p.line(15, hTop, 125, hTop, 0.3);
-  p.text(70, hTop + 5, 'DECLARATION OF HEALTH', { font: 'bold', size: 8.5, align: 'center' });
-  const lh = 3.3, x0 = 17, w = 106;
-  const dotted = (yy: number, lead: string) => {
-    if (lead) p.text(x0, yy, lead, { size: 7.2 });
-    const from = lead ? x0 + doc.widthMm(Buffer.from(lead + ' ', 'latin1'), 'regular', 7.2) : x0;
-    p.line(from, yy + 0.4, x0 + w, yy + 0.4, 0.1);
+  const w = (s: string, font: 'regular' | 'bold', size: number) => doc.widthMm(winAnsi(s), font, size);
+  /** "Label: VALUE" (value bold) with the baseline at y; returns where it ends. */
+  const field = (x: number, y: number, label: string, value: string, maxW = 120) => {
+    p.text(x, y, label, { size: 9 });
+    const vx = x + w(label + ' ', 'regular', 9);
+    const room = Math.max(10, maxW - (vx - x));
+    p.text(vx, y, value, { font: 'bold', size: 9.5, maxW: room });
+    return vx + Math.min(w(value, 'bold', 9.5), room);
   };
-  let hy = hTop + 9.5;
-  for (const l of GENDEC_HEALTH_LINES) { p.text(x0, hy, l, { size: 7.2, maxW: w }); hy += lh; }
-  dotted(hy, GENDEC_HEALTH_CONT); hy += 4.6;
-  dotted(hy, ''); hy += 5.2;
-  for (const l of GENDEC_DISINSECT_LINES) { p.text(x0, hy, l, { size: 7.2, maxW: w }); hy += lh; }
-  dotted(hy, GENDEC_DISINSECT_CONT); hy += 4.6;
-  dotted(hy, ''); hy += 6.5;
-  p.text(x0, hy, 'Signed, if required, with time and date', { size: 7.2 });
-  p.line(x0 + 50, hy + 0.4, x0 + 98, hy + 0.4, 0.15);
-  p.text(x0 + 74, hy + 3.6, 'Crew member concerned', { size: 7.2, align: 'center' });
-  p.text(160, hTop + 30, 'FOR OFFICIAL USE ONLY', { size: 8, align: 'center' });
+  const L = 15, R = 195;
 
-  const b = top + boxH + 8;
-  p.text(15, b, 'I declare that all statements and particulars contained in this General Declaration, and in any supplementary forms required to be', { size: 8, maxW: 180 });
-  p.text(15, b + 4, 'presented with this General Declaration, are complete, exact and true to the best of my knowledge and that all through passengers', { size: 8, maxW: 180 });
-  p.text(15, b + 8, 'will continue/have continued on the flight.', { size: 8 });
-  if (sig) signature(p, 136, b + 19, 56, sig);
-  p.line(118, b + 23, 195, b + 23, 0.15);
-  p.text(156, b + 27, 'Signature: Authorized Agent or Pilot-in-Command', { size: 7, align: 'center' });
-  p.text(156, b + 32, c.picName, { size: 10, align: 'center', maxW: 75 });
-  p.text(15, 278, '* To be completed when required by the State.', { size: 6.5 });
-  p.text(15, 281, '** Not to be completed when passenger manifests are presented and to be completed only when required by the State.', { size: 6.5 });
-  p.text(15, 287, 'ICAO ANNEX 9 - APPENDIX 1.1', { size: 8 });
-  p.text(105, 291, 'MD 4.7', { font: 'bold', size: 8, align: 'center' });
-  return doc.bytes({ title: `General Declaration ${c.registration} ${[c.date[2], c.date[1], c.date[0]].join('-')}` });
+  p.text(105, 19.5, 'GENERAL DECLARATION', { font: 'bold', size: 17, align: 'center' });
+  p.text(105, 24.3, '(OUTWARD/INWARD)', { size: 7, align: 'center' });
+
+  // header lines (7.6 mm apart, as the print sheet)
+  field(L, 34.6, 'Operator:', c.operator, 180);
+  field(L, 42.2, 'Marks of Nationality and Registration:', c.registration, 98);
+  const fx = field(L + 100, 42.2, 'Flight No.:', c.flightNo, 30);
+  field(fx + 9, 42.2, 'Date:', c.date, 40);
+  const depEnd = field(L, 49.8, 'Departure from:', c.departure, 98);
+  p.text((L + depEnd) / 2, 53.6, '(Place)', { size: 6.5, align: 'center' });
+  const arrEnd = field(L + 100, 49.8, 'Arrival at:', c.arrival, 80);
+  p.text((L + 100 + arrEnd) / 2, 53.6, '(Place)', { size: 6.5, align: 'center' });
+
+  // the routing box
+  const top = 59, headH = 14, tableH = 70, healthH = 74;
+  const bodyTop = top + headH, healthTop = bodyTop + tableH, bottom = healthTop + healthH;
+  const split = L + 110;
+  p.rect(L, top, R - L, bottom - top, 0.45);
+  p.text(105, top + 7, 'FLIGHT ROUTING', { font: 'bold', size: 13, align: 'center' });
+  p.text(105, top + 11.2, '("Place" Column always to list origin every en-route stop and destination)', { size: 7.5, align: 'center' });
+  p.line(L, bodyTop, R, bodyTop, 0.35);
+  p.line(split, bodyTop, split, bottom, 0.35);
+  p.line(L, healthTop, R, healthTop, 0.35);
+
+  // PLACE | NAMES OF CREW*: origin, ⇩, destination, blank rows
+  const rowH = tableH / (GD_ROWS + 1), placeR = L + 26;
+  p.line(placeR, bodyTop, placeR, healthTop, 0.35);
+  p.text((L + placeR) / 2, bodyTop + 4.6, 'PLACE', { font: 'bold', size: 8, align: 'center' });
+  p.text((placeR + split) / 2, bodyTop + 4.6, 'NAMES OF CREW*', { font: 'bold', size: 8, align: 'center' });
+  for (let r = 1; r <= GD_ROWS; r++) p.line(L, bodyTop + r * rowH, split, bodyTop + r * rowH, r === 1 ? 0.35 : 0.2);
+  const rowY = (i: number) => bodyTop + rowH * (i + 1) + 4.8;
+  const [origin, dest] = c.routing;
+  if (origin) {
+    p.text((L + placeR) / 2, rowY(0), origin.place, { font: 'bold', size: 10, align: 'center', maxW: 24 });
+    p.text(placeR + 2, rowY(0), origin.crew, { font: 'bold', size: 10, maxW: split - placeR - 4 });
+  }
+  if (dest) {
+    downArrow(p, (L + placeR) / 2, bodyTop + rowH * 2 + 1.3, rowH - 2.6);
+    p.text((L + placeR) / 2, rowY(2), dest.place, { font: 'bold', size: 10, align: 'center', maxW: 24 });
+  }
+
+  // NUMBER OF PASSENGERS ON THIS STAGE**
+  const pcx = (split + R) / 2;
+  p.text(pcx, bodyTop + 4.3, 'NUMBER OF PASSENGERS', { font: 'bold', size: 8, align: 'center' });
+  p.text(pcx, bodyTop + 7.8, 'ON THIS STAGE**', { font: 'bold', size: 8, align: 'center' });
+  p.line(split, bodyTop + 10, R, bodyTop + 10, 0.35);
+  const px = split + 4, pr = R - 4;
+  const under = (x: number, y: number, s: string) => { p.text(x, y, s, { font: 'italic', size: 8 }); p.line(x, y + 0.7, x + w(s, 'regular', 8), y + 0.7, 0.15); };
+  const pax = (y: number, label: string, v: number) => {
+    p.text(px, y, label, { size: 8 });
+    const x0 = px + w(label, 'regular', 8) + 2;
+    p.line(x0, y + 0.8, pr, y + 0.8, 0.2);
+    p.text((x0 + pr) / 2, y, String(v), { font: 'bold', size: 9.5, align: 'center' });
+  };
+  let y = bodyTop + 18;
+  under(px, y, 'Departure place:'); y += 6;
+  pax(y, 'Embarking', c.embarking); y += 6;
+  pax(y, 'Through on same flight', c.throughDeparture); y += 10;
+  under(px, y, 'Arrival place:'); y += 6;
+  pax(y, 'Disembarking', c.disembarking); y += 6;
+  pax(y, 'Through on same flight', c.throughArrival);
+  p.text(pcx, healthTop + 6, 'FOR OFFICIAL USE ONLY', { font: 'bold', size: 8, align: 'center' });
+
+  // Declaration of Health: the full Annex 9 text, struck through NIL (nothing to declare)
+  p.text((L + split) / 2, healthTop + 4.4, 'DECLARATION OF HEALTH', { font: 'bold', size: 8, align: 'center' });
+  const lh = 3, x0 = L + 2, tw = 106, fs = 7.1;
+  const dotted = (yy: number, lead: string) => {
+    if (lead) p.text(x0, yy, lead, { size: fs });
+    const from = lead ? x0 + w(lead + ' ', 'regular', fs) : x0;
+    for (let x = from; x < x0 + tw; x += 1.2) p.line(x, yy, x + 0.25, yy, 0.2);
+  };
+  let hy = healthTop + 9.6;
+  for (const l of GENDEC_HEALTH_LINES) { p.text(x0, hy, l, { size: fs, maxW: tw }); hy += lh; }
+  dotted(hy, GENDEC_HEALTH_CONT); hy += lh;
+  dotted(hy, ''); hy += lh + 1.6;
+  for (const l of GENDEC_DISINSECT_LINES) { p.text(x0, hy, l, { size: fs, maxW: tw }); hy += lh; }
+  dotted(hy, GENDEC_DISINSECT_CONT); hy += lh;
+  dotted(hy, '');
+  const sy = bottom - 7.2;
+  const signed = 'Signed, if required, with time and date';
+  p.text(x0, sy, signed, { size: fs });
+  p.line(x0 + w(signed, 'regular', fs) + 1.5, sy + 0.4, split - 2, sy + 0.4, 0.2);
+  p.text(split - 12, bottom - 3.2, 'Crew member concerned', { size: fs, align: 'right' });
+  const hx0 = L + 2, hy0 = bottom - 2, hx1 = split - 2, hy1 = healthTop + 2;
+  p.color(0.12, 0.31, 0.75);
+  p.line(hx0, hy0, hx1, hy1, 0.5);
+  const ang = (Math.atan2(hy0 - hy1, hx1 - hx0) * 180) / Math.PI;
+  const a = (ang * Math.PI) / 180;
+  // NIL along the line, just above it
+  p.text((hx0 + hx1) / 2 - 2 * Math.sin(a), (hy0 + hy1) / 2 - 2 * Math.cos(a), 'NIL', { font: 'bold', size: 32, align: 'center', rotate: ang });
+  p.color(0, 0, 0);
+
+  // the declaration, full width
+  const decl = [
+    'I declare that all statements and particulars contained in this General Declaration, and in any supplementary forms required to be',
+    'presented with this General Declaration, are complete, exact and true to the best of my knowledge and that all through passengers',
+    'will continue/have continued on the flight.',
+  ];
+  decl.forEach((l, i) => p.text(L, 225.2 + i * 4.2, l, { size: 8.5, maxW: R - L }));
+  const sl = 251;
+  p.text(70, sl, 'Signature', { size: 9 });
+  const lx = 70 + w('Signature', 'regular', 9) + 2;
+  p.line(lx, sl, lx + 90, sl, 0.2);
+  if (sig) signature(p, lx + 14, sl - 7.4, 60, sig);
+  p.text(lx + 45, sl + 4.4, 'Authorized Agent or Pilot-in-Command', { size: 8, align: 'center' });
+
+  p.text(L, 271, '* To be completed when required by the State.', { size: 7 });
+  p.text(L, 274.6, '** Not to be completed when passenger manifests are presented and to be completed only when required by the State.', { size: 7, maxW: R - L });
+  return doc.bytes({ title: `General Declaration ${c.registration} ${c.date}` });
+}
+
+/** An outlined down arrow (⇩) centred on x, from y (top) over h mm. */
+function downArrow(p: PdfPage, x: number, y: number, h: number) {
+  const sw = 1.1, hw = 2.6, sh = h * 0.5;
+  const pts: [number, number][] = [[x - sw, y], [x + sw, y], [x + sw, y + sh], [x + hw, y + sh], [x, y + h], [x - hw, y + sh], [x - sw, y + sh], [x - sw, y]];
+  for (let i = 0; i < pts.length - 1; i++) p.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], 0.25);
 }

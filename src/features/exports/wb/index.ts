@@ -1,4 +1,4 @@
-export { WbExport, WbSheet } from './WbExport';
+export { WbSheet } from './WbExport';
 export { EnvelopeChart } from './EnvelopeChart';
 export { wbSheetModel, chartDomain, chartEnvelope, cgToMomentOutline } from './model';
 export type { WbSheetModel, WbLine, WbPhaseCheck, ChartEnvelope } from './model';

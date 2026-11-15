@@ -16,7 +16,8 @@
 .perf-rows .perf-note { font-size: 6.6pt; color: #666; line-height: 1.2; padding-right: 2.4mm; }
 .perf-rows .perf-val.perf-wide { white-space: normal; }
 .perf-rows tr[data-row='todr'] .perf-val, .perf-rows tr[data-row='torr'] .perf-val, .perf-rows tr[data-row='ldr'] .perf-val { font-weight: 700; }
-.perf-rows tr[data-row='todr'] th, .perf-rows tr[data-row='ldr'] th { border-top: 0.3mm solid #111; }
+/* the rule above the required distances spans the whole row (label, value and note), like every row rule */
+.perf-rows tr[data-row='todr'] > *, .perf-rows tr[data-row='ldr'] > * { border-top: 0.3mm solid #111; }
 .perf-rows tr.st-bad .perf-val, .perf-rows tr.st-bad .perf-note { color: #b4231a; font-weight: 700; }
 .perf-rows tr.st-warn .perf-note { color: #8a5a00; }
 .perf-rows tr.st-ok .perf-val::after { content: ' ✓'; color: #1e7b46; font-weight: 700; }
