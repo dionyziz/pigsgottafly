@@ -6,6 +6,7 @@ import { createApi, configFromEnv } from './_lib/api.mjs';
 let handler;
 async function init() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
+  if (!process.env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID is not set; refusing to serve an open API');
   const db = await openDb(process.env.DATABASE_URL);
   return createApi({ db, ...configFromEnv(), secureCookie: true });
 }
