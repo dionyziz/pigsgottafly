@@ -10,10 +10,11 @@
 // values are refused with 400. The limits are the hangar's own errors (src/features/hangar/model.ts
 // validateAircraft) where it has them, and generous plausibility limits elsewhere.
 import type {
-  CompassCard, Envelope, Equipment, FuelSpec, FuelType, LandingTable, MassBalance, PerformanceFactors, PerformanceTables,
+  CompassCard, Envelope, Equipment, FuelGrade, FuelSpec, FuelType, LandingTable, MassBalance, PerformanceFactors, PerformanceTables,
   SeatPosition, Station, StationKind, TakeoffTable, TakeoffTableRow, WbCategory,
 } from '../../src/shared/types.js';
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type AttachmentRef, type AttachmentType } from '../../src/shared/types.js';
+import { FUEL_TYPES, normalizeFuelSpec } from '../../src/shared/fuel.js';
 import { badRequest } from './http.js';
 import { arr, obj } from './rows.js';
 
@@ -79,14 +80,23 @@ const L = AIRCRAFT_LIMITS;
 
 // ---------------------------------------------------------------- fuel
 
-const FUEL_TYPES = new Set<FuelType>(['AVGAS', 'MOGAS', 'JET A-1']);
+const FUEL_TYPE_SET = new Set<FuelType>(FUEL_TYPES);
 
 export function checkFuel(v: unknown): FuelSpec {
-  const f = obj<FuelSpec>(v, 'fuel');
-  if (!FUEL_TYPES.has(f.type)) throw badRequest('fuel.type must be AVGAS, MOGAS or JET A-1');
+  // an old client may still send one {type, densityKgPerL}
+  const f = normalizeFuelSpec(obj<FuelSpec>(v, 'fuel'));
+  const raw = list<FuelGrade>(f.types, 'fuel.types', FUEL_TYPES.length);
+  if (!raw.length) throw badRequest('fuel.types needs at least one fuel');
+  const seen = new Set<FuelType>();
+  const types = raw.map((g, i): FuelGrade => {
+    obj(g, `fuel.types[${i}]`);
+    if (!FUEL_TYPE_SET.has(g.type)) throw badRequest(`fuel.types[${i}].type must be AVGAS, MOGAS or JET A-1`);
+    if (seen.has(g.type)) throw badRequest(`fuel.types lists ${g.type} twice`);
+    seen.add(g.type);
+    return { type: g.type, densityKgPerL: num(g.densityKgPerL, `fuel.types[${i}].densityKgPerL`, ...L.densityKgPerL) };
+  });
   return {
-    type: f.type,
-    densityKgPerL: num(f.densityKgPerL, 'fuel.densityKgPerL', ...L.densityKgPerL),
+    types,
     totalL: num(f.totalL, 'fuel.totalL', ...L.litres),
     usableL: num(f.usableL, 'fuel.usableL', ...L.litres),
     unusableL: num(f.unusableL, 'fuel.unusableL', ...L.litres),

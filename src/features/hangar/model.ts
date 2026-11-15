@@ -1,7 +1,16 @@
 // Pure helpers for the hangar screens: validation of an aircraft, FPL equipment codes, compass card
-// status, envelope geometry and the reshaping of performance tables. No DOM, no React
-// (unit-tested in tests/unit/screens/hangar.test.ts).
-import type { AircraftInput, CompassCard, EnvelopePoint, LandingTable, Station, TakeoffTable } from '../../shared/types';
+// status, envelope geometry, and the editing operations of the aircraft page (approved fuels,
+// stations and seats, combined limits, envelopes, performance tables, runway condition factors,
+// stall speeds, compass cards). The page applies them to its draft (a copy of the AircraftInput),
+// so everything an aircraft holds can be created, changed and removed from the page. No DOM, no
+// React (unit-tested in tests/unit/screens/hangar.test.ts and hangarScratch.test.ts, which builds
+// the owner's SX-ASV and SX-ASG from a blank aircraft with these operations).
+import type {
+  AircraftInput, CompassCard, Envelope, EnvelopePoint, FuelSpec, FuelType, LandingTable, MassBalance, PerformanceFactors, PerformanceTables,
+  Station, StationKind, TakeoffTable,
+} from '../../shared/types';
+import { DEFAULT_FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
+import { parseItem18 } from '../exports/fpl/fpl';
 
 export type IssueLevel = 'error' | 'warning';
 export type SectionId = 'identity' | 'fpl' | 'speeds' | 'fuel' | 'mb' | 'performance' | 'compass';
@@ -226,6 +235,147 @@ export function newSeatId(stations: Station[], stationId: string): string {
   for (let i = 1; ; i++) if (!ids.has(`${stationId}-${i}`)) return `${stationId}-${i}`;
 }
 
+const STATION_DEFAULTS: Record<StationKind, { id: string; name: string }> = {
+  seat: { id: 'seats', name: 'Seats' },
+  baggage: { id: 'bag', name: 'Baggage area' },
+  fuel: { id: 'fuel', name: 'Fuel' },
+};
+
+/** Adds a station of a kind (a seat station gets one seat); returns it. */
+export function addStation(mb: MassBalance, kind: StationKind): Station {
+  const id = newStationId(mb.stations, STATION_DEFAULTS[kind].id);
+  const s: Station = { id, name: STATION_DEFAULTS[kind].name, kind, armM: 0, armRangeM: null, maxKg: null, seats: null };
+  if (kind === 'seat') s.seats = [{ id: newSeatId(mb.stations, id), label: 'Seat' }];
+  mb.stations.push(s);
+  return s;
+}
+/** Changes a station's kind: seats only on seat stations, a max load only on baggage areas. */
+export function setStationKind(mb: MassBalance, i: number, kind: StationKind): void {
+  const x = mb.stations[i];
+  x.kind = kind;
+  if (kind === 'seat' && !x.seats?.length) x.seats = [{ id: newSeatId(mb.stations, x.id), label: 'Seat' }];
+  if (kind !== 'seat') { x.seats = null; x.armRangeM = null; }
+  if (kind !== 'baggage') x.maxKg = null;
+}
+/** Removes a station and its id from the combined limits (limits left empty go). */
+export function removeStation(mb: MassBalance, i: number): void {
+  const [gone] = mb.stations.splice(i, 1);
+  if (!gone) return;
+  mb.combinedLimits = mb.combinedLimits.map((c) => ({ ...c, stations: c.stations.filter((x) => x !== gone.id) })).filter((c) => c.stations.length);
+}
+export function addSeat(mb: MassBalance, i: number, label = 'Seat'): void {
+  const x = mb.stations[i];
+  x.seats = [...(x.seats || []), { id: newSeatId(mb.stations, x.id), label }];
+}
+export function removeSeat(mb: MassBalance, i: number, k: number): void {
+  const x = mb.stations[i];
+  x.seats = (x.seats || []).filter((_, j) => j !== k);
+}
+/** Seat adjustment range: either end may be typed first (the other starts at the arm); both empty = none. */
+export function setArmRange(s: Station, end: 0 | 1, v: number | null): void {
+  const cur = s.armRangeM ?? null;
+  const other = cur ? cur[end === 0 ? 1 : 0] : null;
+  if (v == null && other == null) { s.armRangeM = null; return; }
+  const lo = end === 0 ? (v ?? s.armM) : (cur?.[0] ?? s.armM);
+  const hi = end === 1 ? (v ?? s.armM) : (cur?.[1] ?? s.armM);
+  s.armRangeM = [lo, hi];
+}
+/** Moves item i of a list by d (−1 up, +1 down). */
+export function moveItem<T>(xs: T[], i: number, d: -1 | 1): void {
+  const j = i + d;
+  if (j < 0 || j >= xs.length) return;
+  [xs[i], xs[j]] = [xs[j], xs[i]];
+}
+/** A new combined limit over the baggage areas. */
+export function addCombinedLimit(mb: MassBalance): void {
+  mb.combinedLimits.push({ stations: mb.stations.filter((s) => s.kind === 'baggage').map((s) => s.id), maxKg: 0 });
+}
+/** A utility category, starting as a copy of the normal CG envelope. */
+export function addUtilityEnvelope(mb: MassBalance): Envelope {
+  const n = mb.envelopes.normal;
+  mb.envelopes.utility = { category: 'utility', maxKg: n.maxKg, polygon: n.polygon.map((q) => [...q] as [number, number]), momentPolygon: null, notes: '' };
+  return mb.envelopes.utility;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Approved fuels
+
+/** Adds an approved fuel at its default density (no-op if already listed). */
+export function addFuelType(f: FuelSpec, t: FuelType): void {
+  if (f.types.some((g) => g.type === t)) return;
+  f.types.push({ type: t, densityKgPerL: DEFAULT_FUEL_DENSITY[t] });
+}
+/** Removes an approved fuel (the last one stays). */
+export function removeFuelType(f: FuelSpec, t: FuelType): void {
+  if (f.types.length <= 1) return;
+  f.types = f.types.filter((g) => g.type !== t);
+}
+/** Makes a fuel the first one (the fuel a flight's plain total means). */
+export function makePrimaryFuel(f: FuelSpec, t: FuelType): void {
+  const i = f.types.findIndex((g) => g.type === t);
+  if (i > 0) f.types.unshift(...f.types.splice(i, 1));
+}
+/** Fuel types not approved on this aircraft yet. */
+export const otherFuelTypes = (f: FuelSpec): FuelType[] => FUEL_TYPES.filter((t) => !f.types.some((g) => g.type === t));
+
+// ---------------------------------------------------------------------------------------------
+// Planning factors, stall speeds, compass cards
+
+/** Runway surface / condition factors as an ordered list (the record keeps insertion order). */
+export const runwayConditions = (f: PerformanceFactors): [string, number][] => Object.entries(f.runwayCondition);
+export function setRunwayConditions(f: PerformanceFactors, entries: [string, number][]): void {
+  f.runwayCondition = Object.fromEntries(entries);
+}
+/** Adds a condition under a name not used yet; returns the name. */
+export function addRunwayCondition(f: PerformanceFactors, name = 'new condition', factor = 1.1): string {
+  const names = new Set(Object.keys(f.runwayCondition));
+  let n = name;
+  for (let i = 2; names.has(n); i++) n = `${name} ${i}`;
+  f.runwayCondition = { ...f.runwayCondition, [n]: factor };
+  return n;
+}
+/** Stall IAS table (flaps up / partial / full × bank 0, 20, 40, 60°), all 0. */
+export function addStallSpeeds(p: PerformanceTables): void {
+  p.stallIasKt = { flapsUp: [0, 0, 0, 0], flaps10: [0, 0, 0, 0], flaps40: [0, 0, 0, 0] };
+}
+/** 'YYYY-MM-DD' + n years (29 Feb → 28 Feb); '' if invalid. */
+export function addYears(d: string, n: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+  if (!m) return '';
+  return `${+m[1] + n}-${m[2]}-${m[3] === '29' && m[2] === '02' ? '28' : m[3]}`;
+}
+/** A new deviation card swung `today`, valid two years, steer = for every 30°. */
+export function addCompassCard(a: AircraftInput, today: string): CompassCard {
+  const names = new Set(a.compassCards.map((c) => c.name));
+  const name = !names.has('Magnetic compass') ? 'Magnetic compass' : `Card ${a.compassCards.length + 1}`;
+  const c: CompassCard = { name, swung: today, expires: addYears(today, 2), source: '', points: blankCardPoints() };
+  a.compassCards.push(c);
+  return c;
+}
+
+// ---------------------------------------------------------------------------------------------
+// FPL item 18
+
+/**
+ * Indicators of the hangar's "other item 18" text that the flight plan leaves out
+ * (src/features/exports/fpl/fpl.ts): DOF/ REG/ DEP/ DEST/ ALTN/ EET/ come from the flight, PBN/
+ * from the PBN field, OPR/ from the operator, TYP/ is only written with type ZZZZ. RMK/ text is
+ * kept (added to the flight's RMK/), and so are NAV/, COM/ and the others.
+ */
+export function item18Dropped(a: Pick<AircraftInput, 'equipment' | 'operator' | 'icaoType'>): { indicator: string; why: string }[] {
+  const out: { indicator: string; why: string }[] = [];
+  for (const p of parseItem18(a.equipment.item18Extras || '')) {
+    if (out.some((d) => d.indicator === p.indicator)) continue;
+    let why = '';
+    if (['DOF', 'REG', 'DEP', 'DEST', 'ALTN', 'EET'].includes(p.indicator)) why = 'comes from the flight';
+    else if (p.indicator === 'PBN' && a.equipment.pbn) why = 'comes from the PBN/ field';
+    else if (p.indicator === 'OPR' && a.operator.trim()) why = 'comes from the operator';
+    else if (p.indicator === 'TYP' && /^[A-Z][A-Z0-9]{1,3}$/.test(a.icaoType) && a.icaoType !== 'ZZZZ') why = 'only used with type ZZZZ';
+    if (why) out.push({ indicator: p.indicator, why });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Performance table reshaping (column = pressure altitude, row = mass or headwind)
 
@@ -347,7 +497,8 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   const has10aR = split10a(e.item10a).includes('R');
   if (has10aR && !e.pbn) warn('fpl', 'equipment.pbn', 'Item 10a has R: give the PBN/ capabilities.');
   if (!has10aR && e.pbn) warn('fpl', 'equipment.pbn', 'PBN/ is given but item 10a has no R.');
-  if (/\b(DOF|REG|RMK)\//.test(e.item18Extras)) warn('fpl', 'equipment.item18Extras', 'DOF/, REG/ and RMK/ are generated from the flight; leave them out here.');
+  const dropped = item18Dropped(a);
+  if (dropped.length) warn('fpl', 'equipment.item18Extras', `Left out of the flight plan: ${dropped.map((d) => `${d.indicator}/ (${d.why})`).join(', ')}.`);
   if (e.dinghies) {
     if (!Number.isInteger(e.dinghies.number) || e.dinghies.number < 1) err('fpl', 'equipment.dinghies.number', 'Number of dinghies must be a whole number of at least 1.');
     if (!Number.isInteger(e.dinghies.capacity) || e.dinghies.capacity < 1) err('fpl', 'equipment.dinghies.capacity', 'Dinghy capacity must be a whole number of at least 1.');
@@ -362,7 +513,11 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
 
   // fuel
   const f = a.fuel;
-  if (!(f.densityKgPerL >= 0.5 && f.densityKgPerL <= 1)) err('fuel', 'fuel.densityKgPerL', 'Fuel density must be between 0.5 and 1.0 kg/L.');
+  if (!f.types.length) err('fuel', 'fuel.types', 'Give at least one approved fuel.');
+  if (new Set(f.types.map((g) => g.type)).size !== f.types.length) err('fuel', 'fuel.types', 'A fuel type is listed twice.');
+  f.types.forEach((g, i) => {
+    if (!(g.densityKgPerL >= 0.5 && g.densityKgPerL <= 1)) err('fuel', `fuel.types.${i}.densityKgPerL`, `${g.type} density must be between 0.5 and 1.0 kg/L.`);
+  });
   if (!(f.usableL > 0)) warn('fuel', 'fuel.usableL', 'Usable fuel not set: fuel on board cannot be checked.');
   if (f.totalL > 0 && f.usableL > f.totalL) err('fuel', 'fuel.usableL', 'Usable fuel is more than the total capacity.');
   if (f.totalL > 0 && f.usableL > 0 && Math.abs(f.usableL + f.unusableL - f.totalL) > 0.5 && f.usableL + f.unusableL < f.totalL)

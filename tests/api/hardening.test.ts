@@ -173,8 +173,13 @@ describe('aircraft documents are validated (they feed W&B, navlog and the manife
       { registration: 'SX-BAD', climbTasKt: '' },
       { registration: 'SX-BAD', fuel: { ...template.fuel, burnLph: 'x' } },
       { registration: 'SX-BAD', fuel: { ...template.fuel, burnLph: -5 } },
-      { registration: 'SX-BAD', fuel: { ...template.fuel, densityKgPerL: 7.2 } },
-      { registration: 'SX-BAD', fuel: { ...template.fuel, type: 'DIESEL' } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: [{ type: 'AVGAS', densityKgPerL: 7.2 }] } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: [{ type: 'DIESEL', densityKgPerL: 0.84 }] } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: [] } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: [{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'AVGAS', densityKgPerL: 0.71 }] } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: [{ type: 'AVGAS', densityKgPerL: '0.72' }] } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: undefined, type: 'DIESEL', densityKgPerL: 0.84 } },
+      { registration: 'SX-BAD', fuel: { ...template.fuel, types: undefined, type: 'AVGAS', densityKgPerL: 7.2 } },
       withMb({ stations: 5 }),
       withMb({ stations: [null] }),
       withMb({ stations: [{ id: 'front', name: 'Front', kind: 'seat', armM: 0.94, seats: 'x' }] }),
@@ -215,6 +220,15 @@ describe('aircraft documents are validated (they feed W&B, navlog and the manife
       const { id: _i, created: _c, updated: _u, ...stored } = r.body;
       expect(stored).toEqual(a);
     }
+  });
+
+  test('a client still sending one fuel type ({type, densityKgPerL}) gets an approved-fuels list', async () => {
+    const { types: _t, ...rest } = template.fuel;
+    const r = await post({ registration: 'SX-OLD', fuel: { ...rest, type: 'MOGAS', densityKgPerL: 0.74 } });
+    expect(r.status).toBe(201);
+    expect(r.body.fuel.types).toEqual([{ type: 'MOGAS', densityKgPerL: 0.74 }]);
+    expect(r.body.fuel.type).toBeUndefined();
+    expect((await c.call('DELETE', `aircraft/${r.body.id}`)).status).toBe(204);
   });
 
   test('an update cannot break a stored aircraft', async () => {

@@ -208,3 +208,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-ad-name { font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ep-ad-when { font-size: var(--fs-xs); }
 .ep-ad .pgf-ad-body { margin: 2px 0 0; }
+.ep-fob-types { gap: 10px; align-items: flex-end; }
+.ep-fob-type { display: inline-flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); }
+.ep-fob-total { padding-bottom: 6px; }

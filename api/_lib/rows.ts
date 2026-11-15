@@ -13,6 +13,7 @@ import type {
   WaypointInput,
 } from '../../src/shared/types.js';
 import { DEFAULT_SETTINGS, DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY } from '../../src/shared/constants.js';
+import { normalizeFuelSpec } from '../../src/shared/fuel.js';
 import { badRequest } from './http.js';
 import { checkCompassCards, checkEquipment, checkFuel, checkMassBalance, checkPerformance } from './aircraftDoc.js';
 
@@ -56,7 +57,7 @@ export function toAircraft(r: Row): Aircraft {
     cruiseTasKt: Number(r.cruise_tas_kt),
     patternTasKt: Number(r.pattern_tas_kt),
     climbTasKt: num(r.climb_tas_kt),
-    fuel: r.fuel,
+    fuel: normalizeFuelSpec(r.fuel),
     massBalance: r.mass_balance,
     performance: r.performance,
     equipment: r.equipment,

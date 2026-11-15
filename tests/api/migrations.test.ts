@@ -3,7 +3,8 @@ import crypto from 'node:crypto';
 import { describe, expect, test } from 'vitest';
 import { connect } from '../../api/_lib/db';
 import { migrate, MIGRATIONS, type Migration } from '../../api/_lib/migrate';
-import { seedSql } from '../../tools/build_seed';
+import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
+import { equipment as FLEET_EQUIPMENT_011, colours as FLEET_COLOURS_011 } from '../../api/_lib/migrations/011_fleet_fpl_equipment';
 import { legacyAtc, legacyLegOverrides } from '../../api/_lib/migrations/004_legacy_flights';
 import type { AtcEntry } from '../../src/shared/types';
 import { createApi } from '../../api/_lib/app';
@@ -35,12 +36,19 @@ const legacyData = {
   ov: { 'L1.alt': '3500', 'L2.tas': '95' }, termManual: [], termHidden: [],
 };
 
-// The shipped 003 targets the owner's real address by its SHA-256 (not published here); the tests
-// run the same generated SQL aimed at a test address instead.
+// The shipped 003, 011 and 014 target the owner's real address by its SHA-256 (not published
+// here); the tests run the same SQL aimed at a test address instead.
 const OWNER = 'Pilot@Example.com ';
 const sha = (s: string) => crypto.createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
-const withOwner = (email: string): Migration[] =>
-  MIGRATIONS.map((m) => (m.name === '003_existing_pilot_data' ? { ...m, sql: seedSql(sha(email)) } : m));
+const withOwner = (email: string, list: Migration[] = MIGRATIONS): Migration[] =>
+  list.map((m) => (m.sql?.includes(EXISTING_PILOT_PROFILE.ownerEmailSha256) ? { ...m, sql: m.sql.split(EXISTING_PILOT_PROFILE.ownerEmailSha256).join(sha(email)) } : m));
+const upTo = (name: string) => MIGRATIONS.slice(0, MIGRATIONS.findIndex((m) => m.name === name) + 1);
+/** The owner's aircraft as the API returns them, without ids and timestamps. */
+async function ownerAircraft(db: Awaited<ReturnType<typeof connect>>, pilotId: string) {
+  const { toAircraft } = await import('../../api/_lib/rows');
+  const rows = await db.query(`SELECT * FROM aircraft WHERE pilot_id = $1 ORDER BY registration DESC`, [pilotId]);
+  return rows.map((r) => { const { id: _i, created: _c, updated: _u, ...rest } = toAircraft(r); return rest; });
+}
 
 describe('migrations', () => {
   test('convert the v2 production schema', async () => {
@@ -76,10 +84,15 @@ describe('migrations', () => {
     expect(ac.map((r) => r.registration)).toEqual(['SX-ASG', 'SX-ASV']);
     expect(p.default_aircraft_id).toBe(ac[1].id);
     expect(ac[1].mass_balance.emptyMassKg).toBe(691.2);
+    // 003 + 011 + 014: exactly the owner's aircraft as tools/build_seed.ts describes them today
+    expect(await ownerAircraft(db, 'u1')).toEqual(fleetSeed().map((a) => ({ ...a, equipment: { ...a.equipment, ...FLEET_EQUIPMENT_011 }, colours: FLEET_COLOURS_011[a.registration] })));
     // SX-ASG: colours from the club's photo, life vests from its weighing report (FPL item 19 A/, J/)
-    const [asg] = await db.query(`SELECT colours, equipment FROM aircraft WHERE pilot_id = 'u1' AND registration = 'SX-ASG'`);
-    expect(asg.colours).toBe('WHITE RED BLACK STRIPES');
-    expect(asg.equipment.jackets).toEqual({ present: true, light: false, fluorescein: false, uhf: false, vhf: false });
+    const [asg] = await db.query(`SELECT colours, equipment, fuel, notes FROM aircraft WHERE pilot_id = 'u1' AND registration = 'SX-ASG'`);
+    expect(asg.colours).toBe('WHITE WITH BLACK RED STRIPES'); // 011, from the club's EuroFPL profile
+    expect(asg.equipment.jackets).toEqual({ present: true, light: true, fluorescein: true, uhf: false, vhf: false });
+    // 014: AVGAS and MOGAS approved, the seeded notes cleared
+    expect(asg.fuel.types).toEqual([{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'MOGAS', densityKgPerL: 0.75 }]);
+    expect(asg.notes).toBe('');
 
     // the old session still works, and the flight is converted
     const api = createApi({ db, googleClientId: CID, googleKeys: async () => [JWK] });
@@ -219,6 +232,53 @@ describe('migrations', () => {
     expect(r.map((e) => e.id)).toEqual(['ad:LGTT:A', 'v2-dep']);
     expect(r[1]).toMatchObject({ role: 'custom', callsign: 'Field X', primary: '123.5', sourceKey: null });
     expect(r[1].remark).toMatch(/123\.5 A\/A/);
+  });
+
+  test('014 on a database at 012 with the seeded owner: fuels, notes and sources; edits are kept; other pilots converted', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await db.query(`INSERT INTO users VALUES ('u2', 'g-sub-2', 'friend@example.com', 'A Friend', '', 3, 4)`);
+    await migrate(db, withOwner(OWNER, upTo('012_ref_ad_hours_2609')));
+    // as production is at 012: the old one-fuel shape, the seeded texts
+    const [before] = await db.query(`SELECT fuel, notes, mass_balance, performance, compass_cards FROM aircraft WHERE pilot_id = 'u1' AND registration = 'SX-ASV'`);
+    expect(before.fuel).toMatchObject({ type: 'AVGAS', densityKgPerL: 0.72 });
+    expect(before.notes).toMatch(/^Report prints 103\.97 cm/);
+    expect(before.mass_balance.weighingSource).toMatch(/trn-docs\//);
+    expect(before.performance.factors.source).toBe('Aeroclub Mesogeion MD 4.4 performance log');
+    expect(before.compass_cards[0].source).toMatch(/\.pdf$/);
+    // the pilot edited SX-ASG's notes; a friend made an aircraft from the template, MOGAS-only
+    await db.query(`UPDATE aircraft SET notes = 'my own note' WHERE pilot_id = 'u1' AND registration = 'SX-ASG'`);
+    const tpl = fleetSeed()[0];
+    await db.query(`INSERT INTO aircraft (id, pilot_id, registration, make_model, icao_type, wake, serial, operator, home_base, colours, cruise_tas_kt, pattern_tas_kt,
+      fuel, mass_balance, performance, equipment, compass_cards, notes, created, updated)
+      VALUES ('acf', 'u2', 'SX-FRD', '', 'C172', 'L', '', '', '', '', 90, 70, $1::jsonb, $2::jsonb, $3::jsonb, $4::jsonb, '[]'::jsonb, 'Report prints 103.97 cm', 1, 1)`,
+      [JSON.stringify({ ...before.fuel, type: 'MOGAS', densityKgPerL: 0.75 }), JSON.stringify(tpl.massBalance), JSON.stringify(before.performance), JSON.stringify(tpl.equipment)]);
+    const flights = await db.query(`SELECT count(*)::int AS n FROM flights`);
+
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['014_aircraft_fuels_provenance']);
+    const asv = (await ownerAircraft(db, 'u1')).find((a) => a.registration === 'SX-ASV')!;
+    const seed = fleetSeed().find((a) => a.registration === 'SX-ASV')!;
+    expect(asv).toEqual({ ...seed, equipment: { ...seed.equipment, ...FLEET_EQUIPMENT_011 }, colours: FLEET_COLOURS_011['SX-ASV'] });
+    expect(asv.notes).toBe('');
+    expect(asv.massBalance.weighingSource).toBe('DAS (EL.145.0078) weight and balance report, 14-11-2024');
+    expect(asv.massBalance.envelopes.utility!.notes).toBe('No rear passengers, no baggage.');
+    expect(asv.performance.factors.source).toBe('');
+    expect(asv.compassCards.map((c) => c.source)).toEqual(['']);
+    const [asg] = await db.query(`SELECT notes FROM aircraft WHERE pilot_id = 'u1' AND registration = 'SX-ASG'`);
+    expect(asg.notes).toBe('my own note');
+    const [frd] = await db.query(`SELECT fuel, notes, performance FROM aircraft WHERE id = 'acf'`);
+    expect(frd.fuel.types).toEqual([{ type: 'MOGAS', densityKgPerL: 0.75 }]);
+    expect(frd.fuel.type).toBeUndefined();
+    expect(frd.notes).toBe('Report prints 103.97 cm'); // not the owner's aircraft: notes untouched
+    expect(frd.performance.factors.source).toBe(''); // the template caption goes everywhere
+    expect(frd.performance.takeoff.source).toBe('AFM 5-8 Table 5: take-off distance, flaps retracted, hard surface runway');
+    expect(await db.query(`SELECT count(*)::int AS n FROM flights`)).toEqual(flights);
+    // running its SQL again changes nothing
+    const snap = await db.query(`SELECT * FROM aircraft ORDER BY id`);
+    await db.exec(withOwner(OWNER).find((m) => m.name === '014_aircraft_fuels_provenance')!.sql!);
+    expect((await db.query(`SELECT * FROM aircraft ORDER BY id`)).map(({ updated: _u, ...r }) => r)).toEqual(snap.map(({ updated: _u, ...r }) => r));
+    await db.close();
   });
 
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {

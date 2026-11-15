@@ -1,11 +1,13 @@
 // Aircraft TYPE templates. A template carries the type's AFM data (fuel system, stations and seat
-// layout, envelopes, performance tables, club factors) but nothing about a particular airframe:
+// layout, envelopes, performance tables) and, where the type file has them, planning factors as
+// ordinary editable values (the F172M file: Aeroclub Mesogeion's MD 4.4 factors), but nothing about a particular airframe:
 // registration, serial, empty mass/arm (weighing report), colours, equipment and compass cards are
 // left blank for the pilot to fill in. Used by "Add aircraft → from type template" in the hangar,
 // and by tools/build_seed.ts (the one-time migration of the existing pilot's own aircraft).
 //
 // Input: the parsed JSON of a type file such as data/aircraft/reims-f172m.json.
-import type { AircraftInput, Station, StationKind, SeatPosition } from './types.js';
+import type { AircraftInput, FuelType, Station, StationKind, SeatPosition } from './types.js';
+import { DEFAULT_FUEL_DENSITY } from './fuel.js';
 
 export interface AircraftTypeTemplate {
   /** e.g. 'reims-f172m' */
@@ -49,8 +51,8 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
     patternTasKt: 0,
     climbTasKt: null,
     fuel: {
-      type: 'AVGAS',
-      densityKgPerL: type.fuel.densityKgPerL.AVGAS,
+      // The type's approved fuels (the AFM's: AVGAS); a MOGAS STC is per airframe, added in the hangar.
+      types: (type.fuel.approved ?? ['AVGAS']).map((t: FuelType) => ({ type: t, densityKgPerL: type.fuel.densityKgPerL?.[t] ?? DEFAULT_FUEL_DENSITY[t] })),
       totalL: type.fuel.totalStandardL,
       usableL: type.fuel.usableStandardL,
       unusableL: type.fuel.unusableL,
@@ -80,17 +82,18 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
     },
     performance: {
       takeoff: {
-        source: type.takeoff._source, flaps: type.takeoff.flaps, altitudesFt: type.takeoff.altitudesFt,
+        source: type.takeoff.source ?? '', flaps: type.takeoff.flaps, altitudesFt: type.takeoff.altitudesFt,
         standardTempC: type.takeoff.standardTempC, rows: type.takeoff.rows, tempIncreasePer15C: 0.1,
         grassAddFractionOfTotal: 0.07, notes: type.takeoff.notes ?? [],
       },
       landing: {
-        source: type.landing._source, flaps: type.landing.flaps, massKg: type.landing.massKg, approachIas: type.landing.approachIas,
+        source: type.landing.source ?? '', flaps: type.landing.flaps, massKg: type.landing.massKg, approachIas: type.landing.approachIas,
         altitudesFt: type.landing.altitudesFt, standardTempC: type.landing.standardTempC, distances: type.landing.distances,
         headwindDecreasePer5Kt: 0.1, tempIncreasePer15C: 0.1, grassAddFractionOfTotal: 0.2, notes: type.landing.notes ?? [],
       },
       factors: {
-        source: type.clubFactors?._source ?? '',
+        // Planning factors are the operator's (club) rules, not AFM data: no source caption is carried.
+        source: '',
         safetyFactorTakeoff: type.clubFactors?.safetyFactorTakeoff ?? 1,
         safetyFactorLanding: type.clubFactors?.safetyFactorLanding ?? 1,
         runwayCondition: type.clubFactors?.runwayCondition ?? {},
@@ -122,8 +125,8 @@ export function blankAircraft(): AircraftInput {
     type: '', icaoType: '', wake: 'L',
     fuel: { densityKgPerL: { AVGAS: 0.72 }, totalStandardL: 0, usableStandardL: 0, unusableL: 0 },
     massBalance: { mtowKg: 0, stations: [], combinedLimits: [], envelopes: { normal: { maxKg: 0, polygon: [] }, utility: null } },
-    takeoff: { _source: '', flaps: '', altitudesFt: [], standardTempC: [], rows: [] },
-    landing: { _source: '', flaps: '', massKg: 0, approachIas: '', altitudesFt: [], standardTempC: [], distances: [] },
+    takeoff: { source: '', flaps: '', altitudesFt: [], standardTempC: [], rows: [] },
+    landing: { source: '', flaps: '', massKg: 0, approachIas: '', altitudesFt: [], standardTempC: [], distances: [] },
   });
   return a;
 }

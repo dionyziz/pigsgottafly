@@ -1,22 +1,22 @@
-// Hangar seed: SX-ASV and SX-ASG as AircraftInput records, built from data/aircraft/fleet.json
-// (per-aircraft weighing reports, tanks), data/aircraft/reims-f172m.json (type data: AFM fuel,
-// stations, envelopes, performance tables, club factors) and data/aircraft/compass-cards.json.
+// The owner's SX-ASV and SX-ASG as AircraftInput records, built from data/aircraft/fleet.json
+// (per-aircraft weighing reports, tanks, approved fuels), data/aircraft/reims-f172m.json (type data:
+// AFM fuel, stations, envelopes, performance tables, club factors) and data/aircraft/compass-cards.json.
 //
-// Writes api/_lib/migrations/003_existing_pilot_data.ts: a ONE-TIME data migration for the owner's
-// account if it exists when it runs (in production: converted from the v2 users table; matched by e-mail).
-// It gives it its profile values (home LGTT, taxi 15/15, reserve 60, default SX-ASV) and their
-// hangar. Pilots who sign up later get nothing: empty profile, empty hangar (pilot correction #1).
-//   npm exec tsx tools/build_seed.ts [--check]
+// fleetSeed() is the CURRENT state of those two aircraft as the migrations leave them in the owner's
+// hangar, apart from the flight-plan equipment and colours that 011 sets: migration 003 (one-time,
+// applied in production, FROZEN: this file generated it and no longer rewrites it) inserted them, and
+// 014 converted them (approved fuels AVGAS + MOGAS, no seeded notes, no file paths as sources).
+// tests/api/migrations.test.ts checks that 003 + 011 + 014 give exactly fleetSeed() (+ 011's values).
+// The tests use fleetSeed() as the owner's aircraft (W&B and performance cross-checks, e2e).
+//   npm exec tsx tools/build_seed.ts   (prints the two aircraft as JSON)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AircraftInput } from '../src/shared/types.js';
-import { DEFAULT_SETTINGS } from '../src/shared/constants.js';
+import type { AircraftInput, CompassCard, FuelType } from '../src/shared/types.js';
+import { DEFAULT_FUEL_DENSITY } from '../src/shared/fuel.js';
 import { aircraftFromTypeJson } from '../src/shared/templates.js';
 
-
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, 'api', '_lib', 'migrations', '003_existing_pilot_data.ts');
 const readJson = (p: string) => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'));
 
 export function fleetSeed(): AircraftInput[] {
@@ -42,13 +42,14 @@ export function fleetSeed(): AircraftInput[] {
     a.cruiseTasKt = f.cruiseTasKt;
     a.patternTasKt = f.patternTasKt;
     a.fuel = { ...a.fuel, totalL: f.fuel.usableL + type.fuel.unusableL, usableL: f.fuel.usableL,
+      types: (f.fuel.approved as FuelType[]).map((t) => ({ type: t, densityKgPerL: type.fuel.densityKgPerL[t] ?? DEFAULT_FUEL_DENSITY[t] })),
       unusableIncludedInEmptyMass: !!f.emptyMass.includesUnusableFuel, tanks: longRange ? 'long-range' : 'standard', burnLph: 30, taxiAllowanceL: 4 };
     const mb = a.massBalance;
     mb.emptyMassKg = f.emptyMass.kg;
     mb.emptyArmM = f.emptyMass.armM;
     mb.emptyMomentKgM = f.emptyMass.momentKgM;
     mb.weighingDate = reg === 'SX-ASV' ? '2024-11-14' : '2024-02-28';
-    mb.weighingSource = f.emptyMass._source;
+    mb.weighingSource = f.emptyMass.report;
     mb.includesOil = !!f.emptyMass.includesOil;
     mb.envelopes.normal.momentPolygon = momentNormal;
     if (f.categories.includes('utility') && mb.envelopes.utility) {
@@ -66,8 +67,9 @@ export function fleetSeed(): AircraftInput[] {
       ...a.equipment, item10a: 'S', item10b: 'C', emergencyRadio: { uhf: false, vhf: false, elt: true },
       ...(jackets ? { jackets: { ...a.equipment.jackets, ...jackets } } : {}),
     };
-    a.compassCards = cards[reg];
-    a.notes = [f.emptyMass._note, f.utilityNote].filter(Boolean).join('\n');
+    a.compassCards = cards[reg].map((c: CompassCard & { _file?: string }): CompassCard =>
+      ({ name: c.name, swung: c.swung, expires: c.expires, source: '', points: c.points }));
+    a.notes = '';
     return a;
   });
 }
@@ -86,58 +88,6 @@ export const EXISTING_PILOT_PROFILE = {
   defaultAircraft: 'SX-ASV',
 };
 
-const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
-
-/** SQL condition: the pilot row (alias `p`) is the owner account. */
-const isOwner = (hash: string) => `encode(sha256(convert_to(lower(btrim(p.email)), 'UTF8')), 'hex') = ${q(hash)}`;
-
-/** @param ownerEmailSha256 the owner account's e-mail hash (tests pass their own). */
-export function seedSql(ownerEmailSha256: string = EXISTING_PILOT_PROFILE.ownerEmailSha256): string {
-  const P = EXISTING_PILOT_PROFILE;
-  const settings = { ...DEFAULT_SETTINGS, ...P.settings };
-  const rows = fleetSeed().map((a) => {
-    const vals = [
-      q(a.registration), q(a.makeModel), q(a.icaoType), q(a.wake), q(a.serial), q(a.operator), q(a.homeBase), q(a.colours),
-      String(a.cruiseTasKt), String(a.patternTasKt), a.climbTasKt === null ? 'NULL' : String(a.climbTasKt),
-      `${q(JSON.stringify(a.fuel))}::jsonb`, `${q(JSON.stringify(a.massBalance))}::jsonb`, `${q(JSON.stringify(a.performance))}::jsonb`,
-      `${q(JSON.stringify(a.equipment))}::jsonb`, `${q(JSON.stringify(a.compassCards))}::jsonb`, q(a.notes),
-    ];
-    return `INSERT INTO aircraft (id, pilot_id, registration, make_model, icao_type, wake, serial, operator, home_base, colours,
-  cruise_tas_kt, pattern_tas_kt, climb_tas_kt, fuel, mass_balance, performance, equipment, compass_cards, notes, created, updated)
-SELECT 'ac_' || substr(md5(p.id || ${q(a.registration)}), 1, 12), p.id, ${vals.join(', ')}, ${NOW}, ${NOW}
-FROM pilots p WHERE p.seeded_at IS NULL AND ${isOwner(ownerEmailSha256)}
-ON CONFLICT (pilot_id, registration) DO NOTHING;`;
-  });
-  return `-- Generated by tools/build_seed.ts. Do not edit by hand.
--- ONE-TIME data migration: the owner's account (production: converted from the v2 users table;
--- matched by the SHA-256 of its e-mail) gets its profile values and hangar. Every other pilot existing
--- now is marked seeded with nothing, and later sign-ups get nothing.
-UPDATE pilots p SET
-  settings = ${q(JSON.stringify(settings))}::jsonb || p.settings,
-  home_aerodrome = COALESCE(p.home_aerodrome, ${q(P.homeAerodrome)})
-WHERE p.seeded_at IS NULL AND ${isOwner(ownerEmailSha256)};
-${rows.join('\n')}
-UPDATE pilots p SET seeded_at = ${NOW},
-  default_aircraft_id = COALESCE(p.default_aircraft_id, (SELECT a.id FROM aircraft a WHERE a.pilot_id = p.id AND a.registration = ${q(P.defaultAircraft)}))
-WHERE p.seeded_at IS NULL;
-`;
-}
-
-const NOW = '(extract(epoch FROM clock_timestamp()) * 1000)::BIGINT';
-
-export function seedModule(): string {
-  return `// Generated by tools/build_seed.ts from data/aircraft/*.json. Do not edit by hand.
-// ONE-TIME data migration for the pilots existing when it runs (see the SQL comment).
-const sql: string = ${JSON.stringify(seedSql())};
-export default sql;
-`;
-}
-
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const text = seedModule();
-  const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
-  if (process.argv.includes('--check')) {
-    if (cur !== text) { console.error('stale:', path.relative(ROOT, OUT)); process.exit(1); }
-  } else if (cur !== text) { fs.writeFileSync(OUT, text); console.log('wrote', path.relative(ROOT, OUT)); }
-  else console.log('seed up to date');
+  console.log(JSON.stringify(fleetSeed(), null, 2));
 }

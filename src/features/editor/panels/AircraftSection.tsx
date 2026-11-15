@@ -1,7 +1,7 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
 import { Link } from 'react-router-dom';
 import { pickCompassCard } from '../../../calc';
-import { seatLayout, type Aircraft, type FlightCrew, type FlightDoc } from '../../../shared';
+import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc } from '../../../shared';
 import { useEditor } from '../state';
 import { Chip, KV, Section } from './ui';
 
@@ -67,7 +67,7 @@ export function AircraftSection() {
             <KV k="Type" v={<>{aircraft.icaoType}/{aircraft.wake}</>} sub={aircraft.colours || undefined} />
             <KV k="TAS cruise / pattern" v={<span className="mono">{aircraft.cruiseTasKt} / {aircraft.patternTasKt} kt</span>} />
             <KV k="Planning burn" v={<span className="mono">{aircraft.fuel.burnLph} L/h</span>} sub={`+${aircraft.fuel.taxiAllowanceL} L allowance`} />
-            <KV k="Usable fuel" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={aircraft.fuel.type} />
+            <KV k="Usable fuel" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
           </div>
           {aircraft.compassCards.length > 1 ? (
             <label className="field">Compass card

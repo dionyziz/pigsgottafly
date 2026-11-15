@@ -117,10 +117,21 @@ export type PilotUpdate = Partial<
 export type WakeCategory = 'L' | 'M' | 'H' | 'J';
 export type FuelType = 'AVGAS' | 'MOGAS' | 'JET A-1';
 
-export interface FuelSpec {
+/** One fuel approved for the aircraft, with the density the W&B uses for it. */
+export interface FuelGrade {
   type: FuelType;
-  /** kg per litre used for W&B (AVGAS 0.72, MOGAS 0.75 per MD 4.3). */
+  /** kg per litre (MD 4.3: AVGAS 0.72, MOGAS 0.75; DEFAULT_FUEL_DENSITY in fuel.ts). */
   densityKgPerL: number;
+}
+
+export interface FuelSpec {
+  /**
+   * The approved fuels, at least one, each type once. The first is the aircraft's usual fuel: a
+   * flight that gives only a total (FlightDoc.fobL without FlightOptions.fuelL) carries that one.
+   * Mixed tanks are allowed: the W&B mass is the sum of litres × density per type.
+   * (Before migration 014 this was a single `type` + `densityKgPerL`; normalizeFuelSpec reads both.)
+   */
+  types: FuelGrade[];
   /** Total tank capacity, L. */
   totalL: number;
   /** Usable fuel, L (SX-ASV 144, SX-ASG 182). FOB above this is warned. */
@@ -493,6 +504,12 @@ export interface FlightOptions {
   arrivalSurface: string | null;
   /** Touch-and-go / intermediate-stop requests (missing on older flights = none). */
   aerodromeRequests?: AerodromeRequest[];
+  /**
+   * Fuel on board at block-off per type, L, when the pilot gives it by type (aircraft with more
+   * than one approved fuel; the club W&B calculator takes MOGAS and AVGAS litres separately).
+   * FlightDoc.fobL is then their sum. null / missing = all of fobL is the aircraft's first fuel.
+   */
+  fuelL?: Partial<Record<FuelType, number>> | null;
   /**
    * Who sends the General Declaration, overriding the automatic decision (handling per AIP + NOTAMs):
    * true = a handler submits it, false = the PIC sends it; null / missing = automatic.

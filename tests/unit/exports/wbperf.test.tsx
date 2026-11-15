@@ -76,6 +76,24 @@ const calcOf = (doc: FlightDoc, aircraft: Aircraft | null, extra: Partial<Export
 // W&B sheet
 
 describe('W&B sheet (MD 4.3)', () => {
+  test('fuel by type: one type as before, a mix shows each type and weighs Σ litres × density', () => {
+    const one = flight();
+    const m1 = wbSheetModel({ doc: one, aircraft: ASV, pilot, calc: calcOf(one, ASV), route: '' });
+    expect(m1.fuelLabel).toBe('AVGAS 0.72 kg/L');
+    expect(m1.lines.find((l) => l.key === 'fuel')!.note).toBe('100 L on board · max 144 L usable');
+    const mix = flight({ fobL: 100, options: { ...flight().options, fuelL: { AVGAS: 60, MOGAS: 40 } } });
+    const calc = calcOf(mix, ASV);
+    const m = wbSheetModel({ doc: mix, aircraft: ASV, pilot, calc, route: '' });
+    expect(m.fuelLabel).toBe('AVGAS 0.72 kg/L + MOGAS 0.75 kg/L');
+    const fuel = m.lines.find((l) => l.key === 'fuel')!;
+    expect(fuel.note).toBe('60 L AVGAS + 40 L MOGAS = 100 L on board · max 144 L usable');
+    expect(fuel.massKg).toBeCloseTo(60 * 0.72 + 40 * 0.75, 9);
+    // landing: the burn comes from the mix
+    const rho = (60 * 0.72 + 40 * 0.75) / 100;
+    expect(m.takeoff.massKg! - m.landing.massKg!).toBeCloseTo((calc.fuelTakeoffL - calc.fuelLandingL) * rho, 9);
+    expect(renderToStaticMarkup(<WbSheet m={m} />)).toContain('60 L AVGAS + 40 L MOGAS');
+  });
+
   test('rows in MD 4.3 order with the people under their seat station; totals from the calculation', () => {
     const doc = flight();
     const calc = calcOf(doc, ASV);
@@ -295,13 +313,13 @@ const T_MS = Date.parse(`${DATE}T10:00:00Z`);
 
 function clubSetup(c: ClubCase) {
   const i = c.input;
-  const mogas = i.MOGAS > 0;
-  const litres = mogas ? i.MOGAS : i.AVGAS;
+  // fuel on board per type, as the club calculator takes it (both aircraft approve AVGAS and MOGAS)
+  const litres = i.AVGAS + i.MOGAS;
   const base = i.Registration === 'SXASV' ? ASV : ASG;
   const ac: Aircraft = structuredClone(base);
   ac.massBalance.emptyMassKg = CLUB_EMPTY_KG[i.Registration];
   ac.massBalance.stations = ac.massBalance.stations.map((s) => (s.kind === 'fuel' ? { ...s, armM: CLUB_FUEL_ARM } : s));
-  ac.fuel = { ...ac.fuel, type: mogas ? 'MOGAS' : 'AVGAS', densityKgPerL: mogas ? 0.75 : 0.72, unusableIncludedInEmptyMass: true, usableL: 500, taxiAllowanceL: i.BlockFuel };
+  ac.fuel = { ...ac.fuel, unusableIncludedInEmptyMass: true, usableL: 500, taxiAllowanceL: i.BlockFuel };
   ac.performance = structuredClone(ac.performance);
   ac.performance.factors.runwayCondition = { ...ac.performance.factors.runwayCondition, 'club dep': i.RWYCC, 'club arr': i.RWYCC_land };
 
@@ -341,13 +359,14 @@ function clubSetup(c: ClubCase) {
     crew: people,
     baggageKg: { bag1: i.Baggage1, bag2: i.Baggage2 },
     fobL: litres,
-    options: { ...emptyFlightDoc(DATE).options, departureRunway: i.RWY, arrivalRunway: i.RWY_land, departureSurface: 'club dep', arrivalSurface: 'club arr' },
+    options: { ...emptyFlightDoc(DATE).options, departureRunway: i.RWY, arrivalRunway: i.RWY_land, departureSurface: 'club dep', arrivalSurface: 'club arr',
+      fuelL: { AVGAS: i.AVGAS, MOGAS: i.MOGAS } },
   };
   const calc = computeExportCalc({
     doc, aircraft: ac, settings: pilot.settings, weather: null, metar: metars, nowMs: T_MS + 5 * 60000,
     ref: { ...baseRef, aerodromes: [dep, arr], runwaysOf: (id) => runways[id] ?? [] },
   });
-  return { doc, ac, calc, litres, density: ac.fuel.densityKgPerL };
+  return { doc, ac, calc, litres, density: (i.AVGAS * 0.72 + i.MOGAS * 0.75) / litres };
 }
 
 const CLUB_ROW: Record<string, string> = { front: 'PIC and Front Passenger', rear: 'Rear Passengers', bag1: 'Baggage Area 1', bag2: 'Baggage Area 2' };

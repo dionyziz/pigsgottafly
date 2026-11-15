@@ -5,7 +5,8 @@ import { fleetSeed } from '../../../tools/build_seed';
 import { blankAircraft } from '../../../src/shared/templates';
 import { buildFromTemplate } from '../../../src/features/hangar/templates';
 import {
-  addHeadwind, addLandingAltitude, addTakeoffAltitude, addTakeoffMassRow, badPbn, cardStatus, deviationOf, insidePolygon,
+  addFuelType, addHeadwind, addLandingAltitude, addRunwayCondition, addStation, addTakeoffAltitude, addTakeoffMassRow, badPbn, item18Dropped,
+  makePrimaryFuel, otherFuelTypes, removeFuelType, removeStation, runwayConditions, setArmRange, setRunwayConditions, setStationKind, cardStatus, deviationOf, insidePolygon,
   join10a, join10b, missingEssentials, momentPolygonFromCg, newSeatId, newStationId, polygonArea, removeHeadwind,
   removeLandingAltitude, removeTakeoffAltitude, sameTypeCopy, selfIntersects, split10a, split10b, validateAircraft,
 } from '../../../src/features/hangar/model';
@@ -176,5 +177,74 @@ describe('copies', () => {
   test('missing essentials', () => {
     expect(missingEssentials(buildFromTemplate('reims-f172m'))).toEqual(expect.arrayContaining(['cruise TAS', 'fuel burn', 'empty mass']));
     expect(missingEssentials(buildFromTemplate('reims-f172m'))).not.toContain('MTOW');
+  });
+});
+
+describe('approved fuels and the item 18 field', () => {
+  test('fuel types: at least one, each once, densities in range', () => {
+    const a = structuredClone(fleetSeed()[0]);
+    a.fuel.types[1].densityKgPerL = 7.5;
+    expect(errors(a).map((i) => i.path)).toContain('fuel.types.1.densityKgPerL');
+    a.fuel.types = [{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'AVGAS', densityKgPerL: 0.72 }];
+    expect(errors(a).map((i) => i.path)).toContain('fuel.types');
+    a.fuel.types = [];
+    expect(errors(a).map((i) => i.path)).toContain('fuel.types');
+  });
+  test('add, remove and reorder fuels', () => {
+    const f = structuredClone(fleetSeed()[0].fuel);
+    removeFuelType(f, 'AVGAS');
+    expect(f.types.map((g) => g.type)).toEqual(['MOGAS']);
+    removeFuelType(f, 'MOGAS'); // the last one stays
+    expect(f.types.map((g) => g.type)).toEqual(['MOGAS']);
+    addFuelType(f, 'JET A-1');
+    expect(f.types).toEqual([{ type: 'MOGAS', densityKgPerL: 0.75 }, { type: 'JET A-1', densityKgPerL: 0.8 }]);
+    makePrimaryFuel(f, 'JET A-1');
+    expect(f.types.map((g) => g.type)).toEqual(['JET A-1', 'MOGAS']);
+    expect(otherFuelTypes(f)).toEqual(['AVGAS']);
+  });
+  test('item 18: NAV/ and RMK/ are fine; only what the flight plan leaves out is warned', () => {
+    const a = structuredClone(fleetSeed()[0]);
+    const warn18 = () => validateAircraft(a, TODAY).filter((i) => i.path === 'equipment.item18Extras').map((i) => i.message);
+    a.equipment.item18Extras = 'NAV/SBAS RMK/GARMIN GNS430W';
+    expect(item18Dropped(a)).toEqual([]);
+    expect(warn18()).toEqual([]);
+    a.equipment.item18Extras = 'NAV/SBAS DOF/261120 REG/SXASV RMK/X';
+    expect(item18Dropped(a).map((d) => d.indicator)).toEqual(['DOF', 'REG']);
+    expect(warn18()).toEqual(['Left out of the flight plan: DOF/ (comes from the flight), REG/ (comes from the flight).']);
+    a.equipment.item18Extras = 'OPR/SOMEONE TYP/C172';
+    expect(item18Dropped(a).map((d) => d.indicator)).toEqual(['OPR', 'TYP']);
+    a.operator = '';
+    expect(item18Dropped(a).map((d) => d.indicator)).toEqual(['TYP']);
+    a.equipment.pbn = '';
+    a.equipment.item18Extras = 'PBN/B2';
+    expect(item18Dropped(a)).toEqual([]);
+    a.equipment.pbn = 'B2';
+    expect(item18Dropped(a).map((d) => d.indicator)).toEqual(['PBN']);
+  });
+  test('stations, seats and arm ranges', () => {
+    const mb = structuredClone(fleetSeed()[0].massBalance);
+    const s = addStation(mb, 'baggage');
+    expect(s.id).toBe('bag');
+    setStationKind(mb, mb.stations.length - 1, 'seat');
+    expect(s.seats).toHaveLength(1);
+    expect(s.maxKg).toBeNull();
+    setArmRange(s, 1, 2.2);
+    expect(s.armRangeM).toEqual([0, 2.2]);
+    setArmRange(s, 0, null);
+    expect(s.armRangeM).toEqual([0, 2.2]);
+    s.armRangeM = null;
+    setArmRange(s, 0, null);
+    expect(s.armRangeM).toBeNull();
+    removeStation(mb, mb.stations.findIndex((x) => x.id === 'bag2'));
+    expect(mb.combinedLimits).toEqual([{ stations: ['bag1'], maxKg: 54 }]);
+    removeStation(mb, mb.stations.findIndex((x) => x.id === 'bag1'));
+    expect(mb.combinedLimits).toEqual([]);
+  });
+  test('runway conditions: add with a free name, rename, remove', () => {
+    const f = structuredClone(fleetSeed()[0].performance.factors);
+    expect(addRunwayCondition(f)).toBe('new condition');
+    expect(addRunwayCondition(f)).toBe('new condition 2');
+    setRunwayConditions(f, runwayConditions(f).filter(([k]) => !k.startsWith('new')).map(([k, v]) => [k.toUpperCase(), v]));
+    expect(Object.keys(f.runwayCondition)).toEqual(['SHORT DRY GRASS', 'SHORT WET GRASS', 'LONG DRY GRASS', 'LONG WET GRASS', 'PAVED RWYCC 5']);
   });
 });

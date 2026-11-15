@@ -107,10 +107,30 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .ed-table td, .pt-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .ed-table input, .pt-table input { padding: 5px 8px; font-size: var(--fs-sm); }
 .ed-table .num, .ed-table th.num { text-align: right; }
-.ed-table.stations td:first-child input { width: 100%; min-width: 150px; }
-.ed-table .range { display: inline-flex; align-items: center; gap: 4px; }
+/* stations: one fixed grid, rows top-aligned, every control one height (--cell-h) */
+.ed-table.stations { --cell-h: 32px; table-layout: fixed; min-width: 880px; }
+.ed-table.stations col.c-name { width: 172px; }
+.ed-table.stations col.c-kind { width: 108px; }
+.ed-table.stations col.c-arm { width: 80px; }
+.ed-table.stations col.c-range { width: 152px; }
+.ed-table.stations col.c-max { width: 88px; }
+.ed-table.stations col.c-seats { width: auto; }
+.ed-table.stations col.c-tools { width: 84px; }
+.ed-table.stations td { vertical-align: top; padding-top: 8px; padding-bottom: 8px; }
+.ed-table.stations th { padding-top: 6px; padding-bottom: 6px; }
+.ed-table.stations input, .ed-table.stations select { width: 100%; height: var(--cell-h); box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
+.ed-table.stations input.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ed-table.stations .st-id { margin-top: 3px; }
+.ed-table.stations .cell-na { display: block; height: var(--cell-h); line-height: var(--cell-h); color: var(--muted); padding: 0 9px; }
+.ed-table.stations td.num .cell-na { text-align: right; }
+.ed-table.stations .range { display: grid; grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr); align-items: center; gap: 4px; text-align: center; }
+.ed-table.stations td.row-tools button { height: var(--cell-h); }
+.ed-table.stations .seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.ed-table.stations .seat { height: var(--cell-h); box-sizing: border-box; }
+.ed-table.stations .seat input { height: 100%; width: 100%; border: 0; background: transparent; padding: 0 6px; }
+.ed-table.stations .add-seat { height: var(--cell-h); justify-content: flex-start; padding-left: 10px; border: 1px dashed var(--line-strong); border-radius: var(--r); }
 .seats { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.seat { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r); padding-right: 2px; background: var(--surface); }
+.seat { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--r); padding-right: 2px; background: var(--surface); min-width: 0; }
 .seat input { border: 0; padding: 4px 6px; background: transparent; min-width: 0; }
 .seat input:focus { outline: none; }
 .seat:focus-within { border-color: var(--accent); }
@@ -126,9 +146,11 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .empty-inline { display: flex; align-items: center; gap: var(--s3); padding: var(--s3); border: 1px dashed var(--line-strong); border-radius: var(--r); }
 
 /* envelopes */
-.env-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s4) var(--s5); align-items: start; }
-@media (max-width: 1000px) { .env-layout { grid-template-columns: 1fr; } }
-.chart-col { position: sticky; top: calc(var(--topbar-h) + 16px); }
+/* each limits table with its own chart on the right, in normal flow; stacked on narrow screens */
+.env-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--s4) var(--s5); align-items: start; }
+.env-row + .env-row { padding-top: var(--s3); border-top: 1px dashed var(--line); }
+@media (max-width: 1000px) { .env-row { grid-template-columns: 1fr; } }
+.chart-col { min-width: 0; }
 .chart-empty { height: 160px; display: grid; place-items: center; border: 1px dashed var(--line-strong); border-radius: var(--r); font-size: var(--fs-sm); }
 .env-chart, .arm-ruler, .dev-curve { width: 100%; height: auto; display: block; font-family: var(--font); }
 .env-chart .plot-bg, .dev-curve .plot-bg { fill: var(--surface-2); stroke: var(--line); }
@@ -156,6 +178,14 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .arm-ruler .range.seat { stroke: rgba(31, 95, 191, 0.45); }
 .arm-ruler .empty-cg path { fill: var(--ink); }
 .arm-ruler .empty-cg text { font-size: 10px; fill: var(--ink); }
+
+/* approved fuels */
+.fuel-types { display: flex; flex-direction: column; gap: 6px; }
+.ed-table.fuel-tbl { width: auto; min-width: 380px; }
+.ed-table.fuel-tbl td { vertical-align: middle; }
+.ed-table.fuel-tbl td.num { width: 110px; }
+.ed-table.fuel-tbl td:nth-child(3) { min-width: 100px; }
+.fuel-tbl td.mono { font-weight: 600; width: 90px; }
 
 /* performance */
 table.perf { width: auto; }
