@@ -140,11 +140,11 @@ describe('FPL item 18: flight remarks with indicators', () => {
   test('RMK/ typed in the remarks is not doubled', () => {
     const r = buildFpl(fplBase({ remarks: 'RMK/REQUEST TOUCH N GO AT LGMG' }));
     expect(r.fields.item18).not.toContain('RMK/RMK');
-    expect(rmkOf(r)).toMatch(/^REQUEST TOUCH N GO AT LGMG PIC TEL/);
+    expect(rmkOf(r)).toBe('REQUEST TOUCH N GO AT LGMG');
   });
   test('other indicators go to their own field in Doc 4444 order; plain text to RMK/', () => {
     const r = buildFpl(fplBase({ remarks: 'PHOTO FLIGHT STS/HOSP PER/A' }));
-    expect(r.fields.item18).toMatch(/^STS\/HOSP DOF\/261120 PER\/A RMK\/PHOTO FLIGHT /);
+    expect(r.fields.item18).toMatch(/^STS\/HOSP PER\/A RMK\/PHOTO FLIGHT DOF\/261120$/);
   });
   test('generated indicators typed in the remarks are ignored with a warning', () => {
     const r = buildFpl(fplBase({ remarks: 'DOF/991231' }));
@@ -198,7 +198,7 @@ describe('touch-and-go and intermediate-stop requests', () => {
   test('joined in one RMK/ field, first', () => {
     const r = buildFpl(fplBase({ requests: ['INITIALLY REQUEST TOUCH N GO AT LGTT', 'REQUEST TOUCH N GO AT LGMG'], remarks: 'PHOTO' }));
     expect(r.fields.item18.match(/RMK\//g)).toHaveLength(1);
-    expect(rmkOf(r)).toMatch(/^INITIALLY REQUEST TOUCH N GO AT LGTT REQUEST TOUCH N GO AT LGMG PHOTO PIC TEL/);
+    expect(rmkOf(r)).toBe('INITIALLY REQUEST TOUCH N GO AT LGTT REQUEST TOUCH N GO AT LGMG PHOTO');
   });
 
   test('timing: legs either side of the intermediate aerodrome at pattern TAS, stop minutes on the ground, pattern altitude there', () => {

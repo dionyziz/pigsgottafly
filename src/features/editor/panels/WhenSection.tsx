@@ -57,7 +57,7 @@ export function WhenSection() {
   return (
     <Section id="when" title="When" badge={<span className="muted">{badge}</span>}>
       <div className="ep-grid2">
-        <label className="field">Date
+        <label className="field" data-focus="date">Date
           <DateInput value={doc.date} testId="flight-date"
             onChange={(e) => update((d) => ({ ...d, date: e.target.value }), { coalesce: 'date' })} />
         </label>
@@ -67,6 +67,7 @@ export function WhenSection() {
             placeholder="HH:MM"
             className={parsed === null ? 'invalid' : ''}
             data-testid="block-off"
+            data-focus="blockOff"
             onFocus={() => setFocused(true)}
             onBlur={() => { setFocused(false); if (parsed !== null) setDraft(parsed); else setDraft(doc.blockOff); }}
             onChange={(e) => {
@@ -77,12 +78,12 @@ export function WhenSection() {
           />
           <span className="hint">{isFinite(boMs) ? `${localClock(boMs)} local (${localOffsetLabel(boMs)})` : 'Engine start, UTC'}</span>
         </label>
-        <label className="field">Taxi out (min)
+        <label className="field" data-focus="taxiOut">Taxi out (min)
           <NumberInput value={doc.taxiOutMin} min={0} max={180} testId="taxi-out" placeholder={String(SETTING_SUGGESTIONS.taxiOutMin)}
             onCommit={(v) => update((d) => ({ ...d, taxiOutMin: v }), { coalesce: 'taxiOut' })} />
           {doc.taxiOutMin == null && <span className="hint warn-text">Not set</span>}
         </label>
-        <label className="field">Taxi in (min)
+        <label className="field" data-focus="taxiIn">Taxi in (min)
           <NumberInput value={doc.taxiInMin} min={0} max={180} testId="taxi-in" placeholder={String(SETTING_SUGGESTIONS.taxiInMin)}
             onCommit={(v) => update((d) => ({ ...d, taxiInMin: v }), { coalesce: 'taxiIn' })} />
           {doc.taxiInMin == null && <span className="hint warn-text">Not set</span>}

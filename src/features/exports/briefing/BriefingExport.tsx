@@ -7,6 +7,10 @@ import { useEffect, useState } from 'react';
 import type { Flight } from '../../../shared';
 import { ApiRequestError } from '../../../data/api';
 import { fetchNotams, type NotamBriefing } from '../../../data/notams';
+import { usePilot } from '../../../app/session';
+import type { ShownSignature } from '../form731/Form731';
+import { SignLine } from '../wb/SignLine';
+import '../form731/forms.css';
 import { briefingModel, type BriefingModel } from './model';
 import '../wb/xp.css';
 import './briefing.css';
@@ -16,6 +20,10 @@ export function BriefingExport({ flight }: { flight: Flight }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
+  // acknowledged by the PIC, e-signed when the briefing is generated
+  const pilot = usePilot();
+  const [signedAt] = useState(() => Date.now());
+  const signature: ShownSignature | null = pilot.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
   useEffect(() => {
     let live = true;
     setBusy(true);
@@ -39,12 +47,12 @@ export function BriefingExport({ flight }: { flight: Flight }) {
         </div>
         {error && <ul className="xp-warnings"><li>{error}</li></ul>}
       </div>
-      <div className="xp-stage"><BriefingSheet m={m} /></div>
+      <div className="xp-stage"><BriefingSheet m={m} signature={signature} /></div>
     </div>
   );
 }
 
-export function BriefingSheet({ m }: { m: BriefingModel }) {
+export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signature?: ShownSignature | null }) {
   return (
     <section className="xp-sheet brief-sheet" aria-label="NOTAM briefing">
       <header className="xp-head">
@@ -96,6 +104,10 @@ export function BriefingSheet({ m }: { m: BriefingModel }) {
           )}
         </>
       )}
+      <footer className="xp-sign brief-sign" data-testid="briefing-ack">
+        <span>ACKNOWLEDGED BY PIC <b className="xp-fill">{signature?.name ?? ''}</b></span>
+        <SignLine signature={signature} />
+      </footer>
     </section>
   );
 }

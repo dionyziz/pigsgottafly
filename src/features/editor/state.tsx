@@ -130,13 +130,16 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
 
   const setDerived = useCallback<EditorValue['setDerived']>(({ eteMin, fuelL }) => {
     const cur = docRef.current;
-    if (cur.summary.eteMin === eteMin && cur.summary.fuelL === fuelL) return;
-    const next = { ...cur, summary: { ...cur.summary, eteMin, fuelL } };
+    // recompute the whole summary from the current document, so it can never lag behind the route
+    const ac = hangar.find((a) => a.id === cur.aircraftId) ?? null;
+    const summary = { ...summaryOf(cur, ac, buildLegs(cur.route, cur.date)), eteMin, fuelL };
+    if (JSON.stringify(summary) === JSON.stringify(cur.summary)) return;
+    const next = { ...cur, summary };
     // history entries keep their own summaries; the next recompute fixes them up after undo/redo
     docRef.current = next;
     setDoc(next);
     flightStore.save(flight.id, next);
-  }, [flight.id]);
+  }, [flight.id, hangar]);
 
   const undo = useCallback(() => {
     const h = hist.current;

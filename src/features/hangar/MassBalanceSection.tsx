@@ -22,7 +22,7 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
     <Section id="mb" title="Mass and balance" intro="From the weighing report and the flight manual. Arms are metres aft of the datum; moments are kg·m.">
       <div className="sub-h">Empty aircraft</div>
       <div className="grid3">
-        <Field label="Empty mass" issues={at('massBalance.emptyMassKg')}>
+        <Field focus="emptyMassKg" label="Empty mass" issues={at('massBalance.emptyMassKg')}>
           <NumInput value={mb.emptyMassKg} zeroAsEmpty min={0} max={1e6} unit="kg" placeholder="not set" invalid={bad('massBalance.emptyMassKg')}
             onChange={(v) => m((q) => { q.emptyMassKg = v ?? 0; if (q.emptyArmM > 0) q.emptyMomentKgM = r2(q.emptyMassKg * q.emptyArmM); })} />
         </Field>

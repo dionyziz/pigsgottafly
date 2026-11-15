@@ -113,7 +113,7 @@ function runwayHdgMag(r: RefRunway): number {
   return fin(n) ? n * 10 : 0;
 }
 
-function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, forcedRunway: string | null, stop = false): PerfBlock {
+function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, forcedRunway: string | null, stop: false | 'stop' | 'touch-and-go' = false): PerfBlock {
   const takeoff = e.phase === 'takeoff';
   const rows: PerfRow[] = [];
   const add = (key: string, label: string, value: string, note = '', status: RowStatus = null) => rows.push({ key, label, value, note, status });
@@ -122,7 +122,8 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
   const ad = e.aerodrome;
   const warnings: string[] = [];
   const adName = ad ? `${ad.icao ? ad.icao + ' ' : ''}${ad.name}` : e.point ? e.point.name : '';
-  const title = stop ? (takeoff ? 'Take-off from stop' : 'Landing at stop') : takeoff ? 'Departure' : 'Destination';
+  const title = stop === 'touch-and-go' ? (takeoff ? 'Touch-and-go take-off' : 'Touch-and-go landing')
+    : stop ? (takeoff ? 'Take-off from stop' : 'Landing at stop') : takeoff ? 'Departure' : 'Destination';
 
   if (!e.point) warnings.push(takeoff ? 'No route.' : 'No destination: the route has a single point.');
   else if (!ad) warnings.push(`${e.point.name} is not an aerodrome: no ${takeoff ? 'take-off' : 'landing'} performance.`);
@@ -308,8 +309,8 @@ export function perfSheetModel(input: PerfSheetInput): PerfSheetModel {
   const sectorSpeeds = takeoffs.map((e, k) => (k === 0 ? speeds : speedsAt(e)));
   const arrival = block(calc.arrival, aircraft, sectorSpeeds[sectorSpeeds.length - 1], doc.options.arrivalRunway);
   const stops = calc.stops.map((x, k) => ({
-    landing: block(x.landing, aircraft, sectorSpeeds[k], x.landing.forcedRunway, true),
-    takeoff: block(x.takeoff, aircraft, sectorSpeeds[k + 1], x.takeoff.forcedRunway, true),
+    landing: block(x.landing, aircraft, sectorSpeeds[k], x.landing.forcedRunway, x.kind),
+    takeoff: block(x.takeoff, aircraft, sectorSpeeds[k + 1], x.takeoff.forcedRunway, x.kind),
   }));
   const tos = [departure, ...stops.map((x) => x.takeoff)];
   const ldgs = [...stops.map((x) => x.landing), arrival];

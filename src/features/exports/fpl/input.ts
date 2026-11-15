@@ -69,7 +69,7 @@ export function fplInputFrom(o: {
     departure: dep ? toFpl(dep) : asPoint(first),
     destination: dest ? toFpl(dest) : asPoint(last),
     alternates: (flight.options.alternates || []).map(alternateOf).filter((x): x is FplAerodrome => !!x),
-    route: route.map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, kind: p.kind })),
+    route: route.map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, kind: p.kind, icao: p.kind === 'aerodrome' ? endpointAerodrome(p, REF.aerodromes)?.icao ?? null : null })),
     cruiseTasKt: ac?.cruiseTasKt ?? NaN,
     totalEetMin: totalEetMin(navlog),
     enduranceMin: fuel && isFinite(fuel.enduranceMin) ? fuel.enduranceMin : null,

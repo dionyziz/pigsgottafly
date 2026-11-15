@@ -9,3 +9,8 @@
 .export-tabs a.active { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
 .export-bar > button { grid-column: 2; grid-row: 1; }
 @media print { .export-bar { display: none !important; } }
+
+/* A warning that links to where it is fixed (WarningList) */
+.pgf-warn-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+.pgf-warn-link:hover { text-decoration: underline; }
+.pgf-warn-link .pgf-fix { margin-left: 8px; font-weight: 600; white-space: nowrap; color: var(--accent, #2563eb); display: inline-block; }

@@ -9,6 +9,8 @@
 //     the sector's trip fuel (Σ of its legs' whole litres, as the navlog);
 //   - the next sector takes off with the fuel it landed with (no refuelling at the stop; the
 //     stop's start-up/taxi allowance is charged to the sector that follows, as at the departure).
+//   - a touch-and-go at an intermediate aerodrome also ends a sector (a landing and a take-off with
+//     their own performance), but the aircraft never stops: no allowance for the next sector.
 // So the last sector lands with FOB − allowance × (1 + stops) − trip = FuelPlan.landingFuelL, and a
 // flight without stops is one sector equal to the plain take-off / landing figures.
 // Pure: no I/O, no DOM.
@@ -41,6 +43,8 @@ export interface FlightSector {
   /** Fuel at take-off and at landing, L (landing may be negative: not enough fuel). */
   fuelTakeoffL: number;
   fuelLandingL: number;
+  /** How the sector ends: at a full stop, a touch-and-go, or the destination. */
+  ends: 'stop' | 'touch-and-go' | 'destination';
 }
 
 const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
@@ -59,6 +63,8 @@ export interface FlightSectorsInput {
   legs: readonly SectorLeg[];
   /** RequestTiming.groundAfterLegMin. */
   groundAfterLegMin?: readonly number[] | null;
+  /** RequestTiming.touchAfterLeg: intermediate touch-and-goes end sectors too. */
+  touchAfterLeg?: readonly boolean[] | null;
   /** Aircraft FuelSpec.taxiAllowanceL (per take-off). */
   taxiAllowanceL: number;
   /** Fuel on board at block-off, L. */
@@ -70,17 +76,22 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
   const n = input.legs.length;
   if (!n) return [];
   const allowance = fin(input.taxiAllowanceL) ? Math.max(0, input.taxiAllowanceL) : 0;
-  const ends = [...stopLegs(input.groundAfterLegMin, n), n - 1];
+  const stops = stopLegs(input.groundAfterLegMin, n);
+  const touches: number[] = [];
+  for (let i = 0; i < n - 1; i++) if (input.touchAfterLeg?.[i] && !stops.includes(i)) touches.push(i);
+  const ends = [...new Set([...stops, ...touches, n - 1])].sort((a, b) => a - b);
   const out: FlightSector[] = [];
   let first = 0;
   let fuel = fin(input.fobL) ? input.fobL : 0;
+  let charge = allowance;
   for (const last of ends) {
     let trip = 0;
     for (let i = first; i <= last; i++) {
       const f = input.legs[i].fuel;
       trip += fin(f) ? f : 0;
     }
-    const landing = fuel - allowance - trip;
+    const landing = fuel - charge - trip;
+    const kind = last === n - 1 ? 'destination' as const : stops.includes(last) ? 'stop' as const : 'touch-and-go' as const;
     out.push({
       index: out.length,
       fromPoint: first,
@@ -90,12 +101,15 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
       takeoffMin: input.legs[first].startMin,
       landingMin: input.legs[last].endMin,
       tripFuelL: trip,
-      allowanceL: allowance,
+      allowanceL: charge,
       fuelTakeoffL: fuel,
       fuelLandingL: landing,
+      ends: kind,
     });
-    // No refuelling: the next sector starts with what is left (never below empty tanks).
+    // No refuelling: the next sector starts with what is left (never below empty tanks); after a
+    // touch-and-go there is no new start-up and taxi.
     fuel = Math.max(0, landing);
+    charge = kind === 'touch-and-go' ? 0 : allowance;
     first = last + 1;
   }
   return out;
@@ -106,16 +120,17 @@ export function sectorBalances(base: Omit<WbInput, 'fuelTakeoffL' | 'fuelLanding
   return sectors.map((s) => weightAndBalance({ ...base, fuelTakeoffL: s.fuelTakeoffL, fuelLandingL: s.fuelLandingL }));
 }
 
-/** One intermediate stop: the landing that ends sector `before` and the take-off that starts the next. */
+/** One intermediate stop or touch-and-go: the landing that ends sector `before` and the take-off that starts the next. */
 export interface StopSectors {
   /** Route point index of the stop aerodrome. */
   pointIndex: number;
+  kind: 'stop' | 'touch-and-go';
   before: FlightSector;
   after: FlightSector;
 }
 
 export function stopsOf(sectors: readonly FlightSector[]): StopSectors[] {
   const out: StopSectors[] = [];
-  for (let i = 0; i + 1 < sectors.length; i++) out.push({ pointIndex: sectors[i].toPoint, before: sectors[i], after: sectors[i + 1] });
+  for (let i = 0; i + 1 < sectors.length; i++) out.push({ pointIndex: sectors[i].toPoint, kind: sectors[i].ends === 'touch-and-go' ? 'touch-and-go' : 'stop', before: sectors[i], after: sectors[i + 1] });
   return out;
 }

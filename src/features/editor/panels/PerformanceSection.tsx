@@ -1,7 +1,7 @@
 // Take-off and landing: conditions (METAR when current, else forecast), runway (from the wind, or
 // chosen), surface condition, wind components, and required vs available distances. At the
-// departure, at each intermediate full stop (the landing there and the take-off from there, with the
-// sector masses) and at the destination.
+// departure, at each intermediate full stop and touch-and-go (the landing there and the take-off
+// from there, with the sector masses) and at the destination.
 import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
 import type { Aircraft } from '../../../shared';
@@ -45,7 +45,7 @@ function Endpoint({ e }: { e: EndpointCalc }) {
   const rwKey: keyof FlightOptions = to ? 'departureRunway' : 'arrivalRunway';
   const sfKey: keyof FlightOptions = to ? 'departureSurface' : 'arrivalSurface';
   // A stop keeps its runway (landing / take-off) and surface on its AerodromeRequest.
-  const stopReq = e.stopUid ? (doc.options.aerodromeRequests ?? []).find((r) => r.pointUid === e.stopUid && r.kind === 'stop') : undefined;
+  const stopReq = e.stopUid ? (doc.options.aerodromeRequests ?? []).find((r) => r.pointUid === e.stopUid) : undefined;
   const runwayValue = e.stopUid ? (to ? stopReq?.takeoffRunway : stopReq?.landingRunway) ?? null : (doc.options[rwKey] as string | null);
   const surfaceValue = e.stopUid ? stopReq?.surface ?? null : (doc.options[sfKey] as string | null);
   const setRunway = (v: string | null) => update((d) => ({ ...d, options: e.stopUid
@@ -60,7 +60,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
   const p = e.perf;
   const v = endpointVerdict(e, aircraft);
   const extrap = v.extrapolated ? 'extrapolated beyond the AFM table' : undefined;
-  const title = e.stopUid ? (to ? 'Take-off from stop' : 'Landing at stop') : to ? 'Departure' : 'Destination';
+  const title = e.stopKind === 'touch-and-go' ? (to ? 'Touch-and-go take-off' : 'Touch-and-go landing')
+    : e.stopUid ? (to ? 'Take-off from stop' : 'Landing at stop') : to ? 'Departure' : 'Destination';
   const timeMin = isFinite(e.timeMs) && isFinite(dayMs) ? (e.timeMs - dayMs) / 60000 : NaN;
 
   if (!ad) return <div className="ep-perf"><div className="ep-perf-head"><b>{title}</b><span className="muted">not an aerodrome</span></div></div>;
@@ -135,6 +136,7 @@ export function PerformanceSection() {
   const has = departure.aerodrome || arrival.aerodrome;
   return (
     <Section id="performance" title="Take-off & landing" badge={bad ? <Chip tone="danger">No-go</Chip> : undefined}>
+      <div data-focus="performance">
       {!has && <p className="muted ep-note">Start and end the route at an aerodrome.</p>}
       {departure.aerodrome && <Endpoint e={departure} />}
       {stops.map((x) => x.aerodrome && (
@@ -144,6 +146,7 @@ export function PerformanceSection() {
         </div>
       ))}
       {arrival.aerodrome && <Endpoint e={arrival} />}
+      </div>
     </Section>
   );
 }

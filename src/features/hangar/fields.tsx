@@ -75,9 +75,9 @@ export function NumInput({ value, onChange, optional, integer, min, max, unit, p
 }
 
 /** Labelled field with optional hint and the issues of its path. */
-export function Field({ label, hint, issues, children, req, wide }: { label: ReactNode; hint?: ReactNode; issues?: Issue[]; children: ReactNode; req?: boolean; wide?: boolean }) {
+export function Field({ label, hint, issues, children, req, wide, focus }: { label: ReactNode; hint?: ReactNode; issues?: Issue[]; children: ReactNode; req?: boolean; wide?: boolean; /** ?focus= deep-link key */ focus?: string }) {
   return (
-    <label className={'field' + (wide ? ' span2' : '')}>
+    <label className={'field' + (wide ? ' span2' : '')} data-focus={focus}>
       <span>{label}{req && <span className="req" aria-hidden>*</span>}</span>
       {children}
       {hint && <span className="hint">{hint}</span>}

@@ -62,7 +62,7 @@ export function FuelSection() {
           sub={fuel.reserveUnset ? <Link to="/profile">set in your profile</Link> : time(fuel.reserveL)} tone={fuel.reserveUnset ? 'warn' : undefined} />
         <KV k="Required + reserve" v={<span className="mono">{fuel.defaultFobL} L</span>} sub={time(fuel.defaultFobL)} tone={fuel.defaultOverCapacity ? 'warn' : undefined} />
       </div>
-      <div className="ep-fob">
+      <div className="ep-fob" data-focus="fob">
         {multi ? (
           <div className="field">Fuel on board at block-off (L)
             <span className="row ep-fob-types">

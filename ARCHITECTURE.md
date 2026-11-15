@@ -92,7 +92,10 @@ src/
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope
                            chart, then performance/ MD 4.4; /export/wb and /export/performance redirect to it),
-                           briefing/ (NOTAM briefing)
+                           briefing/ (NOTAM briefing); fix.ts + WarningList.tsx: every on-screen export warning links to
+                           where it is fixed (editor /flights/:id?focus=<key>, hangar /hangar/:id?focus=<field>,
+                           /profile?focus=<name>, the passenger dialog); src/app/focusParam.ts focuses + highlights
+                           the target (data-focus keys on the inputs; editor panel Sections open for their keys)
 api/
   index.ts                 Vercel entry: restores the path from ?__path=, refuses to run without DATABASE_URL and
                            GOOGLE_CLIENT_ID, runs pending migrations on cold start, then serves

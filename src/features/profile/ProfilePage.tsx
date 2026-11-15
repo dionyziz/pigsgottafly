@@ -6,6 +6,7 @@
 import { DateInput } from '../../app/DateInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useFocusParam } from '../../app/focusParam';
 import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';
@@ -90,6 +91,8 @@ export function ProfilePage() {
   const [busy, setBusy] = useState(false);
   const { data: hangar } = useAsync(() => api.aircraft.list(), []);
   const dirty = JSON.stringify(f) !== JSON.stringify(initial);
+  // ?focus=<input name>: a warning elsewhere (an export) linked here
+  useFocusParam(() => document.querySelector('main') ?? document);
 
   useEffect(() => {
     if (!dirty) return;

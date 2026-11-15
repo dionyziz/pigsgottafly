@@ -148,3 +148,6 @@ input.attention, select.attention, textarea.attention { border-color: var(--warn
 /* links to the AIP Greece PDFs (AipLink) */
 .aip-link { white-space: nowrap; }
 .aip-link-ext { margin-left: 3px; vertical-align: 0; opacity: 0.75; }
+/* A list or section a deep link (?focus=) pointed at, without an input of its own. */
+.attention:not(input):not(select):not(textarea) { outline: 2px solid var(--warn, #b7791f); outline-offset: 3px; border-radius: var(--r, 6px); animation: pgf-attention 1.2s ease-out 2; }
+@media (prefers-reduced-motion: reduce) { .attention:not(input):not(select):not(textarea) { animation: none; } }
