@@ -12,6 +12,7 @@
 // Directions are TRUE everywhere (Open-Meteo and METAR both report true north).
 import type { IsoDate, LatLon, WindModel } from '../shared';
 import { WIND_MODELS } from '../shared';
+import { isoDay } from '../shared/date';
 import type { WindProvider, WindSample } from '../calc';
 import { qnhFromStationPressure } from '../calc/performance';
 import type { MetarWind, ParsedMetar } from './weatherMetar';
@@ -251,7 +252,6 @@ export const MODEL_HORIZON_DAYS: Record<WindModel, number> = { ecmwf_ifs025: 15,
 export const FORECAST_PAST_DAYS = 92;
 
 const DAY = 86400000;
-const isoDay = (ms: number): IsoDate => new Date(ms).toISOString().slice(0, 10);
 const dayMs = (d: IsoDate) => Date.parse(d + 'T00:00:00Z');
 
 export type ForecastAvailability =

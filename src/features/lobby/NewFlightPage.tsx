@@ -8,11 +8,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
 import { usePilot } from '../../app/session';
 import { api } from '../../data/api';
-import { uid, type FlightCreateRequest, type RefAerodrome, type RoutePoint } from '../../shared';
+import { aerodromePoint as point, type FlightCreateRequest } from '../../shared';
 import { AerodromePicker, resolveAerodrome } from '../profile/AerodromePicker';
 import { EmptyState } from './ui';
 
-const point = (a: RefAerodrome): RoutePoint => ({ uid: uid(), kind: 'aerodrome', refId: a.id, name: a.icao || a.id, lat: a.lat, lon: a.lon });
 
 export function NewFlightPage() {
   const navigate = useNavigate();

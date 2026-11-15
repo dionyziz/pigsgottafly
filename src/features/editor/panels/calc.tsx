@@ -30,6 +30,7 @@ import {
 } from '../../../calc';
 import { CARD_EXPIRY_WARN_DAYS, activeRequests, fuelLoad, requestTiming, seatLayout, landingPointIndices, validateCrew, type RoutePoint } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
+import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
 import { endpointAerodrome } from '../../../data/atc';
 import {
@@ -44,7 +45,7 @@ import {
 } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult, type StationReports } from '../../../data/weatherMetar';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
-import { aerodromeNotamEffects, fmtDuration, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
+import { aerodromeNotamEffects, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
 import { aerodromeChecks as buildAdChecks, aerodromeWarnings, type AdCheck } from './aerodromeChecks';
 import { useEditor } from '../state';
 import { useNotams } from '../notams';
@@ -527,38 +528,11 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-/** Minutes after 00:00 UTC → 'HH:MM' (wraps past midnight). */
-export function fmtMin(min: number): string {
-  if (!fin(min)) return '--:--';
-  const m = ((Math.round(min) % 1440) + 1440) % 1440;
-  return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
-}
+/** Minutes after 00:00 UTC → 'HH:MM' (wraps past midnight; '--:--' when unknown). */
+export const fmtMin = (min: number): string => fmtClock(min, { fallback: '--:--' });
 /** Duration in minutes → '1h44' ('–' when unknown). */
-export function fmtDur(min: number | null | undefined): string {
-  return fmtDuration(min) || '–';
-}
-
+export const fmtDur = (min: number | null | undefined): string => fmtDuration(min, { fallback: '–' });
 /** Local (Greece) clock time of a UTC instant, e.g. '14:30'. */
-const LOCAL_TZ = 'Europe/Athens';
-let fmtCache: Intl.DateTimeFormat | null = null;
-export function localClock(ms: number): string {
-  if (!fin(ms)) return '';
-  try {
-    fmtCache ??= new Intl.DateTimeFormat('en-GB', { timeZone: LOCAL_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-    return fmtCache.format(new Date(ms));
-  } catch {
-    return '';
-  }
-}
+export const localClock = (ms: number): string => fmtLocalClock(ms);
 /** Offset label of local time at an instant, e.g. 'UTC+2'. */
-export function localOffsetLabel(ms: number): string {
-  if (!fin(ms)) return 'LT';
-  try {
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: LOCAL_TZ, timeZoneName: 'shortOffset' }).formatToParts(new Date(ms));
-    const tz = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
-    return tz.replace('GMT', 'UTC') || 'LT';
-  } catch {
-    return 'LT';
-  }
-}
+export { localOffsetLabel } from '../../../shared/date';

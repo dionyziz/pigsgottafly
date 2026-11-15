@@ -9,6 +9,7 @@ import type { IsoDate, LatLon, WindModel } from '../shared';
 import type { CorridorSeries, Hazard, HazardSample, NavlogResult } from '../calc';
 import { aerodromeModelHazards, legHazards, reportHazards, tafHazardContent } from '../calc';
 import type { StationReports } from './weatherMetar';
+import { isoDay } from '../shared/date';
 import { DEFAULT_MODEL, LEVELS, METAR_MAX_AGE_MS, METAR_USE_WINDOW_MS, MODEL_LABELS, describeSource, fetchModelRun, forecastAvailability, type ForecastSource, type OpenMeteoEndpoint, type OpenMeteoLocation } from './weather';
 
 export const HAZARD_SURFACE = ['weather_code', 'cape', 'visibility', 'cloud_cover_low', 'temperature_2m', 'dew_point_2m'] as const;
@@ -141,7 +142,6 @@ export interface HazardWeather {
   source: ForecastSource | null;
 }
 
-const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** Corridor data for the hazards of a whole flight. Never rejects. */
 export async function fetchHazardWeather(req: HazardWeatherRequest): Promise<HazardWeather> {

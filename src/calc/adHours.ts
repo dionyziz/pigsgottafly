@@ -13,6 +13,7 @@
 // A service (handling, customs, ATS) marked HO is available while the aerodrome is open ('AD').
 import type { HoursClock, HoursRule, HoursSeason, HoursSpec, HoursTime, RefAdHours, RefSunTable } from '../shared/ref.js';
 import { sunriseUtcMinutes } from './nav.js';
+import { isoDay } from '../shared/date.js';
 import { sunsetMinutes } from './sun.js';
 
 // ---------------------------------------------------------------- text normalisation
@@ -31,7 +32,7 @@ export function normalizeAipText(s: string): string {
 const DAY_MS = 86400e3;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 /** 'YYYY-MM-DD' of an instant (UTC). */
-export const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+export { isoDay } from '../shared/date.js';
 
 /** Last Sunday of a month (0-based month), as a UTC day number (ms at 00:00). */
 function lastSunday(year: number, month: number): number {

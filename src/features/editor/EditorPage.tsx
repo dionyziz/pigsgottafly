@@ -11,6 +11,8 @@ import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
 import { api, ApiRequestError } from '../../data/api';
 import { flightStore } from '../../data/flightStore';
+import { onInvalidate } from '../../data/entities';
+import { useSequencer } from '../../data/sequence';
 import { autoTitle, type Aircraft, type Flight, type FlightDoc, type Passenger, type Waypoint } from '../../shared';
 import { EditorProvider, useEditor } from './state';
 import { MapView } from './map';
@@ -111,9 +113,11 @@ export function EditorPage() {
   const [lists, setLists] = useState<{ hangar: Aircraft[]; passengers: Passenger[]; waypoints: Waypoint[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const listsSeq = useSequencer();
   const reloadLists = async () => {
+    const current = listsSeq.next();
     const [hangar, passengers, waypoints] = await Promise.all([api.aircraft.list(), api.passengers.list(), api.waypoints.list()]);
-    setLists({ hangar, passengers, waypoints });
+    if (current()) setLists({ hangar, passengers, waypoints });
   };
   useEffect(() => {
     setState(null);
@@ -124,6 +128,8 @@ export function EditorPage() {
     );
     reloadLists().catch(() => setLists((l) => l ?? { hangar: [], passengers: [], waypoints: [] }));
   }, [id]);
+  // hangar, passengers and waypoints changed elsewhere (another page or tab): the pickers follow
+  useEffect(() => onInvalidate(['aircraft', 'passengers', 'waypoints'], () => { void reloadLists().catch(() => {}); }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <div className="loading-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><Link to="/">All flights</Link></div></div>;
   if (state === 'missing') return <div className="loading-screen"><div className="stack" style={{ alignItems: 'center' }}><p>That flight was not found.</p><Link to="/">All flights</Link></div></div>;

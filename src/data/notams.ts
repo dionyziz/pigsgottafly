@@ -4,7 +4,7 @@
 // circle. No DOM here; unit-tested in tests/unit/data/notams.test.ts.
 import type { Notam, NotamBriefing } from '../shared/briefing';
 import { request } from './api';
-import { TRANSITION_ALTITUDE_FT } from '../calc';
+import { fmtAltitude, fmtDateTimeMs } from '../shared/format';
 
 export type { Notam, NotamBriefing };
 
@@ -30,13 +30,9 @@ export function fetchNotams(flightId: string, q: NotamQuery = {}): Promise<Notam
   return request<NotamBriefing>('GET', notamsPath(flightId, q));
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-
-/** Epoch ms → '15 Nov 06:00Z'. */
+/** Epoch ms → '2026-11-15 06:00Z'. */
 export function fmtNotamTime(ms: number): string {
-  const d = new Date(ms);
-  if (!Number.isFinite(d.getTime())) return '?';
-  return `${d.toISOString().slice(0, 10)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
+  return Number.isFinite(new Date(ms).getTime()) ? fmtDateTimeMs(ms) : '?';
 }
 
 /** Validity, e.g. '15 Nov 06:00Z – 20 Nov 18:00Z EST' or '1 Mar 00:00Z – PERM'. */
@@ -49,9 +45,8 @@ export function fmtNotamLevel(ft: number, upper: boolean): string {
   if (!Number.isFinite(ft)) return '?';
   if (!upper && ft <= 0) return 'SFC';
   if (upper && ft >= 99900) return 'UNL';
-  // Q-line limits are flight levels; below the usual Greek transition altitude say feet
-  if (ft < TRANSITION_ALTITUDE_FT) return `${Math.round(ft)} ft`;
-  return `FL${String(Math.round(ft / 100)).padStart(3, '0')}`;
+  // the app-wide altitude format: feet up to the transition altitude, flight levels above it
+  return fmtAltitude(ft, { unit: true });
 }
 
 /** Vertical limits: items F/G as written when given, else the Q-line, e.g. 'SFC – 2500 ft AMSL'. */

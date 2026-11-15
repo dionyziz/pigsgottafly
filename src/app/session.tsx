@@ -1,11 +1,12 @@
-// Session context: the signed-in pilot (or the local pilot), refreshed after profile edits.
+// Session context: the signed-in pilot (or the local pilot). Kept fresh by AuthGate through the
+// 'pilot' entity (src/data/entities.ts): profile edits here or in another tab, and window focus.
 import { createContext, useContext } from 'react';
 import type { Pilot, SessionResponse } from '../shared';
 
 export interface SessionValue {
   session: SessionResponse;
   pilot: Pilot;
-  /** Replace the pilot after a profile update (PUT /api/me result). */
+  /** Replace the pilot (e.g. an optimistic change); every page and tab follows. api.me.update already does this. */
   setPilot(p: Pilot): void;
   signOut(): Promise<void>;
 }

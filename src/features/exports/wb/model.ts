@@ -11,6 +11,7 @@
 // refuelling, no taxi burn before take-off) and its own check against MLW, MTOW and the envelope.
 import type { Aircraft, Envelope, FlightDoc, Pilot, WbCategory } from '../../../shared';
 import { fuelLoad, primaryFuel, seatLayout } from '../../../shared';
+import { fmtDate } from '../../../shared/date';
 import type { WbCheck, WbPoint, WbResult } from '../../../calc';
 import type { ExportCalc } from './exportCalc';
 
@@ -105,10 +106,7 @@ export const fmtCg = (x: number | null | undefined) => (fin(x) ? x.toFixed(3) : 
 const trimNum = (x: number) => String(Math.round(x * 1000) / 1000);
 
 /** 'YYYY-MM-DD' (validated; '' otherwise). */
-export function fmtDate(d: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
-}
+export { fmtDate } from '../../../shared/date';
 
 /** CG polygon [arm, mass] → moment outline [moment, mass], each edge split into `steps` pieces. */
 export function cgToMomentOutline(polygon: [number, number][], steps = 16): [number, number][] {
@@ -349,7 +347,6 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   }
   if (!wb) warnings.push('The weight and balance could not be computed for this aircraft.');
   if (!doc.crew.length) warnings.push('The manifest is empty: no pilot or passengers in the balance.');
-  const fuel = calc.computed.fuel;
   if (!calc.computed.navlog.legs.length) warnings.push('No route: no trip fuel, landing figures equal take-off.');
 
   let verdict: WbSheetModel['verdict'];

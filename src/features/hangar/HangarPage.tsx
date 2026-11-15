@@ -8,7 +8,7 @@ import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
-import { useAsync } from '../../data/useAsync';
+import { useEntity } from '../../data/entities';
 import type { Aircraft } from '../../shared/types';
 import type { HangarAircraft } from '../../shared/sharing';
 import { localToday } from '../lobby/format';
@@ -23,7 +23,7 @@ import '../lobby/lists.css';
 import './hangar.css';
 
 export function HangarPage() {
-  const { data, error, loading, reload } = useAsync(() => api.aircraft.list(), []);
+  const { data, error, loading, reload } = useEntity('aircraft');
   const { pilot, setPilot } = useSession();
   const toast = useToast();
   const navigate = useNavigate();

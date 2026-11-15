@@ -4,7 +4,8 @@
 // of shared aircraft in the hangar list and on the aircraft page.
 import { useEffect, useState } from 'react';
 import { useSession } from '../../app/session';
-import { api, ApiRequestError } from '../../data/api';
+import { api } from '../../data/api';
+import { errorMessage } from '../../shared/format';
 import type { AircraftAccess, AircraftSharing, ShareRole } from '../../shared/sharing';
 import { Dialog } from '../lobby/ui';
 import './share.css';
@@ -22,7 +23,7 @@ export function SharedChip({ access }: { access: AircraftAccess | undefined }) {
   );
 }
 
-const message = (e: unknown) => (e instanceof ApiRequestError && e.status === 0 ? 'You are offline.' : String((e as Error)?.message || e));
+const message = errorMessage;
 
 export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
   aircraftId: string;

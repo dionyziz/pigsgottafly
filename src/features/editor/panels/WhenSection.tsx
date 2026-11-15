@@ -44,7 +44,6 @@ export function WhenSection() {
   const bo = parseClock(doc.blockOff);
   const boMs = isFinite(dayMs) && isFinite(bo) ? dayMs + bo * 60000 : NaN;
   const taxiOut = doc.taxiOutMin ?? NaN;
-  const taxiIn = doc.taxiInMin ?? NaN;
   // Times: from the navlog when there is one, else block-off + taxi.
   const t = navlog?.blockOffSet ? navlog.times : isFinite(bo) ? { blockOffMin: bo, takeoffMin: bo + (isFinite(taxiOut) ? taxiOut : 0), landingMin: NaN, blockOnMin: NaN } : null;
   const sunset = navlog?.sunsetMin ?? null;

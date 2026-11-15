@@ -5,13 +5,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { notamLimits, notamSubject, notamValidity, notamWhere, visibleNotams, type Notam } from '../../../data/notams';
 import { useNotams } from '../notams';
+import { fmtClockMs } from '../../../shared/format';
 import { Chip, Icon, Section } from './ui';
 
-function fmtFetched(ms: number | null): string {
-  if (!ms) return '';
-  const d = new Date(ms);
-  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}Z`;
-}
+const fmtFetched = (ms: number | null): string => (ms ? fmtClockMs(ms, { z: true }) : '');
 
 function NotamItem({ n, selected, onSelect }: { n: Notam; selected: boolean; onSelect(): void }) {
   const [raw, setRaw] = useState(false);

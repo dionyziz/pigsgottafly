@@ -10,6 +10,7 @@ import type {
   Station, StationKind, TakeoffTable,
 } from '../../shared/types';
 import { DEFAULT_FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
+import { isIsoDate, parseIsoDate } from '../../shared/date';
 import { parseItem18 } from '../exports/fpl/fpl';
 
 export type IssueLevel = 'error' | 'warning';
@@ -29,18 +30,11 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 // ---------------------------------------------------------------------------------------------
 // Dates and compass cards
 
-function parseIso(d: string | null | undefined): number | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
-  if (!m) return null;
-  const t = Date.UTC(+m[1], +m[2] - 1, +m[3]);
-  const back = new Date(t);
-  return back.getUTCDate() === +m[3] && back.getUTCMonth() === +m[2] - 1 ? t : null;
-}
-export const isIsoDate = (d: string | null | undefined) => parseIso(d) !== null;
+export { isIsoDate } from '../../shared/date';
 
 /** Whole days from a to b ('YYYY-MM-DD'); null if either is invalid. */
 export function daysFromTo(a: string, b: string): number | null {
-  const x = parseIso(a), y = parseIso(b);
+  const x = parseIsoDate(a), y = parseIsoDate(b);
   return x === null || y === null ? null : Math.round((y - x) / 86400000);
 }
 
