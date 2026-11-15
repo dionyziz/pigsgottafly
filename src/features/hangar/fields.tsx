@@ -1,20 +1,19 @@
-// Form controls for the aircraft page: numeric inputs that keep what is being typed and commit only
-// valid numbers, labelled fields with units, inline issue messages, and an editable point table.
-import { useEffect, useId, useState, type ReactNode } from 'react';
-import type { Issue } from './model';
+// Form controls for the aircraft page: an editable point table. NumInput, Field, IssueList, Check
+// and Section moved to src/ui (NumberField, Field, IssueList, Check, CardSection) and are
+// re-exported here for the old imports.
+import { useId, type ReactNode } from 'react';
+import { parseDecimal } from '../../shared/number';
+import { CardSection, NumberField } from '../../ui';
 
-/** Parses a number typed with '.' or ','; '' → null; NaN for garbage. */
-export function parseNum(s: string): number | null {
-  const t = s.trim().replace(',', '.').replace(/−/g, '-');
-  if (!t) return null;
-  return /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(t) ? Number(t) : NaN;
-}
-const show = (v: number | null | undefined, zeroEmpty?: boolean) => (v == null || !isFinite(v) || (zeroEmpty && v === 0) ? '' : String(v));
+export { Check, Field, IssueList } from '../../ui';
+
+/** Parses a number typed with '.' or ','; '' -> null; NaN for garbage. */
+export const parseNum = parseDecimal;
 
 export interface NumInputProps {
   value: number | null;
   onChange: (v: number | null) => void;
-  /** Allow an empty value (→ null). Otherwise an empty field commits 0. */
+  /** Allow an empty value (null). Otherwise an empty field commits 0. */
   optional?: boolean;
   integer?: boolean;
   min?: number;
@@ -31,94 +30,14 @@ export interface NumInputProps {
   zeroAsEmpty?: boolean;
 }
 
-/** Numeric input: keeps the text while typing; commits only values that parse and are in range. */
-export function NumInput({ value, onChange, optional, integer, min, max, unit, placeholder, invalid, width, ariaLabel, name, disabled, className, zeroAsEmpty }: NumInputProps) {
-  const [text, setText] = useState(show(value, zeroAsEmpty));
-  const [focused, setFocused] = useState(false);
-  useEffect(() => {
-    if (!focused) setText(show(value, zeroAsEmpty));
-    else {
-      const p = parseNum(text);
-      if (p !== value && !(p === null && !optional && value === 0)) setText(show(value, zeroAsEmpty));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
-  const parsed = parseNum(text);
-  const bad = parsed !== null && (Number.isNaN(parsed) || (integer && !Number.isInteger(parsed)) || (min != null && parsed < min) || (max != null && parsed > max));
-  const commit = (t: string) => {
-    setText(t);
-    const p = parseNum(t);
-    if (p === null) { onChange(optional ? null : 0); return; }
-    if (Number.isNaN(p) || (integer && !Number.isInteger(p)) || (min != null && p < min) || (max != null && p > max)) return;
-    onChange(p);
-  };
-  const title = bad ? `Enter ${integer ? 'a whole number' : 'a number'}${min != null && max != null ? ` from ${min} to ${max}` : min != null ? ` of at least ${min}` : max != null ? ` up to ${max}` : ''}` : undefined;
-  const input = (
-    <input
-      className={['tnum', className, bad || invalid ? 'invalid' : ''].filter(Boolean).join(' ')}
-      inputMode={integer && (min ?? 0) >= 0 ? 'numeric' : 'decimal'}
-      value={text}
-      name={name}
-      placeholder={placeholder ?? (optional ? '—' : undefined)}
-      aria-label={ariaLabel}
-      aria-invalid={bad || invalid || undefined}
-      title={title}
-      disabled={disabled}
-      style={width != null ? { width } : undefined}
-      onFocus={() => setFocused(true)}
-      onBlur={() => { setFocused(false); setText(show(value, zeroAsEmpty)); }}
-      onChange={(e) => commit(e.target.value)}
-    />
-  );
-  if (!unit) return input;
-  return <div className="unit-input" style={width != null ? { width } : undefined}>{input}<span>{unit}</span></div>;
-}
-
-/** Labelled field with optional hint and the issues of its path. */
-export function Field({ label, hint, issues, children, req, wide, focus }: { label: ReactNode; hint?: ReactNode; issues?: Issue[]; children: ReactNode; req?: boolean; wide?: boolean; /** ?focus= deep-link key */ focus?: string }) {
-  return (
-    <label className={'field' + (wide ? ' span2' : '')} data-focus={focus}>
-      <span>{label}{req && <span className="req" aria-hidden>*</span>}</span>
-      {children}
-      {hint && <span className="hint">{hint}</span>}
-      {issues?.map((i, k) => <span key={k} className={'issue ' + i.level}>{i.message}</span>)}
-    </label>
-  );
-}
-
-/** Messages of a set of issues, as a compact list. */
-export function IssueList({ issues }: { issues: Issue[] }) {
-  if (!issues.length) return null;
-  return (
-    <ul className="issue-list">
-      {issues.map((i, k) => <li key={k} className={i.level}>{i.message}</li>)}
-    </ul>
-  );
-}
-
-export function Check({ checked, onChange, children, title }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode; title?: string }) {
-  return (
-    <label className="check" title={title}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span>{children}</span>
-    </label>
-  );
+/** The aircraft page's number input: src/ui/NumberField; an empty field commits 0 unless optional. */
+export function NumInput({ optional, placeholder, ...p }: NumInputProps) {
+  return <NumberField {...p} optional={!!optional} emptyValue={optional ? undefined : 0} placeholder={placeholder ?? (optional ? '—' : undefined)} />;
 }
 
 /** Section card with a header and an anchor id. */
 export function Section({ id, title, intro, actions, children }: { id: string; title: string; intro?: ReactNode; actions?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="ac-section card" id={id} aria-labelledby={id + '-h'}>
-      <header>
-        <div>
-          <h2 id={id + '-h'}>{title}</h2>
-          {intro && <p>{intro}</p>}
-        </div>
-        {actions && <div className="row">{actions}</div>}
-      </header>
-      {children}
-    </section>
-  );
+  return <CardSection id={id} title={title} intro={intro} actions={actions} className="ac-section">{children}</CardSection>;
 }
 
 /**

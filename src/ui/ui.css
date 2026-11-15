@@ -93,3 +93,96 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .combo-hint { margin-top: 4px; font-size: var(--fs-xs); color: var(--muted); }
 .combo-hint.ok { color: var(--ok); }
 .combo-hint.bad { color: var(--danger); }
+
+/* ======== components (src/ui/*.tsx) ======== */
+
+/* ---- Icon, CloseButton, RowRemove */
+.ui-icon { flex: none; }
+button.close-btn { padding: 7px; border-radius: var(--r-sm); }
+
+/* ---- Chip (base .chip and tones in styles.css) */
+.chip.info { background: var(--accent-soft); color: var(--accent); }
+.chip.accent { background: var(--accent); color: var(--on-accent); }
+.chip.mono { font-family: var(--mono); letter-spacing: 0.02em; }
+.chip.count { min-width: 18px; height: 18px; padding: 0 5px; justify-content: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chip.sm { padding: 0 6px; font-size: var(--fs-2xs); }
+
+/* ---- Loading (airplane in styles.css) */
+.loading-block { padding: var(--s4) 0; }
+.loading-block.sm { padding: var(--s1) 0; }
+.loading.sm { gap: 6px; font-size: var(--fs-sm); }
+.loading.sm .loading-plane { transform: scale(0.7); margin: -5px; }
+
+/* ---- Dialog footer: danger action left, message, Cancel + primary right */
+.dlg-foot .dlg-msg { flex: 1; align-self: center; min-width: 0; }
+
+/* ---- Field issues (Field, IssueList) */
+label.field.invalid input, label.field.invalid select, label.field.invalid textarea { border-color: var(--danger); background: var(--danger-soft); }
+.issue { font-size: var(--fs-xs); }
+.issue.error { color: var(--danger); }
+.issue.warning { color: var(--warn); }
+.issue-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.issue-list li { font-size: var(--fs-sm); padding: 6px 10px; border-radius: var(--r); }
+.issue-list li.error { background: var(--danger-soft); color: var(--danger); }
+.issue-list li.warning { background: var(--warn-soft); color: var(--warn); }
+
+/* ---- NumberField: the input in a positioned box; the limit shows under it while invalid */
+.numfield { position: relative; display: inline-flex; vertical-align: middle; max-width: 100%; }
+.numfield > input { width: 100%; min-width: 0; }
+label.field > .numfield, .grid2 > .numfield, .grid3 > .numfield { display: flex; width: 100%; }
+.numfield-msg { position: absolute; left: 0; top: calc(100% + 2px); z-index: 20; padding: 1px 6px; border-radius: var(--r-sm); background: var(--danger); color: var(--on-accent); font-size: var(--fs-2xs); font-style: normal; white-space: nowrap; pointer-events: none; }
+
+/* ---- PersonPicker (Combobox options with a right-hand detail) */
+.person-picker .combo-list li { justify-content: space-between; }
+.person-picker .combo-list li .nm-main { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-picker input { width: 100%; }
+
+/* ---- Collapsible: the whole header toggles */
+.collapsible { border-bottom: 1px solid var(--line); }
+.collapsible-head { display: flex; align-items: center; gap: var(--s2); padding: 6px var(--s3) 6px 12px; min-height: 44px; cursor: pointer; user-select: none; border-radius: var(--r-sm); }
+.collapsible-head:hover { background: var(--hover); }
+.collapsible-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.collapsible-caret { transition: transform 0.15s; color: var(--ink-2); }
+.collapsible.collapsed .collapsible-caret { transform: rotate(-90deg); }
+.collapsible-title { font-weight: 600; color: var(--ink); }
+.collapsible-badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); min-width: 0; overflow: hidden; white-space: nowrap; }
+.collapsible-actions { display: inline-flex; align-items: center; gap: 4px; cursor: default; }
+.collapsible-body { padding: 2px var(--s4) var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
+.collapsible-summary { padding: 0 var(--s4) var(--s3) 34px; font-size: var(--fs-sm); color: var(--ink-2); }
+
+/* ---- Sortable */
+button.drag-handle { cursor: grab; touch-action: none; color: var(--muted); padding: 4px 2px; min-width: 20px; }
+button.drag-handle:hover:not(:disabled) { color: var(--ink); }
+button.drag-handle:active { cursor: grabbing; }
+.sort-dragging { opacity: 0.45; }
+.sort-over-before { box-shadow: inset 0 2px 0 var(--accent); }
+.sort-over-after { box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* ---- CardSection, Panel */
+.card-section { padding: var(--card-pad); display: flex; flex-direction: column; gap: var(--s4); scroll-margin-top: calc(var(--topbar-h) + 16px); overflow: visible; }
+.card-section > header { display: flex; align-items: flex-start; gap: var(--s3); justify-content: space-between; }
+.card-section > header h2 { font-size: var(--fs-lg); }
+.card-section > header p { margin: 4px 0 0; font-size: var(--fs-sm); color: var(--muted); max-width: 680px; }
+.card-section.plain + .card-section.plain { border-top: 1px solid var(--line); }
+.panel { width: 100%; max-width: 900px; padding: 14px 16px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); display: grid; gap: 10px; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.panel-head h3 { margin: 0; font-size: var(--fs-lg); }
+
+/* ---- WarningList */
+.warnings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.warnings li { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-sm); line-height: 1.35; }
+.warnings li .ui-icon { margin-top: 1px; }
+.warnings li.danger { color: var(--danger); }
+.warnings li.warn { color: var(--warn); }
+.warnings li.info { color: var(--ink-2); }
+.warnings .warning-text { min-width: 0; }
+.warnings .warning-fix { margin-left: auto; padding-left: var(--s2); white-space: nowrap; color: var(--accent); font-size: var(--fs-sm); }
+
+/* ---- FilePicker progress, PdfViewer */
+.file-progress { height: 6px; border-radius: var(--r-pill); background: var(--hover); overflow: hidden; }
+.file-progress > div { height: 100%; background: var(--accent); }
+.pdf-viewer { position: fixed; inset: 0; z-index: 100; background: var(--surface); display: flex; flex-direction: column; }
+.pdf-bar { display: flex; align-items: center; gap: var(--s3); padding: 10px 16px; border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+.pdf-body { flex: 1; min-height: 0; background: var(--surface-2); display: flex; }
+.pdf-body iframe { flex: 1; border: 0; width: 100%; height: 100%; }
+.pdf-loading { margin: auto; width: min(360px, 80vw); display: flex; flex-direction: column; gap: 6px; }

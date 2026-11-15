@@ -78,3 +78,33 @@ export function runwaysOf(aerodromeId: string): RefRunway[] {
 export function aerodromeLabel(a: RefAerodrome): string {
   return a.icao || a.name.split('/').pop()!.trim();
 }
+
+/** The aerodrome a typed text names: exact id/ICAO, else a unique name match. */
+export function resolveAerodrome(text: string): RefAerodrome | undefined {
+  const t = text.trim();
+  if (!t) return undefined;
+  const exact = aerodrome(t);
+  if (exact) return exact;
+  const u = t.toUpperCase();
+  const byName = AERODROMES.filter((a) => a.name.toUpperCase() === u);
+  return byName.length === 1 ? byName[0] : undefined;
+}
+
+/** Suggestions for a query: ICAO prefix matches first, then name matches. */
+export function searchAerodromes(q: string, limit = 8): RefAerodrome[] {
+  const u = q.trim().toUpperCase();
+  if (!u) return [];
+  const score = (a: RefAerodrome) => {
+    const code = (a.icao || a.id).toUpperCase();
+    if (code === u) return 0;
+    if (code.startsWith(u)) return 1;
+    if (a.name.toUpperCase().split(/[\s/,-]+/).some((w) => w.startsWith(u))) return 2;
+    if (a.name.toUpperCase().includes(u)) return 3;
+    return 9;
+  };
+  return AERODROMES.map((a) => [score(a), a] as const)
+    .filter(([s]) => s < 9)
+    .sort((x, y) => x[0] - y[0] || (x[1].icao ? 0 : 1) - (y[1].icao ? 0 : 1) || x[1].name.localeCompare(y[1].name))
+    .slice(0, limit)
+    .map(([, a]) => a);
+}

@@ -56,7 +56,7 @@ describe('NumberInput', () => {
     typeInto(el, '200');
     expect(el.value).toBe('200');
     expect(el.getAttribute('aria-invalid')).toBe('true');
-    expect(el.title).toBe('Maximum 180');
+    expect(el.title).toBe('Max 180');
     fireEvent.blur(el);
     expect(el.value).toBe('180');
     expect(r.getByTestId('stored').textContent).toBe('180');

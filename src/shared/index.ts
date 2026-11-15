@@ -6,3 +6,5 @@ export * from './templates.js';
 export * from './requests.js';
 export * from './sharing.js';
 export * from './fuel.js';
+export * from './number.js';
+export * from './list.js';

@@ -68,13 +68,23 @@ src/
                            eAIP start page when a section has no PDF), from ref/aip-files.json
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
                            AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
-                           REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a)
+                           REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a),
+                           resolveAerodrome(text), searchAerodromes(q)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context
                            (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (design tokens, base
                            elements, shell, list tables, the print-sheet-page rule; no var(--token, fallback) anywhere)
   ui/                      ui.css: global component classes (button variants sm/icon/ghost.danger/danger-fill/linkish; hint,
                            form-error, warn-text, danger-text, ellipsis, num, tnum; grid2/grid3/span2, hide-sm, unit-input,
-                           field/check; dialogs, menus, empty, searchbox, tabs, combo). Mono only for codes; tnum for measurements
+                           field/check; dialogs, menus, empty, searchbox, tabs, combo; component styles). Mono only for codes; tnum for measurements
+                           index.ts: the component library (import from '../../ui'): Dialog + DialogFooter (danger left), ConfirmDialog,
+                           Menu/KebabMenu, EmptyState, AsyncView, Loading (screen/inline/sm, a div), Icon (one name → path map) +
+                           CloseButton + RowRemove, Chip (tones; mono/count/sm), SearchBox, UnitInput, rowClick, Field/IssueList/Check,
+                           NumberField (live commit, clamp on blur, limit shown; parsing in shared/number.ts), Combobox (comboKey),
+                           AerodromeInput (RefAerodrome|null) / AerodromeTextInput, PersonPicker, Collapsible (whole header toggles,
+                           remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
+                           WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL).
+                           Shims until W6: lobby/ui, profile/AerodromePicker, editor/panels/ui (Icon/Chip/NumberInput),
+                           hangar/fields (Field/Check/NumInput/Section/parseNum), app/Loading, app/XIcon
   features/
     lobby/                 LobbyPage, NewFlightPage
     profile/               ProfilePage (?welcome=1 = first-use onboarding)

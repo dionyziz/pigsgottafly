@@ -1,6 +1,9 @@
-// Small building blocks of the editor panel: collapsible sections, key/value rows, number inputs
-// that keep a draft while typing, and status chips.
+// Small building blocks of the editor panel: collapsible sections and key/value rows. NumberInput,
+// Chip and Icon moved to src/ui (NumberField, Chip, Icon) and are re-exported here for the old
+// imports.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { parseNumber } from '../../../shared/number';
+import { Chip as UiChip, Icon as UiIcon, NumberField, type ChipTone, type IconName } from '../../../ui';
 import { focusParam, useFocusParam } from '../../../app/focusParam';
 import { EDITOR_FOCUS_SECTION, type EditorFocus } from '../../exports/fix';
 
@@ -72,18 +75,7 @@ export function KV({ k, v, sub, tone, testId }: { k: ReactNode; v: ReactNode; su
   );
 }
 
-/**
- * Number input that keeps what is typed while editing; commits null for an empty field.
- *
- * Every keystroke that leaves an in-range number commits it (the panel updates live; pass a
- * coalesce key to the update so a typed number is one undo step). A draft outside [min, max] is
- * never dropped: the field turns red with the limit in its tooltip and, on blur or Enter, the
- * value is clamped to the limit and committed, so the stored value always matches what the field
- * shows. (Committing only valid keystrokes and reverting on blur used to keep the first digits of
- * an over-limit entry: typing 60 into a max-54 field stored 6.) `min`/`max` are therefore sanity
- * bounds; a limit the pilot may legitimately exceed (a placard) belongs in the calculation that
- * flags it, not here.
- */
+/** The editor's number input: src/ui/NumberField with the editor's prop names. */
 export function NumberInput({ value, onCommit, min, max, step, placeholder, width, testId, ariaLabel, allowEmpty = true, decimals }: {
   value: number | null;
   onCommit(v: number | null): void;
@@ -97,41 +89,9 @@ export function NumberInput({ value, onCommit, min, max, step, placeholder, widt
   allowEmpty?: boolean;
   decimals?: number;
 }) {
-  const show = (v: number | null) => (v == null || !isFinite(v) ? '' : decimals != null ? String(+v.toFixed(decimals)) : String(v));
-  const [draft, setDraft] = useState(show(value));
-  const [focused, setFocused] = useState(false);
-  useEffect(() => { if (!focused) setDraft(show(value)); }, [value, focused]); // eslint-disable-line react-hooks/exhaustive-deps
-  const p = parseNumberDraft(draft, { min, max, allowEmpty });
-  const settle = () => {
-    // Out of range: clamp to the limit and commit it; unparseable: back to the stored value.
-    const v = p.kind === 'ok' ? p.value : p.kind === 'range' ? p.clamped : value;
-    if (v !== value) onCommit(v);
-    setDraft(show(v));
-  };
-  const limitText = p.kind === 'range'
-    ? (max != null && p.value > max ? `Maximum ${max}` : `Minimum ${min}`)
-    : p.kind === 'bad' ? 'Not a number' : undefined;
   return (
-    <input
-      className={'ep-num' + (p.kind !== 'ok' ? ' invalid' : '')}
-      inputMode="decimal"
-      value={draft}
-      placeholder={placeholder}
-      style={width ? { width } : undefined}
-      step={step}
-      aria-label={ariaLabel}
-      aria-invalid={p.kind !== 'ok' || undefined}
-      title={limitText}
-      data-testid={testId}
-      onFocus={() => setFocused(true)}
-      onBlur={() => { settle(); setFocused(false); }}
-      onKeyDown={(e) => { if (e.key === 'Enter') settle(); }}
-      onChange={(e) => {
-        setDraft(e.target.value);
-        const r = parseNumberDraft(e.target.value, { min, max, allowEmpty });
-        if (r.kind === 'ok' && r.value !== value) onCommit(r.value);
-      }}
-    />
+    <NumberField value={value} onChange={onCommit} min={min} max={max} step={step} placeholder={placeholder} width={width}
+      testId={testId} ariaLabel={ariaLabel} optional={allowEmpty} decimals={decimals} className="ep-num" />
   );
 }
 
@@ -141,38 +101,16 @@ export type NumberDraft =
   | { kind: 'range'; value: number; clamped: number }
   | { kind: 'bad' };
 
-/** Parses what is typed in a NumberInput (accepts a decimal comma). */
+/** Parses what is typed in a NumberInput (src/shared/number parseNumber without the messages). */
 export function parseNumberDraft(s: string, { min, max, allowEmpty = true }: { min?: number; max?: number; allowEmpty?: boolean }): NumberDraft {
-  const t = s.trim().replace(',', '.');
-  if (!t) return allowEmpty ? { kind: 'ok', value: null } : { kind: 'bad' };
-  const n = Number(t);
-  if (!isFinite(n)) return { kind: 'bad' };
-  if (min != null && n < min) return { kind: 'range', value: n, clamped: min };
-  if (max != null && n > max) return { kind: 'range', value: n, clamped: max };
-  return { kind: 'ok', value: n };
+  const r = parseNumber(s, { min, max, allowEmpty });
+  return r.kind === 'bad' ? { kind: 'bad' } : r.kind === 'range' ? { kind: 'range', value: r.value, clamped: r.clamped } : r;
 }
 
-export function Chip({ tone, children, title }: { tone?: 'warn' | 'danger' | 'ok'; children: ReactNode; title?: string }) {
-  return <span className={'chip' + (tone ? ' ' + tone : '')} title={title}>{children}</span>;
+export function Chip({ tone, children, title }: { tone?: Extract<ChipTone, 'warn' | 'danger' | 'ok'>; children: ReactNode; title?: string }) {
+  return <UiChip tone={tone} title={title}>{children}</UiChip>;
 }
 
-export function Icon({ name, size = 16 }: { name: 'up' | 'down' | 'x' | 'plus' | 'refresh' | 'undo' | 'redo' | 'edit' | 'external' | 'warn' | 'print'; size?: number }) {
-  const d: Record<string, string> = {
-    up: 'M4 10l4-4 4 4',
-    down: 'M4 6l4 4 4-4',
-    x: 'M4.5 4.5l7 7M11.5 4.5l-7 7',
-    plus: 'M8 3.5v9M3.5 8h9',
-    refresh: 'M12.5 6.5A4.75 4.75 0 1 0 12.8 9.5M12.5 3v3.5H9',
-    undo: 'M5.5 4 2.5 7l3 3M3 7h6.5a3.5 3.5 0 0 1 0 7H8',
-    redo: 'M10.5 4l3 3-3 3M13 7H6.5a3.5 3.5 0 0 0 0 7H8',
-    edit: 'M10.5 3.5l2 2L6 12H4v-2z',
-    external: 'M9 3h4v4M13 3 7.5 8.5M11 9.5V13H3V5h3.5',
-    warn: 'M8 2.5 14 13H2zM8 6.5v3M8 11.2v.1',
-    print: 'M4.5 6V2.5h7V6M4.5 11.5H3V6h10v5.5h-1.5M4.5 9.5h7v4h-7z',
-  };
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" className="ep-icon">
-      <path d={d[name]} />
-    </svg>
-  );
+export function Icon({ name, size = 16 }: { name: Extract<IconName, 'up' | 'down' | 'x' | 'plus' | 'refresh' | 'undo' | 'redo' | 'edit' | 'external' | 'warn' | 'print'>; size?: number }) {
+  return <UiIcon name={name} size={size} className="ep-icon" />;
 }
