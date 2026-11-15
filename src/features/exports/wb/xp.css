@@ -49,11 +49,13 @@
 .xp-notes ul { margin: 0.8mm 0 0; padding-left: 4.5mm; color: #8a3a00; }
 .xp-notes li { margin: 0.2mm 0; }
 
-.xp-sign { margin-top: auto; display: flex; align-items: flex-end; gap: 6mm; font-size: 8.5pt; font-weight: 700; padding-top: 3mm; }
+.xp-sign { margin-top: auto; display: flex; align-items: flex-end; gap: 6mm; font-size: 8.5pt; font-weight: 700; padding-top: 11mm; }
 .xp-sign > span { display: flex; align-items: flex-end; gap: 1.6mm; white-space: nowrap; }
 .xp-sign b { font-weight: 400; font-size: 9.5pt; border-bottom: 0.25mm solid #111; min-width: 18mm; padding: 0 1mm; }
 .xp-sign .sign { flex: 1; }
-.xp-sign .sign::after { content: ''; flex: 1; border-bottom: 0.25mm solid #111; min-width: 30mm; height: 1em; }
+/* the signature line, with the PIC's e-signature standing on it */
+.xp-sign .xp-sigline { position: relative; flex: 1; border-bottom: 0.25mm solid #111; min-width: 30mm; height: 1em; }
+.xp-pic-signature { position: absolute; left: 4mm; bottom: 0.4mm; font-weight: 400; text-align: left; }
 .xp-sign .xp-form { font-weight: 400; color: #555; }
 
 @page xp { size: A4 portrait; margin: 0; }

@@ -2,7 +2,7 @@
 //   /                              lobby (flights)
 //   /flights/new                   creates a flight, then → /flights/:id
 //   /flights/:id                   flight editor (map)
-//   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wb | performance)
+//   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
 //   /profile  /hangar  /hangar/:id  /passengers  /waypoints
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.

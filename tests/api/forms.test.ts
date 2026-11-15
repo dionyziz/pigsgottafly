@@ -3,6 +3,7 @@
 // tracking, revoke/renew, expiry), invalidation when the form changes, access control across
 // pilots, the PDFs, and the e-mail (MOCKED transport: nothing is sent for real).
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
+import fs from 'node:fs';
 import zlib from 'node:zlib';
 import { startApi, client, type Client } from './helpers';
 import { setMailTransport, type SentMail } from '../../api/_lib/mail';
@@ -248,7 +249,14 @@ describe('sending the forms to HCAA', () => {
     expect(text).toContain('details of most recent disinsecting');
     expect(text).toContain('Signed, if required, with time and date');
     expect(text).toContain('Crew member concerned');
-    expect(text).toContain('ICAO ANNEX 9 - APPENDIX 1.1');
+    // the pilot's layout: values in bold after their labels, origin and destination only, NIL
+    expect(text).toMatch(/Flight No\.:\nPVT\nDate:\n\d{4}-\d{2}-\d{2}/);
+    expect(text).toMatch(/Departure from:\nLGTT\n/);
+    expect(text).toMatch(/Arrival at:\nLGMG\n/);
+    expect(text).toContain('DIONYSIS ZINDROS');
+    expect(text).toContain('NIL');
+    expect(text).toContain('* To be completed when required by the State.');
+    if (process.env.GENDEC_PDF_OUT) fs.writeFileSync(process.env.GENDEC_PDF_OUT, m.attachments![0].content);
     expect(r.body.gendec.submission).toMatchObject({ messageId: 'gd-1', changed: false });
 
     // LGTT and LGMG have no handler (AIP AD 1.6.5.4 / AD 1.6.18.4: NIL): the PIC sends it

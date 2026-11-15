@@ -1,4 +1,5 @@
-// General Declaration: header fields, routing places and crew, passenger counts, warnings, render.
+// General Declaration: header fields, routing (origin and destination only) and crew, passenger
+// counts, warnings, render.
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { GenDec, genDecModel, ROUTING_ROWS } from '..';
@@ -6,27 +7,26 @@ import { GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES } from '../../../../shared/
 import { ad, aircraft, flight, pilot, vfr } from '../../form731/__tests__/fixtures';
 
 describe('general declaration model', () => {
-  it('fills operator, registration, date and places', () => {
+  it('fills operator, registration, flight number, ISO date and places', () => {
     const m = genDecModel({ flight: flight(), aircraft, pilot });
     expect(m.operator).toBe('Example Aeroclub');
-    expect(m.registration).toBe('SX-ABC');
-    expect(m.flightNo).toBe('');
-    expect(m.date).toEqual(['21', '11', '2026']);
-    expect(m.departure).toBe('DEKELIA / TATOI (LGTT)');
-    expect(m.arrival).toBe('DEKELIA / TATOI (LGTT)');
-    expect(m.departureCode).toBe('LGTT');
-    expect(m.arrivalCode).toBe('LGTT');
+    expect(m.registration).toBe('SXABC');
+    expect(m.flightNo).toBe('PVT');
+    expect(m.date).toBe('2026-11-21');
+    expect(m.departure).toBe('LGTT');
+    expect(m.arrival).toBe('LGTT');
   });
 
-  it('lists origin, en-route stops and destination, with the PIC as crew', () => {
+  it('lists only the origin (with the PIC in capitals) and the destination: no en-route stops', () => {
     const m = genDecModel({ flight: flight(), aircraft, pilot });
-    expect(m.routing).toHaveLength(ROUTING_ROWS);
-    expect(m.routing.slice(0, 4)).toEqual([
-      { place: 'LGTT', crew: 'Pat Pilot (PIC)' },
-      { place: 'LGMG', crew: '' },
+    expect(m.routing).toEqual([
+      { place: 'LGTT', crew: 'PAT PILOT' },
       { place: 'LGTT', crew: '' },
-      { place: '', crew: '' },
     ]);
+    const route = [ad('LGTT', 'a'), ...['LGMG', 'LGSY', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG'].map((id, i) => ad(id, 'x' + i)), vfr('KEA', 'k'), ad('LGAV', 'z')];
+    const long = genDecModel({ flight: flight({ route }), aircraft, pilot });
+    expect(long.routing.map((r) => r.place)).toEqual(['LGTT', 'LGAV']);
+    expect(long.warnings.join(' ')).not.toMatch(/room for/);
   });
 
   it('counts passengers (not the crew) embarking and disembarking', () => {
@@ -34,7 +34,7 @@ describe('general declaration model', () => {
     expect([m.embarking, m.throughDeparture, m.disembarking, m.throughArrival]).toEqual([2, 0, 2, 0]);
     const solo = genDecModel({ flight: flight({ crew: [] }), aircraft, pilot });
     expect([solo.embarking, solo.disembarking]).toEqual([0, 0]);
-    expect(solo.routing[0].crew).toBe('Pat Pilot (PIC)');
+    expect(solo.routing[0].crew).toBe('PAT PILOT');
   });
 
   it('prints the PIC as operator when the aircraft has none, and warns', () => {
@@ -42,33 +42,38 @@ describe('general declaration model', () => {
     expect(m.operator).toBe('Pat Pilot');
     expect(m.warnings.join(' ')).toMatch(/no operator/);
   });
-
-  it('keeps the destination in the last row when the route has more stops than rows', () => {
-    const route = [ad('LGTT', 'a'), ...['LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG'].map((id, i) => ad(id, 'x' + i)), vfr('KEA', 'k'), ad('LGAV', 'z')];
-    const m = genDecModel({ flight: flight({ route }), aircraft, pilot });
-    expect(m.routing[ROUTING_ROWS - 1].place).toBe('LGAV');
-    expect(m.warnings.join(' ')).toMatch(/room for 9/);
-  });
 });
 
 describe('general declaration sheet', () => {
-  it('renders one portrait sheet with the values in place', () => {
+  it('renders one portrait sheet with the values in bold after their labels', () => {
     const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     expect(html.match(/class="pgf-sheet gd-sheet"/g)).toHaveLength(1);
     expect(html).toContain('GENERAL DECLARATION');
-    expect(html).toContain('ICAO ANNEX 9 - APPENDIX 1.1');
-    expect(html).toMatch(/data-field="operator"><span class="pgf-fill">Example Aeroclub</);
-    expect(html).toMatch(/data-field="embarking"><span class="pgf-fill">2</);
-    expect(html).toMatch(/data-field="pic">Pat Pilot</);
+    expect(html).toContain('(OUTWARD/INWARD)');
+    expect(html).toMatch(/Operator: <b class="gd-val pgf-fill" data-field="operator">Example Aeroclub<\/b>/);
+    expect(html).toMatch(/Flight No\.: <b[^>]*data-field="flightNo">PVT</);
+    expect(html).toMatch(/Date: <b[^>]*data-field="date">2026-11-21</);
+    expect(html).toMatch(/data-field="embarking">2</);
+    expect(html).toContain('* To be completed when required by the State.');
   });
 
-  it('reproduces the full Annex 9 Declaration of Health', () => {
+  it('routing table: origin with the PIC, the arrow, destination, then blank ruled rows', () => {
+    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    const body = html.slice(html.indexOf('<tbody>'), html.indexOf('</tbody>'));
+    expect(body.match(/<tr>/g)).toHaveLength(ROUTING_ROWS);
+    expect(body).toMatch(/data-end="origin">LGTT<\/td><td class="gd-crew-col pgf-fill" data-field="crew">PAT PILOT</);
+    expect(body).toContain('data-testid="gendec-arrow"');
+    expect(body).toMatch(/data-end="destination">LGTT</);
+    expect(body).not.toContain('LGMG');
+  });
+
+  it('reproduces the full Annex 9 Declaration of Health, struck through NIL', () => {
     const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     for (const l of GENDEC_HEALTH_LINES) expect(html).toContain(l);
     for (const l of GENDEC_DISINSECT_LINES) expect(html).toContain(l);
     expect(html).toContain('temperature 38°C/100°F or greater');
-    expect(html).toContain('If no disinsecting has been carried out during the flight');
     expect(html).toContain('Crew member concerned');
+    expect(html).toMatch(/data-testid="gendec-nil"[^]*>NIL<\/text>/);
   });
 
   it('draws the PIC e-signature on the declaration signature line, like Form 731', () => {
@@ -79,5 +84,6 @@ describe('general declaration sheet', () => {
     expect(html).toMatch(/class="gd-sigline"><span class="gd-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/);
     expect(html).toContain('>P. Pilot<');
     expect(html).toContain('signed 2026-11-15 16:51Z');
+    expect(html).toContain('Authorized Agent or Pilot-in-Command');
   });
 });
