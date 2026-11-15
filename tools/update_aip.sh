@@ -61,5 +61,7 @@ echo "== 6. reference data"
 # Point MIGRATION / RUNWAY_MIGRATION in tools/build_ref.ts at new files (e.g. 006_ref_<cycle>.ts),
 # register them in api/_lib/migrate.ts, then run:  npm run ref && npm test && npm run test:e2e
 echo "data/*.js and tools/runways.json updated. Next: new ref migrations in tools/build_ref.ts, then npm run ref && npm test && npm run test:e2e"
+echo "After npm run ref, the aerodrome CTR/ATZ map layer (client only, AD 2.17 / AD 1.6.N.17):"
+echo "  python3 -I tools/parse_ad_airspace.py $WORK/txt src/data/ref/aerodromes.json src/data/ref/atc-units.json src/data/ref/ad-airspaces.json"
 python3 -I "$ROOT/tools/vfr_manifest.py" write "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
 echo "done. Chart renders and overlays: $WORK/charts"

@@ -37,6 +37,8 @@ src/
     performance.ts         windComponents, pressureAltitudeFt (ISA), isaTempC, densityAltitudeFt, selectRunway,
                            takeoffDistances/landingDistances (method 'club' = MD 4.4 as the club calculator, or 'afm'),
                            aerodromePerformance
+    hazards.ts             weather hazards: legHazards (corridor samples ±1 h, planned altitude), aerodromeModelHazards,
+                           reportHazards/tafHazardContent (METAR/TAF), modelCloudBase; TS/CB, visibility, cloud vs alt + 1000 ft
     atc.ts                 AtcGenInput / AtcGenOutput types (generator lives in src/data/atc.ts)
     sun.ts                 sunsetMinutes(date, point, tables): AIP GEN 2.7, else NOAA
   data/                    client services
@@ -47,6 +49,8 @@ src/
     weather.ts             Open-Meteo (port of v2 js/weather.js): buildUrl, fetchPoints, sampleAt, sampleSurface,
                            fetchRouteWeather, surfaceConditions, chooseSurface (METAR vs forecast), windProviderFromLegs()
     weatherMetar.ts        parseMetar, parseTaf, fetchMetarTaf (through GET /api/weather/metar)
+    hazardWeather.ts       Open-Meteo corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid cells cached one by
+                           one): fetchHazardWeather, computeRouteHazards (editor strip + map, navlog export notes)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
     useAsync.ts            small loading hook
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
@@ -61,7 +65,8 @@ src/
     passengers/            PassengersPage
     waypoints/             WaypointsPage
     editor/                EditorPage (layout), state.tsx (EditorProvider/useEditor: SHARED EDITOR CONTRACT),
-                           map/ (MapView → RouteMap: VFR-chart layers, drawing, snapping, leg labels),
+                           map/ (MapView → RouteMap: VFR-chart layers, drawing, snapping, leg labels; airspace.ts +
+                           AirspacePopover: TMA/CTR/ATZ shapes, hover tooltip, click details with the legs entering),
                            panels/ (FlightPanel sections, NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
                            fuel, W&B, performance, warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
@@ -83,6 +88,8 @@ server/server.ts           local server: API + dist/ with SPA fallback (npm star
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
 tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json → src/data/ref/*.json + migrations 002, 005
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
+tools/parse_ad_airspace.py eAIP AD 2.17, AD 1.6.N.17 text → src/data/ref/ad-airspaces.json (aerodrome CTR/ATZ: limits,
+                           class, units; client map layer only, REF.adAirspaces — not in the ref_* tables)
 tools/build_seed.ts        data/aircraft/*.json → migration 003 (one-time hangar/profile of the EXISTING pilot)
 data/                      aip.js, vfr.js, sun.js (made by the Python tools from the eAIP; sources for build_ref.ts),
                            aircraft/{reims-f172m,fleet,compass-cards}.json
@@ -123,7 +130,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /login | `{credential}` (Google ID token). 401 if bad, 403 if not in ALLOWED_EMAILS, 404 in local mode. |
 | POST | /logout | Ends this session only. |
 | GET, PUT | /me | Profile (`PilotUpdate`; settings are merged). `defaultAircraftId` must be one of your own aircraft. |
-| GET, POST | /aircraft | List (by registration); create from `AircraftInput`. 409 on a duplicate registration. |
+| GET, POST | /aircraft | List (by registration); create from `AircraftInput`. 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
 | GET, PUT, DELETE | /aircraft/:id | PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. |
 | GET, POST | /passengers | List (by name); create. |
 | GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`). |
@@ -148,8 +155,8 @@ Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's reco
 - Migrations are TS modules (SQL as a default-exported string, or a `run(q)` function) listed in `api/_lib/migrate.ts`, so the Vercel bundle contains them. The runner records each one in `schema_migrations`, applies each in its own transaction, and serialises runners with a session advisory lock (plus an in-process queue for PGlite). It runs from `openDb()`: on server start, in tests, and on the Vercel cold start before serving.
   - `001_schema` converts the v2 production schema in place: `users` → `pilots` (same ids), `sessions.user_id` → `pilot_id` (sessions survive), `flights` → `legacy_flights` (kept as a backup). It then creates the new tables.
   - `002_ref_2609` (generated by `tools/build_ref.ts`) loads the reference data for AIRAC 09/26.
-  - `003_existing_pilot_data` (generated by `tools/build_seed.ts`) is one-time: pilots existing when it runs get their profile values and SX-ASV/SX-ASG, and `seeded_at` is set. Pilots created later have `seeded_at` set at creation, so they get nothing.
-  - `004_legacy_flights` converts each `legacy_flights` row (v2 `data` JSON) into a v3 flight: same id, version and timestamps. Waypoints are matched to aerodromes and VFR points, otherwise they become custom points. `ov` altitude/TAS/wind overrides become legOverrides, `taxiMin` becomes taxiOutMin, and the PIC goes on the manifest.
+  - `003_existing_pilot_data` (generated by `tools/build_seed.ts`) is one-time: the owner's account (matched by the SHA-256 of its e-mail, so the address is not in this public repo) gets its profile values and SX-ASV/SX-ASG; every pilot existing when it runs gets `seeded_at` set, the others with nothing. Pilots created later have `seeded_at` set at creation, so they get nothing.
+  - `004_legacy_flights` converts each `legacy_flights` row (v2 `data` JSON) into a v3 flight: same id, version and timestamps. Waypoints are matched to aerodromes and VFR points, otherwise they become custom points. `ov` altitude/TAS/wind overrides become legOverrides, `taxiMin` becomes taxiOutMin, and the PIC goes on the manifest. A v2 ATC/terminal list the pilot edited (hidden rows, rows added by hand, `T.<row>.*` cells) becomes the v3 generated list with those edits applied (`legacyAtc`); an unedited one stays null (generated). Typed-over computed cells (`L<i>.ete` etc.) and per-flight fuelFlow/fuelExtra have no v3 equivalent and stay only in `legacy_flights`.
 - **New AIRAC**: regenerate `data/*.js` (AIP-UPDATE.md), then add a NEW migration with the new ref data. Never edit an applied migration. Point `tools/build_ref.ts` at the new file.
 
 ## Running and testing
@@ -165,7 +172,7 @@ npm run build        # dist/
 npm run ref          # regenerate src/data/ref/*.json + migration 002 from data/*.js
 npx tsx tools/build_seed.ts   # regenerate migration 003
 ```
-With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database.
+With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 
 Deployment (not done by agents): Vercel builds with `vite build` to `dist/`. `vercel.json` rewrites `/api/*` to the function and every other non-file path to `index.html` (the SPA). HTML is served with no-cache, `/assets/*` is immutable, and www redirects to the apex. `.vercelignore` drops aip/, trn-docs/, tools/, tests/ and server/.
 

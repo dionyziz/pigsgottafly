@@ -3,28 +3,14 @@
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 import type { RoutePoint, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
-import { deg, rad, R_NM } from '../../../calc';
 import { aerodromeName } from './snap';
 import { mercatorMid } from './routeEdit';
+import { airspaceLabel, type AirspaceInfo } from './airspace';
 
 export type FC<G extends Point | LineString | Polygon = Point | LineString | Polygon> = FeatureCollection<G, Record<string, unknown>>;
 const fc = <G extends Point | LineString | Polygon>(features: Feature<G, Record<string, unknown>>[]): FC<G> => ({ type: 'FeatureCollection', features });
 
-/** Point at distance/bearing from a start (great circle). */
-export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
-  const d = distNm / R_NM, b = rad(bearingDeg), p1 = rad(lat), l1 = rad(lon);
-  const p2 = Math.asin(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(b));
-  const l2 = l1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(p1), Math.cos(d) - Math.sin(p1) * Math.sin(p2));
-  return [deg(l2), deg(p2)];
-}
-
-/** Closed ring approximating a circle, [lon, lat] (64 vertices). */
-export function circleRing(lat: number, lon: number, radiusNm: number, n = 64): [number, number][] {
-  const ring: [number, number][] = [];
-  for (let i = 0; i < n; i++) ring.push(destination(lat, lon, (360 * i) / n, radiusNm));
-  ring.push(ring[0]);
-  return ring;
-}
+export { destination, circleRing } from './airspace';
 
 /** Runway direction of the first published runway pair ('03/21' → 30), or null. */
 export function runwayHeading(a: RefAerodrome): number | null {
@@ -62,20 +48,21 @@ export function aerodromeFeatures(aerodromes: RefAerodrome[], variationDeg = 5):
   );
 }
 
-/** Aerodrome traffic zones (circles published per aerodrome). */
-export function zoneFeatures(aerodromes: RefAerodrome[]): FC<Polygon> {
-  const out: Feature<Polygon, Record<string, unknown>>[] = [];
-  for (const a of aerodromes) {
-    for (const z of a.zones) {
-      if (!(z.radiusNm > 0) || !isFinite(z.lat) || !isFinite(z.lon)) continue;
-      out.push({
+/**
+ * Aerodrome CTRs and ATZs (AD 2.17) with their chart label, e.g.
+ * 'DEKELIA TATOI MIL ATZ · D · SFC – 5000 ft'. Class G zones are drawn apart from controlled ones.
+ */
+export function zoneFeatures(zones: AirspaceInfo[]): FC<Polygon> {
+  return fc(
+    zones
+      .filter((z) => z.type === 'CTR' || z.type === 'ATZ')
+      .map((z) => ({
         type: 'Feature',
-        geometry: { type: 'Polygon', coordinates: [circleRing(z.lat, z.lon, z.radiusNm)] },
-        properties: { label: `${aerodromeName(a)} ATZ ${z.radiusNm} NM` },
-      });
-    }
-  }
-  return fc(out);
+        id: z.id,
+        geometry: { type: 'Polygon', coordinates: [z.ring] },
+        properties: { id: z.id, kind: z.type, cls: z.cls.trim().charAt(0), label: airspaceLabel(z) },
+      })),
+  );
 }
 
 /** Compact vertical limits as printed on charts: 'FL 155' → 'FL155', '1000 FT AGL' → '1000 AGL'. */
@@ -83,7 +70,7 @@ export function fmtLimit(s: string): string {
   return s.trim().toUpperCase().replace(/^FL\s+/, 'FL').replace(/\s*FT\b/, '').replace(/\s+/g, ' ');
 }
 
-/** CTR/TMA/MTMA polygons with a chart label "ATHINAI TMA  D  FL155 / 1000 AGL". */
+/** TMA/MTMA polygons with a chart label "ATHINAI TMA · D · 1000 ft AGL – FL155". */
 export function airspaceFeatures(airspaces: RefAirspace[]): FC<Polygon> {
   return fc(
     airspaces
@@ -92,15 +79,11 @@ export function airspaceFeatures(airspaces: RefAirspace[]): FC<Polygon> {
         const ring = s.polygon.map(([lat, lon]) => [lon, lat] as [number, number]);
         const [f, l] = [ring[0], ring[ring.length - 1]];
         if (f[0] !== l[0] || f[1] !== l[1]) ring.push(f);
-        const cls = s.class ? ` ${s.class}` : '';
         return {
           type: 'Feature',
+          id: s.id,
           geometry: { type: 'Polygon', coordinates: [ring] },
-          properties: {
-            id: s.id,
-            kind: s.kind,
-            label: `${s.name}${cls}  ${fmtLimit(s.upper)} / ${fmtLimit(s.lower)}`,
-          },
+          properties: { id: s.id, kind: s.kind, label: airspaceLabel({ name: s.name, cls: s.class, lower: s.lower, upper: s.upper }) },
         };
       }),
   );

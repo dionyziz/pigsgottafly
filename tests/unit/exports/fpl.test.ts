@@ -155,10 +155,12 @@ describe('the message', () => {
       '-LGTT0805',
       '-N0092VFR DCT 3819N02346E DCT 3802N02347E',
       '-LGTT0115',
-      '-DOF/261120 REG/SXASV RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI',
-      '-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS)',
+      '-DOF/261120 RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI)',
     ]);
     expect(r.complete).toBe(true);
+    // Item 19 is built for the form but not transmitted in the FPL message (Doc 4444 App. 3).
+    expect(r.fields.item19.text).toBe('E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS');
+    expect(r.message).not.toContain('E/0400');
     expect(r.warnings).toEqual([]);
     expect(r.fields.item19.radio).toEqual({ uhf: false, vhf: false, elt: true });
   });
@@ -198,7 +200,7 @@ describe('the message', () => {
       equipment: { ...EQ, item10a: 'SDFGRY', pbn: 'B2', item18Extras: 'COM/8.33 RMK/CLUB AIRCRAFT NAV/GNSS DOF/991231 STS/SAR' },
     }));
     const inds = r.fields.item18Parts.map((p) => p.indicator);
-    expect(inds).toEqual(['STS', 'PBN', 'NAV', 'COM', 'DOF', 'REG', 'OPR', 'RMK']);
+    expect(inds).toEqual(['STS', 'PBN', 'NAV', 'COM', 'DOF', 'OPR', 'RMK']);
     expect(r.fields.item18).toContain('DOF/261120');
     expect(r.fields.item18).not.toContain('991231');
     expect(r.fields.item18).toContain('RMK/TRAINING FLIGHT CLUB AIRCRAFT PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI');
@@ -241,15 +243,26 @@ describe('the message', () => {
     expect(jk.fields.item19.text).toContain('N/LIFE JACKETS');
   });
 
-  test('without item 19 the message ends after item 18', () => {
-    const r = buildFpl(base({ options: { includeItem19: false } }));
-    expect(r.lines.slice(-2)).toEqual(['-DOF/261120 REG/SXASV RMK/PIC TEL 00306940000000 VFR VIA OROPOS', 'ZOFRI)']);
+  test('by default the message ends after item 18; item 19 only on request (ARO variant)', () => {
+    const r = buildFpl(base());
+    expect(r.lines[r.lines.length - 1]).toBe('-DOF/261120 RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI)');
     expect(r.message).not.toContain('E/');
+    expect(r.message.split('\n').filter((l) => l.startsWith('-')).length).toBe(5); // items 9/10, 13, 15, 16, 18 (7 and 8 on line 1)
+    const aro = buildFpl(base({ options: { includeItem19: true } }));
+    expect(aro.lines.slice(-2)).toEqual([
+      '-DOF/261120 RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI',
+      '-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS)',
+    ]);
+  });
+
+  test('REG/ only on request: it would repeat the item 7 registration', () => {
+    expect(buildFpl(base()).fields.item18).not.toContain('REG/');
+    expect(buildFpl(base({ options: { regInItem18: true } })).fields.item18).toBe('DOF/261120 REG/SXASV RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI');
   });
 
   test('without point names in RMK', () => {
     const r = buildFpl(base({ options: { pointNamesInRemarks: false } }));
-    expect(r.fields.item18).toBe('DOF/261120 REG/SXASV RMK/PIC TEL 00306940000000');
+    expect(r.fields.item18).toBe('DOF/261120 RMK/PIC TEL 00306940000000');
   });
 
   test('missing data is visible as ???? and warned', () => {

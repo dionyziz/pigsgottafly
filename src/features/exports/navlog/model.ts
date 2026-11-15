@@ -16,7 +16,7 @@
 import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
-  buildLegs, defaultAltitudes, fmtClock, fmtHdg, fmtHmm, fmtSigned, magneticVariation, navlogAircraft, planFuel,
+  buildLegs, defaultAltitudes, fmtClock, hazardWhere, fmtHdg, fmtHmm, fmtSigned, isLocalFlight, magneticVariation, navlogAircraft, planFuel,
   computeNavlog, type FuelPlan, type LegGeometry, type NavlogResult,
 } from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
@@ -25,6 +25,7 @@ import {
   type RouteWeather, type SurfaceConditions, type SurfaceSample,
 } from '../../../data/weather';
 import type { MetarTafResult, ParsedMetar } from '../../../data/weatherMetar';
+import type { Hazard } from '../../../calc';
 
 export const LEGS_PER_SHEET = 9;
 /** Rows of the terminal information table (at least; more rows shrink to fit the same height). */
@@ -83,6 +84,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
         fobL: doc.fobL,
         usableL: aircraft.fuel.usableL,
         tripMin: navlog.flightMin,
+        localFlight: isLocalFlight(doc.route),
       })
     : null;
   return { legs, altitudesFt, navlog, fuel };
@@ -158,6 +160,13 @@ export interface SheetBuildInput {
   weather: RouteWeather | null;
   metar: MetarTafResult | null;
   nowMs: number;
+  /**
+   * Weather hazards along the route (data/hazardWeather computeRouteHazards); listed in the
+   * warnings and summarised on the first note line of the printed sheet. Omitted = not checked.
+   */
+  hazards?: Hazard[];
+  /** Why there are no hazards to show (e.g. 'Weather hazards unavailable: …'), printed as a note. */
+  hazardStatus?: string;
 }
 
 const two = (t: number | null) => (t === null || !isFinite(t) ? '' : (Math.round(t) < 0 ? 'M' : '') + String(Math.abs(Math.round(t))).padStart(2, '0'));
@@ -236,6 +245,31 @@ function adField(a: RefAerodrome): string {
   return a.name.includes('/') ? a.name.split('/').map((s) => s.trim()).join(' / ') : a.name;
 }
 
+/** Callsign words a unit label stands for, so 'SKYROS APPROACH' + 'APP' prints once. */
+const SERVICE_WORDS: Record<string, string[]> = {
+  APP: ['APPROACH'], TWR: ['TOWER'], GND: ['GROUND'], INFO: ['INFORMATION', 'INFO'], FIS: ['INFORMATION', 'INFO'],
+  RDR: ['RADAR'], RADAR: ['RADAR'], DEL: ['DELIVERY'], CTR: ['CONTROL'], ACC: ['CONTROL'], ATIS: ['ATIS'],
+};
+
+/**
+ * Unit label in front of a frequency. Generated rows print their service ('TWR') as the v2 sheet
+ * did: the row's field already names the aerodrome or airspace, so the callsign adds nothing.
+ * A hand-added row (no sourceKey) has a free heading such as 'Other', so its callsign is printed
+ * too, followed by the service unless the callsign already says it ('SKYROS APPROACH', not
+ * 'SKYROS APPROACH APP').
+ */
+function unitLabel(e: AtcEntry): string {
+  const callsign = e.callsign.trim();
+  const service = e.service.trim();
+  if (!callsign) return service;
+  if (e.sourceKey !== null && service) return service;
+  if (!service) return callsign;
+  const last = callsign.toUpperCase().split(/\s+/).pop() ?? '';
+  const svc = service.toUpperCase();
+  const implied = last === svc || (SERVICE_WORDS[svc] ?? []).includes(last);
+  return implied ? callsign : `${callsign} ${service}`;
+}
+
 /**
  * Terminal information rows from the flight's ATC list: one row per group (aerodrome, airspace,
  * FIS, hand-added heading), in list order. Aerodrome rows carry elevation and runways from the AIP.
@@ -261,7 +295,7 @@ export function terminalRows(atc: AtcEntry[], aerodromes: RefAerodrome[]): Termi
       if (first && /^[A-Z]{4}$/.test(first)) ad = byKey.get(first);
     }
     const freq = entries
-      .map((e) => [e.service || (e.callsign && !e.primary ? e.callsign : ''), e.primary, ...e.backups].filter(Boolean).join(' '))
+      .map((e) => [unitLabel(e), e.primary, ...e.backups].filter(Boolean).join(' '))
       .filter(Boolean)
       .join(' · ');
     return {
@@ -373,6 +407,7 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   // ---- sources (full, for the screen) and notes (compact, printed on the ruled lines)
   const sources: string[] = [];
   const notes: string[] = [];
+  const warnings0: string[] = [];
   if (nLegs) {
     const typed = navlog.legs.filter((l) => l.windSource === 'override').map((l) => l.index + 1);
     const typedText = typed.length ? `wind typed by hand on leg${typed.length > 1 ? 's' : ''} ${typed.join(', ')}` : '';
@@ -394,6 +429,16 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
     if (metar && metar.status === 'error' && metar.message) sources.push(metar.message);
 
     const on = navlog.blockOffSet;
+    // Weather hazards first: the notes keep NOTE_LINES lines, the last ones give way.
+    const hz = input.hazards ?? [];
+    if (hz.length) {
+      const legName = (i: number) => (legs[i] ? `${legs[i].from.name}–${legs[i].to.name}` : '');
+      const endName = (e: 'departure' | 'destination') => (e === 'departure' ? dep : arr).aerodrome?.icao ?? '';
+      const sorted = [...hz].sort((a, b) => (a.level === b.level ? 0 : a.level === 'danger' ? -1 : 1));
+      const srcs = [...new Set(hz.map((h) => h.source))].join('; ');
+      notes.push(`WX HAZARDS (advisory, ${srcs}): ` + sorted.map((h) => `${h.scope.type === 'leg' ? `L${h.scope.legIndex + 1}` : endName(h.scope.type)} ${h.text}`).join(' · '));
+      for (const h of sorted) warnings0.push(`${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}; advisory).`);
+    } else if (input.hazardStatus) notes.push(`WX hazards: ${input.hazardStatus}`);
     notes.push(`Block-off ${on ? clockZ(t.blockOffMin) : '—'} · T/O ${on ? clockZ(t.takeoffMin) : '—'} · LDG ${on ? clockZ(t.landingMin) : '—'} · Block-on ${on ? clockZ(t.blockOnMin) : '—'} · taxi ${doc.taxiOutMin ?? '—'}/${doc.taxiInMin ?? '—'} min`);
     if (fuel) {
       const parts = [`taxi ${fuel.taxiL}`, `trip ${fuel.tripL}`];
@@ -413,7 +458,7 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
     if (surf.length) notes.push(`Surface: ${surf.join(' · ')}`);
   }
 
-  const warnings = [...navlog.warnings, ...(fuel?.warnings ?? [])];
+  const warnings = [...warnings0, ...navlog.warnings, ...(fuel?.warnings ?? [])];
   if (nLegs && weather && weather.status !== 'ok' && weather.message) warnings.push(weather.message);
 
   return { sheets, terminal: terminalRows(input.atc, input.aerodromes), notes: notes.slice(0, NOTE_LINES), warnings: [...new Set(warnings)], sources };

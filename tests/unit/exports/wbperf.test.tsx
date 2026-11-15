@@ -369,9 +369,21 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
         expect(within(val(b, 'todr'), club.todrM!), `TODR ${val(b, 'todr')} vs ${club.todrM}`).toBe(true);
         expect(within(val(b, 'torr'), club.torrM!), `TORR ${val(b, 'torr')} vs ${club.torrM}`).toBe(true);
       } else {
-        track(val(b, 'ldr'), club.ldrM!);
-        expect(within(val(b, 'ldr'), club.ldrM!), `LDR ${val(b, 'ldr')} vs ${club.ldrM}`).toBe(true);
-        expect(within(val(b, 'lrr'), club.lrrM!), `LRR ${val(b, 'lrr')} vs ${club.lrrM}`).toBe(true);
+        // Landing: aerodromePerformance computes the club method AND the AFM method (table at PA,
+        // +10 %/15 °C) and prints the longer LDR (the AFM one on hot days, by up to ~9 % over this
+        // fixture). The club-method figures must still match the club; the printed LDR is the
+        // larger of the two and is never shorter than the club's.
+        const p = e.perf!;
+        const clubD = p.distances!.method === 'club' ? p.distances! : p.alternative!;
+        expect(clubD.method).toBe('club');
+        const clubLdr = Math.ceil(clubD.requiredTotalM - 1e-9), clubLrr = Math.ceil(clubD.requiredGroundM - 1e-9);
+        track(clubLdr, club.ldrM!);
+        expect(within(clubLdr, club.ldrM!), `LDR (club method) ${clubLdr} vs ${club.ldrM}`).toBe(true);
+        expect(within(clubLrr, club.lrrM!), `LRR (club method) ${clubLrr} vs ${club.lrrM}`).toBe(true);
+        const longer = Math.max(p.distances!.requiredTotalM, p.alternative!.requiredTotalM);
+        expect(val(b, 'ldr')).toBe(Math.ceil(longer - 1e-9));
+        expect(val(b, 'ldr')).toBeGreaterThanOrEqual(club.ldrM! - 1);
+        if (p.distances!.method === 'afm') expect(val(b, 'ldr-alt')).toBe(clubLdr);
       }
     }
   });

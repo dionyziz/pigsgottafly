@@ -43,10 +43,16 @@ export function parseAltitudeInput(s: string): number | null {
 
 export type LabelMode = 'full' | 'compact' | 'hidden';
 
-/** How much of a leg label fits along a leg of this many screen pixels. */
+/**
+ * How a leg label is laid out along a leg of this many screen pixels. Every visible label carries the
+ * magnetic course, the distance and the altitude (as on VFR charts):
+ *   full     one row, "062° │ 24 NM │ A030" (about 120 px wide)
+ *   compact  two smaller rows, "062° 24 NM" over "A030" (about 64 px wide)
+ *   hidden   the leg is too short on screen for any label (zoom in)
+ */
 export function labelMode(screenLenPx: number): LabelMode {
-  if (screenLenPx >= 120) return 'full';
-  if (screenLenPx >= 46) return 'compact';
+  if (screenLenPx >= 130) return 'full';
+  if (screenLenPx >= 44) return 'compact';
   return 'hidden';
 }
 
@@ -59,21 +65,30 @@ export interface LabelPlacement {
   normal: ScreenPoint;
   /** Screen length of the leg, px. */
   lengthPx: number;
+  /**
+   * The side the label goes, along `normal`: +1 (above) when the text reads in the direction of
+   * travel, −1 (below) when it reads against it. The label thus always sits left of the track, and
+   * the two legs of an out-and-back (A → B, B → A) get one label on each side instead of on top of
+   * each other.
+   */
+  side: 1 | -1;
 }
 
 /**
- * Place a label along the screen segment a → b so the text reads left to right (never upside down)
- * and sits on the upper side of the line (for a vertical leg: the left side).
+ * Place a label along the screen segment a → b so the text reads left to right (never upside down);
+ * `normal` points to the upper side of the line (for a vertical leg: the left side), `side` says
+ * which of the two sides to use.
  */
 export function placeLabel(a: ScreenPoint, b: ScreenPoint): LabelPlacement {
   const dx = b.x - a.x, dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
   let ang = (Math.atan2(dy, dx) * 180) / Math.PI; // screen y grows downward → clockwise
-  if (ang > 90) ang -= 180;
-  else if (ang <= -90) ang += 180;
+  let side: 1 | -1 = 1;
+  if (ang > 90) { ang -= 180; side = -1; }
+  else if (ang <= -90) { ang += 180; side = -1; }
   const r = (ang * Math.PI) / 180;
   // Direction along the text (left → right) is (cos r, sin r); the normal "above" the text is
   // (sin r, −cos r) (rotate the direction 90° counter-clockwise on screen).
   const normal = len > 0 ? { x: Math.sin(r), y: -Math.cos(r) } : { x: 0, y: -1 };
-  return { angleDeg: ang, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, normal, lengthPx: len };
+  return { angleDeg: ang, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, normal, lengthPx: len, side };
 }

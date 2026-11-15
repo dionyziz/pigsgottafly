@@ -1,6 +1,6 @@
 // planFuel: hand-computed references.
-import { expect, test } from 'vitest';
-import { litresFor, minutesFor, planFuel, type FuelPlanInput } from '../../../src/calc';
+import { describe, expect, test } from 'vitest';
+import { isLocalFlight, litresFor, minutesFor, planFuel, type FuelPlanInput } from '../../../src/calc';
 
 const base: FuelPlanInput = { tripFuelL: 13, taxiAllowanceL: 4, burnLph: 30, finalReserveMin: 0, reserveMin: 60, fobL: null, usableL: 144, tripMin: 24 };
 
@@ -55,4 +55,56 @@ test('no burn / no capacity', () => {
 test('helpers', () => {
   expect([litresFor(60, 30), litresFor(1, 30), litresFor(0, 30), litresFor(10, 0)]).toEqual([30, 1, 0, 0]);
   expect([minutesFor(47, 30), minutesFor(30, 30), minutesFor(1, 0)]).toEqual([94, 60, NaN]);
+});
+
+describe('legal final reserve at landing (NCO.OP.125 day VFR: 30 min, 10 min local)', () => {
+  // Review case: LGTT → (37.80,24.10) → (37.55,24.60) → LGSO, SX-ASV: trip 22 L, taxi 4 L.
+  const trip = { ...base, tripFuelL: 22, finalReserveMin: 0, fobL: 30 };
+
+  test('FOB covering taxi + trip but landing with 4 L (8 min) is a danger', () => {
+    const p = planFuel(trip);
+    expect(p).toMatchObject({ requiredL: 26, belowRequired: false, landingFuelL: 4, landingEnduranceMin: 8, minLandingReserveMin: 30, landingReserveShort: true });
+    expect(p.issues).toEqual([{ level: 'danger', text: 'Fuel at landing 4 L lasts 8 min: below the 30 min legal final reserve for day VFR (NCO.OP.125).' }]);
+    expect(p.warnings).toEqual(p.issues.map((i) => i.text));
+  });
+
+  test('exactly 30 min (15 L at 30 L/h) passes; 14 L does not', () => {
+    expect(planFuel({ ...trip, fobL: 41 })).toMatchObject({ landingFuelL: 15, landingReserveShort: false, issues: [] });
+    expect(planFuel({ ...trip, fobL: 40 }).landingReserveShort).toBe(true);
+  });
+
+  test('local flight: 10 min floor (danger below), warning between 10 and 30 min', () => {
+    const p = planFuel({ ...trip, fobL: 30, localFlight: true });
+    expect(p).toMatchObject({ minLandingReserveMin: 10, landingReserveShort: true });
+    // 8 min < 10 min → danger
+    expect(p.issues[0].text).toMatch(/below the 10 min legal final reserve for a local VFR flight/);
+    expect(p.issues[0].level).toBe('danger');
+    // 6 L = 12 min: legal for a local flight in sight, warned
+    const q = planFuel({ ...trip, fobL: 32, localFlight: true });
+    expect(q).toMatchObject({ landingFuelL: 6, landingReserveShort: false });
+    expect(q.issues).toEqual([{ level: 'warn', text: expect.stringMatching(/within sight of the aerodrome/) }]);
+  });
+
+  test("the pilot's own final reserve above the legal floor is the minimum", () => {
+    // final reserve 45 min = 23 L → required 49; FOB 49 lands with 23 L = 46 min: OK
+    expect(planFuel({ ...trip, finalReserveMin: 45, fobL: 49 })).toMatchObject({ minLandingReserveMin: 45, landingReserveShort: false, issues: [] });
+    // FOB 45 is below required (danger) and lands with 19 L = 38 min: still above the legal 30
+    const p = planFuel({ ...trip, finalReserveMin: 45, fobL: 45 });
+    expect(p.landingReserveShort).toBe(true);
+    expect(p.issues.map((i) => i.level)).toEqual(['danger']);
+    expect(p.issues[0].text).toMatch(/below required/);
+  });
+
+  test('default FOB with no reserve set lands with 0 L: flagged', () => {
+    const p = planFuel({ ...trip, fobL: null, reserveMin: null });
+    expect(p.landingFuelL).toBe(0);
+    expect(p.issues.some((i) => i.level === 'danger' && /legal final reserve/.test(i.text))).toBe(true);
+  });
+
+  test('isLocalFlight', () => {
+    const a = { lat: 38.1089, lon: 23.7836 }, b = { lat: 37.9364, lon: 23.9445 };
+    expect(isLocalFlight([a, b])).toBe(false);
+    expect(isLocalFlight([a, b, { lat: 38.11, lon: 23.784 }])).toBe(true);
+    expect(isLocalFlight([a])).toBe(false);
+  });
 });

@@ -61,6 +61,7 @@ export type MeUpdateRequest = PilotUpdate;
 
 // ---- hangar, passengers, waypoints -------------------------------------------------------------
 // GET /api/aircraft → Aircraft[] (by registration)     POST /api/aircraft (AircraftInput) → 201 Aircraft
+//   (becomes the pilot's defaultAircraftId when the pilot has none)
 // GET /api/aircraft/:id → Aircraft                       PUT /api/aircraft/:id (Partial<AircraftInput>) → Aircraft
 // DELETE /api/aircraft/:id → 204 (flights keep aircraftId = null)
 // Same shape for /api/passengers (Passenger, PassengerInput; ordered by fullName)
@@ -81,6 +82,8 @@ export type WaypointUpdateRequest = Partial<WaypointInput>;
 export interface FlightListItem {
   id: Id;
   summary: FlightSummary;
+  /** Names of every route point in order (departure, waypoints, intermediate aerodromes, destination), for search. */
+  points: string[];
   date: string;
   aircraftId: Id | null;
   version: number;

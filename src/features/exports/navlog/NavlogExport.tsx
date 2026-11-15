@@ -15,6 +15,7 @@ import { REF, SUN_TABLES } from '../../../data/ref';
 import { atcInput, endpointAerodrome, generateAtcList } from '../../../data/atc';
 import { fetchRouteWeather, type RouteWeather } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult } from '../../../data/weatherMetar';
+import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
 import {
   buildNavlogDocument, computeFlightNavlog, LEGS_PER_SHEET, MIN_TERMINAL_ROWS, NOTE_LINES,
   type NavlogDocument, type NavlogSheet, type SheetLeg,
@@ -72,6 +73,27 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     return () => { live = false; };
   }, [endIcaos.join(','), nearNow, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---- weather hazards along the route (corridor samples)
+  const hzKey = JSON.stringify([flight.date, model, legs.map((l) => [l.from.lat, l.from.lon, l.to.lat, l.to.lon].map((x) => x.toFixed(3)))]);
+  const [hazardWx, setHazardWx] = useState<HazardWeather | null>(null);
+  const [hzBusy, setHzBusy] = useState(false);
+  useEffect(() => {
+    if (!legs.length || !flight.date) { setHazardWx(null); return; }
+    let live = true;
+    setHzBusy(true);
+    const ad = (p: typeof flight.route[number] | undefined) => (p ? endpointAerodrome(p, REF.aerodromes) : null);
+    const a0 = ad(flight.route[0]), a1 = flight.route.length > 1 ? ad(flight.route[flight.route.length - 1]) : null;
+    fetchHazardWeather({
+      date: flight.date, model,
+      legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
+      departure: a0 ? { lat: a0.lat, lon: a0.lon } : null,
+      destination: a1 ? { lat: a1.lat, lon: a1.lon } : null,
+      force: refresh > 0,
+    }).then((h) => { if (live) { setHazardWx(h); setHzBusy(false); } });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hzKey, refresh]);
+
   // ---- the document
   const loading = pilotQ.loading || acQ.loading;
   const doc: NavlogDocument | null = useMemo(() => {
@@ -81,8 +103,20 @@ export function NavlogExport({ flight }: { flight: Flight }) {
       ref: { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES },
     });
     const atc = flight.atc ?? generateAtcList(atcInput(flight.route, computed.altitudesFt, REF, pilot?.settings.enrouteAerodromeRadiusNm ?? 2));
-    return buildNavlogDocument({ doc: flight, aircraft, computed, atc, aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now() });
-  }, [loading, flight, aircraft, pilot, weather, metar]);
+    const dayMs = Date.parse(flight.date + 'T00:00:00Z');
+    const end = (p: typeof flight.route[number] | undefined) => {
+      const a = p ? endpointAerodrome(p, REF.aerodromes) : null;
+      return a ? { elevFt: a.elevFt ?? 0, reports: a.icao && metar ? metar.stations[a.icao] ?? null : null } : null;
+    };
+    const hazards = computeRouteHazards({
+      hw: hazardWx, navlog: computed.navlog, dayMs, nowMs: Date.now(),
+      departure: end(flight.route[0]), destination: flight.route.length > 1 ? end(flight.route[flight.route.length - 1]) : null,
+    });
+    const hazardStatus = !computed.navlog.blockOffSet ? 'not checked (block-off time not set)'
+      : hazardWx && hazardWx.status !== 'ok' ? hazardWx.message
+      : hazardWx && hazardWx.status === 'ok' ? `none found (${hazardWx.sourceLabel}; advisory)` : undefined;
+    return buildNavlogDocument({ doc: flight, aircraft, computed, atc, aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now(), hazards, hazardStatus });
+  }, [loading, flight, aircraft, pilot, weather, metar, hazardWx]);
 
   // ---- scale to the container on screen; fit text after every render
   const host = useRef<HTMLDivElement>(null);
@@ -108,7 +142,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   }, [doc]);
 
   if (!doc) return <div className="md42-doc-loading muted">Loading…</div>;
-  const wxPending = wxBusy && legs.length > 0;
+  const wxPending = (wxBusy || hzBusy) && legs.length > 0;
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const snap = (w: number, min: number) => `${Math.max(min, Math.round(w * dpr)) / dpr}px`;
 

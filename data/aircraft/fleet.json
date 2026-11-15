@@ -3,6 +3,8 @@
   "SX-ASV": {
     "type": "reims-f172m",
     "serial": "F172M01513",
+    "colours": "",
+    "_coloursNote": "FPL item 19 A/ (e.g. WHITE BLUE STRIPES). Not stated in the AFM, weighing or compass swing reports: to be filled by the pilot in the hangar (or here, followed by npm exec tsx tools/build_seed.ts, only while migration 003 has not yet been applied in production).",
     "operator": "Aeroclub Mesogeion",
     "cruiseTasKt": 92,
     "patternTasKt": 80,
@@ -29,6 +31,8 @@
   "SX-ASG": {
     "type": "reims-f172m",
     "serial": "F172M1091",
+    "colours": "",
+    "_coloursNote": "FPL item 19 A/ (e.g. WHITE BLUE STRIPES). Not stated in the AFM, weighing or compass swing reports: to be filled by the pilot in the hangar (or here, followed by npm exec tsx tools/build_seed.ts, only while migration 003 has not yet been applied in production).",
     "operator": "Aeroclub Mesogeion",
     "cruiseTasKt": 92,
     "patternTasKt": 80,

@@ -9,7 +9,8 @@
 //    designator × 10 when the true heading is unknown (headingMagSource). The Greek AIP prints no MAG BRG.
 //  - slopePct (+ = uphill in this direction): the AIP RWY-SWY slope when it is a single signed value; when the
 //    AIP prints the same unsigned value for both directions the sign comes from the threshold elevations
-//    (or the value is dropped if there are none); multi-segment slopes and NIL are replaced by the average
+//    (if there are none, its magnitude is kept as slopeUnsignedPct with slopeSource 'aip-unsigned', and
+//    performance applies it as adverse both ways); multi-segment slopes and NIL are replaced by the average
 //    slope between the published threshold elevations (slopeSource).
 //  - thresholdElevFt: AIP THR elevation, else the aerodrome elevation (thresholdElevSource).
 //
@@ -127,6 +128,7 @@ export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effe
         // slope
         let slopePct: number | null = null;
         let slopeSource: RefRunwayDetail['slopeSource'] = null;
+        let slopeUnsignedPct: number | null = null;
         const thrSlope = p?.thr && q?.thr && thrElev !== null && q.thrElevFt !== null
           ? ((q.thrElevFt - thrElev) * FT) / (distanceNm({ lat: p.thr[0], lon: p.thr[1] }, { lat: q.thr[0], lon: q.thr[1] }) * M_PER_NM) * 100
           : null;
@@ -135,11 +137,16 @@ export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effe
           const ambiguous = pub !== 0 && pubRec !== null && Math.sign(pub) === Math.sign(pubRec);
           if (!ambiguous) { slopePct = pub; slopeSource = 'aip'; }
           else if (thrSlope !== null) { slopePct = Math.abs(pub) * Math.sign(thrSlope); slopeSource = 'aip-magnitude-thr-sign'; }
-          else warnings.push(`${a.id} ${d}: slope ${p!.slopeText} printed with the same sign both ways and no THR elevations; left null`);
         }
         if (slopeSource === null) {
           gaps.push('slope');
           if (thrSlope !== null) { slopePct = r2(thrSlope); slopeSource = 'thr-elevations'; }
+          else if (pub !== null && pub !== 0) {
+            // same value (or sign) printed both ways, no threshold elevations: the direction is unknown
+            slopeUnsignedPct = Math.abs(pub);
+            slopeSource = 'aip-unsigned';
+            notes.push(`Slope ${p!.slopeText} printed for both directions without threshold elevations: direction unknown, applied as adverse both ways`);
+          }
         }
         // physical + declared
         if (p?.lengthM == null) gaps.push('length');
@@ -155,7 +162,7 @@ export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effe
           aerodromeId: a.id, designator: d, reciprocal: rec, headingMagDeg, headingTrueDeg,
           lengthM: p?.lengthM ?? null, widthM: p?.widthM ?? null, surface: p?.surface ?? null,
           toraM: p?.toraM ?? null, todaM: p?.todaM ?? null, asdaM: p?.asdaM ?? null, ldaM: p?.ldaM ?? null,
-          slopePct, thresholdElevFt: thrElev ?? a.elevFt,
+          slopePct, slopeUnsignedPct, thresholdElevFt: thrElev ?? a.elevFt,
           thrLat: p?.thr?.[0] ?? null, thrLon: p?.thr?.[1] ?? null, headingTrueSource,
           magVarDeg: headingMagSource === 'designator' || varHere === null ? null : r2(varHere), headingMagSource,
           slopeText: p?.slopeText ?? null, slopeSource,

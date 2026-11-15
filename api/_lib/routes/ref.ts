@@ -21,6 +21,7 @@ const TABLES: Record<string, { table: string; order: string }> = {
 };
 
 async function docs(db: Queryable, kind: keyof typeof TABLES | string, airac: string) {
+  if (!Object.hasOwn(TABLES, kind)) throw notFound();
   const t = TABLES[kind];
   return (await db.query(`SELECT doc FROM ${t.table} WHERE airac = $1 ORDER BY ${t.order}`, [airac])).map((r) => r.doc);
 }
@@ -64,7 +65,7 @@ export const routes: Route[] = [
   {
     method: 'GET', path: '/ref/:kind',
     async handler({ db, params }) {
-      if (!(params.kind in TABLES)) throw notFound();
+      if (!Object.hasOwn(TABLES, params.kind)) throw notFound();
       return docs(db, params.kind, (await current(db)).id);
     },
   },

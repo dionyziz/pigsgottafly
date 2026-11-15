@@ -30,7 +30,20 @@ export interface SnapHit {
   cand: SnapCandidate;
   /** Screen distance cursor → candidate, px (without the penalty). */
   distPx: number;
+  /**
+   * A point the aerodrome was preferred over (it sits within AERODROME_PRIORITY_NM of the aerodrome
+   * and too close on screen to tell apart): the tooltip says to zoom in to pick it.
+   */
+  shadowed?: SnapCandidate;
 }
+
+/**
+ * A VFR point (or other non-aerodrome candidate) this close to an aerodrome, NM, gives way to the
+ * aerodrome while the two are less than the snap radius apart on screen: at route-planning zoom a
+ * reporting point 0.6 NM from the runway (SKS at LGSY) is a few px away, and a click meant for the
+ * aerodrome must not make it a VFR point. Zoomed in far enough to separate them, plain distance wins.
+ */
+export const AERODROME_PRIORITY_NM = 1.5;
 
 /** Default snap radius, px. */
 export const SNAP_RADIUS_PX = 12;
@@ -88,13 +101,26 @@ export function findSnap(
 ): SnapHit | null {
   let best: SnapHit | null = null;
   let bestScore = Infinity;
+  let bestPx: ScreenPoint | null = null;
+  const aerodromes: { c: SnapCandidate; p: ScreenPoint; d: number }[] = [];
   for (const c of cands) {
     if (box && (c.lon < box.west || c.lon > box.east || c.lat < box.south || c.lat > box.north)) continue;
     const p = project(c.lon, c.lat);
     const d = Math.hypot(p.x - cursor.x, p.y - cursor.y);
     if (d > radiusPx) continue;
+    if (c.kind === 'aerodrome') aerodromes.push({ c, p, d });
     const score = d + c.penaltyPx;
-    if (score < bestScore) { bestScore = score; best = { cand: c, distPx: d }; }
+    if (score < bestScore) { bestScore = score; best = { cand: c, distPx: d }; bestPx = p; }
+  }
+  if (best && bestPx && best.cand.kind !== 'aerodrome') {
+    // aerodrome priority: the nearest aerodrome in reach that the winner sits next to
+    let ad: { c: SnapCandidate; d: number } | null = null;
+    for (const a of aerodromes) {
+      if (Math.hypot(a.p.x - bestPx.x, a.p.y - bestPx.y) >= radiusPx) continue;
+      if (distanceNm(a.c, best.cand) > AERODROME_PRIORITY_NM) continue;
+      if (!ad || a.d < ad.d) ad = a;
+    }
+    if (ad) return { cand: ad.c, distPx: ad.d, shadowed: best.cand };
   }
   return best;
 }

@@ -63,11 +63,12 @@ export function utcToLocal(date: string, hhmm: string, timeZone?: string): strin
   return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone }).format(t);
 }
 
-/** Lower-cased text a flight row is searched by: title, route ends, aircraft, date in several forms. */
+/** Lower-cased text a flight row is searched by: title, every route point (aerodromes, VFR points,
+ *  custom points), aircraft, date in several forms. */
 export function flightSearchText(r: FlightListItem): string {
   const s = r.summary;
   const date = r.date || s.date;
-  return [s.title, s.from, s.to, s.aircraft, s.aircraft.replace('-', ''), date, fmtDate(date), s.blockOff].join(' ').toLowerCase();
+  return [s.title, s.from, s.to, ...(r.points ?? []), s.aircraft, s.aircraft.replace('-', ''), date, fmtDate(date), s.blockOff].join(' ').toLowerCase();
 }
 
 /** Every whitespace-separated term of `q` must occur in the row's text. */

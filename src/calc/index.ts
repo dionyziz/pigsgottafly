@@ -10,3 +10,4 @@ export * from './wb.js';
 export * from './performance.js';
 export * from './atc.js';
 export * from './sun.js';
+export * from './hazards.js';

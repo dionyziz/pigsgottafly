@@ -1,8 +1,15 @@
 // Fuel planning.
 //   required = taxi allowance + trip + final reserve (PilotSettings.finalReserveMin, default 0)
 //   default FOB = required + reserve (PilotSettings.reserveMin at the planning burn; null = not set)
+//   legal floor: whatever the profile says, the fuel left at landing must last at least the EASA
+//   Part-NCO final reserve for day VFR (NCO.OP.125(a)(1)(i)): 30 min, or 10 min for a local flight
+//   (take-off and landing at the same aerodrome, remaining within sight of it), at the planning
+//   burn. Below it the plan is flagged as danger; a local flight between 10 and 30 min is a warning
+//   (the 10 min only holds while the aerodrome stays in sight).
 // Reserve litres are rounded UP to whole litres (as each leg's fuel on the paper sheet); trip and
 // taxi litres are used as given (NavlogResult.totals.tripFuel is already a sum of whole litres).
+
+import { distanceNm } from './nav.js';
 
 export interface FuelPlanInput {
   /** Σ leg fuel, L (NavlogResult.totals.tripFuel). */
@@ -20,6 +27,17 @@ export interface FuelPlanInput {
   usableL: number;
   /** Trip time, minutes (informational; endurance figures come from the litres). */
   tripMin: number;
+  /** Take-off and landing at the same aerodrome (isLocalFlight): the legal floor is 10 min, not 30. */
+  localFlight?: boolean;
+}
+
+/** EASA NCO.OP.125 day VFR final reserve, minutes: 30, or 10 for a local flight. */
+export const LEGAL_FINAL_RESERVE_MIN = 30;
+export const LEGAL_LOCAL_FINAL_RESERVE_MIN = 10;
+
+export interface FuelIssue {
+  level: 'danger' | 'warn';
+  text: string;
 }
 
 export interface FuelPlan {
@@ -47,8 +65,17 @@ export interface FuelPlan {
   belowRequired: boolean;
   /** PilotSettings.reserveMin was not set (reserve 0 used). */
   reserveUnset: boolean;
-  /** Human-readable warnings. */
+  /**
+   * The minimum endurance at landing checked against: max(legal floor, PilotSettings.finalReserveMin),
+   * minutes (legal floor 30 min, or 10 min for a local flight).
+   */
+  minLandingReserveMin: number;
+  /** Fuel at landing lasts less than minLandingReserveMin (or is negative). */
+  landingReserveShort: boolean;
+  /** Human-readable warnings (= issues' texts). */
   warnings: string[];
+  /** The same warnings with a level: danger (no-go as planned) or warn. */
+  issues: FuelIssue[];
 }
 
 const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
@@ -75,13 +102,37 @@ export function planFuel(input: FuelPlanInput): FuelPlan {
   const overCapacity = isFinite(usable) && fobL > usable + 1e-9;
   const defaultOverCapacity = isFinite(usable) && defaultFobL > usable + 1e-9;
   const belowRequired = fobL < requiredL - 1e-9;
+  const enduranceMin = minutesFor(fobL, input.burnLph);
+  const landingEnduranceMin = minutesFor(landingFuelL, input.burnLph);
+  const finalReserveMin = fin(input.finalReserveMin) ? Math.max(0, input.finalReserveMin) : 0;
+  const legalMin = input.localFlight ? LEGAL_LOCAL_FINAL_RESERVE_MIN : LEGAL_FINAL_RESERVE_MIN;
+  const minLandingReserveMin = Math.max(legalMin, finalReserveMin);
+  // Compare litres, not rounded-down minutes: the reserve's litres at the planning burn.
+  const landingLitresNeeded = (m: number) => (input.burnLph > 0 ? (m * input.burnLph) / 60 : NaN);
+  const short = (m: number) => landingFuelL < 0 || (input.burnLph > 0 && landingFuelL < landingLitresNeeded(m) - 1e-9);
+  const landingReserveShort = short(minLandingReserveMin);
 
-  if (!(input.burnLph > 0)) warnings.push('Aircraft burn rate not set.');
-  if (reserveUnset) warnings.push('Fuel reserve not set in the profile: no reserve added to the default fuel on board.');
-  if (overCapacity) warnings.push(`Fuel on board ${fobL} L exceeds usable capacity ${usable} L.`);
-  else if (fobIsDefault && defaultOverCapacity) warnings.push(`Required + reserve ${defaultFobL} L exceeds usable capacity ${usable} L.`);
-  if (belowRequired) warnings.push(`Fuel on board ${fobL} L is below required ${requiredL} L.`);
-  if (!isFinite(usable)) warnings.push('Aircraft usable fuel capacity not set.');
+  const issues: FuelIssue[] = [];
+  const add = (level: FuelIssue['level'], text: string) => issues.push({ level, text });
+  if (!(input.burnLph > 0)) add('warn', 'Aircraft burn rate not set.');
+  if (reserveUnset) add('warn', 'Fuel reserve not set in the profile: no reserve added to the default fuel on board.');
+  if (overCapacity) add('danger', `Fuel on board ${fobL} L exceeds usable capacity ${usable} L.`);
+  else if (fobIsDefault && defaultOverCapacity) add('warn', `Required + reserve ${defaultFobL} L exceeds usable capacity ${usable} L.`);
+  if (belowRequired) add('danger', `Fuel on board ${fobL} L is below required ${requiredL} L.`);
+  if (input.burnLph > 0 && landingFuelL >= 0) {
+    const left = `Fuel at landing ${landingFuelL} L lasts ${landingEnduranceMin} min`;
+    if (short(legalMin)) {
+      add('danger', input.localFlight
+        ? `${left}: below the ${legalMin} min legal final reserve for a local VFR flight (NCO.OP.125).`
+        : `${left}: below the ${legalMin} min legal final reserve for day VFR (NCO.OP.125).`);
+    } else if (finalReserveMin > legalMin && short(finalReserveMin) && !belowRequired) {
+      add('danger', `${left}: below your final reserve of ${finalReserveMin} min.`);
+    } else if (input.localFlight && short(LEGAL_FINAL_RESERVE_MIN)) {
+      add('warn', `${left}: the 10 min final reserve holds only for a local flight that stays within sight of the aerodrome (30 min otherwise).`);
+    }
+  }
+  if (!isFinite(usable)) add('warn', 'Aircraft usable fuel capacity not set.');
+  warnings.push(...issues.map((i) => i.text));
 
   return {
     taxiL,
@@ -93,12 +144,21 @@ export function planFuel(input: FuelPlanInput): FuelPlan {
     fobL,
     fobIsDefault,
     landingFuelL,
-    enduranceMin: minutesFor(fobL, input.burnLph),
-    landingEnduranceMin: minutesFor(landingFuelL, input.burnLph),
+    enduranceMin,
+    landingEnduranceMin,
     overCapacity,
     defaultOverCapacity,
     belowRequired,
     reserveUnset,
+    minLandingReserveMin,
+    landingReserveShort,
     warnings,
+    issues,
   };
+}
+
+/** Route starts and ends at the same place (within 1 NM): a local flight for the fuel reserve. */
+export function isLocalFlight(route: { lat: number; lon: number }[]): boolean {
+  if (route.length < 2) return false;
+  return distanceNm(route[0], route[route.length - 1]) <= 1;
 }

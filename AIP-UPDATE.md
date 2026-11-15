@@ -20,6 +20,7 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `data/sun.js`: sunset | GEN 2.7 | `parse_sun.py` |
 | `data/vfr.js`: VFR points and route altitudes | VFR charts + open flightmaps | `parse_vfr.py`, `fetch_ofm.py`, `vfr_chart.py`, `build_vfr.py` |
 | `tools/runways.json`: runway bearings, lengths, surfaces, thresholds, declared distances, slopes | AD 2.12/2.13, AD 1.6.N.12/13 | `parse_runways.py` (corrections in its `OVR` table, e.g. LGBL TORA from the AD 2.13 remark) |
+| `src/data/ref/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
 
 Then it stops before the reference data: a new cycle's data goes into NEW migrations (never edit an applied
 one such as 002 or 005). Point `MIGRATION` / `RUNWAY_MIGRATION` in `tools/build_ref.ts` at new files, register
@@ -37,8 +38,9 @@ them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test
 2. **Airspace (ENR 2.1).** If step 3 shows a newer AMDT for `ENR_2_1`, diff the TMA/MTMA tables against `build_aip.py` (polygons, lower/upper limits, units, frequencies). Arc centres come from ENR 4.1 VOR positions.
 3. **Aerodromes.** `parse_ad.py` handles the usual AD 2 / AD 1.6 layouts; a new layout shows up as a failing `tests/unit/aip.test.js` check or a missing frequency. Corrections go in the `OVR` table in `build_aip.py`.
 4. **Sunset (GEN 2.7).** The tables are the "average year" 2028, valid 2024–2033 (GEN 2.7.4). After 2033, expect a new table; `parse_sun.py` will pick it up. It also replaces isolated misprints with the neighbouring days and prints them (currently LGAL 30 Nov).
-5. **Runways.** `tools/build_ref.ts` prints a warning for each slope it cannot sign (same unsigned value both ways and no threshold elevations). Spot-check a few aerodromes' declared distances against the PDFs; `tests/unit/data/runways.test.ts` checks bearings, reciprocals, thresholds and distances for consistency.
-6. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
+5. **Aerodrome CTR/ATZ.** `parse_ad_airspace.py` prints each designation it cannot read. Lateral limits with arcs are written out by hand in its `ARCS` table (quote the AIP text next to them); check them when an AD 2.17 changes. `tests/unit/data/adAirspaces.test.ts` checks radii, closed rings and limits.
+6. **Runways.** `tools/build_ref.ts` prints a warning for each slope it cannot sign (same unsigned value both ways and no threshold elevations). Spot-check a few aerodromes' declared distances against the PDFs; `tests/unit/data/runways.test.ts` checks bearings, reciprocals, thresholds and distances for consistency.
+7. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
 
 ## 3. Ship
 

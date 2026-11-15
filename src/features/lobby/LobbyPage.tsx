@@ -161,7 +161,7 @@ export function LobbyPage() {
       ) : loading && !data ? (
         <p className="muted">Loading…</p>
       ) : rows.length === 0 ? (
-        q ? <EmptyState title="No matching flights">Nothing matches “{q}”. Search looks at the title, aerodromes, aircraft and date.</EmptyState>
+        q ? <EmptyState title="No matching flights">Nothing matches “{q}”. Search looks at the title, every point on the route, the aircraft and the date.</EmptyState>
           : trashView ? <EmptyState title="The trash is empty">Flights you move to the trash appear here, where you can restore them.</EmptyState>
           : <EmptyState title="No flights yet" action={<Link to="/flights/new" className="btn primary">Plan your first flight</Link>}>
               {pilot.homeAerodrome ? `A new flight starts at ${pilot.homeAerodrome} and comes back there; draw your route on the map.` : 'A new flight opens on the map, where you draw your route.'}

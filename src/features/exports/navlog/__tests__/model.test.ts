@@ -248,4 +248,14 @@ describe('helpers', () => {
     expect(rows[1]).toMatchObject({ field: 'MY NOTES', elev: '', rwy: '', freq: 'A/A 123.450' });
     expect(rows[2].field).toBe('LGMG');
   });
+  test('terminal rows print the callsign of a hand-added unit', () => {
+    const e = (callsign: string, service: string, primary: string, sourceKey: string | null): AtcEntry =>
+      ({ id: callsign + service, role: sourceKey ? 'departure' : 'custom', group: sourceKey ? 'LGTT DEKELIA / TATOI' : 'Other', callsign, service, primary, backups: [], remark: '', sourceKey });
+    expect(terminalRows([e('SKYROS APPROACH', 'APP', '123.45', null)], REF.aerodromes)[0])
+      .toMatchObject({ field: 'Other', freq: 'SKYROS APPROACH 123.45' });
+    expect(terminalRows([e('SKYROS', 'ATIS', '127.0', null)], REF.aerodromes)[0].freq).toBe('SKYROS ATIS 127.0');
+    expect(terminalRows([e('MY RADIO', '', '130.0', null)], REF.aerodromes)[0].freq).toBe('MY RADIO 130.0');
+    // Generated rows keep the compact v2 form: the field names the aerodrome.
+    expect(terminalRows([e('TATOI TOWER', 'TWR', '122.650', 'ad:LGTT:TATOI TOWER')], REF.aerodromes)[0].freq).toBe('TWR 122.650');
+  });
 });

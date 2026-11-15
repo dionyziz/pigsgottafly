@@ -5,14 +5,15 @@ import { describe, expect, it } from 'vitest';
 import type { RoutePoint, Waypoint } from '../../../../shared';
 import { legKey } from '../../../../shared';
 import { distanceNm } from '../../../../calc';
-import { AERODROMES, AIRSPACES, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
+import { AD_AIRSPACES, AERODROMES, AIRSPACES, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import {
   aerodromeName, autoWaypointName, buildCandidates, cleanWaypointName, findSnap, pointFromCandidate, routeCandidates,
   type SnapCandidate,
 } from '../snap';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from '../labels';
 import { insertPoint, mercatorMid, pruneOverrides, removePoint, renamePoint, replacePoint, setAltitudeOverride } from '../routeEdit';
-import { airspaceFeatures, circleRing, destination, fmtLimit, fmtRouteAltitude, midpointFeatures, runwayHeading, vfrRouteFeatures } from '../features';
+import { airspaceFeatures, circleRing, destination, fmtLimit, fmtRouteAltitude, midpointFeatures, runwayHeading, vfrRouteFeatures, zoneFeatures } from '../features';
+import { airspaceInfos, airspaceLabel, airspacesAt, fmtVertical, fmtVLimit, legsThrough, limitFt, pointInRing, shortClass } from '../airspace';
 
 // A flat test projection: 100 px per degree, y down.
 const project = (lon: number, lat: number) => ({ x: lon * 100, y: -lat * 100 });
@@ -40,6 +41,34 @@ describe('findSnap', () => {
     expect(findSnap({ x: 2302.5, y: -3800 }, c, project, 12)?.cand.name).toBe('LGXX');
     // on the ofm point: 0 + 3 < 4 → it wins despite the penalty
     expect(findSnap({ x: 2301, y: -3800 }, c, project, 12)?.cand.name).toBe('OFM');
+  });
+  it('prefers an aerodrome over a VFR point next to it while the two are not apart on screen (LGSY / SKS)', () => {
+    const all = buildCandidates(AERODROMES, VFR_POINTS, []);
+    const lgsy = all.find((c) => c.kind === 'aerodrome' && c.refId === 'LGSY')!;
+    const sks = all.find((c) => c.kind === 'vfr' && c.name === 'SKS' && distanceNm(c, lgsy) < 1)!;
+    expect(sks).toBeTruthy();
+    // the reviewer's view (whole route on screen): SKS, 0.6 NM north of LGSY, is 4.4 px away
+    const pxPerDeg = 434;
+    const proj = (lon: number, lat: number) => ({ x: lon * pxPerDeg * Math.cos((38.97 * Math.PI) / 180), y: -lat * pxPerDeg });
+    const a = proj(lgsy.lon, lgsy.lat), v = proj(sks.lon, sks.lat);
+    expect(Math.hypot(a.x - v.x, a.y - v.y)).toBeLessThan(6);
+    // the reviewer's click: 5 px north-east of the aerodrome symbol, nearer to SKS
+    const hit = findSnap({ x: a.x + 4, y: a.y - 3 }, all, proj, 12)!;
+    expect(hit.cand.refId).toBe('LGSY');
+    expect(hit.shadowed?.name).toBe('SKS');
+    // zoomed in (8× more px per degree) the two are far apart: a click on SKS picks SKS
+    const proj8 = (lon: number, lat: number) => { const p = proj(lon, lat); return { x: p.x * 8, y: p.y * 8 }; };
+    const v8 = proj8(sks.lon, sks.lat);
+    const hit8 = findSnap({ x: v8.x + 1, y: v8.y }, all, proj8, 12)!;
+    expect(hit8.cand.name).toBe('SKS');
+    expect(hit8.shadowed).toBeUndefined();
+  });
+  it('an aerodrome does not take over a VFR point more than 1.5 NM away', () => {
+    // 2 NM apart, 4.5 px apart on a coarse screen
+    const coarse = (lon: number, lat: number) => ({ x: lon * 100, y: -lat * 100 });
+    const far = [cand('FAR', 38, 23.045), cand('LGXX', 38, 23.0, 0, 'aerodrome')];
+    expect(distanceNm(far[0], far[1])).toBeGreaterThan(1.5);
+    expect(findSnap({ x: 2304.5, y: -3800 }, far, coarse, 12)?.cand.name).toBe('FAR');
   });
   it('skips candidates outside the geographic box without projecting them', () => {
     let calls = 0;
@@ -127,6 +156,8 @@ describe('leg label text', () => {
   it('label mode by screen length', () => {
     expect(labelMode(200)).toBe('full');
     expect(labelMode(80)).toBe('compact');
+    // a 13 NM leg at the zoom that fits a 140 NM route (~3.6 px/NM) still gets course and distance
+    expect(labelMode(47)).toBe('compact');
     expect(labelMode(20)).toBe('hidden');
   });
 });
@@ -155,6 +186,21 @@ describe('leg label placement', () => {
       expect(Math.hypot(p.normal.x, p.normal.y)).toBeCloseTo(1);
       // normal ⟂ leg
       expect(p.normal.x * Math.cos(r) + p.normal.y * Math.sin(r)).toBeCloseTo(0);
+    }
+  });
+  it('the label sits left of the track: an out-and-back gets one label on each side', () => {
+    const out = placeLabel({ x: 0, y: 0 }, { x: 100, y: -40 });
+    const back = placeLabel({ x: 100, y: -40 }, { x: 0, y: 0 });
+    expect(out.angleDeg).toBeCloseTo(back.angleDeg);
+    expect(out.side).toBe(1);
+    expect(back.side).toBe(-1);
+    // left of travel = the screen side reached by rotating the track direction 90° counter-clockwise
+    for (let a = 0; a < 360; a += 7) {
+      const r = (a * Math.PI) / 180, dir = { x: Math.cos(r), y: Math.sin(r) };
+      const p = placeLabel({ x: 0, y: 0 }, { x: dir.x * 100, y: dir.y * 100 });
+      const off = { x: p.normal.x * p.side, y: p.normal.y * p.side };
+      // east-bound (1, 0) → label up (0, −1), i.e. north, left of the track: off.x·dir.y − off.y·dir.x = +1
+      expect(off.x * dir.y - off.y * dir.x).toBeCloseTo(1);
     }
   });
   it('south-east leg (down-right on screen) rotates clockwise', () => {
@@ -234,5 +280,72 @@ describe('map GeoJSON', () => {
   it('one midpoint handle per leg', () => {
     expect(midpointFeatures([pt('a'), pt('b', 39, 24), pt('c', 40, 25)]).features).toHaveLength(2);
     expect(midpointFeatures([pt('a')]).features).toHaveLength(0);
+  });
+});
+
+describe('airspace on the map', () => {
+  const infos = airspaceInfos(AIRSPACES, AD_AIRSPACES);
+  it('vertical limits as on charts', () => {
+    expect(fmtVLimit('SFC')).toBe('SFC');
+    expect(fmtVLimit('5000 FT')).toBe('5000 ft');
+    expect(fmtVLimit('1000 FT AGL')).toBe('1000 ft AGL');
+    expect(fmtVLimit('FL 95')).toBe('FL095');
+    expect(fmtVLimit('FL 155')).toBe('FL155');
+    expect(fmtVertical('SFC', '5000 FT')).toBe('SFC – 5000 ft');
+    expect(limitFt('FL 155')).toEqual({ ft: 15500, agl: false });
+    expect(limitFt('1000 FT AGL')).toEqual({ ft: 1000, agl: true });
+    expect(limitFt('UNL').ft).toBe(Infinity);
+    expect(shortClass('E (C above FL 195)')).toBe('E');
+  });
+  it('labels carry name, class and vertical limits', () => {
+    expect(airspaceLabel({ name: 'DEKELIA TATOI MIL ATZ', cls: 'D', lower: 'SFC', upper: '5000 FT' })).toBe('DEKELIA TATOI MIL ATZ · D · SFC – 5000 ft');
+    const tma = airspaceFeatures(AIRSPACES).features.find((f) => f.properties.id === 'ATHINAI-TMA-1')!;
+    expect(tma.properties.label).toMatch(/^ATHINAI TMA · [A-G] · \d+ ft AGL – FL\d{3}$/);
+  });
+  it('zones are drawn as published: CTR and ATZ apart, with class (LGLR is a CTR of 10 NM and an ATZ of 7 NM)', () => {
+    const f = zoneFeatures(infos).features;
+    expect(f.length).toBe(AD_AIRSPACES.length);
+    const lglr = f.filter((x) => String(x.properties.id).startsWith('LGLR-'));
+    expect(lglr.map((x) => [x.properties.kind, x.properties.label])).toEqual([
+      ['CTR', 'LARISSA MIL CTR · D · SFC – 5000 ft'],
+      ['ATZ', 'LARISSA MIL ATZ · D · SFC – 2000 ft'],
+    ]);
+    const lgav = f.find((x) => x.properties.id === 'LGAV-CTR')!;
+    expect(lgav.geometry.coordinates[0]).toHaveLength(5); // the published quadrilateral, closed
+    expect(f.find((x) => x.properties.id === 'LGNX-ATZ')!.properties.cls).toBe('G');
+  });
+  it('what lies under a point, smallest first: Tatoi ATZ inside the Athinai TMA', () => {
+    const at = airspacesAt(infos, 23.7833, 38.1086);
+    expect(at[0].id).toBe('LGTT-ATZ');
+    expect(at.some((a) => a.type === 'TMA' && a.name === 'ATHINAI TMA')).toBe(true);
+    expect(airspacesAt(infos, 20.0, 34.0)).toEqual([]);
+  });
+  it('point in ring', () => {
+    const sq: [number, number][] = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
+    expect(pointInRing(0.5, 0.5, sq)).toBe(true);
+    expect(pointInRing(1.5, 0.5, sq)).toBe(false);
+  });
+  it('route legs crossing a zone, with their altitude against its limits', () => {
+    const tatoi = infos.find((a) => a.id === 'LGTT-ATZ')!;
+    const P = (name: string, lat: number, lon: number) => ({ name, lat, lon });
+    const legs = [
+      { from: P('LGTT', 38.1086, 23.7833), to: P('OROPOS', 38.31, 23.77) }, // leaves the 6 NM ATZ
+      { from: P('OROPOS', 38.31, 23.77), to: P('ERETRIA', 38.4, 23.8) }, // outside
+      { from: P('A', 38.0, 23.6), to: P('B', 38.2, 23.95) }, // crosses it
+    ];
+    const r = legsThrough(tatoi, legs, [1500, 3500, 6000]);
+    expect(r.map((e) => [e.index, e.vertical])).toEqual([[0, 'inside'], [2, 'above']]);
+    expect(legsThrough(tatoi, legs, [NaN, NaN, NaN]).map((e) => e.vertical)).toEqual(['unknown', 'unknown']);
+  });
+});
+
+describe('map style', () => {
+  it('is a valid MapLibre style (expressions included)', async () => {
+    // the style-spec validator ships with maplibre-gl
+    const { validateStyleMin } = await import('@maplibre/maplibre-gl-style-spec');
+    const { buildStyle } = await import('../style');
+    const { style } = buildStyle('light', false, null);
+    const errors = validateStyleMin(style).map((e: { message: string }) => e.message);
+    expect(errors).toEqual([]);
   });
 });

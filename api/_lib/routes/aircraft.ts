@@ -42,7 +42,11 @@ export const routes: Route[] = [
     method: 'POST', path: '/aircraft',
     async handler({ db, pilot, body }) {
       const a = aircraftInput(await body(), blankAircraft());
-      return reply(201, await write(db, pilot.id, await newId('ac'), a, true));
+      const created = await write(db, pilot.id, await newId('ac'), a, true);
+      // A pilot without a default aircraft (an empty hangar, or the default was deleted) gets this one,
+      // so new flights open with an aircraft. An existing default is never replaced.
+      await db.query('UPDATE pilots SET default_aircraft_id = $1 WHERE id = $2 AND default_aircraft_id IS NULL', [created.id, pilot.id]);
+      return reply(201, created);
     },
   },
   { method: 'GET', path: '/aircraft/:id', handler: async ({ db, pilot, params }) => get(db, pilot.id, params.id) },

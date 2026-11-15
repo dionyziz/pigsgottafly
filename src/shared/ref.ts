@@ -68,6 +68,12 @@ export interface RefRunway extends Partial<RefRunwayDetail> {
   ldaM: number | null;
   /** Average slope along this direction, %: positive = uphill. */
   slopePct: number | null;
+  /**
+   * Published slope whose direction is unknown (the AIP prints the same value, or the same sign, for both
+   * directions and gives no threshold elevations), %, ≥ 0. Set only when slopePct is null; performance
+   * applies it as ADVERSE in both phases (upslope for take-off, downslope for landing).
+   */
+  slopeUnsignedPct?: number | null;
   thresholdElevFt: number | null;
 }
 
@@ -81,7 +87,7 @@ export interface RefRunwayDetail {
   magVarDeg: number | null;
   headingMagSource: 'true-minus-aip-var' | 'true-minus-nearby-aip-var' | 'designator';
   slopeText: string | null;
-  slopeSource: 'aip' | 'aip-magnitude-thr-sign' | 'thr-elevations' | null;
+  slopeSource: 'aip' | 'aip-magnitude-thr-sign' | 'thr-elevations' | 'aip-unsigned' | null;
   thresholdElevSource: 'aip' | 'aerodrome-elevation' | null;
   surfaceText: string | null;
   strength: string | null;
@@ -118,6 +124,42 @@ export interface RefAirspace {
   polygon: [number, number][];
   units: RefAtcUnitRef[];
   note: string;
+  source: string;
+}
+
+/**
+ * An aerodrome's own ATS airspace (CTR or ATZ) from AD 2.17 / AD 1.6.N.17, for the map
+ * (src/data/ref/ad-airspaces.json, tools/parse_ad_airspace.py). Exactly one of circle / polygon.
+ */
+export interface RefAdAirspace {
+  /** '<aerodrome id>-CTR' | '<aerodrome id>-ATZ'. */
+  id: string;
+  aerodromeId: string;
+  /** As published, e.g. 'DEKELIA TATOI MIL ATZ'. */
+  name: string;
+  kind: 'CTR' | 'ATZ';
+  mil: boolean;
+  /** 'D', 'G'. */
+  class: string;
+  /** 'SFC'. */
+  lower: string;
+  /** e.g. '5000 FT' (altitude, QNH), 'FL 100'. */
+  upper: string;
+  /** Lateral limits as printed. */
+  lateral: string;
+  circle?: { lat: number; lon: number; radiusNm: number };
+  /** Closed ring, [lat, lon] (arcs written out). */
+  polygon?: [number, number][];
+  /** e.g. 'Limited to East by ATHINAI - ISTANBUL FIR boundaries' (the drawn circle is not clipped). */
+  lateralNote?: string;
+  verticalNote?: string;
+  units: RefAtcUnitRef[];
+  /** ATS unit call sign item as printed. */
+  unitsText: string;
+  /** Class D only while ATC is provided; AFIS at present (RMZ, class G — see remarks). */
+  afis?: boolean;
+  remarks: string;
+  /** e.g. 'LGSY AD 2.17'. */
   source: string;
 }
 
@@ -183,4 +225,6 @@ export interface RefBundle {
   vfrPoints: RefVfrPoint[];
   vfrRoutes: RefVfrRoute[];
   atcUnits: RefAtcUnit[];
+  /** Aerodrome CTRs and ATZs (client map layer; not in the ref_* tables). */
+  adAirspaces?: RefAdAirspace[];
 }

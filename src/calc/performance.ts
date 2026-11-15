@@ -21,6 +21,11 @@
 //     +10 % per 15 °C above the table's standard temperature (proportional), landing −10 % per
 //     5 kt headwind; then the same club condition, slope and safety factors.
 //
+// aerodromePerformance (one MD 4.4 block) uses 'club' for take-off (it is the more conservative of
+// the two there: DA without the AFM's headwind columns) and, for landing, computes BOTH and uses the
+// longer LDR (on hot days the AFM's +10 %/15 °C at PA is longer than the club's table-at-DA figure);
+// the other is returned as `alternative` so the pilot sees both.
+//
 // Both methods: TAILWIND (no AFM data): +10 % per 2 kt of tailwind (the usual Cessna POH rule),
 // warned above 10 kt. Headwind credit is capped at 50 % (25 kt). Below the lightest table mass the
 // lightest row is used; below 0 ft the 0 ft column is used (no extrapolation to shorter distances).
@@ -293,8 +298,13 @@ export interface AerodromePerfInput {
   phase: 'takeoff' | 'landing';
   aerodromeElevFt: number;
   runways: RefRunway[];
-  /** Surface wind (true) and conditions at the time of take-off/landing. */
-  wind: { dirTrueDeg: number; speedKt: number } | null;
+  /**
+   * Surface wind (true) at the time of take-off/landing; null = unknown (calm assumed, flagged).
+   * dirTrueDeg null with a speed = variable (VRB): no runway choice from it, no headwind credit,
+   * and the whole speed counts as crosswind. gustKt: the crosswind limit is checked against the
+   * gust's crosswind component as well (the distances use the mean wind).
+   */
+  wind: SurfaceWind | null;
   qnhHpa: number;
   oatC: number;
   variationDeg: number;
@@ -303,8 +313,19 @@ export interface AerodromePerfInput {
   /** Runway forced by the pilot (FlightOptions.departureRunway/arrivalRunway). */
   runway: string | null;
   surface: string | null;
-  /** Default DEFAULT_PERF_METHOD. */
+  /**
+   * Omitted: take-off by DEFAULT_PERF_METHOD ('club'); landing by BOTH methods and the longer LDR
+   * is used (the club method, entered at DA with no temperature correction, is shorter than the
+   * AFM's +10 %/15 °C rule on hot days). Given: that method only.
+   */
   method?: PerfMethod;
+}
+
+export interface SurfaceWind {
+  /** FROM, true; null = variable (VRB) or, with speed 0, calm. */
+  dirTrueDeg: number | null;
+  speedKt: number;
+  gustKt?: number | null;
 }
 
 export interface AerodromePerf {
@@ -320,8 +341,29 @@ export interface AerodromePerf {
   /** available − required (m), null if unknown; negative = does not fit. */
   marginM: number | null;
   crosswindOk: boolean;
+  /** Crosswind component of the gust, kt (null without a gust above the mean). */
+  crosswindGustKt: number | null;
+  /** The wind was variable (VRB): crosswind = its whole speed, no headwind credit. */
+  variableWind: boolean;
   tailwind: boolean;
+  /**
+   * Landing with no method given: the other method's result (the one not used because it is
+   * shorter), for display next to the one used. Null otherwise.
+   */
+  alternative: PerfDistances | null;
   warnings: string[];
+}
+
+/**
+ * Slope for the distances (%, + = uphill in the direction of travel). When the AIP gives only an
+ * unsigned value (slopeUnsignedPct), it is applied as adverse: uphill for take-off, downhill for landing.
+ */
+export function slopeForPhase(runway: RefRunway | null, takeoff: boolean): number | null {
+  if (!runway) return null;
+  if (runway.slopePct != null) return runway.slopePct;
+  const u = runway.slopeUnsignedPct;
+  if (u != null && u > 0) return takeoff ? u : -u;
+  return null;
 }
 
 const isGrass = (s: string | null) => !!s && /GRASS|GRS|TURF|GRAVEL|DIRT|EARTH|SOIL/i.test(s);
@@ -334,27 +376,46 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   const isaDevC = input.oatC - isaTempC(pa);
   const takeoff = input.phase === 'takeoff';
 
+  const w = input.wind;
+  const variableWind = !!w && w.dirTrueDeg == null && w.speedKt > 0.5;
+  const meanWind = w && w.dirTrueDeg != null && w.speedKt > 0 ? { dirTrueDeg: w.dirTrueDeg, speedKt: w.speedKt } : null;
+  const gustKt = w && w.gustKt != null && isFinite(w.gustKt) && w.gustKt > w.speedKt ? w.gustKt : null;
+
   let runway: RefRunway | null = null;
   let wind: WindComponents = { headwindKt: 0, crosswindKt: 0, crossFrom: '' };
   if (input.runway) {
     runway = input.runways.find((r) => r.designator === input.runway) ?? null;
     if (!runway) warnings.push(`Runway ${input.runway} is not in the aerodrome data.`);
-    else wind = runwayWind(runway, input.wind, input.variationDeg);
+    else wind = runwayWind(runway, meanWind, input.variationDeg);
   }
   if (!runway) {
-    const ch = selectRunway(input.runways, input.wind, input.variationDeg, null);
+    const ch = selectRunway(input.runways, meanWind, input.variationDeg, null);
     if (ch) { runway = ch.runway; wind = ch.wind; }
   }
   if (!runway) {
     warnings.push('No runway data for this aerodrome.');
-    if (input.wind && input.wind.speedKt > 0) wind = { headwindKt: 0, crosswindKt: input.wind.speedKt, crossFrom: '' };
+    if (meanWind) wind = { headwindKt: 0, crosswindKt: meanWind.speedKt, crossFrom: '' };
   }
-  if (!input.wind) warnings.push('No surface wind: calm assumed.');
+  if (!w) warnings.push('No surface wind: calm assumed.');
+  // Variable wind: may come from any side. Whole speed as crosswind, no headwind credit.
+  if (variableWind && w) {
+    wind = { headwindKt: 0, crosswindKt: w.speedKt, crossFrom: '' };
+    warnings.push(`Variable wind ${Math.round(w.speedKt)} kt${gustKt ? ` gusting ${Math.round(gustKt)} kt` : ''}: runway not chosen from the wind, full crosswind and no headwind assumed.`);
+  }
+  let crosswindGustKt: number | null = null;
+  if (gustKt != null) {
+    if (variableWind || !runway) crosswindGustKt = gustKt;
+    else if (meanWind) crosswindGustKt = runwayWind(runway, { dirTrueDeg: meanWind.dirTrueDeg, speedKt: gustKt }, input.variationDeg).crosswindKt;
+  }
 
   const tailwind = wind.headwindKt < -0.05;
   const xLimit = takeoff ? input.tables.factors.maxCrosswindKt?.takeoff : input.tables.factors.maxCrosswindKt?.landing;
-  const crosswindOk = !(xLimit != null && wind.crosswindKt > xLimit + 1e-9);
-  if (!crosswindOk) warnings.push(`Crosswind ${wind.crosswindKt.toFixed(1)} kt exceeds the ${takeoff ? 'take-off' : 'landing'} limit of ${xLimit} kt.`);
+  const xMax = Math.max(wind.crosswindKt, crosswindGustKt ?? 0);
+  const crosswindOk = !(xLimit != null && xMax > xLimit + 1e-9);
+  if (!crosswindOk) {
+    const gustPart = crosswindGustKt != null && crosswindGustKt > wind.crosswindKt ? `, ${crosswindGustKt.toFixed(1)} kt in gusts,` : '';
+    warnings.push(`Crosswind ${wind.crosswindKt.toFixed(1)} kt${gustPart} exceeds the ${takeoff ? 'take-off' : 'landing'} limit of ${xLimit} kt.`);
+  }
   if (tailwind) warnings.push(`Tailwind ${(-wind.headwindKt).toFixed(1)} kt${runway ? ` on runway ${runway.designator}` : ''}.`);
 
   let surface = input.surface;
@@ -365,6 +426,7 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   }
 
   let distances: PerfDistances | null = null;
+  let alternative: PerfDistances | null = null;
   try {
     const cond: PerfConditions = {
       massKg: input.massKg,
@@ -372,16 +434,32 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
       oatC: input.oatC,
       headwindKt: wind.headwindKt,
       surface,
-      slopePct: runway?.slopePct ?? 0,
+      slopePct: slopeForPhase(runway, takeoff) ?? 0,
       method: input.method,
     };
-    distances = takeoff ? takeoffDistances(input.tables, cond) : landingDistances(input.tables, cond);
+    if (takeoff) distances = takeoffDistances(input.tables, cond);
+    else if (input.method) distances = landingDistances(input.tables, cond);
+    else {
+      // Both methods; the longer LDR is used (conservative), the other is kept for display.
+      const club = landingDistances(input.tables, { ...cond, method: 'club' });
+      const afm = landingDistances(input.tables, { ...cond, method: 'afm' });
+      const afmLonger = afm.requiredTotalM > club.requiredTotalM + 1e-9;
+      distances = afmLonger ? afm : club;
+      alternative = afmLonger ? club : afm;
+      if (afmLonger) {
+        distances.notes = [...(distances.notes || []), `AFM method (PA ${Math.round(pa)} ft, +10 %/15 °C) LDR ${Math.ceil(afm.requiredTotalM - 1e-9)} m used: longer than the club method's ${Math.ceil(club.requiredTotalM - 1e-9)} m.`];
+      }
+    }
     warnings.push(...(distances.notes || []));
     if (distances.extrapolated) warnings.push('Outside the AFM table: distances extrapolated.');
   } catch {
     warnings.push('No performance tables for this aircraft.');
   }
-  if (runway && runway.slopePct == null) warnings.push(`Slope of runway ${runway.designator} unknown: none assumed.`);
+  if (runway && runway.slopePct == null) {
+    const u = runway.slopeUnsignedPct;
+    if (u != null && u > 0) warnings.push(`Slope of runway ${runway.designator} published as ${u} % without direction: ${takeoff ? 'upslope' : 'downslope'} (adverse) assumed.`);
+    else warnings.push(`Slope of runway ${runway.designator} unknown: none assumed.`);
+  }
 
   let availableGroundM: number | null = null;
   let availableTotalM: number | null = null;
@@ -411,5 +489,5 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
     }
   }
 
-  return { runway, wind, pressureAltFt: pa, densityAltFt: da, isaDevC, distances, availableGroundM, availableTotalM, marginM, crosswindOk, tailwind, warnings };
+  return { runway, wind, pressureAltFt: pa, densityAltFt: da, isaDevC, distances, availableGroundM, availableTotalM, marginM, crosswindOk, crosswindGustKt, variableWind, tailwind, alternative, warnings };
 }

@@ -17,7 +17,7 @@ export function FuelSection() {
     );
   }
   const burn = aircraft.fuel.burnLph;
-  const tone = fuel.overCapacity || fuel.belowRequired || fuel.landingFuelL < 0 ? 'danger' : fuel.fobIsDefault && fuel.defaultOverCapacity ? 'warn' : undefined;
+  const tone = fuel.issues.some((i) => i.level === 'danger') || fuel.landingFuelL < 0 ? 'danger' : fuel.fobIsDefault && fuel.defaultOverCapacity ? 'warn' : undefined;
   const badge = (
     <>
       <span className="mono">{fuel.fobL} L</span>
@@ -65,11 +65,12 @@ export function FuelSection() {
       </div>
       <div className="ep-kvs">
         <KV k="Endurance at block-off" v={<span className="mono">{fmtDur(fuel.enduranceMin)}</span>} sub="FPL item 19 E/" />
-        <KV k="Fuel at landing" tone={fuel.landingFuelL < 0 ? 'danger' : undefined}
-          v={<span className="mono">{fuel.landingFuelL} L</span>} sub={<span className="mono">{fmtDur(fuel.landingEnduranceMin)}</span>} />
+        <KV k="Fuel at landing" tone={fuel.landingReserveShort ? 'danger' : undefined}
+          v={<span className="mono">{fuel.landingFuelL} L</span>}
+          sub={<span className="mono" data-testid="fuel-landing-endurance">{fmtDur(fuel.landingEnduranceMin)} · min {fmtDur(fuel.minLandingReserveMin)}</span>} />
       </div>
-      {fuel.warnings.filter((w) => !/reserve not set/i.test(w)).map((w) => (
-        <p key={w} className={'ep-note ' + (fuel.overCapacity || fuel.belowRequired ? 'danger-text' : 'warn-text')}>{w}</p>
+      {fuel.issues.filter((w) => !/reserve not set/i.test(w.text)).map((w) => (
+        <p key={w.text} className={'ep-note ' + (w.level === 'danger' ? 'danger-text' : 'warn-text')}>{w.text}</p>
       ))}
     </Section>
   );

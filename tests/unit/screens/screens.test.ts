@@ -5,11 +5,13 @@ import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../..
 import { resolveAerodrome, searchAerodromes } from '../../../src/features/profile/AerodromePicker';
 import { toUpdate } from '../../../src/features/profile/ProfilePage';
 import { passengerInputOf, passengerForm } from '../../../src/features/passengers/PassengerDialog';
-import { EMPTY_SUMMARY, type FlightListItem } from '../../../src/shared';
+import { EMPTY_SUMMARY, type FlightCrew, type FlightListItem } from '../../../src/shared';
+import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
+import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
 
-const item = (id: string, date: string, extra: Partial<FlightListItem['summary']> = {}, updated = 0): FlightListItem => ({
+const item = (id: string, date: string, extra: Partial<FlightListItem['summary']> = {}, updated = 0, points: string[] = []): FlightListItem => ({
   id, date, aircraftId: null, version: 1, created: 0, updated, opened: 0, deleted: false,
-  summary: { ...EMPTY_SUMMARY, date, ...extra },
+  summary: { ...EMPTY_SUMMARY, date, ...extra }, points,
 });
 
 describe('lobby format', () => {
@@ -49,6 +51,13 @@ describe('lobby format', () => {
     expect(matchesQuery(t, '2026-11-15')).toBe(true);
     expect(matchesQuery(t, 'lgav')).toBe(false);
     expect(matchesQuery(t, '')).toBe(true);
+  });
+  it('searches every point along the route, not only the title and the ends', () => {
+    const r = item('a', '2026-11-15', { title: 'Skyros day trip', from: 'LGTT', to: 'LGTT', aircraft: 'SX-ASV' }, 0, ['LGTT', 'KEA', 'LGSY', 'ZOFRI', 'LGTT']);
+    const t = flightSearchText(r);
+    expect(matchesQuery(t, 'LGSY')).toBe(true);
+    expect(matchesQuery(t, 'zofri skyros')).toBe(true);
+    expect(matchesQuery(t, 'LGMG')).toBe(false);
   });
   it('computes ages', () => {
     expect(ageOn('1990-11-16', '2026-11-15')).toBe(35);
@@ -142,5 +151,42 @@ describe('passenger form', () => {
     expect(() => passengerInputOf({ ...f, fullName: '' })).toThrow(/name/);
     expect(() => passengerInputOf({ ...f, weightKg: '400' })).toThrow(/Weight/);
     expect(() => passengerInputOf({ ...f, dateOfBirth: '2999-01-01' })).toThrow(/future/);
+  });
+});
+
+describe('manifest: putting the PIC back', () => {
+  const C172 = ['front-left', 'front-right', 'rear-left', 'rear-right'];
+  const pax = (name: string, seat: string): FlightCrew => ({ role: 'PAX', passengerId: name, seat, snapshot: { fullName: name } as FlightCrew['snapshot'] });
+  const me = { fullName: 'Me' } as FlightCrew['snapshot'];
+  it('seats the PIC front left when it is free', () => {
+    const r = addPicToCrew([pax('A', 'rear-left')], C172, me)!;
+    expect(r.crew[0]).toMatchObject({ role: 'PIC', seat: 'front-left' });
+    expect(r.moved).toBeNull();
+  });
+  it('moves whoever sits front left to the first free seat', () => {
+    const r = addPicToCrew([pax('A', 'front-left'), pax('B', 'front-right')], C172, me)!;
+    expect(r.crew.map((c) => [c.role, c.seat])).toEqual([['PIC', 'front-left'], ['PAX', 'rear-left'], ['PAX', 'front-right']]);
+    expect(r.moved).toMatchObject({ passengerId: 'A', seat: 'rear-left' });
+    expect(new Set(r.crew.map((c) => c.seat)).size).toBe(r.crew.length);
+  });
+  it('refuses when every seat is taken, and keeps an existing PIC', () => {
+    expect(addPicToCrew(C172.map((s, i) => pax(String(i), s)), C172, me)).toBeNull();
+    const withPic: FlightCrew[] = [{ role: 'PIC', passengerId: null, seat: 'front-right', snapshot: me }];
+    expect(addPicToCrew(withPic, C172, me)!.crew).toBe(withPic);
+  });
+  it('falls back to the first seat on an aircraft without a front-left seat', () => {
+    expect(picSeat(['left', 'right'])).toBe('left');
+    expect(picSeat(C172)).toBe('front-left');
+  });
+});
+
+describe('flight plan options', () => {
+  it('stores alternates as ICAO codes, drops empties and duplicates, keeps at most two', () => {
+    expect(alternateCode(' lgav ')).toBe('LGAV');
+    expect(alternateCode('EDDF')).toBe('EDDF'); // not in the Greek AIP: kept as typed
+    expect(alternatesFrom(['', 'lgav'])).toEqual(['LGAV']);
+    expect(alternatesFrom(['LGAV', 'lgav'])).toEqual(['LGAV']);
+    expect(alternatesFrom(['LGAV', 'LGMG', 'LGTT'])).toEqual(['LGAV', 'LGMG']);
+    expect(alternatesFrom(['', ''])).toEqual([]);
   });
 });

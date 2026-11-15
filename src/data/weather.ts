@@ -445,11 +445,15 @@ export function chooseSurface(o: { metar: ParsedMetar | null; forecast: SurfaceC
 }
 
 /**
- * The surface wind in the shape the performance calculation takes ({dirTrueDeg, speedKt} | null).
- * Variable or calm wind gives null (no headwind credit). Gusts are not added here.
+ * The surface wind in the shape the performance calculation takes (calc SurfaceWind | null).
+ * Calm: {dirTrueDeg: null, speedKt: 0}. Variable (VRB): dirTrueDeg null with its speed (the whole
+ * speed is then treated as crosswind, with no headwind credit). Gusts are passed on for the
+ * crosswind-limit check. Null = no wind known (calm assumed, flagged).
  */
-export function toPerfWind(s: SurfaceConditions | null): { dirTrueDeg: number; speedKt: number } | null {
+export function toPerfWind(s: SurfaceConditions | null): { dirTrueDeg: number | null; speedKt: number; gustKt: number | null } | null {
   const w = s?.wind;
-  if (!w || w.dirTrueDeg === null || !(w.speedKt > 0)) return null;
-  return { dirTrueDeg: w.dirTrueDeg, speedKt: w.speedKt };
+  if (!w || !isFinite(w.speedKt)) return null;
+  const gustKt = w.gustKt != null && isFinite(w.gustKt) && w.gustKt > w.speedKt ? w.gustKt : null;
+  if (!(w.speedKt > 0)) return { dirTrueDeg: null, speedKt: 0, gustKt };
+  return { dirTrueDeg: w.dirTrueDeg, speedKt: w.speedKt, gustKt };
 }

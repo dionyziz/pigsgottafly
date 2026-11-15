@@ -398,9 +398,14 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     `-N0092VFR DCT ${coord(f.route[1])} DCT ${coord(f.route[2])}`, `-LGMG${eet}`,
   ];
   assert.deepEqual(msg.split('\n').slice(0, 5), expected);
-  assert.match(msg, new RegExp(`-DOF/${DATE.slice(2).replace(/-/g, '')} REG/SXASV`));
-  assert.match(msg, /VFR VIA ABLONAS ZOFRI/);
-  assert.match(msg, new RegExp(`-E/${end} P/002 R/E C/TEST PILOT\\)$`));
+  // Item 18 without REG/ (it equals item 7), and the message ends there: item 19 is not transmitted.
+  assert.match(msg, new RegExp(`-DOF/${DATE.slice(2).replace(/-/g, '')} (OPR|RMK)/`));
+  assert.doesNotMatch(msg, /REG\//);
+  assert.match(msg, /VFR\s+VIA\s+ABLONAS\s+ZOFRI\)$/); // AFTN wraps item 18 at 69 characters
+  assert.doesNotMatch(msg, /-E\//);
+  // item 19 is still filled on the form view
+  const endCells = await page.eval(() => document.querySelector('[data-testid=fpl-form] [aria-label=Endurance]').textContent);
+  assert.equal(endCells, end);
   assert.ok(msg.split('\n').every((l) => l.length <= 69), 'AFTN lines of at most 69 characters');
   await page.screenshot('flight-export-fpl');
   await pdfCheck('fpl', 2, 'portrait'); // the filled form, then the message as filed

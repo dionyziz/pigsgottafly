@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   aerodromePerformance,
   computeNavlog,
+  isLocalFlight,
   isaTempC,
   magneticVariation,
   navlogAircraft,
@@ -34,6 +35,8 @@ import {
   type SurfaceConditions,
 } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult, type StationReports } from '../../../data/weatherMetar';
+import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
+import { hazardWhere, type Hazard } from '../../../calc';
 import { useEditor } from '../state';
 
 export type WarningLevel = 'danger' | 'warn' | 'info';
@@ -73,6 +76,9 @@ export interface FlightCalc {
   crewErrors: string[];
   /** Epoch ms of 00:00 UTC of the flight date (NaN if no date). */
   dayMs: number;
+  /** Weather hazards along the route (thunderstorms, visibility, cloud vs planned altitude). */
+  hazards: Hazard[];
+  hazardWeather: HazardWeather | null;
   warnings: CalcWarning[];
 }
 
@@ -153,6 +159,25 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     return () => { live = false; };
   }, [icaoKey, force]);
 
+  // ---- weather hazards: corridor samples along each leg (grid cells cached individually)
+  const hzKey = JSON.stringify([doc.date, model, legs.map((l) => [l.from.lat, l.from.lon, l.to.lat, l.to.lon].map((x) => x.toFixed(3))), dep && [dep.lat, dep.lon], arr && [arr.lat, arr.lon]]);
+  const [hazardWeather, setHazardWeather] = useState<HazardWeather | null>(null);
+  useEffect(() => {
+    if (!legs.length || !doc.date) { setHazardWeather(null); return; }
+    let live = true;
+    const t = setTimeout(() => {
+      fetchHazardWeather({
+        date: doc.date, model,
+        legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
+        departure: dep ? { lat: dep.lat, lon: dep.lon } : null,
+        destination: arr ? { lat: arr.lat, lon: arr.lon } : null,
+        force: force > 0,
+      }).then((h) => { if (live) setHazardWeather(h); });
+    }, 700);
+    return () => { live = false; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hzKey, force]);
+
   // ---- navlog
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]), [legs, doc.legOverrides]);
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
@@ -186,8 +211,9 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       fobL: doc.fobL,
       usableL: aircraft.fuel.usableL,
       tripMin: navlog ? navlog.flightMin : 0,
+      localFlight: isLocalFlight(doc.route),
     }));
-  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL]);
+  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL, doc.route]);
 
   // ---- weight and balance
   const wbAll = useMemo(() => {
@@ -216,7 +242,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   }, [wb, doc.options.category]);
 
   // ---- surface conditions and performance at both ends
-  const times = navlog?.times;
+  // Only with a block-off time: computeNavlog assumes 12:00 without one, and sampling the weather
+  // at that made-up time would show distances for conditions nobody planned (the MD 4.4 export
+  // likewise uses ISA and calm then).
+  const times = navlog?.blockOffSet ? navlog.times : undefined;
   const takeoffMs = fin(dayMs) && times ? dayMs + times.takeoffMin * 60000 : NaN;
   const landingMs = fin(dayMs) && times ? dayMs + times.landingMin * 60000 : NaN;
   const modelLabel = weather?.source?.modelLabel ?? 'Forecast';
@@ -254,6 +283,14 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [arr, weather, landingMs, metar, wb, aircraft, doc.date, doc.options]);
 
+  // ---- weather hazards at the planned times and altitudes
+  const hazards = useMemo(() => safe(() => computeRouteHazards({
+    hw: hazardWeather, navlog, dayMs,
+    departure: dep ? { elevFt: dep.elevFt ?? 0, reports: dep.icao && metar ? metar.stations[dep.icao] ?? null : null } : null,
+    destination: arr ? { elevFt: arr.elevFt ?? 0, reports: arr.icao && metar ? metar.stations[arr.icao] ?? null : null } : null,
+    nowMs: Date.now(),
+  })) ?? [], [hazardWeather, navlog, dayMs, dep, arr, metar]);
+
   // ---- manifest
   const crewErrors = useMemo(
     () => validateCrew(doc.crew, aircraft ? seatLayout(aircraft.massBalance.stations).map((s) => s.id) : null),
@@ -289,7 +326,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         else if (exp - dayMs <= CARD_EXPIRY_WARN_DAYS * DAY) add('warn', 'aircraft', `Compass card "${card.name}" expires on ${card.expires}.`);
       }
     } else if (aircraft && !card) add('info', 'aircraft', `${aircraft.registration} has no compass card: no DEV/CH.`);
-    if (fuel) for (const t of fuel.warnings) add(fuel.overCapacity || fuel.belowRequired ? 'danger' : 'warn', 'fuel', t);
+    if (fuel) for (const t of fuel.issues) add(t.level, 'fuel', t.text);
     if (fuel && fuel.landingFuelL < 0) add('danger', 'fuel', 'Fuel on board does not cover the trip.');
     if (wbAll) for (const t of wbAll.loadWarnings) add('warn', 'wb', t);
     if (wb) {
@@ -304,7 +341,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       if (!p) continue;
       const label = `${e.phase === 'takeoff' ? 'Take-off' : 'Landing'} ${name}`;
       for (const t of p.warnings) {
-        const level: WarningLevel = /does not fit|exceeds/i.test(t) ? 'danger' : /No surface wind|unknown|not published|choose/i.test(t) ? 'info' : 'warn';
+        const level: WarningLevel = /does not fit|exceeds/i.test(t) ? 'danger' : /No surface wind|unknown|not published|choose|AFM method/i.test(t) ? 'info' : 'warn';
         add(level, 'performance', `${label}: ${t}`);
       }
       if (p.marginM != null && p.marginM >= 0 && p.distances) {
@@ -314,9 +351,17 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       if (e.massSource === 'mtow') add('info', 'performance', `${label}: mass unknown, MTOW used.`);
       if (fin(e.timeMs) && !e.surface && !weatherLoading) add('info', 'performance', `${label}: no surface forecast, ISA and calm assumed.`);
     }
-    if (fin(dayMs) && navlog && fin(takeoffMs) && takeoffMs < Date.now() - DAY) add('info', 'time', 'This flight is in the past.');
+    if (navlog && !navlog.blockOffSet && (departure.perf || arrival.perf)) add('info', 'performance', 'Block-off time not set: take-off and landing distances use ISA and calm wind.');
+    if (navlog && navlog.legs.length) {
+      if (!navlog.blockOffSet) add('info', 'weather', 'Block-off time not set: no weather hazard check along the route.');
+      else if (hazardWeather && hazardWeather.status !== 'ok' && hazardWeather.message) add('info', 'weather', hazardWeather.message);
+      const legName = (i: number) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '');
+      const endName = (e: 'departure' | 'destination') => { const a = e === 'departure' ? dep : arr; return a ? a.icao || a.name : ''; };
+      for (const h of hazards) add(h.level, 'weather', `${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}; advisory).`);
+    }
+    if (fin(dayMs) && navlog && (fin(takeoffMs) ? takeoffMs : dayMs + DAY) < Date.now() - DAY) add('info', 'time', 'This flight is in the past.');
     return w;
-  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, takeoffMs]);
+  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, takeoffMs, hazards, hazardWeather, legs, dep, arr]);
 
   // ---- lobby summary: ETE and fuel come from the navlog (setDerived: no undo step).
   const eteMin = navlog && navlog.legs.length ? navlog.totals.ete : null;
@@ -329,7 +374,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
 
   const value: FlightCalc = {
     weather, weatherLoading, refreshWeather, metar,
-    navlog, fuel, wb, wbOk, departure, arrival, crewErrors, dayMs, warnings,
+    navlog, fuel, wb, wbOk, departure, arrival, crewErrors, dayMs, hazards, hazardWeather, warnings,
   };
   return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
 }

@@ -2,6 +2,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Db } from './db.js';
 import type { Pilot } from '../../src/shared/types.js';
+import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 
 /** Node request, possibly with a body pre-parsed by Vercel. */
 export type Req = IncomingMessage & { body?: unknown };
@@ -15,6 +16,8 @@ export interface ApiConfig {
   /** Fetches Google's signing keys (JWKs); injectable for tests. */
   googleKeys: () => Promise<JsonWebKey[]>;
   secureCookie: boolean;
+  /** autorouter account (NOTAMs, filing); null/undefined = not configured. Tests inject a mocked fetch. */
+  autorouter?: AutorouterSettings | null;
 }
 
 export interface Ctx {
@@ -26,10 +29,12 @@ export interface Ctx {
   query: URLSearchParams;
   /** The session's pilot; always set for routes with auth !== false. */
   pilot: Pilot;
-  /** Parsed JSON body ({} when empty). */
+  /** Parsed JSON body ({} when empty); always a plain object (400 otherwise, 415 if not application/json). */
   body(): Promise<any>;
   /** Extra response headers (e.g. Set-Cookie). */
   headers: Record<string, string>;
+  /** The autorouter client of this API instance, or null when not configured. */
+  autorouter: AutorouterClient | null;
 }
 
 /** A handler returns the JSON body (status 200), a Reply (other status/headers), or undefined (204). */
@@ -63,22 +68,53 @@ export function send(res: Res, status: number, body?: unknown, headers: Record<s
   res.end(body === undefined ? '' : JSON.stringify(body));
 }
 
+/** Content types accepted for request bodies: JSON only (application/json or +json, any charset). */
+export function isJsonContentType(ct: string | string[] | undefined): boolean {
+  const v = (Array.isArray(ct) ? ct[0] : ct || '').split(';')[0].trim().toLowerCase();
+  return v === 'application/json' || /^application\/[\w.+-]+\+json$/.test(v);
+}
+
+/**
+ * The request body as parsed JSON ({} when empty). A non-empty body must be sent as
+ * application/json (415 otherwise): HTML forms can only post text/plain, urlencoded or multipart,
+ * so this keeps cross-site form posts (login CSRF) out, without relying on CORS or SameSite.
+ */
 export async function readJson(req: Req): Promise<any> {
-  if (req.body !== undefined && req.body !== null) {
-    if (typeof req.body === 'string') return req.body ? JSON.parse(req.body) : {};
-    if (Buffer.isBuffer(req.body)) return req.body.length ? JSON.parse(req.body.toString('utf8')) : {};
-    return req.body;
-  }
-  let s = '';
-  for await (const c of req) {
-    s += c;
-    if (s.length > 5e6) throw new HttpError(413, 'too large');
-  }
+  let raw: unknown;
+  let pre: unknown;
   try {
-    return s ? JSON.parse(s) : {};
+    pre = req.body; // Vercel: a lazy getter that throws on malformed JSON
   } catch {
     throw badRequest('invalid JSON');
   }
+  if (pre !== undefined && pre !== null) {
+    raw = pre;
+  } else {
+    let s = '';
+    for await (const c of req) {
+      s += c;
+      if (s.length > 5e6) throw new HttpError(413, 'too large');
+    }
+    raw = s;
+  }
+  const empty = raw === '' || (Buffer.isBuffer(raw) && raw.length === 0);
+  if (empty) return {};
+  if (!isJsonContentType(req.headers['content-type'])) throw new HttpError(415, 'send the body as application/json');
+  if (typeof raw === 'string' || Buffer.isBuffer(raw)) {
+    try {
+      return JSON.parse(typeof raw === 'string' ? raw : raw.toString('utf8'));
+    } catch {
+      throw badRequest('invalid JSON');
+    }
+  }
+  return raw; // pre-parsed by the platform (Vercel parses application/json bodies)
+}
+
+/** readJson, and the body must be a JSON object (every route takes one): null, arrays and scalars are 400. */
+export async function readJsonObject(req: Req): Promise<Record<string, any>> {
+  const v = await readJson(req);
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw badRequest('the request body must be a JSON object');
+  return v;
 }
 
 /** Compiles '/flights/:id/restore' to a matcher. */
@@ -91,7 +127,13 @@ export function compilePath(p: string): (path: string) => Record<string, string>
     const m = re.exec(path);
     if (!m) return null;
     const out: Record<string, string> = {};
-    names.forEach((n, i) => { out[n] = decodeURIComponent(m[i + 1]); });
+    names.forEach((n, i) => {
+      try {
+        out[n] = decodeURIComponent(m[i + 1]);
+      } catch {
+        throw badRequest('malformed path');
+      }
+    });
     return out;
   };
 }

@@ -2,9 +2,9 @@
 // (per-aircraft weighing reports, tanks), data/aircraft/reims-f172m.json (type data: AFM fuel,
 // stations, envelopes, performance tables, club factors) and data/aircraft/compass-cards.json.
 //
-// Writes api/_lib/migrations/003_existing_pilot_data.ts: a ONE-TIME data migration for the pilots that
-// already exist when it runs (in production: the single account converted from the v2 users table).
-// It gives them their profile values (home LGTT, taxi 15/15, reserve 60, default SX-ASV) and their
+// Writes api/_lib/migrations/003_existing_pilot_data.ts: a ONE-TIME data migration for the owner's
+// account if it exists when it runs (in production: converted from the v2 users table; matched by e-mail).
+// It gives it its profile values (home LGTT, taxi 15/15, reserve 60, default SX-ASV) and their
 // hangar. Pilots who sign up later get nothing: empty profile, empty hangar (pilot correction #1).
 //   npm exec tsx tools/build_seed.ts [--check]
 import fs from 'node:fs';
@@ -25,7 +25,11 @@ export function fleetSeed(): AircraftInput[] {
   const cards = readJson('data/aircraft/compass-cards.json');
   // Moment envelopes from the club W&B calculator (fleet.json _crosscheck): [moment kg·m, mass kg].
   const momentNormal: [number, number][] = [[600, 675], [780, 890], [1020, 1043], [1258, 1043], [805, 675]];
-  const momentUtility: [number, number][] = [[600, 675], [780, 890], [807, 905], [927, 905], [700, 675]];
+  // The club's utility polygon stops at 905 kg, the AFM utility maximum is 2000 lb = 907 kg (the CG
+  // envelope's maxKg). Its two upper edges are extended to 907 kg ((780,890)→(807,905) gives 810.6;
+  // (700,675)→(927,905) gives 929.0) so that a mass between 905 and 907 kg is judged on its CG, not
+  // reported as outside the envelope while within the maximum mass.
+  const momentUtility: [number, number][] = [[600, 675], [780, 890], [810.6, 907], [929, 907], [700, 675]];
 
   return ['SX-ASV', 'SX-ASG'].map((reg): AircraftInput => {
     const f = fleet[reg];
@@ -51,7 +55,11 @@ export function fleetSeed(): AircraftInput[] {
       mb.envelopes.utility.momentPolygon = momentUtility;
       mb.envelopes.utility.notes = f.utilityNote ?? '';
     } else mb.envelopes.utility = null;
-    // Equipment and colours: to be confirmed by the pilot in the hangar (not in the source data).
+    // Colours and markings (FPL item 19 A/): from fleet.json when known. Neither the AFMs, the weighing
+    // reports nor the compass swing reports state them, so they are not invented: the hangar flags
+    // the empty field ('Colours and markings not set') and the FPL export warns until the pilot fills it.
+    a.colours = typeof f.colours === 'string' ? f.colours : '';
+    // Equipment: to be confirmed by the pilot in the hangar (not in the source data).
     a.equipment = { ...a.equipment, item10a: 'S', item10b: 'C', emergencyRadio: { uhf: false, vhf: false, elt: true } };
     a.compassCards = cards[reg];
     a.notes = [f.emptyMass._note, f.utilityNote].filter(Boolean).join('\n');
@@ -61,6 +69,13 @@ export function fleetSeed(): AircraftInput[] {
 
 /** The existing pilot's own profile values (one-time migration; NOT app defaults). */
 export const EXISTING_PILOT_PROFILE = {
+  /**
+   * Only the account with this e-mail gets the values below and the hangar (pilot correction 1).
+   * SHA-256 (hex) of the lower-cased, trimmed address, so the address itself is not published in
+   * this public repository. Any other account existing when the migration runs is marked seeded
+   * and gets nothing.
+   */
+  ownerEmailSha256: '0f8a30628c0ec410f2ea9ec36e004bf15fea39d4a69e8cf1011e0a3b560486c6',
   homeAerodrome: 'LGTT',
   settings: { taxiOutMin: 15, taxiInMin: 15, reserveMin: 60 },
   defaultAircraft: 'SX-ASV',
@@ -68,7 +83,11 @@ export const EXISTING_PILOT_PROFILE = {
 
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
-export function seedSql(): string {
+/** SQL condition: the pilot row (alias `p`) is the owner account. */
+const isOwner = (hash: string) => `encode(sha256(convert_to(lower(btrim(p.email)), 'UTF8')), 'hex') = ${q(hash)}`;
+
+/** @param ownerEmailSha256 the owner account's e-mail hash (tests pass their own). */
+export function seedSql(ownerEmailSha256: string = EXISTING_PILOT_PROFILE.ownerEmailSha256): string {
   const P = EXISTING_PILOT_PROFILE;
   const settings = { ...DEFAULT_SETTINGS, ...P.settings };
   const rows = fleetSeed().map((a) => {
@@ -81,16 +100,17 @@ export function seedSql(): string {
     return `INSERT INTO aircraft (id, pilot_id, registration, make_model, icao_type, wake, serial, operator, home_base, colours,
   cruise_tas_kt, pattern_tas_kt, climb_tas_kt, fuel, mass_balance, performance, equipment, compass_cards, notes, created, updated)
 SELECT 'ac_' || substr(md5(p.id || ${q(a.registration)}), 1, 12), p.id, ${vals.join(', ')}, ${NOW}, ${NOW}
-FROM pilots p WHERE p.seeded_at IS NULL
+FROM pilots p WHERE p.seeded_at IS NULL AND ${isOwner(ownerEmailSha256)}
 ON CONFLICT (pilot_id, registration) DO NOTHING;`;
   });
   return `-- Generated by tools/build_seed.ts. Do not edit by hand.
--- ONE-TIME data migration: the pilots that exist when this runs (production: the account converted
--- from the v2 users table) get their own profile values and hangar. Later sign-ups get nothing.
-UPDATE pilots SET
-  settings = ${q(JSON.stringify(settings))}::jsonb || settings,
-  home_aerodrome = COALESCE(home_aerodrome, ${q(P.homeAerodrome)})
-WHERE seeded_at IS NULL;
+-- ONE-TIME data migration: the owner's account (production: converted from the v2 users table;
+-- matched by the SHA-256 of its e-mail) gets its profile values and hangar. Every other pilot existing
+-- now is marked seeded with nothing, and later sign-ups get nothing.
+UPDATE pilots p SET
+  settings = ${q(JSON.stringify(settings))}::jsonb || p.settings,
+  home_aerodrome = COALESCE(p.home_aerodrome, ${q(P.homeAerodrome)})
+WHERE p.seeded_at IS NULL AND ${isOwner(ownerEmailSha256)};
 ${rows.join('\n')}
 UPDATE pilots p SET seeded_at = ${NOW},
   default_aircraft_id = COALESCE(p.default_aircraft_id, (SELECT a.id FROM aircraft a WHERE a.pilot_id = p.id AND a.registration = ${q(P.defaultAircraft)}))

@@ -1,7 +1,7 @@
 // GET /session, POST /login, POST /logout
 import type { Route } from '../http.js';
 import { HttpError, reply } from '../http.js';
-import { createSession, hashToken, localPilotRow, sessionCookie, sessionPilotRow, SESSION_MS, tokenFrom, verifyGoogleToken } from '../auth.js';
+import { createSession, emailAllowed, hashToken, localPilotRow, sessionCookie, sessionPilotRow, SESSION_MS, tokenFrom, verifyGoogleToken } from '../auth.js';
 import { toPilot } from '../rows.js';
 import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
 import { randomBytes } from 'node:crypto';
@@ -11,7 +11,7 @@ export const routes: Route[] = [
     method: 'GET', path: '/session', auth: false,
     async handler({ db, config, req }): Promise<SessionResponse> {
       const google = !!config.googleClientId;
-      const row = google ? await sessionPilotRow(db, req) : await localPilotRow(db);
+      const row = google ? await sessionPilotRow(db, req, config.allowedEmails) : await localPilotRow(db);
       return { authed: !!row, mode: google ? 'google' : 'local', googleClientId: config.googleClientId || null, pilot: row ? toPilot(row) : null };
     },
   },
@@ -20,6 +20,7 @@ export const routes: Route[] = [
     async handler({ db, config, body }) {
       if (!config.googleClientId) throw new HttpError(404, 'sign-in is not enabled');
       const { credential } = await body();
+      if (typeof credential !== 'string' || !credential) throw new HttpError(400, 'credential is required');
       let claims;
       try {
         claims = await verifyGoogleToken(credential, config.googleClientId, config.googleKeys);
@@ -27,7 +28,7 @@ export const routes: Route[] = [
         throw new HttpError(401, 'sign-in failed');
       }
       const email = String(claims.email);
-      if (config.allowedEmails.length && !config.allowedEmails.includes(email.toLowerCase())) throw new HttpError(403, `${email} is not allowed`);
+      if (!emailAllowed(email, config.allowedEmails)) throw new HttpError(403, `${email} is not allowed`);
       const sub = claims.sub ? String(claims.sub) : `email:${email.toLowerCase()}`;
       const now = Date.now();
       // New pilots start with an empty profile and hangar (seeded_at set: no one-time migration data).

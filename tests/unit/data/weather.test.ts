@@ -77,7 +77,7 @@ describe('surface', () => {
     const c = surfaceConditions(locs[1], T('2026-11-15T08:00Z'), 'ECMWF IFS 0.25°')!;
     expect(c).toMatchObject({ source: 'forecast', tempC: 17, dewC: 13.4, qnhHpa: 1025.5, label: 'ECMWF IFS 0.25° forecast for 08:00Z' });
     near(c.wind!.dirTrueDeg!, 16, 1e-6); near(c.wind!.speedKt, 11.1, 1e-6);
-    expect(toPerfWind(c)).toEqual({ dirTrueDeg: c.wind!.dirTrueDeg, speedKt: c.wind!.speedKt });
+    expect(toPerfWind(c)).toEqual({ dirTrueDeg: c.wind!.dirTrueDeg, speedKt: c.wind!.speedKt, gustKt: null });
     expect(surfaceConditions(null, T('2026-11-15T08:00Z'))).toBeNull();
   });
 
@@ -99,15 +99,19 @@ describe('surface', () => {
     expect(b.source).toBe('metar'); expect(b.tempC).toBe(fc!.tempC); expect(b.qnhHpa).toBe(fc!.qnhHpa);
   });
 
-  test('surfaceFromMetar: VRB and calm have no direction; perf wind is then null', () => {
+  test('surfaceFromMetar: VRB and calm have no direction; perf wind keeps VRB speed and gusts', () => {
     const vrb = surfaceFromMetar(parseMetar('METAR LGTG 151320Z VRB03KT CAVOK 12/05 Q1020', NOW))!;
     expect(vrb.wind).toEqual({ dirTrueDeg: null, speedKt: 3, gustKt: null });
-    expect(toPerfWind(vrb)).toBeNull();
+    // VRB: no direction, the speed is kept (the performance check treats it as full crosswind)
+    expect(toPerfWind(vrb)).toEqual({ dirTrueDeg: null, speedKt: 3, gustKt: null });
+    expect(toPerfWind(surfaceFromMetar(parseMetar('METAR LGTG 151320Z VRB15G25KT 9999 12/05 Q1020', NOW)))).toEqual({ dirTrueDeg: null, speedKt: 15, gustKt: 25 });
     const calm = surfaceFromMetar(parseMetar('METAR LGTG 151320Z 00000KT CAVOK 12/05 Q1020', NOW))!;
     expect(calm.wind).toEqual({ dirTrueDeg: null, speedKt: 0, gustKt: null });
+    expect(toPerfWind(calm)).toEqual({ dirTrueDeg: null, speedKt: 0, gustKt: null });
+    expect(toPerfWind(null)).toBeNull();
     expect(surfaceFromMetar(parseMetar('METAR LGSO 151320Z NIL', NOW))).toBeNull();
     const g = surfaceFromMetar(parseMetar('METAR LGAV 151320Z 27015G27KT 9999 FEW030 14/08 Q1009', NOW))!;
-    expect(toPerfWind(g)).toEqual({ dirTrueDeg: 270, speedKt: 15 });
+    expect(toPerfWind(g)).toEqual({ dirTrueDeg: 270, speedKt: 15, gustKt: 27 });
   });
 });
 

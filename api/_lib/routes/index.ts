@@ -9,5 +9,7 @@ import { routes as waypoints } from './waypoints.js';
 import { routes as flights } from './flights.js';
 import { routes as ref } from './ref.js';
 import { routes as weather } from './weather.js';
+import { routes as notams } from './notams.js';
+import { routes as filing } from './filing.js';
 
-export const ROUTES: Route[] = [...session, ...me, ...aircraft, ...passengers, ...waypoints, ...flights, ...ref, ...weather];
+export const ROUTES: Route[] = [...session, ...me, ...aircraft, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing];

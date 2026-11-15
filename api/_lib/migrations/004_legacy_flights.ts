@@ -8,10 +8,117 @@
 // Route points named after an aerodrome (≤ 1 NM) or a VFR reporting point (≤ 0.5 NM, same name)
 // become references to the reference data; the rest become named custom points. The legacy table is
 // left in place (read-only) as a backup.
+//
+// ATC / terminal information: a v2 flight whose list the pilot never touched gets atc = null (the
+// v3 list is generated, as v2 generated its rows). A flight with edits (termHidden, termManual or
+// `T.<row>.field|elev|rwy|freq` overrides) gets the v3 generated list (at the v2 altitude overrides,
+// otherwise the v3 default altitudes) with the edits applied: see legacyAtc().
+//
+// Not carried over, because v3 has no per-flight equivalent (the values stay in legacy_flights):
+//   - `L<i>.ete`, `.gs`, `.wca`, `.dev`, `.fuel`, `.dist` typed over the computed navlog cells (v3
+//     computes them; altitude, TAS, wind and temperature overrides are converted);
+//   - fuelFlow / fuelExtra (v3 takes the burn rate and the start-up/taxi allowance from the
+//     aircraft; v2's defaults, 30 L/h and 4 L, are the seeded values);
+//   - variation (v3 uses the World Magnetic Model) and the Windy URL (dropped).
 import type { Queryable } from '../db.js';
-import type { FlightDoc, FlightOptions, LegOverride, PersonDetails, RoutePoint, WindModel } from '../../../src/shared/types.js';
+import type { AtcEntry, FlightDoc, FlightOptions, LegOverride, PersonDetails, RoutePoint, WindModel } from '../../../src/shared/types.js';
+import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../../src/shared/ref.js';
 import { DEFAULT_FLIGHT_OPTIONS, DEFAULT_SETTINGS, EMPTY_SUMMARY, autoTitle } from '../../../src/shared/constants.js';
 import { distanceNm, parseClock, fmtClock } from '../../../src/calc/nav.js';
+import { defaultAltitudes } from '../../../src/calc/altitudes.js';
+import { atcInput, generateAtcList } from '../../../src/data/atc.js';
+
+const FREQ = /\b1[1-3]\d\.\d{1,3}\b/g;
+const TERM_CELL = /^T\.(.+)\.(field|elev|rwy|freq)$/;
+
+/**
+ * v2 terminal-information edits applied to the v3 generated list. Returns null when the v2 flight
+ * has no such edits (the editor then generates the list itself).
+ *
+ * v2 row ids: 'ad-<aerodrome id>' (departure, en route) and 'ad-<id>-arr' (destination), 'dep' /
+ * 'arr' (route end not at an aerodrome), 'as-<TMA name, non-word runs → ->', 'fis', and 'm…' for
+ * rows added by hand. A v2 row is one aerodrome / airspace / FIS with all its units; the v3 list has
+ * one entry per unit, so a v2 row maps to every v3 entry of that group:
+ *   - hidden row → its entries are removed;
+ *   - edited frequency text → the group's entries are replaced by ONE entry holding the v2 text
+ *     (first frequency primary, the others backups, the full text in the remark when it has labels);
+ *     it keeps the first entry's sourceKey, so "regenerate" can still restore the generated units;
+ *   - edited name → the group heading (and the callsign of a replaced entry);
+ *   - edited elevation / runways (not in the v3 ATC list) → added to the first entry's remark;
+ *   - a row added by hand → a custom entry (sourceKey null) at the end; empty ones are dropped;
+ *   - edits to a row v3 does not generate (e.g. 'dep') → a custom entry with the edited cells.
+ */
+export function legacyAtc(d: Record<string, any>, generated: AtcEntry[], aerodromes: Pick<RefAerodrome, 'id' | 'icao'>[]): AtcEntry[] | null {
+  const ov = (d.ov || {}) as Record<string, unknown>;
+  const hidden: string[] = Array.isArray(d.termHidden) ? d.termHidden.map(String) : [];
+  const manual: string[] = Array.isArray(d.termManual) ? d.termManual.map(String) : [];
+  const cells = new Map<string, Partial<Record<'field' | 'elev' | 'rwy' | 'freq', string>>>();
+  for (const [k, v] of Object.entries(ov)) {
+    const m = TERM_CELL.exec(k);
+    if (!m || v === undefined || v === null || String(v).trim() === '') continue;
+    if (!cells.has(m[1])) cells.set(m[1], {});
+    cells.get(m[1])![m[2] as 'field'] = String(v).trim();
+  }
+  if (!hidden.length && !manual.length && !cells.size) return null;
+
+  const groupOf = (id: string): ((e: AtcEntry) => boolean) | null => {
+    const ad = /^ad-(.+?)(-arr)?$/.exec(id);
+    if (ad) {
+      const a = aerodromes.find((x) => x.id === ad[1] || x.icao === ad[1]);
+      const key = `ad:${a ? a.icao ?? a.id : ad[1]}`;
+      return (e) => e.sourceKey === key || !!e.sourceKey?.startsWith(key + ':');
+    }
+    if (id.startsWith('as-')) {
+      const name = id.slice(3);
+      return (e) => e.role === 'airspace' && e.group.replace(/\W+/g, '-') === name;
+    }
+    if (id === 'fis') return (e) => e.role === 'fis';
+    return null;
+  };
+  const freqEntry = (base: Omit<AtcEntry, 'primary' | 'backups' | 'remark'>, c: Partial<Record<'field' | 'elev' | 'rwy' | 'freq', string>>, remark: string): AtcEntry => {
+    const text = c.freq ?? '';
+    const freqs = text.match(FREQ) ?? [];
+    const extra = [
+      /[A-Za-z]/.test(text) || (!freqs.length && text) ? text : '',
+      c.elev ? `ELEV ${c.elev}` : '',
+      c.rwy ? `RWY ${c.rwy}` : '',
+    ];
+    return { ...base, primary: freqs[0] ?? '', backups: freqs.slice(1), remark: [remark, ...extra].filter(Boolean).join('; ') };
+  };
+
+  let out = generated.map((e) => ({ ...e, backups: [...e.backups] }));
+  for (const id of hidden) {
+    const f = groupOf(id);
+    if (f) out = out.filter((e) => !f(e));
+  }
+  const custom: AtcEntry[] = [];
+  for (const [id, c] of cells) {
+    if (manual.includes(id) || hidden.includes(id)) continue;
+    const f = groupOf(id);
+    const idx = f ? out.findIndex(f) : -1;
+    if (idx < 0) {
+      // a row v3 does not generate (or no longer generates): keep what the pilot typed
+      custom.push(freqEntry({ id: `v2-${id}`, role: 'custom', group: c.field ?? 'ATC', callsign: c.field ?? '', service: '', sourceKey: null }, c, 'From the v2 navlog'));
+      continue;
+    }
+    const first = out[idx];
+    const group = c.field ?? first.group;
+    if (c.freq !== undefined) {
+      const one = freqEntry({ id: first.id, role: first.role, group, callsign: c.field ?? first.callsign, service: '', sourceKey: first.sourceKey }, c, 'Edited in the v2 navlog');
+      out = [...out.slice(0, idx), one, ...out.slice(idx + 1).filter((e) => !f!(e))];
+    } else {
+      out = out.map((e) => (f!(e) ? { ...e, group } : e));
+      const extra = [c.elev ? `ELEV ${c.elev}` : '', c.rwy ? `RWY ${c.rwy}` : ''].filter(Boolean);
+      if (extra.length) out[idx] = { ...out[idx], remark: [out[idx].remark, ...extra].filter(Boolean).join('; ') };
+    }
+  }
+  for (const id of manual) {
+    const c = cells.get(id);
+    if (!c || !Object.keys(c).length) continue;
+    custom.push(freqEntry({ id: `v2-${id}`, role: 'custom', group: c.field ?? 'ATC', callsign: c.field ?? '', service: '', sourceKey: null }, c, ''));
+  }
+  return [...out, ...custom];
+}
 
 const num = (v: unknown): number => {
   if (v === undefined || v === null || String(v).trim() === '') return NaN;
@@ -28,6 +135,18 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
   const airac = cur?.id ?? '';
   const ads = await q.query<{ id: string; icao: string | null; name: string; lat: number; lon: number }>(`SELECT id, icao, name, lat, lon FROM ref_aerodromes WHERE airac = $1`, [airac]);
   const vfr = await q.query<{ id: string; name: string; lat: number; lon: number }>(`SELECT id, name, lat, lon FROM ref_waypoints WHERE airac = $1`, [airac]);
+  // full reference documents, loaded only if some flight has ATC edits to convert
+  let refDocs: { aerodromes: RefAerodrome[]; airspaces: RefAirspace[]; fis: RefFis | null; vfrPoints: RefVfrPoint[]; vfrRoutes: RefVfrRoute[] } | null = null;
+  const loadRef = async () => {
+    if (refDocs) return refDocs;
+    const docs = async <T>(table: string) => (await q.query<{ doc: T }>(`SELECT doc FROM ${table} WHERE airac = $1 ORDER BY id`, [airac])).map((r) => r.doc);
+    const [fis] = await q.query<{ doc: RefFis }>(`SELECT doc FROM ref_fis WHERE airac = $1`, [airac]);
+    refDocs = {
+      aerodromes: await docs<RefAerodrome>('ref_aerodromes'), airspaces: await docs<RefAirspace>('ref_airspaces'), fis: fis?.doc ?? null,
+      vfrPoints: await docs<RefVfrPoint>('ref_waypoints'), vfrRoutes: await docs<RefVfrRoute>('ref_vfr_routes'),
+    };
+    return refDocs;
+  };
 
   for (const r of rows) {
     const d = (r.data || {}) as Record<string, any>;
@@ -58,6 +177,20 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
       if (isFinite(get('ws'))) o.windKt = get('ws');
       if (isFinite(get('temp'))) o.tempC = get('temp');
       if (Object.keys(o).length) legOverrides[`${route[i].uid}>${route[i + 1].uid}`] = o;
+    }
+
+    // ATC list: only materialised when the v2 list was edited (see legacyAtc)
+    let atc: AtcEntry[] | null = null;
+    if (legacyAtc(d, [], ads) !== null) {
+      const ref = await loadRef();
+      let generated: AtcEntry[] = [];
+      if (ref.fis) {
+        const alts = defaultAltitudes(route, ref, route.slice(1).map((_, i) => legOverrides[`${route[i].uid}>${route[i + 1].uid}`]?.altFt))
+          .map((x, i) => legOverrides[`${route[i].uid}>${route[i + 1].uid}`]?.altFt ?? x.altFt);
+        const radius = isFinite(num(d.fieldRadius)) && num(d.fieldRadius) >= 0 ? num(d.fieldRadius) : settings.enrouteAerodromeRadiusNm;
+        generated = generateAtcList(atcInput(route, alts, { aerodromes: ref.aerodromes, airspaces: ref.airspaces, fis: ref.fis }, radius));
+      }
+      atc = legacyAtc(d, generated, ref.aerodromes);
     }
 
     const reg = d.aircraft === 'OTHER' ? String(d.aircraftOther || '').toUpperCase() : String(d.aircraft || '');
@@ -94,7 +227,7 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
       fobL: null,
       route,
       legOverrides,
-      atc: null,
+      atc,
       crew: [],
       baggageKg: {},
       options,
@@ -103,11 +236,11 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
     await q.query(
       `INSERT INTO flights (id, pilot_id, title, date, block_off, aircraft_id, taxi_out_min, taxi_in_min, fob_l, route, leg_overrides,
          atc, baggage_kg, options, summary, version, created, updated, opened, deleted)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, $9::jsonb, $10::jsonb, NULL, '{}'::jsonb, $11::jsonb, $12::jsonb, $13, $14, $15, $16, $17)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, $9::jsonb, $10::jsonb, $18::jsonb, '{}'::jsonb, $11::jsonb, $12::jsonb, $13, $14, $15, $16, $17)
        ON CONFLICT (id) DO NOTHING`,
       [r.id, r.owner, doc.title, doc.date, doc.blockOff, doc.aircraftId, doc.taxiOutMin === null ? null : Math.round(doc.taxiOutMin), doc.taxiInMin === null ? null : Math.round(doc.taxiInMin),
         JSON.stringify(route), JSON.stringify(legOverrides), JSON.stringify(options), JSON.stringify(summary),
-        Number(r.version) || 1, Number(r.created), Number(r.updated), Number(r.opened) || 0, !!r.deleted],
+        Number(r.version) || 1, Number(r.created), Number(r.updated), Number(r.opened) || 0, !!r.deleted, atc === null ? null : JSON.stringify(atc)],
     );
     const pic: PersonDetails = {
       fullName: pilot.full_name || pilot.name || '', phone: pilot.phone || '', dateOfBirth: pilot.date_of_birth ?? null,

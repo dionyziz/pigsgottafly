@@ -2,7 +2,10 @@
 import crypto from 'node:crypto';
 import { describe, expect, test } from 'vitest';
 import { connect } from '../../api/_lib/db';
-import { migrate, MIGRATIONS } from '../../api/_lib/migrate';
+import { migrate, MIGRATIONS, type Migration } from '../../api/_lib/migrate';
+import { seedSql } from '../../tools/build_seed';
+import { legacyAtc } from '../../api/_lib/migrations/004_legacy_flights';
+import type { AtcEntry } from '../../src/shared/types';
 import { createApi } from '../../api/_lib/app';
 import { CID, JWK } from './helpers';
 import http from 'node:http';
@@ -31,24 +34,42 @@ const legacyData = {
   ov: { 'L1.alt': '3500', 'L2.tas': '95' }, termManual: [], termHidden: [],
 };
 
+// The shipped 003 targets the owner's real address by its SHA-256 (not published here); the tests
+// run the same generated SQL aimed at a test address instead.
+const OWNER = 'Pilot@Example.com ';
+const sha = (s: string) => crypto.createHash('sha256').update(s.trim().toLowerCase()).digest('hex');
+const withOwner = (email: string): Migration[] =>
+  MIGRATIONS.map((m) => (m.name === '003_existing_pilot_data' ? { ...m, sql: seedSql(sha(email)) } : m));
+
 describe('migrations', () => {
   test('convert the v2 production schema', async () => {
     const db = await connect('memory://');
     await db.exec(V2);
     const token = 'tok-' + crypto.randomBytes(8).toString('hex');
     const hash = crypto.createHash('sha256').update(token).digest('base64url');
-    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', 'pilot@example.com', 'Real Pilot', '', 1, 2)`);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await db.query(`INSERT INTO users VALUES ('u2', 'g-sub-2', 'friend@example.com', 'A Friend', '', 3, 4)`);
     await db.query(`INSERT INTO sessions VALUES ($1, 'u1', $2)`, [hash, Date.now()]);
     await db.query(`INSERT INTO flights (id, owner, data, summary, version, created, updated, opened) VALUES ('f1', 'u1', $1::jsonb, $2::jsonb, 7, 10, 20, 30)`,
       [JSON.stringify(legacyData), JSON.stringify({ title: 'LGTT → ABLONAS → WP2 → LGTT', dist: 40, ete: 28, fuel: 20 })]);
 
     // two runners at once: the advisory lock serialises them, each migration applies once
-    const [x, y] = await Promise.all([migrate(db), migrate(db)]);
+    const list = withOwner(OWNER);
+    const [x, y] = await Promise.all([migrate(db, list), migrate(db, list)]);
     expect([...x, ...y].sort()).toEqual(MIGRATIONS.map((m) => m.name).sort());
     expect(await migrate(db)).toEqual([]);
 
+    // any other pre-existing account is marked seeded and gets nothing (pilot correction 1)
+    const [friend] = await db.query(`SELECT * FROM pilots WHERE id = 'u2'`);
+    expect(friend.home_aerodrome).toBeNull();
+    expect(friend.default_aircraft_id).toBeNull();
+    expect(friend.seeded_at).not.toBeNull();
+    expect(friend.settings?.taxiOutMin ?? null).toBeNull();
+    expect(friend.settings?.reserveMin ?? null).toBeNull();
+    expect(await db.query(`SELECT id FROM aircraft WHERE pilot_id = 'u2'`)).toEqual([]);
+
     const [p] = await db.query(`SELECT * FROM pilots WHERE id = 'u1'`);
-    expect(p).toMatchObject({ email: 'pilot@example.com', full_name: 'Real Pilot', home_aerodrome: 'LGTT', google_sub: 'g-sub-1' });
+    expect(p).toMatchObject({ email: OWNER, full_name: 'Real Pilot', home_aerodrome: 'LGTT', google_sub: 'g-sub-1' });
     expect(p.settings).toMatchObject({ taxiOutMin: 15, taxiInMin: 15, reserveMin: 60 });
     const ac = await db.query(`SELECT id, registration, mass_balance FROM aircraft WHERE pilot_id = 'u1' ORDER BY registration`);
     expect(ac.map((r) => r.registration)).toEqual(['SX-ASG', 'SX-ASV']);
@@ -76,6 +97,63 @@ describe('migrations', () => {
       server.close();
       await db.close();
     }
+  });
+
+  test('the shipped 003 seeds no account but the owner', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', 'pilot@example.com', 'Real Pilot', '', 1, 2)`);
+    await migrate(db);
+    const [p] = await db.query(`SELECT * FROM pilots WHERE id = 'u1'`);
+    expect(p.home_aerodrome).toBeNull();
+    expect(p.seeded_at).not.toBeNull();
+    expect(await db.query(`SELECT id FROM aircraft`)).toEqual([]);
+    await db.close();
+  });
+
+  test('v2 ATC / terminal-information edits survive the conversion', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    const data = {
+      ...legacyData,
+      waypoints: [{ lat: 38.10861, lon: 23.78333, name: 'LGTT' }, { lat: 37.9364, lon: 23.9445, name: 'LGAV' }],
+      ov: { 'T.ad-LGAV-arr.freq': 'TWR 118.1 / 118.675', 'T.fis.field': 'FIS (Athinai)', 'T.ad-LGTT.rwy': '03 / 21 grass?', 'L0.ete': '0:20', 'L0.alt': '2500',
+        'T.m1.field': 'ACC Athinai', 'T.m1.freq': '136.025', 'T.m2.field': '' },
+      termManual: ['m1', 'm2'], termHidden: [],
+    };
+    await db.query(`INSERT INTO flights (id, owner, data, summary, version, created, updated, opened) VALUES ('f2', 'u1', $1::jsonb, '{}'::jsonb, 1, 10, 20, 30)`, [JSON.stringify(data)]);
+    await db.query(`INSERT INTO flights (id, owner, data, summary, version, created, updated, opened) VALUES ('f3', 'u1', $1::jsonb, '{}'::jsonb, 1, 10, 20, 30)`, [JSON.stringify(legacyData)]);
+    await migrate(db, withOwner(OWNER));
+    const [f2] = await db.query(`SELECT atc, leg_overrides FROM flights WHERE id = 'f2'`);
+    const [f3] = await db.query(`SELECT atc FROM flights WHERE id = 'f3'`);
+    expect(f3.atc).toBeNull(); // untouched v2 list: generated by the editor
+    const atc = f2.atc as AtcEntry[];
+    const lgav = atc.filter((e) => e.sourceKey?.startsWith('ad:LGAV'));
+    expect(lgav).toHaveLength(1);
+    expect(lgav[0]).toMatchObject({ role: 'destination', primary: '118.1', backups: ['118.675'] });
+    expect(lgav[0].remark).toMatch(/TWR 118\.1 \/ 118\.675/);
+    expect(atc.filter((e) => e.role === 'fis').every((e) => e.group === 'FIS (Athinai)')).toBe(true);
+    expect(atc.find((e) => e.sourceKey?.startsWith('ad:LGTT'))!.remark).toMatch(/RWY 03 \/ 21 grass\?/);
+    expect(atc.filter((e) => e.sourceKey === null)).toEqual([
+      { id: 'v2-m1', role: 'custom', group: 'ACC Athinai', callsign: 'ACC Athinai', service: '', primary: '136.025', backups: [], remark: '', sourceKey: null },
+    ]);
+    expect(f2.leg_overrides).toEqual({ 'm0>m1': { altFt: 2500 } });
+    await db.close();
+  });
+
+  test('legacyAtc: hidden rows, edited rows v3 does not generate, nothing edited', () => {
+    const gen: AtcEntry[] = [
+      { id: 'ad:LGTT:A', role: 'departure', group: 'LGTT', callsign: 'TATOI TOWER', service: 'TWR', primary: '122.650', backups: [], remark: '', sourceKey: 'ad:LGTT:TATOI TOWER' },
+      { id: 'as:ATHINAI TMA:X', role: 'airspace', group: 'ATHINAI TMA', callsign: 'ATHINAI APPROACH', service: 'APP', primary: '118.6', backups: [], remark: '', sourceKey: 'as:ATHINAI TMA:ATHINAI APPROACH' },
+      { id: 'fis:A', role: 'fis', group: 'FIS', callsign: 'ATHINAI INFORMATION', service: 'INFO', primary: '124.4', backups: [], remark: '', sourceKey: 'fis:ATHINAI INFORMATION' },
+    ];
+    const ads = [{ id: 'LGTT', icao: 'LGTT' }];
+    expect(legacyAtc({ ov: { 'L0.alt': '3000', 'T.dist': '40' }, termHidden: [], termManual: [] }, gen, ads)).toBeNull();
+    const r = legacyAtc({ ov: { 'T.dep.field': 'Field X', 'T.dep.freq': '123.5 A/A' }, termHidden: ['as-ATHINAI-TMA', 'fis'], termManual: [] }, gen, ads)!;
+    expect(r.map((e) => e.id)).toEqual(['ad:LGTT:A', 'v2-dep']);
+    expect(r[1]).toMatchObject({ role: 'custom', callsign: 'Field X', primary: '123.5', sourceKey: null });
+    expect(r[1].remark).toMatch(/123\.5 A\/A/);
   });
 
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {

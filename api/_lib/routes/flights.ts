@@ -3,11 +3,12 @@
 // of the flight document and replaced atomically with it. Everything is scoped to the session pilot.
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
-import { arr, obj, optDate, optNum, str, toFlight } from '../rows.js';
+import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
+import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 import type { Queryable } from '../db.js';
 import type { FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
-import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, emptyFlightDoc, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
+import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
 import { findAerodrome } from './ref.js';
 
 async function load(db: Queryable, pilotId: string, id: string) {
@@ -15,18 +16,6 @@ async function load(db: Queryable, pilotId: string, id: string) {
   if (!r) throw notFound('no such flight');
   const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [id, pilotId]);
   return toFlight(r, crew);
-}
-
-const KINDS = new Set(['aerodrome', 'vfr', 'waypoint', 'custom']);
-function checkRoute(v: unknown): RoutePoint[] {
-  const route = arr<RoutePoint>(v, 'route');
-  if (route.length > 200) throw badRequest('route has too many points');
-  return route.map((p, i) => {
-    obj(p, `route[${i}]`);
-    if (!KINDS.has(p.kind)) throw badRequest(`route[${i}].kind is invalid`);
-    if (!isFinite(p.lat) || !isFinite(p.lon) || Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180) throw badRequest(`route[${i}] needs lat/lon`);
-    return { uid: str(p.uid, 'uid', 40) || uid(), kind: p.kind, refId: p.refId == null ? null : str(p.refId, 'refId', 100), name: str(p.name, 'name', 60), lat: +p.lat, lon: +p.lon };
-  });
 }
 
 /** Validates and normalises a full FlightDoc (merged over `base`). */
@@ -43,12 +32,12 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
   if ('taxiInMin' in input) d.taxiInMin = optNum(input.taxiInMin, 'taxiInMin', 0, 600);
   if ('fobL' in input) d.fobL = optNum(input.fobL, 'fobL', 0, 10000);
   if ('route' in input) d.route = checkRoute(input.route);
-  if ('legOverrides' in input) d.legOverrides = obj(input.legOverrides, 'legOverrides');
-  if ('atc' in input) d.atc = input.atc === null ? null : arr(input.atc, 'atc');
+  if ('legOverrides' in input) d.legOverrides = checkLegOverrides(input.legOverrides);
+  if ('atc' in input) d.atc = checkAtc(input.atc);
   if ('crew' in input) d.crew = arr<FlightCrew>(input.crew, 'crew');
-  if ('baggageKg' in input) d.baggageKg = obj(input.baggageKg, 'baggageKg');
-  if ('options' in input) d.options = { ...DEFAULT_FLIGHT_OPTIONS, ...obj(input.options, 'options') };
-  if ('summary' in input) d.summary = { ...EMPTY_SUMMARY, ...obj(input.summary, 'summary') };
+  if ('baggageKg' in input) d.baggageKg = checkBaggage(input.baggageKg);
+  if ('options' in input) d.options = checkOptions(input.options, DEFAULT_FLIGHT_OPTIONS);
+  if ('summary' in input) d.summary = checkSummary(input.summary);
 
   let seats: string[] | null = null;
   if (d.aircraftId) {
@@ -57,12 +46,17 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
     seats = seatLayout(ac.mass_balance?.stations ?? []).map((s) => s.id);
     if (!seats.length) seats = null;
   }
-  for (const [i, c] of d.crew.entries()) {
+  if (d.crew.length > 50) throw badRequest('crew has too many entries');
+  d.crew = d.crew.map((c, i) => {
     obj(c, `crew[${i}]`);
     if (c.role !== 'PIC' && c.role !== 'PAX') throw badRequest(`crew[${i}].role must be PIC or PAX`);
-    obj(c.snapshot, `crew[${i}].snapshot`);
     if (c.role === 'PIC' && c.passengerId) throw badRequest('the PIC is the pilot, not a passenger');
-  }
+    if (c.passengerId != null && typeof c.passengerId !== 'string') throw badRequest(`crew[${i}].passengerId must be a string`);
+    if (typeof c.seat !== 'string' || c.seat.length > 40) throw badRequest(`crew[${i}].seat must be a seat id`);
+    // the snapshot feeds W&B (weight) and the forms: same checks as a passenger record
+    const snapshot = personColumns(obj(c.snapshot, `crew[${i}].snapshot`), EMPTY_PERSON);
+    return { role: c.role, passengerId: c.passengerId || null, seat: c.seat, snapshot };
+  });
   const errs = validateCrew(d.crew, seats);
   if (errs.length) throw badRequest(errs.join('; '));
   const paxIds = d.crew.map((c) => c.passengerId).filter((x): x is string => !!x);
@@ -113,9 +107,11 @@ export const routes: Route[] = [
     async handler({ db, pilot, query }): Promise<FlightListItem[]> {
       const trash = query.get('trash') === '1';
       const rows = await db.query(
-        `SELECT id, summary, date, aircraft_id, version, created, updated, opened, deleted FROM flights
+        `SELECT id, summary, route, date, aircraft_id, version, created, updated, opened, deleted FROM flights
          WHERE pilot_id = $1 AND deleted = $2 ORDER BY GREATEST(updated, opened) DESC`, [pilot.id, trash]);
-      return rows.map((r) => ({ id: r.id, summary: { ...EMPTY_SUMMARY, ...r.summary }, date: r.date, aircraftId: r.aircraft_id ?? null, version: Number(r.version),
+      const names = (route: unknown): string[] =>
+        Array.isArray(route) ? route.map((p) => (p && typeof p.name === 'string' ? p.name : '')).filter(Boolean) : [];
+      return rows.map((r) => ({ id: r.id, summary: { ...EMPTY_SUMMARY, ...r.summary }, points: names(r.route), date: r.date, aircraftId: r.aircraft_id ?? null, version: Number(r.version),
         created: Number(r.created), updated: Number(r.updated), opened: Number(r.opened), deleted: !!r.deleted }));
     },
   },

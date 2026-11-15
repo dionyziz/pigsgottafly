@@ -5,6 +5,9 @@
 //   npm run serve                  → same without building
 //   DATABASE_URL=postgres://… …    → a Postgres server instead (never the production database!)
 //   GOOGLE_CLIENT_ID=… [ALLOWED_EMAILS=a@x,b@y] → Google sign-in; without it: local mode, no sign-in
+//   Local mode against a postgres:// database is refused (it would create an open 'local' pilot in
+//   whatever database DATABASE_URL names, e.g. production from .env.local) unless LOCAL_MODE_ON_POSTGRES=1.
+//   Built-client responses carry the same security headers as production (vercel.json).
 //   (PORT=8765, HOST=127.0.0.1)
 import http from 'node:http';
 import fs from 'node:fs';
@@ -21,11 +24,38 @@ const TYPES: Record<string, string> = {
   '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.map': 'application/json', '.txt': 'text/plain; charset=utf-8',
 };
 
+const PROD_HEADERS_SKIP = new Set(['cache-control']);
+
+/**
+ * The security headers vercel.json sets on every path in production (CSP, framing, sniffing,
+ * referrer), so the built client is served locally (and in e2e) under the same policy.
+ */
+export function productionSecurityHeaders(vercelJson = path.join(ROOT, 'vercel.json')): Record<string, string> {
+  const cfg = JSON.parse(fs.readFileSync(vercelJson, 'utf8')) as { headers?: { source: string; headers: { key: string; value: string }[] }[] };
+  const all = (cfg.headers || []).find((h) => h.source === '/(.*)');
+  const out: Record<string, string> = {};
+  for (const { key, value } of all?.headers || []) if (!PROD_HEADERS_SKIP.has(key.toLowerCase())) out[key] = value;
+  return out;
+}
+
+const isPostgresUrl = (where: string) => /^postgres(ql)?:\/\//i.test(where.trim());
+
+/**
+ * Refuses local mode (no sign-in) on a Postgres database unless explicitly allowed: local mode
+ * serves everyone as one 'local' pilot, which must never happen on a shared or production database.
+ */
+export function checkLocalMode(where: string, googleClientId: string | undefined, allowLocalOnPostgres: boolean): void {
+  if (googleClientId || !isPostgresUrl(where) || allowLocalOnPostgres) return;
+  throw new Error('Refusing local mode (no sign-in) on a postgres:// DATABASE_URL: set GOOGLE_CLIENT_ID, '
+    + 'unset DATABASE_URL to use PGlite, or set LOCAL_MODE_ON_POSTGRES=1 for a disposable local Postgres.');
+}
+
 export type Handler = (req: http.IncomingMessage, res: http.ServerResponse) => void | Promise<void>;
 
 /** Serves files from dir; unknown paths without an extension get index.html (client routes). */
-export function staticHandler(dir: string): Handler {
+export function staticHandler(dir: string, securityHeaders: Record<string, string> = productionSecurityHeaders()): Handler {
   return (req, res) => {
+    for (const [k, v] of Object.entries(securityHeaders)) res.setHeader(k, v);
     const url = new URL(req.url || '/', 'http://x');
     let rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
     let p = path.join(dir, rel);
@@ -46,9 +76,12 @@ export interface ServerOptions extends Partial<ApiConfig> {
   db?: string;
   /** Client handler for non-API requests (default: static dist/). */
   client?: Handler;
+  /** Allow local mode (no GOOGLE_CLIENT_ID) on a postgres:// database (LOCAL_MODE_ON_POSTGRES=1). */
+  allowLocalOnPostgres?: boolean;
 }
 
-export function createServer({ db: where = path.join(ROOT, 'server', 'pgdata'), client, ...opts }: ServerOptions = {}) {
+export function createServer({ db: where = path.join(ROOT, 'server', 'pgdata'), client, allowLocalOnPostgres = false, ...opts }: ServerOptions = {}) {
+  checkLocalMode(where, opts.googleClientId, allowLocalOnPostgres); // before openDb: no migrations, no 'local' pilot
   const ready: Promise<{ db: Db; api: Handler }> = openDb(where).then((db) => ({ db, api: createApi({ db, ...opts }) }));
   const serveClient = client || staticHandler(path.join(ROOT, 'dist'));
   const server = http.createServer(async (req, res) => {
@@ -68,7 +101,10 @@ export function listenFromEnv(client?: Handler) {
   const port = +(process.env.PORT || 8765);
   const host = process.env.HOST || '127.0.0.1';
   const cfg = configFromEnv();
-  const server = createServer({ db: process.env.DATABASE_URL || undefined, ...cfg, client });
+  const server = createServer({ db: process.env.DATABASE_URL || undefined, ...cfg, client, allowLocalOnPostgres: process.env.LOCAL_MODE_ON_POSTGRES === '1' });
+  if (!cfg.googleClientId && !/^(127\.|::1$|localhost$)/.test(host)) {
+    console.warn(`Warning: local mode (no sign-in) listening on ${host}: anyone who can reach this port acts as the local pilot.`);
+  }
   return server.ready.then(() => new Promise<void>((r) => server.listen(port, host, () => {
     console.log(`Pig's Gotta Fly: http://${host}:${port}/${cfg.googleClientId ? ' (Google sign-in)' : ' (local mode, no sign-in)'}`);
     r();

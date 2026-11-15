@@ -8,6 +8,8 @@ export const CHART = {
   tma: '#2f64c0',
   mtma: '#8a3b9c',
   zone: '#b4235a',
+  /** Class G aerodrome zones (AFIS / uncontrolled ATZ). */
+  zoneG: '#4f7d86',
   fis: '#6b7480',
   vfr: '#1e6b46',
   waypoint: '#7a3db8',
@@ -120,7 +122,14 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
   }
   sources.ofm = { type: 'raster', tiles: [OFM_TILES], tileSize: 256, minzoom: 6, maxzoom: 12, attribution: OFM_ATTRIBUTION };
   layers.push({ id: 'ofm', type: 'raster', source: 'ofm', layout: { visibility: ofm ? 'visible' : 'none' }, paint: { 'raster-fade-duration': 150 } });
-  for (const id of DATA_SOURCES) sources[id] = { type: 'geojson', data: EMPTY as never, ...(id === 'route-mid' ? { generateId: true } : {}) };
+  for (const id of DATA_SOURCES) {
+    sources[id] = {
+      type: 'geojson', data: EMPTY as never,
+      ...(id === 'route-mid' ? { generateId: true } : {}),
+      // airspace hover highlight (feature-state keyed by the airspace id)
+      ...(id === 'airspaces' || id === 'zones' ? { promoteId: 'id' } : {}),
+    };
+  }
   layers.push(...chartLayers(), ...routeLayers());
   const style: StyleSpecification = { version: 8, glyphs: GLYPHS, sources, layers };
   if (sprite) style.sprite = sprite;
@@ -129,25 +138,29 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
 
 /** Our chart layers (toggled together by "Chart layers"). */
 export const CHART_LAYER_IDS = [
-  'airspace-fill', 'airspace-line', 'airspace-line-m', 'airspace-label', 'zone-fill', 'zone-line', 'fis-line', 'fis-label',
+  'airspace-fill', 'airspace-line', 'airspace-line-m', 'airspace-label', 'zone-fill', 'zone-line', 'zone-line-atz', 'zone-label',
+  'fis-line', 'fis-label',
   'vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt', 'vfr-point-icon', 'vfr-point-label',
   'aerodrome-icon', 'aerodrome-label', 'waypoint-icon', 'waypoint-label',
 ];
 
 function chartLayers(): LayerSpecification[] {
   const isM: ExpressionSpecification = ['==', ['get', 'kind'], 'MTMA'];
+  const hov: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false];
+  const isCtr: ExpressionSpecification = ['==', ['get', 'kind'], 'CTR'];
+  const zoneColor: ExpressionSpecification = ['case', ['==', ['get', 'cls'], 'G'], CHART.zoneG, CHART.zone];
   return [
     {
       id: 'airspace-fill', type: 'fill', source: 'airspaces',
-      paint: { 'fill-color': ['case', isM, CHART.mtma, CHART.tma], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.05, 10, 0.025] },
+      paint: { 'fill-color': ['case', isM, CHART.mtma, CHART.tma], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 0.12, 0.05], 10, ['case', hov, 0.1, 0.025]] },
     },
     {
       id: 'airspace-line', type: 'line', source: 'airspaces', filter: ['!', isM],
-      paint: { 'line-color': CHART.tma, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 10, 2], 'line-opacity': 0.75 },
+      paint: { 'line-color': CHART.tma, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]], 'line-opacity': 0.75 },
     },
     {
       id: 'airspace-line-m', type: 'line', source: 'airspaces', filter: isM,
-      paint: { 'line-color': CHART.mtma, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 10, 2], 'line-opacity': 0.75, 'line-dasharray': [4, 2] },
+      paint: { 'line-color': CHART.mtma, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]], 'line-opacity': 0.75, 'line-dasharray': [4, 2] },
     },
     {
       id: 'airspace-label', type: 'symbol', source: 'airspaces', minzoom: 7,
@@ -158,12 +171,27 @@ function chartLayers(): LayerSpecification[] {
       paint: { 'text-color': ['case', isM, CHART.mtma, CHART.tma], 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
     {
-      id: 'zone-fill', type: 'fill', source: 'zones', minzoom: 8,
-      paint: { 'fill-color': CHART.zone, 'fill-opacity': 0.03 },
+      id: 'zone-fill', type: 'fill', source: 'zones', minzoom: 6.5,
+      paint: { 'fill-color': zoneColor, 'fill-opacity': ['case', hov, 0.1, isCtr, 0.025, 0.04] },
     },
     {
-      id: 'zone-line', type: 'line', source: 'zones', minzoom: 7,
-      paint: { 'line-color': CHART.zone, 'line-width': 1.3, 'line-dasharray': [3, 2], 'line-opacity': 0.8 },
+      // CTR: long dashes
+      id: 'zone-line', type: 'line', source: 'zones', minzoom: 6.5, filter: isCtr,
+      paint: { 'line-color': zoneColor, 'line-width': ['case', hov, 2.6, 1.5], 'line-dasharray': [5, 2], 'line-opacity': 0.85 },
+    },
+    {
+      // ATZ: short dashes
+      id: 'zone-line-atz', type: 'line', source: 'zones', minzoom: 7, filter: ['!', isCtr],
+      paint: { 'line-color': zoneColor, 'line-width': ['case', hov, 2.4, 1.2], 'line-dasharray': [2, 1.5], 'line-opacity': 0.85 },
+    },
+    {
+      id: 'zone-label', type: 'symbol', source: 'zones',
+      minzoom: 8, filter: ['any', isCtr, ['>=', ['zoom'], 9]],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': ['get', 'label'], 'text-font': BOLD,
+        'text-size': 9.5, 'text-letter-spacing': 0.03, 'text-offset': [0, 0.85], 'text-max-angle': 30, 'text-keep-upright': true,
+      },
+      paint: { 'text-color': zoneColor, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
     {
       id: 'fis-line', type: 'line', source: 'fis',

@@ -30,7 +30,10 @@ import {
 import { appendPoint, insertPoint, mercatorMid, removePoint, renamePoint, replacePoint } from './routeEdit';
 import { addSymbols } from './symbols';
 import { BASE_MAPS, buildStyle, CHART_LAYER_IDS, LGGG_BOUNDS, loadVectorBase, type BaseLayers, type BaseMapId, type DataSourceId } from './style';
+import { airspaceInfos, airspacesAt, type AirspaceInfo } from './airspace';
+import { AirspacePopover, AirspaceTip } from './AirspacePopover';
 import './map.css';
+import { setHazardLayer, type MapHazard } from './hazardLayer';
 
 export interface LegAltitude {
   /** Effective altitude, ft (NaN = unknown). */
@@ -62,6 +65,8 @@ export interface RouteMapProps {
   onRedo?(): void;
   canUndo?: boolean;
   canRedo?: boolean;
+  /** Weather hazard marks on the affected stretches of the legs (hazardLayer.ts). */
+  hazards?: MapHazard[];
 }
 
 type Mode = 'idle' | 'draw' | 'custom';
@@ -103,15 +108,18 @@ interface Hover {
 }
 
 const PREFS_KEY = 'pgf:map';
-function loadPrefs(): { base: BaseMapId; ofm: boolean; chart: boolean } {
-  const def = { base: 'light' as BaseMapId, ofm: false, chart: true };
+/** Per-browser map preferences. `tips` shows the editing hint bubble; closing the bubble turns it off
+ *  and the layers popover turns it back on. */
+interface MapPrefs { base: BaseMapId; ofm: boolean; chart: boolean; tips: boolean }
+function loadPrefs(): MapPrefs {
+  const def: MapPrefs = { base: 'light', ofm: false, chart: true, tips: true };
   try {
     const v = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
-    if (v && BASE_MAPS.some((b) => b.id === v.base)) return { base: v.base, ofm: !!v.ofm, chart: v.chart !== false };
+    if (v && BASE_MAPS.some((b) => b.id === v.base)) return { base: v.base, ofm: !!v.ofm, chart: v.chart !== false, tips: v.tips !== false };
   } catch { /* storage unavailable */ }
   return def;
 }
-function savePrefs(p: { base: BaseMapId; ofm: boolean; chart: boolean }) {
+function savePrefs(p: MapPrefs) {
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
 
@@ -120,6 +128,13 @@ function setData(map: MlMap, id: DataSourceId, data: unknown) {
 }
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
+
+/** Second line of the snap tooltip; says when a nearby point was passed over for the aerodrome. */
+function snapDetail(hit: SnapHit): string {
+  if (!hit.shadowed) return hit.cand.detail;
+  const nm = distanceNm(hit.cand, hit.shadowed);
+  return `${hit.cand.detail} · ${hit.shadowed.name} (${nm.toFixed(1)} NM away): zoom in to pick it`;
+}
 
 /** MC/distance read-out for a leg being drawn. */
 function legReadout(a: LatLon, b: LatLon, date: string): string {
@@ -145,6 +160,10 @@ export function RouteMap(props: RouteMapProps) {
   const [prompt, setPrompt] = useState<NamePrompt | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [hover, setHover] = useState<Hover | null>(null);
+  /** Airspaces under the cursor (idle mode), smallest first. */
+  const [airTip, setAirTip] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
+  /** Airspace details opened by a click. */
+  const [airPop, setAirPop] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
   const [editingLeg, setEditingLeg] = useState<string | null>(null);
 
   const shown = draft ?? route;
@@ -152,9 +171,11 @@ export function RouteMap(props: RouteMapProps) {
   const candidates = useMemo(() => buildCandidates(refData.aerodromes, refData.vfrPoints, waypoints), [refData, waypoints]);
 
   // Everything the (once-bound) map handlers read.
-  const live = useRef({ props, mode, route, shown, candidates, selected, prompt, menu, editingLeg });
-  live.current = { props, mode, route, shown, candidates, selected, prompt, menu, editingLeg };
+  const airInfos = useMemo(() => airspaceInfos(refData.airspaces, refData.adAirspaces ?? []), [refData]);
+  const live = useRef({ props, mode, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop });
+  live.current = { props, mode, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop };
   const drag = useRef<Drag | null>(null);
+  const cancelDragRef = useRef<(() => void) | null>(null);
   const suppressClick = useRef(false);
 
   // ---------------------------------------------------------------------------------- map setup
@@ -207,7 +228,7 @@ export function RouteMap(props: RouteMapProps) {
       const { refData: r, waypoints: w } = live.current.props;
       const variation = magneticVariation(38, 24, new Date().toISOString().slice(0, 10));
       setData(m, 'airspaces', airspaceFeatures(r.airspaces));
-      setData(m, 'zones', zoneFeatures(r.aerodromes));
+      setData(m, 'zones', zoneFeatures(live.current.airInfos));
       setData(m, 'fis', fisFeatures(r.fis));
       setData(m, 'vfr-routes', vfrRouteFeatures(r.vfrRoutes, r.vfrPoints));
       setData(m, 'vfr-points', vfrPointFeatures(r.vfrPoints));
@@ -249,13 +270,20 @@ export function RouteMap(props: RouteMapProps) {
     if (bl) for (const b of BASE_MAPS) for (const l of bl[b.id]) if (m.getLayer(l.id)) m.setLayoutProperty(l.id, 'visibility', b.id === prefs.base && l.visible ? 'visible' : 'none');
     m.setLayoutProperty('ofm', 'visibility', prefs.ofm ? 'visible' : 'none');
     for (const id of CHART_LAYER_IDS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', prefs.chart ? 'visible' : 'none');
-    savePrefs(prefs);
   }, [prefs, loaded]);
+  useEffect(() => savePrefs(prefs), [prefs]);
 
   useEffect(() => {
     const m = mapRef.current;
     if (m && loaded) setData(m, 'waypoints', waypointFeatures(waypoints));
   }, [waypoints, loaded]);
+
+  // ---------------------------------------------------------------------------- weather hazards
+  const hazardMarks = props.hazards;
+  useEffect(() => {
+    const m = mapRef.current;
+    if (m && loaded) setHazardLayer(m, hazardMarks ?? [], 'route-casing');
+  }, [hazardMarks, loaded]);
 
   // ------------------------------------------------------------------------------ route layers
   const drawing = mode !== 'idle';
@@ -274,6 +302,11 @@ export function RouteMap(props: RouteMapProps) {
     m.getCanvas().style.cursor = drawing ? 'crosshair' : '';
     m.getContainer().classList.toggle('is-drawing', drawing);
   }, [drawing, loaded]);
+
+  // Airspace tooltip/details belong to idle mode with the chart layers on.
+  useEffect(() => {
+    if (drawing || !prefs.chart) { setAirTip(null); setAirPop(null); }
+  }, [drawing, prefs.chart]);
 
   // The route may shrink below 2 points from elsewhere (undo, panel): offer drawing again.
   useEffect(() => {
@@ -298,8 +331,10 @@ export function RouteMap(props: RouteMapProps) {
       const editing = live.current.editingLeg === leg.key;
       const lm = editing ? 'full' : labelMode(pl.lengthPx);
       rec.el.dataset.mode = lm;
-      const off = lm === 'full' ? 17 : 15;
-      rec.inner.style.transform = `translate(${(pl.normal.x * off).toFixed(1)}px, ${(pl.normal.y * off).toFixed(1)}px) rotate(${pl.angleDeg.toFixed(1)}deg)`;
+      // distance from the line to the label's centre: half the label's height plus a small gap
+      const off = lm === 'compact' ? 21 : 17;
+      const k = off * pl.side;
+      rec.inner.style.transform = `translate(${(pl.normal.x * k).toFixed(1)}px, ${(pl.normal.y * k).toFixed(1)}px) rotate(${pl.angleDeg.toFixed(1)}deg)`;
     }
   }, [legs]);
 
@@ -476,7 +511,9 @@ export function RouteMap(props: RouteMapProps) {
     const project = (lon: number, lat: number) => m.project([lon, lat]);
     const own = findSnap(pt, routeCandidates(live.current.shown, exceptUid), project, SNAP_RADIUS_PX, box);
     const ref = findSnap(pt, live.current.candidates, project, SNAP_RADIUS_PX, box);
-    if (own && (!ref || own.distPx <= ref.distPx + ref.cand.penaltyPx)) return own;
+    // the aerodrome keeps its priority over the route's own copy of the point it shadowed
+    const shadowedOwn = !!(own && ref?.shadowed && own.cand.lat === ref.shadowed.lat && own.cand.lon === ref.shadowed.lon);
+    if (own && !shadowedOwn && (!ref || own.distPx <= ref.distPx + ref.cand.penaltyPx)) return own;
     return ref;
   }, []);
 
@@ -550,6 +587,8 @@ export function RouteMap(props: RouteMapProps) {
       const shift = e.originalEvent.shiftKey;
       const d = drag.current;
       if (d) {
+        // the button is up but we never got its mouseup (released outside the window, …)
+        if ((e.originalEvent.buttons & 1) === 0) { cancelDrag(); return; }
         if (!d.moved && Math.hypot(e.point.x - d.start.x, e.point.y - d.start.y) < 3) return;
         d.moved = true;
         const hit = shift ? null : snapAt(e.point, d.uid);
@@ -561,7 +600,7 @@ export function RouteMap(props: RouteMapProps) {
         const next = d.base.map((q) => (q.uid === d.uid ? moved : q));
         if (d.insert && !d.base.some((q) => q.uid === d.uid)) next.splice(d.index, 0, moved);
         setDraft(next);
-        setHover(hit ? { x: e.point.x, y: e.point.y, name: hit.cand.name, detail: hit.cand.detail, leg: null } : null);
+        setHover(hit ? { x: e.point.x, y: e.point.y, name: hit.cand.name, detail: snapDetail(hit), leg: null } : null);
         return;
       }
       if (L.mode !== 'idle') {
@@ -576,7 +615,7 @@ export function RouteMap(props: RouteMapProps) {
         setHover({
           x: e.point.x, y: e.point.y,
           name: hit ? hit.cand.name : null,
-          detail: hit ? hit.cand.detail : custom ? (L.route.length ? 'Custom point: click and name it' : 'Click to start at a custom point') : null,
+          detail: hit ? snapDetail(hit) : custom ? (L.route.length ? 'Custom point: click and name it' : 'Click to start at a custom point') : null,
           leg: last ? legReadout(last, target, L.props.date) : null,
         });
         return;
@@ -587,6 +626,19 @@ export function RouteMap(props: RouteMapProps) {
       if (hoverMid !== undefined && mid !== hoverMid) { m.setFeatureState({ source: 'route-mid', id: hoverMid }, { hover: false }); hoverMid = undefined; }
       if (mid !== null) { hoverMid = mid; m.setFeatureState({ source: 'route-mid', id: mid }, { hover: true }); }
       m.getCanvas().style.cursor = pt !== null ? 'grab' : mid !== null ? 'copy' : '';
+      // airspace under the cursor: name, class and limits; the smallest one is highlighted
+      const air = pt === null && mid === null && L.prefs.chart && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
+      highlightAirspace(air[0] ?? null);
+      setAirTip(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
+    };
+
+    let hoverAir: AirspaceInfo | null = null;
+    const highlightAirspace = (a: AirspaceInfo | null) => {
+      if (hoverAir?.id === a?.id) return;
+      const src = (x: AirspaceInfo) => (x.type === 'CTR' || x.type === 'ATZ' ? 'zones' : 'airspaces');
+      if (hoverAir) m.setFeatureState({ source: src(hoverAir), id: hoverAir.id }, { hover: false });
+      hoverAir = a;
+      if (a) m.setFeatureState({ source: src(a), id: a.id }, { hover: true });
     };
 
     const onDown = (e: MapMouseEvent) => {
@@ -610,15 +662,36 @@ export function RouteMap(props: RouteMapProps) {
         };
       } else return;
       m.getCanvas().style.cursor = 'grabbing';
-      window.addEventListener('mouseup', onUp, { once: true });
+      m.getContainer().classList.add('is-dragging');
+      // Capture phase on window: the release must end the drag wherever it happens, also over a leg
+      // label or any other element that stops mouseup from bubbling.
+      window.addEventListener('mouseup', onUp, { capture: true });
+      window.addEventListener('blur', cancelDrag);
     };
 
-    const onUp = async (ev: MouseEvent) => {
+    /** Forget the drag without changing the route (Escape, focus loss, a release we never saw). */
+    const cancelDrag = () => {
+      if (!drag.current) return;
+      endDrag();
+      setDraft(null);
+    };
+    cancelDragRef.current = cancelDrag;
+
+    const endDrag = () => {
       const d = drag.current;
       drag.current = null;
+      window.removeEventListener('mouseup', onUp, { capture: true });
+      window.removeEventListener('blur', cancelDrag);
+      m.getContainer().classList.remove('is-dragging');
       m.getCanvas().style.cursor = '';
       showSnap(m, null);
       setHover(null);
+      return d;
+    };
+
+    const onUp = async (ev: MouseEvent) => {
+      if (ev.button !== 0) return;
+      const d = endDrag();
       if (!d) return;
       suppressClick.current = true;
       setTimeout(() => { suppressClick.current = false; }, 0);
@@ -653,6 +726,11 @@ export function RouteMap(props: RouteMapProps) {
       if (L.mode === 'idle') {
         const i = hitPoint(e.point);
         setSelected(i === null ? null : L.route[i].uid);
+        // a click on open map shows the airspace there (a second click closes it)
+        const air = i === null && !L.airPop && L.prefs.chart ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
+        setAirPop(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
+        setAirTip(null);
+        highlightAirspace(air[0] ?? null);
         return;
       }
       const shift = e.originalEvent.shiftKey || L.mode === 'custom';
@@ -688,7 +766,7 @@ export function RouteMap(props: RouteMapProps) {
       }
     };
 
-    const onOut = () => { if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
+    const onOut = () => { setAirTip(null); if (!live.current.airPop) highlightAirspace(null); if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
 
     m.on('mousemove', onMove);
     m.on('mousedown', onDown);
@@ -703,7 +781,8 @@ export function RouteMap(props: RouteMapProps) {
       m.off('dblclick', onDbl);
       m.off('contextmenu', onContext);
       m.off('mouseout', onOut);
-      window.removeEventListener('mouseup', onUp);
+      cancelDrag();
+      cancelDragRef.current = null;
       if (raf) cancelAnimationFrame(raf);
     };
   }, [loaded, snapAt, placeCustom, stopDrawing, askName]);
@@ -711,12 +790,17 @@ export function RouteMap(props: RouteMapProps) {
   // ---------------------------------------------------------------------------------- keyboard
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Escape closes the layers popover even while one of its checkboxes has the focus.
+      if (e.key === 'Escape' && live.current.layersOpen && !drag.current) { e.preventDefault(); setLayersOpen(false); return; }
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const L = live.current;
       if (e.key === 'Escape') {
-        if (L.menu) setMenu(null);
+        if (drag.current) cancelDragRef.current?.();
+        else if (L.airPop) setAirPop(null);
+        else if (L.layersOpen) setLayersOpen(false);
+        else if (L.menu) setMenu(null);
         else if (L.mode !== 'idle') stopDrawing();
         else if (L.selected) setSelected(null);
         else return;
@@ -743,6 +827,17 @@ export function RouteMap(props: RouteMapProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [stopDrawing]);
+
+  // The layers popover closes on any press outside it (the map included).
+  const layersEl = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!layersOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (layersEl.current && !layersEl.current.contains(e.target as Node)) setLayersOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [layersOpen]);
 
   // ------------------------------------------------------------------------------- menu actions
   const menuPoint = menu ? route.find((p) => p.uid === menu.uid) ?? null : null;
@@ -816,7 +911,7 @@ export function RouteMap(props: RouteMapProps) {
       )}
 
       {!failed && (
-        <div className="pgf-map-layers">
+        <div className="pgf-map-layers" ref={layersEl}>
           <button type="button" className={'pgf-map-btn' + (layersOpen ? ' is-active' : '')} onClick={() => setLayersOpen((v) => !v)} title="Map layers" aria-expanded={layersOpen} data-testid="map-layers">
             <IconLayers />
           </button>
@@ -830,8 +925,9 @@ export function RouteMap(props: RouteMapProps) {
               </div>
               <label className="pgf-check"><input type="checkbox" checked={prefs.chart} onChange={(e) => setPrefs({ ...prefs, chart: e.target.checked })} /> Chart layers <span className="muted">AIRAC {refData.airac.id}</span></label>
               <label className="pgf-check"><input type="checkbox" checked={prefs.ofm} onChange={(e) => setPrefs({ ...prefs, ofm: e.target.checked })} /> openflightmaps overlay</label>
+              <label className="pgf-check"><input type="checkbox" checked={prefs.tips} onChange={(e) => setPrefs({ ...prefs, tips: e.target.checked })} data-testid="map-tips" /> Editing tips</label>
               <div className="pgf-legend">
-                <span><i className="lg-tma" /> TMA</span><span><i className="lg-mtma" /> MTMA</span><span><i className="lg-zone" /> ATZ</span>
+                <span><i className="lg-tma" /> TMA</span><span><i className="lg-mtma" /> MTMA</span><span><i className="lg-zone" /> CTR</span><span><i className="lg-atz" /> ATZ</span><span><i className="lg-zone-g" /> Class G zone</span>
                 <span><i className="lg-vfr" /> VFR route</span><span><i className="lg-route" /> Your route</span>
               </div>
             </div>
@@ -839,7 +935,12 @@ export function RouteMap(props: RouteMapProps) {
         </div>
       )}
 
-      {hint && !failed && <div className="pgf-map-hint" data-testid="map-hint">{hint}</div>}
+      {hint && prefs.tips && !failed && (
+        <div className="pgf-map-hint" data-testid="map-hint">
+          <span>{hint}</span>
+          <button type="button" className="pgf-map-hint-x" onClick={() => setPrefs({ ...prefs, tips: false })} title="Hide tips (turn them back on under Map layers)" aria-label="Hide tips" data-testid="map-hint-close">×</button>
+        </div>
+      )}
 
       {hover && (hover.name || hover.detail || hover.leg) && !prompt && (
         <div className="pgf-snap-tip" style={{ left: hover.x + 16, top: hover.y + 14 }} data-testid="snap-tip">
@@ -847,6 +948,14 @@ export function RouteMap(props: RouteMapProps) {
           {hover.detail && <span className="pgf-snap-detail">{hover.detail}</span>}
           {hover.leg && <span className="pgf-snap-leg">{hover.leg}</span>}
         </div>
+      )}
+
+      {airTip && !airPop && !hover && mode === 'idle' && <AirspaceTip x={airTip.x} y={airTip.y} items={airTip.items} />}
+      {airPop && (
+        <AirspacePopover
+          x={airPop.x} y={airPop.y} items={airPop.items} legs={legs} altitudes={altitudes} airac={refData.airac.id}
+          onClose={() => setAirPop(null)}
+        />
       )}
 
       {prompt && <NameBox prompt={prompt} />}

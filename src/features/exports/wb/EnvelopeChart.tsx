@@ -3,6 +3,7 @@
 // at the end of a dashed continuation (where the aircraft would be with all fuel burnt).
 import type { WbPoint } from '../../../calc';
 import { chartDomain, fmtKg, type ChartEnvelope } from './model';
+import { layoutChartLabels, type Box, type Segment } from './chartLayout';
 
 export interface ChartPoint {
   key: 'takeoff' | 'landing' | 'zerofuel';
@@ -15,32 +16,63 @@ const W = 1000;
 const H = 560;
 const M = { l: 78, r: 18, t: 18, b: 62 };
 
-export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[]; points: ChartPoint[] }) {
+/** Chart geometry: scales, the points by key and the label layout (exported for the tests). */
+export function envelopeChartGeometry(envelopes: ChartEnvelope[], points: ChartPoint[]) {
   const valid = points.filter((p) => p.point.massKg > 0 && isFinite(p.point.momentKgM));
   const d = chartDomain(envelopes, valid.map((p) => p.point));
   const sx = (x: number) => M.l + ((x - d.x0) / (d.x1 - d.x0)) * (W - M.l - M.r);
   const sy = (y: number) => H - M.b - ((y - d.y0) / (d.y1 - d.y0)) * (H - M.t - M.b);
-  const path = (pts: [number, number][]) => (pts.length ? `M${pts.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join('L')}Z` : '');
   const byKey = new Map(valid.map((p) => [p.key, p]));
   const to = byKey.get('takeoff');
   const ldg = byKey.get('landing');
   const zf = byKey.get('zerofuel');
 
+  // Captions and value labels placed clear of each other, the markers and the fuel-burn line.
+  const px = (pts: [number, number][]): [number, number][] => pts.map(([x, y]) => [sx(x), sy(y)]);
+  const burn: Segment[] = [];
+  if (to && ldg) burn.push([sx(to.point.momentKgM), sy(to.point.massKg), sx(ldg.point.momentKgM), sy(ldg.point.massKg)]);
+  if (ldg && zf) burn.push([sx(ldg.point.momentKgM), sy(ldg.point.massKg), sx(zf.point.momentKgM), sy(zf.point.massKg)]);
+  const bounds: Box = { x0: M.l + 2, y0: M.t + 2, x1: W - M.r - 2, y1: H - M.b - 2 };
+  const pointInputs = valid.map((p) => ({
+    key: p.key,
+    x: sx(p.point.momentKgM),
+    y: sy(p.point.massKg),
+    r: MARK_R[p.key],
+    lines: [`${p.label} ${fmtKg(p.point.massKg)} kg`, `${p.point.momentKgM.toFixed(1)} kg·m`],
+    fontPx: p.key === 'zerofuel' ? 14 : 16,
+  }));
+  const layout = layoutChartLabels({
+    bounds,
+    envelopes: envelopes.filter((e) => e.outline.length >= 3).map((e, i) => {
+      const ys = e.outline.map(([, y]) => sy(y));
+      const top = Math.min(...ys), bottom = Math.max(...ys);
+      return {
+        key: e.category,
+        text: e.label.toUpperCase(),
+        fontPx: i === 0 ? 17 : 15,
+        letterSpacingEm: 0.08,
+        outline: px(e.outline),
+        preferY: i === 0 ? top + 14 : (top + bottom) / 2,
+      };
+    }),
+    points: pointInputs,
+    burn,
+  });
+  return { d, sx, sy, valid, to, ldg, zf, burn, bounds, markers: pointInputs, layout };
+}
+
+const MARK_R = { takeoff: 8, landing: 7, zerofuel: 6 } as const;
+
+export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[]; points: ChartPoint[] }) {
+  const { d, sx, sy, valid, to, ldg, zf, layout } = envelopeChartGeometry(envelopes, points);
+  const path = (pts: [number, number][]) => (pts.length ? `M${pts.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join('L')}Z` : '');
+
   const minor: number[] = [];
   for (let x = d.x0 + 50; x < d.x1; x += 100) minor.push(x);
   const minorY: number[] = [];
   for (let y = d.y0 + 25; y < d.y1; y += 50) minorY.push(y);
-
-  const labelPos = (e: ChartEnvelope, i: number): [number, number] => {
-    if (i === 0) {
-      const top = e.outline.filter(([, m]) => m >= e.maxKg - 1);
-      const xs = (top.length ? top : e.outline).map(([x]) => x);
-      return [(Math.min(...xs) + Math.max(...xs)) / 2, e.maxKg - (d.y1 - d.y0) * 0.06];
-    }
-    const xs = e.outline.map(([x]) => x);
-    const ys = e.outline.map(([, y]) => y);
-    return [(Math.min(...xs) + Math.max(...xs)) / 2 - (Math.max(...xs) - Math.min(...xs)) * 0.12, (Math.min(...ys) + Math.max(...ys)) / 2];
-  };
+  const envLabel = new Map(layout.envelopes.map((l) => [l.key, l]));
+  const ptLabel = new Map(layout.points.map((l) => [l.key, l]));
 
   return (
     <svg className="wb-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Centre of gravity moment envelope with the take-off and landing points">
@@ -72,10 +104,10 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[
           </g>
         ))}
       </g>
-      {envelopes.map((e, i) => {
-        if (!e.outline.length) return null;
-        const [x, y] = labelPos(e, i);
-        return <text key={`l${e.category}`} x={sx(x)} y={sy(y)} className={`wb-env-label wb-env-label-${e.category}`} textAnchor="middle">{e.label.toUpperCase()}</text>;
+      {envelopes.map((e) => {
+        const l = envLabel.get(e.category);
+        if (!l) return null;
+        return <text key={`l${e.category}`} x={l.x} y={l.y} className={`wb-env-label wb-env-label-${e.category}`} textAnchor={l.anchor}>{e.label.toUpperCase()}</text>;
       })}
 
       {/* fuel burn: take-off → landing, then on to zero fuel (dashed) */}
@@ -94,13 +126,17 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[
           : p.key === 'landing'
             ? <rect x={x - 7} y={y - 7} width={14} height={14} />
             : <circle cx={x} cy={y} r={6} className="hollow" />;
-        const right = x < W - 260;
+        const l = ptLabel.get(p.key);
         return (
           <g key={p.key} className={cls}>
+            {l?.leader && <line className="wb-pt-leader" x1={l.leader[0]} y1={l.leader[1]} x2={l.leader[2]} y2={l.leader[3]} />}
             {marker}
-            <text x={right ? x + 14 : x - 14} y={y + (p.key === 'landing' ? 22 : p.key === 'zerofuel' ? 20 : -10)} textAnchor={right ? 'start' : 'end'} className="wb-pt-label">
-              {p.label} {fmtKg(p.point.massKg)} kg · {p.point.momentKgM.toFixed(1)} kg·m
-            </text>
+            {l && (
+              <text x={l.x} y={l.y} textAnchor={l.anchor} className="wb-pt-label" data-label={p.key}>
+                <tspan x={l.x}>{p.label} {fmtKg(p.point.massKg)} kg</tspan>
+                <tspan x={l.x} dy={l.lineHeight} className="wb-pt-sub">{p.point.momentKgM.toFixed(1)} kg·m</tspan>
+              </text>
+            )}
           </g>
         );
       })}

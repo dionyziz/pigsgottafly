@@ -135,14 +135,15 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
   let windText = '';
   let windNote = '';
   if (ad) {
-    if (w && w.speedKt >= 0.5) {
+    if (w && w.dirTrueDeg != null && w.speedKt >= 0.5) {
       windText = `${pad3(w.dirTrueDeg - varE)}° / ${r0(w.speedKt)} kt`;
       windNote = `magnetic (${pad3(w.dirTrueDeg)}° true)`;
       const g = e.conditions?.wind?.gustKt;
       if (fin(g)) windNote += `, gusts ${r0(g)} kt`;
     } else if (e.conditions?.wind && e.conditions.wind.speedKt >= 0.5) {
       windText = `VRB / ${r0(e.conditions.wind.speedKt)} kt`;
-      windNote = 'variable: no components';
+      const g = e.conditions.wind.gustKt;
+      windNote = `variable: full crosswind, no headwind${fin(g) ? `, gusts ${r0(g)} kt` : ''}`;
     } else {
       windText = e.conditions?.wind ? 'Calm' : 'Not known';
       windNote = e.conditions?.wind ? '' : 'calm assumed';
@@ -152,7 +153,8 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
   add('rwy', 'RWY in use', rw ? rw.designator : '', rw ? [
     forcedRunway && forcedRunway === rw.designator ? 'set in the editor' : w && w.speedKt >= 0.5 ? 'most headwind' : 'calm: first listed',
     rw.surface ? rw.surface : '',
-    fin(rw.slopePct) ? `slope ${rw.slopePct > 0 ? '+' : rw.slopePct < 0 ? '−' : ''}${Math.abs(rw.slopePct).toFixed(1)} %` : 'slope unknown',
+    fin(rw.slopePct) ? `slope ${rw.slopePct > 0 ? '+' : rw.slopePct < 0 ? '−' : ''}${Math.abs(rw.slopePct).toFixed(1)} %`
+      : fin(rw.slopeUnsignedPct) && rw.slopeUnsignedPct > 0 ? `slope ±${rw.slopeUnsignedPct.toFixed(1)} % (direction not published: adverse assumed)` : 'slope unknown',
   ].filter(Boolean).join(' · ') : '');
   if (p) {
     const hw = p.wind.headwindKt;
@@ -160,7 +162,9 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
     else add('head', 'Headwind', `${Math.max(0, hw).toFixed(0)} kt`);
     const lim = takeoff ? aircraft?.performance.factors.maxCrosswindKt?.takeoff : aircraft?.performance.factors.maxCrosswindKt?.landing;
     add('cross', 'Crosswind', `${p.wind.crosswindKt.toFixed(0)} kt${p.wind.crossFrom && p.wind.crosswindKt >= 0.5 ? ` ${p.wind.crossFrom}` : ''}`,
-      [p.wind.crossFrom && p.wind.crosswindKt >= 0.5 ? `from the ${p.wind.crossFrom === 'L' ? 'left' : 'right'}` : '', fin(lim) ? `limit ${lim} kt` : ''].filter(Boolean).join(' · '), p.crosswindOk ? (fin(lim) ? 'ok' : null) : 'bad');
+      [p.variableWind ? 'variable wind: full speed' : p.wind.crossFrom && p.wind.crosswindKt >= 0.5 ? `from the ${p.wind.crossFrom === 'L' ? 'left' : 'right'}` : '',
+        p.crosswindGustKt != null ? `${p.crosswindGustKt.toFixed(0)} kt in gusts` : '',
+        fin(lim) ? `limit ${lim} kt` : ''].filter(Boolean).join(' · '), p.crosswindOk ? (fin(lim) ? 'ok' : null) : 'bad');
   } else {
     add('head', 'Headwind', '');
     add('cross', 'Crosswind', '');
@@ -187,6 +191,12 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
       const okT = fin(availT) ? d.requiredTotalM <= availT + 1e-9 : null;
       add('ldr', 'L.D.R.', `${ceilM(d.requiredTotalM)} m`, `${afm}${windF}${tempF}` + (fin(availT) ? ` · LDA ${r0(availT)} m` : ''), okT == null ? 'warn' : okT ? 'ok' : 'bad');
       add('lrr', 'L.R.R.', `${ceilM(d.requiredGroundM)} m`, 'landing roll');
+      const alt = p!.alternative;
+      if (alt) {
+        const name = (m: string | undefined) => (m === 'afm' ? 'AFM method (PA, +10 %/15 °C)' : 'club method (DA)');
+        add('ldr-alt', 'L.D.R. other method', `${ceilM(alt.requiredTotalM)} m`,
+          `${name(alt.method)}; the longer, by the ${d.method === 'afm' ? 'AFM' : 'club'} method, is used above`);
+      }
     }
     if (fin(p!.marginM)) add('margin', 'Margin', `${r0(p!.marginM as number)} m`, takeoff ? 'least of TODA − TODR, TORA − TORR' : 'LDA − LDR', (p!.marginM as number) < 0 ? 'bad' : 'ok');
   } else {
@@ -232,7 +242,7 @@ function block(e: EndpointPerf, aircraft: Aircraft | null, speeds: PerfSpeeds, f
   if (p && rw) {
     diagram = {
       runwayHdgMag: runwayHdgMag(rw), runway: rw.designator, reciprocal: rw.reciprocal,
-      windFromMag: w && w.speedKt >= 0.5 ? w.dirTrueDeg - varE : null, windKt: w ? w.speedKt : 0,
+      windFromMag: w && w.dirTrueDeg != null && w.speedKt >= 0.5 ? w.dirTrueDeg - varE : null, windKt: w ? w.speedKt : 0,
       headwindKt: p.wind.headwindKt, crosswindKt: p.wind.crosswindKt, crossFrom: p.wind.crossFrom,
     };
   }

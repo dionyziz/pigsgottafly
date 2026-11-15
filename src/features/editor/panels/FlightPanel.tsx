@@ -1,11 +1,13 @@
 // The editor's left panel: When, Aircraft, Manifest & loading, Fuel, Take-off & landing, ATC,
-// Exports. Numbers come from useFlightCalc() (src/calc); edits go through useEditor().update().
+// Flight plan (alternates, remarks), Exports. Numbers come from useFlightCalc() (src/calc); edits
+// go through useEditor().update().
 import { EXPORT_KINDS, EXPORT_LABEL, type ExportKind } from '../../../shared';
 import { flightStore } from '../../../data/flightStore';
 import { useEditor } from '../state';
 import { AircraftSection } from './AircraftSection';
 import { AtcSection } from './AtcSection';
 import { useFlightCalc } from './calc';
+import { FplSection } from './FplSection';
 import { FuelSection } from './FuelSection';
 import { ManifestSection } from './ManifestSection';
 import { PerformanceSection } from './PerformanceSection';
@@ -58,6 +60,7 @@ export function FlightPanel() {
       <FuelSection />
       <PerformanceSection />
       <AtcSection />
+      <FplSection />
       <ExportsSection />
     </div>
   );

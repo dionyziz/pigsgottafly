@@ -7,7 +7,11 @@
 //   -LGTT0800
 //   -N0092VFR DCT 3810N02350E DCT 3740N02410E
 //   -LGSR0130 LGAV
-//   -DOF/261116 REG/SXASV OPR/... RMK/...
+//   -DOF/261116 OPR/... RMK/...)
+// Item 19 (E/ P/ R/ S/ J/ D/ A/ N/ C/) is supplementary information that stays with the ARO and
+// is not part of the transmitted FPL message (Doc 4444 App. 3: items 3 7 8 9 10 13 15 16 18), so
+// the default message ends after item 18. options.includeItem19 appends it, for an ARO or web
+// form that asks for the whole form as text:
 //   -E/0400 P/002 R/VE S/M J/L A/WHITE BLUE N/... C/PILOT NAME)
 //
 // Conventions chosen here (documented so the pilot can check them):
@@ -29,7 +33,8 @@
 //   - Item 18 in the Doc 4444 order (STS PBN NAV COM DAT SUR DEP DEST DOF REG EET SEL TYP CODE
 //     DLE OPR ORGN PER ALTN RALT TALT RIF RMK); the hangar's item 18 extras are merged in. DOF/
 //     always (YYMMDD). RMK/ = the flight's remarks, the hangar's RMK/, the PIC phone, the point
-//     names. REG/ always (some AROs ask for it even when it equals item 7). EET/ only when
+//     names. REG/ only on request (options.regInItem18): App. 2 asks for it only when the
+//     registration differs from the item 7 identification, which here it never does. EET/ only when
 //     FIR boundary estimates are given (a flight inside LGGG has none). The PIC's phone number goes
 //     into RMK/ (item 18 always reaches ATC; item 19 normally stays with the ARO).
 //   - Item 19: E/ endurance from the fuel on board at the planning burn (HHMM), P/ persons on board
@@ -114,8 +119,10 @@ export interface FplInput {
 }
 
 export interface FplOptions {
-  /** Append item 19 to the message (default true). */
+  /** Append item 19 to the message (default false: item 19 is not transmitted in FPL messages). */
   includeItem19?: boolean;
+  /** Write REG/ in item 18 even though it equals the item 7 identification (default false). */
+  regInItem18?: boolean;
   /** List the route point names in RMK/ (default true). */
   pointNamesInRemarks?: boolean;
   /** Put the PIC phone in RMK/ (default) or in item 19 N/. */
@@ -376,7 +383,7 @@ export function wrapLine(s: string, width = AFTN_LINE): string[] {
 
 export function buildFpl(input: FplInput): FplResult {
   const warnings: string[] = [];
-  const opts = { includeItem19: true, pointNamesInRemarks: true, phoneIn: 'rmk' as const, ...(input.options || {}) };
+  const opts = { includeItem19: false, regInItem18: false, pointNamesInRemarks: true, phoneIn: 'rmk' as const, ...(input.options || {}) };
 
   // item 7
   let item7 = aircraftId(input.registration);
@@ -436,7 +443,8 @@ export function buildFpl(input: FplInput): FplResult {
   const dof = dofField(input.date);
   if (dof) add('DOF', dof);
   else warnings.push('Flight date not set (item 18 DOF/).');
-  if (item7 !== MISSING) add('REG', item7);
+  // Item 7 is always the registration here, so REG/ would only repeat it (App. 2: 'if different').
+  if (item7 !== MISSING && opts.regInItem18) add('REG', item7);
   if (input.firEets && input.firEets.length) {
     add('EET', input.firEets.map((e) => `${transliterate(e.point).replace(/[^A-Z0-9]/g, '')}${hhmm(e.elapsedMin)}`).join(' '));
   }

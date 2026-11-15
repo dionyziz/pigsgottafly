@@ -7,9 +7,14 @@ import { aerodrome } from '../../../data/ref';
 import { useEditor } from '../state';
 import { RouteMap, type LegAltitude } from './RouteMap';
 import { pruneOverrides, setAltitudeOverride } from './routeEdit';
+import { mapHazards } from './hazardLayer';
+import { useFlightCalc } from '../panels/calc';
 
 export function MapView() {
   const { doc, update, undo, redo, canUndo, canRedo, waypoints, ref, legs, altitudeDefaults, altitudesFt, pilot, reloadLists } = useEditor();
+
+  const { hazards } = useFlightCalc();
+  const hazardMarks = useMemo(() => mapHazards(hazards, legs), [hazards, legs]);
 
   const altitudes = useMemo(() => {
     const out: Record<string, LegAltitude> = {};
@@ -63,6 +68,7 @@ export function MapView() {
       onRedo={redo}
       canUndo={canUndo}
       canRedo={canRedo}
+      hazards={hazardMarks}
     />
   );
 }

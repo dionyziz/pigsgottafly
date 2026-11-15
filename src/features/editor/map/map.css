@@ -42,6 +42,8 @@
 .pgf-legend .lg-tma { border-color: #2f64c0; }
 .pgf-legend .lg-mtma { border-color: #8a3b9c; border-top-style: dashed; }
 .pgf-legend .lg-zone { border-color: #b4235a; border-top-style: dashed; }
+.pgf-legend .lg-atz { border-color: #b4235a; border-top-style: dotted; }
+.pgf-legend .lg-zone-g { border-color: #4f7d86; border-top-style: dotted; }
 .pgf-legend .lg-vfr { border-color: #1e6b46; }
 .pgf-legend .lg-route { border-color: #c2185b; border-top-width: 3px; }
 
@@ -51,7 +53,14 @@
   max-width: min(760px, calc(100% - 140px)); padding: 6px 12px; border-radius: 999px;
   background: rgba(22, 25, 29, 0.78); color: #fff; font-size: var(--fs-xs); line-height: 1.4;
   pointer-events: none; text-align: center; backdrop-filter: blur(4px);
+  display: flex; align-items: center; gap: 8px;
 }
+.pgf-map-hint-x {
+  pointer-events: auto; flex: none; width: 18px; height: 18px; padding: 0; margin-right: -6px;
+  border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff;
+  font: 600 13px/18px var(--font); cursor: pointer;
+}
+.pgf-map-hint-x:hover { background: rgba(255, 255, 255, 0.32); }
 
 /* snap / rubber-band tooltip */
 .pgf-snap-tip {
@@ -61,6 +70,58 @@
 }
 .pgf-snap-tip b { color: #c2185b; font-size: var(--fs-sm); letter-spacing: 0.02em; }
 .pgf-snap-leg { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* airspace hover tooltip and click popover */
+.pgf-air-tip {
+  position: absolute; z-index: 4; pointer-events: none; display: flex; flex-direction: column; gap: 3px;
+  max-width: 380px; padding: 6px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: var(--shadow); font-size: var(--fs-xs); color: var(--ink-2);
+}
+.pgf-air-tip-row { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.pgf-air-tip-name { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.pgf-air-tip-lim, .pgf-air-lim { margin-left: auto; padding-left: 8px; font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+.pgf-air-tip-lim i, .pgf-air-lim i {
+  font-style: normal; font-weight: 700; margin-right: 6px; padding: 0 4px; border-radius: 3px;
+  background: var(--hover); color: var(--ink);
+}
+.pgf-air-tip-more { color: var(--muted); font-size: 11px; }
+.pgf-air-type {
+  flex: none; min-width: 34px; padding: 1px 4px; border-radius: 3px; text-align: center;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: #fff; background: #b4235a;
+}
+.pgf-air-type.t-tma { background: #2f64c0; }
+.pgf-air-type.t-mtma { background: #8a3b9c; }
+.pgf-air-type.t-atz { background: #fff; color: #b4235a; box-shadow: inset 0 0 0 1px #b4235a; }
+.pgf-air-pop {
+  position: absolute; z-index: 5; width: 380px; max-width: calc(100% - 16px); max-height: min(70vh, calc(100% - 16px)); overflow: auto;
+  padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg);
+  font-size: var(--fs-sm); color: var(--ink);
+}
+.pgf-air-x {
+  position: sticky; top: 0; float: right; z-index: 1; width: 24px; height: 24px; border: 0; border-radius: 5px;
+  background: var(--surface); color: var(--muted); font: 600 16px/24px var(--font); cursor: pointer;
+}
+.pgf-air-x:hover { background: var(--hover); color: var(--ink); }
+.pgf-air-sec + .pgf-air-sec { border-top: 1px solid var(--line); }
+.pgf-air-h {
+  display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 7px 6px; border: 0; border-radius: 5px;
+  background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.pgf-air-h:hover { background: var(--hover); }
+.pgf-air-x + .pgf-air-sec .pgf-air-h { width: calc(100% - 28px); }
+.pgf-air-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgf-air-body { display: grid; grid-template-columns: 74px 1fr; gap: 5px 10px; margin: 2px 6px 10px; font-size: var(--fs-xs); }
+.pgf-air-body dt { color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10.5px; padding-top: 1px; }
+.pgf-air-body dd { margin: 0; color: var(--ink); line-height: 1.45; }
+.pgf-air-body .muted { color: var(--muted); }
+.pgf-air-text { color: var(--ink-2) !important; }
+.pgf-air-units, .pgf-air-legs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.pgf-air-cs { font-weight: 600; }
+.pgf-air-fq { margin-left: 6px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.pgf-air-alt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pgf-air-legs .v-inside .pgf-air-what { color: #b4235a; font-weight: 600; }
+.pgf-air-legs .v-above .pgf-air-what, .pgf-air-legs .v-below .pgf-air-what { color: var(--ink-2); }
+.pgf-air-legs .v-unknown .pgf-air-what { color: var(--warn); }
 
 /* leg labels (MapLibre markers) */
 .pgf-leg { pointer-events: none; }
@@ -86,11 +147,17 @@
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .pgf-leg-input.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger-soft); }
-.pgf-leg[data-mode='compact'] .pgf-leg-mc,
-.pgf-leg[data-mode='compact'] .pgf-leg-dist { display: none; }
-.pgf-leg[data-mode='compact'] .pgf-leg-alt { border-left: 0; border-radius: 3px; }
+/* compact: course and distance on top, altitude below, smaller type (never only the altitude) */
+.pgf-leg[data-mode='compact'] .pgf-leg-inner { display: grid; grid-template-columns: auto auto; font-size: 10px; }
+.pgf-leg[data-mode='compact'] .pgf-leg-inner > * { padding: 3px 4px; text-align: center; }
+.pgf-leg[data-mode='compact'] .pgf-leg-alt {
+  grid-column: 1 / -1; border-left: 0; border-top: 1px solid rgba(194, 24, 91, 0.25); border-radius: 0 0 3px 3px; font-size: 10px;
+}
+.pgf-leg[data-mode='compact'] .pgf-leg-input { grid-column: 1 / -1; justify-self: center; margin: 2px; }
 .pgf-leg[data-mode='hidden'] { visibility: hidden; }
 .pgf-leg[data-drawing='1'] .pgf-leg-alt { pointer-events: none; }
+/* while a point is dragged nothing on top of the map may take the pointer (the release must reach the map) */
+.pgf-map-canvas.is-dragging .pgf-leg-alt { pointer-events: none; }
 .pgf-leg.is-editing { z-index: 5; }
 
 /* name prompt and point menu */

@@ -26,7 +26,8 @@
     "envelopes": {
       "_comment": "Polygons of [cg arm m, mass kg]. Forward limit is linear between the two points given in the AFM; the lower edge (600 kg) is the bottom of the AFM chart.",
       "normal":  { "maxKg": 1043, "polygon": [[0.89, 600], [0.89, 885], [0.98, 1043], [1.20, 1043], [1.20, 600]] },
-      "utility": { "maxKg": 910,  "polygon": [[0.89, 600], [0.89, 885], [0.90, 910], [1.03, 910], [1.03, 600]] }
+      "utility": { "maxKg": 907,  "polygon": [[0.89, 600], [0.89, 885], [0.90, 907], [1.03, 907], [1.03, 600]],
+                   "_note": "AFM utility category: 2000 lb = 907 kg; forward limit 35.5 in = 0.90 m at 2000 lb (on the normal-category forward line), aft limit 40.5 in = 1.03 m." }
     }
   },
   "takeoff": {

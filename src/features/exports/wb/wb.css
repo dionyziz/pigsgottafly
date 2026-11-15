@@ -57,6 +57,9 @@
 .wb-pt.bad circle, .wb-pt.bad rect { fill: #b4231a; }
 .wb-pt-label { font-size: 16px; font-weight: 700; fill: #10265c; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
 .wb-pt-zerofuel .wb-pt-label { font-weight: 400; font-size: 14px; }
+.wb-pt-label .wb-pt-sub { font-weight: 400; }
+.wb-pt-leader { stroke: #10265c; stroke-width: 1; opacity: 0.6; }
+.wb-pt.bad .wb-pt-leader { stroke: #b4231a; }
 .wb-pt.bad .wb-pt-label { fill: #b4231a; }
 .wb-axis text { font-size: 15px; fill: #222; }
 .wb-axis .wb-axis-title { font-size: 14px; font-weight: 700; letter-spacing: 0.05em; }

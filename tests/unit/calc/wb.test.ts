@@ -46,7 +46,7 @@ describe('loading sheet', () => {
     expect(r.normal.takeoff).toMatchObject({ inEnvelope: true, massOk: true, inCgPolygon: true, inMomentPolygon: true });
     expect(r.normal.landing.inEnvelope).toBe(true);
     expect(r.utility).not.toBeNull();
-    expect(r.utility!.takeoff.massOk).toBe(false); // 923.2 > 910
+    expect(r.utility!.takeoff.massOk).toBe(false); // 923.2 > 907
     expect(r.warnings).toEqual([]);
   });
 

@@ -64,15 +64,28 @@ export async function createSession(q: Queryable, pilotId: string): Promise<stri
   return tok;
 }
 
-/** The pilot row of a valid session, or null. */
-export async function sessionPilotRow(q: Queryable, req: Req): Promise<Record<string, any> | null> {
+/**
+ * The pilot row of a valid session, or null. With an allow-list, a pilot whose email is no longer on
+ * it is signed out everywhere (all their sessions are deleted), not just refused at the next login.
+ */
+export async function sessionPilotRow(q: Queryable, req: Req, allowedEmails: string[] = []): Promise<Record<string, any> | null> {
   const t = tokenFrom(req);
   if (!t) return null;
   const [row] = await q.query(
     `SELECT p.* FROM sessions s JOIN pilots p ON p.id = s.pilot_id WHERE s.token_hash = $1 AND s.created > $2`,
     [hashToken(t), Date.now() - SESSION_MS],
   );
-  return row || null;
+  if (!row) return null;
+  if (!emailAllowed(row.email, allowedEmails)) {
+    await q.query('DELETE FROM sessions WHERE pilot_id = $1', [row.id]);
+    return null;
+  }
+  return row;
+}
+
+/** True when the allow-list is empty (anyone) or contains the email (case-insensitive). */
+export function emailAllowed(email: unknown, allowedEmails: string[]): boolean {
+  return !allowedEmails.length || allowedEmails.includes(String(email || '').trim().toLowerCase());
 }
 
 /** Local mode: the single 'local' pilot, created on first use (empty profile, empty hangar). */

@@ -62,7 +62,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
       </div>
       {p && (
         <div className="ep-kvs">
-          <KV k="Components" v={<span className="mono">{p.wind.headwindKt >= 0 ? 'H' : 'T'} {Math.abs(p.wind.headwindKt).toFixed(0)} · X {p.wind.crosswindKt.toFixed(0)}{p.wind.crossFrom} kt</span>}
+          <KV k="Components" v={<span className="mono">{p.wind.headwindKt >= 0 ? 'H' : 'T'} {Math.abs(p.wind.headwindKt).toFixed(0)} · X {p.wind.crosswindKt.toFixed(0)}{p.wind.crossFrom}{p.crosswindGustKt != null ? ` G${p.crosswindGustKt.toFixed(0)}` : ''} kt</span>}
+            sub={p.variableWind ? 'variable: full crosswind' : undefined}
             tone={!p.crosswindOk || p.tailwind ? 'danger' : undefined} />
           <KV k="PA / DA" v={<span className="mono">{Math.round(p.pressureAltFt)} / {Math.round(p.densityAltFt)} ft</span>} sub={`ISA ${p.isaDevC >= 0 ? '+' : ''}${p.isaDevC.toFixed(0)}°C`} />
           {e.massKg != null && <KV k="Mass" v={<span className="mono">{e.massKg.toFixed(0)} kg</span>} sub={e.massSource === 'mtow' ? 'MTOW (no W&B)' : undefined} />}
@@ -75,7 +76,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
             </>
           ) : (
             <KV k="LDR / LDA" tone={p.availableTotalM != null && p.distances.requiredTotalM > p.availableTotalM ? 'danger' : undefined}
-              v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>} />
+              v={<span className="mono">{m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}</span>}
+              sub={p.alternative ? <span data-testid="ldr-methods">{p.distances.method === 'afm' ? 'AFM' : 'club'} method; {p.alternative.method === 'afm' ? 'AFM' : 'club'} {m(p.alternative.requiredTotalM)}</span> : undefined} />
           ))}
         </div>
       )}

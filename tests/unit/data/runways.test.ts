@@ -99,7 +99,7 @@ describe('runway data: every direction', () => {
   test('slopes: plausible, opposite in the two directions, and the AIP sign agrees with the threshold elevations', () => {
     for (const r of RW) {
       const o = opposite(r), n = name(r);
-      if (r.slopePct === null) { expect(r.slopeSource, n).toBeNull(); continue; }
+      if (r.slopePct === null) { expect([null, 'aip-unsigned'], n).toContain(r.slopeSource); continue; }
       expect(Math.abs(r.slopePct), n).toBeLessThan(2.5);
       if (o.slopePct !== null && r.slopeSource !== 'aip') expect(r.slopePct + o.slopePct, n).toBeCloseTo(0, 6);
       if (r.slopeSource === 'aip' && r.slopePct !== 0 && r.thresholdElevSource === 'aip' && o.thresholdElevSource === 'aip') {
@@ -155,6 +155,24 @@ describe('runway data: values read off the AIP PDFs', () => {
   test('LGKZ Kozani (AD 2 LGKZ-4)', () => {
     expect(rw('LGKZ', '14')).toMatchObject({ headingTrueDeg: 143, lengthM: 1822, widthM: 30, toraM: 1822, ldaM: 1641, thresholdElevFt: 2049.58 });
     expect(rw('LGKZ', '32')).toMatchObject({ headingTrueDeg: 323, ldaM: 1822, thresholdElevFt: 1967.83 });
+  });
+
+  test('slopes printed without a usable direction are kept unsigned (adverse both ways), never dropped', () => {
+    for (const r of RUNWAYS as any[]) {
+      const n = `${r.aerodromeId} ${r.designator}`;
+      const printed = typeof r.slopeText === 'string' && /^[+\-–]?\s*\d+(?:[.,]\d+)?\s*%$/.test(r.slopeText.trim()) && parseFloat(r.slopeText.replace(/[^\d.]/g, '')) > 0;
+      if (printed) expect(r.slopePct !== null || r.slopeUnsignedPct > 0, n).toBe(true);
+      if (r.slopeUnsignedPct != null) {
+        expect(r.slopePct, n).toBeNull();
+        expect(r.slopeSource, n).toBe('aip-unsigned');
+      }
+    }
+    expect(rw('LGKN', '03')).toMatchObject({ slopePct: null, slopeUnsignedPct: 1, slopeSource: 'aip-unsigned' });
+    expect(rw('LGKN', '21')).toMatchObject({ slopePct: null, slopeUnsignedPct: 1 });
+    expect(rw('KALAMATA-TRIODHON', '15')).toMatchObject({ slopeUnsignedPct: 1 });
+    expect(rw('AGRINION-AEROCLUB', '32')).toMatchObject({ slopeUnsignedPct: 0.5 });
+    expect(rw('EDESSA-ARNISSA', '08')).toMatchObject({ slopeUnsignedPct: 0.27 });
+    expect(rw('LGMG', '26L')).toMatchObject({ slopeUnsignedPct: 0.16 });
   });
 
   test('LGMG Megara (AD 1.6.18): distances published, bearing/thresholds not, slope sign ambiguous', () => {

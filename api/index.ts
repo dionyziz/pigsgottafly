@@ -1,5 +1,7 @@
 // Vercel function: every /api/… request is rewritten here (vercel.json: /api/:path* → /api?__path=:path*).
-// Environment: DATABASE_URL (Neon Postgres), GOOGLE_CLIENT_ID (required), optional ALLOWED_EMAILS.
+// Environment: DATABASE_URL (Neon Postgres), GOOGLE_CLIENT_ID (required), optional ALLOWED_EMAILS
+// (checked at sign-in and on every request), optional AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD (NOTAM
+// briefing) and AUTOROUTER_FILING=1 (flight-plan filing, once autorouter grants API access).
 // Pending migrations run on cold start, before the first request is served.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { openDb } from './_lib/db.js';

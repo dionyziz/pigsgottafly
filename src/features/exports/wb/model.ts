@@ -136,6 +136,41 @@ export function chartEnvelope(env: Envelope, label: string): ChartEnvelope {
 
 const ROLE_ORDER = { PIC: 0, PAX: 1 } as const;
 
+/**
+ * A source reference as printed: file names and paths (e.g. '(trn-docs/SXASV_WB_FORM_2024.pdf)',
+ * a private folder) are dropped, the document's description stays.
+ */
+export function printableSource(src: string): string {
+  return (src || '')
+    .replace(/\s*\([^()]*(?:\/|\.(?:pdf|png|jpe?g|docx?|xlsx?|txt))[^()]*\)/gi, '')
+    .replace(/\s*[^\s()]+\.(?:pdf|png|jpe?g|docx?|xlsx?|txt)\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
+ * An envelope's note as printed in the limits line. Clauses that give a seat arm ('front seats
+ * set forward to 0.90 m (club W&B calculator)') are dropped: the sheet computes every seat at its
+ * station arm, which the loading table shows, so a different arm in the notes would contradict it.
+ */
+export function envelopeNote(note: string): string {
+  const clauses = note.replace(/^\s*utility:\s*/i, '').replace(/\.\s*$/, '').split(/\s*;\s*/).filter(Boolean);
+  const kept = clauses.filter((c) => !/\b\d+(?:\.\d+)?\s*m\b/.test(c));
+  if (kept.length < clauses.length) kept.push('seats at the station arms in the table');
+  return kept.join('; ');
+}
+
+/**
+ * When the moment envelope (the club's 'torque' limits) tops out below the category's maximum
+ * mass, a loading between the two is reported outside: say so, the chart shows both outlines.
+ */
+export function momentTopNote(env: Envelope | null, label: string): string {
+  if (!env || !env.momentPolygon || env.momentPolygon.length < 3) return '';
+  const top = Math.max(...env.momentPolygon.map(([, m]) => m));
+  if (!(top < env.maxKg - 0.5)) return '';
+  return `${label} moment envelope (solid outline) tops out at ${trimNum(top)} kg, below the ${trimNum(env.maxKg)} kg maximum of the CG limits (dotted): a loading between ${trimNum(top)} and ${trimNum(env.maxKg)} kg is reported outside`;
+}
+
 export interface WbSheetInput {
   doc: FlightDoc;
   aircraft: Aircraft | null;
@@ -273,8 +308,15 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   const limits: string[] = [];
   if (mb.mtowKg > 0) limits.push(`MTOW ${trimNum(mb.mtowKg)} kg`);
   if (mb.mlwKg != null) limits.push(`MLW ${trimNum(mb.mlwKg)} kg`);
-  if (mb.envelopes.utility) limits.push(`Utility max ${trimNum(mb.envelopes.utility.maxKg)} kg${mb.envelopes.utility.notes ? ` (${mb.envelopes.utility.notes.replace(/^Utility:\s*/i, '')})` : ''}`);
+  if (mb.envelopes.utility) {
+    const note = envelopeNote(mb.envelopes.utility.notes ?? '');
+    limits.push(`Utility max ${trimNum(mb.envelopes.utility.maxKg)} kg${note ? ` (${note})` : ''}`);
+  }
   for (const lim of mb.combinedLimits) limits.push(`${lim.stations.map((id) => mb.stations.find((s) => s.id === id)?.name ?? id).join(' + ')} ≤ ${trimNum(lim.maxKg)} kg`);
+  for (const [env, label] of [[mb.envelopes.normal, 'Normal'], [mb.envelopes.utility, 'Utility']] as const) {
+    const t = momentTopNote(env, label);
+    if (t) limits.push(t);
+  }
 
   const envelopes: ChartEnvelope[] = [chartEnvelope(mb.envelopes.normal, 'Normal category')];
   if (mb.envelopes.utility) envelopes.push(chartEnvelope(mb.envelopes.utility, 'Utility category'));
@@ -288,7 +330,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     category,
     categoryLabel,
     datum: mb.datum,
-    weighing: mb.weighingSource,
+    weighing: printableSource(mb.weighingSource),
     fuelLabel,
     lines,
     takeoff,

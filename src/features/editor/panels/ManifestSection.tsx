@@ -8,6 +8,7 @@ import { PassengerDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
+import { addPicToCrew } from './manifest';
 import { Chip, Icon, KV, NumberInput, Section } from './ui';
 
 export function personOf(p: Pilot | Passenger): PersonDetails {
@@ -82,12 +83,17 @@ export function ManifestSection() {
     const src = c.role === 'PIC' ? pilot : passengers.find((p) => p.id === c.passengerId);
     if (src) setCrew(i, (x) => ({ ...x, snapshot: personOf(src) }));
   };
-  const addPic = () =>
-    update((d) => {
-      const taken = new Set(d.crew.map((c) => c.seat));
-      const seat = seats.find((s) => !taken.has(s.id))?.id ?? seats[0]?.id ?? 'front-left';
-      return { ...d, crew: [{ role: 'PIC', passengerId: null, seat, snapshot: personOf(pilot) }, ...d.crew] };
-    });
+  // The PIC goes back to front left; whoever sits there moves to a free seat.
+  const seatIds = seats.map((s) => s.id);
+  const picFits = addPicToCrew(doc.crew, seatIds, personOf(pilot)) !== null;
+  const [picNote, setPicNote] = useState<string | null>(null);
+  const addPic = () => {
+    const r = addPicToCrew(doc.crew, seatIds, personOf(pilot));
+    if (!r) return;
+    update((d) => ({ ...d, crew: addPicToCrew(d.crew, seatIds, personOf(pilot))?.crew ?? d.crew }));
+    setPicNote(r.moved ? `${r.moved.snapshot.fullName || 'The passenger'} moved to ${seatLabel(r.moved.seat).toLowerCase()} to free the PIC seat.` : null);
+    if (r.moved) setTimeout(() => setPicNote(null), 8000);
+  };
 
   const stations = aircraft?.massBalance.stations ?? [];
   const bags = stations.filter((s) => s.kind === 'baggage');
@@ -137,7 +143,14 @@ export function ManifestSection() {
           );
         })}
       </ul>
-      {!hasPic && <button type="button" onClick={addPic}><Icon name="plus" /> Add me as PIC</button>}
+      {!hasPic && (
+        <button type="button" onClick={addPic} disabled={!picFits} data-testid="add-pic"
+          title={picFits ? 'Seats you in front left' : 'Every seat is taken: remove a passenger first'}>
+          <Icon name="plus" /> Add me as PIC
+        </button>
+      )}
+      {!hasPic && !picFits && <p className="ep-note">Every seat is taken: remove a passenger to make room for the PIC.</p>}
+      {hasPic && picNote && <p className="ep-note" data-testid="pic-note">{picNote}</p>}
 
       <div className="ep-typeahead">
         <input

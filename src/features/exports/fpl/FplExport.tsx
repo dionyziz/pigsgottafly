@@ -36,7 +36,7 @@ async function copyText(text: string): Promise<boolean> {
 export function FplExport({ flight }: { flight: Flight }) {
   const pilot = usePilot();
   const data = useFplData(flight, pilot);
-  const [opts, setOpts] = useState<Required<FplOptions>>({ includeItem19: true, pointNamesInRemarks: true, phoneIn: 'rmk' });
+  const [opts, setOpts] = useState<Required<FplOptions>>({ includeItem19: false, regInItem18: false, pointNamesInRemarks: true, phoneIn: 'rmk' });
   const fpl = useMemo(
     () => buildFpl(fplInputFrom({ flight, aircraft: data.aircraft, pilot, navlog: data.navlog, fuel: data.fuel, options: opts })),
     [flight, data.aircraft, data.navlog, data.fuel, pilot, opts],
@@ -65,6 +65,11 @@ export function FplExport({ flight }: { flight: Flight }) {
               ICAO 2012 format (Doc 4444 App. 2), {fpl.lines.length} lines of at most 69 characters.
               {loading ? ' Computing EET…' : data.weather?.status === 'ok' && data.weather.message ? ` Winds: ${data.weather.message}.` : ''}
             </div>
+            <div className="fpl-panel-sub" data-testid="fpl-altn-rmk">
+              {flight.options.alternates?.length ? `Alternates: ${flight.options.alternates.join(', ')}.` : 'No alternate.'}
+              {flight.options.remarks?.trim() ? ` Remarks: ${flight.options.remarks.trim()}.` : ''}
+              {' '}Set alternates and remarks under “Flight plan” in the flight editor.
+            </div>
           </div>
           <span className="spacer" />
           <button className="primary" onClick={() => copy('lines')} data-testid="fpl-copy" disabled={loading}>
@@ -75,7 +80,12 @@ export function FplExport({ flight }: { flight: Flight }) {
         {copied === 'error' && <div className="fpl-note fpl-danger">Copy failed: select the text and copy it by hand.</div>}
         <pre className={`fpl-message${loading ? ' fpl-loading' : ''}`} data-testid="fpl-message" aria-busy={loading}>{fpl.message}</pre>
         <div className="fpl-options">
-          <label><input type="checkbox" checked={opts.includeItem19} onChange={(e) => setOpts({ ...opts, includeItem19: e.target.checked })} /> Include item 19 (supplementary)</label>
+          <label title="Item 19 stays with the ARO and is not part of the AFTN FPL message. Add it only for an ARO or web form that asks for the whole form as text.">
+            <input type="checkbox" checked={opts.includeItem19} onChange={(e) => setOpts({ ...opts, includeItem19: e.target.checked })} /> Append item 19 (ARO / web-form variant, not for AFTN)
+          </label>
+          <label title="Doc 4444 App. 2 asks for REG/ only when the registration differs from item 7.">
+            <input type="checkbox" checked={opts.regInItem18} onChange={(e) => setOpts({ ...opts, regInItem18: e.target.checked })} /> REG/ in item 18
+          </label>
           <label><input type="checkbox" checked={opts.pointNamesInRemarks} onChange={(e) => setOpts({ ...opts, pointNamesInRemarks: e.target.checked })} /> Point names in RMK/</label>
           <label>
             PIC phone in{' '}
@@ -96,7 +106,7 @@ export function FplExport({ flight }: { flight: Flight }) {
       </div>
       <FplForm fpl={fpl} />
       <section className="fpl-sheet fpl-msg-sheet print-only" aria-hidden>
-        <header className="fpl-title"><div className="fpl-title-main">FPL MESSAGE</div><div className="fpl-title-sub">As filed (AFTN text)</div></header>
+        <header className="fpl-title"><div className="fpl-title-main">FPL MESSAGE</div><div className="fpl-title-sub">{opts.includeItem19 ? 'With item 19 (ARO / web-form variant, not for AFTN)' : 'As filed (AFTN text, items 7–18)'}</div></header>
         <pre className="fpl-message">{fpl.message}</pre>
       </section>
     </div>

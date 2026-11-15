@@ -43,8 +43,8 @@ export interface EndpointPerf {
   qnhAssumed: boolean;
   oatC: number;
   oatAssumed: boolean;
-  /** Wind (true) used for the components; null = calm / unknown. */
-  wind: { dirTrueDeg: number; speedKt: number } | null;
+  /** Wind (true) used for the components; dirTrueDeg null = variable (or calm at 0 kt); null = unknown. */
+  wind: { dirTrueDeg: number | null; speedKt: number; gustKt: number | null } | null;
   variationDeg: number;
   massKg: number | null;
   massSource: 'wb' | 'mtow' | null;

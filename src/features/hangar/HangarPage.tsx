@@ -31,6 +31,21 @@ export function HangarPage() {
     catch (e) { toast(String((e as Error).message || e)); }
   };
 
+  // The server makes a new aircraft the default when the pilot has none; refresh the profile to show it.
+  const onCreated = async (a: Aircraft) => {
+    setAdding(null);
+    let becameDefault = false;
+    if (!pilot.defaultAircraftId) {
+      try {
+        const me = await api.me.get();
+        setPilot(me);
+        becameDefault = me.defaultAircraftId === a.id;
+      } catch { /* the profile refreshes on the next load */ }
+    }
+    toast(becameDefault ? `Added ${a.registration} as your default aircraft` : `Added ${a.registration}`);
+    navigate(`/hangar/${a.id}`);
+  };
+
   return (
     <Shell>
       <div className="page-head">
@@ -86,7 +101,7 @@ export function HangarPage() {
       )}
       {adding && (
         <AddAircraftDialog hangar={data || []} copyOf={adding.copyOf} onClose={() => setAdding(null)}
-          onCreated={(a) => { setAdding(null); toast(`Added ${a.registration}`); navigate(`/hangar/${a.id}`); }} />
+          onCreated={(a) => { void onCreated(a); }} />
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}

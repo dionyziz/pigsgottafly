@@ -62,6 +62,10 @@ export class Page {
     await this.send('Page.enable');
     this.on('Runtime.exceptionThrown', (p) => this.errors.push('exception: ' + (p.exceptionDetails.exception?.description || p.exceptionDetails.text)));
     this.on('Runtime.consoleAPICalled', (p) => { if (p.type === 'error') this.errors.push('console.error: ' + p.args.map((a) => a.value ?? a.description).join(' ')); });
+    // Content-Security-Policy violations (the built client is served with vercel.json's policy) are
+    // browser log entries, not console calls: count them as page errors too.
+    await this.send('Log.enable');
+    this.on('Log.entryAdded', (p) => { if (/Content Security Policy/i.test(p.entry.text || '')) this.errors.push('csp: ' + p.entry.text); });
     this.on('Page.javascriptDialogOpening', () => this.send('Page.handleJavaScriptDialog', { accept: true }));
     await this.viewport(1600, 1300);
   }

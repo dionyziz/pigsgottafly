@@ -70,6 +70,25 @@ describe('profile', () => {
   });
 });
 
+describe('hangar default aircraft', () => {
+  test('the first aircraft becomes the default; later ones do not replace it', async () => {
+    const c = client(api.base);
+    await c.login('sub-first-ac', 'first-ac@example.com');
+    expect((await c.call('GET', 'me')).body.defaultAircraftId).toBeNull();
+    const one = (await c.call('POST', 'aircraft', aircraftBody('SX-ONE'))).body;
+    expect((await c.call('GET', 'me')).body.defaultAircraftId).toBe(one.id);
+    const two = (await c.call('POST', 'aircraft', aircraftBody('SX-TWO'))).body;
+    expect((await c.call('GET', 'me')).body.defaultAircraftId).toBe(one.id);
+    expect((await c.call('POST', 'flights', {})).body.aircraftId).toBe(one.id);
+    // deleting the default clears it; the next aircraft added takes its place
+    expect((await c.call('DELETE', `aircraft/${one.id}`)).status).toBe(204);
+    expect((await c.call('GET', 'me')).body.defaultAircraftId).toBeNull();
+    const three = (await c.call('POST', 'aircraft', aircraftBody('SX-THR'))).body;
+    expect((await c.call('GET', 'me')).body.defaultAircraftId).toBe(three.id);
+    expect(two.id).not.toBe(three.id);
+  });
+});
+
 describe('isolation between pilots, per entity', () => {
   for (const [path, body, patch] of [
     ['aircraft', () => aircraftBody('SX-AAA'), { colours: 'WHITE' }],
@@ -128,6 +147,8 @@ describe('flights', () => {
     expect(f.aircraftId).toBe(ac.id);
     expect(f.crew).toEqual([{ role: 'PIC', passengerId: null, seat: 'front-left', snapshot: expect.objectContaining({ fullName: 'Alice Pilot', weightKg: 70 }) }]);
     expect(f.version).toBe(1);
+    const row = ((await a.call('GET', 'flights')).body as any[]).find((x) => x.id === f.id);
+    expect(row.points).toEqual(['LGTT', 'LGTT']);
   });
   test('versions, conflicts, manifest, trash, restore, copy', async () => {
     const pax = (await a.call('POST', 'passengers', { fullName: 'Bob Pax', weightKg: 90 })).body;
