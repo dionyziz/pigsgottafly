@@ -90,6 +90,7 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 
 ### Weather hazards along the route
 - For every leg, at its planned time and altitude, and for departure/destination at take-off/landing time: flag **thunderstorms** in the vicinity (Open-Meteo `weather_code` 95–99 and high CAPE near the leg; TAF/METAR `TS`, `CB`) and **visibility below 10 km** (Open-Meteo `visibility`; TAF/METAR visibility groups).
+- **Cloud affecting the planned altitude (VFR):** for each leg, flag cloud (≥ SCT / ≥ 3 oktas) whose base is below the planned altitude plus the VFR clearance margin (1000 ft vertical, and 1500 m horizontal for the airspace class), and cloud layers spanning the planned altitude. Estimate bases from Open-Meteo layer cloud cover by pressure level (`cloud_cover_<level>hPa` with geopotential heights) and the temperature–dewpoint spread (~400 ft/°C at the surface), and from TAF/METAR cloud groups at aerodromes. Report the base and amount (e.g. "BKN 2800 ft at leg 3, planned 3500 ft") and suggest the highest altitude that keeps VFR cloud clearance.
 - "Vicinity": sample the leg corridor (e.g. every ~10 NM along the leg and ±5 NM either side) within ±1 h of the leg's time.
 - Show warnings on the map (highlight the affected leg/area), in the navlog strip, and on the navlog export; say the source and forecast time. Unit-tested with recorded fixtures.
 
