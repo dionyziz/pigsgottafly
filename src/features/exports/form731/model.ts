@@ -1,5 +1,5 @@
 // Form 731 (HCAA "Official statement of persons boarding private aircraft"): what goes in each field.
-import { chunk, formatDate, formPeople, idText, placeLong, routePlaces, routeText, type FormExportProps } from './common';
+import { chunk, formatDate, formPeople, idText, placeLong, routePlaces, routeEnds, type FormExportProps } from './common';
 
 /** Rows printed on one Form 731 sheet. */
 export const ROWS_PER_SHEET = 6;
@@ -62,7 +62,7 @@ export function form731Model(props: FormExportProps): Form731Model {
     airport: places[0] ? placeLong(places[0]) : '',
     date: formatDate(flight.date),
     registration: aircraft?.registration ?? '',
-    route: routeText(flight.route),
+    route: routeEnds(flight.route),
     sheets: chunk(rows, ROWS_PER_SHEET),
     picName: rows.find((r) => r.role === 'PIC')?.name ?? '',
     warnings,

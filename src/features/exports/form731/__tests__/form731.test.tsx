@@ -11,7 +11,7 @@ describe('form 731 model', () => {
     expect(m.airport).toBe('DEKELIA / TATOI (LGTT)');
     expect(m.date).toBe('2026-11-21');
     expect(m.registration).toBe('SX-ABC');
-    expect(m.route).toBe('LGTT – LGMG – LGTT');
+    expect(m.route).toBe('LGTT – LGTT');
   });
 
   it('lists the PIC first, then the passengers in seat order, with live profile details filling the snapshot gaps', () => {
@@ -84,7 +84,7 @@ describe('form 731 sheet', () => {
     expect(html.match(/class="pgf-sheet f731-sheet"/g)).toHaveLength(1);
     expect(html).toContain('OFFICIAL STATEMENT OF PERSONS BOARDING PRIVATE AIRCRAFTS');
     expect(html).toMatch(/data-field="registration"><span class="pgf-fill">SX-ABC</);
-    expect(html).toMatch(/data-field="route"><span class="pgf-fill">LGTT – LGMG – LGTT</);
+    expect(html).toMatch(/data-field="route"><span class="pgf-fill">LGTT – LGTT</);
     for (let i = 1; i <= 6; i++) expect(html).toContain(`<td class="f731-no">${i}.</td>`);
     expect(html).toMatch(/data-field="pic">Pat Pilot</);
     expect(html).not.toContain('form-warnings');

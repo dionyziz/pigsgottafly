@@ -2,6 +2,7 @@
 // first) then past ones (most recent first); each row has a route sketch, title, date, block-off,
 // aircraft and totals, and a ⋮ menu: Open, Open in new tab, Rename, Make a copy, Move to trash
 // (with Undo). A Trash view lists trashed flights with Restore.
+import { Loading } from '../../app/Loading';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
@@ -159,7 +160,7 @@ export function LobbyPage() {
       {error && !data ? (
         <EmptyState title="Could not load your flights" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
       ) : loading && !data ? (
-        <p className="muted">Loading…</p>
+        <p><Loading /></p>
       ) : rows.length === 0 ? (
         q ? <EmptyState title="No matching flights">Nothing matches “{q}”. Search looks at the title, every point on the route, the aircraft and the date.</EmptyState>
           : trashView ? <EmptyState title="The trash is empty">Flights you move to the trash appear here, where you can restore them.</EmptyState>

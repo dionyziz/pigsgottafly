@@ -1,6 +1,7 @@
 // My waypoints: the pilot's saved custom points (list, search, rename in place, edit position/notes,
 // delete) beside a small map. Points are usually saved from the flight editor; here a click on the
 // map, or typed coordinates, adds one too.
+import { Loading } from '../../app/Loading';
 import { useMemo, useRef, useState } from 'react';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
@@ -54,7 +55,7 @@ export function WaypointsPage() {
       {error && !data ? (
         <EmptyState title="Could not load your waypoints" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
       ) : loading && !data ? (
-        <p className="muted">Loading…</p>
+        <p><Loading /></p>
       ) : (
         <div className="wp-layout">
           <div>

@@ -173,7 +173,7 @@ export function form731Content(flight: FormFlightInput, aircraft: Pick<Aircraft,
     airport: places[0] ? placeLong(places[0]) : '',
     date: formatDate(flight.date),
     registration: aircraft?.registration ?? '',
-    route: places.map((p) => p.code).join(' – '),
+    route: places.length ? [places[0], places[places.length - 1]].map((p) => p.code).join(' – ') : '',
     people: people.map((p) => ({
       key: p.key,
       role: p.role,

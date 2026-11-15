@@ -1,6 +1,7 @@
 // Passengers: the pilot's list of people who may fly with them (search, add, edit, delete). These are
 // added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
 // The pilot is listed first (PIC) and edited with the same form, saved to the profile.
+import { Loading } from '../../app/Loading';
 import { useMemo, useState } from 'react';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
@@ -43,7 +44,7 @@ export function PassengersPage() {
       {error && !data ? (
         <EmptyState title="Could not load your passengers" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
       ) : loading && !data ? (
-        <p className="muted">Loading…</p>
+        <p><Loading /></p>
       ) : rows.length === 0 && !(data && data.length === 0) && !showMe ? (
         <EmptyState title="No matching passengers">Nothing matches “{q}”.</EmptyState>
       ) : (
