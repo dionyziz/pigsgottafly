@@ -37,7 +37,7 @@ export function attachmentInput(v: Record<string, unknown>): { name: string; mim
  * to store and the ids of this aircraft's files no card references any more (deleted after the save).
  */
 export async function checkReports(db: Queryable, pilotId: string, aircraftId: string, cards: CompassCard[]): Promise<{ cards: CompassCard[]; unused: string[] }> {
-  const rows = await db.query('SELECT id, name, mime, size, created FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2', [aircraftId, pilotId]);
+  const rows = await db.query("SELECT id, name, mime, size, created FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND kind = 'report'", [aircraftId, pilotId]);
   const byId = new Map(rows.map((r: any) => [r.id as string, ref(r)]));
   const used = new Set<string>();
   const out = cards.map((c, i) => {
@@ -51,7 +51,7 @@ export async function checkReports(db: Queryable, pilotId: string, aircraftId: s
 }
 
 export async function deleteAttachments(db: Queryable, pilotId: string, ids: string[]): Promise<void> {
-  if (ids.length) await db.query('DELETE FROM aircraft_attachments WHERE pilot_id = $1 AND id = ANY($2::text[])', [pilotId, ids]);
+  if (ids.length) await db.query("DELETE FROM aircraft_attachments WHERE pilot_id = $1 AND id = ANY($2::text[]) AND kind = 'report'", [pilotId, ids]);
 }
 
 export const routes: Route[] = [
@@ -73,7 +73,7 @@ export const routes: Route[] = [
     async handler({ db, pilot, params }): Promise<Attachment> {
       const owner = await ownerOf(db, pilot.id, params.id, 'view');
       const [r] = await db.query(
-        'SELECT * FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3', [params.fileId, params.id, owner]);
+        "SELECT * FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 AND kind = 'report'", [params.fileId, params.id, owner]);
       if (!r) throw notFound('no such file');
       return { ...ref(r), data: r.data };
     },
@@ -83,7 +83,7 @@ export const routes: Route[] = [
     async handler({ db, pilot, params }) {
       const owner = await ownerOf(db, pilot.id, params.id, 'edit');
       const r = await db.query(
-        'DELETE FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 RETURNING id', [params.fileId, params.id, owner]);
+        "DELETE FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 AND kind = 'report' RETURNING id", [params.fileId, params.id, owner]);
       if (!r.length) throw notFound('no such file');
       return undefined;
     },

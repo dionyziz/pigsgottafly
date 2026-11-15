@@ -355,7 +355,9 @@ export function buildItem19(input: FplInput, extraRemarks: string[], warnings: s
   if (colours) parts.push('A/' + colours);
   const remarks = remarkParts.join(' ');
   if (remarks) parts.push('N/' + remarks);
-  parts.push('C/' + (pic || MISSING));
+  // C/: the PIC's name followed by their phone number (international format, e.g. +306912345678)
+  const picPhone = (input.pic.phone || '').trim().startsWith('+') ? '+' + input.pic.phone.replace(/\D/g, '') : input.pic.phone.replace(/\D/g, '');
+  parts.push('C/' + [pic || MISSING, picPhone].filter(Boolean).join(' '));
   return { endurance, persons, radio, survival, jackets, dinghies, colours, remarks, pic: pic || MISSING, text: parts.join(' ') };
 }
 
@@ -478,7 +480,8 @@ export function buildFpl(input: FplInput): FplResult {
   const phone = cleanPhone(input.pic.phone);
   if (!phone) warnings.push('Pilot phone number not set in the profile.');
   const n19: string[] = [];
-  if (phone) (opts.phoneIn === 'n' ? n19 : rmk).push(`PIC TEL ${phone}`);
+  // In item 19 the phone already follows the PIC name in C/; RMK/ carries it for ATC when item 19 is left out.
+  if (phone && opts.phoneIn !== 'n') rmk.push(`PIC TEL ${phone}`);
   if (opts.pointNamesInRemarks) {
     const names: string[] = [];
     for (const p of input.route.slice(1, -1)) {

@@ -1,6 +1,9 @@
 // Typed fetch wrappers for /api/… (contract: src/shared/api.ts). Throws ApiRequestError on non-2xx;
 // `auth` is true for 401 (the app then shows the sign-in screen).
 import type {
+  AircraftFile,
+  AircraftFileStart,
+  AircraftFiles,
   AircraftInput,
   AircraftSharing,
   HangarAircraft,
@@ -93,6 +96,18 @@ export const api = {
     upload: (aircraftId: string, input: AttachmentInput) => request<AttachmentRef>('POST', `aircraft/${encodeURIComponent(aircraftId)}/attachments`, input),
     get: (aircraftId: string, fileId: string) => request<Attachment>('GET', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
     remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
+  },
+  /** Aircraft photo and documents (chunked: see src/data/aircraftFiles.ts for upload / download). */
+  files: {
+    list: (aircraftId: string) => request<AircraftFiles>('GET', `aircraft/${encodeURIComponent(aircraftId)}/files`),
+    start: (aircraftId: string, input: AircraftFileStart) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files`, input),
+    putChunk: (aircraftId: string, fileId: string, seq: number, data: string) =>
+      request<null>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/chunks/${seq}`, { data }),
+    complete: (aircraftId: string, fileId: string) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/complete`, {}),
+    chunk: (aircraftId: string, fileId: string, seq: number) =>
+      request<{ data: string }>('GET', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/chunks/${seq}`),
+    rename: (aircraftId: string, fileId: string, title: string) => request<AircraftFile>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`, { title }),
+    remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`),
   },
   passengers: crud<Passenger, PassengerInput>('passengers'),
   waypoints: crud<Waypoint, WaypointInput>('waypoints'),

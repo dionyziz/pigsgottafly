@@ -10,7 +10,7 @@ import * as O from './navlog.oracle';
 const ad = (icao: string): RoutePoint => { const a = aerodrome(icao)!; return { uid: 'ad-' + icao + Math.random(), kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
 const vfr = (id: string): RoutePoint => { const p = vfrPoint(id)!; return { uid: id, kind: 'vfr', refId: id, name: p.name, lat: p.lat, lon: p.lon }; };
 const ctx = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes };
-const ASV_CARD = cards['SX-ASV'][0] as CompassCard;
+const ASV_CARD = cards['SX-ASV'][0] as unknown as CompassCard;
 const ASV = { cruiseTasKt: 92, patternTasKt: 80, burnLph: 30, taxiAllowanceL: 4, card: ASV_CARD.points, cardExpires: ASV_CARD.expires, cardName: ASV_CARD.name };
 const DATE = '2026-11-20';
 const DAY = Date.parse(DATE + 'T00:00:00Z');
@@ -197,7 +197,7 @@ test('compass card: expiry warning; no card → no DEV/CH; card picked by name',
   expect(exp.warnings.some((w) => /Compass card "Magnetic compass" expired on 2028-02-05/.test(w))).toBe(true);
   const noCard = computeNavlog(setup(ROUTE(), null, { aircraft: { ...ASV, card: null } }));
   expect(noCard.legs.every((r) => r.dev === undefined && r.ch === undefined && r.mh !== undefined)).toBe(true);
-  const asg = cards['SX-ASG'] as CompassCard[];
+  const asg = cards['SX-ASG'] as unknown as CompassCard[];
   expect(pickCompassCard(asg, 'GMU (G1000 heading)')!.name).toBe('GMU (G1000 heading)');
   expect(pickCompassCard(asg, null)!.name).toBe(asg[0].name);
   expect(pickCompassCard(asg, 'nope')!.name).toBe(asg[0].name);

@@ -33,7 +33,7 @@ function stamp(ms: number): string {
 export function Signature({ s, size = 4.6 }: { s: ShownSignature; size?: number }) {
   return (
     <span className="pgf-signature-wrap" data-testid="signature">
-      <span className="pgf-signature-mark" aria-hidden="true"><img src="/icon.svg" alt="" /><span>PIG&rsquo;S GOTTA FLY</span></span>
+      <span className="pgf-signature-mark" aria-hidden="true"><img src="/icon.svg" alt="" /></span>
       <span className="pgf-signature" style={{ fontSize: `${size}mm` }}>{transliterate(signatureName(s.name), { keepCase: true })}</span>
       <span className="pgf-signature-when">Electronically signed {stamp(s.signedAt)}</span>
     </span>

@@ -159,7 +159,7 @@ describe('the message', () => {
     ]);
     expect(r.complete).toBe(true);
     // Item 19 is built for the form but not transmitted in the FPL message (Doc 4444 App. 3).
-    expect(r.fields.item19.text).toBe('E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS');
+    expect(r.fields.item19.text).toBe('E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS +306940000000');
     expect(r.message).not.toContain('E/0400');
     expect(r.warnings).toEqual([]);
     expect(r.fields.item19.radio).toEqual({ uhf: false, vhf: false, elt: true });
@@ -236,7 +236,7 @@ describe('the message', () => {
       },
       options: { phoneIn: 'n' },
     }));
-    expect(r.fields.item19.text).toBe('E/0453 P/004 R/VE S/M J/L D/01 004 C ORANGE A/WHITE BLUE STRIPES N/FIRE EXTINGUISHER PIC TEL 00306940000000 C/DIONYSIS ZINDROS');
+    expect(r.fields.item19.text).toBe('E/0453 P/004 R/VE S/M J/L D/01 004 C ORANGE A/WHITE BLUE STRIPES N/FIRE EXTINGUISHER C/DIONYSIS ZINDROS +306940000000');
     expect(r.fields.item18).not.toContain('TEL');
     const jk = buildFpl(base({ equipment: { ...EQ, jackets: { present: true, light: false, fluorescein: false, uhf: false, vhf: false } } }));
     expect(jk.fields.item19.text).not.toContain('J/');
@@ -250,8 +250,8 @@ describe('the message', () => {
     expect(r.message.split('\n').filter((l) => l.startsWith('-')).length).toBe(5); // items 9/10, 13, 15, 16, 18 (7 and 8 on line 1)
     const aro = buildFpl(base({ options: { includeItem19: true } }));
     expect(aro.lines.slice(-2)).toEqual([
-      '-DOF/261120 RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI',
-      '-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS)',
+      '-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS',
+      '+306940000000)',
     ]);
   });
 

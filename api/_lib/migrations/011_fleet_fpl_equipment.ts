@@ -3,7 +3,7 @@
 // (OPR/ comes from the aircraft's operator); item 19 R/E, J/LF, N/OPR TEL …, A/ colours.
 // Only the owner's aircraft (matched like 003, by the SHA-256 of the e-mail) are changed.
 const OWNER = "encode(sha256(convert_to(lower(btrim(p.email)), 'UTF8')), 'hex') = '0f8a30628c0ec410f2ea9ec36e004bf15fea39d4a69e8cf1011e0a3b560486c6'";
-const equipment = {
+export const equipment = {
   item10a: 'SBDFGRY',
   item10b: 'EB1',
   pbn: 'B2C2D2O2S1',
@@ -14,7 +14,7 @@ const equipment = {
   dinghies: null,
   remarks: 'OPR TEL +302108169910 +306974776230',
 };
-const colours: Record<string, string> = { 'SX-ASV': 'WHITE WITH BLUE STRIPES', 'SX-ASG': 'WHITE WITH BLACK RED STRIPES' };
+export const colours: Record<string, string> = { 'SX-ASV': 'WHITE WITH BLUE STRIPES', 'SX-ASG': 'WHITE WITH BLACK RED STRIPES' };
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
 const sql: string = Object.entries(colours).map(([reg, col]) => `UPDATE aircraft a SET
   equipment = a.equipment || ${q(JSON.stringify(equipment))}::jsonb,

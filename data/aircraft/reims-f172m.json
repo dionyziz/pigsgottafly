@@ -10,6 +10,7 @@
     "usableStandardL": 144,
     "usableLongRangeL": 182,
     "unusableL": 15,
+    "approved": ["AVGAS"],
     "densityKgPerL": { "AVGAS": 0.72, "MOGAS": 0.75 }
   },
   "massBalance": {
@@ -32,6 +33,7 @@
   },
   "takeoff": {
     "_source": "AFM 5-8 Table 5: take-off distance, flaps retracted, hard surface runway. Distances in m: [ground run, total to clear 15 m obstacle].",
+    "source": "AFM 5-8 Table 5: take-off distance, flaps retracted, hard surface runway",
     "flaps": "0°",
     "altitudesFt": [0, 2500, 5000, 7500],
     "standardTempC": [15, 10, 5, 0],
@@ -56,6 +58,7 @@
   },
   "landing": {
     "_source": "AFM 5-9 Table 6: landing distance, flaps 40°, power off, zero wind, hard surface runway. Distances in m: [ground roll, total to clear 15 m obstacle].",
+    "source": "AFM 5-9 Table 6: landing distance, flaps 40°, power off, zero wind, hard surface runway",
     "flaps": "40°",
     "massKg": 1043,
     "approachIas": "60 kt / 111 km/h / 69 MPH",

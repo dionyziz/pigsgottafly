@@ -10,6 +10,7 @@
     "patternTasKt": 80,
     "emptyMass": {
       "_source": "DAS (EL.145.0078) weight and balance report, 14-11-2024 (trn-docs/SXASV_WB_FORM_2024.pdf)",
+      "report": "DAS (EL.145.0078) weight and balance report, 14-11-2024",
       "kg": 691.2,
       "armM": 1.0403,
       "momentKgM": 719.12,
@@ -20,13 +21,16 @@
     "fuel": {
       "tanks": "standard",
       "usableL": 144,
+      "approved": ["AVGAS", "MOGAS"],
+      "_approved": "The club W&B calculator (mesogeion-aeroclub.gr/wbp.php) takes MOGAS and AVGAS litres for both aircraft; mixed tanks allowed.",
       "_source": "mesogeion-aeroclub.gr/wbp.php: 'SX-ASV: max 144lt'"
     },
     "categories": [
       "normal",
       "utility"
     ],
-    "utilityNote": "Utility: no rear passengers, no baggage; front seats set forward to 0.90 m (club W&B calculator)."
+    "utilityNote": "No rear passengers, no baggage.",
+    "_utilityNote": "Club W&B calculator: utility = no rear passengers, no baggage, front seats set forward to 0.90 m. The seat arm is not part of the note: the W&B computes every seat at its station arm."
   },
   "SX-ASG": {
     "type": "reims-f172m",
@@ -48,6 +52,7 @@
     "patternTasKt": 80,
     "emptyMass": {
       "_source": "Weight and balance report signed 28 FEB 2024, scales calibrated 22-JAN-24 (trn-docs/SXASG_WB_FORM_2024.pdf)",
+      "report": "Weight and balance report signed 28 FEB 2024, scales calibrated 22-JAN-24",
       "kg": 692.0,
       "armM": 1.1398,
       "momentKgM": 788.77,
@@ -58,6 +63,7 @@
     "fuel": {
       "tanks": "long-range",
       "usableL": 182,
+      "approved": ["AVGAS", "MOGAS"],
       "_source": "mesogeion-aeroclub.gr/wbp.php: 'SX-ASG: max 182lt'"
     },
     "categories": [

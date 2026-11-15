@@ -41,9 +41,8 @@
 .pgf-signature-wrap { position: relative; display: inline-block; isolation: isolate; }
 .pgf-signature-wrap > .pgf-signature { position: relative; }
 /* watermark behind the signature */
-.pgf-signature-mark { position: absolute; inset: -0.6mm -1mm; z-index: -1; display: flex; align-items: center; gap: 1mm; opacity: .16; pointer-events: none; overflow: hidden; }
-.pgf-signature-mark img { height: 100%; max-height: 9mm; width: auto; filter: grayscale(1); }
-.pgf-signature-mark span { font: 800 3.6mm/1 Arial, Helvetica, sans-serif; letter-spacing: .04em; color: #1f5fbf; white-space: nowrap; }
+.pgf-signature-mark { position: absolute; inset: 0; z-index: -1; display: flex; align-items: center; justify-content: center; opacity: .14; pointer-events: none; }
+.pgf-signature-mark img { height: 140%; width: auto; filter: grayscale(1); }
 @media print { .pgf-signature-mark { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 
 /* Signatures / send panel above the sheets (screen only) */

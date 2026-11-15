@@ -27,7 +27,6 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?:
   if (origin) rows.push({ place: origin.place, crew: origin.crew, field: 'origin' });
   if (dest) rows.push({ place: <DownArrow />, crew: '' }, { place: dest.place, crew: '', field: 'destination' });
   while (rows.length < ROUTING_ROWS) rows.push({ place: '', crew: '' });
-  const angle = (-Math.atan2(HEALTH_H, HEALTH_W) * 180) / Math.PI;
   return (
     <div className="pgf-forms" data-testid="gendec">
       {props.panel}
@@ -98,7 +97,8 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?:
               <div className="gd-concerned">Crew member concerned</div>
               <svg className="gd-nil" viewBox={`0 0 ${HEALTH_W} ${HEALTH_H}`} aria-label="NIL" data-testid="gendec-nil">
                 <line x1={2} y1={HEALTH_H - 2} x2={HEALTH_W - 2} y2={2} />
-                <text x={HEALTH_W / 2} y={HEALTH_H / 2 - 2} textAnchor="middle" transform={`rotate(${angle.toFixed(2)} ${HEALTH_W / 2} ${HEALTH_H / 2})`}>NIL</text>
+                {/* written level, sitting on the middle of the stroke, as a pen would */}
+                <text x={HEALTH_W / 2} y={HEALTH_H / 2 + 2} textAnchor="middle">NIL</text>
               </svg>
             </div>
             <div className="gd-official">FOR OFFICIAL USE ONLY</div>
