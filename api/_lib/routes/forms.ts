@@ -21,6 +21,7 @@ import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
 import type { Queryable } from '../db.js';
 import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
+import { accessibleSql } from '../access.js';
 import { flightContext, loadRef } from '../flightContext.js';
 import { aerodromeNotamEffects, genDecHandling, type GenDecHandling } from '../../../src/calc/aerodromeStatus.js';
 import type { NotamBriefing } from '../../../src/shared/briefing.js';
@@ -62,7 +63,8 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDeni
   if (!r) throw notFound('no such flight');
   const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilot.id]);
   const flight = toFlight(r, crew);
-  const [a] = flight.aircraftId ? await db.query('SELECT * FROM aircraft WHERE id = $1 AND pilot_id = $2', [flight.aircraftId, pilot.id]) : [];
+  // the flight's aircraft when the pilot owns it or it is shared with them (else none: unavailable)
+  const [a] = flight.aircraftId ? await db.query(`SELECT a.* FROM aircraft a WHERE a.id = $1 AND ${accessibleSql('a', '$2')}`, [flight.aircraftId, pilot.id]) : [];
   const aircraft = a ? toAircraft(a) : null;
   const passengers = (await db.query('SELECT * FROM passengers WHERE pilot_id = $1', [pilot.id])).map(toPassenger);
   const ref = await loadRef(db);

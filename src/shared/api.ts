@@ -63,7 +63,8 @@ export type MeUpdateRequest = PilotUpdate;
 // GET /api/aircraft → Aircraft[] (by registration)     POST /api/aircraft (AircraftInput) → 201 Aircraft
 //   (becomes the pilot's defaultAircraftId when the pilot has none)
 // GET /api/aircraft/:id → Aircraft                       PUT /api/aircraft/:id (Partial<AircraftInput>) → Aircraft
-// DELETE /api/aircraft/:id → 204 (flights keep aircraftId = null)
+// DELETE /api/aircraft/:id → 204 (flights keep aircraftId = null). Owner only.
+// Aircraft responses are HangarAircraft (with `access`); sharing: src/shared/sharing.ts.
 // Same shape for /api/passengers (Passenger, PassengerInput; ordered by fullName)
 // and /api/waypoints (Waypoint, WaypointInput; ordered by name).
 export type AircraftList = Aircraft[];

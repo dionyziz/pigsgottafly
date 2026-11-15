@@ -4,6 +4,7 @@
 // aerodromes the flight uses and the aerodromes near the route.
 import type { Queryable } from './db.js';
 import { notFound } from './http.js';
+import { accessibleSql } from './access.js';
 import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
 import type { RoutePoint } from '../../src/shared/types.js';
 import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
@@ -70,7 +71,7 @@ const FALLBACK_TAS_KT = 90;
 export async function flightContext(db: Queryable, pilotId: string, id: string): Promise<FlightContext> {
   const [f] = await db.query(
     `SELECT f.id, f.date, f.block_off, f.taxi_out_min, f.taxi_in_min, f.route, f.leg_overrides, f.options, f.summary, a.cruise_tas_kt, a.registration
-     FROM flights f LEFT JOIN aircraft a ON a.id = f.aircraft_id AND a.pilot_id = f.pilot_id
+     FROM flights f LEFT JOIN aircraft a ON a.id = f.aircraft_id AND ${accessibleSql('a', 'f.pilot_id')}
      WHERE f.id = $1 AND f.pilot_id = $2`, [id, pilotId]);
   if (!f) throw notFound('no such flight');
   const ref = await loadRef(db);

@@ -1,8 +1,10 @@
 // Typed fetch wrappers for /api/… (contract: src/shared/api.ts). Throws ApiRequestError on non-2xx;
 // `auth` is true for 401 (the app then shows the sign-in screen).
 import type {
-  Aircraft,
   AircraftInput,
+  AircraftSharing,
+  HangarAircraft,
+  ShareRole,
   Attachment,
   AttachmentInput,
   AttachmentRef,
@@ -75,7 +77,17 @@ export const api = {
     get: () => request<Pilot>('GET', 'me'),
     update: (patch: PilotUpdate) => request<Pilot>('PUT', 'me', patch),
   },
-  aircraft: crud<Aircraft, AircraftInput>('aircraft'),
+  /** Own aircraft and those shared with the pilot, each with `access` (role, owner). */
+  aircraft: crud<HangarAircraft, AircraftInput>('aircraft'),
+  /** Who has access to an aircraft (src/shared/sharing.ts). */
+  shares: {
+    get: (aircraftId: string) => request<AircraftSharing>('GET', `aircraft/${encodeURIComponent(aircraftId)}/shares`),
+    add: (aircraftId: string, email: string, role: ShareRole) => request<AircraftSharing>('POST', `aircraft/${encodeURIComponent(aircraftId)}/shares`, { email, role }),
+    setRole: (aircraftId: string, pilotId: string, role: ShareRole) =>
+      request<AircraftSharing>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`, { role }),
+    /** Removes a person; with your own pilot id, removes the aircraft from your hangar. */
+    remove: (aircraftId: string, pilotId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`),
+  },
   /** Files stored with an aircraft (compass swing reports). */
   attachments: {
     upload: (aircraftId: string, input: AttachmentInput) => request<AttachmentRef>('POST', `aircraft/${encodeURIComponent(aircraftId)}/attachments`, input),
