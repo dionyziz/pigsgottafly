@@ -1,6 +1,9 @@
 // Flights: /flights (list, create), /flights/:id (get, versioned PUT with 409, DELETE = trash),
 // /flights/:id/restore, /flights/:id/copy, /flights/:id/opened. Manifest rows (flight_crew) are part
 // of the flight document and replaced atomically with it. Everything is scoped to the session pilot.
+// A flight may use the pilot's own aircraft or one shared with them (access.ts). When that access
+// ends, the flight keeps the aircraft id and the editor shows the aircraft as unavailable; saving
+// such a flight keeps that id (without the seat checks) until the pilot picks another aircraft.
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
@@ -10,6 +13,7 @@ import type { FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../src/shar
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
 import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
 import { findAerodrome } from './ref.js';
+import { accessibleSql, canUseAircraft } from '../access.js';
 
 async function load(db: Queryable, pilotId: string, id: string) {
   const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [id, pilotId]);
@@ -19,12 +23,12 @@ async function load(db: Queryable, pilotId: string, id: string) {
 }
 
 /**
- * Seat ids of one of the pilot's aircraft (null when it has no seat stations). Throws 400 when the
- * aircraft is not the pilot's. Tolerates a malformed stored seat layout (rows written before the
+ * Seat ids of an aircraft the pilot owns or that is shared with them (null when it has no seat
+ * stations). Throws 400 when the pilot has no access to it. Tolerates a malformed stored seat layout (rows written before the
  * aircraft documents were validated): anything that is not a station with a seats array is skipped.
  */
 async function aircraftSeats(db: Queryable, pilotId: string, aircraftId: string): Promise<string[] | null> {
-  const [ac] = await db.query('SELECT mass_balance FROM aircraft WHERE id = $1 AND pilot_id = $2', [aircraftId, pilotId]);
+  const [ac] = await db.query(`SELECT a.mass_balance FROM aircraft a WHERE a.id = $2 AND ${accessibleSql('a', '$1')}`, [pilotId, aircraftId]);
   if (!ac) throw badRequest('no such aircraft');
   const raw = ac.mass_balance?.stations;
   const stations = (Array.isArray(raw) ? raw : [])
@@ -34,8 +38,11 @@ async function aircraftSeats(db: Queryable, pilotId: string, aircraftId: string)
   return seats.length ? seats : null;
 }
 
-/** Validates and normalises a full FlightDoc (merged over `base`). */
-async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc>, base: FlightDoc): Promise<FlightDoc> {
+/**
+ * Validates and normalises a full FlightDoc (merged over `base`). `storedAircraftId` is the saved
+ * flight's aircraft: kept even when the pilot no longer has access to it (shown as unavailable).
+ */
+async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc>, base: FlightDoc, storedAircraftId: string | null = null): Promise<FlightDoc> {
   const d: FlightDoc = { ...base };
   if ('title' in input) d.title = str(input.title, 'title', 200);
   if ('date' in input) d.date = optDate(input.date, 'date') ?? base.date;
@@ -61,7 +68,8 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
   if ('summary' in input) d.summary = checkSummary(input.summary);
 
   if (d.aircraftId !== null && typeof d.aircraftId !== 'string') throw badRequest('aircraftId must be a string');
-  const seats = d.aircraftId ? await aircraftSeats(db, pilotId, d.aircraftId) : null;
+  const unavailable = !!d.aircraftId && d.aircraftId === storedAircraftId && !(await canUseAircraft(db, pilotId, d.aircraftId));
+  const seats = d.aircraftId && !unavailable ? await aircraftSeats(db, pilotId, d.aircraftId) : null;
   if (d.crew.length > 50) throw badRequest('crew has too many entries');
   d.crew = d.crew.map((c, i) => {
     obj(c, `crew[${i}]`);
@@ -139,7 +147,7 @@ export const routes: Route[] = [
       const base = emptyFlightDoc(today);
       base.taxiOutMin = pilot.settings.taxiOutMin;
       base.taxiInMin = pilot.settings.taxiInMin;
-      base.aircraftId = pilot.defaultAircraftId;
+      base.aircraftId = pilot.defaultAircraftId && (await canUseAircraft(db, pilot.id, pilot.defaultAircraftId)) ? pilot.defaultAircraftId : null;
       base.options = { ...base.options, windModel: pilot.settings.windModel };
       // PIC in the PIC seat of the aircraft the flight starts with (front left, else its first seat),
       // the same rule as the editor's picSeat(): a hangar-built aircraft may have no 'front-left'.
@@ -172,7 +180,7 @@ export const routes: Route[] = [
       const { flight, version } = (await body()) as FlightUpdateRequest;
       if (!Number.isInteger(version)) throw badRequest('version is required');
       const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...base } = cur;
-      const d = await checkDoc(db, pilot.id, obj(flight, 'flight'), base);
+      const d = await checkDoc(db, pilot.id, obj(flight, 'flight'), base, cur.aircraftId);
       const now = Date.now();
       const out = await db.transaction(async (tx) => {
         const r = await tx.query(

@@ -166,13 +166,6 @@ export function NavlogExport({ flight }: { flight: Flight }) {
         style={{ ['--fit' as string]: `${fitPx}px`, ['--hair' as string]: snap(fitPx, 1), ['--thick' as string]: snap(fitPx * 1.6, 2) }}
       >
         {doc.sheets.map((s) => <Sheet key={s.index} sheet={s} doc={doc} />)}
-        {doc.hazardPage && (
-          <section className="md42-hazards" data-testid="navlog-hazard-page" aria-label="Weather hazards">
-            <h2>Weather hazards along the route</h2>
-            <p className="md42-hazards-src">{doc.hazardPage.source}</p>
-            <ol>{doc.hazardPage.items.map((t, i) => <li key={i}>{t}</li>)}</ol>
-          </section>
-        )}
       </div>
     </div>
   );
@@ -196,6 +189,7 @@ const HEX = (
   <svg viewBox="0 0 126 54" preserveAspectRatio="none" aria-hidden="true">
     <polygon points="0,0 14,27 0,54" fill="#000" />
     <polygon points="126,0 112,27 126,54" fill="#000" />
+    <line x1="14" y1="27" x2="112" y2="27" stroke="#000" strokeWidth="1" vectorEffect="non-scaling-stroke" />
   </svg>
 );
 const BR = <br />;
@@ -274,7 +268,7 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
         <C r={1} c={9} rs={3} cls="fold"><TwoH a={<>MAG{BR}HEADING</>} b="± DEV" /></C>
         <C r={1} c={10} cls="h big">Checkpoints</C>
         <C r={2} c={10} rs={2} cls="cp-end">
-          <div className="sub2 end"><div className="h">{sheet.topLabel}</div><div className="dep"><V t={sheet.topName} cap={17} /></div></div>
+          <div className="sub2 end"><div className="h">{sheet.topLabel}</div><div className="dep"><div className="cpn">{sheet.topName}</div></div></div>
         </C>
         <C r={1} c={11} rs={3} cls="h">COMPASS{BR}HEADING</C>
         <C r={1} c={12} cls="h">DIST</C><C r={1} c={13} cls="h">GS</C>
@@ -292,7 +286,7 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
 
         <C r={tr} c={1} cs={9} cls="ti-title fold">Terminal Information</C>
         <C r={tr} c={10} cls="cp-end total-row">
-          <div className="sub2 end"><div className="h">{sheet.bottomLabel}</div><div className="dep"><V t={sheet.bottomName} cap={17} /></div></div>
+          <div className="sub2 end"><div className="h">{sheet.bottomLabel}</div><div className="dep"><div className="cpn">{sheet.bottomName}</div></div></div>
         </C>
         <C r={tr} c={11} cls="tot-label total-row">TOTALS</C>
         <C r={tr} c={12} cls="total-row"><V t={sheet.totals.dist} /></C>
@@ -312,7 +306,7 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
             return (
               <Fragment key={i}>
                 <div style={st}><div className="tv" data-fit-wrap={17}>{t?.field ?? ''}</div></div>
-                <div style={st}><div className="tv" data-fit-wrap={17}>{t?.elev ?? ''}</div></div>
+                <div style={st}><div className="tv num" data-fit-wrap={17}>{t?.elev ?? ''}</div></div>
                 <div style={st}><div className="tv" data-fit-wrap={17}>{t?.rwy ?? ''}</div></div>
                 <div style={st}><div className="tv" data-fit-wrap={12}>{t?.freq ?? ''}</div></div>
               </Fragment>
@@ -323,7 +317,7 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
           <div className="th">Notes:</div>
           <div className="note-lines">
             {Array.from({ length: NOTE_LINES }, (_, i) => (
-              <div key={i}><div className="nv" data-fit={11.5}>{doc.notes[i] ?? ''}</div></div>
+              <div key={i} />
             ))}
           </div>
         </div>

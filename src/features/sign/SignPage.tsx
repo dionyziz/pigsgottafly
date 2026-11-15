@@ -3,6 +3,7 @@
 // filled form, built for a phone: the passenger's own row in full, other people's ID and contact
 // masked, and a single "Sign" button. The signature is the signer's initial and last name in the
 // handwriting font, with the time.
+import { Loading } from '../../app/Loading';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiRequestError } from '../../data/api';
@@ -27,7 +28,7 @@ export function SignPage() {
   };
 
   if (err && !view) return <main className="sign-page"><div className="sign-card"><h1>Form 731</h1><p className="sign-err" role="alert">{err}</p></div></main>;
-  if (!view) return <main className="sign-page"><div className="sign-card"><p className="muted">Loading…</p></div></main>;
+  if (!view) return <main className="sign-page"><div className="sign-card"><p><Loading /></p></div></main>;
   const c = view.content;
   const me = c.people.find((p) => p.key === view.me);
   const mySig = view.signatures.find((s) => s.key === view.me);

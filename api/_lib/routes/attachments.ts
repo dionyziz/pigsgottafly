@@ -1,16 +1,18 @@
 // Files stored with an aircraft (compass swing reports): /aircraft/:id/attachments[/:fileId].
-// Scoped to the session pilot: another pilot's aircraft or file answers 404. The content travels
+// Anyone the aircraft is shared with reads them; editors and the owner add and delete them (403 for
+// viewers); everyone else gets 404. Files keep pilot_id = the aircraft's owner. The content travels
 // as base64 in JSON (the API is JSON-only); the client turns it into a Blob to view or save.
 import type { Route } from '../http.js';
 import { badRequest, newId, notFound, reply } from '../http.js';
 import type { Queryable } from '../db.js';
+import { aircraftFor } from '../access.js';
 import {
   ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type Attachment, type AttachmentRef, type AttachmentType, type CompassCard,
 } from '../../../src/shared/types.js';
 
-async function ownAircraft(db: Queryable, pilotId: string, id: string) {
-  const [r] = await db.query('SELECT id FROM aircraft WHERE id = $1 AND pilot_id = $2', [id, pilotId]);
-  if (!r) throw notFound('no such aircraft');
+/** The owner's pilot id of an aircraft the session pilot has `need` access to (404/403 otherwise). */
+async function ownerOf(db: Queryable, pilotId: string, id: string, need: 'view' | 'edit'): Promise<string> {
+  return (await aircraftFor(db, pilotId, id, need)).pilot_id;
 }
 
 const ref = (r: any): AttachmentRef => ({ id: r.id, name: r.name, mime: r.mime, size: Number(r.size), uploaded: Number(r.created) });
@@ -56,12 +58,12 @@ export const routes: Route[] = [
   {
     method: 'POST', path: '/aircraft/:id/attachments',
     async handler({ db, pilot, params, body }) {
-      await ownAircraft(db, pilot.id, params.id);
+      const owner = await ownerOf(db, pilot.id, params.id, 'edit');
       const a = attachmentInput(await body());
       const [r] = await db.query(
         `INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, mime, size, created`,
-        [await newId('file'), pilot.id, params.id, a.name, a.mime, a.size, a.data, Date.now()],
+        [await newId('file'), owner, params.id, a.name, a.mime, a.size, a.data, Date.now()],
       );
       return reply(201, ref(r));
     },
@@ -69,8 +71,9 @@ export const routes: Route[] = [
   {
     method: 'GET', path: '/aircraft/:id/attachments/:fileId',
     async handler({ db, pilot, params }): Promise<Attachment> {
+      const owner = await ownerOf(db, pilot.id, params.id, 'view');
       const [r] = await db.query(
-        'SELECT * FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3', [params.fileId, params.id, pilot.id]);
+        'SELECT * FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3', [params.fileId, params.id, owner]);
       if (!r) throw notFound('no such file');
       return { ...ref(r), data: r.data };
     },
@@ -78,8 +81,9 @@ export const routes: Route[] = [
   {
     method: 'DELETE', path: '/aircraft/:id/attachments/:fileId',
     async handler({ db, pilot, params }) {
+      const owner = await ownerOf(db, pilot.id, params.id, 'edit');
       const r = await db.query(
-        'DELETE FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 RETURNING id', [params.fileId, params.id, pilot.id]);
+        'DELETE FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 RETURNING id', [params.fileId, params.id, owner]);
       if (!r.length) throw notFound('no such file');
       return undefined;
     },

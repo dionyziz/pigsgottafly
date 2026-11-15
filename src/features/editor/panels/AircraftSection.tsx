@@ -1,7 +1,7 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
 import { Link } from 'react-router-dom';
 import { pickCompassCard } from '../../../calc';
-import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc } from '../../../shared';
+import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';
 import { useEditor } from '../state';
 import { Chip, KV, Section } from './ui';
 
@@ -37,6 +37,12 @@ export function setAircraft(d: FlightDoc, aircraft: Aircraft | null): FlightDoc 
   return { ...d, aircraftId: aircraft?.id ?? null, crew, baggageKg, options: { ...d.options, compassCard, category } };
 }
 
+/** " · shared by Alice" for an aircraft another pilot shared with this one. */
+function sharedBy(a: Aircraft): string {
+  const access = (a as Partial<HangarAircraft>).access;
+  return access && access.role !== 'owner' ? ` · shared by ${access.owner.name || access.owner.email}` : '';
+}
+
 export function AircraftSection() {
   const { doc, update, hangar, aircraft } = useEditor();
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
@@ -57,10 +63,10 @@ export function AircraftSection() {
           }}
         >
           <option value="">Choose an aircraft…</option>
-          {hangar.map((a) => <option key={a.id} value={a.id}>{a.registration} · {a.makeModel || a.icaoType}</option>)}
+          {hangar.map((a) => <option key={a.id} value={a.id}>{a.registration} · {a.makeModel || a.icaoType}{sharedBy(a)}</option>)}
         </select>
       )}
-      {missing && <p className="ep-note warn-text">The aircraft of this flight is no longer in your hangar.</p>}
+      {missing && <p className="ep-note warn-text" data-testid="aircraft-unavailable">The aircraft of this flight is unavailable: it was deleted or is no longer shared with you. Choose another aircraft.</p>}
       {aircraft && (
         <>
           <div className="ep-kvs">

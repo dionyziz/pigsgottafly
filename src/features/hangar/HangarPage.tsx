@@ -1,5 +1,7 @@
 // Hangar: the pilot's aircraft as cards (key figures, what is still missing, compass card status),
 // with "Add aircraft" from a type template, as a same-type copy of another aircraft, or blank.
+// Aircraft shared with the pilot are listed with their own, with a "Shared by" chip; the row menu
+// shares an aircraft, and removes a shared one from the pilot's hangar (their access only).
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
@@ -8,12 +10,14 @@ import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import type { Aircraft } from '../../shared/types';
+import type { HangarAircraft } from '../../shared/sharing';
 import { localToday } from '../lobby/format';
 import { ConfirmDialog, Dialog, EmptyState, KebabMenu } from '../lobby/ui';
 import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
 import { missingEssentials, sameTypeCopy } from './model';
 import { buildFromTemplate, TYPE_TEMPLATES } from './templates';
+import { ShareDialog, SharedChip } from './ShareDialog';
 import '../lobby/lists.css';
 import './hangar.css';
 
@@ -24,6 +28,9 @@ export function HangarPage() {
   const navigate = useNavigate();
   const [adding, setAdding] = useState<{ copyOf?: Aircraft } | null>(null);
   const [deleting, setDeleting] = useState<Aircraft | null>(null);
+  const [sharing, setSharing] = useState<HangarAircraft | null>(null);
+  const [leaving, setLeaving] = useState<HangarAircraft | null>(null);
+  const dropDefault = (a: Aircraft) => { if (pilot.defaultAircraftId === a.id) setPilot({ ...pilot, defaultAircraftId: null }); };
   const today = localToday();
 
   const makeDefault = async (a: Aircraft) => {
@@ -75,11 +82,15 @@ export function HangarPage() {
                   <span className="spacer" />
                   <KebabMenu items={[
                     { label: 'Open', onSelect: () => navigate(`/hangar/${a.id}`) },
+                    { label: 'Share…', onSelect: () => setSharing(a) },
                     ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault(a) }]),
                     { label: 'Add another of this type', onSelect: () => setAdding({ copyOf: a }) },
-                    { label: 'Delete', onSelect: () => setDeleting(a), danger: true, separator: true },
+                    a.access?.role === 'owner'
+                      ? { label: 'Delete', onSelect: () => setDeleting(a), danger: true, separator: true }
+                      : { label: 'Remove from my hangar', onSelect: () => setLeaving(a), danger: true, separator: true },
                   ]} />
                 </div>
+                {a.access?.role !== 'owner' && <div className="ac-card-share"><SharedChip access={a.access} /></div>}
                 <Link to={`/hangar/${a.id}`} className="ac-card-body">
                   <div className="type">{a.makeModel || <span className="muted">Type not set</span>}{a.icaoType && <span className="muted"> · {a.icaoType}/{a.wake}</span>}</div>
                   <dl className="figs">
@@ -103,11 +114,26 @@ export function HangarPage() {
         <AddAircraftDialog hangar={data || []} copyOf={adding.copyOf} onClose={() => setAdding(null)}
           onCreated={(a) => { void onCreated(a); }} />
       )}
+      {sharing && (
+        <ShareDialog aircraftId={sharing.id} registration={sharing.registration} onClose={() => setSharing(null)}
+          onLeft={() => { dropDefault(sharing); setSharing(null); void reload(); toast(`Removed ${sharing.registration} from your hangar`); }} />
+      )}
+      {leaving && (
+        <ConfirmDialog title={`Remove ${leaving.registration} from your hangar?`} confirmLabel="Remove" onClose={() => setLeaving(null)}
+          onConfirm={async () => {
+            await api.shares.remove(leaving.id, pilot.id);
+            dropDefault(leaving);
+            await reload();
+            toast(`Removed ${leaving.registration} from your hangar`);
+          }}>
+          Your access ends; {leaving.access.owner.name || leaving.access.owner.email} keeps the aircraft. Flights you planned with it keep it as unavailable until you choose another aircraft.
+        </ConfirmDialog>
+      )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
           onConfirm={async () => {
             await api.aircraft.remove(deleting.id);
-            if (pilot.defaultAircraftId === deleting.id) setPilot({ ...pilot, defaultAircraftId: null });
+            dropDefault(deleting);
             await reload();
             toast(`Deleted ${deleting.registration}`);
           }}>
@@ -126,7 +152,8 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const regNorm = reg.trim().toUpperCase();
-  const dup = hangar.some((a) => a.registration === regNorm);
+  // registrations are unique among the pilot's own aircraft (a shared one may have the same)
+  const dup = hangar.some((a) => a.registration === regNorm && ((a as HangarAircraft).access?.role ?? 'owner') === 'owner');
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();

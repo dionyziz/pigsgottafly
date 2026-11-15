@@ -1,6 +1,7 @@
 // One aircraft of the hangar: identity, flight plan items, speeds, fuel, mass & balance (stations,
 // seats, envelopes), performance tables and compass cards. The page edits a local draft; Save sends
-// the whole aircraft (PUT /api/aircraft/:id). Errors block saving, warnings do not.
+// the whole aircraft (PUT /api/aircraft/:id). Errors block saving, warnings do not. Shared aircraft:
+// editors edit like the owner; viewers see the page read-only. Share opens the sharing dialog.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
@@ -10,6 +11,7 @@ import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import type { Aircraft, AircraftInput } from '../../shared/types';
+import type { HangarAircraft } from '../../shared/sharing';
 import { localToday } from '../lobby/format';
 import { ConfirmDialog, EmptyState, KebabMenu } from '../lobby/ui';
 import { CompassSection } from './CompassSection';
@@ -17,6 +19,7 @@ import { MassBalanceSection } from './MassBalanceSection';
 import { validateAircraft, type SectionId } from './model';
 import { PerformanceSection } from './PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from './sections';
+import { ShareDialog, SharedChip } from './ShareDialog';
 import '../lobby/lists.css';
 import './hangar.css';
 
@@ -30,8 +33,8 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'compass', label: 'Compass swing' },
 ];
 
-export function toInput(a: Aircraft): AircraftInput {
-  const { id: _i, created: _c, updated: _u, ...rest } = a;
+export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
+  const { id: _i, created: _c, updated: _u, access: _a, ...rest } = a as HangarAircraft;
   return rest;
 }
 
@@ -49,7 +52,7 @@ export function AircraftPage() {
   );
 }
 
-function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a: Aircraft) => void }) {
+function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSaved: (a: HangarAircraft) => void }) {
   const { pilot, setPilot } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
@@ -59,6 +62,10 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const role = aircraft.access?.role ?? 'owner';
+  const readOnly = role === 'view';
   const [showIssues, setShowIssues] = useState(false);
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(baseline), [draft, baseline]);
   const issues = useMemo(() => validateAircraft(draft, today, CARD_EXPIRY_WARN_DAYS), [draft, today]);
@@ -123,10 +130,14 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a
           <div className="muted">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</div>
         </div>
         {isDefault && <span className="chip ok" title="New flights use this aircraft">Default</span>}
+        <SharedChip access={aircraft.access} />
         <span className="spacer" />
+        <button type="button" onClick={() => setSharing(true)} data-testid="share-aircraft">Share</button>
         <KebabMenu label="Aircraft actions" items={[
           ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault() }]),
-          { label: 'Delete aircraft', onSelect: () => setDeleting(true), danger: true, separator: !isDefault },
+          role === 'owner'
+            ? { label: 'Delete aircraft', onSelect: () => setDeleting(true), danger: true, separator: !isDefault }
+            : { label: 'Remove from my hangar', onSelect: () => setLeaving(true), danger: true, separator: !isDefault },
         ]} />
       </div>
 
@@ -143,6 +154,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a
           })}
         </nav>
         <form className="ac-main" onSubmit={(e) => { e.preventDefault(); void save(); }} noValidate>
+          <fieldset className="ac-fieldset" disabled={readOnly}>
           <IdentitySection {...props} />
           <FplSection {...props} />
           <SpeedsSection {...props} />
@@ -150,6 +162,14 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a
           <MassBalanceSection {...props} />
           <PerformanceSection {...props} />
           <CompassSection {...props} today={today} aircraftId={aircraft.id} />
+          </fieldset>
+
+          {readOnly ? (
+            <div className="ac-viewonly card" data-testid="aircraft-viewonly">
+              <span className="chip">View only</span>
+              <span className="muted">{aircraft.access.owner.name || aircraft.access.owner.email} shared this aircraft with you to view and fly. The owner or an editor can change it.</span>
+            </div>
+          ) : (
 
           <div className={'ac-savebar card' + (dirty ? ' dirty' : '')} role="region" aria-label="Save">
             <button type="button" className="issue-sum" onClick={() => setShowIssues((v) => !v)} aria-expanded={showIssues} disabled={!issues.length}>
@@ -172,9 +192,25 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: Aircraft; onSaved: (a
               </ul>
             )}
           </div>
+          )}
         </form>
       </div>
 
+      {sharing && (
+        <ShareDialog aircraftId={aircraft.id} registration={aircraft.registration} onClose={() => setSharing(false)}
+          onLeft={() => { if (isDefault) setPilot({ ...pilot, defaultAircraftId: null }); toast(`Removed ${aircraft.registration} from your hangar`); navigate('/hangar'); }} />
+      )}
+      {leaving && (
+        <ConfirmDialog title={`Remove ${aircraft.registration} from your hangar?`} confirmLabel="Remove" onClose={() => setLeaving(false)}
+          onConfirm={async () => {
+            await api.shares.remove(aircraft.id, pilot.id);
+            if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
+            toast(`Removed ${aircraft.registration} from your hangar`);
+            navigate('/hangar');
+          }}>
+          Your access ends; {aircraft.access.owner.name || aircraft.access.owner.email} keeps the aircraft. Flights you planned with it keep it as unavailable until you choose another aircraft. To get it back, ask its owner or an editor to share it again.
+        </ConfirmDialog>
+      )}
       {deleting && (
         <ConfirmDialog title={`Delete ${aircraft.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(false)}
           onConfirm={async () => {

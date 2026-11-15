@@ -19,11 +19,17 @@ export function stampZ(ms: number): string {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
 }
 
+/** Signature: faint "PIG'S GOTTA FLY" mark behind the handwritten name, then when it was signed. */
 function signature(p: PdfPage, x: number, y: number, w: number, s: PdfSignature) {
+  p.color(0.85, 0.9, 0.97);
+  p.text(x, y - 0.6, "PIG'S GOTTA FLY", { font: 'bold', size: 11, maxW: w });
   p.color(0.07, 0.16, 0.45);
   p.text(x, y, signatureName(s.name), { font: 'hand', size: 13, maxW: w });
   p.color(0, 0, 0);
-  p.text(x, y + 3.6, `signed ${stampZ(s.signedAt)}`, { size: 6.5, maxW: w });
+  p.text(x, y + 3.4, `Electronically signed ${stampZ(s.signedAt)}`, { size: 6, maxW: w });
+  p.color(0.35, 0.35, 0.35);
+  p.text(x, y + 5.6, 'pigsgottafly.com', { size: 5.5, maxW: w });
+  p.color(0, 0, 0);
 }
 
 export function form731Pdf(c: Form731Content, sigs: PdfSignature[]): Buffer {

@@ -93,15 +93,17 @@ api/
   _lib/http.ts             Route, Ctx, Reply, HttpError, helpers
   _lib/auth.ts             verifyGoogleToken, sessions (hashed tokens), local pilot
   _lib/rows.ts             row ↔ entity mappers, input validation helpers
+  _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry
   _lib/migrations/         001_schema.ts, 002_ref_2609.ts (generated), 003_existing_pilot_data.ts (generated),
                            004_legacy_flights.ts, 005_ref_runways_2609.ts (generated: AIP runway data),
                            006_briefing_filing.ts, 007_aircraft_attachments.ts (compass swing report files),
                            008–010 forms (signatures, links, send claims), 011_fleet_fpl_equipment.ts,
-                           012_ref_ad_hours_2609.ts (generated: aerodrome operational hours and handling)
+                           012_ref_ad_hours_2609.ts (generated: aerodrome operational hours and handling),
+                           013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id))
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
-                           attachments.ts, notams.ts, filing.ts
+                           attachments.ts, shares.ts, notams.ts, filing.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
@@ -118,7 +120,7 @@ data/                      aip.js, vfr.js, sun.js (made by the Python tools from
 tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calculator cases), data/, exports/, screens/
 src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
 tests/api/                 vitest: API, auth, migrations (PGlite in memory)
-tests/e2e/                 harness.mjs (CDP), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs,
+tests/e2e/                 harness.mjs (CDP), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs, sharing.e2e.test.mjs,
                            smoke.e2e.test.mjs, lists.e2e.test.mjs (lobby and account lists),
                            flight.e2e.test.mjs (whole workflow: map drawing/snapping, panels, navlog vs oracle,
                            every export + PDF page size, W&B vs an independent sum, take-off vs club case 60)
@@ -151,10 +153,12 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET | /session | `{authed, mode, googleClientId, pilot}`. No auth needed. |
 | POST | /login | `{credential}` (Google ID token). 401 if bad, 403 if not in ALLOWED_EMAILS, 404 in local mode. |
 | POST | /logout | Ends this session only. |
-| GET, PUT | /me | Profile (`PilotUpdate`; settings are merged). `defaultAircraftId` must be one of your own aircraft. |
-| GET, POST | /aircraft | List (by registration); create from `AircraftInput`. 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
-| GET, PUT, DELETE | /aircraft/:id | PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); files no card references are deleted on PUT. POST drops `report` references. |
-| POST | /aircraft/:id/attachments | `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
+| GET, PUT | /me | Profile (`PilotUpdate`; settings are merged). `defaultAircraftId` must be an aircraft you own or that is shared with you. |
+| GET, POST | /aircraft | List (by registration): own and shared aircraft, each with `access` (`HangarAircraft`: role, owner); create from `AircraftInput` (you own it). 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
+| GET, PUT, DELETE | /aircraft/:id | GET: any access; PUT: owner or editor (403 for viewers); DELETE: owner only. PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); files no card references are deleted on PUT. POST drops `report` references. |
+| GET, POST | /aircraft/:id/shares | Sharing (`src/shared/sharing.ts`): GET anyone with access (owner first); POST `{email, role: 'view'\|'edit'}` by owner/editor → 201. 404 for an e-mail with no account (case-insensitive), 400 for yourself or the owner, 409 when they already have access. |
+| PUT, DELETE | /aircraft/:id/shares/:pilotId | Change the role / remove (owner or editor); anyone may remove themselves ("remove from my hangar"). The owner is not a share. Removing clears that pilot's default if it was this aircraft. |
+| POST | /aircraft/:id/attachments | (editor or owner) `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
 | GET, DELETE | /aircraft/:id/attachments/:fileId | GET returns `Attachment` (`AttachmentRef` + base64 `data`). |
 | GET, POST | /passengers | List (by name); create. |
 | GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`). |
@@ -171,13 +175,15 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units} | Current AIRAC, read-only. |
 | GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 20 ICAO ids), cached per station; stale reports up to 3 h when upstream fails. |
 
-Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flights → aircraft, flight_crew → passengers, pilots.default_aircraft_id → aircraft), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
+Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flight_crew → passengers), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
+
+Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/api/sharing.test.ts`): `aircraft.pilot_id` is the owner, `aircraft_shares` gives other pilots `view` (see it, use it on their flights) or `edit` (also change it and its files, manage sharing). Only the owner deletes. No access answers 404, too little 403. flights.aircraft_id and pilots.default_aircraft_id are plain FKs to aircraft(id) (ON DELETE SET NULL) and the API checks access. When access ends, the pilot's flights keep the aircraft id: the editor shows it as unavailable, a PUT keeps that unchanged id without the seat checks, forms/filing/exports see no aircraft; the pilot's default is cleared. Attachments keep pilot_id = owner.
 
 **Adding a route**: add it to the module that owns it (e.g. `api/_lib/routes/weather.ts` exports `routes: Route[]`). Every module is already listed in `routes/index.ts`, so the dispatcher needs no edits. A handler returns the body (200), `reply(status, body, headers)`, or `undefined` (204), and throws `HttpError` for errors.
 
 ## Database, migrations and seeds
 
-- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64); shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`; `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
+- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64), `aircraft_shares` (aircraft, pilot, role view|edit); shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`; `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
 - Migrations are TS modules (SQL as a default-exported string, or a `run(q)` function) listed in `api/_lib/migrate.ts`, so the Vercel bundle contains them. The runner records each one in `schema_migrations`, applies each in its own transaction, and serialises runners with a session advisory lock (plus an in-process queue for PGlite). It runs from `openDb()`: on server start, in tests, and on the Vercel cold start before serving.
   - `001_schema` converts the v2 production schema in place: `users` → `pilots` (same ids), `sessions.user_id` → `pilot_id` (sessions survive), `flights` → `legacy_flights` (kept as a backup). It then creates the new tables.
   - `002_ref_2609` (generated by `tools/build_ref.ts`) loads the reference data for AIRAC 09/26.

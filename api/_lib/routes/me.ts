@@ -2,6 +2,7 @@
 import type { Route } from '../http.js';
 import { badRequest } from '../http.js';
 import { optNum, personColumns, str, toPilot } from '../rows.js';
+import { canUseAircraft } from '../access.js';
 import type { PilotUpdate, PilotSettings } from '../../../src/shared/types.js';
 import { WIND_MODELS } from '../../../src/shared/constants.js';
 
@@ -41,8 +42,8 @@ export const routes: Route[] = [
       if ('defaultAircraftId' in input) {
         defaultAircraftId = input.defaultAircraftId || null;
         if (defaultAircraftId) {
-          const own = await db.query('SELECT 1 FROM aircraft WHERE id = $1 AND pilot_id = $2', [defaultAircraftId, pilot.id]);
-          if (!own.length) throw badRequest('no such aircraft');
+          // one of the pilot's own aircraft or one shared with them
+          if (!(await canUseAircraft(db, pilot.id, defaultAircraftId))) throw badRequest('no such aircraft');
         }
       }
       const settings = { ...pilot.settings, ...('settings' in input ? settingsPatch(input.settings) : {}) };

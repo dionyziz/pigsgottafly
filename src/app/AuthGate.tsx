@@ -1,5 +1,6 @@
 // Loads /api/session. Google mode without a session → the sign-in screen (Google Identity
 // Services button, as in v2). Local mode → straight in as the local pilot.
+import { Loading } from './Loading';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiRequestError } from '../data/api';
 import type { Pilot, SessionResponse } from '../shared';
@@ -28,7 +29,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   if (error) return <div className="center-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><button onClick={load}>Try again</button></div></div>;
-  if (!session) return <div className="loading-screen">Loading…</div>;
+  if (!session) return <Loading screen />;
   if (!session.authed || !session.pilot) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
 
   const value = {

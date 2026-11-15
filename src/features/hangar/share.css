@@ -1,0 +1,18 @@
+/* Sharing an aircraft: the share dialog and the "Shared by" chip (ShareDialog.tsx). */
+.share-chip { background: var(--accent-soft); color: var(--accent); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.share-add { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--s2); }
+@media (max-width: 480px) { .share-add { grid-template-columns: 1fr auto; } .share-add input { grid-column: 1 / -1; } }
+.share-h { font-size: var(--fs-sm); font-weight: 600; margin: 0 0 6px; }
+.share-people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.share-people li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.share-people li:first-child { border-top: 0; }
+.share-avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: var(--fs-sm); }
+.share-who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.share-who b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-who .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share-role { flex: none; gap: 6px; }
+.share-role select { padding: 4px 8px; font-size: var(--fs-sm); }
+/* a viewer's aircraft page: the sections are read-only (fieldset disabled) */
+.ac-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: contents; }
+.ac-viewonly { padding: 10px 14px; display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.ac-card-share { padding: 4px 18px 0; display: flex; min-width: 0; }

@@ -34,6 +34,12 @@ export function routeText(route: RoutePoint[]): string {
   return routePlaces(route).map((p) => p.code).join(' – ');
 }
 
+/** Form 731 route: origin – destination only ("LGTT – LGMG"). */
+export function routeEnds(route: RoutePoint[]): string {
+  const p = routePlaces(route);
+  return p.length ? [p[0], p[p.length - 1]].map((x) => x.code).join(' – ') : '';
+}
+
 /** The manifest for the forms: the PIC first, then the PAX in seat order (see formPeopleOf). */
 export function formPeople({ flight, aircraft, pilot, passengers }: FormExportProps): FormPerson[] {
   return formPeopleOf(flight.crew, aircraft ? aircraft.massBalance.stations : null, pilot, passengers);

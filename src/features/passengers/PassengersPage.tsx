@@ -1,7 +1,9 @@
 // Passengers: the pilot's list of people who may fly with them (search, add, edit, delete). These are
 // added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
 // The pilot is listed first (PIC) and edited with the same form, saved to the profile.
-import { useMemo, useState } from 'react';
+import { Loading } from '../../app/Loading';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
@@ -19,6 +21,15 @@ export function PassengersPage() {
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Passenger | 'new' | 'me' | null>(null);
   const pilot = usePilot();
+  // ?edit=me or ?edit=<passenger id> (links from the forms' missing-details list) opens that person.
+  const [params, setParams] = useSearchParams();
+  const editParam = params.get('edit');
+  useEffect(() => {
+    if (!editParam) return;
+    if (editParam === 'me') { setEditing('me'); setParams({}, { replace: true }); return; }
+    const p = data?.find((x) => x.id === editParam);
+    if (p) { setEditing(p); setParams({}, { replace: true }); }
+  }, [editParam, data, setParams]);
   const [deleting, setDeleting] = useState<Passenger | null>(null);
   const toast = useToast();
   const today = localToday();
@@ -43,7 +54,7 @@ export function PassengersPage() {
       {error && !data ? (
         <EmptyState title="Could not load your passengers" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
       ) : loading && !data ? (
-        <p className="muted">Loading…</p>
+        <p><Loading /></p>
       ) : rows.length === 0 && !(data && data.length === 0) && !showMe ? (
         <EmptyState title="No matching passengers">Nothing matches “{q}”.</EmptyState>
       ) : (

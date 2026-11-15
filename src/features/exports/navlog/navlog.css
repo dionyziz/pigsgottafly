@@ -64,7 +64,8 @@
 .md42 .h.c { text-align: center; }
 .md42 .h.big { font-size: calc(13.5 * var(--u)); line-height: 1; text-transform: none; font-weight: 500; letter-spacing: 0; padding: 0 calc(3 * var(--u)); display: flex; align-items: center; white-space: nowrap; }
 .md42 .tbl .fold { border-right-color: transparent !important; }
-.md42 .tbl .dep .v { font-weight: 700; justify-content: flex-start; padding-left: calc(4 * var(--u)); }
+.md42 .tbl .dep { position: relative; min-height: 0; }
+.md42 .tbl .dep .cpn { position: absolute; inset: 0; }
 .md42 .tbl .tot-label { font-size: calc(9.5 * var(--u)); font-weight: 600; letter-spacing: .02em; display: flex; align-items: center; padding: 0 calc(4 * var(--u)); }
 .md42 .tbl .ti-title { font-size: calc(19 * var(--u)); line-height: 1; font-weight: 800; padding: calc(5 * var(--u)) calc(4 * var(--u)) 0; border-bottom-width: var(--thick); }
 .md42 .tbl .sunset .v { font-weight: 700; text-transform: uppercase; }
@@ -85,7 +86,6 @@
 .md42 .sub2 > div { overflow: hidden; min-height: 0; }
 .md42 .sub2.end { grid-template-rows: auto 1fr; }
 .md42 .sub2.end > div:first-child { border: 0; min-height: calc(10 * var(--u)); }
-.md42 .sub2.end .dep { font-size: calc(10.5 * var(--u)); }
 
 /* terminal information + notes */
 .md42 .foot { grid-template-columns: calc(570 * var(--u)) 1fr; border-top: none; border-bottom: var(--thick) solid var(--line); }
@@ -125,3 +125,7 @@
   .md42-hazards-src { font-size: 9pt; }
   .md42 .v.need, .md42 .v.calm { background: transparent !important; }
 }
+
+/* leg values: fixed-width digits, one size per column (fit.ts) */
+.md42 .tbl .v { font-family: var(--mono); letter-spacing: 0; }
+.md42 .foot .tv.num { text-align: right; font-family: var(--mono); padding-right: calc(8*var(--u)); }

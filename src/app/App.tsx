@@ -6,6 +6,7 @@
 //   /profile  /hangar  /hangar/:id  /passengers  /waypoints
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
+import { Loading } from './Loading';
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthGate } from './AuthGate';
@@ -50,12 +51,12 @@ export function App() {
     <BrowserRouter>
       <ToastProvider>
         <Routes>
-        <Route path="/sign/:token" element={<Suspense fallback={<div className="loading-screen">Loading…</div>}><SignPage /></Suspense>} />
+        <Route path="/sign/:token" element={<Suspense fallback={<Loading screen />}><SignPage /></Suspense>} />
         <Route path="*" element={
         <AuthGate>
           <LegacyHashRedirect />
           <Onboarding>
-            <Suspense fallback={<div className="loading-screen">Loading…</div>}>
+            <Suspense fallback={<Loading screen />}>
             <Routes>
               <Route path="/" element={<LobbyPage />} />
               <Route path="/flights/new" element={<NewFlightPage />} />
