@@ -243,7 +243,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => !!document.querySelector('[data-testid=leg-alt-input]'));
   await page.type('[data-testid=leg-alt-input]', '4500');
   await page.key('Enter');
-  await page.waitFor((k) => /\b4500\b/.test(document.querySelector(`[data-leg="${k}"]`)?.textContent || ''), { args: [keys[1]] });
+  await page.waitFor((k) => /(^|\D)4500(\D|$)/.test(document.querySelector(`[data-leg="${k}"]`)?.textContent || ''), { args: [keys[1]] });
   await waitSaved();
   f = await api('GET', `flights/${id}`);
   assert.equal(f.legOverrides[keys[1]].altFt, 4500);

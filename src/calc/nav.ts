@@ -205,18 +205,18 @@ export function fmtDuration(min: number | null | undefined): string {
 }
 
 /**
- * Altitudes at or above this are written as flight levels (the usual transition altitude in the
+ * Altitudes above this are written as flight levels (the usual transition altitude in the
  * Athinai FIR; below it altitudes are in feet on QNH).
  */
 export const TRANSITION_ALTITUDE_FT = 6000;
 /**
  * A planned altitude as pilots write it: plain feet below the transition altitude ('3000', or
- * '3000 ft' with `unit`), a flight level at or above it ('FL065'). '---' when unknown.
+ * '3000 ft' with `unit`), a flight level above it ('FL065'). '---' when unknown.
  * (The ICAO FPL item 15 keeps its own encoding: see exports/fpl.)
  */
 export function fmtAltitude(ft: number | null | undefined, opts: { unit?: boolean } = {}): string {
   if (ft == null || !isFinite(ft)) return '---';
-  if (ft >= TRANSITION_ALTITUDE_FT) return `FL${pad(Math.max(0, Math.round(ft / 100)), 3)}`;
+  if (ft > TRANSITION_ALTITUDE_FT) return `FL${pad(Math.max(0, Math.round(ft / 100)), 3)}`;
   const v = String(Math.max(0, Math.round(ft)));
   return opts.unit ? `${v} ft` : v;
 }

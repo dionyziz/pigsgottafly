@@ -142,7 +142,7 @@ describe('leg label text', () => {
   it('altitude in feet, flight levels from the transition altitude', () => {
     expect(fmtAltitude(3000)).toBe('3000');
     expect(fmtAltitude(2549)).toBe('2549');
-    expect(fmtAltitude(5900)).toBe('5900');
+    expect(fmtAltitude(6000)).toBe('6000');
     expect(fmtAltitude(6500)).toBe('FL065');
     expect(fmtAltitude(9500)).toBe('FL095');
     expect(fmtAltitude(12500)).toBe('FL125');

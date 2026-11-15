@@ -35,7 +35,7 @@ src/
     fuel.ts                planFuel(FuelPlanInput) → FuelPlan (required, default FOB = required + reserve, endurance)
     wb.ts                  weightAndBalance(WbInput) → WbResult (per-seat stations, CG + moment envelopes), wbLoadsFromManifest
     performance.ts         windComponents, pressureAltitudeFt (ISA), isaTempC, densityAltitudeFt, selectRunway,
-                           takeoffDistances/landingDistances (method 'club' = MD 4.4 as the club calculator, or 'afm'),
+                           takeoffDistances/landingDistances (method 'da' = table at density altitude with planning factors, or 'afm'),
                            aerodromePerformance
     perfVerdict.ts         perfVerdict: one take-off/landing verdict (mass vs MTOW/MLW, distances, crosswind, AFM
                            table range) shared by the editor's take-off & landing cards and the MD 4.4 export
@@ -81,7 +81,7 @@ src/
                            AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date),
                            notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
                            AerodromeHours.tsx (an aerodrome's hours, ATS, handling on a date, NOTAM changes, AIP text),
-                           panels/ (FlightPanel sections, NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
+                           panels/ (FlightPanel sections incl. RouteSection (origin/destination fields), NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
                            fuel, W&B, performance, aerodrome hours at the planned times (aerodromeChecks.ts), warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope
