@@ -31,7 +31,7 @@ One page per aircraft. SX-ASV and SX-ASG are seeded:
 - Fuel: total and usable capacity, fuel type and density, burn (taxi, climb, cruise).
 - Mass & balance: empty mass and arm (from the latest weighing report), stations (front seats, rear seats, baggage areas, fuel) with arms and limits, MTOW/MLW, **Normal and Utility category envelopes** (polygons), and moment limits.
 - Performance: take-off and landing tables (POH: distance vs pressure altitude, temperature, mass, with the POH corrections for wind, slope and surface).
-- Compass cards (as today).
+- Compass swing: one or more cards (magnetic compass, GMU…) with the for/steer table, date swung, expiry (warned within 90 days, as today), and the swing report attached.
 
 ### Passengers
 List with full name, phone, date of birth, weight, ID document number (plus nationality, needed by the forms). Add, edit, delete, search.
