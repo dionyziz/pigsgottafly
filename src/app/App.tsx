@@ -5,6 +5,7 @@
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
 //   /profile  /hangar  /hangar/:id  /operators  /operators/:id  /passengers  /waypoints
 //   /admin                         every pilot (ADMIN_EMAILS only)
+//   /admin/errors                  grouped server/client/migration errors (ADMIN_EMAILS only)
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { Loading } from './Loading';
@@ -29,6 +30,7 @@ const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ d
 const OperatorsPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorsPage })));
 const OperatorPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorPage })));
 const AdminPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
+const ErrorsPage = lazy(() => import('../features/admin/ErrorsPage').then((m) => ({ default: m.ErrorsPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
@@ -72,6 +74,7 @@ export function App() {
               <Route path="/operators" element={<OperatorsPage />} />
               <Route path="/operators/:id" element={<OperatorPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/errors" element={<ErrorsPage />} />
               <Route path="/passengers" element={<PassengersPage />} />
               <Route path="/waypoints" element={<WaypointsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

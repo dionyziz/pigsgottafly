@@ -7,6 +7,7 @@ import { useAsync } from '../../data/useAsync';
 import type { AdminShare } from '../../shared';
 import { EmptyState } from '../lobby/ui';
 import '../lobby/lists.css';
+import { AdminNav } from './ErrorsPage';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const when = (ms: number) => {
@@ -23,6 +24,7 @@ export function AdminPage() {
       <div className="page-head">
         <h1>Pilots</h1>
         {data && <span className="muted">{data.length}</span>}
+        <AdminNav current="pilots" />
       </div>
       {error ? (
         <EmptyState title={error instanceof ApiRequestError && error.status === 403 ? 'Admins only' : 'Could not load the pilots'}>{error.message}</EmptyState>

@@ -73,7 +73,8 @@ src/
                            AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
                            REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context
-                           (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (tokens)
+                           (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (tokens),
+                           errorReporter.ts (window errors, rejections, ErrorBoundary catches, API 5xx → POST /api/client-errors)
   features/
     lobby/                 LobbyPage, NewFlightPage
     profile/               ProfilePage (?welcome=1 = first-use onboarding)
@@ -81,7 +82,8 @@ src/
                            ShareDialog (aircraft or operator)
     operators/             OperatorsPage, OperatorPage (details, W&B/performance requirement, documents, aircraft, who
                            has access), OperatorPicker (the aircraft page's operator dropdown with "New operator…")
-    admin/                 AdminPage (/admin: every pilot; the API answers 403 to non-admins)
+    admin/                 AdminPage (/admin: every pilot), ErrorsPage (/admin/errors: grouped errors, stack, resolve);
+                           the API answers 403 to non-admins
     passengers/            PassengersPage
     waypoints/             WaypointsPage
     editor/                EditorPage (layout: collapsible flight panel; resizable.tsx sizes panels by style during a
@@ -113,7 +115,9 @@ api/
   _lib/rows.ts             row ↔ entity mappers, input validation helpers
   _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql, AIRCRAFT_FROM
   _lib/operators.ts        operator access (owner / shared edit / view / view through an aircraft): operatorFor, listOperators
-  _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices)
+  _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices, error alerts)
+  _lib/monitor.ts          error monitoring: recordError (app_errors, grouped by fingerprint) + throttled alert e-mails,
+                           migrateReporting (a failed migration is recorded and e-mailed, then rethrown), client report rate limit
   _lib/declarationPdf.ts   the W&B and performance sheets as PDF (pdf.ts writer), from the client's WbPerfContent
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry
@@ -127,10 +131,12 @@ api/
                            015_aircraft_photo_documents.ts (attachment kinds photo/document, chunk table),
                            017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas),
                            018_operators.ts (operators, operator_shares, aircraft.operator_id, operator_files/_chunks,
-                           'wbperf' form submissions; one operator per pilot and distinct aircraft.operator text)
+                           'wbperf' form submissions; one operator per pilot and distinct aircraft.operator text),
+                           040_app_errors.ts (app_errors, app_error_alerts, app_error_reporters; IF NOT EXISTS)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            attachments.ts, files.ts (fileRoutes: aircraft photo/documents and operator documents, chunked),
-                           shares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts
+                           shares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts,
+                           monitoring.ts (health, client-errors, admin/errors)
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
@@ -144,6 +150,8 @@ tools/extract_ad_hours.ts  eAIP AD 2.3, AD 1.6.N.3/4 text → tools/ad_hours.jso
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
 tools/parse_ad_airspace.py eAIP AD 2.17, AD 1.6.N.17 text → src/data/ref/ad-airspaces.json (aerodrome CTR/ATZ: limits,
                            class, units; client map layer only, REF.adAirspaces — not in the ref_* tables)
+tools/smoke.ts             post-deploy smoke test: npm run smoke -- https://pigsgottafly.com
+.github/workflows/uptime.yml  every 10 min: /api/health and / must answer 200 (a failed run e-mails the repo owner)
 tools/build_seed.ts        data/aircraft/*.json → fleetSeed(): the owner's SX-ASV/SX-ASG as the migrations leave them
                            (003, frozen, + 014; checked by tests/api/migrations.test.ts); used by the tests
 data/                      aip.js, vfr.js, sun.js (made by the Python tools from the eAIP; sources for build_ref.ts),
@@ -204,6 +212,10 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET | /flights/:id/declarations | `DeclarationsState`: the flight's aircraft's operator, the last sending (`hash`). |
 | POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. 409 when not asked for / already sent (without resend); 503 e-mail not configured. |
 | GET | /admin/pilots | `AdminPilot[]` (ADMIN_EMAILS only; 403 otherwise). `GET /session` says `admin`. |
+| GET | /admin/errors?status=open\|resolved\|all | `AppErrorGroup[]` (src/shared/monitoring.ts), newest first (ADMIN_EMAILS only). |
+| GET | /admin/errors/:fingerprint | `AppErrorDetail` (with the last stack). POST `/admin/errors/:fingerprint/resolve` resolves it; a recurrence re-opens it and alerts. |
+| GET | /health | No sign-in. `HealthResponse`: 200 when the database answers and every migration is applied, else 503. AIRAC out of date and e-mail not configured are warnings (an expired AIRAC is recorded once as a `cron` error). |
+| POST | /client-errors | No sign-in. `ClientErrorReport` → 204; 429 over 30 per IP per 10 min, 413 over 16 KB. Recorded as kind `client` with the session's pilot, if any. |
 | GET, POST | /passengers | List (by name); create. |
 | GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`) and moves their Form 731 signature and signing link to the key `seat:<seat>` (still valid). A flight PUT naming a passenger that is not the pilot's (e.g. deleted meanwhile) drops the link and keeps the snapshot. |
 | GET, POST | /waypoints | Saved custom points (names upper-cased). |
@@ -247,6 +259,7 @@ npm run typecheck    # tsc for the client (tsconfig.app.json) and for node/api/t
 npm test             # vitest: tests/unit + tests/api
 npm run test:e2e     # vite build + headless Chrome (CDP, SwiftShader WebGL) smoke test
 npm run build        # dist/
+npm run smoke -- https://pigsgottafly.com   # post-deploy check (health, SPA, an asset, /api/session)
 npm run ref          # regenerate src/data/ref/*.json + migration 002 from data/*.js
 npx tsx tools/build_seed.ts   # print the owner's seeded aircraft (003 is applied and frozen)
 ```
@@ -257,6 +270,16 @@ The signed-in pilot is one copy for the app (AuthGate): `setPilot` is posted to 
 With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`, `ADMIN_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 
 Deployment (not done by agents): Vercel builds with `vite build` to `dist/`. `vercel.json` rewrites `/api/*` to the function and every other non-file path to `index.html` (the SPA). HTML is served with no-cache, `/assets/*` is immutable, and www redirects to the apex. `.vercelignore` drops aip/, trn-docs/, tools/, tests/ and server/.
+
+## Monitoring
+
+Errors are recorded in-house (`api/_lib/monitor.ts`, table `app_errors`, migration 040), grouped by a fingerprint (kind, message with numbers/ids/quoted values blanked, route pattern, and for server errors the top stack frame without line numbers):
+- **server**: every unhandled error in the dispatcher and every 5xx answer (HttpError or Reply), with the route pattern, method, status, the pilot id, user agent and release (`VERCEL_GIT_COMMIT_SHA`);
+- **migration**: `openDb()` runs `migrateReporting()`: a failed migration is logged as `[pgf-migration-failed]`, recorded (the monitor creates its tables itself when 040 has not run yet) and e-mailed, then rethrown; `api/index.ts` logs `[pgf-startup-failed]`, answers 500 (`/api/health` 503) and retries the start-up on the next request;
+- **client**: `src/app/errorReporter.ts` (window error, unhandledrejection, ErrorBoundary, API 5xx; stale-chunk errors and extension noise skipped; one report per distinct error per 10 min, 20 per page) → `POST /api/client-errors`;
+- **cron**: health-check warnings (an expired AIRAC).
+
+No request bodies are stored; e-mail addresses and long tokens are masked, URLs are paths with ids as `:id`. The admins (`ADMIN_EMAILS`) get an e-mail (`sendSystemMail`) for a new group, a recurrence after 24 h quiet or after "resolve", a burst (more than 20 in 10 min) and every migration failure, at most one per group per hour (a resolved group that recurs is exempt) and 20 a day overall. Recording and alerting never throw. They are listed on `/admin/errors`. Uptime: `.github/workflows/uptime.yml` polls `/api/health` and `/` every 10 minutes.
 
 ## Ownership
 

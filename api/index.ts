@@ -5,7 +5,9 @@
 // The autorouter account is used only for the pilots on AUTOROUTER_PILOTS (default ALLOWED_EMAILS;
 // both empty = nobody).
 // Optional RESEND_API_KEY / FORMS_FROM e-mail forms to HCAA for any signed-in pilot, who is cc'd.
-// Pending migrations run on cold start, before the first request is served.
+// Pending migrations run on cold start, before the first request is served. A failed migration is
+// recorded in app_errors and e-mailed to ADMIN_EMAILS (api/_lib/monitor.ts); every request then
+// answers 500 (GET /api/health: 503) and retries the start-up, until it succeeds.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { openDb } from './_lib/db.js';
 import { configFromEnv, createApi } from './_lib/app.js';
@@ -31,9 +33,13 @@ export default async function vercelHandler(req: IncomingMessage, res: ServerRes
     await (await handler)(req, res);
   } catch (e) {
     handler = null;
-    console.error(e);
-    res.statusCode = 500;
+    // the dispatcher answers every error itself: this is a failed start-up (env, database, migration)
+    console.error('[pgf-startup-failed]', e);
+    if (res.headersSent) return;
+    const health = /^\/api\/health\/?(\?|$)/.test(req.url || '');
+    res.statusCode = health ? 503 : 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'server error' }));
+    res.setHeader('Cache-Control', 'no-store');
+    res.end(JSON.stringify(health ? { ok: false, error: 'start-up failed (see the [pgf-startup-failed] log)' } : { error: 'server error' }));
   }
 }
