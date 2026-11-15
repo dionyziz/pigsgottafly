@@ -7,7 +7,8 @@
 //   POST /flights/:id/forms/731/send               PDF to 731@hcaa.gov.gr, cc/reply-to the pilot (409 until all signed)
 //   POST /flights/:id/forms/gendec/send            PDF to gendec@hcaa.gov.gr, cc/reply-to the pilot
 // Any signed-in pilot may send; the pilot is always cc'd. A version already sent is refused (409)
-// unless the body is {"resend": true}; concurrent sends of one form are refused (409).
+// unless the body is {"resend": true}; concurrent sends of one form are refused (409). Sends and
+// signing links are capped per pilot and per flight in any 24 hours (api/_lib/sendCaps.ts, 429).
 //   GET  /sign/:token                              the signing page's view (no sign-in): own row in full, others masked
 //   POST /sign/:token                              signs the current version of the form
 // A signature is for one version of the form (SHA-256 of every field, form731SigningText): when
@@ -30,6 +31,7 @@ import type { RoutePoint } from '../../../src/shared/types.js';
 import { hashToken } from '../auth.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
+import { checkLinkCap, releaseMail, reserveMail } from '../sendCaps.js';
 import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
 import {
   FORM731_TO, GENDEC_PIC_KEY, GENDEC_TO, form731Content, form731SigningText, genDecContent, genDecText, maskTail,
@@ -221,7 +223,16 @@ async function sendOnce(db: Queryable, L: Loaded, form: '731' | 'gendec', hash: 
     if (prev && !prev.changed && !resend) {
       throw conflict('this version of the form was already sent; send {"resend": true} to send it again');
     }
-    const sent = await mailForm(L, form, await pdf());
+    const doc = await pdf();
+    // the sending caps (sendCaps.ts): 429 over them; a failed send does not count
+    const reservation = await reserveMail(db, L.pilot.id, L.flight.id, form);
+    let sent;
+    try {
+      sent = await mailForm(L, form, doc);
+    } catch (e) {
+      await releaseMail(db, reservation);
+      throw e;
+    }
     await recordSent(db, L, form, sent.id, sent.to, hash);
   } finally {
     await db.query('DELETE FROM form_send_claims WHERE flight_id = $1 AND pilot_id = $2 AND form = $3 AND until = $4', [L.flight.id, L.pilot.id, form, until]);
@@ -310,7 +321,9 @@ export const routes: Route[] = [
       // a link given to whoever held this key before does not count (newLink revokes it)
       const have = new Set(existing.filter((r) => holderOf(L, r)).map((r) => r.person_key as string));
       const links: Record<string, string> = {};
-      for (const p of L.c731.people) if (p.role === 'PAX' && !have.has(p.key)) links[p.key] = await newLink(db, L, p);
+      const need = L.c731.people.filter((p) => p.role === 'PAX' && !have.has(p.key));
+      await checkLinkCap(db, pilot.id, L.flight.id, need.length);
+      for (const p of need) links[p.key] = await newLink(db, L, p);
       return state(db, L, links);
     },
   },
@@ -320,6 +333,7 @@ export const routes: Route[] = [
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
       if (!person) throw notFound('no such passenger on this flight');
+      await checkLinkCap(db, pilot.id, L.flight.id, 1);
       return state(db, L, { [params.key]: await newLink(db, L, person) });
     },
   },

@@ -3,6 +3,7 @@
 import type { Route } from '../http.js';
 import { routes as session } from './session.js';
 import { routes as me } from './me.js';
+import { routes as account } from './account.js';
 import { routes as aircraft } from './aircraft.js';
 import { routes as attachments } from './attachments.js';
 import { routes as files } from './files.js';
@@ -16,4 +17,4 @@ import { routes as notams } from './notams.js';
 import { routes as filing } from './filing.js';
 import { routes as forms } from './forms.js';
 
-export const ROUTES: Route[] = [...session, ...me, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing, ...forms];
+export const ROUTES: Route[] = [...session, ...me, ...account, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing, ...forms];

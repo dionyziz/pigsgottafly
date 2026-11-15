@@ -5,6 +5,7 @@
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
 //   /profile  /hangar  /hangar/:id  /passengers  /waypoints
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
+//   /privacy  /terms               privacy policy, terms of service (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { Loading } from './Loading';
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
@@ -25,6 +26,8 @@ const EditorPage = lazy(() => import('../features/editor').then((m) => ({ defaul
 const ExportPage = lazy(() => import('../features/exports').then((m) => ({ default: m.ExportPage })));
 // The Form 731 signing page: public (no sign-in), outside the AuthGate.
 const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ default: m.SignPage })));
+const PrivacyPage = lazy(() => import('../features/legal').then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import('../features/legal').then((m) => ({ default: m.TermsPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
@@ -52,6 +55,8 @@ export function App() {
       <ToastProvider>
         <Routes>
         <Route path="/sign/:token" element={<Suspense fallback={<Loading screen />}><SignPage /></Suspense>} />
+        <Route path="/privacy" element={<Suspense fallback={<Loading screen />}><PrivacyPage /></Suspense>} />
+        <Route path="/terms" element={<Suspense fallback={<Loading screen />}><TermsPage /></Suspense>} />
         <Route path="*" element={
         <AuthGate>
           <LegacyHashRedirect />

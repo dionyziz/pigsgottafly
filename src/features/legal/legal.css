@@ -1,0 +1,37 @@
+/* /privacy and /terms: a readable document on the app's tokens, public (no sign-in). */
+.legal-page { min-height: 100%; padding: 0 16px 56px; }
+.legal-top { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 10px; padding: 18px 0; }
+.legal-top a.legal-home { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 600; }
+.legal-top a.legal-home:hover { text-decoration: none; }
+.legal-top img { width: 28px; height: 28px; }
+.legal-top .spacer { flex: 1; }
+.legal-top nav { display: flex; gap: 14px; font-size: var(--fs-sm); }
+.legal-top nav a[aria-current='page'] { color: var(--ink); font-weight: 600; }
+.legal-doc { max-width: 760px; margin: 0 auto; padding: 32px 36px 36px; line-height: 1.6; }
+.legal-doc h1 { font-size: var(--fs-2xl); margin-bottom: 4px; }
+.legal-doc .legal-date { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 18px; }
+.legal-doc .legal-lead { font-size: var(--fs-lg); color: var(--ink-2); margin: 0 0 20px; }
+.legal-doc h2 { font-size: var(--fs-lg); margin: 30px 0 8px; scroll-margin-top: 16px; }
+.legal-doc h3 { font-size: var(--fs); margin: 18px 0 4px; }
+.legal-doc p { margin: 0 0 10px; }
+.legal-doc ul { margin: 0 0 12px; padding-left: 20px; }
+.legal-doc li { margin: 0 0 6px; }
+.legal-doc li::marker { color: var(--muted); }
+.legal-toc { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; margin: 0 0 8px; font-size: var(--fs-sm); }
+.legal-toc ol { margin: 6px 0 0; padding-left: 20px; columns: 2; column-gap: 28px; }
+.legal-toc li { margin: 0 0 3px; break-inside: avoid; }
+.legal-table { width: 100%; border-collapse: collapse; margin: 6px 0 14px; font-size: var(--fs-sm); }
+.legal-table th, .legal-table td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.legal-table th { color: var(--muted); font-weight: 600; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.03em; }
+.legal-table td:first-child { font-weight: 600; white-space: nowrap; }
+.legal-foot { max-width: 760px; margin: 16px auto 0; color: var(--muted); font-size: var(--fs-sm); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+@media (max-width: 640px) {
+  .legal-doc { padding: 22px 18px 26px; }
+  .legal-toc ol { columns: 1; }
+  .legal-table td:first-child { white-space: normal; }
+  .legal-top nav { display: none; }
+}
+@media print {
+  .legal-top, .legal-foot { display: none; }
+  .legal-doc { border: 0; box-shadow: none; padding: 0; }
+}

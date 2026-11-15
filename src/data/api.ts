@@ -79,6 +79,8 @@ export const api = {
   me: {
     get: () => request<Pilot>('GET', 'me'),
     update: (patch: PilotUpdate) => request<Pilot>('PUT', 'me', patch),
+    /** Deletes the account and everything it owns; `confirm` is the account's e-mail ("delete" in local mode). */
+    remove: (confirm: string) => request<{ ok: true }>('DELETE', 'me', { confirm }),
   },
   /** Own aircraft and those shared with the pilot, each with `access` (role, owner). */
   aircraft: crud<HangarAircraft, AircraftInput>('aircraft'),

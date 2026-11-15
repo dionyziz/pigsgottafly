@@ -73,7 +73,8 @@ src/
                            (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (tokens)
   features/
     lobby/                 LobbyPage, NewFlightPage
-    profile/               ProfilePage (?welcome=1 = first-use onboarding)
+    profile/               ProfilePage (?welcome=1 = first-use onboarding), AccountSection (download my data, delete account)
+    legal/                 /privacy and /terms (public, no sign-in; linked from the sign-in screen and the account menu)
     hangar/                HangarPage, AircraftPage
     passengers/            PassengersPage
     waypoints/             WaypointsPage
@@ -114,7 +115,9 @@ api/
                            013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id)),
                            014_aircraft_fuels_provenance.ts (approved fuels list; seeded notes/paths cleared),
                            015_aircraft_photo_documents.ts (attachment kinds photo/document, chunk table),
-                           017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas)
+                           017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas),
+                           030_mail_log.ts (every e-mail sent for a pilot, for the sending caps)
+  _lib/sendCaps.ts         per-pilot caps (429): e-mails 20/24 h and 5 per flight and form, signing links 60/24 h and 20 per flight
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            attachments.ts, files.ts (photo, documents: chunked), shares.ts, notams.ts, filing.ts
                            + index.ts (the registry)
@@ -171,6 +174,8 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /login | `{credential}` (Google ID token). 401 if bad, 403 if not in ALLOWED_EMAILS, 404 in local mode. |
 | POST | /logout | Ends this session only. |
 | GET, PUT | /me | Profile (`PilotUpdate`; settings are merged). `defaultAircraftId` must be an aircraft you own or that is shared with you. |
+| DELETE | /me | `{confirm: <account e-mail>}` (local mode `"delete"`): deletes the pilot and everything they own (routes/account.ts: every table's `pilot_id` rows, then the pilot with its cascades; owned aircraft go even when shared), ends all sessions, clears the cookie. |
+| GET | /me/export | Everything the pilot owns as a JSON download (GDPR portability; files listed without their bytes). |
 | GET, POST | /aircraft | List (by registration): own and shared aircraft, each with `access` (`HangarAircraft`: role, owner); create from `AircraftInput` (you own it). 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
 | GET, PUT, DELETE | /aircraft/:id | GET: any access; PUT: owner or editor (403 for viewers); DELETE: owner only. PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); files no card references are deleted on PUT. POST drops `report` references. |
 | GET, POST | /aircraft/:id/shares | Sharing (`src/shared/sharing.ts`): GET anyone with access (owner first); POST `{email, role: 'view'\|'edit'}` by owner/editor → 201. 404 for an e-mail with no account (case-insensitive), 400 for yourself or the owner, 409 when they already have access. |
