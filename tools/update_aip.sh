@@ -58,10 +58,12 @@ python3 -I "$ROOT/tools/build_vfr.py" "$ROOT/tools/vfr_points.json" "$ROOT/tools
 
 echo "== 6. reference data"
 # The new cycle's reference data goes into NEW migrations: never edit an applied one (002, 005).
-# Point MIGRATION / RUNWAY_MIGRATION in tools/build_ref.ts at new files (e.g. 006_ref_<cycle>.ts),
+# Point MIGRATION / RUNWAY_MIGRATION / HOURS_MIGRATION in tools/build_ref.ts at new files (e.g. 006_ref_<cycle>.ts),
 # register them in api/_lib/migrate.ts, then run:  npm run ref && npm test && npm run test:e2e
 echo "data/*.js and tools/runways.json updated. Next: new ref migrations in tools/build_ref.ts, then npm run ref && npm test && npm run test:e2e"
 echo "After npm run ref, the aerodrome CTR/ATZ map layer (client only, AD 2.17 / AD 1.6.N.17):"
 echo "  python3 -I tools/parse_ad_airspace.py $WORK/txt src/data/ref/aerodromes.json src/data/ref/atc-units.json src/data/ref/ad-airspaces.json"
+echo "and the operational hours and handling (AD 2.3, AD 1.6.N.3/4), then npm run ref again:"
+echo "  npx tsx tools/extract_ad_hours.ts $WORK/txt && npm run ref"
 python3 -I "$ROOT/tools/vfr_manifest.py" write "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
 echo "done. Chart renders and overlays: $WORK/charts"

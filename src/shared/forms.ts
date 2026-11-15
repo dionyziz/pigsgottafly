@@ -3,6 +3,7 @@
 // HCAA, the "form changed since signing" check). Pure: the aerodrome lookup is passed in.
 import type { Aircraft, FlightCrew, IsoDate, Passenger, PersonDetails, Pilot, RoutePoint, Station } from './types.js';
 import { seatLayout } from './constants.js';
+import type { GenDecHandling } from '../calc/aerodromeStatus.js';
 
 /** Minimal aerodrome record for the forms. */
 export interface FormAerodrome { id: string; icao: string | null; name: string }
@@ -312,6 +313,8 @@ export function genDecText(c: GenDecContent): string {
 //   POST /flights/:id/forms/731/links/:key/revoke   → FormsState
 //   POST /flights/:id/forms/731/send                → FormsState (e-mail to HCAA; 409 until everyone has signed)
 //   POST /flights/:id/forms/gendec/send             → FormsState
+//   POST /flights/:id/forms/gendec/handled         → FormsState; body {handled: true | false | null}: the flight's
+//                                                     override of who sends the GenDec (null = automatic)
 //   Both sends: body {} or {resend: true}. 409 when this version was already sent (unless resend) or a send
 //   of the same form is in progress; 403 for a pilot without an e-mail address (emailEnabled false, emailReason says so).
 //   GET  /sign/:token                               → SigningView (no sign-in)
@@ -349,8 +352,10 @@ export interface FormsState {
   gendec: {
     content: GenDecContent;
     submission: SubmissionState | null;
-    /** The departure or destination has no handler (per the pilot's "handled" aerodromes): the PIC sends it. */
+    /** The departure or destination has no handler (AIP + NOTAMs, or the flight's override): the PIC sends it. */
     pilotSends: boolean;
+    /** Handling at each end with the reason, and the flight's override (src/calc/aerodromeStatus.ts). */
+    handling: GenDecHandling;
     /**
      * The PIC's signature on the current version of the declaration ("Authorized Agent or
      * Pilot-in-Command"), given automatically like on Form 731; null without a PIC name.

@@ -12,3 +12,5 @@ export * from './atc.js';
 export * from './sun.js';
 export * from './hazards.js';
 export * from './sectors.js';
+export * from './adHours.js';
+export * from './aerodromeStatus.js';

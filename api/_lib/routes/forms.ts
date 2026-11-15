@@ -18,10 +18,14 @@
 // person whom the old link must not reach.
 import crypto from 'node:crypto';
 import type { Route } from '../http.js';
-import { conflict, HttpError, newId, notFound } from '../http.js';
+import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
 import type { Queryable } from '../db.js';
 import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
-import { loadRef } from '../flightContext.js';
+import { flightContext, loadRef } from '../flightContext.js';
+import { aerodromeNotamEffects, genDecHandling, type GenDecHandling } from '../../../src/calc/aerodromeStatus.js';
+import type { NotamBriefing } from '../../../src/shared/briefing.js';
+import type { RefAerodrome } from '../../../src/shared/ref.js';
+import type { RoutePoint } from '../../../src/shared/types.js';
 import { hashToken } from '../auth.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
@@ -112,11 +116,30 @@ async function submission(db: Queryable, pilotId: string, flightId: string, form
   return s ? { sentAt: Number(s.sent_at), messageId: s.message_id, to: s.to_addr, changed: s.text_hash !== hash } : null;
 }
 
-const pilotSendsGenDec = (L: Loaded) => {
-  const handled = new Set(L.pilot.settings.handledAerodromes ?? []);
-  const ends = [L.gendec.departureIcao, L.gendec.arrivalIcao];
-  return ends.some((x) => !x || !handled.has(x));
-};
+/**
+ * Whether a handler submits the General Declaration at both ends (src/calc/aerodromeStatus.ts genDecHandling):
+ * handling per the AIP (AD 2.3 item 9 / AD 1.6) at the departure at block-off and at the destination at
+ * block-on, overlaid with the flight's last NOTAM briefing (flight_notams; none = AIP only). The flight's
+ * options.genDecHandled overrides it. (The old profile setting handledAerodromes is no longer used.)
+ */
+async function genDecDecision(db: Queryable, L: Loaded): Promise<GenDecHandling> {
+  const ctx = await flightContext(db, L.pilot.id, L.flight.id);
+  const [n] = await db.query<{ doc: NotamBriefing }>('SELECT doc FROM flight_notams WHERE flight_id = $1 AND pilot_id = $2', [L.flight.id, L.pilot.id]);
+  const effects = aerodromeNotamEffects(n?.doc?.notams ?? []);
+  const byId = new Map(ctx.ref.aerodromes.map((x) => [x.id.toUpperCase(), x]));
+  const byIcao = new Map(ctx.ref.aerodromes.filter((x) => x.icao).map((x) => [x.icao!.toUpperCase(), x]));
+  const adOf = (p: RoutePoint | undefined): RefAerodrome | null =>
+    p && p.kind === 'aerodrome' ? byId.get(String(p.refId ?? '').toUpperCase()) ?? byIcao.get(p.name.toUpperCase()) ?? null : null;
+  const route = L.flight.route;
+  const dayMs = Date.parse(`${L.flight.date}T00:00:00Z`);
+  const t = (ms: number) => (ctx.timed ? ms : NaN);
+  const ends = [];
+  if (route.length) ends.push({ role: 'departure' as const, code: L.gendec.departureCode || route[0].name, aerodrome: adOf(route[0]), fromMs: t(ctx.blockOff), toMs: t(ctx.blockOff), dayMs });
+  if (route.length > 1) {
+    ends.push({ role: 'destination' as const, code: L.gendec.arrivalCode || route[route.length - 1].name, aerodrome: adOf(route[route.length - 1]), fromMs: t(ctx.blockOn), toMs: t(ctx.blockOn), dayMs });
+  }
+  return genDecHandling(ends, L.flight.options.genDecHandled ?? null, { effects, sunTables: ctx.ref.sun });
+}
 
 async function state(db: Queryable, L: Loaded, links?: Record<string, string>): Promise<FormsState> {
   await signPic(db, L);
@@ -138,9 +161,10 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
     };
   });
   const mail = mailFor(L);
+  const handling = await genDecDecision(db, L);
   return {
     form731: { content: L.c731, signatures, allSigned: signatures.every((s) => s.signed), submission: await submission(db, L.pilot.id, L.flight.id, '731', L.hash731) },
-    gendec: { content: L.gendec, submission: await submission(db, L.pilot.id, L.flight.id, 'gendec', L.hashGendec), pilotSends: pilotSendsGenDec(L),
+    gendec: { content: L.gendec, submission: await submission(db, L.pilot.id, L.flight.id, 'gendec', L.hashGendec), pilotSends: handling.pilotSends, handling,
       picSignature: gdSig ? { name: gdSig.name, signedAt: gdSig.signedAt } : null },
     emailEnabled: mail.enabled,
     emailReason: mail.reason,
@@ -325,6 +349,23 @@ export const routes: Route[] = [
       if (L.gendec.placeCount < 2) throw conflict('the route needs a departure and a destination');
       await sendOnce(db, L, 'gendec', L.hashGendec, (await body()).resend === true, async () => genDecPdf(L.gendec, await signGenDecPic(db, L)));
       return state(db, L);
+    },
+  },
+  {
+    // The flight's override of who sends the General Declaration: {handled: true} a handler submits it,
+    // false the PIC sends it, null automatic (AIP + NOTAMs). Stored in the flight's options.genDecHandled.
+    method: 'POST', path: '/flights/:id/forms/gendec/handled',
+    async handler({ db, pilot, params, body, formsMailDenied }) {
+      const b = await body();
+      const v = b.handled;
+      if (v !== null && typeof v !== 'boolean') throw badRequest('handled must be true, false or null');
+      const r = await db.query(
+        `UPDATE flights SET options = options || jsonb_build_object('genDecHandled', $3::jsonb), version = version + 1,
+           updated = (extract(epoch FROM clock_timestamp()) * 1000)::BIGINT
+         WHERE id = $1 AND pilot_id = $2 RETURNING id`,
+        [params.id, pilot.id, JSON.stringify(v)]);
+      if (!r.length) throw notFound('no such flight');
+      return state(db, await loadForms(db, pilot, params.id, formsMailDenied));
     },
   },
   {

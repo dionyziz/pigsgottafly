@@ -1,11 +1,11 @@
 // General Declaration by e-mail (PLAN-v3 "Sending forms to HCAA by email"), screen only: when the
 // departure or destination has no handler, "Send to HCAA" e-mails the GenDec PDF to
 // gendec@hcaa.gov.gr (cc and reply-to the pilot), once per flight, with "Re-send" after changes.
-// A per-aerodrome "handled" flag (the handler submits the GenDec; the pilot's profile setting
-// handledAerodromes) hides the button for flights between handled aerodromes.
+// Whether an end is handled comes from the AIP (handling hours, AD 2.3 item 9 / AD 1.6) and the
+// flight's NOTAMs at the flight's time there (the server decides: src/calc/aerodromeStatus.ts
+// genDecHandling); the reason is shown per end. A per-flight checkbox overrides the decision.
 import { useState } from 'react';
 import { api, ApiRequestError } from '../../../data/api';
-import { useSession } from '../../../app/session';
 import type { FormsState } from '../../../shared/forms';
 import type { useFormsState } from '../form731/SignaturesPanel';
 
@@ -14,14 +14,12 @@ const dayHm = (ms: number) => { const d = new Date(ms); return `${pad2(d.getDate
 const errText = (e: unknown) => (e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.');
 
 export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: ReturnType<typeof useFormsState> }) {
-  const { st, setSt, err, setErr, load } = forms;
-  const { pilot, setPilot } = useSession();
+  const { st, setSt, err, setErr } = forms;
   const [busy, setBusy] = useState('');
   if (!st) return <div className="pgf-panel no-print" data-testid="gendec-send">{err ? <span className="pgf-err">{err}</span> : <span className="muted">Loading…</span>}</div>;
   const g = st.gendec;
   const sub = g.submission;
-  const handled = new Set(pilot.settings.handledAerodromes ?? []);
-  const ends = [...new Set([g.content.departureIcao, g.content.arrivalIcao].filter((x): x is string => !!x))];
+  const h = g.handling;
   const run = async (what: string, fn: () => Promise<FormsState | void>) => {
     setBusy(what);
     setErr(null);
@@ -34,18 +32,15 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
       setBusy('');
     }
   };
-  const toggle = (icao: string, on: boolean) => run(`h-${icao}`, async () => {
-    const next = new Set(handled);
-    if (on) next.add(icao); else next.delete(icao);
-    setPilot(await api.me.update({ settings: { handledAerodromes: [...next].sort() } }));
-    load();
-  });
+  // The checkbox shows the decision in force; ticking it to the automatic value goes back to automatic.
+  const handledNow = !g.pilotSends;
+  const setHandled = (v: boolean) => run('handled', () => api.forms.setGenDecHandled(flightId, v === !h.autoPilotSends ? null : v));
 
   return (
     <div className="pgf-panel no-print" data-testid="gendec-send">
       <div className="pgf-panel-head">
         <h3>Send to HCAA</h3>
-        <span className={`chip ${g.pilotSends ? (sub && !sub.changed ? 'ok' : 'warn') : 'ok'}`}>
+        <span className={`chip ${g.pilotSends ? (sub && !sub.changed ? 'ok' : 'warn') : 'ok'}`} data-testid="gendec-status">
           {!g.pilotSends ? 'Handled: the handler submits the General Declaration' : sub ? (sub.changed ? 'Changed since it was sent' : 'Sent') : 'Not sent'}
         </span>
         <span className="spacer" />
@@ -59,16 +54,27 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
       </div>
       {sub && <div className="pgf-note">Sent to {sub.to} on {dayHm(sub.sentAt)} (cc you; replies go to you).</div>}
       {g.pilotSends && !st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
-      {ends.length > 0 && (
-        <div className="pgf-note">
-          A handler submits the General Declaration at:{' '}
-          {ends.map((icao) => (
-            <label key={icao} style={{ marginRight: 12 }}>
-              <input type="checkbox" checked={handled.has(icao)} disabled={!!busy} onChange={(e) => toggle(icao, e.target.checked)} data-testid={`gendec-handled-${icao}`} /> {icao}
-            </label>
+      {h.ends.length > 0 && (
+        <ul className="pgf-note pgf-handling" data-testid="gendec-handling">
+          {h.ends.map((e) => (
+            <li key={e.role} data-testid={`gendec-handling-${e.role}`} className={e.handled ? undefined : 'is-unhandled'}>
+              {e.role === 'departure' ? 'Departure' : 'Destination'} {e.reason}
+            </li>
           ))}
-        </div>
+        </ul>
       )}
+      <div className="pgf-note">
+        <label>
+          <input type="checkbox" checked={handledNow} disabled={!!busy} onChange={(e) => setHandled(e.target.checked)} data-testid="gendec-handled" />{' '}
+          A handler submits the General Declaration for this flight
+        </label>
+        {h.override !== null && (
+          <>
+            {' '}<span className="muted">(set for this flight; from the AIP{h.ends.some((e) => /NOTAM/.test(e.reason)) ? ' and NOTAMs' : ''}: {h.autoPilotSends ? 'you send it' : 'handled'})</span>{' '}
+            <button type="button" className="linkish" disabled={!!busy} onClick={() => run('handled', () => api.forms.setGenDecHandled(flightId, null))} data-testid="gendec-handled-auto">Use the automatic decision</button>
+          </>
+        )}
+      </div>
       {err && <div className="pgf-err" role="alert">{err}</div>}
     </div>
   );

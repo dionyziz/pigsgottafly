@@ -130,8 +130,8 @@ export function EditorPage() {
 
   return (
     <EditorProvider key={state.flight.id} flight={state.flight} initialDoc={state.doc} pilot={pilot} {...lists} reloadLists={reloadLists}>
-      <FlightCalcProvider>
       <NotamProvider>
+      <FlightCalcProvider>
         <Keys />
         <div className="editor" data-testid="editor">
           <header className="editor-top">
@@ -150,8 +150,8 @@ export function EditorPage() {
             </div>
           </div>
         </div>
-      </NotamProvider>
       </FlightCalcProvider>
+      </NotamProvider>
     </EditorProvider>
   );
 }

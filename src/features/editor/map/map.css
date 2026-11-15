@@ -227,3 +227,14 @@
   margin: 4px 0 0; padding: 6px 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px;
   font-family: var(--mono); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink);
 }
+
+/* aerodrome hours (AerodromeHours.tsx: map tooltip / details, editor panel) */
+.pgf-ad-notam { font-family: var(--mono); font-weight: 600; color: var(--warn); }
+.pgf-ad-aip { margin-top: 4px; display: grid; gap: 2px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); }
+.pgf-ad-aip b { font-weight: 600; color: var(--ink); margin-right: 4px; }
+.pgf-ad-tip-line { display: block; font-size: var(--fs-xs); color: var(--ink-2); }
+.pgf-air-type.t-ad { background: #1f2a44; }
+.pgf-ad-tip-line.is-danger { color: var(--danger); }
+.pgf-ad-src { font-size: 10.5px; margin: 0 6px 8px; }
+div.pgf-air-h { cursor: default; }
+div.pgf-air-h:hover { background: none; }

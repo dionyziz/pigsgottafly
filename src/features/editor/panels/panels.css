@@ -199,3 +199,12 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-requests label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
 .ep-requests .ep-req-min { width: 4.2em; margin-left: 4px; }
 .ep-requests li .hint { flex-basis: 100%; }
+
+/* aerodrome hours (AerodromeSection) */
+.ep-ad-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.ep-ad { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-size: var(--fs-sm); }
+.ep-ad.is-closed { border-left: 3px solid var(--danger); }
+.ep-ad-head { display: flex; align-items: baseline; gap: var(--s2); }
+.ep-ad-name { font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ep-ad-when { font-size: var(--fs-xs); }
+.ep-ad .pgf-ad-body { margin: 2px 0 0; }

@@ -52,8 +52,9 @@ export interface PilotSettings {
   /** Aerodromes within this distance of the route are listed in the ATC list (default 2 NM). */
   enrouteAerodromeRadiusNm: number;
   /**
-   * ICAO codes of aerodromes where a handler submits the General Declaration: no "Send to HCAA"
-   * for a flight between two of them. Missing = none.
+   * No longer used (kept so old profiles stay valid): whether a handler submits the General
+   * Declaration now comes from the AIP handling hours and NOTAMs, with a per-flight override
+   * (FlightOptions.genDecHandled).
    */
   handledAerodromes?: string[];
 }
@@ -492,6 +493,11 @@ export interface FlightOptions {
   arrivalSurface: string | null;
   /** Touch-and-go / intermediate-stop requests (missing on older flights = none). */
   aerodromeRequests?: AerodromeRequest[];
+  /**
+   * Who sends the General Declaration, overriding the automatic decision (handling per AIP + NOTAMs):
+   * true = a handler submits it, false = the PIC sends it; null / missing = automatic.
+   */
+  genDecHandled?: boolean | null;
 }
 
 /** Lobby row data, computed by the client on save. */

@@ -8,6 +8,7 @@ import { legacyAtc, legacyLegOverrides } from '../../api/_lib/migrations/004_leg
 import type { AtcEntry } from '../../src/shared/types';
 import { createApi } from '../../api/_lib/app';
 import { CID, JWK } from './helpers';
+import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
@@ -227,6 +228,10 @@ describe('migrations', () => {
     expect(await db.query(`SELECT * FROM aircraft`)).toEqual([]);
     const [{ n }] = await db.query(`SELECT count(*)::int AS n FROM ref_aerodromes`);
     expect(n).toBeGreaterThan(50);
+    // 012: every aerodrome's operational hours, exactly as shipped to the client
+    const docs = new Map((await db.query<{ id: string; doc: any }>(`SELECT id, doc FROM ref_aerodromes WHERE airac = '2609'`)).map((r) => [r.id, r.doc]));
+    for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
+    expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
     await db.close();
   });
 });

@@ -110,6 +110,8 @@ export const api = {
     revokeLink: (id: string, key: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/revoke`),
     send731: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/send`),
     sendGenDec: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/send`),
+    /** The flight's override of who sends the GenDec: true = a handler, false = the PIC, null = automatic (AIP + NOTAMs). */
+    setGenDecHandled: (id: string, handled: boolean | null) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/handled`, { handled }),
   },
   /** The signing page (no sign-in). */
   sign: {

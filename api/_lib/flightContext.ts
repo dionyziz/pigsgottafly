@@ -4,7 +4,7 @@
 // aerodromes the flight uses and the aerodromes near the route.
 import type { Queryable } from './db.js';
 import { notFound } from './http.js';
-import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
+import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
 import type { RoutePoint } from '../../src/shared/types.js';
 import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
 import { defaultAltitudes } from '../../src/calc/altitudes.js';
@@ -19,6 +19,8 @@ export interface RefDocs {
   fis: RefFis | null;
   vfrPoints: RefVfrPoint[];
   vfrRoutes: RefVfrRoute[];
+  /** AIP GEN 2.7 sunset tables by ICAO. */
+  sun: Record<string, RefSunTable>;
 }
 
 let refCache: { airac: string; at: number; docs: RefDocs } | null = null;
@@ -30,6 +32,7 @@ export async function loadRef(db: Queryable): Promise<RefDocs> {
   if (refCache && refCache.airac === cur.id) return refCache.docs;
   const docs = async <T>(table: string) => (await db.query<{ doc: T }>(`SELECT doc FROM ${table} WHERE airac = $1 ORDER BY id`, [cur.id])).map((r) => r.doc);
   const [fis] = await db.query<{ doc: RefFis }>('SELECT doc FROM ref_fis WHERE airac = $1', [cur.id]);
+  const sun = Object.fromEntries((await db.query<{ icao: string; doc: RefSunTable }>('SELECT icao, doc FROM ref_sun WHERE airac = $1', [cur.id])).map((r) => [r.icao, r.doc]));
   const out: RefDocs = {
     airac: cur.id,
     aerodromes: await docs<RefAerodrome>('ref_aerodromes'),
@@ -37,6 +40,7 @@ export async function loadRef(db: Queryable): Promise<RefDocs> {
     fis: fis?.doc ?? null,
     vfrPoints: await docs<RefVfrPoint>('ref_waypoints'),
     vfrRoutes: await docs<RefVfrRoute>('ref_vfr_routes'),
+    sun,
   };
   refCache = { airac: cur.id, at: Date.now(), docs: out };
   return out;

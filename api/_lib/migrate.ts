@@ -17,6 +17,7 @@ import formSignatures008 from './migrations/008_form_signatures.js';
 import formLinkPerson009 from './migrations/009_form_link_person.js';
 import formSendClaims010 from './migrations/010_form_send_claims.js';
 import fleetFplEquipment011 from './migrations/011_fleet_fpl_equipment.js';
+import refAdHours012 from './migrations/012_ref_ad_hours_2609.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -41,6 +42,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '009_form_link_person', sql: formLinkPerson009 },
   { name: '010_form_send_claims', sql: formSendClaims010 },
   { name: '011_fleet_fpl_equipment', sql: fleetFplEquipment011 },
+  { name: '012_ref_ad_hours_2609', sql: refAdHours012 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

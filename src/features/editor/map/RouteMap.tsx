@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
-import type { RefBundle } from '../../../shared/ref';
+import type { RefAerodrome, RefBundle } from '../../../shared/ref';
 import { uid as newUid, DEFAULT_STOP_MIN, requestAllowed, type AerodromeRequest } from '../../../shared';
 import { buildLegs, distanceNm, magneticVariation, midpoint, norm360, trueCourse, type AltitudeDefault } from '../../../calc';
 import {
@@ -41,6 +41,8 @@ import { hazardLabelsAt, hazardsByLeg, setHazardLayer, type LegHazards, type Map
 import type { Notam } from '../../../shared/briefing';
 import { mapNotams, notamKeysAt, setNotamLayer, type MapNotam } from './notamLayer';
 import { NotamPopover, NotamTip } from './NotamPopover';
+import { AerodromePopover, AerodromeTip } from './AerodromePopover';
+import type { AdDayInfo } from '../AerodromeHours';
 
 export interface LegAltitude {
   /** Effective altitude, ft (NaN = unknown). */
@@ -85,6 +87,8 @@ export interface RouteMapProps {
   requests?: Record<string, AerodromeRequest>;
   /** Sets (kind) or removes (null) the request on an aerodrome point of the route. */
   onRequest?(uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number): void;
+  /** An aerodrome's hours on the flight's date (AIP + NOTAMs), for its tooltip and details. */
+  aerodromeInfo?(a: RefAerodrome): AdDayInfo;
 }
 
 type Mode = 'idle' | 'draw' | 'custom';
@@ -195,6 +199,9 @@ export function RouteMap(props: RouteMapProps) {
   /** NOTAM areas under the cursor (keys, smallest first) and the NOTAM details opened by a click. */
   const [notamTip, setNotamTip] = useState<{ x: number; y: number; keys: string[] } | null>(null);
   const [notamPop, setNotamPop] = useState<{ x: number; y: number; keys: string[] } | null>(null);
+  /** Aerodrome under the cursor (idle mode) and the aerodrome details opened by a click. */
+  const [adTip, setAdTip] = useState<{ x: number; y: number; a: RefAerodrome } | null>(null);
+  const [adPop, setAdPop] = useState<{ x: number; y: number; a: RefAerodrome } | null>(null);
   const [editingLeg, setEditingLeg] = useState<string | null>(null);
   /** The cursor is near the hint bubble: it fades out so it never hides what the pilot points at. */
   const hintEl = useRef<HTMLDivElement>(null);
@@ -206,8 +213,8 @@ export function RouteMap(props: RouteMapProps) {
 
   // Everything the (once-bound) map handlers read.
   const airInfos = useMemo(() => airspaceInfos(refData.airspaces, refData.adAirspaces ?? []), [refData]);
-  const live = useRef({ props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop });
-  live.current = { props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop };
+  const live = useRef({ props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop, adPop });
+  live.current = { props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop, adPop };
   const drag = useRef<Drag | null>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
   const suppressClick = useRef(false);
@@ -363,7 +370,7 @@ export function RouteMap(props: RouteMapProps) {
 
   // Airspace tooltip/details belong to idle mode with the chart layers on.
   useEffect(() => {
-    if (drawing) { setWxTip(null); setNotamTip(null); setNotamPop(null); }
+    if (drawing) { setWxTip(null); setNotamTip(null); setNotamPop(null); setAdTip(null); setAdPop(null); }
     if (drawing || !prefs.chart) { setAirTip(null); setAirPop(null); }
   }, [drawing, prefs.chart]);
 
@@ -651,6 +658,25 @@ export function RouteMap(props: RouteMapProps) {
       return null;
     };
 
+    /** The aerodrome under a screen point: a route point that is an aerodrome, else a charted aerodrome within 10 px. */
+    const adAt = (p: { x: number; y: number }, routeIndex: number | null): RefAerodrome | null => {
+      const L = live.current;
+      if (!L.props.aerodromeInfo) return null;
+      const ads = L.props.refData.aerodromes;
+      if (routeIndex !== null) {
+        const q = L.route[routeIndex];
+        return q.kind === 'aerodrome' ? ads.find((a) => a.id === q.refId) ?? null : null;
+      }
+      if (!L.prefs.chart) return null;
+      let best: RefAerodrome | null = null, bd = 10;
+      for (const a of ads) {
+        const q = m.project([a.lon, a.lat]);
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (d < bd) { bd = d; best = a; }
+      }
+      return best;
+    };
+
     const onMove = (e: MapMouseEvent) => {
       lastMove = e;
       if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (lastMove) handleMove(lastMove); });
@@ -711,14 +737,18 @@ export function RouteMap(props: RouteMapProps) {
       if (hoverMid !== undefined && mid !== hoverMid) { m.setFeatureState({ source: 'route-mid', id: hoverMid }, { hover: false }); hoverMid = undefined; }
       if (mid !== null) { hoverMid = mid; m.setFeatureState({ source: 'route-mid', id: mid }, { hover: true }); }
       m.getCanvas().style.cursor = pt !== null ? 'grab' : mid !== null ? 'copy' : '';
+      // an aerodrome under the cursor: its hours on the flight's date
+      const ad = mid === null && !L.airPop && !L.adPop && !notamLive.current.pop ? adAt(e.point, pt) : null;
+      setAdTip(ad ? { x: e.point.x, y: e.point.y, a: ad } : null);
+      if (ad && pt === null) m.getCanvas().style.cursor = 'pointer';
       // weather hazard bands/rings under the cursor: their texts (they are not printed on the chart)
-      const wx = pt === null && mid === null && !L.airPop ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
+      const wx = pt === null && mid === null && !L.airPop && !ad ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
       setWxTip(wx.length ? { x: e.point.x, y: e.point.y, items: wx } : null);
       // NOTAM areas under the cursor: ID, validity and limits
-      const nk = pt === null && mid === null && !wx.length && !L.airPop && !notamLive.current.pop ? notamKeysAt(m, e.point, notamLive.current.marks) : [];
+      const nk = pt === null && mid === null && !ad && !wx.length && !L.airPop && !notamLive.current.pop ? notamKeysAt(m, e.point, notamLive.current.marks) : [];
       setNotamTip(nk.length ? { x: e.point.x, y: e.point.y, keys: nk } : null);
       // airspace under the cursor: name, class and limits; the smallest one is highlighted
-      const air = pt === null && mid === null && !wx.length && !nk.length && L.prefs.chart && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
+      const air = pt === null && mid === null && !ad && !wx.length && !nk.length && L.prefs.chart && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
       highlightAirspace(air[0] ?? null);
       setAirTip(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
     };
@@ -817,6 +847,17 @@ export function RouteMap(props: RouteMapProps) {
       if (L.mode === 'idle') {
         const i = hitPoint(e.point);
         setSelected(i === null ? null : L.route[i].uid);
+        // a click on a charted aerodrome opens its hours (a second click closes them)
+        setAdTip(null);
+        if (L.adPop) { setAdPop(null); return; }
+        const ad = i === null && !L.airPop && !notamLive.current.pop ? adAt(e.point, null) : null;
+        if (ad) {
+          setAdPop({ x: e.point.x, y: e.point.y, a: ad });
+          setNotamTip(null);
+          setAirTip(null);
+          highlightAirspace(null);
+          return;
+        }
         // a click on a NOTAM area opens its details (a second click closes them)
         setNotamTip(null);
         if (notamLive.current.pop) { setNotamPop(null); return; }
@@ -874,7 +915,7 @@ export function RouteMap(props: RouteMapProps) {
       }
     };
 
-    const onOut = () => { setAirTip(null); setWxTip(null); setNotamTip(null); setHintAway(false); if (!live.current.airPop) highlightAirspace(null); if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
+    const onOut = () => { setAirTip(null); setWxTip(null); setNotamTip(null); setAdTip(null); setHintAway(false); if (!live.current.airPop) highlightAirspace(null); if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
 
     m.on('mousemove', onMove);
     m.on('mousedown', onDown);
@@ -906,6 +947,7 @@ export function RouteMap(props: RouteMapProps) {
       const L = live.current;
       if (e.key === 'Escape') {
         if (drag.current) cancelDragRef.current?.();
+        else if (L.adPop) setAdPop(null);
         else if (L.airPop) setAirPop(null);
         else if (L.layersOpen) setLayersOpen(false);
         else if (L.menu) setMenu(null);
@@ -1083,6 +1125,12 @@ export function RouteMap(props: RouteMapProps) {
         />
       )}
       {airTip && !airPop && !hover && mode === 'idle' && <AirspaceTip x={airTip.x} y={airTip.y} items={airTip.items} />}
+      {adTip && !adPop && !airPop && !notamPop && !hover && !menu && mode === 'idle' && props.aerodromeInfo && (
+        <AerodromeTip x={adTip.x} y={adTip.y} a={adTip.a} info={props.aerodromeInfo(adTip.a)} />
+      )}
+      {adPop && props.aerodromeInfo && (
+        <AerodromePopover x={adPop.x} y={adPop.y} a={adPop.a} info={props.aerodromeInfo(adPop.a)} airac={refData.airac.id} onClose={() => setAdPop(null)} />
+      )}
       {airPop && (
         <AirspacePopover
           x={airPop.x} y={airPop.y} items={airPop.items} legs={legs} altitudes={altitudes} airac={refData.airac.id}
@@ -1119,6 +1167,10 @@ export function RouteMap(props: RouteMapProps) {
                   : requestAllowed(route, idx, 'stop') && <button type="button" role="menuitem" data-testid="menu-stop" onClick={askStop}>Request intermediate stop…</button>}
               </>
             );
+          })()}
+          {menuPoint.kind === 'aerodrome' && props.aerodromeInfo && (() => {
+            const a = refData.aerodromes.find((x) => x.id === menuPoint.refId);
+            return a ? <button type="button" role="menuitem" data-testid="menu-ad-hours" onClick={() => { setAdPop({ x: menu.x, y: menu.y, a }); setMenu(null); }}>Aerodrome hours…</button> : null;
           })()}
           {route[route.length - 1]?.uid === menuPoint.uid && <button type="button" role="menuitem" onClick={continueFrom}>Continue drawing</button>}
           <button type="button" role="menuitem" className="danger" onClick={doRemove}>Remove point</button>

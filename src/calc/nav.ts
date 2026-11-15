@@ -134,6 +134,15 @@ export function deviation(card: [number, number][] | null | undefined, mh: numbe
 
 /** Minutes after 00:00 UTC of dateStr (YYYY-MM-DD) at which the sun sets, or null (polar). */
 export function sunsetUtcMinutes(dateStr: string, lat: number, lon: number): number | null {
+  return sunEventUtcMinutes(dateStr, lat, lon, false);
+}
+
+/** Minutes after 00:00 UTC of dateStr (YYYY-MM-DD) at which the sun rises, or null (polar). */
+export function sunriseUtcMinutes(dateStr: string, lat: number, lon: number): number | null {
+  return sunEventUtcMinutes(dateStr, lat, lon, true);
+}
+
+function sunEventUtcMinutes(dateStr: string, lat: number, lon: number, rise: boolean): number | null {
   const [Y, M, D] = dateStr.split('-').map(Number);
   const jd = Date.UTC(Y, M - 1, D) / 86400000 + 2440587.5;
   function calc(t: number) {
@@ -168,7 +177,7 @@ export function sunsetUtcMinutes(dateStr: string, lat: number, lon: number): num
     const { decl, eqt } = calc(t);
     const cosH = Math.cos(rad(90.833)) / (Math.cos(rad(lat)) * Math.cos(rad(decl))) - Math.tan(rad(lat)) * Math.tan(rad(decl));
     if (cosH < -1 || cosH > 1) return null;
-    const H = deg(Math.acos(cosH));
+    const H = deg(Math.acos(cosH)) * (rise ? -1 : 1);
     minutes = 720 - 4 * (lon - H) - eqt;
   }
   return minutes;

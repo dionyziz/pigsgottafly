@@ -43,6 +43,12 @@ src/
                            reportHazards/tafHazardContent (METAR/TAF), modelCloudBase; TS/CB, visibility, cloud vs alt + 1000 ft
     atc.ts                 AtcGenInput / AtcGenOutput types (generator lives in src/data/atc.ts)
     sun.ts                 sunsetMinutes(date, point, tables): AIP GEN 2.7, else NOAA
+    adHours.ts             aerodrome operational hours: parseHours (AIP AD 2.3 / AD 1.6 text → HoursSpec: H24, HJ, HN,
+                           HO, HX, O/R, weekly UTC windows, seasons, Greek public holidays; partial = shown as text,
+                           evaluated unknown), parseSchedule (also NOTAM item D/E), hoursAt, adHoursFromAip
+    aerodromeStatus.ts     effective hours = AIP + NOTAMs: aerodromeNotamEffects (QFAAH, QFALC/LV/LN, limits,
+                           handling, TWR/AFIS hours), aerodromeStatusAt/aerodromeStatus (open/closed/unknown + reason,
+                           over a time window), aerodromeDay (the day's hours), genDecHandling (who sends the GenDec)
   data/                    client services
     api.ts                 typed fetch wrappers: api.session/login/logout, api.me, api.aircraft|passengers|waypoints
                            (list/get/create/update/remove), api.flights (list/get/create/update/trash/restore/copy/opened),
@@ -72,9 +78,11 @@ src/
                            map/ (MapView → RouteMap: VFR-chart layers, drawing, snapping, leg labels; airspace.ts +
                            AirspacePopover: TMA/CTR/ATZ shapes, hover tooltip, click details with the legs entering;
                            notamLayer.ts + NotamPopover: NOTAM areas, hover tooltip, click details),
+                           AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date),
                            notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
+                           AerodromeHours.tsx (an aerodrome's hours, ATS, handling on a date, NOTAM changes, AIP text),
                            panels/ (FlightPanel sections, NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
-                           fuel, W&B, performance, warnings)
+                           fuel, W&B, performance, aerodrome hours at the planned times (aerodromeChecks.ts), warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wb/ (MD 4.3 + envelope chart), performance/ (MD 4.4),
                            briefing/ (NOTAM briefing)
@@ -89,13 +97,18 @@ api/
   _lib/migrate.ts          migration runner + MIGRATIONS registry
   _lib/migrations/         001_schema.ts, 002_ref_2609.ts (generated), 003_existing_pilot_data.ts (generated),
                            004_legacy_flights.ts, 005_ref_runways_2609.ts (generated: AIP runway data),
-                           006_briefing_filing.ts, 007_aircraft_attachments.ts (compass swing report files)
+                           006_briefing_filing.ts, 007_aircraft_attachments.ts (compass swing report files),
+                           008–010 forms (signatures, links, send claims), 011_fleet_fpl_equipment.ts,
+                           012_ref_ad_hours_2609.ts (generated: aerodrome operational hours and handling)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            attachments.ts, notams.ts, filing.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
-tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json → src/data/ref/*.json + migrations 002, 005
+tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json, tools/ad_hours.json → src/data/ref/*.json
+                           + migrations 002, 005, 012
+tools/extract_ad_hours.ts  eAIP AD 2.3, AD 1.6.N.3/4 text → tools/ad_hours.json (operational hours, ATS, handling,
+                           customs, remarks, verbatim; parsed by src/calc/adHours.ts in build_ref)
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
 tools/parse_ad_airspace.py eAIP AD 2.17, AD 1.6.N.17 text → src/data/ref/ad-airspaces.json (aerodrome CTR/ATZ: limits,
                            class, units; client map layer only, REF.adAirspaces — not in the ref_* tables)
@@ -153,6 +166,8 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | PUT | /flights/:id | `{flight: FlightDoc, version}` returns `{version, updated}`. 409 with the current Flight as the body. 400 on validation errors. |
 | DELETE | /flights/:id | Moves to trash. |
 | POST | /flights/:id/restore, /copy, /opened | |
+| GET | /flights/:id/forms | Form 731 and GenDec state; `gendec.handling`: handling at each end at the flight's time (AIP + the flight's last NOTAM briefing) and who sends the GenDec. |
+| POST | /flights/:id/forms/gendec/handled | `{handled: true \| false \| null}`: the flight's override (`options.genDecHandled`; a PUT of the flight never changes it). |
 | GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units} | Current AIRAC, read-only. |
 | GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 20 ICAO ids), cached per station; stale reports up to 3 h when upstream fails. |
 

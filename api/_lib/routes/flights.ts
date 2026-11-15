@@ -52,7 +52,12 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
   if ('atc' in input) d.atc = checkAtc(input.atc);
   if ('crew' in input) d.crew = arr<FlightCrew>(input.crew, 'crew');
   if ('baggageKg' in input) d.baggageKg = checkBaggage(input.baggageKg);
-  if ('options' in input) d.options = checkOptions(input.options, DEFAULT_FLIGHT_OPTIONS);
+  if ('options' in input) {
+    d.options = checkOptions(input.options, DEFAULT_FLIGHT_OPTIONS);
+    // The General Declaration override belongs to POST /flights/:id/forms/gendec/handled (the export page):
+    // an editor's copy of the flight never changes it.
+    if (base.options?.genDecHandled != null) d.options.genDecHandled = base.options.genDecHandled;
+  }
   if ('summary' in input) d.summary = checkSummary(input.summary);
 
   if (d.aircraftId !== null && typeof d.aircraftId !== 'string') throw badRequest('aircraftId must be a string');

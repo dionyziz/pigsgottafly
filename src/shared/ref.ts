@@ -42,6 +42,90 @@ export interface RefAerodrome {
   /** AIP section, e.g. 'AD 2 LGAV', 'AD 1.6.5'. */
   source: string;
   notes: string;
+  /** Operational hours and handling (AD 2.3 / AD 1.6.N.3–4); present in data generated since migration 012. */
+  hours?: RefAdHours;
+}
+
+// ---------------------------------------------------------------- operational hours (AD 2.3)
+// The AIP text is kept verbatim; `parsed` is what src/calc/adHours.ts (parseHours) made of it, and is
+// checked against every aerodrome's text by tests/unit/calc/adHours.test.ts.
+
+/** A time of day: minutes after 00:00 UTC, or sunrise / sunset with an offset. */
+export type HoursClock = { utc: number } | { sun: 'SR' | 'SS'; offsetMin: number };
+
+/** When a rule applies within its days. */
+export type HoursTime =
+  /** All day. */
+  | { t: 'H24' }
+  /** Sunrise to sunset. */
+  | { t: 'HJ' }
+  /** Sunset to sunrise. */
+  | { t: 'HN' }
+  /** Hours of service to meet operational requirements: promulgated by NOTAM (AD 1.1.1.4.2.2). */
+  | { t: 'HO' }
+  /** No specific hours (notified on contact with the AD administration). */
+  | { t: 'HX' }
+  /** Hours of scheduled operations. */
+  | { t: 'HS' }
+  /** On request (prior notice). */
+  | { t: 'OR' }
+  /** During the aerodrome's operating hours (a service such as handling marked HO). */
+  | { t: 'AD' }
+  /** Not available. */
+  | { t: 'NIL' }
+  /** Closed on these days (a NOTAM schedule's 'SAT SUN CLSD'). */
+  | { t: 'CLSD' }
+  | { t: 'window'; from: HoursClock; to: HoursClock };
+
+/** Inclusive date range of a season ('MM-DD'), or the summer / winter time periods (EU daylight saving). */
+export type HoursSeason = { from: string; to: string } | 'summer' | 'winter';
+
+export interface HoursRule {
+  /** Omitted: all year. */
+  season?: HoursSeason;
+  /** ISO weekdays (1 = MON … 7 = SUN); omitted: every day. */
+  days?: number[];
+  /** Greek public holidays (HOL): the rule applies on them (with or without `days`). */
+  holidays?: boolean;
+  /** The days in `days` exclude public holidays (e.g. 'MON-FRI EXC HOL'). */
+  exceptHolidays?: boolean;
+  /** One or more periods of the day (several windows are OR-ed). */
+  times: HoursTime[];
+}
+
+export interface HoursSpec {
+  /**
+   * Rules in order; at a given instant the first rule whose season and day match decides. No rule
+   * matches: closed (for a schedule) — a spec of only H24 / HO / … always matches.
+   */
+  rules: HoursRule[];
+  /** Qualifiers as printed: 'HAF', 'HASP', 'by arrangement', 'O/R', '48H PN', other providers' hours. */
+  notes: string[];
+  /** The parser could not represent all of the text: shown as the raw text and evaluated as unknown. */
+  partial: boolean;
+  /** Short summary, e.g. 'H24', 'HJ', 'HO', 'MON-SAT 1000-1700', 'Summer: AD hours'. */
+  label: string;
+}
+
+export interface RefAdHoursField {
+  /** The AIP text, verbatim (lines joined with '\n'). */
+  text: string;
+  parsed: HoursSpec;
+}
+
+export interface RefAdHours {
+  /** e.g. 'LGAV AD 2.3', 'AD 1.6.5.3'. */
+  source: string;
+  /** Item 1, AD administration (operating hours). */
+  ad: RefAdHoursField;
+  /** Item 7, ATS (null when not published). */
+  ats: RefAdHoursField | null;
+  /** Item 9, handling; else the AD 1.6.N.4 handling section ('NIL'). */
+  handling: RefAdHoursField & { source: string };
+  /** Item 2, customs and immigration (null when not published). */
+  customs: RefAdHoursField | null;
+  /** Item 12, remarks, verbatim ('' = NIL). */
+  remarks: string;
 }
 
 /** One runway direction with its declared distances (AD 2.12/2.13). null = not published/known. */

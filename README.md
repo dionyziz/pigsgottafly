@@ -9,7 +9,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
 - **Accounts.** Sign in with Google. Every pilot has their own profile, hangar, passengers, saved waypoints and flights; the API scopes every query to the signed-in pilot. A new pilot starts empty and is asked for name, phone and home aerodrome on first use.
 - **Lobby.** Works like Google Docs: search, upcoming flights first, and a ⋮ menu to open, rename, copy, or move to trash (with undo and restore).
 - **Flight editor.** A full-window MapLibre map with layers drawn from the AIP in VFR-chart style:
-  - aerodromes, TMA/CTR/ATZ sectors with class and vertical limits, VFR reporting points, and VFR routes with their charted altitudes;
+  - aerodromes (hover or click one for its hours and handling on the flight's date), TMA/CTR/ATZ sectors with class and vertical limits, VFR reporting points, and VFR routes with their charted altitudes;
   - over OpenFreeMap, OpenTopoMap or OpenStreetMap, with an optional openflightmaps aero overlay.
 - **Route drawing.** Click to add points; points snap to aerodromes, VFR points and your saved waypoints. You can also place named custom points, drag points, drag a leg's midpoint to insert a point, delete points, and undo/redo. Leg labels show the magnetic course (WMM2025 variation), the distance, and the altitude, which you can click to edit.
 - **Default altitudes.** A leg along a charted VFR route gets the route's charted altitude, in its charted direction. Other legs follow the v2 rules, and custom points take the altitude of the closest charted leg.
@@ -20,6 +20,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
   - fuel: required, fuel on board, capacity warning;
   - an editable ATC/frequency list;
   - take-off and landing performance cards;
+  - aerodrome hours: each aerodrome of the route on the flight's date (AIP AD 2.3 / AD 1.6 operating hours, ATS, handling), with the NOTAMs that change them, and whether it is open at the planned time;
   - flight plan requests (touch-and-go, intermediate stop);
   - NOTAMs;
   - exports.
@@ -31,7 +32,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
 - **Exports.** Print-ready A4 pages, one route per document:
   - MD 4.2 navlog;
   - Form 731, with e-signatures: passengers sign through a share link;
-  - General Declaration (MD 4.7);
+  - General Declaration (MD 4.7), with who submits it worked out from the handling hours at both ends (AIP + NOTAMs; per-flight override);
   - ICAO 2012 FPL message plus a filled form, with AFTN addressees from AIP ENR 1.11;
   - W&B (MD 4.3) with the CG envelope chart;
   - take-off/landing performance (MD 4.4);

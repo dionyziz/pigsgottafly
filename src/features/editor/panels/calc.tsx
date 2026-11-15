@@ -44,11 +44,13 @@ import {
 } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult, type StationReports } from '../../../data/weatherMetar';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
-import { hazardWhere, type Hazard } from '../../../calc';
+import { aerodromeNotamEffects, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
+import { aerodromeChecks as buildAdChecks, aerodromeWarnings, type AdCheck } from './aerodromeChecks';
 import { useEditor } from '../state';
+import { useNotams } from '../notams';
 
 export type WarningLevel = 'danger' | 'warn' | 'info';
-export type WarningArea = 'navlog' | 'weather' | 'fuel' | 'wb' | 'performance' | 'manifest' | 'aircraft' | 'time';
+export type WarningArea = 'navlog' | 'weather' | 'fuel' | 'wb' | 'performance' | 'manifest' | 'aircraft' | 'time' | 'aerodrome';
 export interface CalcWarning {
   level: WarningLevel;
   area: WarningArea;
@@ -88,6 +90,8 @@ export interface StopCalc {
   fuelL: number | null;
 }
 
+export { AD_ROLE, type AdCheck } from './aerodromeChecks';
+
 export interface FlightCalc {
   weather: RouteWeather | null;
   weatherLoading: boolean;
@@ -112,6 +116,10 @@ export interface FlightCalc {
   /** Weather hazards along the route (thunderstorms, visibility, cloud vs planned altitude). */
   hazards: Hazard[];
   hazardWeather: HazardWeather | null;
+  /** The route's aerodromes at their planned times against their hours (route order). */
+  aerodromeChecks: AdCheck[];
+  /** The flight's NOTAMs that change aerodrome hours, ATS or handling. */
+  adEffects: AdNotamEffect[];
   warnings: CalcWarning[];
 }
 
@@ -394,6 +402,16 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     nowMs: Date.now(),
   })) ?? [], [hazardWeather, navlog, dayMs, dep, arr, metar]);
 
+  // ---- aerodrome hours at the planned times (AIP + the flight's NOTAMs)
+  const { briefing } = useNotams();
+  const adEffects = useMemo(() => aerodromeNotamEffects(briefing?.notams ?? []), [briefing]);
+  const aerodromeChecks = useMemo((): AdCheck[] => buildAdChecks({
+    route: doc.route, options: doc.options, departure: dep, destination: arr, aerodromeOf: endpointOf, dayMs, times,
+    legEndMin: navlog ? navlog.legs.map((l) => l.endMin) : [],
+    stops: stops.map((x) => ({ pointIndex: x.pointIndex, aerodrome: x.aerodrome, landingMs: x.landing.timeMs, takeoffMs: x.takeoff.timeMs })),
+    effects: adEffects, sunTables: SUN_TABLES,
+  }), [adEffects, dayMs, times, doc.route, doc.options, dep, arr, stops, navlog]);
+
   // ---- manifest
   const crewErrors = useMemo(
     () => validateCrew(doc.crew, aircraft ? seatLayout(aircraft.massBalance.stations).map((s) => s.id) : null),
@@ -477,9 +495,11 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       const endName = (e: 'departure' | 'destination') => { const a = e === 'departure' ? dep : arr; return a ? a.icao || a.name : ''; };
       for (const h of hazards) add(h.level, 'weather', `${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}).`);
     }
+    // aerodrome hours (AIP AD 2.3 / AD 1.6, NOTAMs) at the planned times
+    for (const x of aerodromeWarnings(aerodromeChecks, doc.route.length)) add(x.level, 'aerodrome', x.text);
     if (fin(dayMs) && navlog && (fin(takeoffMs) ? takeoffMs : dayMs + DAY) < Date.now() - DAY) add('info', 'time', 'This flight is in the past.');
     return w;
-  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, stops, takeoffMs, hazards, hazardWeather, legs, dep, arr]);
+  }, [aircraft, crewErrors, weather, weatherLoading, navlog, card, doc.date, doc.route.length, doc.options.category, dayMs, fuel, wbAll, wb, wbOk, departure, arrival, stops, takeoffMs, hazards, hazardWeather, legs, dep, arr, aerodromeChecks]);
 
   // ---- lobby summary: ETE and fuel come from the navlog (setDerived: no undo step).
   const eteMin = navlog && navlog.legs.length ? navlog.totals.ete : null;
@@ -492,7 +512,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
 
   const value: FlightCalc = {
     weather, weatherLoading, refreshWeather, metar,
-    navlog, fuel, wb, wbOk, wbMissingWeights, departure, arrival, stops, crewErrors, dayMs, hazards, hazardWeather, warnings,
+    navlog, fuel, wb, wbOk, wbMissingWeights, departure, arrival, stops, crewErrors, dayMs, hazards, hazardWeather, aerodromeChecks, adEffects, warnings,
   };
   return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
 }

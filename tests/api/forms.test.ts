@@ -223,7 +223,7 @@ describe('sending the forms to HCAA', () => {
     expect(st.form731.allSigned).toBe(false);
   });
 
-  test('General Declaration: sent to gendec@hcaa.gov.gr; the "handled" aerodromes hide it', async () => {
+  test('General Declaration: sent to gendec@hcaa.gov.gr', async () => {
     const { flightId } = await setup();
     let st = (await forms(A, flightId)).body;
     expect(st.gendec.pilotSends).toBe(true);
@@ -251,13 +251,56 @@ describe('sending the forms to HCAA', () => {
     expect(text).toContain('ICAO ANNEX 9 - APPENDIX 1.1');
     expect(r.body.gendec.submission).toMatchObject({ messageId: 'gd-1', changed: false });
 
-    await A.call('PUT', 'me', { settings: { handledAerodromes: ['lgmg'] } });
-    expect((await forms(A, flightId)).body.gendec.pilotSends).toBe(true); // LGTT has no handler
-    expect((await A.call('PUT', 'me', { settings: { handledAerodromes: ['LGMG', 'LGTT'] } })).status).toBe(200);
-    st = (await forms(A, flightId)).body;
-    expect(st.gendec.pilotSends).toBe(false);
-    expect((await A.call('PUT', 'me', { settings: { handledAerodromes: ['NOPE1'] } })).status).toBe(400);
+    // LGTT and LGMG have no handler (AIP AD 1.6.5.4 / AD 1.6.18.4: NIL): the PIC sends it
+    expect(st.gendec.handling.ends.map((e) => [e.role, e.handled])).toEqual([['departure', false], ['destination', false]]);
+    expect(st.gendec.handling.ends[0].reason).toBe('LGTT: no handling (AIP AD 1.6.5.4)');
+    // the old profile setting is ignored
+    await A.call('PUT', 'me', { settings: { handledAerodromes: ['LGMG', 'LGTT'] } });
+    expect((await forms(A, flightId)).body.gendec.pilotSends).toBe(true);
     await A.call('PUT', 'me', { settings: { handledAerodromes: [] } });
+  });
+
+  test('General Declaration: handled ends from the AIP and the NOTAMs; the per-flight override', async () => {
+    // LGAV (handling H24) → LGIR (handling H24): a handler submits it at both ends
+    const f = (await A.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', route: [pt('LGAV', 'a'), pt('LGIR', 'b')] })).body;
+    let st = (await forms(A, f.id)).body;
+    expect(st.gendec.pilotSends).toBe(false);
+    expect(st.gendec.handling.autoPilotSends).toBe(false);
+    expect(st.gendec.handling.ends.map((e) => e.reason)).toEqual(['LGAV: handling H24 (AIP AD 2.3)', 'LGIR: handling H24 (AIP AD 2.3)']);
+
+    // a NOTAM in the flight's briefing: no handling at LGIR → the PIC sends it, citing the NOTAM
+    const day = Date.parse(`${tomorrow}T00:00:00Z`);
+    const notam = {
+      key: 'A1234/26', type: 'N', refers: null, itemA: ['LGIR'], fir: 'LGGG', qcode: 'QFAXX', subject: 'Aerodrome', condition: null,
+      traffic: 'IV', purpose: 'NBO', scope: 'A', lowerFt: 0, upperFt: 99900, center: null, radiusNm: null,
+      from: day, to: day + 2 * 86400e3, estimated: false, schedule: null, text: 'HANDLING SERVICES NOT AVBL.', lowerText: null, upperText: null,
+      raw: '', relevant: true, reasons: [], legIndex: null,
+    };
+    const { db } = await (api.server as any).ready;
+    await db.query(`INSERT INTO flight_notams (flight_id, pilot_id, fetched, params, doc) SELECT id, pilot_id, $2, '{}'::jsonb, $3::jsonb FROM flights WHERE id = $1`,
+      [f.id, Date.now(), JSON.stringify({ notams: [notam] })]);
+    st = (await forms(A, f.id)).body;
+    expect(st.gendec.pilotSends).toBe(true);
+    expect(st.gendec.handling.ends[1]).toMatchObject({ handled: false, reason: expect.stringMatching(/^LGIR: NOTAM A1234\/26: handling not available/) });
+
+    // the override is per flight: a handler submits it after all
+    let r = await A.call<FormsState>('POST', `flights/${f.id}/forms/gendec/handled`, { handled: true });
+    expect(r.status).toBe(200);
+    expect(r.body.gendec.pilotSends).toBe(false);
+    expect(r.body.gendec.handling).toMatchObject({ override: true, autoPilotSends: true });
+    // stored with the flight; an editor save (whose copy has no override) keeps it
+    const got = (await A.call('GET', `flights/${f.id}`)).body;
+    expect(got.options.genDecHandled).toBe(true);
+    const { id, version, created, updated, opened, trashed, pilotId, ...doc } = got;
+    expect((await A.call('PUT', `flights/${f.id}`, { flight: { ...doc, options: { ...doc.options, genDecHandled: undefined } }, version })).status).toBe(200);
+    expect((await forms(A, f.id)).body.gendec.pilotSends).toBe(false);
+    // back to automatic
+    r = await A.call<FormsState>('POST', `flights/${f.id}/forms/gendec/handled`, { handled: null });
+    expect(r.body.gendec.pilotSends).toBe(true);
+    expect(r.body.gendec.handling.override).toBe(null);
+    expect((await A.call('POST', `flights/${f.id}/forms/gendec/handled`, { handled: 'yes' })).status).toBe(400);
+    // another pilot's flight: 404
+    expect((await B.call('POST', `flights/${f.id}/forms/gendec/handled`, { handled: true })).status).toBe(404);
   });
 });
 

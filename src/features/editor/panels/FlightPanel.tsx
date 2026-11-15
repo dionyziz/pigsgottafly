@@ -1,9 +1,10 @@
-// The editor's left panel: When, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
+// The editor's left panel: When, Aerodrome hours, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
 // Flight plan (alternates, remarks), Exports. Numbers come from useFlightCalc() (src/calc); edits
 // go through useEditor().update().
 import { EXPORT_KINDS, EXPORT_LABEL, type ExportKind } from '../../../shared';
 import { flightStore } from '../../../data/flightStore';
 import { useEditor } from '../state';
+import { AerodromeSection } from './AerodromeSection';
 import { AircraftSection } from './AircraftSection';
 import { AtcSection } from './AtcSection';
 import { useFlightCalc } from './calc';
@@ -57,6 +58,7 @@ export function FlightPanel() {
   return (
     <div className="ep" data-testid="flight-panel">
       <WhenSection />
+      <AerodromeSection />
       <AircraftSection />
       <ManifestSection />
       <FuelSection />

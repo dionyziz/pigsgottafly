@@ -248,6 +248,12 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   f = await api('GET', `flights/${id}`);
   assert.equal(f.legOverrides[keys[1]].altFt, 4500);
   await shot('2-route');
+  // hovering an aerodrome shows its hours on the flight's date
+  p = await mapPx(LGMG.lat, LGMG.lon);
+  await hover(p.x, p.y);
+  await page.waitFor(() => /LGMG/.test(document.querySelector('[data-testid=aerodrome-tip]')?.textContent || ''), { timeout: 5000 });
+  assert.match(await text('[data-testid=aerodrome-tip-hours]'), /HO: hours published by NOTAM/);
+  await hover(p.x + 200, p.y + 150);
 
 
   // ---- 3. date and block-off, aircraft, fuel on board (PIC alone first: club case 60)
@@ -267,6 +273,21 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.equal(f.fobL, 144);
   assert.deepEqual(f.crew.map((c) => [c.role, c.seat, c.snapshot.fullName, c.snapshot.weightKg]), [['PIC', f.crew[0].seat, 'Test Pilot', 80]]);
   await page.waitFor(() => document.querySelectorAll('[data-testid=navlog-row]').length === 3, { timeout: 15000 });
+  // aerodrome hours on the flight's date: LGTT HJ (AIP AD 1.6.5.3), no handling
+  await page.waitFor(() => document.querySelectorAll('[data-testid=aerodrome-hours-item]').length === 2);
+  assert.deepEqual(await page.eval(() => [...document.querySelectorAll('[data-testid=aerodrome-hours-item]')].map((e) => e.dataset.icao)), ['LGTT', 'LGMG']);
+  assert.match(await text('[data-testid=aerodrome-hours-item][data-icao=LGTT] [data-testid=ad-hours-day]'), /Open \d\d:\d\d–\d\d:\d\dZ \(HJ\)/);
+  assert.match(await text('[data-testid=aerodrome-hours-item][data-icao=LGTT] [data-testid=ad-hours-handling]'), /Closed \(NIL\)/);
+  // a click on an aerodrome off the route (LGEL) opens its hours
+  const lgel = AD('LGEL');
+  p = await mapPx(lgel.lat, lgel.lon);
+  await clickAt(p.x, p.y);
+  await page.waitFor(() => /LGEL/.test(document.querySelector('[data-testid=aerodrome-pop]')?.textContent || ''), { timeout: 5000 });
+  assert.match(await text('[data-testid=aerodrome-pop] [data-testid=ad-hours-handling]'), /HJ|Open|Closed/);
+  await page.eval(() => document.querySelector('[data-testid=section-aerodromes]').scrollIntoView());
+  await shot('3b-aerodromes');
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=aerodrome-pop]'));
   await shot('3-panels');
 
   // ---- 6a. take-off performance at LGTT against the club calculator (case 60)
@@ -418,6 +439,17 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   // the PIC's e-signature on the declaration's signature line (as on Form 731)
   await page.waitFor(() => !!document.querySelector('.gd-sigline [data-testid=signature]'));
   assert.match(await page.eval(() => document.querySelector('.gd-sigline').innerText), /T\. Pilot\s*signed \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}Z/);
+  // who sends it: neither LGTT nor LGMG has a handler (AIP AD 1.6), so the PIC does; the per-flight override
+  await page.waitFor(() => !!document.querySelector('[data-testid=gendec-handling-departure]'));
+  assert.match(await text('[data-testid=gendec-handling-departure]'), /LGTT: no handling \(AIP AD 1\.6\.5\.4\)/);
+  assert.match(await text('[data-testid=gendec-handling-destination]'), /LGMG: no handling \(AIP AD 1\.6\.18\.4\)/);
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=gendec-handled]').checked), false);
+  await page.click('[data-testid=gendec-handled]');
+  await page.waitFor(() => /^Handled/.test(document.querySelector('[data-testid=gendec-status]')?.textContent || ''));
+  assert.equal((await api('GET', `flights/${id}`)).options.genDecHandled, true);
+  await page.click('[data-testid=gendec-handled-auto]');
+  await page.waitFor(() => document.querySelector('[data-testid=gendec-handled]')?.checked === false && !document.querySelector('[data-testid=gendec-handled-auto]'));
+  assert.equal((await api('GET', `flights/${id}`)).options.genDecHandled, null);
   await page.screenshot('flight-export-gendec');
   await pdfCheck('gendec', 1, 'portrait');
 
