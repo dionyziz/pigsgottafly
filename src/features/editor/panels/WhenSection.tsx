@@ -28,7 +28,7 @@ function TimeRow({ label, min, dayMs, testId, tone }: { label: string; min: numb
       tone={tone}
       testId={testId}
       v={<><span className="mono">{fmtMin(min)}Z</span>{nextDay && <sup className="muted">+1</sup>}</>}
-      sub={isFinite(ms) ? <span className="mono">{localClock(ms)} LT</span> : undefined}
+      sub={isFinite(ms) ? <span className="mono">{localClock(ms)}LT</span> : undefined}
     />
   );
 }

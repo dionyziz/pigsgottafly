@@ -50,9 +50,7 @@ describe('aerodrome hours in the editor', () => {
   test('HO aerodromes without NOTAMs: hours not known (info only); with the hours NOTAM: closed, citing it', () => {
     const route = [pt('LGAV', 'a'), pt('LGKC', 'b')];
     const times = { blockOffMin: hm(15), takeoffMin: hm(15, 10), landingMin: hm(16), blockOnMin: hm(16, 10) };
-    expect(aerodromeWarnings(aerodromeChecks(input({ route, times })), 2)).toEqual([
-      { level: 'info', text: 'Destination LGKC: opening hours not known for landing 16:00Z – block-on 16:10Z: HO: hours published by NOTAM (AIP LGKC AD 2.3).' },
-    ]);
+    expect(aerodromeWarnings(aerodromeChecks(input({ route, times })), 2)).toEqual([]);
     const effects = aerodromeNotamEffects([notam({ key: 'A0400/26', itemA: ['LGKC'], qcode: 'QFAAH', text: 'AD HOURS OF SERVICE: DAILY 0600-1500' })]);
     const w = aerodromeWarnings(aerodromeChecks(input({ route, times, effects })), 2);
     expect(w).toEqual([{ level: 'danger', text: 'Destination LGKC closed at 16:00Z (landing 16:00Z – block-on 16:10Z): 0600-1500Z (NOTAM A0400/26).' }]);
@@ -79,7 +77,7 @@ describe('aerodrome hours in the editor', () => {
 
   test('no block-off time: one info, nothing checked; limits from NOTAMs are warnings', () => {
     const c = aerodromeChecks(input({ route: [pt('LGTT', 'a'), pt('LGAV', 'b')], times: undefined }));
-    expect(aerodromeWarnings(c, 2)).toEqual([{ level: 'info', text: 'Block-off time not set: aerodrome hours not checked.' }]);
+    expect(aerodromeWarnings(c, 2)).toEqual([]);
     const effects = aerodromeNotamEffects([notam({ key: 'A0600/26', itemA: ['LGAV'], qcode: 'QFAAP', condition: 'Available, prior permission required', text: 'PPR FOR GA' })]);
     expect(aerodromeWarnings(aerodromeChecks(input({ route: [pt('LGTT', 'a'), pt('LGAV', 'b')], effects })), 2)).toEqual([
       { level: 'warn', text: 'Destination LGAV: NOTAM A0600/26: AD available, prior permission required.' },

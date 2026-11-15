@@ -471,11 +471,6 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
       const afmLonger = afm.requiredTotalM > club.requiredTotalM + 1e-9;
       distances = afmLonger ? afm : club;
       alternative = afmLonger ? club : afm;
-      if (afmLonger) {
-        const what = takeoff ? 'TODR' : 'LDR';
-        const why = takeoff && isaDevC < 0 ? ', no credit for cold' : '';
-        distances.notes = [...(distances.notes || []), `AFM method (PA ${Math.round(pa)} ft, +10 %/15 °C${why}) ${what} ${Math.ceil(afm.requiredTotalM - 1e-9)} m used: longer than the club method's ${Math.ceil(club.requiredTotalM - 1e-9)} m.`];
-      }
     }
     warnings.push(...(distances.notes || []));
     if (distances.extrapolated) warnings.push('Outside the AFM table: distances extrapolated.');
