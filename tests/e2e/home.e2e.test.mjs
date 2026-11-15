@@ -96,7 +96,7 @@ test('flight: permalink, title, menus, back/forward, and sync to another browser
   await page.type('.sheet.active [data-key="H.qnh"]', '1018');
   await page.key('Enter');
   await saved(page);
-  assert.equal(await page.eval(() => document.title), 'Tatoi to Megara · Navlog');
+  assert.equal(await page.eval(() => document.title), "Tatoi to Megara · Pig's Gotta Fly");
 
   // the menus show only what is available
   await page.click('.menu-btn[data-menu="edit"]');

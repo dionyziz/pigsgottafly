@@ -1,13 +1,13 @@
-# Navlog
+# Pig's Gotta Fly
 
-Fills in the MD4.2 "Flight Planner" nav log and prints it on one A4 landscape page, laid out like the paper form.
+Pig's Gotta Fly (https://pigsgottafly.com) fills in the MD4.2 "Flight Planner" nav log and prints it on one A4 landscape page, laid out like the paper form.
 
 Run `npm start` and open http://127.0.0.1:8765/ (or open `index.html` directly). An internet connection is needed only for weather.
 The server sends no-cache headers, and asset links carry content hashes (`npm run stamp`), so a browser never mixes old and new files.
 
 ## Use
 
-`npm start` serves Navlog at http://127.0.0.1:8765/. Flights are stored in `server/navlog.db`.
+`npm start` serves Pig's Gotta Fly at http://127.0.0.1:8765/. Flights are stored in `server/navlog.db`.
 
 **My flights** (home): **Blank flight**, **From Windy route** (paste the route-planner link), and the list of flights, upcoming first. Each row's ⋮ menu has Open, Open in new tab, Rename, Make a copy and Move to trash (with Undo). The search box filters by name, date and aircraft.
 

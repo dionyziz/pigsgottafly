@@ -1,4 +1,4 @@
-# Updating Navlog for a new AIP (AIRAC) cycle
+# Updating Pig's Gotta Fly for a new AIP (AIRAC) cycle
 
 Everything AIP-derived lives in `data/` and is generated. One script does the mechanical part; a few things need a human look.
 

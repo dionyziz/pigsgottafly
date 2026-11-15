@@ -1,4 +1,4 @@
-// Navlog server: serves the app and a small flights API backed by SQLite (node:sqlite, no dependencies).
+// Pig's Gotta Fly server: serves the app and a small flights API backed by SQLite (node:sqlite, no dependencies).
 //
 //   GOOGLE_CLIENT_ID=....apps.googleusercontent.com NAVLOG_ALLOWED_EMAILS=you@gmail.com node server/server.mjs
 //   (PORT=8765, HOST=127.0.0.1, NAVLOG_DB=server/navlog.db)
@@ -157,5 +157,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const allowedEmails = (process.env.NAVLOG_ALLOWED_EMAILS || '').split(',');
   if (googleClientId && !allowedEmails.join('').trim()) { console.error('Set NAVLOG_ALLOWED_EMAILS to the Google account(s) allowed to sign in.'); process.exit(1); }
   createServer({ db: process.env.NAVLOG_DB || undefined, googleClientId, allowedEmails })
-    .listen(port, host, () => console.log(`Navlog: http://${host}:${port}/${googleClientId ? ' (Google sign-in)' : ''}`));
+    .listen(port, host, () => console.log(`Pig's Gotta Fly: http://${host}:${port}/${googleClientId ? ' (Google sign-in)' : ''}`));
 }

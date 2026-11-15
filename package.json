@@ -1,7 +1,7 @@
 {
-  "name": "navlog",
+  "name": "pigsgottafly",
   "private": true,
-  "description": "MD4.2 nav log filler (static web app)",
+  "description": "Pig's Gotta Fly: MD4.2 nav log filler for VFR flights in Greece",
   "scripts": {
     "start": "node server/server.mjs",
     "stamp": "node tools/stamp.mjs",

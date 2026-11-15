@@ -770,7 +770,7 @@
   function renderTitle() {
     const t = $('#title');
     if (t !== document.activeElement) t.value = titleOf(state);
-    document.title = `${titleOf(state)} · Navlog`;
+    document.title = `${titleOf(state)} · Pig's Gotta Fly`;
   }
 
   // Short status chips; details live in the tooltip.
@@ -1116,7 +1116,7 @@
       e.target.value = '';
       if (!f) return;
       let data;
-      try { data = JSON.parse(await f.text()); } catch (err) { toast('Not a Navlog file'); return; }
+      try { data = JSON.parse(await f.text()); } catch (err) { toast("Not a Pig's Gotta Fly file"); return; }
       const st = Object.assign(structuredClone(DEFAULTS), data);
       const id = await Store.create(st, summaryOf(st, null));
       location.hash = `#/f/${id}`;
@@ -1300,7 +1300,7 @@
     currentId = null;
     $('#flight').hidden = true;
     $('#home').hidden = false;
-    document.title = 'Navlog';
+    document.title = "Pig's Gotta Fly";
     renderHome(true);
   }
   // Sign in with Google (Google Identity Services); the server checks the token and the allowed account.
