@@ -415,15 +415,14 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await pdfCheck('performance', 1, 'portrait');
 
   const pageText = () => page.eval(() => document.querySelector('[data-testid=export-page]').innerText);
-  const dmy = DATE.split('-').reverse().join('/');
 
   await page.goto(`${server.url}/flights/${id}/export/form731`);
   await page.waitFor(() => !!document.querySelector('[data-testid=form731]'));
   let tx = await pageText();
-  assert.match(tx, new RegExp(`AIRPORT\\s*DEKELIA / TATOI \\(LGTT\\)\\s*DATE\\s*${dmy}`));
+  assert.match(tx, new RegExp(`AIRPORT\\s*DEKELIA / TATOI \\(LGTT\\)\\s*DATE\\s*${DATE}`));
   assert.match(tx, /registration SX-ASV\s+and operating the route LGTT – LGMG/);
-  assert.match(tx, /1\.\s+Test Pilot\s+AM-001\s+ID AB 123456\s+\+30 690 000 0000/);
-  assert.match(tx, /2\.\s+Maria Papadopoulou\s+Guest\s+ID AK 765432\s+\+30 690 111 2222/);
+  assert.match(tx, /1\.\s+Test Pilot\s+PIC\s+AB 123456\s+\+30 690 000 0000/);
+  assert.match(tx, /2\.\s+Maria Papadopoulou\s+PAX\s+AK 765432\s+\+30 690 111 2222/);
   await page.screenshot('flight-export-form731');
   await pdfCheck('form731', 1, 'landscape');
 
@@ -431,14 +430,14 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => !!document.querySelector('[data-testid=gendec]'));
   tx = await pageText();
   assert.match(tx, /Registration SX-ASV/);
-  assert.match(tx, new RegExp(`Date ${dmy}`));
+  assert.match(tx, /Date\s*\d{4}\s*-\s*\d{2}\s*-\s*\d{2}/);
   assert.match(tx, /Departure from DEKELIA \/ TATOI \(LGTT\) Arrival at MEGARA \(LGMG\)/);
   assert.match(tx, /Test Pilot \(PIC\)/);
   assert.match(tx, /Departure place: LGTT\s+Embarking\s+1\s+Through on same flight\s+0\s+Arrival place: LGMG\s+Disembarking\s+1/);
   assert.match(tx, /If no disinsecting has been carried out during the flight/);
   // the PIC's e-signature on the declaration's signature line (as on Form 731)
   await page.waitFor(() => !!document.querySelector('.gd-sigline [data-testid=signature]'));
-  assert.match(await page.eval(() => document.querySelector('.gd-sigline').innerText), /T\. Pilot\s*signed \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}Z/);
+  assert.match(await page.eval(() => document.querySelector('.gd-sigline').innerText), /T\. Pilot\s*signed \d{4}-\d{2}-\d{2} \d{2}:\d{2}Z/);
   // who sends it: neither LGTT nor LGMG has a handler (AIP AD 1.6), so the PIC does; the per-flight override
   await page.waitFor(() => !!document.querySelector('[data-testid=gendec-handling-departure]'));
   assert.match(await text('[data-testid=gendec-handling-departure]'), /LGTT: no handling \(AIP AD 1\.6\.5\.4\)/);

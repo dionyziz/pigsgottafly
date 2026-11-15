@@ -30,8 +30,8 @@ export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?:
         </div>
         <div className="gd-line" style={{ top: '28.9mm' }}>
           Marks of Nationality and Registration <Blank w={44} value={m.registration} field="registration" />
-          Flight No. <Blank w={20.5} value={m.flightNo} field="flightNo" /> Date <Blank w={5.3} value={m.date[0]} field="dd" />/
-          <Blank w={5.3} value={m.date[1]} field="mm" />/<Blank w={10.6} value={m.date[2]} field="yyyy" />
+          Flight No. <Blank w={20.5} value={m.flightNo} field="flightNo" /> Date <Blank w={10.6} value={m.date[2]} field="yyyy" />-
+          <Blank w={5.3} value={m.date[1]} field="mm" />-<Blank w={5.3} value={m.date[0]} field="dd" />
         </div>
         <div className="gd-line" style={{ top: '33.5mm' }}>
           Departure from <Blank w={59} value={m.departure} field="departure" /> Arrival at <Blank w={60} value={m.arrival} field="arrival" />

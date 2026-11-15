@@ -111,7 +111,7 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   p.text(120, 40, 'Flight No.', { size: 9.5 });
   fill(137, 40, 20, c.flightNo);
   p.text(159, 40, 'Date', { size: 9.5 });
-  fill(167, 40, 28, c.date.every(Boolean) ? c.date.join('/') : '');
+  fill(167, 40, 28, c.date.every(Boolean) ? [c.date[2], c.date[1], c.date[0]].join('-') : '');
   p.text(15, 47, 'Departure from', { size: 9.5 });
   fill(41, 47, 62, c.departure);
   p.text(105, 47, 'Arrival at', { size: 9.5 });
@@ -180,5 +180,5 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   p.text(15, 281, '** Not to be completed when passenger manifests are presented and to be completed only when required by the State.', { size: 6.5 });
   p.text(15, 287, 'ICAO ANNEX 9 - APPENDIX 1.1', { size: 8 });
   p.text(105, 291, 'MD 4.7', { font: 'bold', size: 8, align: 'center' });
-  return doc.bytes({ title: `General Declaration ${c.registration} ${c.date.join('/')}` });
+  return doc.bytes({ title: `General Declaration ${c.registration} ${[c.date[2], c.date[1], c.date[0]].join('-')}` });
 }
