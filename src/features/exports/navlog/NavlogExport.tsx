@@ -15,10 +15,9 @@ import { REF, SUN_TABLES } from '../../../data/ref';
 import { atcInput, endpointAerodrome, generateAtcList } from '../../../data/atc';
 import { fetchRouteWeather, type RouteWeather } from '../../../data/weather';
 import { fetchMetarTaf, type MetarTafResult } from '../../../data/weatherMetar';
-import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
 import {
   buildNavlogDocument, computeFlightNavlog, LEGS_PER_SHEET, MIN_TERMINAL_ROWS, NOTE_LINES,
-  type NavlogDocument, type NavlogSheet, type SheetLeg,
+  type NavlogDocument, type NavlogSheet, type SheetLeg, type TerminalRow,
 } from './model';
 import { fitSheets, SHEET_UNITS } from './fit';
 import './navlog.css';
@@ -73,27 +72,6 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     return () => { live = false; };
   }, [endIcaos.join(','), nearNow, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- weather hazards along the route (corridor samples)
-  const hzKey = JSON.stringify([flight.date, model, legs.map((l) => [l.from.lat, l.from.lon, l.to.lat, l.to.lon].map((x) => x.toFixed(3)))]);
-  const [hazardWx, setHazardWx] = useState<HazardWeather | null>(null);
-  const [hzBusy, setHzBusy] = useState(false);
-  useEffect(() => {
-    if (!legs.length || !flight.date) { setHazardWx(null); return; }
-    let live = true;
-    setHzBusy(true);
-    const ad = (p: typeof flight.route[number] | undefined) => (p ? endpointAerodrome(p, REF.aerodromes) : null);
-    const a0 = ad(flight.route[0]), a1 = flight.route.length > 1 ? ad(flight.route[flight.route.length - 1]) : null;
-    fetchHazardWeather({
-      date: flight.date, model,
-      legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
-      departure: a0 ? { lat: a0.lat, lon: a0.lon } : null,
-      destination: a1 ? { lat: a1.lat, lon: a1.lon } : null,
-      force: refresh > 0,
-    }).then((h) => { if (live) { setHazardWx(h); setHzBusy(false); } });
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hzKey, refresh]);
-
   // ---- the document
   const loading = pilotQ.loading || acQ.loading;
   const doc: NavlogDocument | null = useMemo(() => {
@@ -103,20 +81,8 @@ export function NavlogExport({ flight }: { flight: Flight }) {
       ref: { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES },
     });
     const atc = flight.atc ?? generateAtcList(atcInput(flight.route, computed.altitudesFt, REF, pilot?.settings.enrouteAerodromeRadiusNm ?? 2));
-    const dayMs = Date.parse(flight.date + 'T00:00:00Z');
-    const end = (p: typeof flight.route[number] | undefined) => {
-      const a = p ? endpointAerodrome(p, REF.aerodromes) : null;
-      return a ? { elevFt: a.elevFt ?? 0, reports: a.icao && metar ? metar.stations[a.icao] ?? null : null } : null;
-    };
-    const hazards = computeRouteHazards({
-      hw: hazardWx, navlog: computed.navlog, dayMs, nowMs: Date.now(),
-      departure: end(flight.route[0]), destination: flight.route.length > 1 ? end(flight.route[flight.route.length - 1]) : null,
-    });
-    const hazardStatus = !computed.navlog.blockOffSet ? 'not checked (block-off time not set)'
-      : hazardWx && hazardWx.status !== 'ok' ? hazardWx.message
-      : hazardWx && hazardWx.status === 'ok' ? `none found (${hazardWx.sourceLabel})` : undefined;
-    return buildNavlogDocument({ doc: flight, aircraft, computed, atc, aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now(), hazards, hazardStatus });
-  }, [loading, flight, aircraft, pilot, weather, metar, hazardWx]);
+    return buildNavlogDocument({ doc: flight, aircraft, computed, atc, aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now() });
+  }, [loading, flight, aircraft, pilot, weather, metar]);
 
   // ---- scale to the container on screen; fit text after every render
   const host = useRef<HTMLDivElement>(null);
@@ -142,24 +108,19 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   }, [doc]);
 
   if (!doc) return <div className="md42-doc-loading muted">Loading…</div>;
-  const wxPending = (wxBusy || hzBusy) && legs.length > 0;
+  const wxPending = wxBusy && legs.length > 0;
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const snap = (w: number, min: number) => `${Math.max(min, Math.round(w * dpr)) / dpr}px`;
 
   return (
     <div className="md42-doc" data-testid="navlog-export" data-ready={wxPending ? 'false' : 'true'} data-sheets={doc.sheets.length}>
-      <div className="md42-status no-print">
-        <div className="md42-status-row">
-          <span className={`chip ${wxPending ? '' : weather?.status === 'ok' ? 'ok' : legs.length ? 'warn' : ''}`}>
-            {wxPending ? 'Loading winds…' : weather?.status === 'ok' ? 'Winds aloft loaded' : legs.length ? 'No winds aloft' : 'No route'}
-          </span>
-          {doc.sheets.length > 1 && <span className="chip">{doc.sheets.length} sheets</span>}
-          <span className="spacer" />
-          <button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={wxPending || !legs.length}>Refresh weather</button>
+      {legs.length > 0 && (
+        <div className="md42-status no-print">
+          <div className="md42-sources" data-testid="navlog-sources">{wxPending ? 'Loading weather…' : doc.sources.join(' · ')}</div>
+          <button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={wxPending}>Refresh weather</button>
+          {doc.warnings.length > 0 && <ul className="md42-warnings" data-testid="navlog-warnings">{doc.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
         </div>
-        {doc.sources.length > 0 && <ul className="md42-sources">{doc.sources.map((s, i) => <li key={i}>{s}</li>)}</ul>}
-        {doc.warnings.length > 0 && <ul className="md42-warnings" data-testid="navlog-warnings">{doc.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
-      </div>
+      )}
       <div
         className="md42-stage"
         ref={host}
@@ -182,6 +143,10 @@ function C({ r, c, rs = 1, cs = 1, cls = '', children }: { r: number; c: number;
 function V({ t, cap = 21, cls = '' }: { t: string; cap?: number; cls?: string }) {
   return <div className={`v ${cls}`} data-fit={cap}>{t}</div>;
 }
+/** A header block value: all of them are fitted to one size (fit.ts). */
+function HV({ t }: { t: string }) {
+  return <div className="val"><div className="v" data-fit={18} data-fit-group="hdr">{t}</div></div>;
+}
 function TwoH({ a, b }: { a: ReactNode; b: ReactNode }) {
   return <div className="sub2"><div className="h">{a}</div><div className="h">{b}</div></div>;
 }
@@ -194,13 +159,42 @@ const HEX = (
 );
 const BR = <br />;
 
+/** Terminal information, one row: field / elevation / runways / one radio unit per line. */
+function TerminalCells({ t, rowH }: { t: TerminalRow | undefined; rowH: number }) {
+  const st = { height: `calc(${rowH.toFixed(3)}*var(--u))` };
+  const nf = Math.max(1, ...(t?.units ?? []).map((u) => u.freqs.length));
+  return (
+    <>
+      <div style={st}><div className="tv" data-fit-ti="field"><div className="tx">{t?.field ?? ''}</div></div></div>
+      <div style={st}><div className="tv num" data-fit-ti="elev"><div className="tx">{t?.elev ?? ''}</div></div></div>
+      <div style={st}><div className="tv" data-fit-ti="rwy"><div className="tx">{t?.rwy ?? ''}</div></div></div>
+      <div style={st}>
+        <div className="tv" data-fit-ti={`freq${t?.units.length ?? 0}`}>
+          {t && t.units.length > 0 && (
+            <div className="tx fq" style={{ gridTemplateColumns: `max-content repeat(${nf}, max-content)` }}>
+              {t.units.map((u, i) => (
+                <Fragment key={i}>
+                  <span className="fq-u">{u.unit}</span>
+                  {Array.from({ length: nf }, (_, k) => <span key={k} className="fq-f">{u.freqs[k] ?? ''}</span>)}
+                </Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
   const h = sheet.header;
-  const last = sheet.index === sheet.count - 1;
   const tr = 4 + 2 * LEGS_PER_SHEET;
   const rowsTpl = `calc(19*var(--u)) calc(19*var(--u)) calc(19*var(--u)) repeat(${2 * LEGS_PER_SHEET}, calc(27*var(--u))) calc(30*var(--u))`;
   const nRows = Math.max(MIN_TERMINAL_ROWS, doc.terminal.length);
-  const rowH = 165 / nRows;
+  // rows share the box by their number of radio units (a row of five units gets 2.6 single rows' height)
+  const weight = (i: number) => 1 + 0.4 * Math.max(0, (doc.terminal[i]?.units.length ?? 1) - 1);
+  const weights = Array.from({ length: nRows }, (_, i) => weight(i));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
 
   const legCells = (j: number) => {
     const L: SheetLeg | null = sheet.legs[j];
@@ -240,17 +234,17 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
       <div className="fold-line" />
       <div className="g hdr">
         <div className="title">Flight Planner</div>
-        <div className="lbl">AIRCRAFT</div><div className="val"><V t={h.aircraft} /></div>
-        <div className="lbl">TAKE-OFF</div><div className="val" />
-        <div className="lbl">BLOCK START</div><div className="val"><V t={h.blockStart} /></div>
-        <div className="lbl">BLOCK END</div><div className="val" />
-        <div className="lbl">ATIS CODE</div><div className="val" />
-        <div className="lbl">SKY</div><div className="val"><V t={h.sky} /></div>
-        <div className="lbl">TEMP</div><div className="val"><V t={h.temp} /></div>
-        <div className="lbl">WIND</div><div className="val"><V t={h.wind} /></div>
+        <div className="lbl">AIRCRAFT</div><HV t={h.aircraft} />
+        <div className="lbl">TAKE-OFF</div><HV t="" />
+        <div className="lbl">BLOCK START</div><HV t={h.blockStart} />
+        <div className="lbl">BLOCK END</div><HV t="" />
+        <div className="lbl">ATIS CODE</div><HV t="" />
+        <div className="lbl">SKY</div><HV t={h.sky} />
+        <div className="lbl">TEMP</div><HV t={h.temp} />
+        <div className="lbl">WIND</div><HV t={h.wind} />
         <div className="lbl big" style={{ gridColumn: 'span 2' }}>En Route</div>
-        <div className="lbl">QNH</div><div className="val"><V t={h.qnh} /></div>
-        <div className="lbl">RUNWAY</div><div className="val"><V t={h.runway} /></div>
+        <div className="lbl">QNH</div><HV t={h.qnh} />
+        <div className="lbl">RUNWAY</div><HV t={h.runway} />
         <div className="est">{h.est}</div>
       </div>
 
@@ -267,9 +261,9 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
         <C r={1} c={8} rs={3}><TwoH a={<>TRUE{BR}HEADING</>} b={<>-E +W&nbsp;&nbsp;VAR</>} /></C>
         <C r={1} c={9} rs={3} cls="fold"><TwoH a={<>MAG{BR}HEADING</>} b="± DEV" /></C>
         <C r={1} c={10} cls="h big">Checkpoints</C>
-        <C r={2} c={10} rs={2} cls="cp-end">
-          <div className="sub2 end"><div className="h">{sheet.topLabel}</div><div className="dep"><div className="cpn">{sheet.topName}</div></div></div>
-        </C>
+        <C r={2} c={10} rs={2} cls="cp-end"><div className="h end-lbl">{sheet.topLabel}</div></C>
+        {/* the origin sits on the line above the first leg's arrows, as every other checkpoint does */}
+        <C r={4} c={10} cls="cpn-cell"><div className="cpn cpn-origin">{sheet.topName}</div></C>
         <C r={1} c={11} rs={3} cls="h">COMPASS{BR}HEADING</C>
         <C r={1} c={12} cls="h">DIST</C><C r={1} c={13} cls="h">GS</C>
         <C r={2} c={12} cls="h">LEG</C><C r={2} c={13} cls="h">EST</C>
@@ -286,7 +280,8 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
 
         <C r={tr} c={1} cs={9} cls="ti-title fold">Terminal Information</C>
         <C r={tr} c={10} cls="cp-end total-row">
-          <div className="sub2 end"><div className="h">{sheet.bottomLabel}</div><div className="dep"><div className="cpn">{sheet.bottomName}</div></div></div>
+          {sheet.bottomLabel && <div className="h end-lbl">{sheet.bottomLabel}</div>}
+          <div className={`end-name${sheet.bottomLabel ? ' under-lbl' : ''}`}><div className="cpn cpn-end">{sheet.bottomName}</div></div>
         </C>
         <C r={tr} c={11} cls="tot-label total-row">TOTALS</C>
         <C r={tr} c={12} cls="total-row"><V t={sheet.totals.dist} /></C>
@@ -300,25 +295,12 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
       <div className="g foot">
         <div className="ti">
           <div className="th">Field</div><div className="th">Elevation</div><div className="th">Runways</div><div className="th">Radio Frequencies</div>
-          {Array.from({ length: nRows }, (_, i) => {
-            const t = doc.terminal[i];
-            const st = { height: `calc(${rowH.toFixed(3)}*var(--u))` };
-            return (
-              <Fragment key={i}>
-                <div style={st}><div className="tv" data-fit-wrap={17}>{t?.field ?? ''}</div></div>
-                <div style={st}><div className="tv num" data-fit-wrap={17}>{t?.elev ?? ''}</div></div>
-                <div style={st}><div className="tv" data-fit-wrap={17}>{t?.rwy ?? ''}</div></div>
-                <div style={st}><div className="tv" data-fit-wrap={12}>{t?.freq ?? ''}</div></div>
-              </Fragment>
-            );
-          })}
+          {Array.from({ length: nRows }, (_, i) => <TerminalCells key={i} t={doc.terminal[i]} rowH={(165 * weights[i]) / totalWeight} />)}
         </div>
         <div className="notes">
           <div className="th">Notes:</div>
           <div className="note-lines">
-            {Array.from({ length: NOTE_LINES }, (_, i) => (
-              <div key={i} />
-            ))}
+            {Array.from({ length: NOTE_LINES }, (_, i) => <div key={i} />)}
           </div>
         </div>
       </div>
