@@ -55,15 +55,15 @@ export function form731Model(props: FormExportProps): Form731Model {
   const warn = (text: string, fix: FormFix | null) => { warnings.push(text); if (fix) fixes[text] = fix; };
   if (!places.length) warn('The route is empty: no airport or route on the form.', { kind: 'flight' });
   else if (!places[0].aerodrome) warn(`The departure point ${places[0].code} is not an aerodrome.`, { kind: 'flight' });
-  if (!flight.date) warn('The flight has no date.', { kind: 'flight' });
-  if (!aircraft) warn('No aircraft is selected: the registration is blank.', { kind: 'flight' });
+  if (!flight.date) warn('The flight has no date.', { kind: 'flight', focus: 'date' });
+  if (!aircraft) warn('No aircraft is selected: the registration is blank.', { kind: 'flight', focus: 'aircraft' });
   for (const r of rows) {
     const who = r.role === 'PIC' ? 'PIC' : r.name || `Passenger ${r.no}`;
     const missing: [boolean, string, PersonField][] = [[!r.name, 'name', 'fullName'], [!r.idPassport, 'ID/passport number', 'idNumber'], [!r.contact, 'phone', 'phone']];
     const miss = missing.filter((m) => m[0]).map((m) => m[1]);
     const fields = missing.filter((m) => m[0]).map((m) => m[2]);
     // People saved in the passenger list (key = passenger id) or the PIC can be edited; a seat-only entry is fixed on the flight.
-    if (miss.length) warn(`${who}: no ${miss.join(', ')}.`, r.key.startsWith('seat:') ? { kind: 'flight' } : { kind: 'person', key: r.key, fields });
+    if (miss.length) warn(`${who}: no ${miss.join(', ')}.`, r.key.startsWith('seat:') ? { kind: 'flight', focus: 'manifest' } : { kind: 'person', key: r.key, fields });
   }
 
   return {

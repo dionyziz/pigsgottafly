@@ -20,6 +20,9 @@ import {
   type NavlogDocument, type NavlogSheet, type SheetLeg, type TerminalRow,
 } from './model';
 import { fitSheets, SHEET_UNITS } from './fit';
+import { WarningList } from '../WarningList';
+import { Signature, type ShownSignature } from '../form731/Form731';
+import '../form731/forms.css';
 import './navlog.css';
 
 /** METAR/TAF are fetched only when the flight is within this long of now (otherwise the forecast is used). */
@@ -32,6 +35,9 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     [flight.aircraftId],
   );
   const pilot = pilotQ.data ?? null;
+  // the PIC's e-signature on every sheet, dated when the log is generated
+  const [signedAt] = useState(() => Date.now());
+  const signature: ShownSignature | null = pilot?.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
   const aircraft = acQ.data ?? null;
 
   // ---- weather: winds aloft at leg midpoints + surface at both ends (Open-Meteo), METAR/TAF
@@ -118,7 +124,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
         <div className="md42-status no-print">
           <div className="md42-sources" data-testid="navlog-sources">{wxPending ? 'Loading weather…' : doc.sources.join(' · ')}</div>
           <button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={wxPending}>Refresh weather</button>
-          {doc.warnings.length > 0 && <ul className="md42-warnings" data-testid="navlog-warnings">{doc.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+          <WarningList warnings={doc.warnings} aircraftId={flight.aircraftId} className="md42-warnings" testId="navlog-warnings" />
         </div>
       )}
       <div
@@ -126,7 +132,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
         ref={host}
         style={{ ['--fit' as string]: `${fitPx}px`, ['--hair' as string]: snap(fitPx, 1), ['--thick' as string]: snap(fitPx * 1.6, 2) }}
       >
-        {doc.sheets.map((s) => <Sheet key={s.index} sheet={s} doc={doc} />)}
+        {doc.sheets.map((s) => <Sheet key={s.index} sheet={s} doc={doc} signature={signature} />)}
       </div>
     </div>
   );
@@ -186,7 +192,7 @@ function TerminalCells({ t, rowH }: { t: TerminalRow | undefined; rowH: number }
   );
 }
 
-function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
+function Sheet({ sheet, doc, signature }: { sheet: NavlogSheet; doc: NavlogDocument; signature: ShownSignature | null }) {
   const h = sheet.header;
   const tr = 4 + 2 * LEGS_PER_SHEET;
   const rowsTpl = `calc(19*var(--u)) calc(19*var(--u)) calc(19*var(--u)) repeat(${2 * LEGS_PER_SHEET}, calc(27*var(--u))) calc(30*var(--u))`;
@@ -230,7 +236,9 @@ function Sheet({ sheet, doc }: { sheet: NavlogSheet; doc: NavlogDocument }) {
 
   return (
     <section className="md42" data-sheet={sheet.index + 1} aria-label={`Navigation log sheet ${sheet.index + 1} of ${sheet.count}`}>
-      <div className="date-top"><V t={h.date} cap={16} cls="date" /><span className="pgno">{sheet.index + 1}</span></div>
+      <div className="date-top">
+        {signature && <span className="md42-sig" data-testid="navlog-signature"><span className="md42-sig-lbl">PIC</span><Signature s={signature} /></span>}
+        <V t={h.date} cap={16} cls="date" /><span className="pgno">{sheet.index + 1}</span></div>
       <div className="fold-line" />
       <div className="g hdr">
         <div className="title">Flight Planner</div>

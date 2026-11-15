@@ -299,7 +299,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
       const limit = Math.min(mlw > 0 ? mlw : Infinity, mb.mtowKg > 0 ? mb.mtowKg : Infinity);
       totals.push(sectorBurn(`burn${k}`, k === 0 ? wb.takeoff : stops[k - 1].wbAfter!.takeoff, at, x.before.fuelTakeoffL - Math.max(0, x.before.fuelLandingL), stopName(x), x.before.fuelLandingL < 0));
       totals.push({
-        key: `stop${k}`, kind: 'total', label: `Total at ${stopName(x)} (stop)`,
+        key: `stop${k}`, kind: 'total', label: `Total at ${stopName(x)} (${x.kind === 'touch-and-go' ? 'touch-and-go' : 'stop'})`,
         note: `${trimNum(Math.max(0, x.before.fuelLandingL))} L remaining · landing and take-off`,
         massKg: at.massKg, armM: at.armM, momentKgM: at.momentKgM, people: [], over: at.massKg > limit + 1e-9,
       });
@@ -330,7 +330,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
       const utility = b.utility && a.utility ? both(b.utility.landing, a.utility.takeoff) : null;
       const chosen = category === 'utility' ? utility : normal;
       const breached = b.limitBreaches.some((r) => r.phase === 'landing') || a.limitBreaches.some((r) => r.phase === 'takeoff');
-      checks.push({ phase: 'stop', label: `Stop ${stopName(x)}`, point: b.landing, normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached });
+      checks.push({ phase: 'stop', label: `${x.kind === 'touch-and-go' ? 'Touch-and-go' : 'Stop'} ${stopName(x)}`, point: b.landing, normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached });
     }
     checks.push(phaseCheck('landing'));
   }
@@ -343,7 +343,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     // The stop's own phase breaches (MLW / MTOW / envelope there); loading limits are already listed.
     const own = [...x.wbBefore!.limitBreaches.filter((r) => r.phase === 'landing'), ...x.wbAfter!.limitBreaches.filter((r) => r.phase === 'takeoff')];
     for (const r of own) {
-      const t = `At ${stopName(x)} (stop): ${r.text}`;
+      const t = `At ${stopName(x)} (${x.kind === 'touch-and-go' ? 'touch-and-go' : 'stop'}): ${r.text}`;
       if (!warnings.includes(t)) warnings.push(t);
     }
   }

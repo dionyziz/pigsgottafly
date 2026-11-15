@@ -465,24 +465,32 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   const msg = await text('[data-testid=fpl-message]');
   const eet = O.hmm(exp.totals.ete).replace(':', '').padStart(4, '0');
   const end = O.hmm(Math.floor(144 / 30 * 60)).replace(':', '').padStart(4, '0');
-  const dm = (x, d) => { let deg = Math.floor(Math.abs(x)), min = Math.round((Math.abs(x) - deg) * 60); if (min === 60) { deg++; min = 0; } return String(deg).padStart(d, '0') + String(min).padStart(2, '0'); };
-  const coord = (p) => `${dm(p.lat, 2)}N${dm(p.lon, 3)}E`;
+  // the route by point names in item 15 (as EuroFPL), not in RMK/
   const expected = [
     '(FPL-SXASV-VG', '-C172/L-S/C', `-LGTT${BLOCK_OFF.replace(':', '')}`,
-    `-N0092VFR DCT ${coord(f.route[1])} DCT ${coord(f.route[2])}`, `-LGMG${eet}`,
+    '-N0092VFR ABLONAS ZOFRI', `-LGMG${eet}`,
   ];
   assert.deepEqual(msg.split('\n').slice(0, 5), expected);
-  // Item 18 without REG/ (it equals item 7), and the message ends there: item 19 is not transmitted.
-  assert.match(msg, new RegExp(`-DOF/${DATE.slice(2).replace(/-/g, '')} (OPR|RMK)/`));
-  assert.doesNotMatch(msg, /REG\//);
-  assert.match(msg, /VFR\s+VIA\s+ABLONAS\s+ZOFRI\)$/); // AFTN wraps item 18 at 69 characters
-  assert.doesNotMatch(msg, /-E\//);
-  // item 19 is still filled on the form view
+  // Item 18 without REG/ (it equals item 7), DOF/ last; item 19 follows, C/ = SURNAME INITIAL +CC NUMBER
+  assert.match(msg, new RegExp(`DOF/${DATE.slice(2).replace(/-/g, '')}\\n-E/${end} P/002 `));
+  assert.doesNotMatch(msg, /REG\/|VFR VIA|PIC TEL/);
+  assert.match(msg, /C\/PILOT\s+T\s+\+30\s+6900000000\)$/);
   const endCells = await page.eval(() => document.querySelector('[data-testid=fpl-form] [aria-label=Endurance]').textContent);
   assert.equal(endCells, end);
   assert.ok(msg.split('\n').every((l) => l.length <= 69), 'AFTN lines of at most 69 characters');
+  // the form is signed by the PIC in FILED BY
+  assert.ok(await page.eval(() => !!document.querySelector('[data-testid=fpl-filed-by] [data-testid=signature]')), 'FILED BY e-signature');
   await page.screenshot('flight-export-fpl');
-  await pdfCheck('fpl', 2, 'portrait'); // the filled form, then the message as filed
+  await pdfCheck('fpl', 1, 'portrait'); // the filled form on one page
+
+  // a warning links to where it is fixed: the editor opens with the input focused and highlighted
+  await page.goto(`${server.url}/flights/${id}?focus=blockOff`);
+  await page.waitFor(() => document.activeElement?.getAttribute('data-focus') === 'blockOff' && document.activeElement.classList.contains('attention'), { timeout: 15000 });
+  await page.goto(`${server.url}/flights/${id}?focus=remarks`);
+  await page.waitFor(() => document.activeElement?.getAttribute('data-testid') === 'fpl-remarks' && document.activeElement.classList.contains('attention'), { timeout: 15000 });
+  await shot('focus-remarks');
+  await page.goto(`${server.url}/hangar/${ac.id}?focus=colours`);
+  await page.waitFor(() => document.activeElement?.closest('[data-focus=colours]') && document.activeElement.classList.contains('attention'), { timeout: 15000 });
 
   // the lobby lists the flight with the navlog's totals (written by the editor as derived values)
   f = await api('GET', `flights/${id}`);

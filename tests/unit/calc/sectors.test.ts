@@ -3,7 +3,7 @@
 // stops.test.ts: A → P → B → Q → A2, four legs of 46 NM, a 20 min stop at B.
 import { expect, test } from 'vitest';
 import { computeNavlog, flightSectors, planFuel, sectorBalances, stopLegs, stopsOf, weightAndBalance, type LegGeometry } from '../../../src/calc';
-import { requestTiming, setRequest, setStopChoice, stopPointIndices, type RoutePoint } from '../../../src/shared';
+import { landingPointIndices, requestTiming, setRequest, setStopChoice, stopPointIndices, type RoutePoint } from '../../../src/shared';
 import { fleetSeed } from '../../../tools/build_seed';
 
 const AC = { cruiseTasKt: 92, patternTasKt: 80, burnLph: 30, taxiAllowanceL: 4, card: null };
@@ -37,10 +37,10 @@ test('a stop splits the flight into two sectors: times and fuel (no refuelling, 
   expect(s[1].landingMin).toBeCloseTo(nav.times.landingMin, 9);
   // the last sector lands with the fuel plan's landing fuel
   expect(s[1].fuelLandingL).toBe(fuel.landingFuelL);
-  expect(stopsOf(s)).toEqual([{ pointIndex: 2, before: s[0], after: s[1] }]);
+  expect(stopsOf(s)).toEqual([{ pointIndex: 2, kind: 'stop', before: s[0], after: s[1] }]);
 });
 
-test('no stop: one sector equal to the plain take-off / landing; a touch-and-go is not a stop', () => {
+test('no stop: one sector equal to the plain take-off / landing', () => {
   const tg = requestTiming(route, { aerodromeRequests: [{ pointUid: 'B', kind: 'touch-and-go' }] });
   const nav = computeNavlog({ ...base, patternLegs: tg.patternLegs, groundAfterLegMin: tg.groundAfterLegMin });
   const s = flightSectors({ legs: nav.legs, groundAfterLegMin: tg.groundAfterLegMin, taxiAllowanceL: 4, fobL: 100 });
@@ -48,6 +48,25 @@ test('no stop: one sector equal to the plain take-off / landing; a touch-and-go 
   expect(s[0]).toMatchObject({ fromPoint: 0, toPoint: 4, tripFuelL: 72, fuelTakeoffL: 100, fuelLandingL: 24 });
   expect(stopsOf(s)).toEqual([]);
   expect(flightSectors({ legs: [], taxiAllowanceL: 4, fobL: 100 })).toEqual([]);
+});
+
+test('a touch-and-go at an intermediate aerodrome ends a sector without a new allowance (no stop, no taxi)', () => {
+  const TG = { aerodromeRequests: [{ pointUid: 'B', kind: 'touch-and-go' as const }] };
+  const tg = requestTiming(route, TG);
+  expect(tg.touchAfterLeg).toEqual([false, true, false, false]);
+  expect(landingPointIndices(route, TG)).toEqual([2]);
+  expect(stopPointIndices(route, TG)).toEqual([]);
+  const nav = computeNavlog({ ...base, patternLegs: tg.patternLegs, groundAfterLegMin: tg.groundAfterLegMin });
+  const s = flightSectors({ legs: nav.legs, groundAfterLegMin: tg.groundAfterLegMin, touchAfterLeg: tg.touchAfterLeg, taxiAllowanceL: 4, fobL: 100 });
+  expect(s).toHaveLength(2);
+  expect(s[0]).toMatchObject({ toPoint: 2, allowanceL: 4, fuelTakeoffL: 100, fuelLandingL: 60, ends: 'touch-and-go' });
+  // the touch-and-go take-off at the landing time, with the fuel left; the flight lands as without it
+  expect(s[1]).toMatchObject({ fromPoint: 2, allowanceL: 0, fuelTakeoffL: 60, fuelLandingL: 24, ends: 'destination' });
+  expect(s[1].takeoffMin).toBeCloseTo(s[0].landingMin, 9);
+  expect(stopsOf(s)).toEqual([{ pointIndex: 2, kind: 'touch-and-go', before: s[0], after: s[1] }]);
+  // touch-and-go at the departure or the destination: no extra sector
+  const ends = { aerodromeRequests: [{ pointUid: 'A', kind: 'touch-and-go' as const }, { pointUid: 'A2', kind: 'touch-and-go' as const }] };
+  expect(landingPointIndices(route, ends)).toEqual([]);
 });
 
 test('not enough fuel for the first sector: the next one starts with empty tanks, not negative fuel', () => {
@@ -94,6 +113,6 @@ test('the API keeps a stop\'s runway and surface choices and validates them', as
   const o = checkOptions({ aerodromeRequests: [{ pointUid: 'B', kind: 'stop', stopMin: 10, landingRunway: '35', takeoffRunway: '', surface: 'short dry grass', junk: 1 }] });
   expect(o.aerodromeRequests).toEqual([{ pointUid: 'B', kind: 'stop', stopMin: 10, landingRunway: '35', surface: 'short dry grass' }]);
   expect(() => checkOptions({ aerodromeRequests: [{ pointUid: 'B', kind: 'stop', landingRunway: 'X'.repeat(11) }] })).toThrow(/landingRunway/);
-  // a touch-and-go carries no choices
-  expect(checkOptions({ aerodromeRequests: [{ pointUid: 'B', kind: 'touch-and-go', landingRunway: '35' }] }).aerodromeRequests).toEqual([{ pointUid: 'B', kind: 'touch-and-go' }]);
+  // a touch-and-go keeps its runway choice too (its landing and take-off performance)
+  expect(checkOptions({ aerodromeRequests: [{ pointUid: 'B', kind: 'touch-and-go', landingRunway: '35' }] }).aerodromeRequests).toEqual([{ pointUid: 'B', kind: 'touch-and-go', landingRunway: '35' }]);
 });

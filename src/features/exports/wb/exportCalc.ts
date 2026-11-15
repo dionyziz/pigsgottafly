@@ -5,7 +5,7 @@
 // each intermediate full stop (its landing and its take-off, with the sector masses: sectors.ts).
 // Pure: no I/O, no DOM (the hook in useExportCalc.ts fetches the inputs).
 import type { Aircraft, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { activeRequests, fuelLoad, requestTiming, stopPointIndices, type FuelLoad } from '../../../shared';
+import { activeRequests, fuelLoad, landingPointIndices, requestTiming, type FuelLoad, type RequestTiming } from '../../../shared';
 import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
   aerodromePerformance, flightSectors, isaTempC, magneticVariation, performanceMass, sectorBalances, stopsOf,
@@ -16,6 +16,9 @@ import type { OpenMeteoLocation, RouteWeather, SurfaceConditions } from '../../.
 import { toPerfWind } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
 import { computeFlightNavlog, endpointWeather, type EndpointWeather, type NavlogComputed } from '../navlog/model';
+
+
+const sectorTiming = (t: RequestTiming) => ({ groundAfterLegMin: t.groundAfterLegMin, touchAfterLeg: t.touchAfterLeg });
 
 export interface ExportCalcInput {
   doc: FlightDoc;
@@ -63,6 +66,8 @@ export interface EndpointPerf {
 export interface ExportStop {
   point: RoutePoint;
   pointIndex: number;
+  /** A full stop, or a touch-and-go (a landing and an immediate take-off). */
+  kind: 'stop' | 'touch-and-go';
   before: FlightSector;
   after: FlightSector;
   /** W&B of the sectors before and after the stop (null without an aircraft). */
@@ -136,7 +141,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
 
   // ---- sectors (intermediate full stops): W&B of each sector with its own take-off / landing fuel
   const sectors = aircraft && navlog.legs.length
-    ? flightSectors({ legs: navlog.legs, groundAfterLegMin: requestTiming(doc.route, doc.options).groundAfterLegMin, taxiAllowanceL: aircraft.fuel.taxiAllowanceL, fobL: fuelTakeoffL })
+    ? flightSectors({ legs: navlog.legs, ...sectorTiming(requestTiming(doc.route, doc.options)), taxiAllowanceL: aircraft.fuel.taxiAllowanceL, fobL: fuelTakeoffL })
     : [];
   let sectorWb: (WbResult | null)[] = sectors.map(() => null);
   if (aircraft && wb && sectors.length > 1) {
@@ -208,8 +213,8 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
   const departure = endpoint('takeoff', depPoint, weather?.departure ?? null, blockOffSet ? times.takeoffMin : NaN, wb, o.departureRunway, o.departureSurface);
   const arrival = endpoint('landing', arrPoint, weather?.destination ?? null, blockOffSet ? times.landingMin : NaN, wb, o.arrivalRunway, o.arrivalSurface);
   const reqs = new Map(activeRequests(route, o).map((r) => [r.index, r.request]));
-  // weather.stops is fetched for stopPointIndices() (useExportCalc), the same points the sectors end at.
-  const wxStops = stopPointIndices(route, o);
+  // weather.stops is fetched for landingPointIndices() (useExportCalc), the same points the sectors end at.
+  const wxStops = landingPointIndices(route, o);
   const stops: ExportStop[] = stopsOf(sectors).map((s) => {
     const point = route[s.pointIndex];
     const req = reqs.get(s.pointIndex);
@@ -218,7 +223,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     const wbBefore = sectorWb[s.before.index] ?? null;
     const wbAfter = sectorWb[s.after.index] ?? null;
     return {
-      point, pointIndex: s.pointIndex, before: s.before, after: s.after, wbBefore, wbAfter,
+      point, pointIndex: s.pointIndex, kind: s.kind, before: s.before, after: s.after, wbBefore, wbAfter,
       landing: endpoint('landing', point, loc, blockOffSet ? s.before.landingMin : NaN, wbBefore, req?.landingRunway ?? null, req?.surface ?? null),
       takeoff: endpoint('takeoff', point, loc, blockOffSet ? s.after.takeoffMin : NaN, wbAfter, req?.takeoffRunway ?? null, req?.surface ?? null),
     };

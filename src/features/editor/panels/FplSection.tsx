@@ -38,16 +38,16 @@ export function FplSection() {
     <Section id="fpl" title="Flight plan" badge={badge}>
       <div className="ep-fpl" data-testid="fpl-options">
         {fields.map((f, i) => (
-          <label className="field" key={i} data-testid={`fpl-alternate-${i + 1}`}>
+          <label className="field" key={i} data-testid={`fpl-alternate-${i + 1}`} data-focus={i === 0 ? 'alternates' : undefined}>
             {i === 0 ? 'Alternate aerodrome (item 16)' : 'Second alternate'}
             <AerodromePicker name={`alternate-${i + 1}`} value={f} onChange={(v) => setField(i, v)} placeholder="ICAO or name" />
           </label>
         ))}
         <RequestsList />
         <label className="field">Remarks (item 18)
-          <textarea rows={2} value={remarks} data-testid="fpl-remarks" placeholder="e.g. PHOTO FLIGHT"
+          <textarea rows={2} value={remarks} data-testid="fpl-remarks" data-focus="remarks" placeholder="e.g. PHOTO FLIGHT"
             onChange={(e) => update((d) => ({ ...d, options: { ...d.options, remarks: e.target.value } }), { coalesce: 'fpl-rmk' })} />
-          <span className="hint">Plain text goes to RMK/, after the requests and before the PIC phone and the route points; text after an indicator (STS/, PER/, RMK/ …) goes to that field. Greek is transliterated and the text upper-cased.</span>
+          <span className="hint">Plain text goes to RMK/ after the requests; text after an indicator (STS/, PER/ …) goes to that field.</span>
         </label>
       </div>
     </Section>
@@ -69,7 +69,7 @@ function RequestsList() {
     update((d) => ({ ...d, options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) } }), kind === 'stop' ? { coalesce: `fpl-stop-${uid}` } : undefined);
   const icao = (i: number) => (endpointAerodrome(route[i], REF.aerodromes)?.icao || route[i].name).toUpperCase();
   return (
-    <div className="field ep-requests" data-testid="fpl-requests">
+    <div className="field ep-requests" data-testid="fpl-requests" data-focus="requests">
       <span>Touch-and-go and stops <span className="muted">(item 18 RMK/)</span></span>
       <ul>
         {ads.map(({ p, index }) => {

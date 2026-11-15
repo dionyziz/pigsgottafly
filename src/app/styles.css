@@ -144,3 +144,6 @@ table.list th { font-weight: 500; color: var(--muted); font-size: var(--fs-sm); 
 input.attention, select.attention, textarea.attention { border-color: var(--warn, #b7791f) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn, #b7791f) 28%, transparent); animation: pgf-attention 1.2s ease-out 2; }
 @keyframes pgf-attention { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn, #b7791f) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
 @media (prefers-reduced-motion: reduce) { input.attention, select.attention, textarea.attention { animation: none; } }
+/* A list or section a deep link (?focus=) pointed at, without an input of its own. */
+.attention:not(input):not(select):not(textarea) { outline: 2px solid var(--warn, #b7791f); outline-offset: 3px; border-radius: var(--r, 6px); animation: pgf-attention 1.2s ease-out 2; }
+@media (prefers-reduced-motion: reduce) { .attention:not(input):not(select):not(textarea) { animation: none; } }

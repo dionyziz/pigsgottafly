@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
 import { buildLegs } from '../../../calc';
-import { stopPointIndices } from '../../../shared';
+import { landingPointIndices } from '../../../shared';
 import { api } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
@@ -42,8 +42,8 @@ export function useExportCalc(flight: Flight): ExportCalcState {
   const model = flight.options.windModel || pilot?.settings.windModel;
   const dep = flight.route[0] ?? null;
   const dest = flight.route.length > 1 ? flight.route[flight.route.length - 1] : null;
-  // Intermediate full stops: surface weather and METAR there too (landing and take-off checks).
-  const stopPts = useMemo(() => stopPointIndices(flight.route, flight.options).map((i) => flight.route[i]), [flight.route, flight.options]);
+  // Intermediate full stops and touch-and-goes: surface weather and METAR there too (landing and take-off checks).
+  const stopPts = useMemo(() => landingPointIndices(flight.route, flight.options).map((i) => flight.route[i]), [flight.route, flight.options]);
   const wxKey = JSON.stringify([
     flight.date, model, legs.map((l) => [l.mid.lat.toFixed(3), l.mid.lon.toFixed(3)]),
     dep && [dep.lat.toFixed(3), dep.lon.toFixed(3)], dest && [dest.lat.toFixed(3), dest.lon.toFixed(3)],

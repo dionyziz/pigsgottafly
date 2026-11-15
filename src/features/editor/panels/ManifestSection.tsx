@@ -114,7 +114,7 @@ export function ManifestSection() {
 
   return (
     <Section id="manifest" title="Manifest & loading" badge={badge}>
-      <ul className="ep-crew" data-testid="manifest">
+      <ul className="ep-crew" data-testid="manifest" data-focus="manifest">
         {doc.crew.map((c, i) => {
           const linked = c.role === 'PIC' || passengers.some((p) => p.id === c.passengerId);
           return (
@@ -204,7 +204,7 @@ export function ManifestSection() {
       {aircraft && (
         <>
           {bags.length > 0 && (
-            <div className="ep-bags">
+            <div className="ep-bags" data-focus="baggage">
               {bags.map((s) => (
                 <label key={s.id} className="field">{s.name}
                   <span className="ep-weight">

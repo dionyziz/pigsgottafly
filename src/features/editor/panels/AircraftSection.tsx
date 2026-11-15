@@ -56,6 +56,7 @@ export function AircraftSection() {
         <select
           value={aircraft?.id ?? ''}
           data-testid="aircraft-select"
+          data-focus="aircraft"
           aria-label="Aircraft"
           onChange={(e) => {
             const a = hangar.find((x) => x.id === e.target.value) ?? null;
@@ -76,7 +77,7 @@ export function AircraftSection() {
             <KV k="Usable fuel" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
           </div>
           {aircraft.compassCards.length > 1 ? (
-            <label className="field">Compass card
+            <label className="field" data-focus="compassCard">Compass card
               <select value={card?.name ?? ''} onChange={(e) => update((d) => ({ ...d, options: { ...d.options, compassCard: e.target.value || null } }))}>
                 {aircraft.compassCards.map((c) => <option key={c.name} value={c.name}>{c.name} (expires {c.expires})</option>)}
               </select>

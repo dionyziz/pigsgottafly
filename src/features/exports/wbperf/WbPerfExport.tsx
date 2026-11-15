@@ -14,6 +14,7 @@ import { wbSheetModel } from '../wb/model';
 import { WbSheet } from '../wb/WbExport';
 import { perfSheetModel } from '../performance/model';
 import { PerfSheet, blockName } from '../performance/PerformanceExport';
+import { WarningList } from '../WarningList';
 import '../wb/xp.css';
 
 const chipTone = (v: string) => (v === 'pass' ? 'ok' : v === 'fail' ? 'danger' : 'warn');
@@ -48,7 +49,7 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
           <span className="spacer" />
           <button className="ghost" onClick={st.refresh} disabled={st.weatherPending}>Refresh weather</button>
         </div>
-        {warnings.length > 0 && <ul className="xp-warnings" data-testid="wbperf-warnings">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>}
+        <WarningList warnings={warnings} aircraftId={flight.aircraftId} className="xp-warnings" testId="wbperf-warnings" />
       </div>
       <div className="xp-stage">
         <WbSheet m={wb} signature={signature} />

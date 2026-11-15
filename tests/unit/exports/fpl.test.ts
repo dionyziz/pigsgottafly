@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   AFTN_LINE, MISSING, aircraftId, buildFpl, cleanPhone, cleanText, coordField, dofField, eobtField, hhmm, locationField,
-  oneLine, parseItem18, routeField, speedField, transliterate, wrapLine, type FplInput,
+  intlPhone, oneLine, parseItem18, picName, routeElement, routeField, speedField, transliterate, wrapLine, type FplInput,
 } from '../../../src/features/exports/fpl/fpl';
 import { alternateOf, fplInputFrom, totalEetMin } from '../../../src/features/exports/fpl/input';
 import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, planFuel } from '../../../src/calc';
@@ -109,11 +109,36 @@ describe('field formats', () => {
     expect(locationField(null)).toBe(MISSING);
   });
 
-  test('route: DCT before every intermediate point, endpoints left out, duplicates merged', () => {
+  test('route: point names as EuroFPL takes them, endpoints left out, duplicates merged', () => {
     const r = base().route;
-    expect(routeField(r)).toBe('DCT 3819N02346E DCT 3802N02347E');
+    expect(routeField(r)).toBe('OROPOS ZOFRI');
     expect(routeField([r[0], r[3]])).toBe('DCT');
-    expect(routeField([r[0], r[1], { ...r[1], name: 'SAME', lat: r[1].lat + 0.001 }, r[3]])).toBe('DCT 3819N02346E');
+    expect(routeField([r[0], r[1], { ...r[1] }, r[3]])).toBe('OROPOS');
+    // unnamed (auto-named) points as coordinates; aerodromes en route by ICAO; names made one word
+    expect(routeElement({ name: 'WP3', lat: 38.0333, lon: 23.7833, kind: 'custom' })).toBe('3802N02347E');
+    expect(routeElement({ name: '', lat: 38.0333, lon: 23.7833, kind: 'custom' })).toBe('3802N02347E');
+    expect(routeElement({ name: 'Megara', lat: 37.98, lon: 23.37, kind: 'aerodrome', icao: 'LGMG' })).toBe('LGMG');
+    expect(routeElement({ name: 'Farm strip', lat: 37.98, lon: 23.37, kind: 'aerodrome', icao: null })).toBe('3759N02322E');
+    expect(routeElement({ name: 'AGIOS GEORGIOS', lat: 37.49, lon: 23.9, kind: 'vfr' })).toBe('AGIOSGEORGIOS');
+    expect(routeElement({ name: 'ELEFSINA (LGEL)', lat: 38.06, lon: 23.55, kind: 'vfr' })).toBe('ELEFSINA');
+    expect(routeElement({ name: 'Χολαργός', lat: 38, lon: 23.8, kind: 'waypoint' })).toBe('CHOLARGOS');
+    expect(routeElement({ name: '123', lat: 38.0333, lon: 23.7833, kind: 'custom' })).toBe('3802N02347E');
+  });
+
+  test('C/: surname, initial, phone with the country code apart', () => {
+    expect(picName('Dionysis Zindros')).toBe('ZINDROS D');
+    expect(picName('Διονύσης Ζήνδρος')).toBe('ZINDROS D');
+    expect(picName('Cher')).toBe('CHER');
+    expect(picName('')).toBe('');
+    expect(intlPhone('+30 694 246 2092')).toBe('+30 6942462092');
+    expect(intlPhone('0030 6942462092')).toBe('+30 6942462092');
+    expect(intlPhone('6942462092')).toBe('+30 6942462092');
+    expect(intlPhone('210 816 9910')).toBe('+30 2108169910');
+    expect(intlPhone('+44 20 7946 0000')).toBe('+44 2079460000');
+    expect(intlPhone('+1 212 555 0100')).toBe('+1 2125550100');
+    expect(intlPhone('+357 99 123456')).toBe('+357 99123456');
+    expect(intlPhone('12345')).toBe('12345');
+    expect(intlPhone('')).toBe('');
   });
 
   test('free text: Greek transliterated, separators removed', () => {
@@ -153,14 +178,13 @@ describe('the message', () => {
       '(FPL-SXASV-VG',
       '-C172/L-S/C',
       '-LGTT0805',
-      '-N0092VFR DCT 3819N02346E DCT 3802N02347E',
+      '-N0092VFR OROPOS ZOFRI',
       '-LGTT0115',
-      '-DOF/261120 RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI)',
+      '-DOF/261120',
+      '-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/ZINDROS D +30 6940000000)',
     ]);
     expect(r.complete).toBe(true);
-    // Item 19 is built for the form but not transmitted in the FPL message (Doc 4444 App. 3).
-    expect(r.fields.item19.text).toBe('E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS +306940000000');
-    expect(r.message).not.toContain('E/0400');
+    expect(r.fields.item19.text).toBe('E/0400 P/002 R/E A/WHITE BLUE STRIPES C/ZINDROS D +30 6940000000');
     expect(r.warnings).toEqual([]);
     expect(r.fields.item19.radio).toEqual({ uhf: false, vhf: false, elt: true });
   });
@@ -174,7 +198,7 @@ describe('the message', () => {
     expect(long.message.split(')').length - 1).toBe(1);
     // one line form: fields joined by hyphens with no space before them
     const one = oneLine(long);
-    expect(one).toMatch(/^\(FPL-SXASV-VG-C172\/L-S\/C-LGTT0805-N0092VFR DCT /);
+    expect(one).toMatch(/^\(FPL-SXASV-VG-C172\/L-S\/C-LGTT0805-N0092VFR P0 P1 /);
     expect(one).not.toMatch(/\n/);
   });
 
@@ -193,18 +217,54 @@ describe('the message', () => {
     expect(three.warnings.some((w) => /two alternates/.test(w))).toBe(true);
   });
 
-  test('item 18 order and hangar extras merge', () => {
+  test('item 18 order and hangar extras merge (Doc 4444 order, DOF/ last as EuroFPL)', () => {
     const r = buildFpl(base({
       operator: 'Aeroclub Mesogeion',
       remarks: 'Training flight',
       equipment: { ...EQ, item10a: 'SDFGRY', pbn: 'B2', item18Extras: 'COM/8.33 RMK/CLUB AIRCRAFT NAV/GNSS DOF/991231 STS/SAR' },
     }));
     const inds = r.fields.item18Parts.map((p) => p.indicator);
-    expect(inds).toEqual(['STS', 'PBN', 'NAV', 'COM', 'DOF', 'OPR', 'RMK']);
+    expect(inds).toEqual(['STS', 'PBN', 'NAV', 'COM', 'OPR', 'RMK', 'DOF']);
     expect(r.fields.item18).toContain('DOF/261120');
     expect(r.fields.item18).not.toContain('991231');
-    expect(r.fields.item18).toContain('RMK/TRAINING FLIGHT CLUB AIRCRAFT PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI');
+    expect(r.fields.item18).toContain('RMK/TRAINING FLIGHT CLUB AIRCRAFT DOF/');
+    expect(r.fields.item18).not.toMatch(/VFR VIA|PIC TEL/);
     expect(r.warnings.some((w) => /DOF\/ from the hangar/.test(w))).toBe(true);
+    expect(r.fixes[r.warnings.find((w) => /DOF\/ from the hangar/.test(w))!]).toEqual({ kind: 'aircraft', focus: 'item18Extras' });
+  });
+
+  test('the pilot\'s EuroFPL reference plan for SX-ASG', () => {
+    const tt = ad('LGTT');
+    const r = buildFpl(base({
+      registration: 'SX-ASG',
+      operator: 'Aeroclub Mesogeion',
+      colours: 'White with black/red stripes',
+      date: '2026-11-16', eobt: '07:00',
+      alternates: [ad('LGMG')],
+      route: [
+        { name: 'LGTT', lat: tt.lat, lon: tt.lon, kind: 'aerodrome', icao: 'LGTT' },
+        { name: 'HOLARGOS', lat: 38.0, lon: 23.8, kind: 'vfr' },
+        { name: 'HELLINIKON', lat: 37.9, lon: 23.73, kind: 'vfr' },
+        { name: 'LGTT', lat: tt.lat, lon: tt.lon, kind: 'aerodrome', icao: 'LGTT' },
+      ],
+      cruiseTasKt: 100, totalEetMin: 60, enduranceMin: 120,
+      pic: { fullName: 'Dionysis Zindros', phone: '+30 694 246 2092' },
+      equipment: {
+        ...EQ, item10a: 'SBDFGRY', item10b: 'EB1', pbn: 'B2C2D2O2S1', item18Extras: 'NAV/SBAS RMK/GARMIN GNS430W',
+        jackets: { present: true, light: true, fluorescein: true, uhf: false, vhf: false },
+        remarks: 'OPR TEL +302108169910 +306974776230',
+      },
+    }));
+    expect(oneLine(r)).toBe('(FPL-SXASG-VG-C172/L-SBDFGRY/EB1-LGTT0700-N0100VFR HOLARGOS HELLINIKON-LGTT0100 LGMG'
+      + '-PBN/B2C2D2O2S1 NAV/SBAS OPR/AEROCLUB MESOGEION RMK/GARMIN GNS430W DOF/261116'
+      + '-E/0200 P/002 R/E J/LF A/WHITE WITH BLACK RED STRIPES N/OPR TEL +302108169910 +306974776230 C/ZINDROS D +30 6942462092)');
+    for (const l of r.lines) expect(l.length).toBeLessThanOrEqual(AFTN_LINE);
+  });
+
+  test('every warning says where it is fixed', () => {
+    const r = buildFpl(base({ eobt: '', icaoType: '', colours: '', pic: { fullName: '', phone: '' }, enduranceMin: null, personsOnBoard: null, date: '' }));
+    for (const w of r.warnings) expect(r.fixes[w], w).toBeTruthy();
+    expect(r.fixes['Block-off time (EOBT) not set (item 13).']).toEqual({ kind: 'flight', focus: 'blockOff' });
   });
 
   test('equipment rules: R needs PBN/, Z needs NAV/COM/DAT, N alone', () => {
@@ -222,7 +282,7 @@ describe('the message', () => {
     expect(r.fields.item18).toContain('TYP/HOMEBUILT POU DU CIEL');
   });
 
-  test('item 19: survival, jackets, dinghies, remarks, phone in N/', () => {
+  test('item 19: survival, jackets, dinghies, remarks', () => {
     const r = buildFpl(base({
       personsOnBoard: 4,
       enduranceMin: 293,
@@ -234,35 +294,25 @@ describe('the message', () => {
         dinghies: { number: 1, capacity: 4, covered: true, colour: 'orange' },
         remarks: 'fire extinguisher',
       },
-      options: { phoneIn: 'n' },
     }));
-    expect(r.fields.item19.text).toBe('E/0453 P/004 R/VE S/M J/L D/01 004 C ORANGE A/WHITE BLUE STRIPES N/FIRE EXTINGUISHER C/DIONYSIS ZINDROS +306940000000');
+    expect(r.fields.item19.text).toBe('E/0453 P/004 R/VE S/M J/L D/01 004 C ORANGE A/WHITE BLUE STRIPES N/FIRE EXTINGUISHER C/ZINDROS D +30 6940000000');
     expect(r.fields.item18).not.toContain('TEL');
     const jk = buildFpl(base({ equipment: { ...EQ, jackets: { present: true, light: false, fluorescein: false, uhf: false, vhf: false } } }));
     expect(jk.fields.item19.text).not.toContain('J/');
     expect(jk.fields.item19.text).toContain('N/LIFE JACKETS');
   });
 
-  test('by default the message ends after item 18; item 19 only on request (ARO variant)', () => {
+  test('item 19 is in the message by default; without it the PIC phone goes to RMK/', () => {
     const r = buildFpl(base());
-    expect(r.lines[r.lines.length - 1]).toBe('-DOF/261120 RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI)');
-    expect(r.message).not.toContain('E/');
-    expect(r.message.split('\n').filter((l) => l.startsWith('-')).length).toBe(5); // items 9/10, 13, 15, 16, 18 (7 and 8 on line 1)
-    const aro = buildFpl(base({ options: { includeItem19: true } }));
-    expect(aro.lines.slice(-2)).toEqual([
-      '-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/DIONYSIS ZINDROS',
-      '+306940000000)',
-    ]);
+    expect(r.lines[r.lines.length - 1]).toBe('-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/ZINDROS D +30 6940000000)');
+    const no19 = buildFpl(base({ options: { includeItem19: false } }));
+    expect(no19.message).not.toContain('E/');
+    expect(no19.lines[no19.lines.length - 1]).toBe('-RMK/PIC TEL 00306940000000 DOF/261120)');
   });
 
   test('REG/ only on request: it would repeat the item 7 registration', () => {
     expect(buildFpl(base()).fields.item18).not.toContain('REG/');
-    expect(buildFpl(base({ options: { regInItem18: true } })).fields.item18).toBe('DOF/261120 REG/SXASV RMK/PIC TEL 00306940000000 VFR VIA OROPOS ZOFRI');
-  });
-
-  test('without point names in RMK', () => {
-    const r = buildFpl(base({ options: { pointNamesInRemarks: false } }));
-    expect(r.fields.item18).toBe('DOF/261120 RMK/PIC TEL 00306940000000');
+    expect(buildFpl(base({ options: { regInItem18: true } })).fields.item18).toBe('REG/SXASV DOF/261120');
   });
 
   test('missing data is visible as ???? and warned', () => {
@@ -271,6 +321,7 @@ describe('the message', () => {
     expect(r.fields.item13.eobt).toBe(MISSING);
     expect(r.fields.item16.eet).toBe(MISSING);
     expect(r.fields.item19.text).toBe('E/???? P/TBN R/E C/????');
+    expect(r.fixes['Pilot phone number not set in the profile (item 19 C/).']).toEqual({ kind: 'profile', focus: 'phone' });
     expect(r.fields.item18).not.toContain('DOF/');
     expect(r.warnings.length).toBeGreaterThanOrEqual(6);
   });
@@ -319,14 +370,14 @@ describe('fplInputFrom (flight + hangar + profile + navlog + fuel)', () => {
     expect(r.fields.item16.altn1).toBe('LGAV');
     expect(r.fields.item16.eet).toBe(hhmm(navlog.totals.ete));
     expect(totalEetMin(navlog)).toBe(navlog.totals.ete);
-    expect(r.fields.item15.route).toBe(`DCT ${coordField(route[1].lat, route[1].lon)} DCT ${coordField(route[2].lat, route[2].lon)}`);
+    expect(r.fields.item15.route).toBe('DAPORI KORINTHOS');
     expect(r.fields.item19.persons).toBe('002');
     // endurance = FOB (required + 60 min reserve) at 30 L/h, whole minutes down
     expect(fuel.fobL).toBe(4 + navlog.totals.tripFuel + 30);
     expect(r.fields.item19.endurance).toBe(hhmm(Math.floor((fuel.fobL / 30) * 60 + 1e-9)));
     // the profile name wins, the phone falls back to the PIC snapshot
-    expect(r.fields.item19.pic).toBe('DIONYSIS ZINDROS');
-    expect(r.fields.item18).toContain('RMK/PIC TEL 210 VFR VIA DAPORI KORINTHOS');
+    expect(r.fields.item19.pic).toBe('ZINDROS D 210');
+    expect(r.fields.item18).not.toContain('RMK/');
     expect(r.fields.item18).toContain('OPR/AEROCLUB MESOGEION');
     expect(r.complete).toBe(true);
   });

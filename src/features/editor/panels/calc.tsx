@@ -28,7 +28,7 @@ import {
   type WbResult,
   type WbStatus,
 } from '../../../calc';
-import { CARD_EXPIRY_WARN_DAYS, activeRequests, fuelLoad, requestTiming, seatLayout, stopPointIndices, validateCrew, type RoutePoint } from '../../../shared';
+import { CARD_EXPIRY_WARN_DAYS, activeRequests, fuelLoad, requestTiming, seatLayout, landingPointIndices, validateCrew, type RoutePoint } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
 import { endpointAerodrome } from '../../../data/atc';
@@ -73,11 +73,15 @@ export interface EndpointCalc {
   massReason: 'weight-missing' | 'no-wb' | null;
   /** Set for an intermediate stop: the RoutePoint.uid of the stop (its runway / surface live on its request). */
   stopUid?: string;
+  /** At an intermediate aerodrome: a full stop or a touch-and-go. */
+  stopKind?: 'stop' | 'touch-and-go';
 }
 
 /** An intermediate full stop: the landing there and the take-off from there. */
 export interface StopCalc {
   pointIndex: number;
+  /** A full stop, or a touch-and-go (a landing and an immediate take-off). */
+  kind: 'stop' | 'touch-and-go';
   point: RoutePoint;
   aerodrome: RefAerodrome | null;
   landing: EndpointCalc;
@@ -154,8 +158,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
 
   const dep = useMemo(() => endpointOf(doc.route[0]), [doc.route]);
   const arr = useMemo(() => (doc.route.length > 1 ? endpointOf(doc.route[doc.route.length - 1]) : null), [doc.route]);
-  // Intermediate full stops: their aerodromes get surface weather and METAR too.
-  const stopIdx = useMemo(() => stopPointIndices(doc.route, doc.options), [doc.route, doc.options]);
+  // Intermediate full stops and touch-and-goes: their aerodromes get surface weather and METAR too.
+  const stopIdx = useMemo(() => landingPointIndices(doc.route, doc.options), [doc.route, doc.options]);
   const stopAds = useMemo(() => stopIdx.map((i) => endpointOf(doc.route[i])), [stopIdx, doc.route]);
   const stopLocs = useMemo(() => stopIdx.map((i, k) => {
     const a = stopAds[k];
@@ -292,7 +296,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   // Sectors between intermediate full stops: each one's W&B with its own take-off / landing fuel.
   const sectorCalc = useMemo(() => {
     if (!aircraft || !navlog || !navlog.legs.length || !fuel || !wb) return null;
-    const sectors = flightSectors({ legs: navlog.legs, groundAfterLegMin: timing.groundAfterLegMin, taxiAllowanceL: aircraft.fuel.taxiAllowanceL, fobL: fuel.fobL });
+    const sectors = flightSectors({ legs: navlog.legs, groundAfterLegMin: timing.groundAfterLegMin, touchAfterLeg: timing.touchAfterLeg, taxiAllowanceL: aircraft.fuel.taxiAllowanceL, fobL: fuel.fobL });
     if (sectors.length < 2) return { sectors, wbs: [] as WbResult[] };
     const mb = aircraft.massBalance;
     const wbs = safe(() => sectorBalances({
@@ -331,6 +335,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     runway: string | null = phase === 'takeoff' ? doc.options.departureRunway : doc.options.arrivalRunway,
     surfaceKey: string | null = phase === 'takeoff' ? doc.options.departureSurface : doc.options.arrivalSurface,
     stopUid?: string,
+    stopKind?: 'stop' | 'touch-and-go',
   ): EndpointCalc => {
     const reports = ad?.icao && metar ? metar.stations[ad.icao] ?? null : null;
     const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs, modelLabel) : null;
@@ -354,7 +359,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       }));
     }
     const out: EndpointCalc = { phase, aerodrome: ad, timeMs, surface, reports, perf, massKg, massSource, massReason };
-    if (stopUid) out.stopUid = stopUid;
+    if (stopUid) { out.stopUid = stopUid; out.stopKind = stopKind ?? 'stop'; }
     return out;
   };
   const departure = useMemo(() => endpoint('takeoff', dep, weather?.departure ?? null, takeoffMs),
@@ -384,9 +389,9 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
           && !before.limitBreaches.some((b) => b.phase === 'landing') && !after.limitBreaches.some((b) => b.phase === 'takeoff');
       }
       return {
-        pointIndex: x.pointIndex, point, aerodrome: ad,
-        landing: endpoint('landing', ad, loc, ms(x.before.landingMin), before, req?.landingRunway ?? null, req?.surface ?? null, point.uid),
-        takeoff: endpoint('takeoff', ad, loc, ms(x.after.takeoffMin), after, req?.takeoffRunway ?? null, req?.surface ?? null, point.uid),
+        pointIndex: x.pointIndex, kind: x.kind, point, aerodrome: ad,
+        landing: endpoint('landing', ad, loc, ms(x.before.landingMin), before, req?.landingRunway ?? null, req?.surface ?? null, point.uid, x.kind),
+        takeoff: endpoint('takeoff', ad, loc, ms(x.after.takeoffMin), after, req?.takeoffRunway ?? null, req?.surface ?? null, point.uid, x.kind),
         wb: before ? before.landing : null,
         wbOk,
         fuelL: Math.max(0, x.before.fuelLandingL),
@@ -474,7 +479,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       add('danger', 'wb', `Stop ${where}: mass/CG outside limits (${cat} category, MLW/MTOW) at ${x.wb.massKg.toFixed(1)} kg, CG ${x.wb.armM.toFixed(3)} m.`);
     }
     for (const e of [departure, ...stops.flatMap((x) => [x.landing, x.takeoff]), arrival]) {
-      const name = (e.aerodrome ? e.aerodrome.icao || e.aerodrome.name : '') + (e.stopUid ? ' (stop)' : '');
+      const name = (e.aerodrome ? e.aerodrome.icao || e.aerodrome.name : '') + (e.stopUid ? (e.stopKind === 'touch-and-go' ? ' (touch-and-go)' : ' (stop)') : '');
       const p = e.perf;
       if (!p) continue;
       const label = `${e.phase === 'takeoff' ? 'Take-off' : 'Landing'} ${name}`;

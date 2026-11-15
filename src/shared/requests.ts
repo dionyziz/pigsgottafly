@@ -66,6 +66,8 @@ export interface RequestTiming {
   patternPoints: boolean[];
   /** Per leg: minutes on the ground at the leg's end before the next leg (stops). */
   groundAfterLegMin: number[];
+  /** Per leg: a touch-and-go at an intermediate aerodrome at the leg's end (a landing and a take-off there). */
+  touchAfterLeg: boolean[];
 }
 
 /** Timing effects of the requests on a route of route.length − 1 legs. */
@@ -74,14 +76,16 @@ export function requestTiming(route: RoutePoint[], options: Pick<FlightOptions, 
   const patternLegs = new Array<boolean>(n).fill(false);
   const patternPoints = new Array<boolean>(route.length).fill(false);
   const groundAfterLegMin = new Array<number>(n).fill(0);
+  const touchAfterLeg = new Array<boolean>(n).fill(false);
   for (const { index, request } of activeRequests(route, options)) {
     if (index === 0 || index === route.length - 1) continue; // the first and last legs are at pattern TAS anyway
     patternPoints[index] = true;
     patternLegs[index - 1] = true;
     if (index < n) patternLegs[index] = true;
     if (request.kind === 'stop') groundAfterLegMin[index - 1] += Math.max(0, Math.min(MAX_STOP_MIN, request.stopMin ?? DEFAULT_STOP_MIN));
+    else touchAfterLeg[index - 1] = true;
   }
-  return { patternLegs, patternPoints, groundAfterLegMin };
+  return { patternLegs, patternPoints, groundAfterLegMin, touchAfterLeg };
 }
 
 /** Sets (or, with kind null, removes) the request on a point; returns the new list. */
@@ -104,10 +108,10 @@ const stopChoices = (r: AerodromeRequest): StopChoices => {
   return o;
 };
 
-/** Sets the runway (landing / take-off) or surface chosen at a stop; null = automatic / paved, dry. */
+/** Sets the runway (landing / take-off) or surface chosen at a stop or touch-and-go; null = automatic / paved, dry. */
 export function setStopChoice(list: AerodromeRequest[] | undefined, pointUid: string, key: keyof StopChoices, value: string | null): AerodromeRequest[] {
   return (list ?? []).map((r) => {
-    if (r.pointUid !== pointUid || r.kind !== 'stop') return r;
+    if (r.pointUid !== pointUid) return r;
     const next: AerodromeRequest = { ...r };
     if (value) next[key] = value;
     else delete next[key];
@@ -124,5 +128,17 @@ export function stopPointIndices(route: RoutePoint[], options: Pick<FlightOption
   const g = requestTiming(route, options).groundAfterLegMin;
   const out: number[] = [];
   for (let i = 0; i < g.length - 1; i++) if (g[i] > 0) out.push(i + 1);
+  return out;
+}
+
+/**
+ * Route point indices where the aircraft lands and takes off again between the departure and the
+ * destination: intermediate full stops and touch-and-goes, in route order. The calculations'
+ * sectors end at these points (each needs its own landing and take-off performance).
+ */
+export function landingPointIndices(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined): number[] {
+  const t = requestTiming(route, options);
+  const out: number[] = [];
+  for (let i = 0; i < t.groundAfterLegMin.length - 1; i++) if (t.groundAfterLegMin[i] > 0 || t.touchAfterLeg[i]) out.push(i + 1);
   return out;
 }

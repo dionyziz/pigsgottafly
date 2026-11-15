@@ -1,5 +1,5 @@
 /* Export (d): ICAO flight plan. Screen: the message panel + the form on a white A4 sheet.
-   Print: the form (A4 portrait, named page "fpl"), then the message on a second sheet. */
+   Print: the form alone, one A4 portrait page (named page "fpl"). */
 
 @page fpl { size: A4 portrait; margin: 0; }
 
@@ -10,7 +10,6 @@
 .fpl-panel-head { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
 .fpl-panel-head .spacer { flex: 1; }
 .fpl-panel-title { font-weight: 600; font-size: var(--fs-lg); }
-.fpl-panel-sub { color: var(--muted); font-size: var(--fs-sm); margin-top: 2px; max-width: 46ch; }
 .fpl-message {
   margin: 0; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r);
   font-family: var(--mono); font-size: 13px; line-height: 1.55; white-space: pre; overflow-x: auto; color: var(--ink);
@@ -27,15 +26,15 @@
 
 /* ---- the form sheet */
 .fpl-sheet {
-  flex: none; width: 210mm; min-height: 297mm; padding: 10mm 11mm; background: #fff; color: #000;
+  flex: none; width: 210mm; min-height: 297mm; padding: 8mm 10mm; background: #fff; color: #000;
   font-family: Arial, Helvetica, sans-serif; font-size: 2.6mm;
   box-shadow: 0 2px 10px rgba(16, 24, 40, 0.14), 0 0 0 1px rgba(16, 24, 40, 0.06);
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
-  display: flex; flex-direction: column; gap: 1.6mm;
+  display: flex; flex-direction: column; gap: 1.3mm;
 }
 .fpl-sheet *, .fpl-sheet *::before, .fpl-sheet *::after { box-sizing: border-box; }
-.fpl-title { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 0.5mm solid #000; padding-bottom: 1.5mm; margin-bottom: 1mm; }
-.fpl-title-main { font-size: 6mm; font-weight: 700; letter-spacing: 0.4mm; }
+.fpl-title { display: flex; justify-content: center; border: 0.5mm solid #000; padding: 0.8mm 0; margin-bottom: 0; }
+.fpl-title-main { font-size: 5mm; font-weight: 700; letter-spacing: 0.4mm; }
 .fpl-title-sub { font-size: 2.6mm; color: #333; }
 
 .fpl-row { display: flex; align-items: flex-end; gap: 3mm; flex-wrap: nowrap; }
@@ -44,14 +43,14 @@
 .fpl-grow { flex: 1; }
 .fpl-label { font-size: 2.2mm; color: #222; white-space: nowrap; text-transform: uppercase; }
 .fpl-label b { display: inline-block; min-width: 3.5mm; padding: 0 0.6mm; margin-right: 0.6mm; border: 0.25mm solid #000; text-align: center; font-weight: 700; }
-.fpl-value { display: flex; align-items: center; gap: 0.8mm; min-height: 6.4mm; }
+.fpl-value { display: flex; align-items: center; gap: 0.8mm; min-height: 5.8mm; }
 .fpl-fixed, .fpl-dash, .fpl-end { font-family: 'Courier New', Courier, monospace; font-weight: 700; font-size: 3.4mm; white-space: nowrap; }
 .fpl-end { margin-left: 1mm; font-size: 3mm; }
 
 /* character boxes */
 .fpl-cells { display: inline-flex; }
 .fpl-cell {
-  width: 5.4mm; height: 6.4mm; border: 0.25mm solid #000; margin-left: -0.25mm; display: inline-flex; align-items: center; justify-content: center;
+  width: 5.2mm; height: 5.8mm; border: 0.25mm solid #000; margin-left: -0.25mm; display: inline-flex; align-items: center; justify-content: center;
   font-family: 'Courier New', Courier, monospace; font-size: 4mm; font-weight: 700; color: #10265c;
 }
 .fpl-cells .fpl-cell:first-child { margin-left: 0; }
@@ -62,8 +61,8 @@
 /* ruled text area (route, other information) */
 .fpl-lines {
   border: 0.25mm solid #000; padding: 0.4mm 2mm;
-  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 6.75mm, #999 6.75mm, #999 7mm);
-  font-family: 'Courier New', Courier, monospace; font-size: 3.6mm; font-weight: 700; line-height: 7mm; color: #10265c;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 5.75mm, #999 5.75mm, #999 6mm);
+  font-family: 'Courier New', Courier, monospace; font-size: 3.6mm; font-weight: 700; line-height: 6mm; color: #10265c;
   overflow-wrap: anywhere;
 }
 
@@ -73,15 +72,13 @@
 .fpl-letter { color: #000; position: relative; margin-left: 0; }
 .fpl-struck::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top right, transparent calc(50% - 0.25mm), #10265c calc(50% - 0.25mm), #10265c calc(50% + 0.25mm), transparent calc(50% + 0.25mm)), linear-gradient(to top left, transparent calc(50% - 0.25mm), #10265c calc(50% - 0.25mm), #10265c calc(50% + 0.25mm), transparent calc(50% + 0.25mm)); }
 
-.fpl-supp { margin-top: 2mm; padding: 1mm 0; border-top: 0.5mm solid #000; border-bottom: 0.25mm solid #000; font-size: 2.6mm; font-weight: 700; text-align: center; letter-spacing: 0.2mm; }
+.fpl-supp { margin-top: 0.6mm; padding: 0.8mm 0; border-top: 0.5mm solid #000; border-bottom: 0.25mm solid #000; font-size: 2.6mm; font-weight: 700; text-align: center; letter-spacing: 0.2mm; }
 .fpl-addr .fpl-value { min-height: 6.4mm; }
 .fpl-blank-line { flex: 1; min-height: 6.4mm; border-bottom: 0.25mm solid #000; width: 100%; }
 .fpl-field .fpl-value:has(.fpl-blank-line + .fpl-blank-line) { flex-direction: column; align-items: stretch; }
-.fpl-foot { margin-top: 3mm; border-top: 0.5mm solid #000; padding-top: 1.5mm; }
-.fpl-blank-box { width: 100%; min-height: 18mm; border: 0.25mm solid #000; }
+.fpl-foot { margin-top: 1mm; }
+.fpl-blank-box { width: 100%; min-height: 9mm; border: 0.25mm solid #000; }
 
-.fpl-msg-sheet .fpl-message { background: none; border: 0.25mm solid #000; border-radius: 0; color: #000; font-family: 'Courier New', Courier, monospace; font-size: 3.6mm; line-height: 1.5; padding: 4mm; }
-.fpl-export .print-only { display: none; }
 
 @media (max-width: 900px) {
   .fpl-export { align-items: flex-start; }
@@ -89,9 +86,7 @@
 
 @media print {
   .fpl-export { display: block; gap: 0; padding: 0; overflow: visible; }
-  .fpl-export .print-only { display: flex; }
   .fpl-sheet { page: fpl; box-shadow: none; margin: 0; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; break-inside: avoid; }
-  .fpl-sheet:not(:last-child) { break-after: page; }
   body:has(.fpl-export) .page { padding: 0 !important; margin: 0 !important; max-width: none !important; }
   body:has(.fpl-export) .card { padding: 0 !important; border: 0 !important; box-shadow: none !important; background: none !important; }
 }
@@ -117,3 +112,12 @@
 .fpl-filing-log ul { margin: 4px 0 0; padding-left: 18px; }
 .fpl-log-bad { color: var(--danger, #b42318); }
 .fpl-addr-lines { display: grid; gap: 1mm; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ---- form layout: framed groups as on the paper form, small cells for the AFTN addressees */
+.fpl-box { border: 0.35mm solid #000; padding: 1.2mm 2mm 1.3mm; display: flex; flex-direction: column; gap: 1.1mm; }
+.fpl-cells-sm .fpl-cell { width: 2.75mm; height: 4.6mm; font-size: 2.9mm; }
+.fpl-addr-grid { display: flex; flex-direction: column; gap: 1mm; }
+.fpl-addr-row { display: flex; align-items: center; gap: 1.1mm; flex-wrap: nowrap; }
+.fpl-sign-box { width: 100%; min-height: 12mm; border: 0.25mm solid #000; display: flex; align-items: center; justify-content: center; padding: 1mm; }
+.fpl-foot .fpl-value { min-height: 0; }
+.fpl-sheet .pgf-signature-wrap { text-align: center; }

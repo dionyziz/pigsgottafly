@@ -1,20 +1,17 @@
 // ICAO 2012 flight plan (FPL) message builder, ICAO Doc 4444 (PANS-ATM) Appendix 2 and Appendix 3
-// (ATS message format), for a VFR general aviation flight. Pure: no DOM, no I/O.
+// (ATS message format), for a VFR general aviation flight, laid out as the pilot's EuroFPL plans.
+// Pure: no DOM, no I/O.
 //
-// What it produces, field by field (the message as filed to the ARO over AFTN):
-//   (FPL-SXASV-VG
-//   -C172/L-SDFGY/C
-//   -LGTT0800
-//   -N0092VFR DCT 3810N02350E DCT 3740N02410E
-//   -LGSR0130 LGAV
-//   -DOF/261116 OPR/... RMK/...)
-// Item 19 (E/ P/ R/ S/ J/ D/ A/ N/ C/) is supplementary information that stays with the ARO and
-// is not part of the transmitted FPL message (Doc 4444 App. 3: items 3 7 8 9 10 13 15 16 18), so
-// the default message ends after item 18. options.includeItem19 appends it, for an ARO or web
-// form that asks for the whole form as text:
-//   -E/0400 P/002 R/VE S/M J/L A/WHITE BLUE N/... C/PILOT NAME)
+// What it produces (the reference: the pilot's EuroFPL VFR plan for SX-ASG):
+//   (FPL-SXASG-VG
+//   -C172/L-SBDFGRY/EB1
+//   -LGTT0700
+//   -N0100VFR HOLARGOS HELLINIKON
+//   -LGTT0100 LGMG
+//   -PBN/B2C2D2O2S1 NAV/SBAS OPR/AEROCLUB MESOGEION RMK/GARMIN GNS430W DOF/261116
+//   -E/0200 P/002 R/E J/LF A/WHITE WITH BLACKRED STRIPES N/OPR TEL +302108169910 C/ZINDROS D +30 6942462092)
 //
-// Conventions chosen here (documented so the pilot can check them):
+// Conventions:
 //   - Item 7: the registration without the hyphen (SX-ASV → SXASV), at most 7 characters.
 //   - Item 8: V (VFR) and G (general aviation).
 //   - Item 9: one aircraft (the number is omitted), ICAO type designator (ZZZZ + TYP/ when the
@@ -22,32 +19,36 @@
 //   - Item 10: 10a/10b from the hangar.
 //   - Item 13: departure aerodrome + EOBT = block-off time UTC. ZZZZ + DEP/ when the departure is
 //     not an aerodrome with an ICAO location indicator.
-//   - Item 15: cruising speed N + 4 digits (knots), level VFR. Greek VFR reporting points are not
-//     ICAO significant points (they are not 5LNC/navaid designators), so every intermediate route
-//     point (VFR point, saved waypoint, custom point, overflown aerodrome) is written as
-//     coordinates in degrees and minutes, 7 + 4 characters: 3802N02347E. DCT before every point
-//     (flight outside designated ATS routes). Consecutive points that round to the same minute are
-//     written once. The point names are, by default, listed in RMK/ so the ARO can read the route.
+//   - Item 15: cruising speed N + 4 digits (knots), level VFR, then the route as EuroFPL takes it
+//     for Greek VFR flights: the intermediate points by name, space-separated — VFR reporting
+//     points and named saved/custom points as their name (one word: spaces and punctuation
+//     dropped), aerodromes by ICAO location indicator, and coordinates (3802N02347E, degrees and
+//     minutes) only for a point without a usable name (WP1, WP2 … as the map names unnamed
+//     points). Consecutive equal elements are written once. No intermediate point: DCT.
 //   - Item 16: destination + total EET (HHMM, take-off to landing) + up to two alternates; ZZZZ +
 //     DEST/ / ALTN/ for aerodromes without an ICAO indicator.
-//   - Item 18 in the Doc 4444 order (STS PBN NAV COM DAT SUR DEP DEST DOF REG EET SEL TYP CODE
-//     DLE OPR ORGN PER ALTN RALT TALT RIF RMK); the hangar's item 18 extras are merged in. DOF/
-//     always (YYMMDD). RMK/ = the flight's remarks, the hangar's RMK/, the PIC phone, the point
-//     names. REG/ only on request (options.regInItem18): App. 2 asks for it only when the
-//     registration differs from the item 7 identification, which here it never does. EET/ only when
-//     FIR boundary estimates are given (a flight inside LGGG has none). The PIC's phone number goes
-//     into RMK/ (item 18 always reaches ATC; item 19 normally stays with the ARO).
-//   - Item 19: E/ endurance from the fuel on board at the planning burn (HHMM), P/ persons on board
+//   - Item 18 in the Doc 4444 order (STS PBN NAV COM DAT SUR DEP DEST REG EET SEL TYP CODE DLE OPR
+//     ORGN PER ALTN RALT TALT RIF RMK) except DOF/, which goes last as EuroFPL writes it (IFPS
+//     accepts the indicators in any order). The hangar's item 18 extras are merged in. RMK/ = the
+//     touch-and-go / intermediate-stop requests in the club's words, the flight's remarks, the
+//     hangar's RMK/. REG/ only on request (App. 2 asks for it only when the registration differs
+//     from item 7, which here it never does). EET/ only when FIR boundary estimates are given.
+//   - Item 19 (supplementary information) is part of the message, as EuroFPL files it:
+//     E/ endurance from the fuel on board at the planning burn (HHMM), P/ persons on board
 //     (3 digits), R/ S/ J/ D/ from the hangar's emergency and survival equipment (only what is
-//     carried is written), A/ colours and markings, N/ remarks, C/ pilot in command.
+//     carried), A/ colours and markings, N/ the aircraft's remarks (e.g. OPR TEL …), C/ the pilot in
+//     command as SURNAME INITIAL then the phone with its country code (ZINDROS D +30 6942462092).
+//     options.includeItem19 = false leaves it out; the PIC phone then goes to RMK/.
 //   - Free text (names, remarks, colours) is transliterated from Greek (ELOT 743, digraphs and
-//     diphthongs included: see transliterate), upper-cased and
-//     reduced to the characters allowed in ATS messages, without the field separators: hyphens,
-//     parentheses and oblique strokes become spaces.
+//     diphthongs included: see transliterate), upper-cased and reduced to the characters allowed in
+//     ATS messages, without the field separators: hyphens, parentheses and oblique strokes become
+//     spaces.
 //   - Lines are wrapped at 69 characters (AFTN line length); each field starts a new line.
 //   - A value that cannot be produced (e.g. no EOBT) is written as ???? and listed in warnings, so
-//     the message is visibly incomplete instead of silently wrong.
+//     the message is visibly incomplete instead of silently wrong. Each warning carries where it is
+//     fixed (fixes: the flight editor input, the hangar field, the profile).
 import type { Equipment, RoutePointKind, WakeCategory } from '../../../shared';
+import type { AircraftFocus, Fix } from '../fix';
 
 export const MISSING = '????';
 /** AFTN text line length. */
@@ -66,6 +67,8 @@ export interface FplRoutePoint {
   lat: number;
   lon: number;
   kind: RoutePointKind;
+  /** Aerodromes: the ICAO location indicator, when it has one. */
+  icao?: string | null;
 }
 
 export interface FplPerson {
@@ -125,14 +128,10 @@ export interface FplInput {
 }
 
 export interface FplOptions {
-  /** Append item 19 to the message (default false: item 19 is not transmitted in FPL messages). */
+  /** Item 19 at the end of the message (default true, as EuroFPL files it). Without it the PIC phone goes to RMK/. */
   includeItem19?: boolean;
   /** Write REG/ in item 18 even though it equals the item 7 identification (default false). */
   regInItem18?: boolean;
-  /** List the route point names in RMK/ (default true). */
-  pointNamesInRemarks?: boolean;
-  /** Put the PIC phone in RMK/ (default) or in item 19 N/. */
-  phoneIn?: 'rmk' | 'n';
 }
 
 export interface Item19 {
@@ -145,6 +144,7 @@ export interface Item19 {
   dinghies: { number: string; capacity: string; covered: boolean; colour: string } | null;
   colours: string;
   remarks: string;
+  /** C/: SURNAME INITIAL and the phone ('ZINDROS D +30 6942462092'). */
   pic: string;
   /** The item as written in the message, '' when nothing to write. */
   text: string;
@@ -173,6 +173,8 @@ export interface FplResult {
   complete: boolean;
   /** Problems the pilot should look at before filing. */
   warnings: string[];
+  /** Where each warning is fixed (by its text); an aircraft fix has no id (the flight's aircraft). */
+  fixes: Record<string, Fix>;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -198,6 +200,32 @@ export function cleanPhone(s: string): string {
   const digits = t.replace(/\D/g, '');
   if (!digits) return '';
   return t.startsWith('+') ? '00' + digits : digits;
+}
+
+// Two-digit ITU country codes (the others are 1 digit: 1, 7; or 3 digits).
+const CC2 = new Set([20, 27, 30, 31, 32, 33, 34, 36, 39, 40, 41, 43, 44, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62, 63, 64, 65, 66, 81, 82, 84, 86, 90, 91, 92, 93, 94, 95, 98]);
+
+/**
+ * Phone in international form, the country code apart: '+30 694 246 2092' → '+30 6942462092'.
+ * '00…' counts as '+'; a Greek national number (10 digits, 2… or 69…) gets +30. Other numbers
+ * without a country code stay as digits. '' when there are no digits.
+ */
+export function intlPhone(s: string): string {
+  const t = (s || '').trim();
+  let d = t.replace(/\D/g, '');
+  if (!d) return '';
+  let intl = t.startsWith('+');
+  if (!intl && d.startsWith('00')) { intl = true; d = d.slice(2); }
+  if (!intl) return /^(2\d{9}|69\d{8})$/.test(d) ? `+30 ${d}` : d;
+  const n = d[0] === '1' || d[0] === '7' ? 1 : CC2.has(+d.slice(0, 2)) ? 2 : 3;
+  return d.length > n ? `+${d.slice(0, n)} ${d.slice(n)}` : `+${d}`;
+}
+
+/** C/ name: SURNAME and the first initial ('Dionysis Zindros' → 'ZINDROS D'); one word stays as is. */
+export function picName(fullName: string): string {
+  const w = cleanText(fullName).split(' ').filter(Boolean);
+  if (w.length < 2) return w[0] ?? '';
+  return `${w[w.length - 1]} ${w[0][0]}`;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -269,27 +297,42 @@ export function zzzzText(a: FplAerodrome): string {
   return [name, pos].filter(Boolean).join(' ');
 }
 
-/** Item 15 route: 'DCT p1 DCT p2 …' for the intermediate points (endpoints excluded). */
+/** Auto names the map gives to points the pilot did not name (WP1, WP2 …). */
+const AUTO_NAME = /^WP\d+$/;
+const RESERVED = new Set(['DCT', 'VFR', 'IFR', 'OAT', 'GAT', 'T', 'C']);
+
+/**
+ * One item 15 route element for a route point: an aerodrome's ICAO indicator, a named point's name
+ * as one word (VFR reporting points, saved and named custom points, as EuroFPL accepts them for
+ * Greek VFR flights), else coordinates.
+ */
+export function routeElement(p: FplRoutePoint): string {
+  const coord = () => (isFinite(p.lat) && isFinite(p.lon) ? coordField(p.lat, p.lon) : '');
+  if (p.kind === 'aerodrome') {
+    const icao = (p.icao || '').toUpperCase();
+    if (ICAO_RE.test(icao)) return icao;
+    return coord();
+  }
+  const word = cleanText((p.name || '').replace(/\([^)]*\)/g, ' ')).replace(/[^A-Z0-9]/g, '');
+  if (/^[A-Z][A-Z0-9]+$/.test(word) && !AUTO_NAME.test(word) && !RESERVED.has(word)) return word;
+  return coord();
+}
+
+/** Item 15 route after the level: the intermediate points (endpoints excluded), space-separated; DCT when none. */
 export function routeField(route: FplRoutePoint[]): string {
-  const inner = route.slice(1, -1);
   const out: string[] = [];
-  let last = '';
-  for (const p of inner) {
-    if (!isFinite(p.lat) || !isFinite(p.lon)) continue;
-    const c = coordField(p.lat, p.lon);
-    if (c === last) continue;
-    out.push('DCT', c);
-    last = c;
+  for (const p of route.slice(1, -1)) {
+    const e = routeElement(p);
+    if (e && e !== out[out.length - 1]) out.push(e);
   }
   return out.length ? out.join(' ') : 'DCT';
 }
 
-/** Item 18 indicators in the Doc 4444 order. */
+/** Item 18 indicators in the Doc 4444 order, DOF/ moved last as EuroFPL writes it. */
 export const ITEM18_ORDER = [
-  'STS', 'PBN', 'NAV', 'COM', 'DAT', 'SUR', 'DEP', 'DEST', 'DOF', 'REG', 'EET', 'SEL', 'TYP', 'CODE', 'DLE', 'OPR',
-  'ORGN', 'PER', 'ALTN', 'RALT', 'TALT', 'RIF', 'RMK',
+  'STS', 'PBN', 'NAV', 'COM', 'DAT', 'SUR', 'DEP', 'DEST', 'REG', 'EET', 'SEL', 'TYP', 'CODE', 'DLE', 'OPR',
+  'ORGN', 'PER', 'ALTN', 'RALT', 'TALT', 'RIF', 'RMK', 'DOF',
 ] as const;
-
 /** Splits item 18 text into indicator/text pairs ('NAV/GNSS COM/8.33' → [[NAV,GNSS],[COM,8.33]]). */
 export function parseItem18(s: string): { indicator: string; text: string }[] {
   const t = transliterate(s || '').replace(/\s+/g, ' ').trim();
@@ -315,13 +358,16 @@ const equipField = (s: string) => transliterate(s || '').replace(/[^A-Z0-9]/g, '
 // ------------------------------------------------------------------------------------------------
 // Item 19
 
-export function buildItem19(input: FplInput, extraRemarks: string[], warnings: string[]): Item19 {
+/** Records a warning and where it is fixed. */
+type Warn = (text: string, fix?: Fix) => void;
+
+export function buildItem19(input: FplInput, warn: Warn): Item19 {
   const eq = input.equipment;
   const endurance = hhmm(input.enduranceMin);
-  if (endurance === MISSING) warnings.push('Endurance unknown (item 19 E/): set the fuel on board and the aircraft burn rate.');
+  if (endurance === MISSING) warn('Endurance unknown (item 19 E/): set the fuel on board and the aircraft burn rate.', { kind: 'flight', focus: 'fob' });
   const pob = input.personsOnBoard;
   const persons = pob && pob > 0 ? pad(Math.min(999, Math.round(pob)), 3) : 'TBN';
-  if (persons === 'TBN') warnings.push('Persons on board unknown (item 19 P/): the manifest is empty.');
+  if (persons === 'TBN') warn('Persons on board unknown (item 19 P/): the manifest is empty.', { kind: 'flight', focus: 'manifest' });
 
   const radio = { ...{ uhf: false, vhf: false, elt: false }, ...(eq?.emergencyRadio || {}) };
   const sv = { ...{ polar: false, desert: false, maritime: false, jungle: false }, ...(eq?.survival || {}) };
@@ -332,10 +378,11 @@ export function buildItem19(input: FplInput, extraRemarks: string[], warnings: s
     ? { number: pad(Math.min(99, Math.round(d.number)), 2), capacity: pad(Math.min(999, Math.round(d.capacity || 0)), 3), covered: !!d.covered, colour: cleanText(d.colour || '') }
     : null;
   const colours = cleanText(input.colours);
-  if (!colours) warnings.push('Aircraft colours and markings not set in the hangar (item 19 A/).');
-  const remarkParts = [cleanText(eq?.remarks || ''), ...extraRemarks.map(cleanText)].filter(Boolean);
-  const pic = cleanText(input.pic.fullName);
-  if (!pic) warnings.push('Pilot in command name not set in the profile (item 19 C/).');
+  if (!colours) warn('Aircraft colours and markings not set in the hangar (item 19 A/).', { kind: 'aircraft', focus: 'colours' });
+  const remarkParts = [cleanText(eq?.remarks || '')].filter(Boolean);
+  const name = picName(input.pic.fullName);
+  if (!name) warn('Pilot in command name not set in the profile (item 19 C/).', { kind: 'profile', focus: 'fullName' });
+  const pic = [name || MISSING, intlPhone(input.pic.phone)].filter(Boolean).join(' ');
 
   const parts: string[] = [];
   parts.push('E/' + endurance);
@@ -355,10 +402,8 @@ export function buildItem19(input: FplInput, extraRemarks: string[], warnings: s
   if (colours) parts.push('A/' + colours);
   const remarks = remarkParts.join(' ');
   if (remarks) parts.push('N/' + remarks);
-  // C/: the PIC's name followed by their phone number (international format, e.g. +306912345678)
-  const picPhone = (input.pic.phone || '').trim().startsWith('+') ? '+' + input.pic.phone.replace(/\D/g, '') : input.pic.phone.replace(/\D/g, '');
-  parts.push('C/' + [pic || MISSING, picPhone].filter(Boolean).join(' '));
-  return { endurance, persons, radio, survival, jackets, dinghies, colours, remarks, pic: pic || MISSING, text: parts.join(' ') };
+  parts.push('C/' + pic);
+  return { endurance, persons, radio, survival, jackets, dinghies, colours, remarks, pic, text: parts.join(' ') };
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -383,12 +428,18 @@ export function wrapLine(s: string, width = AFTN_LINE): string[] {
 
 export function buildFpl(input: FplInput): FplResult {
   const warnings: string[] = [];
-  const opts = { includeItem19: false, regInItem18: false, pointNamesInRemarks: true, phoneIn: 'rmk' as const, ...(input.options || {}) };
+  const fixes: Record<string, Fix> = {};
+  const warn: Warn = (text, fix) => {
+    if (!warnings.includes(text)) warnings.push(text);
+    if (fix && !fixes[text]) fixes[text] = fix;
+  };
+  const opts = { includeItem19: true, regInItem18: false, ...(input.options || {}) };
+  const ac = (focus: AircraftFocus): Fix => ({ kind: 'aircraft', focus });
 
   // item 7
   let item7 = aircraftId(input.registration);
-  if (!item7) { item7 = MISSING; warnings.push('Aircraft registration missing (item 7).'); }
-  else if (item7.length > 7) warnings.push(`Aircraft identification ${item7} is longer than 7 characters (item 7).`);
+  if (!item7) { item7 = MISSING; warn('Aircraft registration missing (item 7).', { kind: 'flight', focus: 'aircraft' }); }
+  else if (item7.length > 7) warn(`Aircraft identification ${item7} is longer than 7 characters (item 7).`, ac('registration'));
 
   // item 8
   const item8 = { rules: input.flightRules || 'V', type: input.flightType || 'G' };
@@ -396,42 +447,42 @@ export function buildFpl(input: FplInput): FplResult {
   // item 9
   const designator = transliterate(input.icaoType || '').replace(/[^A-Z0-9]/g, '');
   const typeOk = /^[A-Z][A-Z0-9]{1,3}$/.test(designator);
-  if (!designator) warnings.push('ICAO type designator not set in the hangar: ZZZZ and TYP/ used (item 9).');
-  else if (!typeOk) warnings.push(`"${input.icaoType}" is not an ICAO type designator: ZZZZ and TYP/ used (item 9).`);
+  if (!designator) warn('ICAO type designator not set in the hangar: ZZZZ and TYP/ used (item 9).', ac('icaoType'));
+  else if (!typeOk) warn(`"${input.icaoType}" is not an ICAO type designator: ZZZZ and TYP/ used (item 9).`, ac('icaoType'));
   const item9 = { number: '', type: typeOk ? designator : 'ZZZZ', wake: ['L', 'M', 'H', 'J'].includes(input.wake) ? input.wake : 'L' };
-  if (!['L', 'M', 'H', 'J'].includes(input.wake)) warnings.push('Wake turbulence category not set: L used (item 9).');
+  if (!['L', 'M', 'H', 'J'].includes(input.wake)) warn('Wake turbulence category not set: L used (item 9).', ac('wake'));
 
   // item 10
   const eq = input.equipment;
   const a10 = equipField(eq?.item10a || '') || 'N';
   const b10 = equipField(eq?.item10b || '') || 'N';
-  if (!equipField(eq?.item10a || '')) warnings.push('Item 10a equipment not set in the hangar: N (no equipment) used.');
-  if (!equipField(eq?.item10b || '')) warnings.push('Item 10b surveillance equipment not set in the hangar: N used.');
-  if (a10.includes('N') && a10.length > 1) warnings.push('Item 10a: N (no equipment) cannot be combined with other letters.');
-  if (b10.includes('N') && b10.length > 1) warnings.push('Item 10b: N cannot be combined with other letters.');
+  if (!equipField(eq?.item10a || '')) warn('Item 10a equipment not set in the hangar: N (no equipment) used.', ac('item10a'));
+  if (!equipField(eq?.item10b || '')) warn('Item 10b surveillance equipment not set in the hangar: N used.', ac('item10b'));
+  if (a10.includes('N') && a10.length > 1) warn('Item 10a: N (no equipment) cannot be combined with other letters.', ac('item10a'));
+  if (b10.includes('N') && b10.length > 1) warn('Item 10b: N cannot be combined with other letters.', ac('item10b'));
   const pbn = equipField(eq?.pbn || '');
-  if (a10.includes('R') && !pbn) warnings.push('Item 10a contains R: PBN/ is required in item 18.');
-  if (pbn && !a10.includes('R')) warnings.push('PBN/ is given but item 10a has no R.');
+  if (a10.includes('R') && !pbn) warn('Item 10a contains R: PBN/ is required in item 18.', ac('pbn'));
+  if (pbn && !a10.includes('R')) warn('PBN/ is given but item 10a has no R.', ac('item10a'));
 
   // item 13
   const adep = locationField(input.departure);
-  if (adep === MISSING) warnings.push('Departure aerodrome unknown (item 13): the route must start at an aerodrome.');
+  if (adep === MISSING) warn('Departure aerodrome unknown (item 13): the route must start at an aerodrome.', { kind: 'flight' });
   const eobt = eobtField(input.eobt);
-  if (eobt === MISSING) warnings.push('Block-off time (EOBT) not set (item 13).');
+  if (eobt === MISSING) warn('Block-off time (EOBT) not set (item 13).', { kind: 'flight', focus: 'blockOff' });
 
   // item 15
   const speed = speedField(input.cruiseTasKt);
-  if (speed.includes(MISSING)) warnings.push('Cruising speed not set in the hangar (item 15).');
+  if (speed.includes(MISSING)) warn('Cruising speed not set in the hangar (item 15).', ac('cruiseTasKt'));
   const level = (input.level || 'VFR').toUpperCase();
   const route = routeField(input.route);
 
   // item 16
   const ades = locationField(input.destination);
-  if (ades === MISSING) warnings.push('Destination aerodrome unknown (item 16): the route must end at an aerodrome.');
+  if (ades === MISSING) warn('Destination aerodrome unknown (item 16): the route must end at an aerodrome.', { kind: 'flight' });
   const eet = hhmm(input.totalEetMin);
-  if (eet === MISSING) warnings.push('Total EET unknown (item 16).');
+  if (eet === MISSING) warn('Total EET unknown (item 16).', { kind: 'flight' });
   const alts = (input.alternates || []).slice(0, 2);
-  if ((input.alternates || []).length > 2) warnings.push('Only two alternates fit in item 16; the rest are ignored.');
+  if ((input.alternates || []).length > 2) warn('Only two alternates fit in item 16; the rest are ignored.', { kind: 'flight', focus: 'alternates' });
   const altn = alts.map(locationField);
 
   // item 18
@@ -442,7 +493,7 @@ export function buildFpl(input: FplInput): FplResult {
   if (ades === 'ZZZZ' && input.destination) add('DEST', zzzzText(input.destination));
   const dof = dofField(input.date);
   if (dof) add('DOF', dof);
-  else warnings.push('Flight date not set (item 18 DOF/).');
+  else warn('Flight date not set (item 18 DOF/).', { kind: 'flight', focus: 'date' });
   // Item 7 is always the registration here, so REG/ would only repeat it (App. 2: 'if different').
   if (item7 !== MISSING && opts.regInItem18) add('REG', item7);
   if (input.firEets && input.firEets.length) {
@@ -456,9 +507,9 @@ export function buildFpl(input: FplInput): FplResult {
   // The flight's remarks, then the hangar's extras: generated indicators win over the same ones
   // typed by hand; RMK/ text is collected and written once, in one RMK/ field.
   const OWN = new Set(['DOF', 'REG', 'DEP', 'DEST', 'ALTN', 'EET']);
-  const typed = (src: string, where: string, rmkOut: string[]) => {
+  const typed = (src: string, where: string, fix: Fix, rmkOut: string[]) => {
     for (const p of parseItem18(src)) {
-      if (OWN.has(p.indicator)) { warnings.push(`Item 18 ${p.indicator}/ ${where} is ignored: it is generated from the flight.`); continue; }
+      if (OWN.has(p.indicator)) { warn(`Item 18 ${p.indicator}/ ${where} is ignored: it is generated from the flight.`, fix); continue; }
       if (p.indicator === 'PBN' && pbn) continue;
       if (p.indicator === 'TYP' && !typeOk) continue;
       if (p.indicator === 'OPR' && gen.OPR) continue;
@@ -468,42 +519,33 @@ export function buildFpl(input: FplInput): FplResult {
     }
   };
   const flightRmk: string[] = [];
-  typed(input.remarks || '', 'in the flight remarks', flightRmk);
+  typed(input.remarks || '', 'in the flight remarks', { kind: 'flight', focus: 'remarks' }, flightRmk);
   const hangarRmk: string[] = [];
-  typed(eq?.item18Extras || '', 'from the hangar', hangarRmk);
-  if (a10.includes('Z') && !gen.NAV && !gen.COM && !gen.DAT) warnings.push('Item 10a contains Z: NAV/, COM/ or DAT/ is required in item 18.');
+  typed(eq?.item18Extras || '', 'from the hangar', ac('item18Extras'), hangarRmk);
+  if (a10.includes('Z') && !gen.NAV && !gen.COM && !gen.DAT) warn('Item 10a contains Z: NAV/, COM/ or DAT/ is required in item 18.', ac('item18Extras'));
 
-  // RMK: touch-and-go / stop requests, flight remarks, hangar remarks, PIC phone, route point names
+  // RMK: touch-and-go / stop requests, flight remarks, hangar remarks (the route is in item 15)
   const rmk: string[] = [];
   for (const r of input.requests ?? []) { const t = cleanText(r); if (t && !rmk.includes(t)) rmk.push(t); }
   for (const t of [...flightRmk, ...hangarRmk]) if (t && !rmk.includes(t)) rmk.push(t);
   const phone = cleanPhone(input.pic.phone);
-  if (!phone) warnings.push('Pilot phone number not set in the profile.');
-  const n19: string[] = [];
-  // In item 19 the phone already follows the PIC name in C/; RMK/ carries it for ATC when item 19 is left out.
-  if (phone && opts.phoneIn !== 'n') rmk.push(`PIC TEL ${phone}`);
-  if (opts.pointNamesInRemarks) {
-    const names: string[] = [];
-    for (const p of input.route.slice(1, -1)) {
-      const nm = cleanText(p.name);
-      if (nm && names[names.length - 1] !== nm) names.push(nm);
-    }
-    if (names.length) rmk.push('VFR VIA ' + names.join(' '));
-  }
+  if (!phone) warn('Pilot phone number not set in the profile (item 19 C/).', { kind: 'profile', focus: 'phone' });
+  // The phone follows the PIC name in item 19 C/; without item 19, RMK/ carries it.
+  if (phone && !opts.includeItem19) rmk.push(`PIC TEL ${phone}`);
   if (rmk.length) add('RMK', rmk.join(' '));
 
   const order = [...ITEM18_ORDER] as string[];
+  const beforeRmk = order.indexOf('RMK') - 0.5; // unknown indicators go just before RMK
   const keys = Object.keys(gen).sort((x, y) => {
     const ix = order.indexOf(x), iy = order.indexOf(y);
-    // unknown indicators go just before RMK
-    const rx = ix < 0 ? order.length - 1.5 : ix, ry = iy < 0 ? order.length - 1.5 : iy;
+    const rx = ix < 0 ? beforeRmk : ix, ry = iy < 0 ? beforeRmk : iy;
     return rx - ry || x.localeCompare(y);
   });
   const item18Parts = keys.map((k) => ({ indicator: k, text: gen[k].join(' ') }));
   const item18 = item18Parts.length ? item18Parts.map((p) => `${p.indicator}/${p.text}`).join(' ') : '0';
 
   // item 19
-  const item19 = buildItem19(input, n19, warnings);
+  const item19 = buildItem19(input, warn);
 
   const fields: FplFields = {
     item7,
@@ -530,7 +572,7 @@ export function buildFpl(input: FplInput): FplResult {
   raw[raw.length - 1] += ')';
   const lines = raw.flatMap((l) => wrapLine(l));
   const message = lines.join('\n');
-  return { fields, message, lines, complete: !message.includes(MISSING), warnings: [...new Set(warnings)] };
+  return { fields, message, lines, complete: !message.includes(MISSING), warnings, fixes };
 }
 
 /** The message on one line (some ARO web forms want it so). */

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
+import { useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
@@ -74,6 +75,8 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
   const errors = issues.filter((i) => i.level === 'error');
   const warnings = issues.filter((i) => i.level === 'warning');
   const isDefault = pilot.defaultAircraftId === aircraft.id;
+  // ?focus=<field>: a warning elsewhere (an export) linked here
+  useFocusParam(() => document.querySelector('[data-testid=aircraft-page]'));
 
   const edit = useCallback((fn: (d: AircraftInput) => void) => {
     setDraft((d) => { const c: AircraftInput = structuredClone(d); fn(c); return c; });

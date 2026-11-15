@@ -1,6 +1,22 @@
 // Small building blocks of the editor panel: collapsible sections, key/value rows, number inputs
 // that keep a draft while typing, and status chips.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { focusParam, useFocusParam } from '../../../app/focusParam';
+import { EDITOR_FOCUS_SECTION, type EditorFocus } from '../../exports/fix';
+
+/**
+ * Deep link into the editor (/flights/:id?focus=<EditorFocus>, from a warning on an export): the
+ * section holding that input opens (without changing the remembered state), and the input is
+ * scrolled to, focused and highlighted. Used by every panel Section.
+ */
+function useSectionFocus(id: string, collapsed: boolean, open: () => void) {
+  const key = focusParam();
+  const mine = !!key && EDITOR_FOCUS_SECTION[key as EditorFocus] === id;
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => { if (mine && collapsed) open(); }, [mine]); // eslint-disable-line react-hooks/exhaustive-deps
+  useFocusParam(() => ref.current, mine && !collapsed, key);
+  return ref;
+}
 
 const LS_KEY = 'pgf.editor.sections';
 function loadCollapsed(): Record<string, boolean> {
@@ -21,6 +37,7 @@ export function Section({ id, title, badge, actions, children }: {
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(() => !!loadCollapsed()[id]);
+  const ref = useSectionFocus(id, collapsed, () => setCollapsed(false));
   const toggle = () => {
     setCollapsed((c) => {
       const all = loadCollapsed();
@@ -30,7 +47,7 @@ export function Section({ id, title, badge, actions, children }: {
     });
   };
   return (
-    <section className={'ep-section' + (collapsed ? ' collapsed' : '')} data-testid={`section-${id}`}>
+    <section ref={ref} className={'ep-section' + (collapsed ? ' collapsed' : '')} data-testid={`section-${id}`}>
       <header className="ep-section-head">
         <button type="button" className="ep-section-toggle" onClick={toggle} aria-expanded={!collapsed}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="ep-caret"><path d="M3 4.5 6 7.5 9 4.5" /></svg>
