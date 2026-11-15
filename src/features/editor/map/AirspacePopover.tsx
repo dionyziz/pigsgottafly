@@ -1,6 +1,7 @@
 // Airspace hover tooltip and click popover on the route map (PLAN-v3 "Airspace on the map"):
 // name, class and vertical limits on hover; on click the lateral definition, controlling unit with
 // call sign and frequencies, AIP source, and the legs of the route that enter it at their altitude.
+import { XIcon } from '../../../app/XIcon';
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import type { LegGeometry } from '../../../calc';
 import { fmtAltitude } from './labels';
@@ -56,7 +57,7 @@ export function AirspacePopover({ x, y, items, legs, altitudes, airac, onClose }
   const alts = legs.map((l) => altitudes[l.key]?.altFt ?? NaN);
   return (
     <div ref={ref} className="pgf-air-pop" style={pos} role="dialog" aria-label="Airspace" data-testid="airspace-pop" onMouseDown={(e) => e.stopPropagation()}>
-      <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close">×</button>
+      <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close"><XIcon /></button>
       {items.map((a) => {
         const isOpen = open === a.id;
         const entries = isOpen ? legsThrough(a, legs, alts) : [];

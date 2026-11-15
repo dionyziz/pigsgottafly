@@ -108,8 +108,9 @@
   font-size: var(--fs-sm); color: var(--ink);
 }
 .pgf-air-x {
-  position: absolute; top: 9px; right: 6px; z-index: 1; width: 24px; height: 24px; border: 0; border-radius: 5px;
-  background: transparent; color: var(--muted); font: 600 16px/24px var(--font); cursor: pointer;
+  position: absolute; top: 9px; right: 6px; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 6px;
+  background: transparent; color: var(--muted); line-height: 0; cursor: pointer;
 }
 .pgf-air-x:hover { background: var(--hover); color: var(--ink); }
 .pgf-air-sec + .pgf-air-sec { border-top: 1px solid var(--line); }

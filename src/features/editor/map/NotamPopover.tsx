@@ -1,6 +1,7 @@
 // NOTAM hover tooltip and click popover on the route map (PLAN-v3 "Map interaction for weather and
 // NOTAMs"): ID, validity and limits on hover; on click the decoded content, the reasons it is shown
 // (or hidden), the affected leg, the raw ICAO text and the source and fetch time.
+import { XIcon } from '../../../app/XIcon';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Notam } from '../../../shared/briefing';
 import { fmtNotamTime, notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
@@ -51,7 +52,7 @@ export function NotamPopover({ x, y, items, legName, source, fetched, onOpen, on
   }, [x, y, open, raw]);
   return (
     <div ref={ref} className="pgf-air-pop" style={pos} role="dialog" aria-label="NOTAM" data-testid="notam-pop" onMouseDown={(e) => e.stopPropagation()}>
-      <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close">×</button>
+      <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close"><XIcon /></button>
       {items.map((n) => {
         const isOpen = open === n.key;
         return (
