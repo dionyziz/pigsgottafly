@@ -1,7 +1,8 @@
 // Aerodrome hover tooltip and click popover on the route map: name, elevation and the hours on the
 // flight's date (with handling) on hover; on click the hours, ATS, handling, customs, the NOTAMs that
-// change them (by NOTAM id) and the AIP text (AerodromeHours.tsx).
+// change them (by NOTAM id) and the AIP text (AerodromeHours.tsx), and a link to the aerodrome's AIP PDF.
 import { XIcon } from '../../../app/XIcon';
+import { AipLink } from '../../../app/AipLink';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { RefAerodrome } from '../../../shared/ref';
 import { AdHoursDetail, adHandlingLine, adHoursLine, type AdDayInfo } from '../AerodromeHours';
@@ -46,7 +47,9 @@ export function AerodromePopover({ x, y, a, info, airac, onClose }: { x: number;
           {a.elevFt !== null && <span className="pgf-air-lim">{Math.round(a.elevFt)} ft</span>}
         </div>
         <AdHoursDetail a={a} info={info} />
-        <div className="pgf-air-text pgf-ad-src">AIP Greece {a.source} · AIRAC {airac}</div>
+        <div className="pgf-air-text pgf-ad-src">
+          <AipLink refText={a.source}>AIP Greece {a.source} (PDF)</AipLink> <span className="muted">· AIRAC {airac}</span>
+        </div>
       </section>
     </div>
   );

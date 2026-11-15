@@ -20,7 +20,7 @@ bsdtar -xf "$WORK"/zip/*.iso -C "$WORK/iso"
 PDF="$WORK/iso/ais/eaip/pdf"
 
 echo "== 2. text of the sections we use"
-for f in "$PDF"/AD\ 2/AD2-*/LG_AD_2_LG??_en.pdf "$PDF/AD 1/AD 1.6 CAT B AERODROMES/catb"/*.pdf "$PDF/ENR 2"/*.pdf "$PDF/ENR 4"/*.pdf "$PDF/GEN 2"/*.pdf; do
+for f in "$PDF"/AD\ 2/AD2-*/LG_AD_2_LG??_en.pdf "$PDF/AD 1/AD 1.6 CAT B AERODROMES/catb"/*.pdf "$PDF/ENR 2"/*.pdf "$PDF/ENR 4"/*.pdf "$PDF/ENR 5"/*.pdf "$PDF/GEN 2"/*.pdf; do
   pdftotext -layout "$f" "$WORK/txt/$(basename "$f" .pdf).txt"
 done
 for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
@@ -33,8 +33,16 @@ for s in ENR_2_1 ENR_4_1 GEN_2_7; do
   echo "   $s: $(grep -hoE 'AIRAC AMDT [0-9]+/[0-9]+' "$WORK/txt/LG_${s}_en.txt" | sort -u | tail -1)"
 done
 
-echo "== 4. aerodromes, airspace, sunset"
+echo "== 4. aerodromes, airspace, sunset, AIP links, ENR 5 areas"
 sed -i '' "s|^AIRAC = .*|AIRAC = '$LABEL'|" "$ROOT/tools/build_aip.py"
+# the online eAIP of this AIRAC (links to the AIP PDFs): .../aipgr_incl_amdt_1026_wef_26nov2026/cd/ais/
+AMDT=$(echo "$LABEL" | sed -E 's/.*AMDT ([0-9]{2})\/([0-9]{2}).*/\1\2/')
+read -r WD WM WY <<< "$(echo "$LABEL" | sed -E 's/.*wef ([0-9]+) ([A-Z]{3}) ([0-9]{4}).*/\1 \2 \3/')"
+WEF=$(printf '%02d%s%s' "$((10#$WD))" "$(echo "$WM" | tr 'A-Z' 'a-z')" "$WY")
+sed -i '' "s|^export const AIP_EAIP_BASE = .*|export const AIP_EAIP_BASE = 'https://aisgr.hasp.gov.gr/aipgr_incl_amdt_${AMDT}_wef_${WEF}/cd/ais/';|" "$ROOT/src/data/aipLinks.ts"
+grep -n "^export const AIP_EAIP_BASE" "$ROOT/src/data/aipLinks.ts"
+(cd "$ROOT" && npx tsx tools/aip_files.ts "$WORK/iso/ais/side.htm" src/data/ref/aip-files.json)
+(cd "$ROOT" && npx tsx tools/parse_enr5.ts "$WORK/txt" tools/enr5_areas.json)   # ENR 5.1/5.2/5.3 areas: check what it flags
 python3 -I "$ROOT/tools/parse_ad.py" "$WORK/txt" "$WORK/ad_raw.json"
 python3 -I "$ROOT/tools/build_aip.py" "$WORK/ad_raw.json" "$ROOT/data/aip.js"
 python3 -I "$ROOT/tools/parse_sun.py" "$WORK/txt/LG_GEN_2_7_en.txt" "$ROOT/data/sun.js"

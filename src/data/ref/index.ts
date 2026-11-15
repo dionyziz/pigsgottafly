@@ -5,6 +5,7 @@ import type {
   RefAerodrome,
   RefAirac,
   RefAirspace,
+  RefArea,
   RefAtcUnit,
   RefBundle,
   RefFis,
@@ -22,6 +23,7 @@ import vfrPointsJson from './vfr-points.json';
 import vfrRoutesJson from './vfr-routes.json';
 import atcUnitsJson from './atc-units.json';
 import sunJson from './sun.json';
+import areasJson from './areas.json';
 // Not from build_ref.ts: tools/parse_ad_airspace.py (AD 2.17), client only.
 import adAirspacesJson from './ad-airspaces.json';
 
@@ -35,6 +37,8 @@ export const VFR_ROUTES = vfrRoutesJson as unknown as RefVfrRoute[];
 export const ATC_UNITS = atcUnitsJson as unknown as RefAtcUnit[];
 /** Aerodrome CTRs and ATZs (AD 2.17 / AD 1.6.N.17). */
 export const AD_AIRSPACES = adAirspacesJson as unknown as RefAdAirspace[];
+/** ENR 5.1 / 5.2 / 5.3 areas (prohibited, restricted, danger, military, other activities). */
+export const AREAS = areasJson as unknown as RefArea[];
 /** AIP GEN 2.7 sunset tables keyed by ICAO. */
 export const SUN_TABLES = sunJson as unknown as Record<string, RefSunTable>;
 
@@ -48,6 +52,7 @@ export const REF: RefBundle = {
   vfrRoutes: VFR_ROUTES,
   atcUnits: ATC_UNITS,
   adAirspaces: AD_AIRSPACES,
+  areas: AREAS,
 };
 
 const byId = new Map(AERODROMES.map((a) => [a.id, a]));

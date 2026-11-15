@@ -144,3 +144,7 @@ table.list th { font-weight: 500; color: var(--muted); font-size: var(--fs-sm); 
 input.attention, select.attention, textarea.attention { border-color: var(--warn, #b7791f) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn, #b7791f) 28%, transparent); animation: pgf-attention 1.2s ease-out 2; }
 @keyframes pgf-attention { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn, #b7791f) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
 @media (prefers-reduced-motion: reduce) { input.attention, select.attention, textarea.attention { animation: none; } }
+
+/* links to the AIP Greece PDFs (AipLink) */
+.aip-link { white-space: nowrap; }
+.aip-link-ext { margin-left: 3px; vertical-align: 0; opacity: 0.75; }

@@ -5,7 +5,7 @@ import type { RoutePoint, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import { aerodromeName } from './snap';
 import { mercatorMid } from './routeEdit';
-import { airspaceLabel, type AirspaceInfo } from './airspace';
+import { airspaceLabel, fmtVertical, isArea, type AirspaceInfo } from './airspace';
 
 export type FC<G extends Point | LineString | Polygon = Point | LineString | Polygon> = FeatureCollection<G, Record<string, unknown>>;
 const fc = <G extends Point | LineString | Polygon>(features: Feature<G, Record<string, unknown>>[]): FC<G> => ({ type: 'FeatureCollection', features });
@@ -61,6 +61,20 @@ export function zoneFeatures(zones: AirspaceInfo[]): FC<Polygon> {
         id: z.id,
         geometry: { type: 'Polygon', coordinates: [z.ring] },
         properties: { id: z.id, kind: z.type, cls: z.cls.trim().charAt(0), label: airspaceLabel(z) },
+      })),
+  );
+}
+
+/** ENR 5 areas (P / R / D / MIL / ACT) with a chart label 'LGD45 · GND – 5000 ft'. */
+export function areaFeatures(infos: AirspaceInfo[]): FC<Polygon> {
+  return fc(
+    infos
+      .filter((a) => isArea(a.type))
+      .map((a) => ({
+        type: 'Feature',
+        id: a.id,
+        geometry: { type: 'Polygon', coordinates: [a.ring] },
+        properties: { id: a.id, kind: a.type, label: `${a.code ?? a.id} · ${fmtVertical(a.lower, a.upper)}` },
       })),
   );
 }

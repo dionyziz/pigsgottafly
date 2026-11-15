@@ -11,6 +11,13 @@ export const CHART = {
   /** Class G aerodrome zones (AFIS / uncontrolled ATZ). */
   zoneG: '#4f7d86',
   fis: '#6b7480',
+  /** ENR 5 areas: prohibited (red, tinted), restricted (red, hatched), danger (amber, dashed),
+   *  military exercise / training (violet, dash-dot), other activities (green, dotted). */
+  prohibited: '#b71c1c',
+  restricted: '#c62828',
+  danger: '#b45309',
+  mil: '#5b4a8a',
+  act: '#2e7d32',
   vfr: '#1e6b46',
   waypoint: '#7a3db8',
   route: '#c2185b',
@@ -82,7 +89,7 @@ const EMPTY = { type: 'FeatureCollection', features: [] } as const;
 
 /** Sources that carry our own data (setData later). */
 export const DATA_SOURCES = [
-  'airspaces', 'zones', 'fis', 'vfr-routes', 'vfr-points', 'aerodromes', 'waypoints',
+  'airspaces', 'zones', 'areas', 'fis', 'vfr-routes', 'vfr-points', 'aerodromes', 'waypoints',
   'route-line', 'route-band', 'route-mid', 'route-points', 'snap',
 ] as const;
 export type DataSourceId = (typeof DATA_SOURCES)[number];
@@ -127,7 +134,7 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
       type: 'geojson', data: EMPTY as never,
       ...(id === 'route-mid' ? { generateId: true } : {}),
       // airspace hover highlight (feature-state keyed by the airspace id)
-      ...(id === 'airspaces' || id === 'zones' ? { promoteId: 'id' } : {}),
+      ...(id === 'airspaces' || id === 'zones' || id === 'areas' ? { promoteId: 'id' } : {}),
     };
   }
   layers.push(...chartLayers(), ...routeLayers());
@@ -139,10 +146,40 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
 /** Our chart layers (toggled together by "Chart layers"). */
 export const CHART_LAYER_IDS = [
   'airspace-fill', 'airspace-line', 'airspace-line-m', 'airspace-label', 'zone-fill', 'zone-line', 'zone-line-atz', 'zone-label',
+  'area-fill', 'area-hatch', 'area-line', 'area-line-d', 'area-line-mil', 'area-line-act', 'area-label',
   'fis-line', 'fis-label',
   'vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt', 'vfr-point-icon', 'vfr-point-label',
   'aerodrome-icon', 'aerodrome-label', 'waypoint-icon', 'waypoint-label',
 ];
+
+/** ENR 5 areas in VFR-chart style: P red tint, R red hatching, D amber dashed, MIL violet dash-dot, ACT green dotted. */
+function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
+  const kind = (...k: string[]): ExpressionSpecification => ['in', ['get', 'kind'], ['literal', k]];
+  const color: ExpressionSpecification = ['match', ['get', 'kind'], 'P', CHART.prohibited, 'R', CHART.restricted, 'D', CHART.danger, 'MIL', CHART.mil, CHART.act];
+  const width = (base: number): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, base + 1.2, base * 0.7], 10, ['case', hov, base + 1.6, base]];
+  return [
+    {
+      id: 'area-fill', type: 'fill', source: 'areas', filter: ['!', kind('R')],
+      paint: {
+        'fill-color': color,
+        'fill-opacity': ['+', ['case', hov, 0.08, 0], ['match', ['get', 'kind'], 'P', 0.16, 'D', 0.07, 0.04]],
+      },
+    },
+    { id: 'area-hatch', type: 'fill', source: 'areas', filter: kind('R'), paint: { 'fill-pattern': 'pgf-hatch-r', 'fill-opacity': ['case', hov, 1, 0.8] } },
+    { id: 'area-line', type: 'line', source: 'areas', filter: kind('P', 'R'), paint: { 'line-color': color, 'line-width': width(2), 'line-opacity': 0.9 } },
+    { id: 'area-line-d', type: 'line', source: 'areas', filter: kind('D'), paint: { 'line-color': color, 'line-width': width(1.8), 'line-dasharray': [3, 1.6], 'line-opacity': 0.9 } },
+    { id: 'area-line-mil', type: 'line', source: 'areas', filter: kind('MIL'), paint: { 'line-color': color, 'line-width': width(1.4), 'line-dasharray': [5, 2, 1, 2], 'line-opacity': 0.75 } },
+    { id: 'area-line-act', type: 'line', source: 'areas', filter: kind('ACT'), paint: { 'line-color': color, 'line-width': width(1.6), 'line-dasharray': [1, 1.6], 'line-opacity': 0.85 } },
+    {
+      id: 'area-label', type: 'symbol', source: 'areas', minzoom: 7.5,
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 360, 'text-field': ['get', 'label'], 'text-font': BOLD,
+        'text-size': 9.5, 'text-letter-spacing': 0.03, 'text-offset': [0, 0.85], 'text-max-angle': 30, 'text-keep-upright': true,
+      },
+      paint: { 'text-color': color, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
+    },
+  ];
+}
 
 function chartLayers(): LayerSpecification[] {
   const isM: ExpressionSpecification = ['==', ['get', 'kind'], 'MTMA'];
@@ -193,6 +230,7 @@ function chartLayers(): LayerSpecification[] {
       },
       paint: { 'text-color': zoneColor, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
+    ...areaLayers(hov),
     {
       id: 'fis-line', type: 'line', source: 'fis',
       paint: { 'line-color': CHART.fis, 'line-width': 1.2, 'line-dasharray': [6, 3, 1, 3], 'line-opacity': 0.7 },

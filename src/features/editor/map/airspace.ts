@@ -1,9 +1,8 @@
-// Airspace on the map: one shape for TMAs/MTMAs (ENR 2.1) and aerodrome CTRs/ATZs (AD 2.17), chart
-// labels, which airspaces lie under the cursor, and which route legs enter each one at their planned
-// altitude. Pure (no map), unit-tested.
-import type { LatLon } from '../../../shared';
-import type { RefAdAirspace, RefAirspace, RefAtcUnitRef } from '../../../shared/ref';
-import { deg, distanceNm, midpoint, rad, R_NM } from '../../../calc';
+// Airspace on the map: one shape for TMAs/MTMAs (ENR 2.1), aerodrome CTRs/ATZs (AD 2.17) and the ENR 5
+// navigation-warning areas (prohibited, restricted, danger, military, other activities), chart labels,
+// and which of them lie under the cursor. Pure (no map), unit-tested.
+import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef } from '../../../shared/ref';
+import { deg, rad, R_NM } from '../../../calc';
 
 /** Point at distance/bearing from a start (great circle), [lon, lat]. */
 export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
@@ -21,7 +20,11 @@ export function circleRing(lat: number, lon: number, radiusNm: number, n = 64): 
   return ring;
 }
 
-export type AirspaceType = 'TMA' | 'MTMA' | 'CTR' | 'ATZ';
+export type AirspaceType = 'TMA' | 'MTMA' | 'CTR' | 'ATZ' | RefArea['kind'];
+
+/** ENR 5 area kinds. */
+export const AREA_TYPES: readonly AirspaceType[] = ['P', 'R', 'D', 'MIL', 'ACT'];
+export const isArea = (t: AirspaceType) => AREA_TYPES.includes(t);
 
 export interface AirspaceInfo {
   id: string;
@@ -34,8 +37,12 @@ export interface AirspaceInfo {
   cls: string;
   lower: string;
   upper: string;
-  /** Lateral limits in words (AD 2.17 text, or a summary of the polygon). */
+  /** Lateral limits in a few words (AD 2.17 text, or 'Circle, 1.5 NM radius' / 'Polygon, 6 points'). */
   lateral: string;
+  /** ENR 5 areas: time of activity as printed ('H24', 'SR-SS', 'Activated by NOTAM', …). */
+  activity?: string;
+  /** ENR 5 areas: the short chart label ('LGD45', or the name of an ENR 5.3 area). */
+  code?: string;
   /** Notes on the limits (FIR boundary clipping, a quadrant with another upper limit, AFIS). */
   notes: string[];
   units: RefAtcUnitRef[];
@@ -104,7 +111,7 @@ export function fromTma(s: RefAirspace): AirspaceInfo {
   const type: AirspaceType = s.kind === 'MTMA' ? 'MTMA' : 'TMA';
   return {
     id: s.id, name: s.name, sector: s.sector, type, cls: s.class, lower: s.lower, upper: s.upper,
-    lateral: `Polygon of ${ring.length - 1} points (${s.source || 'ENR 2.1'})`,
+    lateral: `Polygon, ${ring.length - 1} points`,
     notes: s.note ? [s.note] : [], units: s.units, remarks: '', source: s.source || 'ENR 2.1', ring, bbox: bboxOf(ring),
   };
 }
@@ -124,10 +131,31 @@ export function fromAd(z: RefAdAirspace): AirspaceInfo | null {
   };
 }
 
-/** All airspace shown on the map: TMAs/MTMAs, then CTRs, then ATZs. */
-export function airspaceInfos(tmas: RefAirspace[], ad: RefAdAirspace[] = []): AirspaceInfo[] {
+const fmtNm = (nm: number) => (nm >= 1 ? String(+nm.toFixed(1)) : nm.toFixed(2).replace(/0$/, ''));
+
+/** An ENR 5 area; null when its lateral limits could not be drawn. */
+export function fromArea(a: RefArea): AirspaceInfo | null {
+  let ring: [number, number][];
+  let lateral: string;
+  if (a.circle) {
+    ring = circleRing(a.circle.lat, a.circle.lon, a.circle.radiusNm, 64);
+    lateral = `Circle, ${fmtNm(a.circle.radiusNm)} NM radius`;
+  } else if (a.polygon && a.polygon.length >= 3) {
+    ring = closed(a.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
+    lateral = `Polygon, ${ring.length - 1} points`;
+  } else return null;
+  return {
+    id: a.id, name: a.kind === 'ACT' ? a.name || a.id : a.name ? `${a.id} ${a.name}` : a.id, sector: '', type: a.kind, cls: '',
+    lower: a.lower, upper: a.upper, lateral, activity: a.activity, code: a.kind === 'ACT' ? a.name || a.id : a.id, notes: a.geometryNote ? [a.geometryNote] : [], units: [], remarks: a.remarks, source: a.source,
+    ring, bbox: bboxOf(ring),
+  };
+}
+
+/** All airspace shown on the map: TMAs/MTMAs, then CTRs and ATZs, then the ENR 5 areas. */
+export function airspaceInfos(tmas: RefAirspace[], ad: RefAdAirspace[] = [], areas: RefArea[] = []): AirspaceInfo[] {
   const out = tmas.filter((s) => s.polygon.length >= 3).map(fromTma);
   for (const z of ad) { const i = fromAd(z); if (i) out.push(i); }
+  for (const a of areas) { const i = fromArea(a); if (i) out.push(i); }
   return out;
 }
 
@@ -146,54 +174,9 @@ export function contains(a: AirspaceInfo, lon: number, lat: number): boolean {
   return lon >= w && lon <= e && lat >= s && lat <= n && pointInRing(lon, lat, a.ring);
 }
 
-const ORDER: Record<AirspaceType, number> = { ATZ: 0, CTR: 1, TMA: 2, MTMA: 3 };
+const ORDER: Record<AirspaceType, number> = { P: 0, R: 1, D: 2, ATZ: 3, CTR: 4, ACT: 5, MIL: 6, TMA: 7, MTMA: 8 };
 
-/** Airspaces containing a point, smallest first (ATZ, CTR, TMA, MTMA). */
+/** Airspaces containing a point: prohibited / restricted / danger areas first, then ATZ, CTR, other areas, TMA, MTMA. */
 export function airspacesAt(infos: AirspaceInfo[], lon: number, lat: number): AirspaceInfo[] {
   return infos.filter((a) => contains(a, lon, lat)).sort((x, y) => ORDER[x.type] - ORDER[y.type] || limitFt(x.upper).ft - limitFt(y.upper).ft);
-}
-
-export interface LegEntry {
-  /** Leg index in the route (0 = first leg). */
-  index: number;
-  from: string;
-  to: string;
-  altFt: number;
-  /**
-   * inside: the planned altitude is within the vertical limits; above / below: the leg crosses the
-   * lateral limits outside them; unknown: no altitude. AGL lower limits are compared as if the
-   * ground were at sea level (said so in the popover).
-   */
-  vertical: 'inside' | 'above' | 'below' | 'unknown';
-}
-
-/** Points along the leg (every ~0.5 NM, at least the ends and the middle). */
-function samples(a: LatLon, b: LatLon): LatLon[] {
-  const n = Math.max(2, Math.min(400, Math.ceil(distanceNm(a, b) / 0.5)));
-  const out: LatLon[] = [];
-  // linear in lat/lon is within metres of the great circle over a VFR leg
-  for (let i = 0; i <= n; i++) out.push({ lat: a.lat + ((b.lat - a.lat) * i) / n, lon: a.lon + ((b.lon - a.lon) * i) / n });
-  return out;
-}
-
-/** Legs of the route whose track crosses the airspace's lateral limits, with the vertical relation. */
-export function legsThrough(
-  a: AirspaceInfo,
-  legs: { from: LatLon & { name: string }; to: LatLon & { name: string } }[],
-  altsFt: number[],
-): LegEntry[] {
-  const lo = limitFt(a.lower).ft, hi = limitFt(a.upper).ft;
-  const out: LegEntry[] = [];
-  legs.forEach((l, i) => {
-    const m = midpoint(l.from, l.to);
-    const [w, s, e, n] = a.bbox;
-    const lw = Math.min(l.from.lon, l.to.lon, m.lon), le = Math.max(l.from.lon, l.to.lon, m.lon);
-    const ls = Math.min(l.from.lat, l.to.lat, m.lat), ln = Math.max(l.from.lat, l.to.lat, m.lat);
-    if (le < w || lw > e || ln < s || ls > n) return;
-    if (!samples(l.from, l.to).some((p) => pointInRing(p.lon, p.lat, a.ring))) return;
-    const alt = altsFt[i];
-    const vertical: LegEntry['vertical'] = !isFinite(alt) ? 'unknown' : alt > hi ? 'above' : alt < lo ? 'below' : 'inside';
-    out.push({ index: i, from: l.from.name, to: l.to.name, altFt: alt, vertical });
-  });
-  return out;
 }

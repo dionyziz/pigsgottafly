@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { client, startApi, type Client } from './helpers';
 import { blankAircraft } from '../../src/shared/templates';
 import type { Flight } from '../../src/shared/types';
+import { AREAS } from '../../src/data/ref';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let a: Client, b: Client;
@@ -197,6 +198,10 @@ describe('reference data', () => {
     expect(bundle.vfrPoints.length).toBeGreaterThan(400);
     expect(bundle.vfrRoutes.length).toBeGreaterThan(300);
     expect(bundle.fis.units.length).toBe(2);
+    // ENR 5 areas (migration 017), the same records as the client ships
+    expect(bundle.areas.length).toBe(AREAS.length);
+    const areas = (await a.call('GET', 'ref/areas')).body;
+    expect(areas.find((x: any) => x.id === 'LGP1')).toEqual(AREAS.find((x) => x.id === 'LGP1'));
     expect((await a.call('GET', 'ref/nope')).status).toBe(404);
   });
 });

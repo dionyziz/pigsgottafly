@@ -247,6 +247,42 @@ export interface RefAdAirspace {
   source: string;
 }
 
+/**
+ * A navigation-warning area from AIP ENR 5 (tools/parse_enr5.ts → tools/enr5_areas.json → build_ref.ts):
+ * prohibited, restricted and danger areas (ENR 5.1), military exercise and training areas (ENR 5.2),
+ * other activities (ENR 5.3; ENR 5.5 aerial sporting refers to ENR 5.3.1). At most one of circle /
+ * polygon; neither when the lateral limits cannot be drawn (see geometryNote).
+ */
+export interface RefArea {
+  /** Designator, e.g. 'LGP1', 'LGR20A', 'LGD45', 'LGTSA1'; ENR 5.3 areas get a slug of their name ('LACONIA-1'). */
+  id: string;
+  /**
+   * 'P' prohibited, 'R' restricted, 'D' danger (ENR 5.1); 'MIL' military exercise / training area or
+   * TSA/TRA (ENR 5.2); 'ACT' other activity (ENR 5.3: parachuting, aeroclub training, …).
+   */
+  kind: 'P' | 'R' | 'D' | 'MIL' | 'ACT';
+  /** Name as printed, e.g. 'ACROPOLIS', 'SALAMIS'; '' when the AIP prints none. */
+  name: string;
+  /** Parent designator of a sub-area (LGR20A → 'LGR20'), else omitted. */
+  group?: string;
+  /** Vertical limits as printed (whitespace normalised), e.g. 'GND', 'GND/MSL', '5000 FT ALT', 'FL 240', 'UNL'. */
+  lower: string;
+  upper: string;
+  /** Lateral limits as printed, one line (whitespace normalised). */
+  lateral: string;
+  circle?: { lat: number; lon: number; radiusNm: number };
+  /** Closed ring, [lat, lon] (arcs written out). */
+  polygon?: [number, number][];
+  /** Why the shape is approximate or missing (e.g. a border segment drawn as a straight line). */
+  geometryNote?: string;
+  /** Time of activity as printed, e.g. 'H24', 'SR-SS', 'Activated by NOTAM', 'MON 0400-1200 …'. */
+  activity: string;
+  /** Remarks as printed (restriction, nature of hazard, authority, …), lines joined with '\n'. */
+  remarks: string;
+  /** e.g. 'ENR 5.1', 'ENR 5.2', 'ENR 5.3'. */
+  source: string;
+}
+
 export interface RefFis {
   units: { callsign: string; freqs: string[]; side: string }[];
   /** Boundary between the two FIS sectors, [lat, lon]. */
@@ -311,4 +347,6 @@ export interface RefBundle {
   atcUnits: RefAtcUnit[];
   /** Aerodrome CTRs and ATZs (client map layer; not in the ref_* tables). */
   adAirspaces?: RefAdAirspace[];
+  /** ENR 5 areas (ref_areas, from migration 017). */
+  areas?: RefArea[];
 }

@@ -13,11 +13,11 @@ import {
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from '../labels';
 import {
   addDrawnPoint, drawIndex, insertPoint, isBareRoundTrip, isRoundTrip, mercatorMid, pruneOverrides, removeDrawnPoint, removePoint,
-  renamePoint, replacePoint, setAltitudeOverride,
+  movePoint, renamePoint, replacePoint, setAltitudeOverride,
 } from '../routeEdit';
 import { hazardsByLeg, mapHazards, type MapHazard } from '../hazardLayer';
 import { airspaceFeatures, circleRing, destination, fmtLimit, fmtRouteAltitude, midpointFeatures, runwayHeading, vfrRouteFeatures, zoneFeatures } from '../features';
-import { airspaceInfos, airspaceLabel, airspacesAt, fmtVertical, fmtVLimit, legsThrough, limitFt, pointInRing, shortClass } from '../airspace';
+import { airspaceInfos, airspaceLabel, airspacesAt, fmtVertical, fmtVLimit, fromArea, limitFt, pointInRing, shortClass } from '../airspace';
 
 // A flat test projection: 100 px per degree, y down.
 const project = (lon: number, lat: number) => ({ x: lon * 100, y: -lat * 100 });
@@ -225,6 +225,22 @@ describe('route edits', () => {
     expect(removePoint(r, 'b').map((p) => p.uid)).toEqual(['a', 'c']);
     expect(renamePoint(r, 'c', 'ZOFRI')[2].name).toBe('ZOFRI');
   });
+  it('a dragged point keeps its uid while it stays the same point, and becomes a new point when it snaps to another', () => {
+    const ad: RoutePoint = { uid: 'b', kind: 'aerodrome', refId: 'LGMG', name: 'LGMG', lat: 37.98, lon: 23.36 };
+    const rr = [r[0], ad, r[2]];
+    const fresh = () => 'n1';
+    // snapped onto a VFR point: it is that point now, with a new uid (new legs: their overrides go)
+    const v = movePoint(rr, 'b', { kind: 'vfr', refId: 'LGAV/PIKAD', name: 'PIKAD', lat: 1, lon: 2 }, fresh);
+    expect(v[1]).toEqual({ uid: 'n1', kind: 'vfr', refId: 'LGAV/PIKAD', name: 'PIKAD', lat: 1, lon: 2 });
+    const ov = { [legKey(rr[0], rr[1])]: { altFt: 3000 }, [legKey(rr[1], rr[2])]: { altFt: 4500 } };
+    expect(pruneOverrides(ov, v)).toEqual({});
+    // dropped back on the same aerodrome, or a custom point moved: same uid
+    expect(movePoint(rr, 'b', { ...ad }, fresh)[1].uid).toBe('b');
+    const c = movePoint(r, 'b', { kind: 'custom', refId: null, name: 'B', lat: 5, lon: 6 }, fresh);
+    expect(c[1]).toEqual({ uid: 'b', kind: 'custom', refId: null, name: 'B', lat: 5, lon: 6 });
+    // a known point dropped as a custom point is a new point too
+    expect(movePoint(rr, 'b', { kind: 'custom', refId: null, name: 'WP1', lat: 5, lon: 6 }, fresh)[1].uid).toBe('n1');
+  });
   it('prunes overrides of legs that no longer exist, keeps the object when nothing changes', () => {
     const ov = { [legKey(r[0], r[1])]: { altFt: 3000 }, [legKey(r[1], r[2])]: { altFt: 4500, tasKt: 90 } };
     expect(pruneOverrides(ov, r)).toBe(ov);
@@ -329,17 +345,14 @@ describe('airspace on the map', () => {
     expect(pointInRing(0.5, 0.5, sq)).toBe(true);
     expect(pointInRing(1.5, 0.5, sq)).toBe(false);
   });
-  it('route legs crossing a zone, with their altitude against its limits', () => {
-    const tatoi = infos.find((a) => a.id === 'LGTT-ATZ')!;
-    const P = (name: string, lat: number, lon: number) => ({ name, lat, lon });
-    const legs = [
-      { from: P('LGTT', 38.1086, 23.7833), to: P('OROPOS', 38.31, 23.77) }, // leaves the 6 NM ATZ
-      { from: P('OROPOS', 38.31, 23.77), to: P('ERETRIA', 38.4, 23.8) }, // outside
-      { from: P('A', 38.0, 23.6), to: P('B', 38.2, 23.95) }, // crosses it
-    ];
-    const r = legsThrough(tatoi, legs, [1500, 3500, 6000]);
-    expect(r.map((e) => [e.index, e.vertical])).toEqual([[0, 'inside'], [2, 'above']]);
-    expect(legsThrough(tatoi, legs, [NaN, NaN, NaN]).map((e) => e.vertical)).toEqual(['unknown', 'unknown']);
+  it('ENR 5 areas: circles and polygons with a short lateral description, the activity kept', () => {
+    const base = { kind: 'P' as const, name: 'ACROPOLIS', lower: 'GND', upper: '5000 FT ALT', lateral: 'A circle, 700 M radius centered on 375820N 0234333E.', activity: 'H24', remarks: 'Prohibited to all flights.', source: 'ENR 5.1' };
+    const p1 = fromArea({ ...base, id: 'LGP1', circle: { lat: 37.97222, lon: 23.72583, radiusNm: 700 / 1852 } })!;
+    expect([p1.type, p1.name, p1.lateral, p1.activity, p1.ring.length]).toEqual(['P', 'LGP1 ACROPOLIS', 'Circle, 0.38 NM radius', 'H24', 65]);
+    expect(airspacesAt([p1, ...infos], 23.72583, 37.97222)[0].id).toBe('LGP1');
+    const sq = fromArea({ ...base, id: 'LGR9', kind: 'R', polygon: [[37, 23], [37, 24], [38, 24], [37, 23]] })!;
+    expect(sq.lateral).toBe('Polygon, 3 points');
+    expect(fromArea({ ...base, id: 'X' })).toBeNull();
   });
 });
 

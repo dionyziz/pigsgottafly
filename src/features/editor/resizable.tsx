@@ -14,6 +14,9 @@ export interface ResizableOpts {
   max: number | (() => number);
   /** null = the panel's own CSS size until the pilot drags. */
   initial: number | null;
+  /** Released with the edge dragged below this size (px): onCollapse() instead of a new size. */
+  collapseBelow?: number;
+  onCollapse?(): void;
 }
 
 const read = (key: string): number | null => {
@@ -49,18 +52,43 @@ export function useResizable(o: ResizableOpts) {
     const handle = e.currentTarget;
     handle.setPointerCapture(e.pointerId);
     setDragging(true);
+    // a panel at its CSS size takes an explicit size first (one render), so its CSS limits stop applying
+    if (size == null) setSize(startSize);
+    // While dragging, the size goes straight to the element's style once per frame: no React render per
+    // pointer move (nothing in the panels re-renders, and the map resizes its canvas in the same frame,
+    // see RouteMap). The state and localStorage take the final size on release.
     let last = startSize;
+    let raw = startSize;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const t = panelRef.current;
+      if (t) t.style[o.axis === 'x' ? 'width' : 'height'] = `${last}px`;
+    };
     const move = (ev: PointerEvent) => {
       const d = ((o.axis === 'x' ? ev.clientX : ev.clientY) - start) * o.dir;
-      last = clamp(startSize + d);
-      setSize(last);
+      raw = startSize + d;
+      last = clamp(raw);
+      if (o.onCollapse && o.collapseBelow != null) panelRef.current?.classList.toggle('will-collapse', raw < o.collapseBelow);
+      if (!raf) raf = requestAnimationFrame(apply);
     };
     const up = () => {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', up);
       handle.removeEventListener('pointercancel', up);
+      if (raf) cancelAnimationFrame(raf);
+      panelRef.current?.classList.remove('will-collapse');
       setDragging(false);
-      write(o.key, last);
+      if (o.onCollapse && o.collapseBelow != null && raw < o.collapseBelow) {
+        // collapsed: the panel keeps the width it had for when it opens again
+        last = startSize;
+        apply();
+        commit(startSize);
+        o.onCollapse();
+        return;
+      }
+      apply();
+      commit(last);
     };
     handle.addEventListener('pointermove', move);
     handle.addEventListener('pointerup', up);

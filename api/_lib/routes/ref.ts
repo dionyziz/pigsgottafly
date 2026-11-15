@@ -18,6 +18,7 @@ const TABLES: Record<string, { table: string; order: string }> = {
   'vfr-points': { table: 'ref_waypoints', order: 'chart, name, id' },
   'vfr-routes': { table: 'ref_vfr_routes', order: 'id' },
   'atc-units': { table: 'ref_atc_units', order: 'id' },
+  areas: { table: 'ref_areas', order: 'id' },
 };
 
 async function docs(db: Queryable, kind: keyof typeof TABLES | string, airac: string) {
@@ -50,6 +51,7 @@ export const routes: Route[] = [
         vfrPoints: await docs(db, 'vfr-points', airac.id),
         vfrRoutes: await docs(db, 'vfr-routes', airac.id),
         atcUnits: await docs(db, 'atc-units', airac.id),
+        areas: await docs(db, 'areas', airac.id),
       };
     },
   },

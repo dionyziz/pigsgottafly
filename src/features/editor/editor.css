@@ -35,3 +35,18 @@
 .ns { position: relative; }
 .ns.sized { max-height: none; }
 @media (max-width: 900px) { .resize-handle { display: none; } }
+
+/* The flight panel's edge: its resize handle and the collapse / expand tab (EditorPage ResizablePanel). */
+.editor-panel[hidden] { display: none; }
+.editor-panel.will-collapse { opacity: 0.45; transition: opacity .12s; }
+.editor-edge { flex: none; position: relative; width: 0; z-index: 6; }
+.editor-edge .resize-handle.x { position: absolute; top: 0; bottom: 0; left: -3px; margin: 0; }
+.editor-collapse {
+  position: absolute; top: 50%; left: 0; transform: translateY(-50%); z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 44px; min-height: 0; padding: 0;
+  border: 1px solid var(--line); border-left: 0; border-radius: 0 6px 6px 0; background: var(--surface); color: var(--ink-2);
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.08); cursor: pointer;
+}
+.editor-collapse:hover { background: var(--hover); color: var(--ink); }
+.editor-collapse:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 760px) { .editor-edge { display: none; } .editor-panel[hidden] { display: block; } }

@@ -1,13 +1,16 @@
-// Airspace hover tooltip and click popover on the route map (PLAN-v3 "Airspace on the map"):
-// name, class and vertical limits on hover; on click the lateral definition, controlling unit with
-// call sign and frequencies, AIP source, and the legs of the route that enter it at their altitude.
+// Airspace hover tooltip and click popover on the route map (PLAN-v3 "Airspace on the map"): what the
+// airspace or area is, independent of the route: name, class and vertical limits on hover; on click its
+// type, limits, lateral limits in short, activity, units and frequencies, remarks and the AIP section
+// (a link to the AIP PDF).
 import { XIcon } from '../../../app/XIcon';
+import { AipLink } from '../../../app/AipLink';
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
-import type { LegGeometry } from '../../../calc';
-import { fmtAltitude } from './labels';
-import { fmtVertical, legsThrough, shortClass, type AirspaceInfo, type LegEntry } from './airspace';
+import { fmtVertical, isArea, shortClass, type AirspaceInfo } from './airspace';
 
-const TYPE_LABEL: Record<AirspaceInfo['type'], string> = { TMA: 'TMA', MTMA: 'Military TMA', CTR: 'Control zone', ATZ: 'Aerodrome traffic zone' };
+const TYPE_LABEL: Record<AirspaceInfo['type'], string> = {
+  TMA: 'TMA', MTMA: 'Military TMA', CTR: 'Control zone', ATZ: 'Aerodrome traffic zone',
+  P: 'Prohibited area', R: 'Restricted area', D: 'Danger area', MIL: 'Military exercise / training area', ACT: 'Local flying area',
+};
 
 function title(a: AirspaceInfo): string {
   return a.sector ? `${a.name} · ${a.sector}` : a.name;
@@ -34,13 +37,11 @@ interface PopProps {
   x: number;
   y: number;
   items: AirspaceInfo[];
-  legs: LegGeometry[];
-  altitudes: Record<string, { altFt: number }>;
   airac: string;
   onClose(): void;
 }
 
-export function AirspacePopover({ x, y, items, legs, altitudes, airac, onClose }: PopProps) {
+export function AirspacePopover({ x, y, items, airac, onClose }: PopProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x + 12, top: y + 12 });
   const [open, setOpen] = useState(items[0]?.id ?? '');
@@ -54,66 +55,50 @@ export function AirspacePopover({ x, y, items, legs, altitudes, airac, onClose }
     if (top + h > H - 8) top = Math.max(8, H - 8 - h);
     setPos({ left, top });
   }, [x, y, open]);
-  const alts = legs.map((l) => altitudes[l.key]?.altFt ?? NaN);
   return (
     <div ref={ref} className="pgf-air-pop" style={pos} role="dialog" aria-label="Airspace" data-testid="airspace-pop" onMouseDown={(e) => e.stopPropagation()}>
       <button type="button" className="pgf-air-x" onClick={onClose} aria-label="Close"><XIcon /></button>
       {items.map((a) => {
         const isOpen = open === a.id;
-        const entries = isOpen ? legsThrough(a, legs, alts) : [];
+        const area = isArea(a.type);
         return (
           <section key={a.id} className={'pgf-air-sec' + (isOpen ? ' is-open' : '')} data-testid="airspace-item" data-id={a.id}>
             <button type="button" className="pgf-air-h" onClick={() => setOpen(isOpen ? '' : a.id)} aria-expanded={isOpen}>
               <b className={'pgf-air-type t-' + a.type.toLowerCase()}>{a.type}</b>
               <span className="pgf-air-name">{title(a)}</span>
-              <span className="pgf-air-lim">{shortClass(a.cls) && <i>{shortClass(a.cls)}</i>}{fmtVertical(a.lower, a.upper)}</span>
+              {/* the summary of a closed item (an open one lists class and limits below) */}
+              {!isOpen && <span className="pgf-air-lim">{shortClass(a.cls) && <i>{shortClass(a.cls)}</i>}{fmtVertical(a.lower, a.upper)}</span>}
             </button>
             {isOpen && (
               <dl className="pgf-air-body">
                 <dt>Type</dt><dd>{TYPE_LABEL[a.type]}{a.cls ? ` · class ${a.cls}` : ''}</dd>
-                <dt>Vertical</dt><dd>{fmtVertical(a.lower, a.upper)} <span className="muted">({a.lower} to {a.upper})</span></dd>
+                <dt>Vertical</dt><dd data-testid="airspace-vertical">{fmtVertical(a.lower, a.upper)}</dd>
                 <dt>Lateral</dt><dd className="pgf-air-text">{a.lateral}</dd>
+                {a.activity && <><dt>Active</dt><dd className="pgf-air-pre">{a.activity}</dd></>}
                 {a.notes.map((n, i) => <Fragment key={i}><dt>{i === 0 ? 'Notes' : ''}</dt><dd>{n}</dd></Fragment>)}
-                <dt>Units</dt>
-                <dd>
-                  {a.units.length === 0 ? <span className="muted">None published</span> : (
-                    <ul className="pgf-air-units">
-                      {a.units.map((u) => (
-                        <li key={u.callsign}>
-                          <span className="pgf-air-cs">{u.callsign}</span>
-                          {u.freqs.length > 0 && <span className="pgf-air-fq">{u.freqs.join(' · ')}</span>}
-                          {u.hours && <span className="muted"> · {u.hours}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </dd>
-                {a.remarks && <><dt>Remarks</dt><dd className="pgf-air-text">{a.remarks}</dd></>}
-                {entries.length > 0 && <>
-                  <dt>Route</dt>
-                  <dd data-testid="airspace-legs">
-                    <ul className="pgf-air-legs">{entries.map((e) => <LegRow key={e.index} e={e} a={a} />)}</ul>
+                {(a.units.length > 0 || !area) && <>
+                  <dt>Units</dt>
+                  <dd>
+                    {a.units.length === 0 ? <span className="muted">None published</span> : (
+                      <ul className="pgf-air-units">
+                        {a.units.map((u) => (
+                          <li key={u.callsign}>
+                            <span className="pgf-air-cs">{u.callsign}</span>
+                            {u.freqs.length > 0 && <span className="pgf-air-fq">{u.freqs.join(' · ')}</span>}
+                            {u.hours && <span className="muted"> · {u.hours}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </dd>
                 </>}
-                <dt>Source</dt><dd>AIP Greece {a.source} · AIRAC {airac}</dd>
+                {a.remarks && <><dt>Remarks</dt><dd className="pgf-air-text pgf-air-pre">{a.remarks}</dd></>}
+                <dt>Source</dt><dd><AipLink refText={a.source} /> <span className="muted">· AIRAC {airac}</span></dd>
               </dl>
             )}
           </section>
         );
       })}
     </div>
-  );
-}
-
-function LegRow({ e, a }: { e: LegEntry; a: AirspaceInfo }) {
-  const what = e.vertical === 'inside' ? 'enters' : e.vertical === 'above' ? 'passes above' : e.vertical === 'below' ? 'passes below' : 'crosses (no altitude)';
-  const agl = /AGL/i.test(a.lower) && e.vertical !== 'unknown' ? ' (lower limit is above ground; compared with altitude)' : '';
-  return (
-    <li className={'v-' + e.vertical}>
-      <span className="pgf-air-leg">Leg {e.index + 1} {e.from} → {e.to}</span>{' '}
-      <span className="pgf-air-alt">{fmtAltitude(e.altFt)}</span>{' '}
-      <span className="pgf-air-what">{what}</span>
-      {agl && <span className="muted">{agl}</span>}
-    </li>
   );
 }

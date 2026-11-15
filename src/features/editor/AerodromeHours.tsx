@@ -1,11 +1,11 @@
 // An aerodrome's hours on the flight's date (AIP AD 2.3 / AD 1.6 overlaid with the flight's NOTAMs,
 // src/calc/aerodromeStatus.ts): operating hours, ATS, handling and customs, the NOTAMs that change them
-// (by NOTAM id), and the AIP text as printed. Shared by the editor's "Aerodrome hours" section and the
+// (by NOTAM id), the AIP section (a link to its PDF) and the text the parser could not represent. Shared by the editor's "Aerodrome hours" section and the
 // map's aerodrome tooltip / details.
-import { useState } from 'react';
 import { aerodromeDay, type AdDay, type AdNotamEffect } from '../../calc';
 import type { RefAerodrome } from '../../shared/ref';
 import { SUN_TABLES } from '../../data/ref';
+import { AipLink } from '../../app/AipLink';
 
 export interface AdDayInfo {
   day: string;
@@ -57,7 +57,6 @@ function DayText({ d, testId }: { d: AdDay; testId?: string }) {
 
 /** Definition list of the hours (used inside the map popover and the panel section). */
 export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdDayInfo; compact?: boolean }) {
-  const [aip, setAip] = useState(false);
   const h = a.hours;
   if (!h || !info.ad) return <p className="muted">No operational hours published for this aerodrome.</p>;
   const partial = [h.ad, h.ats, h.handling].some((f) => f?.parsed.partial);
@@ -72,11 +71,9 @@ export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdD
       ))}
       <dt>AIP</dt>
       <dd>
-        <button type="button" className="linkish" onClick={() => setAip((v) => !v)} aria-expanded={aip || partial} data-testid="ad-hours-aip">
-          {aip || partial ? 'AIP text' : 'Show the AIP text'}
-        </button>{' '}
-        <span className="muted">{h.source}</span>
-        {(aip || partial) && (
+        <AipLink refText={h.source}>{h.source}</AipLink>
+        {partial && (
+          // text the parser could not represent exactly: shown as printed
           <div className="pgf-ad-aip" data-testid="ad-hours-aip-text">
             <div><b>AD</b> {h.ad.text}</div>
             {h.ats && <div><b>ATS</b> {h.ats.text}</div>}

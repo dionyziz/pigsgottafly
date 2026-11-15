@@ -8,6 +8,7 @@
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiRequestError } from '../../../data/api';
+import { AipLink } from '../../../app/AipLink';
 import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import type { Flight } from '../../../shared';
 
@@ -130,7 +131,7 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
       )}
 
       <div className="fpl-addressees" data-testid="fpl-addressees">
-        <div className="fpl-filing-sub">AFTN addressees <span className="muted">(AIP Greece ENR 1.11 · {addresses.length} selected)</span></div>
+        <div className="fpl-filing-sub">AFTN addressees <span className="muted">(<AipLink refText="ENR 1.11">AIP Greece ENR 1.11</AipLink> · {addresses.length} selected)</span></div>
         {!st && !loadErr && <div className="muted">Loading…</div>}
         <ul>
           {(st?.addressees ?? []).map((a) => (

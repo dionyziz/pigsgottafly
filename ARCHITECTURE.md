@@ -63,10 +63,13 @@ src/
                            one): fetchHazardWeather, computeRouteHazards (editor strip + map)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
     useAsync.ts            small loading hook
+    aipLinks.ts            links to the official AIP Greece PDFs (HASP eAIP): AIP_EAIP_BASE (the AIRAC's online eAIP,
+                           set by tools/update_aip.sh), aipSection/aipUrl ('LGAV AD 2.3' → AD 2 LGAV PDF; the
+                           eAIP start page when a section has no PDF), from ref/aip-files.json
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
-                           AIRAC, AERODROMES, RUNWAYS, AIRSPACES, FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
+                           AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
                            REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a)
-  app/                     App (router), AuthGate + SignIn (Google Identity Services), session context
+  app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context
                            (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (tokens)
   features/
     lobby/                 LobbyPage, NewFlightPage
@@ -74,9 +77,12 @@ src/
     hangar/                HangarPage, AircraftPage
     passengers/            PassengersPage
     waypoints/             WaypointsPage
-    editor/                EditorPage (layout), state.tsx (EditorProvider/useEditor: SHARED EDITOR CONTRACT),
+    editor/                EditorPage (layout: collapsible flight panel; resizable.tsx sizes panels by style during a
+                           drag, RouteMap resizes the canvas in the same frame), state.tsx (EditorProvider/useEditor: SHARED EDITOR CONTRACT),
                            map/ (MapView → RouteMap: VFR-chart layers, drawing, snapping, leg labels; airspace.ts +
-                           AirspacePopover: TMA/CTR/ATZ shapes, hover tooltip, click details with the legs entering;
+                           AirspacePopover: TMA/CTR/ATZ and ENR 5 area (P/R/D/MIL/local flying) shapes and layer toggles, hover
+                           tooltip, click details (identity only: type, limits, lateral, activity, units, remarks, AIP link);
+                           dragging a route point snaps it and it becomes the point dropped on (routeEdit.movePoint);
                            notamLayer.ts + NotamPopover: NOTAM areas, hover tooltip, click details),
                            AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date),
                            notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
@@ -102,14 +108,18 @@ api/
                            006_briefing_filing.ts, 007_aircraft_attachments.ts (compass swing report files),
                            008–010 forms (signatures, links, send claims), 011_fleet_fpl_equipment.ts,
                            012_ref_ad_hours_2609.ts (generated: aerodrome operational hours and handling),
-                           013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id))
+                           013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id)),
+                           017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            attachments.ts, shares.ts, notams.ts, filing.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
-tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json, tools/ad_hours.json → src/data/ref/*.json
-                           + migrations 002, 005, 012
+tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json, tools/ad_hours.json, tools/enr5_areas.json
+                           → src/data/ref/*.json + migrations 002, 005, 012, 017
+tools/parse_enr5.ts        eAIP ENR 5.1 (P/R/D, LGC101), 5.2 (TSAs), 5.3.1 (local flying areas; ENR 5.5 refers to it) text
+                           → tools/enr5_areas.json (RefArea: limits, circle/polygon, activity, remarks)
+tools/aip_files.ts         the eAIP's side.htm (table of contents) → src/data/ref/aip-files.json (section → PDF path)
 tools/extract_ad_hours.ts  eAIP AD 2.3, AD 1.6.N.3/4 text → tools/ad_hours.json (operational hours, ATS, handling,
                            customs, remarks, verbatim; parsed by src/calc/adHours.ts in build_ref)
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
@@ -173,7 +183,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /flights/:id/restore, /copy, /opened | |
 | GET | /flights/:id/forms | Form 731 and GenDec state; `gendec.handling`: handling at each end at the flight's time (AIP + the flight's last NOTAM briefing) and who sends the GenDec. |
 | POST | /flights/:id/forms/gendec/handled | `{handled: true \| false \| null}`: the flight's override (`options.genDecHandled`; a PUT of the flight never changes it). |
-| GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units} | Current AIRAC, read-only. |
+| GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units,areas} | Current AIRAC, read-only. |
 | GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 20 ICAO ids), cached per station; stale reports up to 3 h when upstream fails. |
 
 Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flight_crew → passengers), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
@@ -184,7 +194,7 @@ Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/a
 
 ## Database, migrations and seeds
 
-- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64), `aircraft_shares` (aircraft, pilot, role view|edit); shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`; `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
+- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64), `aircraft_shares` (aircraft, pilot, role view|edit); shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`, `ref_areas` (ENR 5, migration 017); `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
 - Migrations are TS modules (SQL as a default-exported string, or a `run(q)` function) listed in `api/_lib/migrate.ts`, so the Vercel bundle contains them. The runner records each one in `schema_migrations`, applies each in its own transaction, and serialises runners with a session advisory lock (plus an in-process queue for PGlite). It runs from `openDb()`: on server start, in tests, and on the Vercel cold start before serving.
   - `001_schema` converts the v2 production schema in place: `users` → `pilots` (same ids), `sessions.user_id` → `pilot_id` (sessions survive), `flights` → `legacy_flights` (kept as a backup). It then creates the new tables.
   - `002_ref_2609` (generated by `tools/build_ref.ts`) loads the reference data for AIRAC 09/26.
