@@ -1,12 +1,10 @@
-// Who may e-mail forms to HCAA through the deployment's account (FORMS_PILOTS, default
-// ALLOWED_EMAILS, empty = nobody in Google mode), and the once-per-version rule: a version already
+// Who may e-mail forms to HCAA (any signed-in pilot, always cc'd), and the once-per-version rule: a version already
 // sent goes out again only with {resend: true}, and concurrent sends of one form send one message.
 // The mail transport is MOCKED: nothing is sent for real.
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, test } from 'vitest';
 import { createServer } from '../../server/server';
-import { configFromEnv } from '../../api/_lib/app';
-import { setMailTransport, type Mail } from '../../api/_lib/mail';
+import { setMailTransport, type SentMail } from '../../api/_lib/mail';
 import { client, JWK, CID, type Client } from './helpers';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import type { RefAerodrome } from '../../src/shared/ref';
@@ -17,7 +15,7 @@ const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const pt = (icao: string, uid: string): RoutePoint => { const a = ADS.find((x) => x.icao === icao)!; return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
 const tomorrow = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 10);
 
-const sent: (Mail & { from: string })[] = [];
+const sent: SentMail[] = [];
 afterEach(() => setMailTransport(null));
 const mockMail = (delayMs = 0) => setMailTransport(async (m) => {
   if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
@@ -25,10 +23,10 @@ const mockMail = (delayMs = 0) => setMailTransport(async (m) => {
   return { id: `m-${sent.length}` };
 });
 
-async function start(opts: { allowedEmails?: string[]; formsPilots?: string[]; google?: boolean }) {
+async function start(opts: { allowedEmails?: string[]; google?: boolean }) {
   const s = createServer({
     db: 'memory://', googleClientId: opts.google === false ? '' : CID, googleKeys: async () => [JWK],
-    allowedEmails: opts.allowedEmails, formsPilots: opts.formsPilots, client: (_q, r) => { r.writeHead(404); r.end(); },
+    allowedEmails: opts.allowedEmails, client: (_q, r) => { r.writeHead(404); r.end(); },
   });
   await s.ready;
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
@@ -55,43 +53,39 @@ async function attempt(o: Parameters<typeof start>[0], email: string) {
   } finally { await api.close(); }
 }
 
-describe('FORMS_PILOTS: who may e-mail forms to HCAA', () => {
-  test('no ALLOWED_EMAILS and no FORMS_PILOTS: nobody in Google mode (any Google account can sign in, none can send)', async () => {
+describe('who may e-mail forms to HCAA, and the cc', () => {
+  test('any signed-in pilot may send, from noreply@, cc and reply-to the pilot', async () => {
     mockMail();
-    const { st, r, mailed } = await attempt({}, 'stranger@evil.example');
-    expect(st.emailEnabled).toBe(false);
-    expect(st.emailReason).toMatch(/not available for this account/);
-    expect(r.status).toBe(403);
-    expect(mailed).toBe(0);
-  });
-  test('a pilot allowed to sign in but not on FORMS_PILOTS cannot send', async () => {
-    mockMail();
-    const { r, mailed } = await attempt({ allowedEmails: ['owner@example.com', 'friend@example.com'], formsPilots: ['owner@example.com'] }, 'friend@example.com');
-    expect(r.status).toBe(403);
-    expect(mailed).toBe(0);
-  });
-  test('FORMS_PILOTS defaults to ALLOWED_EMAILS (case-insensitive)', async () => {
-    mockMail();
-    const { st, r, mailed } = await attempt({ allowedEmails: ['Owner@Example.com'] }, 'owner@example.com');
+    const n0 = sent.length;
+    const { st, r, mailed } = await attempt({ allowedEmails: ['owner@example.com', 'friend@example.com'] }, 'friend@example.com');
     expect(st.emailEnabled).toBe(true);
     expect(r.status).toBe(200);
     expect(mailed).toBe(1);
+    const m = sent[n0];
+    expect(m.from).toMatch(/<noreply@pigsgottafly\.com>$/);
+    expect(m.to).toEqual(['gendec@hcaa.gov.gr']);
+    expect(m.cc).toEqual(['friend@example.com']);
+    expect(m.replyTo).toBe('friend@example.com');
   });
-  test('local mode: the local pilot may send', async () => {
+  test('without ALLOWED_EMAILS any Google pilot may send', async () => {
+    mockMail();
+    const { r, mailed } = await attempt({}, 'someone@example.org');
+    expect(r.status).toBe(200);
+    expect(mailed).toBe(1);
+  });
+  test('local mode: the local pilot has no e-mail to cc, so nothing is sent', async () => {
     mockMail();
     const api = await start({ google: false });
     try {
       const c = client(api.base);
       const id = await gendecFlight(c);
       const n = sent.length;
-      expect((await c.call('POST', `flights/${id}/forms/gendec/send`)).status).toBe(200);
-      expect(sent.length - n).toBe(1);
+      const st = (await c.call<FormsState>('GET', `flights/${id}/forms`)).body;
+      expect(st.emailEnabled).toBe(false);
+      expect(st.emailReason).toMatch(/no e-mail address/);
+      expect((await c.call('POST', `flights/${id}/forms/gendec/send`)).status).toBe(403);
+      expect(sent.length - n).toBe(0);
     } finally { await api.close(); }
-  });
-  test('configFromEnv: FORMS_PILOTS parsed and lower-cased; unset falls back to ALLOWED_EMAILS in createApi', () => {
-    expect(configFromEnv({ FORMS_PILOTS: ' Pilot@Example.com , b@y.gr,', ALLOWED_EMAILS: 'x@y.z' }).formsPilots).toEqual(['pilot@example.com', 'b@y.gr']);
-    expect(configFromEnv({ FORMS_PILOTS: '' }).formsPilots).toEqual([]);
-    expect('formsPilots' in configFromEnv({ ALLOWED_EMAILS: 'x@y.z' })).toBe(false);
   });
 });
 

@@ -6,9 +6,8 @@
 //   POST /flights/:id/forms/731/links/:key/revoke  that person's link stops working
 //   POST /flights/:id/forms/731/send               PDF to 731@hcaa.gov.gr, cc/reply-to the pilot (409 until all signed)
 //   POST /flights/:id/forms/gendec/send            PDF to gendec@hcaa.gov.gr, cc/reply-to the pilot
-// Sending uses the deployment's e-mail account, so only the pilots on FORMS_PILOTS (default
-// ALLOWED_EMAILS; empty = nobody in Google mode) may send (403 otherwise). A version already sent is
-// refused (409) unless the body is {"resend": true}; concurrent sends of one form are refused (409).
+// Any signed-in pilot may send; the pilot is always cc'd. A version already sent is refused (409)
+// unless the body is {"resend": true}; concurrent sends of one form are refused (409).
 //   GET  /sign/:token                              the signing page's view (no sign-in): own row in full, others masked
 //   POST /sign/:token                              signs the current version of the form
 // A signature is for one version of the form (SHA-256 of every field, form731SigningText): when
@@ -50,7 +49,7 @@ const holderOf = (L: Loaded, l: Record<string, any>) =>
 
 interface Loaded {
   flight: Flight; aircraft: Aircraft | null; pilot: Pilot; c731: Form731Content; gendec: GenDecContent; hash731: string; hashGendec: string;
-  /** This pilot may not send forms through the deployment's e-mail account (ApiConfig.formsPilots). */
+  /** This pilot may not send forms by e-mail (no e-mail address to cc). */
   mailDenied: boolean;
 }
 
@@ -163,12 +162,12 @@ const fmtDay = (date: string) => {
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '';
 };
 
-const MAIL_DENIED = 'Sending forms to HCAA by e-mail is not available for this account.';
-/** Whether this pilot can send forms by e-mail: configured on the server, and the pilot on FORMS_PILOTS. */
+const MAIL_DENIED = 'Your account has no e-mail address to copy the forms to.';
+/** Whether this pilot can send forms by e-mail: configured on the server, and the pilot has an e-mail to cc. */
 function mailFor(L: Loaded): { enabled: boolean; reason: string | null } {
   return L.mailDenied ? { enabled: false, reason: MAIL_DENIED } : mailAvailability();
 }
-/** 403 for a pilot not on FORMS_PILOTS, 503 when e-mail is not configured. */
+/** 403 for a pilot without an e-mail address, 503 when e-mail is not configured. */
 function requireMail(L: Loaded): void {
   const mail = mailFor(L);
   if (!mail.enabled) throw new HttpError(L.mailDenied ? 403 : 503, mail.reason!, { error: mail.reason, emailEnabled: false });
@@ -209,7 +208,6 @@ async function mailForm(L: Loaded, form: '731' | 'gendec', pdf: Buffer): Promise
   const route = L.c731.route.split(' – ').join(' → ');
   const what = form === '731' ? 'Form 731' : 'General Declaration';
   const subject = [what, L.c731.registration, route, fmtDay(L.flight.date)].filter(Boolean).join(' · ');
-  const cc = L.pilot.email ? [L.pilot.email] : [];
   const pic = L.c731.people.find((p) => p.role === 'PIC');
   const text = [
     `${what} for the flight of ${L.c731.registration || 'the aircraft'} on ${L.c731.date || 'the date shown'}, route ${L.c731.route || '–'}, attached as PDF.`,
@@ -219,7 +217,7 @@ async function mailForm(L: Loaded, form: '731' | 'gendec', pdf: Buffer): Promise
   ].join('\n');
   const filename = `${form === '731' ? 'Form731' : 'GenDec'}_${(L.c731.registration || 'aircraft').replace(/[^A-Za-z0-9]/g, '')}_${L.flight.date || 'undated'}.pdf`;
   try {
-    const r = await sendMail({ to: [to], cc, replyTo: L.pilot.email || undefined, subject, text, attachments: [{ filename, content: pdf, contentType: 'application/pdf' }] });
+    const r = await sendMail({ to: [to], pilotEmail: L.pilot.email || '', subject, text, attachments: [{ filename, content: pdf, contentType: 'application/pdf' }] });
     return { id: r.id, to };
   } catch (e) {
     const msg = e instanceof MailError ? e.message : 'the e-mail could not be sent';

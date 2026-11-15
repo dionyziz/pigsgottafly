@@ -313,7 +313,7 @@ export function genDecText(c: GenDecContent): string {
 //   POST /flights/:id/forms/731/send                → FormsState (e-mail to HCAA; 409 until everyone has signed)
 //   POST /flights/:id/forms/gendec/send             → FormsState
 //   Both sends: body {} or {resend: true}. 409 when this version was already sent (unless resend) or a send
-//   of the same form is in progress; 403 for a pilot not on FORMS_PILOTS (emailEnabled false, emailReason says so).
+//   of the same form is in progress; 403 for a pilot without an e-mail address (emailEnabled false, emailReason says so).
 //   GET  /sign/:token                               → SigningView (no sign-in)
 //   POST /sign/:token                               → SigningView (signs)
 

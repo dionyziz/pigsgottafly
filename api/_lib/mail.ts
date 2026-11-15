@@ -1,24 +1,28 @@
 // Transactional e-mail for the forms sent to HCAA, through Resend's HTTP API (no SDK):
 //   RESEND_API_KEY   enables sending (unset: "e-mail not configured" and the send buttons say so)
-//   FORMS_FROM       sender, default "Pig's Gotta Fly <forms@pigsgottafly.com>" (the domain needs
+//   FORMS_FROM       sender, default "Pig's Gotta Fly <noreply@pigsgottafly.com>" (the domain needs
 //                    SPF/DKIM set up at Resend)
+// Every message is sent on behalf of a pilot, who is always cc'd and is the reply-to address.
 // Tests replace the transport with setMailTransport(); nothing is sent for real in tests.
 export interface MailAttachment { filename: string; content: Buffer; contentType: string }
 export interface Mail {
   to: string[];
+  /** The pilot the message is sent for: always cc'd, and the reply-to address. */
+  pilotEmail: string;
   cc?: string[];
-  replyTo?: string;
   subject: string;
   text: string;
   attachments?: MailAttachment[];
 }
-export type MailTransport = (m: Mail & { from: string }) => Promise<{ id: string }>;
+/** What the transport receives: the pilot is already in cc and is the reply-to. */
+export type SentMail = Omit<Mail, 'pilotEmail'> & { from: string; replyTo: string };
+export type MailTransport = (m: SentMail) => Promise<{ id: string }>;
 
 let override: MailTransport | null = null;
 /** Tests: route every message to fn (null restores the environment's transport). */
 export function setMailTransport(fn: MailTransport | null): void { override = fn; }
 
-export const DEFAULT_FROM = "Pig's Gotta Fly <forms@pigsgottafly.com>";
+export const DEFAULT_FROM = "Pig's Gotta Fly <noreply@pigsgottafly.com>";
 
 export function mailAvailability(env: NodeJS.ProcessEnv = process.env): { enabled: boolean; reason: string | null } {
   if (override || env.RESEND_API_KEY) return { enabled: true, reason: null };
@@ -46,5 +50,10 @@ const resend: MailTransport = async (m) => {
 
 export async function sendMail(m: Mail): Promise<{ id: string }> {
   const from = process.env.FORMS_FROM || DEFAULT_FROM;
-  return (override ?? resend)({ ...m, from });
+  const { pilotEmail, ...rest } = m;
+  const pilot = String(pilotEmail || '').trim();
+  if (!pilot) throw new MailError('no pilot e-mail to cc');
+  const lower = (x: string) => x.trim().toLowerCase();
+  const cc = [...(rest.cc ?? []).filter((x) => lower(x) !== lower(pilot)), pilot];
+  return (override ?? resend)({ ...rest, cc, replyTo: pilot, from });
 }

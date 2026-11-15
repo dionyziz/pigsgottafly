@@ -5,7 +5,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import zlib from 'node:zlib';
 import { startApi, client, type Client } from './helpers';
-import { setMailTransport, type Mail } from '../../api/_lib/mail';
+import { setMailTransport, type SentMail } from '../../api/_lib/mail';
 import { parseTtf, PdfDoc, winAnsi } from '../../api/_lib/pdf';
 import handTtf from '../../api/_lib/fonts/homemadeApple';
 import aerodromes from '../../src/data/ref/aerodromes.json';
@@ -20,10 +20,10 @@ const tomorrow = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 10);
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let A: Client, B: Client, anon: Client;
-const sent: (Mail & { from: string })[] = [];
+const sent: SentMail[] = [];
 
 beforeAll(async () => {
-  // sending forms by e-mail is for the listed pilots only (FORMS_PILOTS, default ALLOWED_EMAILS): see formsMail.test.ts
+  // who may send forms by e-mail: see formsMail.test.ts
   api = await startApi({ allowedEmails: ['pilot.a@example.com', 'pilot.b@example.com'] });
   A = client(api.base); B = client(api.base); anon = client(api.base);
   expect((await A.login('sa', 'pilot.a@example.com')).status).toBe(200);

@@ -76,8 +76,8 @@ vercel deploy --prod
   - `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD`: optional, for the NOTAM briefing. Add `AUTOROUTER_FILING=1` for flight-plan filing.
     - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it. With both lists empty, nobody can.
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
-  - `RESEND_API_KEY`: optional. E-mails Form 731 and the GenDec to HCAA, with `FORMS_FROM` as the sender (default `Pig's Gotta Fly <forms@pigsgottafly.com>`).
-    - Only the pilots on `FORMS_PILOTS` (default `ALLOWED_EMAILS`) may send. With both lists empty, nobody can.
+  - `RESEND_API_KEY`: optional. E-mails Form 731 and the GenDec to HCAA, with `FORMS_FROM` as the sender (default `Pig's Gotta Fly <noreply@pigsgottafly.com>`).
+    - Any signed-in pilot may send. The pilot is cc'd on every e-mail and is its reply-to address.
     - A form version that was already sent goes again only on an explicit re-send.
     - SPF/DKIM must be set up for the sender domain.
 

@@ -1,27 +1,31 @@
-// Passengers: the pilot's list of people who may fly with him (search, add, edit, delete). These are
+// Passengers: the pilot's list of people who may fly with them (search, add, edit, delete). These are
 // added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
+// The pilot is listed first (PIC) and edited with the same form, saved to the profile.
 import { useMemo, useState } from 'react';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
-import type { Passenger } from '../../shared';
+import type { Passenger, PersonDetails } from '../../shared';
+import { usePilot } from '../../app/session';
 import { ageOn, fmtDate, localToday, matchesQuery } from '../lobby/format';
 import { ConfirmDialog, EmptyState, KebabMenu } from '../lobby/ui';
-import { PassengerDialog } from './PassengerDialog';
+import { PassengerDialog, PilotDetailsDialog } from './PassengerDialog';
 
-const searchText = (p: Passenger) => [p.fullName, p.phone, p.idNumber, p.nationality, p.relation, p.notes, p.dateOfBirth ?? ''].join(' ').toLowerCase();
+const searchText = (p: PersonDetails & { notes?: string }) => [p.fullName, p.phone, p.idNumber, p.nationality, p.relation, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
 
 export function PassengersPage() {
   const { data, error, loading, reload } = useAsync(() => api.passengers.list(), []);
   const [q, setQ] = useState('');
-  const [editing, setEditing] = useState<Passenger | 'new' | null>(null);
+  const [editing, setEditing] = useState<Passenger | 'new' | 'me' | null>(null);
+  const pilot = usePilot();
   const [deleting, setDeleting] = useState<Passenger | null>(null);
   const toast = useToast();
   const today = localToday();
   const rows = useMemo(() => (data || []).filter((p) => matchesQuery(searchText(p), q)), [data, q]);
+  const showMe = matchesQuery(searchText(pilot), q);
 
-  const missing = (p: Passenger) => [p.weightKg == null && 'weight', !p.idNumber && 'ID', !p.dateOfBirth && 'date of birth', !p.phone && 'phone'].filter(Boolean) as string[];
+  const missing = (p: PersonDetails) => [p.weightKg == null && 'weight', !p.idNumber && 'ID', !p.dateOfBirth && 'date of birth', !p.phone && 'phone'].filter(Boolean) as string[];
 
   return (
     <Shell>
@@ -40,11 +44,7 @@ export function PassengersPage() {
         <EmptyState title="Could not load your passengers" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
       ) : loading && !data ? (
         <p className="muted">Loading…</p>
-      ) : !data || data.length === 0 ? (
-        <EmptyState title="No passengers yet" action={<button className="primary" onClick={() => setEditing('new')}>Add passenger</button>}>
-          People you fly with. Add them once, then put them on any flight’s manifest; their details fill in Form 731, the General Declaration and the weight and balance.
-        </EmptyState>
-      ) : rows.length === 0 ? (
+      ) : rows.length === 0 && !(data && data.length === 0) && !showMe ? (
         <EmptyState title="No matching passengers">Nothing matches “{q}”.</EmptyState>
       ) : (
         <div className="card list-card">
@@ -53,6 +53,24 @@ export function PassengersPage() {
               <th>Name</th><th className="hide-sm">Phone</th><th className="hide-sm">Born</th><th className="num">Weight</th><th className="hide-sm">ID</th><th className="hide-sm">Relation</th><th />
             </tr></thead>
             <tbody>
+              {showMe && (() => {
+                const age = ageOn(pilot.dateOfBirth, today);
+                const miss = [...missing(pilot), !pilot.nationality && 'nationality', !pilot.licenceNo && 'licence number'].filter(Boolean) as string[];
+                return (
+                  <tr className="clickable" onClick={(e) => { if (!(e.target as HTMLElement).closest('button, .menu')) setEditing('me'); }} data-testid="pilot-row">
+                    <td>
+                      <div className="nm">{pilot.fullName || <span className="warn-text">Your name is not set</span>} <span className="chip">PIC · you</span></div>
+                      {miss.length > 0 && <div className="hint" title="Needed for the forms or W&B">Missing {miss.join(', ')}</div>}
+                    </td>
+                    <td className="hide-sm">{pilot.phone || <span className="muted">—</span>}</td>
+                    <td className="hide-sm">{pilot.dateOfBirth ? <>{fmtDate(pilot.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · {age}</span>}</> : <span className="muted">—</span>}</td>
+                    <td className="num">{pilot.weightKg != null ? `${pilot.weightKg} kg` : <span className="muted">—</span>}</td>
+                    <td className="hide-sm">{pilot.idNumber ? <><span className="muted">{pilot.idType === 'PASSPORT' ? 'Passport ' : pilot.idType === 'ID' ? 'ID ' : ''}</span><span className="mono">{pilot.idNumber}</span></> : <span className="muted">—</span>}{pilot.nationality && <span className="muted"> · {pilot.nationality}</span>}</td>
+                    <td className="hide-sm">{pilot.relation || <span className="muted">—</span>}</td>
+                    <td className="act"><KebabMenu items={[{ label: 'Edit', onSelect: () => setEditing('me') }]} /></td>
+                  </tr>
+                );
+              })()}
               {rows.map((p) => {
                 const age = ageOn(p.dateOfBirth, today);
                 const miss = missing(p);
@@ -80,7 +98,8 @@ export function PassengersPage() {
           </table>
         </div>
       )}
-      {editing && (
+      {editing === 'me' && <PilotDetailsDialog onClose={() => setEditing(null)} onSaved={(p) => { setEditing(null); toast(`Saved ${p.fullName}`); }} />}
+      {editing && editing !== 'me' && (
         <PassengerDialog passenger={editing === 'new' ? null : editing} onClose={() => setEditing(null)}
           onSaved={(p, created) => { setEditing(null); void reload(); toast(created ? `Added ${p.fullName}` : `Saved ${p.fullName}`); }} />
       )}

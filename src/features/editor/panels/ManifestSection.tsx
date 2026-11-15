@@ -4,7 +4,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FALLBACK_SEATS, seatLayout, type FlightCrew, type Passenger, type PersonDetails, type Pilot } from '../../../shared';
-import { PassengerDialog } from '../../passengers/PassengerDialog';
+import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
@@ -29,6 +29,7 @@ export function ManifestSection() {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
   const [creating, setCreating] = useState<string | null>(null);
+  const [editingMe, setEditingMe] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const seats = useMemo(() => {
@@ -137,6 +138,7 @@ export function ManifestSection() {
                 </div>
               </div>
               <div className="ep-row-actions">
+                {c.role === 'PIC' && <button type="button" className="icon" title="Edit my details" aria-label="Edit my details" data-testid="pic-edit" onClick={() => setEditingMe(true)}><Icon name="edit" size={14} /></button>}
                 {linked && <button type="button" className="icon" title={c.role === 'PIC' ? 'Refresh from my profile' : 'Refresh from the passenger list'} onClick={() => refresh(i)}><Icon name="refresh" /></button>}
                 {c.role === 'PAX' && (
                   <button type="button" className="icon" title="Remove from the manifest" aria-label={`Remove ${c.snapshot.fullName}`} data-testid="crew-remove"
@@ -260,6 +262,12 @@ export function ManifestSection() {
       )}
       <Link to="/passengers" className="ep-link">Manage passengers</Link>
 
+      {editingMe && (
+        <PilotDetailsDialog onClose={() => setEditingMe(false)} onSaved={(p) => {
+          setEditingMe(false);
+          update((d) => ({ ...d, crew: d.crew.map((c) => (c.role === 'PIC' ? { ...c, snapshot: personOf(p) } : c)) }));
+        }} />
+      )}
       {creating !== null && (
         <PassengerDialog
           passenger={null}

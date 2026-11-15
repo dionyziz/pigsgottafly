@@ -19,8 +19,6 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiCon
     autorouter: autorouterFromEnv(env),
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots; unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
-    // FORMS_PILOTS limits sending forms to HCAA by e-mail to some of the pilots; unset → ALLOWED_EMAILS.
-    ...(env.FORMS_PILOTS !== undefined ? { formsPilots: emailList(env.FORMS_PILOTS) } : {}),
   };
 }
 
@@ -30,7 +28,6 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
     googleClientId: opts.googleClientId || '',
     allowedEmails,
     autorouterPilots: (opts.autorouterPilots ?? allowedEmails).map((e) => e.trim().toLowerCase()).filter(Boolean),
-    formsPilots: (opts.formsPilots ?? allowedEmails).map((e) => e.trim().toLowerCase()).filter(Boolean),
     googleKeys: opts.googleKeys || googleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
@@ -39,15 +36,12 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {
     console.warn('autorouter: neither AUTOROUTER_PILOTS nor ALLOWED_EMAILS is set; NOTAMs and filing are disabled for every pilot');
   }
-  if (config.googleClientId && !config.formsPilots!.length && process.env.RESEND_API_KEY) {
-    console.warn('forms: neither FORMS_PILOTS nor ALLOWED_EMAILS is set; sending forms to HCAA is disabled for every pilot');
-  }
   const listed = (list: string[], p: Pilot | null): boolean =>
     !!p && (!config.googleClientId || list.includes(String(p.email || '').trim().toLowerCase()));
   /** The shared autorouter account is for the listed pilots only (local mode: the local pilot). */
   const autorouterFor = (p: Pilot | null): boolean => listed(config.autorouterPilots!, p);
-  /** So is the deployment's e-mail account, which writes to HCAA in the service's name. */
-  const formsMailFor = (p: Pilot | null): boolean => listed(config.formsPilots!, p);
+  /** Any signed-in pilot may e-mail forms; the pilot is cc'd, so an e-mail address is needed. */
+  const formsMailFor = (p: Pilot | null): boolean => !!p && !!String(p.email || '').trim();
   const db = opts.db;
   const compiled = routes.map((r) => ({ ...r, match: compilePath(r.path) }));
 
