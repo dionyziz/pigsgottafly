@@ -47,7 +47,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Data sources
 
-- Aerodromes, airspace, VFR charts and sunset tables: AIP Greece (eAIP), Hellenic Aviation Service Provider. Not for operational use without checking the current AIP and NOTAMs.
+- Aerodromes, airspace, VFR charts and sunset tables: AIP Greece (eAIP), Hellenic Aviation Service Provider.
 - VFR reporting points not printed on the AIP charts: [open flightmaps](https://www.openflightmaps.org) (region LGGG).
 - Weather: [Open-Meteo](https://open-meteo.com) (ECMWF IFS by default).
 - Font: [Inter](https://rsms.me/inter/), SIL Open Font License (`fonts/OFL.txt`).
