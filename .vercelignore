@@ -1,0 +1,16 @@
+# Upload only the app, the API function and what it imports.
+/*
+!index.html
+!css
+!js
+!data
+!fonts
+!icon.svg
+!icon-192.png
+!icon-512.png
+!apple-touch-icon.png
+!manifest.webmanifest
+!api
+!package.json
+!package-lock.json
+!vercel.json

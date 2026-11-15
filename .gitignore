@@ -4,3 +4,6 @@ server/*.db-*
 tests/e2e/artifacts/
 node_modules/
 .DS_Store
+server/pgdata/
+.vercel
+.env*

@@ -2,12 +2,12 @@
 
 Pig's Gotta Fly (https://pigsgottafly.com) fills in the MD4.2 "Flight Planner" nav log and prints it on one A4 landscape page, laid out like the paper form.
 
-Run `npm start` and open http://127.0.0.1:8765/ (or open `index.html` directly). An internet connection is needed only for weather.
+Live at https://pigsgottafly.com. To run it locally: `npm install`, `npm start`, and open http://127.0.0.1:8765/. An internet connection is needed only for weather.
 The server sends no-cache headers, and asset links carry content hashes (`npm run stamp`), so a browser never mixes old and new files.
 
 ## Use
 
-`npm start` serves Pig's Gotta Fly at http://127.0.0.1:8765/. Flights are stored in `server/navlog.db`.
+`npm start` serves Pig's Gotta Fly at http://127.0.0.1:8765/. Flights are stored in `server/pgdata/` (PGlite).
 
 **My flights** (home): **Blank flight**, **From Windy route** (paste the route-planner link), and the list of flights, upcoming first. Each row's ⋮ menu has Open, Open in new tab, Rename, Make a copy and Move to trash (with Undo). The search box filters by name, date and aircraft.
 
@@ -19,12 +19,15 @@ The server sends no-cache headers, and asset links carry content hashes (`npm ru
 
 Date, block time, aircraft and Print stay in the top bar. New flights start with the aircraft and settings you used last.
 
-### Sign in with Google (when hosted)
+### Hosting (pigsgottafly.com)
 
-```sh
-GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com NAVLOG_ALLOWED_EMAILS=you@gmail.com HOST=0.0.0.0 npm start
-```
-Create the client ID in Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web application), with your site's address under *Authorized JavaScript origins*. Only the listed accounts can open the flights. Without `GOOGLE_CLIENT_ID`, the API is open (for running on your own computer only).
+Production runs on Vercel: the files are served as static assets and `/api/…` runs as one function (`api/index.mjs`), with flights in Postgres (Neon). Each pilot signs in with Google and sees only their own flights.
+
+- Environment (Vercel project settings): `DATABASE_URL` (set by the Neon integration), `GOOGLE_CLIENT_ID`, and optionally `ALLOWED_EMAILS` (comma-separated) to limit who can sign in.
+- Create the client ID in Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web application), with `https://pigsgottafly.com` under *Authorized JavaScript origins*.
+- Deploy: `vercel deploy --prod`. The schema is created on first use (`api/_lib/db.mjs`).
+- Locally, `npm start` uses PGlite (Postgres in-process, data in `server/pgdata/`) and needs no sign-in; set `DATABASE_URL` and `GOOGLE_CLIENT_ID` to run against a real database with accounts. The tests use an in-memory PGlite.
+- Flights from the old SQLite version: sign in once, then `DATABASE_URL=… node tools/migrate_sqlite.mjs you@gmail.com`.
 
 Editing:
 - Clicking a cell selects its contents, so typing replaces them.
@@ -111,7 +114,7 @@ npm test && npm run test:e2e
 
 ## Files
 
-- `server/server.mjs`: app + flights API (SQLite via `node:sqlite`, Google sign-in); `js/store.js`: client storage and sync
+- `api/_lib/api.mjs`: flights API and Google sign-in; `api/_lib/db.mjs`: Postgres schema and driver (Neon or PGlite); `api/index.mjs`: the Vercel function; `server/server.mjs`: local server; `js/store.js`: client storage and sync
 - `index.html`, `css/style.css`: app shell and form replica (print: A4 landscape)
 - `js/nav.js`: geodesy, wind triangle, deviation, rounding/sums, sunset, Windy URL parsing (pure; unit-tested)
 - `js/weather.js`: Open-Meteo fetch and height/time interpolation

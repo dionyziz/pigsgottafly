@@ -13,10 +13,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function startServer(opts = {}) {
   const { createServer } = await import('../../server/server.mjs');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'navlog-db-'));
-  const server = createServer({ db: path.join(dir, 'test.db'), ...opts });
+  const server = createServer({ db: 'memory://', ...opts });
+  await server.ready;
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  return { url: `http://127.0.0.1:${server.address().port}`, close: () => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); } };
+  return { url: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
 }
 
 function chromePath() {
