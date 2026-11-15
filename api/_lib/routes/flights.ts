@@ -1,0 +1,211 @@
+// Flights: /flights (list, create), /flights/:id (get, versioned PUT with 409, DELETE = trash),
+// /flights/:id/restore, /flights/:id/copy, /flights/:id/opened. Manifest rows (flight_crew) are part
+// of the flight document and replaced atomically with it. Everything is scoped to the session pilot.
+import type { Route } from '../http.js';
+import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
+import { arr, obj, optDate, optNum, str, toFlight } from '../rows.js';
+import type { Queryable } from '../db.js';
+import type { FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../src/shared/types.js';
+import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
+import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, emptyFlightDoc, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
+import { findAerodrome } from './ref.js';
+
+async function load(db: Queryable, pilotId: string, id: string) {
+  const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [id, pilotId]);
+  if (!r) throw notFound('no such flight');
+  const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [id, pilotId]);
+  return toFlight(r, crew);
+}
+
+const KINDS = new Set(['aerodrome', 'vfr', 'waypoint', 'custom']);
+function checkRoute(v: unknown): RoutePoint[] {
+  const route = arr<RoutePoint>(v, 'route');
+  if (route.length > 200) throw badRequest('route has too many points');
+  return route.map((p, i) => {
+    obj(p, `route[${i}]`);
+    if (!KINDS.has(p.kind)) throw badRequest(`route[${i}].kind is invalid`);
+    if (!isFinite(p.lat) || !isFinite(p.lon) || Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180) throw badRequest(`route[${i}] needs lat/lon`);
+    return { uid: str(p.uid, 'uid', 40) || uid(), kind: p.kind, refId: p.refId == null ? null : str(p.refId, 'refId', 100), name: str(p.name, 'name', 60), lat: +p.lat, lon: +p.lon };
+  });
+}
+
+/** Validates and normalises a full FlightDoc (merged over `base`). */
+async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc>, base: FlightDoc): Promise<FlightDoc> {
+  const d: FlightDoc = { ...base };
+  if ('title' in input) d.title = str(input.title, 'title', 200);
+  if ('date' in input) d.date = optDate(input.date, 'date') ?? base.date;
+  if ('blockOff' in input) {
+    d.blockOff = str(input.blockOff, 'blockOff', 5);
+    if (d.blockOff && !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.blockOff)) throw badRequest('blockOff must be HH:MM (UTC)');
+  }
+  if ('aircraftId' in input) d.aircraftId = input.aircraftId || null;
+  if ('taxiOutMin' in input) d.taxiOutMin = optNum(input.taxiOutMin, 'taxiOutMin', 0, 600);
+  if ('taxiInMin' in input) d.taxiInMin = optNum(input.taxiInMin, 'taxiInMin', 0, 600);
+  if ('fobL' in input) d.fobL = optNum(input.fobL, 'fobL', 0, 10000);
+  if ('route' in input) d.route = checkRoute(input.route);
+  if ('legOverrides' in input) d.legOverrides = obj(input.legOverrides, 'legOverrides');
+  if ('atc' in input) d.atc = input.atc === null ? null : arr(input.atc, 'atc');
+  if ('crew' in input) d.crew = arr<FlightCrew>(input.crew, 'crew');
+  if ('baggageKg' in input) d.baggageKg = obj(input.baggageKg, 'baggageKg');
+  if ('options' in input) d.options = { ...DEFAULT_FLIGHT_OPTIONS, ...obj(input.options, 'options') };
+  if ('summary' in input) d.summary = { ...EMPTY_SUMMARY, ...obj(input.summary, 'summary') };
+
+  let seats: string[] | null = null;
+  if (d.aircraftId) {
+    const [ac] = await db.query('SELECT mass_balance FROM aircraft WHERE id = $1 AND pilot_id = $2', [d.aircraftId, pilotId]);
+    if (!ac) throw badRequest('no such aircraft');
+    seats = seatLayout(ac.mass_balance?.stations ?? []).map((s) => s.id);
+    if (!seats.length) seats = null;
+  }
+  for (const [i, c] of d.crew.entries()) {
+    obj(c, `crew[${i}]`);
+    if (c.role !== 'PIC' && c.role !== 'PAX') throw badRequest(`crew[${i}].role must be PIC or PAX`);
+    obj(c.snapshot, `crew[${i}].snapshot`);
+    if (c.role === 'PIC' && c.passengerId) throw badRequest('the PIC is the pilot, not a passenger');
+  }
+  const errs = validateCrew(d.crew, seats);
+  if (errs.length) throw badRequest(errs.join('; '));
+  const paxIds = d.crew.map((c) => c.passengerId).filter((x): x is string => !!x);
+  if (paxIds.length) {
+    const own = await db.query('SELECT id FROM passengers WHERE pilot_id = $1 AND id = ANY($2::text[])', [pilotId, paxIds]);
+    if (own.length !== new Set(paxIds).size) throw badRequest('no such passenger');
+  }
+  return d;
+}
+
+function picSnapshot(p: Pilot) {
+  return { fullName: p.fullName, phone: p.phone, dateOfBirth: p.dateOfBirth, weightKg: p.weightKg, idNumber: p.idNumber, idType: p.idType, nationality: p.nationality, relation: p.relation };
+}
+
+async function writeCrew(q: Queryable, pilotId: string, flightId: string, crew: FlightCrew[]) {
+  await q.query('DELETE FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilotId]);
+  for (const [i, c] of crew.entries()) {
+    await q.query(
+      'INSERT INTO flight_crew (flight_id, pilot_id, position, role, passenger_id, seat, snapshot) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)',
+      [flightId, pilotId, i, c.role, c.passengerId || null, c.seat, JSON.stringify(c.snapshot)],
+    );
+  }
+}
+
+const docParams = (d: FlightDoc) => [d.title, d.date, d.blockOff, d.aircraftId, d.taxiOutMin === null ? null : Math.round(d.taxiOutMin),
+  d.taxiInMin === null ? null : Math.round(d.taxiInMin), d.fobL, JSON.stringify(d.route), JSON.stringify(d.legOverrides),
+  d.atc === null ? null : JSON.stringify(d.atc), JSON.stringify(d.baggageKg), JSON.stringify(d.options), JSON.stringify(d.summary)];
+
+async function insertFlight(db: Parameters<Route['handler']>[0]['db'], pilotId: string, d: FlightDoc, wanted?: string): Promise<string> {
+  const now = Date.now();
+  return db.transaction(async (tx) => {
+    const ins = (id: string) => tx.query(
+      `INSERT INTO flights (id, pilot_id, title, date, block_off, aircraft_id, taxi_out_min, taxi_in_min, fob_l, route, leg_overrides, atc,
+         baggage_kg, options, summary, version, created, updated, opened)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14::jsonb,$15::jsonb,1,$16,$16,$16)
+       ON CONFLICT (id) DO NOTHING RETURNING id`,
+      [id, pilotId, ...docParams(d), now]);
+    let rows = typeof wanted === 'string' && /^[\w-]{6,24}$/.test(wanted) ? await ins(wanted) : [];
+    while (!rows.length) rows = await ins(await newId('fl', 6));
+    await writeCrew(tx, pilotId, rows[0].id, d.crew);
+    return rows[0].id as string;
+  });
+}
+
+export const routes: Route[] = [
+  {
+    method: 'GET', path: '/flights',
+    async handler({ db, pilot, query }): Promise<FlightListItem[]> {
+      const trash = query.get('trash') === '1';
+      const rows = await db.query(
+        `SELECT id, summary, date, aircraft_id, version, created, updated, opened, deleted FROM flights
+         WHERE pilot_id = $1 AND deleted = $2 ORDER BY GREATEST(updated, opened) DESC`, [pilot.id, trash]);
+      return rows.map((r) => ({ id: r.id, summary: { ...EMPTY_SUMMARY, ...r.summary }, date: r.date, aircraftId: r.aircraft_id ?? null, version: Number(r.version),
+        created: Number(r.created), updated: Number(r.updated), opened: Number(r.opened), deleted: !!r.deleted }));
+    },
+  },
+  {
+    method: 'POST', path: '/flights',
+    async handler({ db, pilot, body }) {
+      const input = (await body()) as FlightCreateRequest;
+      const today = new Date().toISOString().slice(0, 10);
+      const base = emptyFlightDoc(today);
+      base.taxiOutMin = pilot.settings.taxiOutMin;
+      base.taxiInMin = pilot.settings.taxiInMin;
+      base.aircraftId = pilot.defaultAircraftId;
+      base.options = { ...base.options, windModel: pilot.settings.windModel };
+      base.crew = [{ role: 'PIC', passengerId: null, seat: 'front-left', snapshot: picSnapshot(pilot) }];
+      const home = pilot.homeAerodrome ? await findAerodrome(db, pilot.homeAerodrome) : null;
+      if (home) {
+        const p = (): RoutePoint => ({ uid: uid(), kind: 'aerodrome', refId: home.id, name: home.icao || home.name, lat: home.lat, lon: home.lon });
+        base.route = [p(), p()];
+      }
+      const d = await checkDoc(db, pilot.id, input, base);
+      if (!('summary' in input)) {
+        const [ac] = d.aircraftId ? await db.query('SELECT registration FROM aircraft WHERE id = $1', [d.aircraftId]) : [];
+        d.summary = {
+          ...EMPTY_SUMMARY, title: d.title || autoTitle(d.route), date: d.date, blockOff: d.blockOff, aircraft: ac?.registration ?? '',
+          route: d.route.map((p) => [+p.lat.toFixed(3), +p.lon.toFixed(3)] as [number, number]),
+          from: d.route[0]?.name ?? '', to: d.route.length > 1 ? d.route[d.route.length - 1].name : '',
+        };
+      }
+      const id = await insertFlight(db, pilot.id, d, input.id);
+      return reply(201, await load(db, pilot.id, id));
+    },
+  },
+  { method: 'GET', path: '/flights/:id', handler: async ({ db, pilot, params }) => load(db, pilot.id, params.id) },
+  {
+    method: 'PUT', path: '/flights/:id',
+    async handler({ db, pilot, params, body }) {
+      const cur = await load(db, pilot.id, params.id);
+      const { flight, version } = (await body()) as FlightUpdateRequest;
+      if (!Number.isInteger(version)) throw badRequest('version is required');
+      const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...base } = cur;
+      const d = await checkDoc(db, pilot.id, obj(flight, 'flight'), base);
+      const now = Date.now();
+      const out = await db.transaction(async (tx) => {
+        const r = await tx.query(
+          `UPDATE flights SET title=$3, date=$4, block_off=$5, aircraft_id=$6, taxi_out_min=$7, taxi_in_min=$8, fob_l=$9, route=$10::jsonb,
+             leg_overrides=$11::jsonb, atc=$12::jsonb, baggage_kg=$13::jsonb, options=$14::jsonb, summary=$15::jsonb,
+             version = version + 1, updated = $16
+           WHERE id = $1 AND pilot_id = $2 AND version = $17 RETURNING version, updated`,
+          [params.id, pilot.id, ...docParams(d), now, version]);
+        if (r.length) await writeCrew(tx, pilot.id, params.id, d.crew);
+        return r;
+      });
+      if (!out.length) throw new HttpError(409, 'edited elsewhere', await load(db, pilot.id, params.id));
+      return { version: Number(out[0].version), updated: Number(out[0].updated) };
+    },
+  },
+  {
+    method: 'DELETE', path: '/flights/:id',
+    async handler({ db, pilot, params }) {
+      const r = await db.query('UPDATE flights SET deleted = TRUE WHERE id = $1 AND pilot_id = $2 RETURNING id', [params.id, pilot.id]);
+      if (!r.length) throw notFound('no such flight');
+      return undefined;
+    },
+  },
+  {
+    method: 'POST', path: '/flights/:id/restore',
+    async handler({ db, pilot, params }) {
+      const r = await db.query('UPDATE flights SET deleted = FALSE WHERE id = $1 AND pilot_id = $2 RETURNING id', [params.id, pilot.id]);
+      if (!r.length) throw notFound('no such flight');
+      return load(db, pilot.id, params.id);
+    },
+  },
+  {
+    method: 'POST', path: '/flights/:id/opened',
+    async handler({ db, pilot, params }) {
+      const r = await db.query('UPDATE flights SET opened = $3 WHERE id = $1 AND pilot_id = $2 RETURNING id', [params.id, pilot.id, Date.now()]);
+      if (!r.length) throw notFound('no such flight');
+      return undefined;
+    },
+  },
+  {
+    method: 'POST', path: '/flights/:id/copy',
+    async handler({ db, pilot, params, body }) {
+      const cur = await load(db, pilot.id, params.id);
+      const { title } = await body();
+      const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...doc } = cur;
+      const name = typeof title === 'string' && title.trim() ? title.trim() : `Copy of ${cur.title || cur.summary.title || 'flight'}`;
+      const d: FlightDoc = { ...doc, title: name, summary: { ...doc.summary, title: name } };
+      const id = await insertFlight(db, pilot.id, d);
+      return reply(201, await load(db, pilot.id, id));
+    },
+  },
+];

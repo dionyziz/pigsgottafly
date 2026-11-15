@@ -1,0 +1,13 @@
+// Route registry. Each module exports `routes: Route[]`; the dispatcher (api/_lib/app.ts) matches
+// them in this order. Static imports keep every module in the Vercel function bundle.
+import type { Route } from '../http.js';
+import { routes as session } from './session.js';
+import { routes as me } from './me.js';
+import { routes as aircraft } from './aircraft.js';
+import { routes as passengers } from './passengers.js';
+import { routes as waypoints } from './waypoints.js';
+import { routes as flights } from './flights.js';
+import { routes as ref } from './ref.js';
+import { routes as weather } from './weather.js';
+
+export const ROUTES: Route[] = [...session, ...me, ...aircraft, ...passengers, ...waypoints, ...flights, ...ref, ...weather];

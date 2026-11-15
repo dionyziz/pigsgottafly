@@ -1,0 +1,493 @@
+// Domain types shared by the client, the API and the tests. THIS FILE IS THE CONTRACT.
+//
+// Units (everywhere, unless a name says otherwise):
+//   mass kg, arm m (aft of the datum), moment kg·m, fuel volume L, speed kt, altitude/elevation ft,
+//   route distance NM, runway distance m, angles degrees (true unless named "mag"), temperature °C,
+//   pressure hPa.
+// Dates are ISO 'YYYY-MM-DD' strings; clock times are 'HH:MM' UTC strings; record timestamps are
+// epoch milliseconds (numbers).
+//
+// Imports inside src/shared and src/calc use explicit '.js' extensions: the API (Vercel, Node ESM)
+// imports these files too.
+
+export type Id = string;
+/** 'YYYY-MM-DD' */
+export type IsoDate = string;
+/** 'HH:MM', UTC. '' = not set. */
+export type ClockUtc = string;
+/** Milliseconds since the Unix epoch. */
+export type EpochMs = number;
+
+export interface LatLon {
+  lat: number;
+  lon: number;
+}
+
+// --------------------------------------------------------------------------------------------
+// Pilot (the account) and profile
+
+/** Open-Meteo model ids (see WIND_MODELS in constants.ts). */
+export type WindModel = 'ecmwf_ifs025' | 'gfs_seamless' | 'icon_seamless' | 'best_match';
+
+/**
+ * Per-pilot planning defaults; copied into a new flight where the flight has its own field.
+ * PILOT CORRECTION: no pilot-specific values are app defaults. A new pilot starts with null here;
+ * the UI asks for them (SETTING_SUGGESTIONS in constants.ts are placeholders only, never saved
+ * silently). Calculations treat null as "not set" and warn.
+ */
+export interface PilotSettings {
+  /** Block-off → take-off, minutes. null = not set yet. Copied to new flights. */
+  taxiOutMin: number | null;
+  /** Landing → block-on, minutes. null = not set yet. Copied to new flights. */
+  taxiInMin: number | null;
+  /** Fuel on board default = required + this many minutes at the planning burn. null = not set. */
+  reserveMin: number | null;
+  /**
+   * Final reserve included IN "required" fuel, minutes (default 0: required = allowance + trip,
+   * as on the paper navlog). Set e.g. 30 to plan a VFR-day final reserve inside "required".
+   */
+  finalReserveMin: number;
+  /** Winds/temperatures aloft model. */
+  windModel: WindModel;
+  /** Aerodromes within this distance of the route are listed in the ATC list (default 2 NM). */
+  enrouteAerodromeRadiusNm: number;
+}
+
+/** Identity details used on the forms (Form 731, GenDec, FPL item 19 C/). */
+export interface PersonDetails {
+  fullName: string;
+  phone: string;
+  /** null = unknown */
+  dateOfBirth: IsoDate | null;
+  /** Body mass for W&B, kg. null = unknown. */
+  weightKg: number | null;
+  /** ID card or passport number. */
+  idNumber: string;
+  idType: 'ID' | 'PASSPORT' | '';
+  /** e.g. 'GREEK' / 'GR' as printed on the forms. */
+  nationality: string;
+  /** Relation printed on Form 731, e.g. an aeroclub member code, 'FRIEND', 'FAMILY'. */
+  relation: string;
+}
+
+export interface Pilot extends PersonDetails {
+  id: Id;
+  /** From Google sign-in ('' in local mode). */
+  email: string;
+  /** Google display name (not the form name: that is fullName). */
+  name: string;
+  picture: string;
+  /** Pilot licence number, e.g. 'GR.FCL.PPL.12345'. */
+  licenceNo: string;
+  /** ICAO of the home aerodrome; new flights go home → home. null = not set (asked on first use). */
+  homeAerodrome: string | null;
+  defaultAircraftId: Id | null;
+  settings: PilotSettings;
+  created: EpochMs;
+  lastLogin: EpochMs;
+}
+
+/** Fields a pilot may change on their own profile (PUT /api/me). */
+export type PilotUpdate = Partial<
+  Pick<
+    Pilot,
+    | 'fullName'
+    | 'phone'
+    | 'dateOfBirth'
+    | 'weightKg'
+    | 'idNumber'
+    | 'idType'
+    | 'nationality'
+    | 'relation'
+    | 'licenceNo'
+    | 'homeAerodrome'
+    | 'defaultAircraftId'
+  >
+> & { settings?: Partial<PilotSettings> };
+
+// --------------------------------------------------------------------------------------------
+// Aircraft (hangar)
+
+export type WakeCategory = 'L' | 'M' | 'H' | 'J';
+export type FuelType = 'AVGAS' | 'MOGAS' | 'JET A-1';
+
+export interface FuelSpec {
+  type: FuelType;
+  /** kg per litre used for W&B (AVGAS 0.72, MOGAS 0.75 per MD 4.3). */
+  densityKgPerL: number;
+  /** Total tank capacity, L. */
+  totalL: number;
+  /** Usable fuel, L (SX-ASV 144, SX-ASG 182). FOB above this is warned. */
+  usableL: number;
+  /** Unusable fuel, L (15 for the F172M). */
+  unusableL: number;
+  /** True if the empty mass from the weighing report already includes the unusable fuel. */
+  unusableIncludedInEmptyMass: boolean;
+  /** 'standard', 'long-range', … (free text). */
+  tanks: string;
+  /** Planning burn rate, L/h (30). Used for every leg. */
+  burnLph: number;
+  /** Fixed start-up/taxi/take-off/landing allowance, L (4), added once to the trip fuel. */
+  taxiAllowanceL: number;
+}
+
+export type StationKind = 'seat' | 'baggage' | 'fuel';
+
+/** One seat of a seat station, e.g. { id: 'front-left', label: 'Front left' }. */
+export interface SeatPosition {
+  /** Unique within the aircraft. */
+  id: string;
+  label: string;
+}
+
+/** A loading station of the W&B sheet. */
+export interface Station {
+  /** Stable id: 'front', 'rear', 'bag1', 'bag2', 'fuel' for the seeded aircraft. */
+  id: string;
+  name: string;
+  kind: StationKind;
+  /** Arm, m aft of the datum. */
+  armM: number;
+  /** Adjustable seats: arm range, m (front seats 0.85–1.17). */
+  armRangeM?: [number, number] | null;
+  /** Max load at the station, kg (baggage areas). */
+  maxKg?: number | null;
+  /** Seat stations: the seats at this station (their count is the station's capacity). */
+  seats?: SeatPosition[] | null;
+}
+
+/** Envelope polygon vertex: [cg arm m, mass kg]. */
+export type EnvelopePoint = [number, number];
+/** Moment envelope vertex: [moment kg·m, mass kg]. */
+export type MomentEnvelopePoint = [number, number];
+
+export type WbCategory = 'normal' | 'utility';
+
+export interface Envelope {
+  category: WbCategory;
+  maxKg: number;
+  /** CG envelope, closed implicitly. */
+  polygon: EnvelopePoint[];
+  /** Moment envelope (the club calculator's "torque" limits), optional. */
+  momentPolygon?: MomentEnvelopePoint[] | null;
+  /** e.g. utility: no rear passengers, no baggage. */
+  notes?: string;
+}
+
+export interface MassBalance {
+  /** e.g. 'Forward face of firewall'. */
+  datum: string;
+  emptyMassKg: number;
+  emptyArmM: number;
+  emptyMomentKgM: number;
+  /** Date of the weighing report. */
+  weighingDate: IsoDate | null;
+  /** Reference to the weighing report. */
+  weighingSource: string;
+  includesOil: boolean;
+  mtowKg: number;
+  /** Max landing mass; null = same as MTOW. */
+  mlwKg: number | null;
+  stations: Station[];
+  /** e.g. bag1 + bag2 ≤ 54 kg. */
+  combinedLimits: { stations: string[]; maxKg: number }[];
+  envelopes: { normal: Envelope; utility: Envelope | null };
+}
+
+/** [ground run/roll m, total distance over a 15 m (50 ft) obstacle m] */
+export type DistancePair = [number, number];
+
+export interface TakeoffTableRow {
+  massKg: number;
+  liftoffIas: string;
+  /** Headwind columns, kt (e.g. [0, 10, 20]). */
+  headwindKt: number[];
+  /** distances[headwindIndex][altitudeIndex] */
+  distances: DistancePair[][];
+}
+
+export interface TakeoffTable {
+  source: string;
+  flaps: string;
+  /** Pressure altitudes of the table columns, ft. */
+  altitudesFt: number[];
+  /** Standard temperature at each altitude column, °C. */
+  standardTempC: number[];
+  rows: TakeoffTableRow[];
+  /** Fractional increase per 15 °C above standard (0.10). */
+  tempIncreasePer15C: number;
+  /** Dry grass: add this fraction of the total distance to both distances (0.07). */
+  grassAddFractionOfTotal: number;
+  notes: string[];
+}
+
+export interface LandingTable {
+  source: string;
+  flaps: string;
+  massKg: number;
+  approachIas: string;
+  altitudesFt: number[];
+  standardTempC: number[];
+  /** distances[altitudeIndex], zero wind. */
+  distances: DistancePair[];
+  /** Fractional decrease per 5 kt headwind (0.10). */
+  headwindDecreasePer5Kt: number;
+  /** Fractional increase per 15 °C above standard (0.10). */
+  tempIncreasePer15C: number;
+  /** Dry grass: add this fraction of the total distance to both distances (0.20). */
+  grassAddFractionOfTotal: number;
+  notes: string[];
+}
+
+/** Club (MD 4.4) factors applied on top of the AFM figures. */
+export interface PerformanceFactors {
+  source: string;
+  safetyFactorTakeoff: number;
+  safetyFactorLanding: number;
+  /** Surface condition → factor, e.g. 'short dry grass': 1.2, 'paved RWYCC 5': 1.15. */
+  runwayCondition: Record<string, number>;
+  /** Factor for each 2% of adverse slope (upslope for take-off, downslope for landing): 1.1. */
+  slopeFactorPer2Pct: number;
+  maxCrosswindKt: { takeoff: number; landing: number };
+  notes: string[];
+}
+
+export interface PerformanceTables {
+  takeoff: TakeoffTable;
+  landing: LandingTable;
+  factors: PerformanceFactors;
+  /** Stall IAS by angle of bank 0/20/40/60°, power off, at MTOW. */
+  stallIasKt: { flapsUp: number[]; flaps10: number[]; flaps40: number[] } | null;
+}
+
+/** ICAO FPL equipment and item 19 data. */
+export interface Equipment {
+  /** Item 10a, e.g. 'S', 'SDFGY'. */
+  item10a: string;
+  /** Item 10b, e.g. 'C' (Mode C), 'S', 'SB2'. */
+  item10b: string;
+  /** Item 18 PBN/ ('' for none). */
+  pbn: string;
+  /** Extra item 18 text for this aircraft, e.g. 'NAV/…' (without DOF/REG/RMK, which are generated). */
+  item18Extras: string;
+  /** Item 19 R/: emergency radio. */
+  emergencyRadio: { uhf: boolean; vhf: boolean; elt: boolean };
+  /** Item 19 S/: survival equipment. */
+  survival: { polar: boolean; desert: boolean; maritime: boolean; jungle: boolean };
+  /** Item 19 J/: life jackets. present=false strikes J entirely. */
+  jackets: { present: boolean; light: boolean; fluorescein: boolean; uhf: boolean; vhf: boolean };
+  /** Item 19 D/: dinghies, or null for none. */
+  dinghies: { number: number; capacity: number; covered: boolean; colour: string } | null;
+  /** Item 19 N/ remarks for this aircraft (free text). */
+  remarks: string;
+}
+
+/** Compass deviation card: points [for (magnetic heading), steer (compass heading)]. */
+export interface CompassCard {
+  /** e.g. 'Magnetic compass', 'GMU (G1000 heading)'. */
+  name: string;
+  swung: IsoDate;
+  expires: IsoDate;
+  source: string;
+  points: [number, number][];
+}
+
+export interface Aircraft {
+  id: Id;
+  /** e.g. 'SX-ASV' (FPL item 7 drops the hyphen). */
+  registration: string;
+  /** e.g. 'Reims/Cessna F172M'. */
+  makeModel: string;
+  /** ICAO type designator, e.g. 'C172'. */
+  icaoType: string;
+  wake: WakeCategory;
+  serial: string;
+  operator: string;
+  /** ICAO of the home base. */
+  homeBase: string;
+  /** Colours and markings (FPL item 19 A/), e.g. 'WHITE BLUE STRIPES'. */
+  colours: string;
+  cruiseTasKt: number;
+  patternTasKt: number;
+  climbTasKt: number | null;
+  fuel: FuelSpec;
+  massBalance: MassBalance;
+  performance: PerformanceTables;
+  equipment: Equipment;
+  compassCards: CompassCard[];
+  notes: string;
+  created: EpochMs;
+  updated: EpochMs;
+}
+
+/** Writable aircraft fields (POST/PUT /api/aircraft). */
+export type AircraftInput = Omit<Aircraft, 'id' | 'created' | 'updated'>;
+
+// --------------------------------------------------------------------------------------------
+// Passengers and saved waypoints
+
+export interface Passenger extends PersonDetails {
+  id: Id;
+  notes: string;
+  created: EpochMs;
+  updated: EpochMs;
+}
+export type PassengerInput = Omit<Passenger, 'id' | 'created' | 'updated'>;
+
+/** A pilot's saved custom point. */
+export interface Waypoint extends LatLon {
+  id: Id;
+  /** Upper-case name, e.g. 'ZOFRI'. */
+  name: string;
+  notes: string;
+  created: EpochMs;
+  updated: EpochMs;
+}
+export type WaypointInput = Omit<Waypoint, 'id' | 'created' | 'updated'>;
+
+// --------------------------------------------------------------------------------------------
+// Flights
+
+/**
+ * What a route point refers to:
+ *   'aerodrome' → refId = RefAerodrome.id (ICAO where there is one)
+ *   'vfr'       → refId = RefVfrPoint.id ('<chart>/<NAME>')
+ *   'waypoint'  → refId = Waypoint.id (the pilot's saved point)
+ *   'custom'    → refId = null: a one-off named point of this flight
+ * name/lat/lon are always stored as a snapshot, so a flight still opens when the reference data
+ * changes (new AIRAC) or a saved waypoint is deleted.
+ */
+export type RoutePointKind = 'aerodrome' | 'vfr' | 'waypoint' | 'custom';
+
+export interface RoutePoint extends LatLon {
+  /** Stable id within the flight (random), used to key leg overrides. */
+  uid: string;
+  kind: RoutePointKind;
+  refId: string | null;
+  name: string;
+}
+
+/** Key of the leg from point a to point b: `${a.uid}>${b.uid}` (see legKey in constants.ts). */
+export type LegKey = string;
+
+/** Per-leg values typed over the computed ones. Missing = computed. */
+export interface LegOverride {
+  altFt?: number;
+  tasKt?: number;
+  /** Wind FROM, true, and speed. */
+  windDirDeg?: number;
+  windKt?: number;
+  tempC?: number;
+}
+
+export type CrewRole = 'PIC' | 'PAX';
+/**
+ * Seat id: a SeatPosition.id of the flight's aircraft (C172: 'front-left', 'front-right',
+ * 'rear-left', 'rear-right'). The W&B arm is that seat's station arm (seatStation() in constants.ts).
+ */
+export type SeatId = string;
+
+/**
+ * One manifest row (flight_crew). The snapshot keeps old forms correct after edits.
+ * Rules (validated by the API, 400 on violation): exactly one PIC; one person per seat; every seat
+ * must exist on the flight's aircraft (when it has one); no more people than seats.
+ * PIC defaults to the first seat (front left).
+ */
+export interface FlightCrew {
+  role: CrewRole;
+  /** PAX: the passenger record; PIC: null (the pilot). */
+  passengerId: Id | null;
+  seat: SeatId;
+  snapshot: PersonDetails;
+}
+
+export type AtcRole = 'departure' | 'enroute' | 'destination' | 'airspace' | 'fis' | 'custom';
+
+/** One unit in the flight's ATC list (callsign + frequencies). */
+export interface AtcEntry {
+  /** Stable id within the list (random for custom rows). */
+  id: string;
+  role: AtcRole;
+  /** Heading the entry belongs to, e.g. 'LGTT DEKELIA / TATOI', 'ATHINAI TMA', 'FIS'. */
+  group: string;
+  /** e.g. 'TATOI TOWER'. */
+  callsign: string;
+  /** Short unit label, e.g. 'TWR', 'APP', 'INFO', 'ATIS'. */
+  service: string;
+  /** Primary frequency, MHz as printed, e.g. '122.650'. */
+  primary: string;
+  /** Backup frequencies, MHz. */
+  backups: string[];
+  /** e.g. vertical limits of a TMA, opening hours. */
+  remark: string;
+  /** Generator key (e.g. 'ad:LGTT:TATOI TOWER'); null for rows added by hand. */
+  sourceKey: string | null;
+}
+
+export interface FlightOptions {
+  windModel: WindModel;
+  /** CompassCard.name to use; null = the aircraft's first card. */
+  compassCard: string | null;
+  category: WbCategory;
+  /** Alternate aerodromes (ICAO), FPL item 16. */
+  alternates: string[];
+  /** FPL item 18 RMK/ text. */
+  remarks: string;
+  /** Runway chosen by hand; null = picked from the wind. */
+  departureRunway: string | null;
+  arrivalRunway: string | null;
+  /** Key of PerformanceFactors.runwayCondition; null = paved, dry. */
+  departureSurface: string | null;
+  arrivalSurface: string | null;
+}
+
+/** Lobby row data, computed by the client on save. */
+export interface FlightSummary {
+  title: string;
+  date: IsoDate | '';
+  blockOff: ClockUtc;
+  /** Registration. */
+  aircraft: string;
+  /** Route [lat, lon] rounded to 3 decimals, for the thumbnail. */
+  route: [number, number][];
+  /** Names of first and last points. */
+  from: string;
+  to: string;
+  distNm: number | null;
+  eteMin: number | null;
+  fuelL: number | null;
+}
+
+/** The editable document of a flight (what the client PUTs). */
+export interface FlightDoc {
+  /** '' = automatic ('LGTT → LGMG → LGTT'). */
+  title: string;
+  date: IsoDate;
+  blockOff: ClockUtc;
+  aircraftId: Id | null;
+  /** Copied from the profile at creation (null if the profile has none yet), editable per flight. */
+  taxiOutMin: number | null;
+  taxiInMin: number | null;
+  /** Fuel on board at block-off, L. null = default (required + reserve). */
+  fobL: number | null;
+  route: RoutePoint[];
+  legOverrides: Record<LegKey, LegOverride>;
+  /** null = not edited yet: the client shows the generated list. */
+  atc: AtcEntry[] | null;
+  crew: FlightCrew[];
+  /** Baggage per baggage station id, kg (e.g. { bag1: 10 }). */
+  baggageKg: Record<string, number>;
+  options: FlightOptions;
+  summary: FlightSummary;
+}
+
+export interface Flight extends FlightDoc {
+  id: Id;
+  /** Incremented by every successful PUT; PUT with a stale version gets 409. */
+  version: number;
+  created: EpochMs;
+  updated: EpochMs;
+  opened: EpochMs;
+  /** In the trash. */
+  deleted: boolean;
+}

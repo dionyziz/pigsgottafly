@@ -11,8 +11,10 @@ export const ARTIFACTS = path.join(ROOT, 'tests', 'e2e', 'artifacts');
 fs.mkdirSync(ARTIFACTS, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Serves the built client (dist/: run `vite build` first; npm run test:e2e does) and the API on
+// in-memory PGlite. Run with tsx loaded (node --import tsx), since the server is TypeScript.
 export async function startServer(opts = {}) {
-  const { createServer } = await import('../../server/server.mjs');
+  const { createServer } = await import('../../server/server.ts');
   const server = createServer({ db: 'memory://', ...opts });
   await server.ready;
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -30,7 +32,7 @@ function chromePath() {
 export async function launch() {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'navlog-e2e-'));
   const proc = spawn(chromePath(), ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
-    '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' });
+    '--no-first-run', '--no-default-browser-check', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' });
   const portFile = path.join(profile, 'DevToolsActivePort');
   for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0].trim();
@@ -75,8 +77,8 @@ export class Page {
     if (r.exceptionDetails) throw new Error('page eval failed: ' + (r.exceptionDetails.exception?.description || r.exceptionDetails.text));
     return r.result.value;
   }
-  // ready = the app finished routing: the flight view shows a sheet, or the home list rendered
-  async ready() { await this.waitFor(() => !document.body.classList.contains('loading') && (!document.querySelector('#flight').hidden ? !!document.querySelector('.sheet') : true)); }
+  // ready = the React app rendered something other than a loading screen
+  async ready() { await this.waitFor(() => document.readyState === 'complete' && !!document.querySelector('#root > *') && !document.querySelector('.loading-screen')); }
   async goto(url) {
     // a URL that differs only after '#' is a same-document navigation: no load event fires
     const cur = await this.eval(() => location.href).catch(() => '');

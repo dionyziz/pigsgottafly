@@ -1,20 +1,40 @@
 {
   "name": "pigsgottafly",
   "private": true,
-  "description": "Pig's Gotta Fly: MD4.2 nav log filler for VFR flights in Greece",
+  "description": "Pig's Gotta Fly: a personal VFR flight planner for the Athinai FIR (LGGG)",
+  "type": "module",
   "scripts": {
-    "start": "node server/server.mjs",
-    "stamp": "node tools/stamp.mjs",
-    "test": "node tools/stamp.mjs --check && node --test tests/unit/",
-    "test:e2e": "node tools/stamp.mjs --check && node --test --test-concurrency=1 tests/e2e/",
-    "test:all": "npm test && npm run test:e2e"
+    "dev": "tsx server/dev.ts",
+    "start": "vite build && tsx server/server.ts",
+    "serve": "tsx server/server.ts",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vite build && node --import tsx --test --test-concurrency=1 \"tests/e2e/*.e2e.test.mjs\"",
+    "test:all": "npm run typecheck && npm test && npm run test:e2e",
+    "ref": "tsx tools/build_ref.ts"
   },
-  "type": "commonjs",
   "dependencies": {
-    "@neondatabase/serverless": "^1.2.1"
+    "@neondatabase/serverless": "^1.2.1",
+    "maplibre-gl": "^4.7.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.16"
+    "@electric-sql/pglite": "^0.5.16",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.19.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.6",
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": "24.x"

@@ -8,3 +8,5 @@ server/pgdata/
 .vercel
 .env*
 trn-docs/
+dist/
+*.tsbuildinfo

@@ -1,0 +1,1 @@
+export { WaypointsPage } from './WaypointsPage';
