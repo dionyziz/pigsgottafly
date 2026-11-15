@@ -87,11 +87,9 @@ export interface AdWarning { level: 'danger' | 'warn' | 'info'; text: string }
 export function aerodromeWarnings(checks: AdCheck[], routeLength: number): AdWarning[] {
   const w: AdWarning[] = [];
   const timed = checks.filter((c) => fin(c.fromMs));
-  if (checks.length && !timed.length && routeLength > 1) w.push({ level: 'info', text: 'Block-off time not set: aerodrome hours not checked.' });
   for (const c of timed) {
     const name = `${AD_ROLE[c.role]} ${c.aerodrome.icao || c.aerodrome.name}`;
     if (c.ad.status === 'closed') w.push({ level: 'danger', text: `${name} closed at ${clockZ(c.ad.at)}Z (${c.when}): ${c.ad.why} (${c.ad.source}).` });
-    else if (c.ad.status === 'unknown') w.push({ level: 'info', text: `${name}: opening hours not known for ${c.when}: ${c.ad.why} (${c.ad.source}).` });
     for (const l of c.ad.limits) w.push({ level: 'warn', text: `${name}: NOTAM ${l.key}: ${l.summary}.` });
     // ATS NIL (uncontrolled aerodromes) is not news
     if (c.ad.status === 'open' && c.ats?.status === 'closed' && c.aerodrome.hours?.ats?.parsed.label !== 'NIL') {

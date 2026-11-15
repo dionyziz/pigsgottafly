@@ -75,7 +75,7 @@ export function AircraftSection() {
             <KV k="Type" v={<>{aircraft.icaoType}/{aircraft.wake}</>} sub={aircraft.colours || undefined} />
             <KV k="TAS cruise / pattern" v={<span className="mono">{aircraft.cruiseTasKt} / {aircraft.patternTasKt} kt</span>} />
             <KV k="Planning burn" v={<span className="mono">{aircraft.fuel.burnLph} L/h</span>} sub={`+${aircraft.fuel.taxiAllowanceL} L allowance`} />
-            <KV k="Usable fuel" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
+            <KV k="Fuel capacity" v={<span className="mono">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
           </div>
           {aircraft.compassCards.length > 1 ? (
             <label className="field">Compass card
