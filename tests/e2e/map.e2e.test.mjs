@@ -68,7 +68,7 @@ async function drag(from, to, steps = 12) {
 const mapPx = async (lat, lon) => {
   await page.waitFor(() => {
     const c = document.querySelector('.pgf-map-canvas'); const m = c?.__pgfMap;
-    return !!m && Math.abs(m.transform.width - c.clientWidth) < 1 && Math.abs(m.transform.height - c.clientHeight) < 1;
+    return !!m && Math.abs((m.getCanvas().width / m.getPixelRatio()) - c.clientWidth) < 1 && Math.abs((m.getCanvas().height / m.getPixelRatio()) - c.clientHeight) < 1;
   });
   return page.eval((lat, lon) => {
     const c = document.querySelector('.pgf-map-canvas'); const r = c.getBoundingClientRect(); const p = c.__pgfMap.project([lon, lat]);
@@ -227,8 +227,8 @@ const startFrameProbe = () => page.eval(() => {
       const cw = c.clientWidth, ch = c.clientHeight;
       w.__probe.frames++;
       w.__probe.widths.add(cw);
-      if (Math.abs(m.transform.width - cw) >= 1 || Math.abs(m.transform.height - ch) >= 1 || Math.abs(cv.clientWidth - cw) >= 1 || Math.abs(cv.clientHeight - ch) >= 1) {
-        w.__probe.bad.push([cw, ch, m.transform.width, m.transform.height, cv.clientWidth, cv.clientHeight]);
+      if (Math.abs((m.getCanvas().width / m.getPixelRatio()) - cw) >= 1 || Math.abs((m.getCanvas().height / m.getPixelRatio()) - ch) >= 1 || Math.abs(cv.clientWidth - cw) >= 1 || Math.abs(cv.clientHeight - ch) >= 1) {
+        w.__probe.bad.push([cw, ch, (m.getCanvas().width / m.getPixelRatio()), (m.getCanvas().height / m.getPixelRatio()), cv.clientWidth, cv.clientHeight]);
       }
     }, 0);
     requestAnimationFrame(tick);
