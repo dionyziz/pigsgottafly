@@ -267,7 +267,7 @@ export function generateAtcList(input: AtcGenInput): AtcGenOutput {
   if (arr && !local) out.push(...aerodromeEntries('destination', arr, 'Destination', listed));
 
   // airspace (TMA / MTMA) entered at the planned altitude
-  const hits = new Map<string, { first: number; vols: RefAirspace[]; alts: number[] }>();
+  const hits = new Map<string, { first: number; vols: RefAirspace[] }>();
   legs.forEach((L, i) => {
     for (const v of airspaces) {
       const lo = parseLevelFt(v.lower);
@@ -275,10 +275,9 @@ export function generateAtcList(input: AtcGenInput): AtcGenOutput {
       const alt = L.altFt;
       const altOk = !Number.isFinite(alt) || ((Number.isNaN(lo) || alt >= lo) && (Number.isNaN(hi) || alt <= hi));
       if (!altOk || !segmentEntersPolygon(L.from, L.to, v.polygon)) continue;
-      if (!hits.has(v.name)) hits.set(v.name, { first: i, vols: [], alts: [] });
+      if (!hits.has(v.name)) hits.set(v.name, { first: i, vols: [] });
       const h = hits.get(v.name)!;
       if (!h.vols.includes(v)) h.vols.push(v);
-      if (Number.isFinite(alt) && !h.alts.includes(alt)) h.alts.push(alt);
     }
   });
   [...hits.entries()]
@@ -295,8 +294,7 @@ export function generateAtcList(input: AtcGenInput): AtcGenOutput {
       }
       if (!units.length) return;
       const limits = [...new Set(h.vols.map((v) => `${limitText(v.lower)}–${limitText(v.upper)}`))].join(', ');
-      const at = h.alts.length ? `entered at ${h.alts.map((a) => `${a} ft`).join(', ')}` : '';
-      out.push(...entriesOf('airspace', name, `as:${name}`, mergeUnits(units), at ? `${limits}, ${at}` : limits, listed));
+      out.push(...entriesOf('airspace', name, `as:${name}`, mergeUnits(units), limits, listed));
     });
 
   out.push(...fisEntries(fis, route, legs, listed));

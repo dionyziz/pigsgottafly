@@ -81,7 +81,6 @@ describe('real routes', () => {
     // the SKIROS MTMA is entered too, but SKIROS APPROACH 123.200 is already listed with the destination
     expect(list.filter((e) => e.group === 'SKIROS MTMA')).toEqual([]);
     expect(list[2].remark).toContain("1000' AGL–FL 245");
-    expect(list[2].remark).toContain('4500 ft');
     // ids are the generator keys: stable across regenerations
     expect(list.map((e) => e.id)).toEqual(list.map((e) => e.sourceKey));
     expect(new Set(list.map((e) => e.id)).size).toBe(list.length);
@@ -164,7 +163,7 @@ describe('real routes', () => {
     const hit = generateAtcList(input(4500)).find((e) => e.group === 'TEST TMA')!;
     expect(hit.primary).toBe('119.000');
     expect(hit.backups).toEqual(['120.000']);
-    expect(hit.remark).toBe("3000'–FL 065, entered at 4500 ft; H24");
+    expect(hit.remark).toBe("3000'–FL 065; H24");
     expect(generateAtcList(input(7500)).some((e) => e.group === 'TEST TMA')).toBe(false);
   });
 });
