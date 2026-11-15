@@ -13,10 +13,10 @@ const ROWS_731 = 6;
 export interface PdfSignature { key: string; name: string; signedAt: number }
 
 const pad2 = (x: number) => String(x).padStart(2, '0');
-/** 'DD/MM/YYYY HH:MMZ' */
+/** 'YYYY-MM-DD HH:MMZ' */
 export function stampZ(ms: number): string {
   const d = new Date(ms);
-  return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
 }
 
 function signature(p: PdfPage, x: number, y: number, w: number, s: PdfSignature) {

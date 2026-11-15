@@ -2,6 +2,7 @@
 // on the spot with <PassengerDialog passenger={null} initialName="…" onSaved={…} />.
 // The pilot is a passenger too: <PilotDetailsDialog /> edits the pilot's own person details (plus the
 // licence number) with the same form, saved to the profile (PUT /api/me).
+import { DateInput } from '../../app/DateInput';
 import { useState } from 'react';
 import { api } from '../../data/api';
 import { EMPTY_PERSON, type Passenger, type PassengerInput, type Pilot } from '../../shared';
@@ -15,7 +16,7 @@ export interface PassengerForm {
   licenceNo?: string;
 }
 
-type SetField = <K extends keyof PassengerForm>(k: K) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+type SetField = <K extends keyof PassengerForm>(k: K) => (e: { target: { value: string } }) => void;
 
 /** The person form shared by passengers and the pilot (pilot: licence number instead of notes). */
 function PersonFields({ f, set, onSubmit, pilot = false }: { f: PassengerForm; set: SetField; onSubmit: (e?: React.FormEvent) => void; pilot?: boolean }) {
@@ -28,28 +29,17 @@ function PersonFields({ f, set, onSubmit, pilot = false }: { f: PassengerForm; s
         <label className="field">Phone<input name="phone" type="tel" value={f.phone} onChange={set('phone')} placeholder="+30 …" /></label>
       </div>
       <div className="grid3">
-        <label className="field">Date of birth<input name="dateOfBirth" type="date" value={f.dateOfBirth} onChange={set('dateOfBirth')} /></label>
+        <label className="field">Date of birth<DateInput name="dateOfBirth" value={f.dateOfBirth} onChange={set('dateOfBirth')} /></label>
         <label className="field">Weight
           <div className="unit-input"><input name="weightKg" inputMode="decimal" value={f.weightKg} onChange={set('weightKg')} placeholder="for W&B" /><span>kg</span></div>
         </label>
         <label className="field">Nationality<input name="nationality" value={f.nationality} onChange={set('nationality')} placeholder="e.g. GREEK" /></label>
       </div>
       <div className="grid2">
-        <label className="field">Identity document
-          <div className="row" style={{ gap: 6 }}>
-            <select name="idType" value={f.idType} onChange={set('idType')} style={{ width: 'auto' }} aria-label="Document type">
-              <option value="">—</option><option value="ID">ID card</option><option value="PASSPORT">Passport</option>
-            </select>
-            <input name="idNumber" value={f.idNumber} onChange={set('idNumber')} placeholder="Number" aria-label="Document number" />
-          </div>
-        </label>
-        <label className="field">Relation
-          <input name="relation" value={f.relation} onChange={set('relation')} placeholder="Aeroclub member code, FRIEND, FAMILY…" />
-        </label>
+        <label className="field">ID / passport number<input name="idNumber" value={f.idNumber} onChange={set('idNumber')} placeholder="e.g. AK 123456" /></label>
+        {pilot && <label className="field">Licence number<input name="licenceNo" value={f.licenceNo ?? ''} onChange={set('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" /></label>}
       </div>
-      {pilot
-      ? <label className="field">Licence number<input name="licenceNo" value={f.licenceNo ?? ''} onChange={set('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" /></label>
-      : <label className="field">Notes<textarea name="notes" rows={2} value={f.notes} onChange={set('notes')} /></label>}
+      {!pilot && <label className="field">Notes<textarea name="notes" rows={2} value={f.notes} onChange={set('notes')} /></label>}
       <button type="submit" hidden />
     </form>
   );

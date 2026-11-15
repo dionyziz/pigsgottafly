@@ -78,6 +78,6 @@ describe('general declaration sheet', () => {
     const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} signature={{ name: 'Pat Pilot', signedAt }} />);
     expect(html).toMatch(/class="gd-sigline"><span class="gd-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/);
     expect(html).toContain('>P. Pilot<');
-    expect(html).toContain('signed 15/11/2026 16:51Z');
+    expect(html).toContain('signed 2026-11-15 16:51Z');
   });
 });

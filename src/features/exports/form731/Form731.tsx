@@ -26,7 +26,7 @@ export function Form731(props: FormExportProps & { signatures?: Record<string, S
 const pad2 = (n: number) => String(n).padStart(2, '0');
 function stamp(ms: number): string {
   const d = new Date(ms);
-  return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
 }
 
 /** "D. Zindros" in the handwriting font, with the time it was signed. */

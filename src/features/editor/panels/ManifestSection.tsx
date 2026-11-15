@@ -46,7 +46,7 @@ export function ManifestSection() {
   const q = query.trim().toLowerCase();
   const matches = passengers
     .filter((p) => !onBoard.has(p.id))
-    .filter((p) => !q || p.fullName.toLowerCase().includes(q) || p.relation.toLowerCase().includes(q))
+    .filter((p) => !q || p.fullName.toLowerCase().includes(q))
     .slice(0, 8);
   const options: ({ kind: 'pax'; p: Passenger } | { kind: 'new'; name: string })[] = [
     ...matches.map((p) => ({ kind: 'pax' as const, p })),
@@ -186,7 +186,7 @@ export function ManifestSection() {
                 onMouseDown={(e) => { e.preventDefault(); choose(i); }}
                 onMouseEnter={() => setHi(i)}>
                 {o.kind === 'pax' ? (
-                  <><span>{o.p.fullName}</span><span className="muted">{o.p.weightKg != null ? `${o.p.weightKg} kg` : 'no weight'}{o.p.relation ? ` · ${o.p.relation}` : ''}</span></>
+                  <><span>{o.p.fullName}</span><span className="muted">{o.p.weightKg != null ? `${o.p.weightKg} kg` : 'no weight'}</span></>
                 ) : (
                   <><span><Icon name="plus" size={14} /> Create “{o.name}”</span><span className="muted">new passenger</span></>
                 )}

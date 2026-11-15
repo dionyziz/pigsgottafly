@@ -15,10 +15,10 @@ export function dateParts(d: IsoDate | '' | null | undefined): [string, string, 
   return m ? [m[3], m[2], m[1]] : ['', '', ''];
 }
 
-/** 'YYYY-MM-DD' → 'DD/MM/YYYY' ('' when unset). */
+/** 'YYYY-MM-DD' ('' when unset). */
 export function formatDate(d: IsoDate | '' | null | undefined): string {
   const [dd, mm, yyyy] = dateParts(d);
-  return dd ? `${dd}/${mm}/${yyyy}` : '';
+  return dd ? `${yyyy}-${mm}-${dd}` : '';
 }
 
 /** A place on the forms: short code (ICAO where there is one) and full name. */
@@ -131,11 +131,9 @@ export function formPeopleOf(crewIn: FlightCrew[], stations: Station[] | null, p
     .map(({ c }) => ({ key: crewKey(c), role: c.role, seat: c.seat, seatLabel: seatLabel(c.seat), details: resolveDetails(c, pilot, passengers) }));
 }
 
-/** "ID AB 123456" / "PASSPORT X1234567" / the bare number when the type is unknown. */
-export function idText(d: Pick<PersonDetails, 'idType' | 'idNumber'>): string {
-  const n = d.idNumber.trim();
-  if (!n) return '';
-  return d.idType ? `${d.idType} ${n}` : n;
+/** The ID card or passport number as written on the forms (no document type). */
+export function idText(d: Pick<PersonDetails, 'idNumber'>): string {
+  return d.idNumber.trim();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -180,7 +178,7 @@ export function form731Content(flight: FormFlightInput, aircraft: Pick<Aircraft,
       key: p.key,
       role: p.role,
       name: p.details.fullName.trim(),
-      relation: p.details.relation.trim(),
+      relation: p.role,
       idPassport: idText(p.details),
       contact: p.details.phone.trim(),
     })),

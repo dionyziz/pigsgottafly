@@ -12,7 +12,7 @@ import { ageOn, fmtDate, localToday, matchesQuery } from '../lobby/format';
 import { ConfirmDialog, EmptyState, KebabMenu } from '../lobby/ui';
 import { PassengerDialog, PilotDetailsDialog } from './PassengerDialog';
 
-const searchText = (p: PersonDetails & { notes?: string }) => [p.fullName, p.phone, p.idNumber, p.nationality, p.relation, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
+const searchText = (p: PersonDetails & { notes?: string }) => [p.fullName, p.phone, p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
 
 export function PassengersPage() {
   const { data, error, loading, reload } = useAsync(() => api.passengers.list(), []);
@@ -50,7 +50,7 @@ export function PassengersPage() {
         <div className="card list-card">
           <table className="list people" data-testid="passenger-list">
             <thead><tr>
-              <th>Name</th><th className="hide-sm">Phone</th><th className="hide-sm">Born</th><th className="num">Weight</th><th className="hide-sm">ID</th><th className="hide-sm">Relation</th><th />
+              <th>Name</th><th className="hide-sm">Phone</th><th className="hide-sm">Born</th><th className="num">Weight</th><th className="hide-sm">ID</th><th />
             </tr></thead>
             <tbody>
               {showMe && (() => {
@@ -65,8 +65,7 @@ export function PassengersPage() {
                     <td className="hide-sm">{pilot.phone || <span className="muted">—</span>}</td>
                     <td className="hide-sm">{pilot.dateOfBirth ? <>{fmtDate(pilot.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · {age}</span>}</> : <span className="muted">—</span>}</td>
                     <td className="num">{pilot.weightKg != null ? `${pilot.weightKg} kg` : <span className="muted">—</span>}</td>
-                    <td className="hide-sm">{pilot.idNumber ? <><span className="muted">{pilot.idType === 'PASSPORT' ? 'Passport ' : pilot.idType === 'ID' ? 'ID ' : ''}</span><span className="mono">{pilot.idNumber}</span></> : <span className="muted">—</span>}{pilot.nationality && <span className="muted"> · {pilot.nationality}</span>}</td>
-                    <td className="hide-sm">{pilot.relation || <span className="muted">—</span>}</td>
+                    <td className="hide-sm">{pilot.idNumber ? <><span className="mono">{pilot.idNumber}</span></> : <span className="muted">—</span>}{pilot.nationality && <span className="muted"> · {pilot.nationality}</span>}</td>
                     <td className="act"><KebabMenu items={[{ label: 'Edit', onSelect: () => setEditing('me') }]} /></td>
                   </tr>
                 );
@@ -83,8 +82,7 @@ export function PassengersPage() {
                     <td className="hide-sm">{p.phone || <span className="muted">—</span>}</td>
                     <td className="hide-sm">{p.dateOfBirth ? <>{fmtDate(p.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · {age}</span>}</> : <span className="muted">—</span>}</td>
                     <td className="num">{p.weightKg != null ? `${p.weightKg} kg` : <span className="muted">—</span>}</td>
-                    <td className="hide-sm">{p.idNumber ? <><span className="muted">{p.idType === 'PASSPORT' ? 'Passport ' : p.idType === 'ID' ? 'ID ' : ''}</span><span className="mono">{p.idNumber}</span></> : <span className="muted">—</span>}{p.nationality && <span className="muted"> · {p.nationality}</span>}</td>
-                    <td className="hide-sm">{p.relation || <span className="muted">—</span>}</td>
+                    <td className="hide-sm">{p.idNumber ? <><span className="mono">{p.idNumber}</span></> : <span className="muted">—</span>}{p.nationality && <span className="muted"> · {p.nationality}</span>}</td>
                     <td className="act">
                       <KebabMenu items={[
                         { label: 'Edit', onSelect: () => setEditing(p) },

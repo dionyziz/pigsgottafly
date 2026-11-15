@@ -30,13 +30,12 @@ export function fetchNotams(flightId: string, q: NotamQuery = {}): Promise<Notam
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Epoch ms → '15 Nov 06:00Z'. */
 export function fmtNotamTime(ms: number): string {
   const d = new Date(ms);
   if (!Number.isFinite(d.getTime())) return '?';
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
+  return `${d.toISOString().slice(0, 10)} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
 }
 
 /** Validity, e.g. '15 Nov 06:00Z – 20 Nov 18:00Z EST' or '1 Mar 00:00Z – PERM'. */

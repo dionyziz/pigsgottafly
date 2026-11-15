@@ -2,8 +2,6 @@
 // tests/unit/screens/format.test.ts). No DOM, no React.
 import type { FlightListItem } from '../../shared';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Today's calendar date in the browser's zone, 'YYYY-MM-DD'. */
 export function localToday(now = new Date()): string {
@@ -17,12 +15,10 @@ function parseIso(d: string): Date | null {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
-/** 'Sun 15 Nov 2026' (year omitted when it is `currentYear`). '' for an invalid date. */
-export function fmtDate(d: string, currentYear?: number): string {
+/** 'YYYY-MM-DD' ('' for an invalid date). `currentYear` is accepted for compatibility and ignored. */
+export function fmtDate(d: string, _currentYear?: number): string {
   const dt = parseIso(d);
-  if (!dt) return '';
-  const y = dt.getUTCFullYear();
-  return `${DAYS[dt.getUTCDay()]} ${dt.getUTCDate()} ${MONTHS[dt.getUTCMonth()]}${y === currentYear ? '' : ' ' + y}`;
+  return dt ? dt.toISOString().slice(0, 10) : '';
 }
 
 /** Whole days from `from` to `to` (both 'YYYY-MM-DD'); null if either is invalid. */

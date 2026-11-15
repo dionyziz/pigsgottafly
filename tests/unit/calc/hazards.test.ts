@@ -169,7 +169,7 @@ describe('route wiring (corridor, cell cache, navlog times)', () => {
     const req = { date: '2026-11-16', model: 'ecmwf_ifs025' as const, legs: [{ from, to, distNm: 22 }], departure: from, destination: null, fetch: fakeFetch, now: () => T('2026-11-15T12:00Z') };
     const hw = await fetchHazardWeather(req);
     expect(hw.status).toBe('ok');
-    expect(hw.sourceLabel).toBe('ECMWF IFS 0.25°, run 15 Nov 06Z');
+    expect(hw.sourceLabel).toBe('ECMWF IFS 0.25°, run 2026-11-15 06Z');
     expect(hw.legs[0].corridor.length).toBeGreaterThanOrEqual(4);
     const dataCalls = urls.filter((u) => !u.includes('meta.json')).length;
     expect(dataCalls).toBe(1);

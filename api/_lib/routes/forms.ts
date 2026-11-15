@@ -183,7 +183,7 @@ async function newLink(db: Queryable, L: Loaded, person: Form731Person): Promise
 
 const fmtDay = (date: string) => {
   const d = new Date(`${date}T00:00:00Z`);
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '';
+  return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : '';
 };
 
 const MAIL_DENIED = 'Your account has no e-mail address to copy the forms to.';

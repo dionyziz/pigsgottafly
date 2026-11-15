@@ -3,6 +3,7 @@
 // This page loads the flight, shows the editable title and save state, and wires undo/redo.
 // Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job,
 // driven by EditorProvider.update().
+import { useResizable } from './resizable';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useSession } from '../../app/session';
@@ -143,7 +144,7 @@ export function EditorPage() {
             <AccountMenu />
           </header>
           <div className="editor-body">
-            <aside className="editor-panel"><ErrorBoundary label="The panel failed"><FlightPanel /></ErrorBoundary></aside>
+            <ResizablePanel />
             <div className="editor-main">
               <div className="editor-map"><ErrorBoundary label="The map failed"><MapView /></ErrorBoundary></div>
               <ErrorBoundary label="The navlog failed"><NavlogStrip /></ErrorBoundary>
@@ -153,5 +154,18 @@ export function EditorPage() {
       </FlightCalcProvider>
       </NotamProvider>
     </EditorProvider>
+  );
+}
+
+/** The flight panel on the left; its width is set by dragging its right edge. */
+function ResizablePanel() {
+  const r = useResizable({ key: 'pgf.editor.panelWidth', axis: 'x', dir: 1, min: 280, max: () => Math.max(320, Math.round(window.innerWidth * 0.6)), initial: null });
+  return (
+    <>
+      <aside className="editor-panel" ref={(el) => { r.panelRef.current = el; }} style={r.size != null ? { width: r.size } : undefined}>
+        <ErrorBoundary label="The panel failed"><FlightPanel /></ErrorBoundary>
+      </aside>
+      <div {...r.handleProps} aria-label="Resize the flight panel" data-testid="resize-panel" />
+    </>
   );
 }

@@ -2,7 +2,7 @@ aip/
 server/*.db
 server/*.db-*
 tests/e2e/artifacts/
-node_modules/
+node_modules
 .DS_Store
 server/pgdata/
 .vercel

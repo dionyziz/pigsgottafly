@@ -1,6 +1,7 @@
 // Compass swing section: deviation cards (for / steer), swing and expiry dates, source, the swing
 // report itself (PDF or image, stored with the aircraft), with a deviation curve and an expiry
 // warning. The first card is the flights' default.
+import { DateInput } from '../../app/DateInput';
 import { useEffect, useRef, useState } from 'react';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type AttachmentRef, type AttachmentType, type CompassCard } from '../../shared/types';
@@ -171,10 +172,10 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
             </div>
             <div className="grid3">
               <Field label="Swung" issues={issuesAt(issues, `${p}.swung`, true)}>
-                <input type="date" value={c.swung} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.swung = v; }); }} />
+                <DateInput value={c.swung} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.swung = v; }); }} />
               </Field>
               <Field label="Expires" issues={issuesAt(issues, `${p}.expires`, true)} hint={c.swung ? <button type="button" className="link" onClick={() => cc(i, (x) => { x.expires = addYears(x.swung, 2); })}>Swung + 2 years</button> : undefined}>
-                <input type="date" value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
+                <DateInput value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
               </Field>
               <Field label="Reference" hint="Report number or who swung it">
                 <input value={c.source} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.source = v; }); }} />

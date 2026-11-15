@@ -38,9 +38,9 @@ describe('NOTAM texts', () => {
     expect(notamsPath('f1', { maxAltFt: 4499.6, corridorNm: 5, refresh: true })).toBe('flights/f1/notams?maxAltFt=4500&corridorNm=5&refresh=1');
   });
   test('validity, limits, subject, place', () => {
-    expect(notamValidity(notam())).toBe('16 Nov 08:00Z – 16 Nov 15:00Z');
-    expect(notamValidity(notam({ to: null }))).toBe('16 Nov 08:00Z – PERM');
-    expect(notamValidity(notam({ estimated: true }))).toBe('16 Nov 08:00Z – 16 Nov 15:00Z EST');
+    expect(notamValidity(notam())).toBe('2026-11-16 08:00Z – 2026-11-16 15:00Z');
+    expect(notamValidity(notam({ to: null }))).toBe('2026-11-16 08:00Z – PERM');
+    expect(notamValidity(notam({ estimated: true }))).toBe('2026-11-16 08:00Z – 2026-11-16 15:00Z EST');
     expect(notamLimits(notam())).toBe('SFC – 2500 ft');
     expect(notamLimits(notam({ lowerFt: 9500, upperFt: 99900 }))).toBe('FL095 – UNL');
     expect(notamLimits(notam({ lowerText: 'GND', upperText: '3000FT AMSL' }))).toBe('GND – 3000FT AMSL');
@@ -92,7 +92,7 @@ describe('briefing export model', () => {
     expect(m.relevant[0].raw).toContain('Q) LGGG/QRTCA');
     expect(m.hidden).toEqual([expect.objectContaining({ key: 'A2/26', reasons: 'IFR only', leg: null })]);
     expect(m.filter).toBe('lower limit at or below 4500 ft · within 10 NM of the route');
-    expect(m.source).toBe('autorouter (EAD), fetched 16 Nov 08:50Z');
+    expect(m.source).toBe('autorouter (EAD), fetched 2026-11-16 08:50Z');
   });
   test('not configured: the server message, no lists', () => {
     const m = briefingModel({ doc, title: 't', briefing: briefing([], { status: 'not-configured', source: null, fetched: null, message: 'NOTAMs are not available yet.' }) });

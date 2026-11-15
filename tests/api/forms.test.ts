@@ -66,7 +66,7 @@ describe('Form 731 signatures', () => {
     const view = (await anon.call<SigningView>('GET', `sign/${token}`)).body;
     expect(view.me).toBe(paxKey);
     const mine = view.content.people.find((p) => p.key === paxKey)!;
-    expect(mine.idPassport).toBe('ID AB987654');
+    expect(mine.idPassport).toBe('AB987654');
     expect(mine.contact).toBe('+30 690 111 2233');
     const pic = view.content.people.find((p) => p.role === 'PIC')!;
     expect(pic.name).toBe('Dionysis Zindros');
@@ -159,7 +159,7 @@ describe('Form 731 signatures', () => {
     const ty = (await A.call<FormsState>('POST', `flights/${f.id}/forms/731/links`)).body.links![key];
     expect(ty).toBeTruthy();
     const v = (await anon.call<SigningView>('GET', `sign/${ty}`)).body;
-    expect(v.content.people.find((p) => p.key === key)!.idPassport).toBe('ID YY999999');
+    expect(v.content.people.find((p) => p.key === key)!.idPassport).toBe('YY999999');
     await anon.call('POST', `sign/${ty}`);
     st = (await forms(A, f.id)).body;
     y = st.form731.signatures.find((s) => s.key === key)!;
@@ -202,7 +202,7 @@ describe('sending the forms to HCAA', () => {
     expect(m.to).toEqual(['731@hcaa.gov.gr']);
     expect(m.cc).toEqual(['pilot.a@example.com']);
     expect(m.replyTo).toBe('pilot.a@example.com');
-    expect(m.subject).toMatch(/^Form 731 · .*LGTT → LGMG · \d{1,2} [A-Z][a-z]{2} \d{4}$/);
+    expect(m.subject).toMatch(/^Form 731 · .*LGTT → LGMG · \d{4}-\d{2}-\d{2}$/);
     const pdf = m.attachments![0].content;
     expect(pdf.subarray(0, 8).toString('latin1')).toBe('%PDF-1.4');
     expect(m.attachments![0].contentType).toBe('application/pdf');

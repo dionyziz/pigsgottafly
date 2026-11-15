@@ -3,6 +3,7 @@
 // out/in, fuel reserve, final reserve, wind model). With ?welcome=1 it is the first-use onboarding:
 // only name, phone, home aerodrome, taxi and reserve are asked. Nothing pilot-specific is prefilled
 // (pilot correction #1): unset values show neutral placeholders and are never saved silently.
+import { DateInput } from '../../app/DateInput';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
@@ -94,7 +95,7 @@ export function ProfilePage() {
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  const set = <K extends keyof Form>(k: K) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF((x) => ({ ...x, [k]: e.target.value as Form[K] }));
+  const set = <K extends keyof Form>(k: K) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value as Form[K] }));
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,24 +148,14 @@ export function ProfilePage() {
             </label>
           </div>
           {!welcome && (<>
-            <div className="grid3">
+            <div className="grid2">
               <label className="field">Licence number<input name="licenceNo" value={f.licenceNo} onChange={set('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" /></label>
               <label className="field">Nationality<input name="nationality" value={f.nationality} onChange={set('nationality')} placeholder="e.g. GREEK" /></label>
-              <label className="field">Aeroclub member code
-                <input name="relation" value={f.relation} onChange={set('relation')} placeholder="Form 731 relation" />
-              </label>
             </div>
             <div className="grid3">
-              <label className="field">Date of birth<input name="dateOfBirth" type="date" value={f.dateOfBirth} onChange={set('dateOfBirth')} /></label>
+              <label className="field">Date of birth<DateInput name="dateOfBirth" value={f.dateOfBirth} onChange={set('dateOfBirth')} /></label>
               <label className="field">Body weight<Unit unit="kg"><input name="weightKg" inputMode="decimal" value={f.weightKg} onChange={set('weightKg')} placeholder="for W&B" /></Unit></label>
-              <label className="field">Identity document
-                <div className="row" style={{ gap: 6 }}>
-                  <select name="idType" value={f.idType} onChange={set('idType')} style={{ width: 'auto' }} aria-label="Document type">
-                    <option value="">—</option><option value="ID">ID card</option><option value="PASSPORT">Passport</option>
-                  </select>
-                  <input name="idNumber" value={f.idNumber} onChange={set('idNumber')} placeholder="Number" aria-label="Document number" />
-                </div>
-              </label>
+              <label className="field">ID / passport number<input name="idNumber" value={f.idNumber} onChange={set('idNumber')} placeholder="e.g. AK 123456" /></label>
             </div>
           </>)}
         </section>

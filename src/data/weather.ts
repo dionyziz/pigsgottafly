@@ -349,8 +349,7 @@ export interface RouteWeather {
 }
 
 const hhmmZ = (ms: number) => new Date(ms).toISOString().slice(11, 16) + 'Z';
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const runLabel = (ms: number) => { const d = new Date(ms); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, '0')}Z`; };
+const runLabel = (ms: number) => { const d = new Date(ms); return `${d.toISOString().slice(0, 10)} ${String(d.getUTCHours()).padStart(2, '0')}Z`; };
 
 /** One-line description of a forecast source for the UI and printouts. */
 export function describeSource(s: ForecastSource): string {

@@ -1,5 +1,6 @@
 // Mass & balance section: empty aircraft from the weighing report, MTOW/MLW, loading stations with
 // their seat layout, combined limits, and the normal/utility CG and moment envelopes.
+import { DateInput } from '../../app/DateInput';
 import { useState } from 'react';
 import type { AircraftInput, Envelope, Station, StationKind, WbCategory } from '../../shared/types';
 import { EnvelopeChart, type ChartSeries } from './EnvelopeChart';
@@ -36,7 +37,7 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
       </div>
       <div className="grid3">
         <Field label="Weighing date" issues={at('massBalance.weighingDate')}>
-          <input type="date" value={mb.weighingDate ?? ''} onChange={(e) => { const v = e.target.value || null; m((q) => { q.weighingDate = v; }); }} />
+          <DateInput value={mb.weighingDate ?? ''} onChange={(e) => { const v = e.target.value || null; m((q) => { q.weighingDate = v; }); }} />
         </Field>
         <Field label="Weighing report" issues={at('massBalance.weighingSource')} hint="Who weighed it, report reference" wide>
           <input value={mb.weighingSource} onChange={(e) => { const v = e.target.value; m((q) => { q.weighingSource = v; }); }} maxLength={300} />

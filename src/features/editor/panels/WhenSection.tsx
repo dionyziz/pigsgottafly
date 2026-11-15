@@ -1,5 +1,6 @@
 // When: date, block-off (UTC, with local time), taxi out/in for this flight, and the computed
 // take-off, landing and block-on times.
+import { DateInput } from '../../../app/DateInput';
 import { useEffect, useState } from 'react';
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
@@ -50,14 +51,14 @@ export function WhenSection() {
   const late = (m: number) => (sunset != null && isFinite(m) && m > sunset ? 'danger' as const : undefined);
 
   const badge = doc.date
-    ? `${new Date(doc.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}${doc.blockOff ? ` · ${doc.blockOff}Z` : ''}`
+    ? `${doc.date}${doc.blockOff ? ` · ${doc.blockOff}Z` : ''}`
     : 'No date';
 
   return (
     <Section id="when" title="When" badge={<span className="muted">{badge}</span>}>
       <div className="ep-grid2">
         <label className="field">Date
-          <input type="date" value={doc.date} data-testid="flight-date"
+          <DateInput value={doc.date} testId="flight-date"
             onChange={(e) => update((d) => ({ ...d, date: e.target.value }), { coalesce: 'date' })} />
         </label>
         <label className="field">Block-off (UTC)

@@ -88,12 +88,12 @@ export function AirspacePopover({ x, y, items, legs, altitudes, airac, onClose }
                   )}
                 </dd>
                 {a.remarks && <><dt>Remarks</dt><dd className="pgf-air-text">{a.remarks}</dd></>}
-                <dt>Route</dt>
-                <dd data-testid="airspace-legs">
-                  {legs.length === 0 ? <span className="muted">No route yet</span>
-                    : entries.length === 0 ? <span className="muted">No leg crosses it</span>
-                      : <ul className="pgf-air-legs">{entries.map((e) => <LegRow key={e.index} e={e} a={a} />)}</ul>}
-                </dd>
+                {entries.length > 0 && <>
+                  <dt>Route</dt>
+                  <dd data-testid="airspace-legs">
+                    <ul className="pgf-air-legs">{entries.map((e) => <LegRow key={e.index} e={e} a={a} />)}</ul>
+                  </dd>
+                </>}
                 <dt>Source</dt><dd>AIP Greece {a.source} · AIRAC {airac}</dd>
               </dl>
             )}

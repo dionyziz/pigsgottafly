@@ -8,6 +8,7 @@ import { useEditor } from '../state';
 import { useNotams } from '../notams';
 import { fmtDur, fmtMin, useFlightCalc, type CalcWarning } from './calc';
 import { Icon } from './ui';
+import { useResizable } from '../resizable';
 
 const LS_KEY = 'pgf.editor.strip';
 type StripState = 'open' | 'closed' | 'warnings';
@@ -37,6 +38,8 @@ export function NavlogStrip() {
   const notamLeg = selectedNotam?.legIndex ?? null;
   const [state, setState] = useState<StripState>(load);
   const set = (s: StripState) => { setState(s); save(s); };
+  // Height of the open strip, set by dragging its top edge.
+  const r = useResizable({ key: 'pgf.editor.stripHeight', axis: 'y', dir: -1, min: 90, max: () => Math.round(window.innerHeight * 0.8), initial: null });
   const danger = warnings.filter((w) => w.level === 'danger').length;
   const warn = warnings.filter((w) => w.level === 'warn').length;
 
@@ -45,7 +48,9 @@ export function NavlogStrip() {
   const t = navlog?.times;
 
   return (
-    <section className={'ns' + (state === 'closed' ? ' closed' : '')} data-testid="navlog-strip">
+    <section className={'ns' + (state === 'closed' ? ' closed' : '') + (r.size != null && state !== 'closed' ? ' sized' : '')} data-testid="navlog-strip"
+      ref={(el) => { r.panelRef.current = el; }} style={r.size != null && state !== 'closed' ? { height: r.size } : undefined}>
+      {state !== 'closed' && <div {...r.handleProps} aria-label="Resize the navlog" data-testid="resize-navlog" />}
       <header className="ns-head">
         <button type="button" className="ns-toggle" onClick={() => set(state === 'closed' ? 'open' : 'closed')} aria-expanded={state !== 'closed'}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="ep-caret"><path d="M3 7.5 6 4.5 9 7.5" /></svg>

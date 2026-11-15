@@ -41,7 +41,8 @@ export function form731Model(props: FormExportProps): Form731Model {
     key: p.key,
     role: p.role,
     name: p.details.fullName.trim(),
-    relation: p.details.relation.trim(),
+    // Form 731 relation: the person's role on board (PIC / PAX), not a stored field.
+    relation: p.role,
     idPassport: idText(p.details),
     contact: p.details.phone.trim(),
   }));
@@ -53,7 +54,7 @@ export function form731Model(props: FormExportProps): Form731Model {
   if (!aircraft) warnings.push('No aircraft is selected: the registration is blank.');
   for (const r of rows) {
     const who = r.role === 'PIC' ? 'PIC' : r.name || `Passenger ${r.no}`;
-    const miss = [!r.name && 'name', !r.idPassport && 'ID/passport number', !r.contact && 'phone', !r.relation && 'relation'].filter(Boolean);
+    const miss = [!r.name && 'name', !r.idPassport && 'ID/passport number', !r.contact && 'phone'].filter(Boolean);
     if (miss.length) warnings.push(`${who}: no ${miss.join(', ')}.`);
   }
 

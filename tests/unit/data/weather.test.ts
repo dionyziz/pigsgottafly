@@ -181,7 +181,7 @@ describe('availability and fetching', () => {
     expect(rw.legs[0]!.latitude).toBe(38); expect(rw.legs[0]!.longitude).toBe(23.75);
     expect(rw.departure!.longitude).toBe(24); expect(rw.destination).toBeNull();
     expect(rw.source).toMatchObject({ provider: 'Open-Meteo', model: 'ecmwf_ifs025', endpoint: 'forecast', fetchedMs: NOW, coverFromMs: T('2026-11-15T00:00Z'), coverToMs: T('2026-11-16T23:00Z'), run: { runMs: 1794722400000, availableMs: 1794747938000 } });
-    expect(rw.message).toBe('ECMWF IFS 0.25°, run 15 Nov 06Z, fetched 13:36Z');
+    expect(rw.message).toBe('ECMWF IFS 0.25°, run 2026-11-15 06Z, fetched 13:36Z');
     expect(describeSource(rw.source!)).toBe(rw.message);
     const om = calls.filter((c) => c.includes('/v1/forecast'));
     expect(om).toHaveLength(1);

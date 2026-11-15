@@ -107,7 +107,7 @@ describe('W&B sheet (MD 4.3)', () => {
     expect(m.checks.map((c) => [c.phase, c.ok])).toEqual([['takeoff', true], ['landing', true]]);
     expect(m.verdict).toBe('pass');
     expect(m.registration).toBe('SX-ASV');
-    expect(m.date).toBe('21/11/2026');
+    expect(m.date).toBe('2026-11-21');
     expect(m.envelopes.map((e) => e.category)).toEqual(['normal', 'utility']);
   });
 

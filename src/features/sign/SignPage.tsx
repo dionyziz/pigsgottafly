@@ -54,7 +54,6 @@ export function SignPage() {
               <li key={p.key} className={p.key === view.me ? 'me' : ''}>
                 <div className="sign-name">{p.name || '(no name)'}{p.role === 'PIC' ? <span className="sign-role">Pilot in command</span> : p.key === view.me ? <span className="sign-role">You</span> : null}</div>
                 <div className="sign-details">
-                  {p.relation && <span>{p.relation}</span>}
                   {p.idPassport && <span>{p.idPassport}</span>}
                   {p.contact && <span>{p.contact}</span>}
                 </div>

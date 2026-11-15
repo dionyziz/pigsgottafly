@@ -9,7 +9,7 @@ describe('form 731 model', () => {
   it('fills airport, date, registration and the aerodrome route', () => {
     const m = form731Model({ flight: flight(), aircraft, pilot });
     expect(m.airport).toBe('DEKELIA / TATOI (LGTT)');
-    expect(m.date).toBe('21/11/2026');
+    expect(m.date).toBe('2026-11-21');
     expect(m.registration).toBe('SX-ABC');
     expect(m.route).toBe('LGTT – LGMG – LGTT');
   });
@@ -23,8 +23,8 @@ describe('form 731 model', () => {
       [3, 'PAX', 'Rear Person'],
     ]);
     const pic = m.sheets[0][0];
-    expect(pic).toMatchObject({ relation: 'MEMBER 0042', idPassport: 'ID AB 123456', contact: '+30 690 000 0000' });
-    expect(m.sheets[0][2]).toMatchObject({ relation: 'FRIEND', idPassport: 'PASSPORT X1', contact: '+30 691' });
+    expect(pic).toMatchObject({ relation: 'PIC', idPassport: 'AB 123456', contact: '+30 690 000 0000' });
+    expect(m.sheets[0][2]).toMatchObject({ relation: 'PAX', idPassport: 'X1', contact: '+30 691' });
     expect(m.picName).toBe('Pat Pilot');
   });
 
@@ -39,7 +39,7 @@ describe('form 731 model', () => {
     const f = flight({ crew: [pax('Front Person', 'front-right', {}, 'px1')] });
     const passengers = [{ ...f.crew[0].snapshot, id: 'px1', fullName: 'Front Person', phone: '+30 699', idNumber: 'Z9', idType: 'ID' as const, notes: '', created: 0, updated: 0 }];
     const m = form731Model({ flight: f, aircraft, pilot, passengers });
-    expect(m.sheets[0][1]).toMatchObject({ contact: '+30 699', idPassport: 'ID Z9' });
+    expect(m.sheets[0][1]).toMatchObject({ contact: '+30 699', idPassport: 'Z9' });
   });
 
   it('adds the pilot as PIC when the manifest has none', () => {
