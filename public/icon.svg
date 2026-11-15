@@ -1,13 +1,82 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f74e0"/><stop offset="1" stop-color="#1546a8"/></linearGradient>
-    <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef3fc"/></linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b82e6"/><stop offset="1" stop-color="#1546a8"/>
+    </linearGradient>
+    <radialGradient id="skin" cx="0.45" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#ffc9cf"/><stop offset="1" stop-color="#f29aa6"/>
+    </radialGradient>
+    <linearGradient id="leather" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9a5b2e"/><stop offset="1" stop-color="#6e3b18"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a4a5c"/><stop offset="0.55" stop-color="#141b24"/><stop offset="1" stop-color="#0b0f14"/>
+    </linearGradient>
+    <linearGradient id="goggle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe6ff"/><stop offset="1" stop-color="#7fb2e8"/>
+    </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect x="118" y="86" width="276" height="340" rx="30" fill="url(#sheet)"/>
-  <rect x="200" y="62" width="112" height="44" rx="14" fill="#0e3a8c"/>
-  <g stroke="#c9d6ee" stroke-width="10" stroke-linecap="round"><path d="M160 150h192M160 190h120"/></g>
-  <path d="M168 372 L222 268 L292 318 L344 226" fill="none" stroke="#1546a8" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <g fill="#fff" stroke="#1546a8" stroke-width="10"><circle cx="168" cy="372" r="17"/><circle cx="222" cy="268" r="17"/><circle cx="292" cy="318" r="17"/></g>
-  <path d="M344 196 L366 240 L344 230 L322 240 Z" fill="#e8492e"/>
+
+  <!-- background tile -->
+  <rect width="512" height="512" rx="112" fill="url(#sky)"/>
+  <!-- a few cloud puffs -->
+  <g fill="#ffffff" opacity="0.18">
+    <ellipse cx="96" cy="410" rx="70" ry="22"/><ellipse cx="420" cy="118" rx="58" ry="18"/>
+  </g>
+
+  <!-- ears (flaps of the helmet hide most, pig ear tips poke out) -->
+  <path d="M120 178 L92 92 L178 136 Z" fill="#f29aa6" stroke="#b8606d" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M392 178 L420 92 L334 136 Z" fill="#f29aa6" stroke="#b8606d" stroke-width="8" stroke-linejoin="round"/>
+
+  <!-- head -->
+  <ellipse cx="256" cy="282" rx="150" ry="140" fill="url(#skin)" stroke="#b8606d" stroke-width="8"/>
+
+  <!-- leather flying helmet -->
+  <path d="M108 250 C108 150 176 104 256 104 C336 104 404 150 404 250 C380 214 330 196 256 196 C182 196 132 214 108 250 Z"
+        fill="url(#leather)" stroke="#4a2610" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M256 108 L256 194" stroke="#4a2610" stroke-width="6" opacity="0.6"/>
+  <!-- ear flaps -->
+  <path d="M112 246 C100 290 106 330 132 352 L150 340 C138 312 136 282 146 252 Z" fill="url(#leather)" stroke="#4a2610" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M400 246 C412 290 406 330 380 352 L362 340 C374 312 376 282 366 252 Z" fill="url(#leather)" stroke="#4a2610" stroke-width="8" stroke-linejoin="round"/>
+
+  <!-- goggles pushed up on the helmet -->
+  <rect x="150" y="150" width="212" height="22" rx="11" fill="#3a2a1a"/>
+  <g stroke="#2b2b2b" stroke-width="8">
+    <circle cx="208" cy="158" r="34" fill="#c9a24a"/>
+    <circle cx="304" cy="158" r="34" fill="#c9a24a"/>
+  </g>
+  <circle cx="208" cy="158" r="23" fill="url(#goggle)"/>
+  <circle cx="304" cy="158" r="23" fill="url(#goggle)"/>
+  <path d="M196 148 a14 14 0 0 1 14 -6" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M292 148 a14 14 0 0 1 14 -6" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- aviator sunglasses (teardrop lenses, thin gold double bridge) -->
+  <g stroke="#c9a24a" stroke-width="7" stroke-linejoin="round">
+    <path d="M140 236 C140 222 158 214 186 214 C218 214 236 222 236 240 C236 268 218 290 190 290 C160 290 140 266 140 236 Z" fill="url(#lens)"/>
+    <path d="M372 236 C372 222 354 214 326 214 C294 214 276 222 276 240 C276 268 294 290 322 290 C352 290 372 266 372 236 Z" fill="url(#lens)"/>
+    <path d="M236 230 Q256 220 276 230" fill="none"/>
+    <path d="M232 246 Q256 238 280 246" fill="none" stroke-width="5"/>
+  </g>
+  <path d="M158 236 C162 228 176 224 192 224" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M294 236 C298 228 312 224 328 224" stroke="#ffffff" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- snout -->
+  <ellipse cx="256" cy="320" rx="62" ry="44" fill="#f7a9b4" stroke="#b8606d" stroke-width="8"/>
+  <ellipse cx="234" cy="320" rx="11" ry="17" fill="#8e3f4c"/>
+  <ellipse cx="278" cy="320" rx="11" ry="17" fill="#8e3f4c"/>
+
+  <!-- handlebar moustache -->
+  <path d="M256 362
+           C236 352 212 352 192 364 C174 374 160 372 150 360
+           C156 386 182 396 206 388 C226 382 242 374 256 376
+           C270 374 286 382 306 388 C330 396 356 386 362 360
+           C352 372 338 374 320 364 C300 352 276 352 256 362 Z"
+        fill="#5a3418" stroke="#3a1f0c" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- smile -->
+  <path d="M226 402 Q256 418 286 402" stroke="#8e3f4c" stroke-width="7" fill="none" stroke-linecap="round"/>
+
+  <!-- white scarf flying to the right -->
+  <path d="M190 414 C230 432 282 432 322 414 L330 432 C290 452 222 452 182 432 Z" fill="#ffffff" stroke="#c7d2e0" stroke-width="5"/>
+  <path d="M318 420 C352 430 384 424 418 404 C408 428 384 446 346 446 C360 452 382 450 398 446 C372 470 330 466 312 444 Z" fill="#ffffff" stroke="#c7d2e0" stroke-width="5" stroke-linejoin="round"/>
 </svg>
