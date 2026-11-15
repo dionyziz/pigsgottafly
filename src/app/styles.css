@@ -128,12 +128,19 @@ table.list th { font-weight: 500; color: var(--muted); font-size: var(--fs-sm); 
 .date-input-cal:hover { color: var(--ink); }
 .date-input-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
 
-/* Loading indicator (Loading.tsx): a small airplane circling beside the text. */
+/* Loading indicator (Loading.tsx): a small airplane flying a slow circle beside the text, nose along its path. */
 .loading { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); }
-.loading-plane { position: relative; width: 22px; height: 22px; flex: none; color: var(--accent, #3b6fd8); }
-.loading-plane svg { position: absolute; left: 2px; top: 2px; transform-origin: 9px 9px; animation: pgf-orbit 1.6s linear infinite; }
+.loading-plane { position: relative; width: 30px; height: 30px; flex: none; color: var(--accent, #3b6fd8); }
+.loading-plane::before { content: ''; position: absolute; inset: 6px; border: 1px dashed color-mix(in srgb, currentColor 30%, transparent); border-radius: 50%; }
+.loading-plane svg { position: absolute; left: 8px; top: 8px; width: 14px; height: 14px; transform-origin: 50% 50%; animation: pgf-orbit 3.2s linear infinite; }
+/* rotate(θ) translateX(r): position on the circle; rotate(180deg): the nose (drawn pointing up) faces the clockwise direction of travel */
 @keyframes pgf-orbit {
-  from { transform: rotate(0deg) translateX(5px) rotate(90deg); }
-  to   { transform: rotate(360deg) translateX(5px) rotate(90deg); }
+  from { transform: rotate(0deg) translateX(9px) rotate(180deg); }
+  to   { transform: rotate(360deg) translateX(9px) rotate(180deg); }
 }
-@media (prefers-reduced-motion: reduce) { .loading-plane svg { animation: none; transform: rotate(45deg); } }
+@media (prefers-reduced-motion: reduce) { .loading-plane svg { animation: none; transform: translateY(-9px) rotate(90deg); } }
+
+/* An input a "missing details" link pointed at: highlighted until typed into. */
+input.attention, select.attention, textarea.attention { border-color: var(--warn, #b7791f) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn, #b7791f) 28%, transparent); animation: pgf-attention 1.2s ease-out 2; }
+@keyframes pgf-attention { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn, #b7791f) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+@media (prefers-reduced-motion: reduce) { input.attention, select.attention, textarea.attention { animation: none; } }

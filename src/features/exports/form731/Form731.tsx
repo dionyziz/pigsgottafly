@@ -36,7 +36,6 @@ export function Signature({ s, size = 4.6 }: { s: ShownSignature; size?: number 
       <span className="pgf-signature-mark" aria-hidden="true"><img src="/icon.svg" alt="" /><span>PIG&rsquo;S GOTTA FLY</span></span>
       <span className="pgf-signature" style={{ fontSize: `${size}mm` }}>{transliterate(signatureName(s.name), { keepCase: true })}</span>
       <span className="pgf-signature-when">Electronically signed {stamp(s.signedAt)}</span>
-      <span className="pgf-signature-via">pigsgottafly.com</span>
     </span>
   );
 }

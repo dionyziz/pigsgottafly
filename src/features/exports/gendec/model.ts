@@ -45,7 +45,7 @@ export function genDecModel(props: FormExportProps): GenDecModel {
   if (!flight.date) warn('The flight has no date.', { kind: 'flight' });
   if (places.length < 2) warn('The route needs a departure and a destination.', { kind: 'flight' });
   if (places.length > ROUTING_ROWS) warn(`The route has ${places.length} places; the form has room for ${ROUTING_ROWS}.`, null);
-  if (!picName) warn('Your full name is not set.', { kind: 'person', key: 'PIC' });
+  if (!picName) warn('Your full name is not set.', { kind: 'person', key: 'PIC', fields: ['fullName'] });
 
   const n = ROUTING_ROWS;
   const routing = Array.from({ length: n }, (_, i) => ({ place: places[i]?.code ?? '', crew: crew[i] ?? '' }));

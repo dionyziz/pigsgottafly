@@ -24,8 +24,10 @@ export function PassengersPage() {
   // ?edit=me or ?edit=<passenger id> (links from the forms' missing-details list) opens that person.
   const [params, setParams] = useSearchParams();
   const editParam = params.get('edit');
+  const [focusFields, setFocusFields] = useState<string[]>([]);
   useEffect(() => {
     if (!editParam) return;
+    setFocusFields((params.get('fields') || '').split(',').filter(Boolean));
     if (editParam === 'me') { setEditing('me'); setParams({}, { replace: true }); return; }
     const p = data?.find((x) => x.id === editParam);
     if (p) { setEditing(p); setParams({}, { replace: true }); }
@@ -74,7 +76,7 @@ export function PassengersPage() {
                       {miss.length > 0 && <div className="hint" title="Needed for the forms or W&B">Missing {miss.join(', ')}</div>}
                     </td>
                     <td className="hide-sm">{pilot.phone || <span className="muted">—</span>}</td>
-                    <td className="hide-sm">{pilot.dateOfBirth ? <>{fmtDate(pilot.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · {age}</span>}</> : <span className="muted">—</span>}</td>
+                    <td className="hide-sm">{pilot.dateOfBirth ? <>{fmtDate(pilot.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · age {age}</span>}</> : <span className="muted">—</span>}</td>
                     <td className="num">{pilot.weightKg != null ? `${pilot.weightKg} kg` : <span className="muted">—</span>}</td>
                     <td className="hide-sm">{pilot.idNumber ? <><span className="mono">{pilot.idNumber}</span></> : <span className="muted">—</span>}{pilot.nationality && <span className="muted"> · {pilot.nationality}</span>}</td>
                     <td className="act"><KebabMenu items={[{ label: 'Edit', onSelect: () => setEditing('me') }]} /></td>
@@ -91,7 +93,7 @@ export function PassengersPage() {
                       {miss.length > 0 && <div className="hint" title="Needed for the forms or W&B">Missing {miss.join(', ')}</div>}
                     </td>
                     <td className="hide-sm">{p.phone || <span className="muted">—</span>}</td>
-                    <td className="hide-sm">{p.dateOfBirth ? <>{fmtDate(p.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · {age}</span>}</> : <span className="muted">—</span>}</td>
+                    <td className="hide-sm">{p.dateOfBirth ? <>{fmtDate(p.dateOfBirth).replace(/^\w+ /, '')}{age != null && <span className="muted"> · age {age}</span>}</> : <span className="muted">—</span>}</td>
                     <td className="num">{p.weightKg != null ? `${p.weightKg} kg` : <span className="muted">—</span>}</td>
                     <td className="hide-sm">{p.idNumber ? <><span className="mono">{p.idNumber}</span></> : <span className="muted">—</span>}{p.nationality && <span className="muted"> · {p.nationality}</span>}</td>
                     <td className="act">
@@ -107,9 +109,9 @@ export function PassengersPage() {
           </table>
         </div>
       )}
-      {editing === 'me' && <PilotDetailsDialog onClose={() => setEditing(null)} onSaved={(p) => { setEditing(null); toast(`Saved ${p.fullName}`); }} />}
+      {editing === 'me' && <PilotDetailsDialog focus={focusFields} onClose={() => { setEditing(null); setFocusFields([]); }} onSaved={(p) => { setEditing(null); toast(`Saved ${p.fullName}`); }} />}
       {editing && editing !== 'me' && (
-        <PassengerDialog passenger={editing === 'new' ? null : editing} onClose={() => setEditing(null)}
+        <PassengerDialog passenger={editing === 'new' ? null : editing} focus={focusFields} onClose={() => { setEditing(null); setFocusFields([]); }}
           onSaved={(p, created) => { setEditing(null); void reload(); toast(created ? `Added ${p.fullName}` : `Saved ${p.fullName}`); }} />
       )}
       {deleting && (

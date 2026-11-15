@@ -1,5 +1,5 @@
 // Form 731 (HCAA "Official statement of persons boarding private aircraft"): what goes in each field.
-import type { FormFix } from './FormWarnings';
+import type { FormFix, PersonField } from './FormWarnings';
 import { chunk, formatDate, formPeople, idText, placeLong, routePlaces, routeEnds, type FormExportProps } from './common';
 
 /** Rows printed on one Form 731 sheet. */
@@ -59,9 +59,11 @@ export function form731Model(props: FormExportProps): Form731Model {
   if (!aircraft) warn('No aircraft is selected: the registration is blank.', { kind: 'flight' });
   for (const r of rows) {
     const who = r.role === 'PIC' ? 'PIC' : r.name || `Passenger ${r.no}`;
-    const miss = [!r.name && 'name', !r.idPassport && 'ID/passport number', !r.contact && 'phone'].filter(Boolean);
+    const missing: [boolean, string, PersonField][] = [[!r.name, 'name', 'fullName'], [!r.idPassport, 'ID/passport number', 'idNumber'], [!r.contact, 'phone', 'phone']];
+    const miss = missing.filter((m) => m[0]).map((m) => m[1]);
+    const fields = missing.filter((m) => m[0]).map((m) => m[2]);
     // People saved in the passenger list (key = passenger id) or the PIC can be edited; a seat-only entry is fixed on the flight.
-    if (miss.length) warn(`${who}: no ${miss.join(', ')}.`, r.key.startsWith('seat:') ? { kind: 'flight' } : { kind: 'person', key: r.key });
+    if (miss.length) warn(`${who}: no ${miss.join(', ')}.`, r.key.startsWith('seat:') ? { kind: 'flight' } : { kind: 'person', key: r.key, fields });
   }
 
   return {

@@ -27,8 +27,6 @@ function signature(p: PdfPage, x: number, y: number, w: number, s: PdfSignature)
   p.text(x, y, signatureName(s.name), { font: 'hand', size: 13, maxW: w });
   p.color(0, 0, 0);
   p.text(x, y + 3.4, `Electronically signed ${stampZ(s.signedAt)}`, { size: 6, maxW: w });
-  p.color(0.35, 0.35, 0.35);
-  p.text(x, y + 5.6, 'pigsgottafly.com', { size: 5.5, maxW: w });
   p.color(0, 0, 0);
 }
 
