@@ -7,6 +7,7 @@ import { aircraftFor, listAircraft, toHangarAircraft } from '../access.js';
 import { blankAircraft } from '../../../src/shared/templates.js';
 import type { AircraftInput } from '../../../src/shared/types.js';
 import type { Queryable } from '../db.js';
+import { checkCount } from '../limits.js';
 import { checkReports, deleteAttachments } from './attachments.js';
 import { operatorFor } from '../operators.js';
 
@@ -51,6 +52,7 @@ export const routes: Route[] = [
       // a new aircraft has no files yet: references copied from another aircraft are dropped
       a.compassCards = a.compassCards.map(({ report: _r, ...c }) => c);
       await checkOperator(db, pilot.id, a, null);
+      await checkCount(db, pilot.id, 'aircraft');
       const created = await write(db, pilot.id, await newId('ac'), a, true);
       // A pilot without a default aircraft (an empty hangar, or the default was deleted) gets this one,
       // so new flights open with an aircraft. An existing default is never replaced.

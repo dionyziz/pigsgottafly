@@ -73,6 +73,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
       try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
       await load();
     },
+    signOutEverywhere: async () => {
+      await api.revokeAllSessions().catch(() => {});
+      try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
+      await load();
+    },
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

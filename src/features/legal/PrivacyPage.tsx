@@ -75,7 +75,9 @@ const sections: LegalSection[] = [
       <h3>Technical data</h3>
       <p>
         Like every website, our hosting provider receives your IP address and browser details with each request and keeps short-lived
-        request logs for security and troubleshooting. We do not use them to profile you.
+        request logs for security and troubleshooting. To limit abuse, the app counts requests per account, and per IP address for
+        sign-in attempts and other requests made without a session; these counters are kept for about two days at most. We do not use
+        any of this to profile you.
       </p>
     </>),
   },
@@ -167,9 +169,13 @@ const sections: LegalSection[] = [
       <ul>
         <li>Your account, profile, aircraft, files, passengers, waypoints and flights: until you delete them, or until you delete your account.</li>
         <li>Flights you delete go to the trash, where you can restore them. They stay there until you delete your account.</li>
-        <li>Sessions: until you sign out, or one year after you signed in.</li>
-        <li>Signing links stop working at the end of the day after the flight; their record stays with the flight.</li>
-        <li>The record of e-mails sent stays with your account, to apply the daily sending limits and to show you what was sent.</li>
+        <li>Sessions: until you sign out (on one device, or everywhere from the account menu), or 90 days after you last used the app on that device.</li>
+        <li>Signing links stop working at the end of the day after the flight, or 14 days after they were made if that comes first; their record stays with the flight.</li>
+        <li>
+          The record of e-mails sent (when, the kind of form, the recipient's address, the subject and whether it went out) stays with your
+          account, to apply the daily sending limits, to show you what was sent and to let the administrator look into abuse.
+        </li>
+        <li>Request counters for rate limiting: per account, or per IP address for requests made before signing in; about two days at most.</li>
         <li>
           Deleted data can remain in the database provider's backups and restore history for a limited time (up to about 30 days) before it
           is overwritten. E-mails you sent are kept by their recipients, and flight plans you filed are kept by autorouter and the ATS, under
@@ -209,7 +215,7 @@ const sections: LegalSection[] = [
     body: (<>
       <p>
         We use <b>one cookie</b>: <code>pgf_session</code>, which keeps you signed in. It is strictly necessary, HttpOnly (scripts cannot read
-        it), sent only to this site, and lasts up to a year or until you sign out. Google's sign-in button may set its own cookies on Google's
+        it), sent only to this site, and lasts until you sign out or 90 days after you last used the app. Google's sign-in button may set its own cookies on Google's
         domain when you use it.
       </p>
       <p>

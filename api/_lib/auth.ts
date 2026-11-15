@@ -6,7 +6,9 @@ import type { Queryable } from './db.js';
 import type { ApiConfig, Req } from './http.js';
 
 export const COOKIE = 'pgf_session';
-export const SESSION_MS = 365 * 24 * 3600e3;
+/** A session ends after 90 days without use (sliding: renewed when older than SESSION_RENEW_MS). */
+export const SESSION_MS = 90 * 24 * 3600e3;
+export const SESSION_RENEW_MS = 7 * 24 * 3600e3;
 
 const GOOGLE_CERTS = 'https://www.googleapis.com/oauth2/v3/certs';
 let certCache: { at: number; keys: JsonWebKey[] } = { at: 0, keys: [] };
@@ -68,19 +70,31 @@ export async function createSession(q: Queryable, pilotId: string): Promise<stri
  * The pilot row of a valid session, or null. With an allow-list, a pilot whose email is no longer on
  * it is signed out everywhere (all their sessions are deleted), not just refused at the next login.
  */
-export async function sessionPilotRow(q: Queryable, req: Req, allowedEmails: string[] = []): Promise<Record<string, any> | null> {
+export async function sessionPilotRow(q: Queryable, req: Req, allowedEmails: string[] = [], onRenew?: (token: string) => void): Promise<Record<string, any> | null> {
   const t = tokenFrom(req);
   if (!t) return null;
+  const now = Date.now();
   const [row] = await q.query(
-    `SELECT p.* FROM sessions s JOIN pilots p ON p.id = s.pilot_id WHERE s.token_hash = $1 AND s.created > $2`,
-    [hashToken(t), Date.now() - SESSION_MS],
+    `SELECT p.*, s.created AS session_created FROM sessions s JOIN pilots p ON p.id = s.pilot_id WHERE s.token_hash = $1 AND s.created > $2`,
+    [hashToken(t), now - SESSION_MS],
   );
   if (!row) return null;
   if (!emailAllowed(row.email, allowedEmails)) {
     await q.query('DELETE FROM sessions WHERE pilot_id = $1', [row.id]);
     return null;
   }
+  // sliding expiry: a session in use is renewed once a week (the cookie with it)
+  if (Number(row.session_created) < now - SESSION_RENEW_MS) {
+    await q.query('UPDATE sessions SET created = $2 WHERE token_hash = $1', [hashToken(t), now]);
+    onRenew?.(t);
+  }
+  delete row.session_created;
   return row;
+}
+
+/** Deletes the expired sessions of every pilot (on sign-in: cheap, and often enough). */
+export async function purgeExpiredSessions(q: Queryable): Promise<void> {
+  await q.query('DELETE FROM sessions WHERE created < $1', [Date.now() - SESSION_MS]);
 }
 
 /** True when the allow-list is empty (anyone) or contains the email (case-insensitive). */

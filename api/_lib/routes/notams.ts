@@ -5,6 +5,7 @@
 // briefing says so ('not-configured') instead of showing an incomplete list.
 // The last briefing is stored per flight (flight_notams): served again for 10 minutes while the
 // query is unchanged, and as a fallback (with a message) when the source fails.
+import { rateLimit } from '../rateLimit.js';
 import type { Route } from '../http.js';
 import { badRequest } from '../http.js';
 import type { Notam, NotamBriefing } from '../../../src/shared/briefing.js';
@@ -30,6 +31,7 @@ export const routes: Route[] = [
   {
     method: 'GET', path: '/flights/:id/notams',
     async handler({ db, pilot, params, query, autorouter, autorouterDenied }): Promise<NotamBriefing> {
+      await rateLimit(db, 'notams', { pilotId: pilot.id });
       const ctx = await flightContext(db, pilot.id, params.id);
       const planned = ctx.altitudesFt.filter(Number.isFinite);
       const maxAltFt = numParam(query.get('maxAltFt'), 'maxAltFt', 0, 60000) ?? (planned.length ? Math.max(...planned) : DEFAULT_MAX_ALT_FT);

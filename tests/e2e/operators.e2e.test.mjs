@@ -25,7 +25,7 @@ before(async () => {
 after(async () => { setMailTransport(null); await page?.close(); await browser?.close(); server?.close(); });
 
 const api = async (method, p, body) => {
-  const r = await fetch(`${url}/api/${p}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${url}/api/${p}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   return r.status === 204 ? null : r.json();
 };
 async function clickText(sel, text) {

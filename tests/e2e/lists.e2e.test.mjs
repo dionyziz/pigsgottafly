@@ -13,7 +13,7 @@ before(async () => {
 after(async () => { await page?.close(); await browser?.close(); await server?.close(); });
 
 const api = async (method, path, body) => {
-  const r = await fetch(`${server.url}/api/${path}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${server.url}/api/${path}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   return r.status === 204 ? null : r.json();
 };
 /** Clicks the first element matching `sel` whose text is `text`. */

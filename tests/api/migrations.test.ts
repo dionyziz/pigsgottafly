@@ -359,6 +359,40 @@ describe('migrations', () => {
     await db.close();
   });
 
+  test('030–032 (e-mail log, rate limits) on a database at 018 with the seeded owner, and on one at 030 with sends', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await migrate(db, withOwner(OWNER, upTo('018_operators')));
+    const [ac] = await db.query(`SELECT id FROM aircraft WHERE pilot_id = 'u1' ORDER BY registration LIMIT 1`);
+    await db.query(`INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created, kind, chunks, complete)
+      VALUES ('old-upload', 'u1', $1, 'x.pdf', 'application/pdf', 10, '', 1, 'document', 1, FALSE)`, [ac.id]);
+    // 030 alone first, with a send logged the old way
+    await migrate(db, withOwner(OWNER, upTo('030_mail_log')));
+    await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at) VALUES ('ml1', 'u1', 'fx', '731', 5)`);
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['031_mail_log_details', '032_rate_limits']);
+    expect(await db.query(`SELECT id, pilot_id, form, recipient, subject, result, message_id FROM mail_log`)).toEqual([
+      { id: 'ml1', pilot_id: 'u1', form: '731', recipient: '', subject: '', result: 'sent', message_id: null },
+    ]);
+    // the app's own messages have no pilot; results are checked
+    await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at, recipient, subject, result) VALUES ('ml2', NULL, NULL, 'signup-more', 6, 'a@b', 's', 'pending')`);
+    await expect(db.query(`INSERT INTO mail_log (id, form, at, result) VALUES ('ml3', 'x', 7, 'lost')`)).rejects.toThrow();
+    await db.query(`INSERT INTO rate_limits (bucket, subject, pilot_id, tokens, updated) VALUES ('login', 'ip:1.2.3.4', NULL, 5, 1), ('metar', 'p:u1', 'u1', 3, 1)`);
+    await db.query(`DELETE FROM pilots WHERE id = 'u1'`);
+    expect(await db.query(`SELECT bucket FROM rate_limits`)).toEqual([{ bucket: 'login' }]);
+    expect(await db.query(`SELECT id FROM mail_log`)).toEqual([{ id: 'ml2' }]);
+    await db.close();
+
+    // straight from 018 to the end
+    const db2 = await connect('memory://');
+    await db2.exec(V2);
+    await db2.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await migrate(db2, withOwner(OWNER, upTo('018_operators')));
+    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits']);
+    expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
+    await db2.close();
+  });
+
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {
     const db = await connect('memory://');
     await migrate(db);
@@ -370,6 +404,9 @@ describe('migrations', () => {
     const docs = new Map((await db.query<{ id: string; doc: any }>(`SELECT id, doc FROM ref_aerodromes WHERE airac = '2609'`)).map((r) => [r.id, r.doc]));
     for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
     expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
+    expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(MIGRATIONS.map((m) => m.name).sort());
+    expect(await db.query(`SELECT * FROM mail_log`)).toEqual([]);
+    expect(await db.query(`SELECT * FROM rate_limits`)).toEqual([]);
     await db.close();
   });
 });

@@ -13,11 +13,15 @@
 // The same scheme serves an operator's documents (operations manual) under /operators/:id/files,
 // stored in operator_files / operator_file_chunks (migration 018) with the operator's access
 // (../operators.ts): fileRoutes() builds the routes of either from a FileScope.
+// Limits (../limits.ts): the owner's storage quota (checked at the start and at every chunk), at most
+// 3 unfinished uploads per owner, 50 files per aircraft or operator; unfinished uploads older than an
+// hour are swept at every start; the first chunk must be of the declared type (magic bytes).
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import type { Queryable } from '../db.js';
 import { aircraftFor } from '../access.js';
 import { operatorFor } from '../operators.js';
+import { checkMagic, checkOpenUploads, checkQuota, LIMITS, sweepStaleUploads } from '../limits.js';
 import {
   AIRCRAFT_FILE_CHUNK_BYTES, DOCUMENT_MAX_BYTES, DOCUMENT_TYPES, PHOTO_MAX_BYTES, PHOTO_TYPES,
   type AircraftFile, type AircraftFileKind, type AircraftFiles,
@@ -54,8 +58,9 @@ interface FileScope {
   /** Column of the files table holding the parent's id. */
   parent: string;
   kinds: readonly AircraftFileKind[];
-  /** Checks the pilot's access to parent `id` (404 / 403); returns extra columns for a new file row. */
-  access(db: Queryable, pilotId: string, id: string, need: 'view' | 'edit'): Promise<Record<string, unknown>>;
+  /** Checks the pilot's access to parent `id` (404 / 403); returns the parent's owner (whose storage
+   * the files use) and extra columns for a new file row. */
+  access(db: Queryable, pilotId: string, id: string, need: 'view' | 'edit'): Promise<{ owner: string; extra: Record<string, unknown> }>;
   /** After a file is completed, in its transaction. */
   completed?(tx: Queryable, id: string): Promise<void>;
 }
@@ -84,7 +89,7 @@ export function fileRoutes(scope: FileScope): Route[] {
     {
       method: 'POST', path: P,
       async handler({ db, pilot, params, body }) {
-        const extra = await scope.access(db, pilot.id, params.id, 'edit');
+        const { owner, extra } = await scope.access(db, pilot.id, params.id, 'edit');
         const v = (await body()) as Record<string, unknown>;
         const kind = v.kind as AircraftFileKind;
         if (!scope.kinds.includes(kind)) throw badRequest(`kind must be ${scope.kinds.join(' or ')}`);
@@ -95,8 +100,12 @@ export function fileRoutes(scope: FileScope): Route[] {
         if (v.size > max) throw badRequest(`the file is larger than ${Math.round(max / 1048576)} MB`);
         const name = cleanText(v.name, 200) || (kind === 'photo' ? 'photo' : 'document.pdf');
         const title = kind === 'document' ? cleanText(v.title, 120) || name.replace(/\.pdf$/i, '') : '';
-        // uploads that never completed (closed tab, lost connection) go after a day
-        await db.query(`DELETE FROM ${files} WHERE ${parent} = $1 AND NOT complete AND created < $2`, [params.id, Date.now() - 86400000]);
+        // uploads that never completed (closed tab, lost connection) go after an hour
+        await sweepStaleUploads(db);
+        const [{ n }] = await db.query(`SELECT count(*)::int AS n FROM ${files} WHERE ${parent} = $1`, [params.id]);
+        if (n >= LIMITS.filesPerParent) throw new HttpError(409, `At most ${LIMITS.filesPerParent} files each: delete one first.`);
+        await checkOpenUploads(db, owner);
+        await checkQuota(db, owner, v.size);
         const cols = Object.keys(extra);
         const [r] = await db.query(
           `INSERT INTO ${files} (id, ${parent}, name, mime, size, created, kind, title, chunks, complete${cols.map((c) => `, ${c}`).join('')})
@@ -109,15 +118,17 @@ export function fileRoutes(scope: FileScope): Route[] {
     {
       method: 'PUT', path: `${P}/:fileId/chunks/:seq`,
       async handler({ db, pilot, params, body }) {
-        await scope.access(db, pilot.id, params.id, 'edit');
+        const { owner } = await scope.access(db, pilot.id, params.id, 'edit');
         const f = await fileRow(db, params.id, params.fileId);
         if (f.complete) throw new HttpError(409, 'the file is already complete');
+        await checkQuota(db, owner, 0);
         const seq = Number(params.seq);
         if (!Number.isInteger(seq) || seq < 0 || seq >= Number(f.chunks)) throw badRequest(`seq must be 0 … ${Number(f.chunks) - 1}`);
         const { data, size } = base64Bytes(((await body()) as Record<string, unknown>).data);
         const last = seq === Number(f.chunks) - 1;
         const want = last ? Number(f.size) - AIRCRAFT_FILE_CHUNK_BYTES * seq : AIRCRAFT_FILE_CHUNK_BYTES;
         if (size !== want) throw badRequest(`chunk ${seq} must be ${want} bytes`);
+        if (seq === 0) checkMagic(f.mime, data);
         await db.query(`INSERT INTO ${chunks} (attachment_id, seq, size, data) VALUES ($1, $2, $3, $4)
           ON CONFLICT (attachment_id, seq) DO UPDATE SET size = EXCLUDED.size, data = EXCLUDED.data`, [f.id, seq, size, data]);
         return undefined;
@@ -147,7 +158,7 @@ export function fileRoutes(scope: FileScope): Route[] {
         if (!f.complete) throw notFound('no such file');
         const [c] = await db.query(`SELECT data FROM ${chunks} WHERE attachment_id = $1 AND seq = $2`, [f.id, Number(params.seq)]);
         if (!c) throw notFound('no such chunk');
-        return reply(200, { data: c.data }, { 'Cache-Control': 'private, max-age=86400' });
+        return reply(200, { data: c.data }, { 'Cache-Control': 'private, max-age=86400', 'Content-Disposition': 'attachment' });
       },
     },
     {
@@ -177,12 +188,15 @@ export const routes: Route[] = [
   // the aircraft's photo and documents (rows keep pilot_id = the aircraft's owner)
   ...fileRoutes({
     path: '/aircraft/:id/files', files: 'aircraft_attachments', chunks: 'aircraft_attachment_chunks', parent: 'aircraft_id', kinds: ['photo', 'document'],
-    access: async (db, pilotId, id, need) => ({ pilot_id: (await aircraftFor(db, pilotId, id, need)).pilot_id, data: '' }),
+    access: async (db, pilotId, id, need) => {
+      const owner = (await aircraftFor(db, pilotId, id, need)).pilot_id as string;
+      return { owner, extra: { pilot_id: owner, data: '' } };
+    },
     completed: async (tx, id) => { await tx.query('UPDATE aircraft SET updated = $2 WHERE id = $1', [id, Date.now()]); },
   }),
   // an operator's documents (operations manual)
   ...fileRoutes({
     path: '/operators/:id/files', files: 'operator_files', chunks: 'operator_file_chunks', parent: 'operator_id', kinds: ['document'],
-    access: async (db, pilotId, id, need) => { await operatorFor(db, pilotId, id, need); return {}; },
+    access: async (db, pilotId, id, need) => ({ owner: (await operatorFor(db, pilotId, id, need))._owner, extra: {} }),
   }),
 ];

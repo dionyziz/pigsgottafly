@@ -9,6 +9,7 @@ import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
 import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 import type { Queryable } from '../db.js';
+import { checkCount } from '../limits.js';
 import type { FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
 import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, uid, validateCrew } from '../../../src/shared/constants.js';
@@ -113,6 +114,7 @@ const docParams = (d: FlightDoc) => [d.title, d.date, d.blockOff, d.aircraftId, 
   d.atc === null ? null : JSON.stringify(d.atc), JSON.stringify(d.baggageKg), JSON.stringify(d.options), JSON.stringify(d.summary)];
 
 async function insertFlight(db: Parameters<Route['handler']>[0]['db'], pilotId: string, d: FlightDoc, wanted?: string): Promise<string> {
+  await checkCount(db, pilotId, 'flights');
   const now = Date.now();
   return db.transaction(async (tx) => {
     const ins = (id: string) => tx.query(

@@ -5,6 +5,7 @@
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, notFound, reply } from '../http.js';
 import type { Queryable } from '../db.js';
+import { rateLimit } from '../rateLimit.js';
 import { aircraftFor, personName } from '../access.js';
 import type { AircraftRole, AircraftSharing, ShareRole } from '../../../src/shared/sharing.js';
 
@@ -42,6 +43,7 @@ export const routes: Route[] = [
     method: 'POST', path: '/aircraft/:id/shares',
     async handler({ db, pilot, params, body }) {
       const ac = await aircraftFor(db, pilot.id, params.id, 'edit');
+      await rateLimit(db, 'share', { pilotId: pilot.id });
       const input = await body();
       const role = shareRole(input.role);
       const email = typeof input.email === 'string' ? input.email.trim() : '';

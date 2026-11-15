@@ -4,6 +4,7 @@
 // forms use for a passenger without a record ('seat:<seat>', src/shared/forms.ts crewKey).
 import type { Route } from '../http.js';
 import { newId, notFound, reply } from '../http.js';
+import { checkCount } from '../limits.js';
 import { passengerInput, toPassenger } from '../rows.js';
 import { EMPTY_PERSON } from '../../../src/shared/constants.js';
 import type { PassengerInput, Pilot } from '../../../src/shared/types.js';
@@ -59,6 +60,7 @@ export const routes: Route[] = [
     method: 'POST', path: '/passengers',
     async handler({ db, pilot, body }) {
       const p = passengerInput(await body(), { ...EMPTY_PERSON, notes: '' });
+      await checkCount(db, pilot.id, 'passengers');
       const now = Date.now();
       const [r] = await db.query(
         `INSERT INTO passengers (id, pilot_id, full_name, phone, date_of_birth, weight_kg, id_number, id_type, nationality, relation, notes, created, updated)

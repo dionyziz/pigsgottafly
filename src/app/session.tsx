@@ -8,6 +8,8 @@ export interface SessionValue {
   /** Replace the pilot after a profile update (PUT /api/me result). */
   setPilot(p: Pilot): void;
   signOut(): Promise<void>;
+  /** Ends every session of the account (all devices), then this one shows the sign-in screen. */
+  signOutEverywhere(): Promise<void>;
 }
 
 export const SessionContext = createContext<SessionValue | null>(null);

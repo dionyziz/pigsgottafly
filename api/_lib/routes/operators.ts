@@ -6,9 +6,11 @@
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId, notFound, reply } from '../http.js';
 import type { Queryable } from '../db.js';
+import { rateLimit } from '../rateLimit.js';
 import { accessibleSql, personName } from '../access.js';
 import { listOperators, operatorFor, operatorItem } from '../operators.js';
 import { str } from '../rows.js';
+import { checkCount } from '../limits.js';
 import { EMPTY_OPERATOR, isEmail, type OperatorInput, type OperatorSharing } from '../../../src/shared/operators.js';
 import type { ShareRole } from '../../../src/shared/sharing.js';
 
@@ -76,6 +78,7 @@ export const routes: Route[] = [
     method: 'POST', path: '/operators',
     async handler({ db, pilot, body }) {
       const o = operatorInput(await body(), EMPTY_OPERATOR);
+      await checkCount(db, pilot.id, 'operators');
       const id = await newId('op');
       const now = Date.now();
       await db.query(`INSERT INTO operators (id, pilot_id, name, phone, email, address, aftn, notes, requires_wb_perf, declarations_email, created, updated)
@@ -113,6 +116,7 @@ export const routes: Route[] = [
     method: 'POST', path: '/operators/:id/shares',
     async handler({ db, pilot, params, body }) {
       const op = await operatorFor(db, pilot.id, params.id, 'edit');
+      await rateLimit(db, 'share', { pilotId: pilot.id });
       const input = await body();
       const role = shareRole(input.role);
       const email = typeof input.email === 'string' ? input.email.trim() : '';

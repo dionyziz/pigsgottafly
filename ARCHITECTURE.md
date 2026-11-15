@@ -82,7 +82,8 @@ src/
                            ShareDialog (aircraft or operator)
     operators/             OperatorsPage, OperatorPage (details, W&B/performance requirement, documents, aircraft, who
                            has access), OperatorPicker (the aircraft page's operator dropdown with "New operator…")
-    admin/                 AdminPage (/admin: every pilot; the API answers 403 to non-admins)
+    admin/                 AdminPage (/admin: every pilot, and the e-mail action log filterable by pilot and kind; the API
+                           answers 403 to non-admins)
     passengers/            PassengersPage
     waypoints/             WaypointsPage
     editor/                EditorPage (layout: collapsible flight panel; resizable.tsx sizes panels by style during a
@@ -108,9 +109,12 @@ src/
 api/
   index.ts                 Vercel entry: restores the path from ?__path=, refuses to run without DATABASE_URL and
                            GOOGLE_CLIENT_ID, runs pending migrations on cold start, then serves
-  _lib/app.ts              dispatcher createApi({db, googleClientId, allowedEmails, googleKeys, secureCookie}), configFromEnv
+  _lib/app.ts              dispatcher createApi({db, googleClientId, allowedEmails, googleKeys, secureCookie}), configFromEnv;
+                           crossSiteRefusal (CSRF: non-GET with a foreign Origin / Sec-Fetch-Site: cross-site → 403,
+                           not application/json → 415, empty bodies included)
   _lib/http.ts             Route, Ctx, Reply, HttpError, helpers
-  _lib/auth.ts             verifyGoogleToken, sessions (hashed tokens), local pilot
+  _lib/auth.ts             verifyGoogleToken, sessions (hashed tokens; 90 days sliding, renewed weekly; expired ones
+                           purged at sign-in), local pilot
   _lib/rows.ts             row ↔ entity mappers, input validation helpers
   _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql, AIRCRAFT_FROM
   _lib/operators.ts        operator access (owner / shared edit / view / view through an aircraft): operatorFor, listOperators
@@ -129,8 +133,16 @@ api/
                            017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas),
                            018_operators.ts (operators, operator_shares, aircraft.operator_id, operator_files/_chunks,
                            'wbperf' form submissions; one operator per pilot and distinct aircraft.operator text),
-                           030_mail_log.ts (every e-mail sent for a pilot, for the sending caps)
-  _lib/sendCaps.ts         per-pilot caps (429): e-mails 20/24 h and 5 per flight and form, signing links 60/24 h and 20 per flight
+                           030_mail_log.ts (every e-mail sent for a pilot, for the sending caps),
+                           031_mail_log_details.ts (the e-mail action log: recipient, subject, result, message id, error;
+                           app mails without a pilot), 032_rate_limits.ts (token buckets; indexes for the upload sweep)
+  _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
+                           10 declarations/24 h to one address, 10 min between sends of a flight's form; HCAA_DAILY_CAP
+                           (default 200) for all pilots together; signing links 60/24 h and 20 per flight
+  _lib/limits.ts           per-pilot counts (aircraft 50, operators 20, flights 2000, passengers 500, waypoints 1000, files
+                           per parent 50), STORAGE_QUOTA_MB (300) over owned files, 3 unfinished uploads, the 1 h sweep,
+                           magic bytes of uploads
+  _lib/rateLimit.ts        DB token buckets (429): login per IP, METAR, NOTAMs, ref, share creation (30/day) per pilot
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            attachments.ts, files.ts (fileRoutes: aircraft photo/documents and operator documents, chunked),
                            shares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts
@@ -187,6 +199,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET | /session | `{authed, mode, googleClientId, pilot}`. No auth needed. |
 | POST | /login | `{credential}` (Google ID token). 401 if bad, 403 if not in ALLOWED_EMAILS, 404 in local mode. |
 | POST | /logout | Ends this session only. |
+| POST | /session/revoke-all | "Sign out everywhere": ends every session of the pilot, clears the cookie. |
 | GET, PUT | /me | Profile (`PilotUpdate`; settings are merged). `defaultAircraftId` must be an aircraft you own or that is shared with you. |
 | DELETE | /me | `{confirm: <account e-mail>}` (local mode `"delete"`): deletes the pilot and everything they own (routes/account.ts: every table's `pilot_id` rows, then the pilot with its cascades; owned aircraft go even when shared), ends all sessions, clears the cookie. |
 | GET | /me/export | Everything the pilot owns as a JSON download (GDPR portability; files listed without their bytes). |
@@ -207,8 +220,9 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET, POST, PUT, DELETE | /operators/:id/shares[/:pilotId] | As for aircraft. GET also lists who sees it through an aircraft (`direct: false`, `via`: registrations); those change by sharing the aircraft. |
 | GET, POST, PUT, DELETE | /operators/:id/files… | Documents (operations manual), chunked like the aircraft files. |
 | GET | /flights/:id/declarations | `DeclarationsState`: the flight's aircraft's operator, the last sending (`hash`). |
-| POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. 409 when not asked for / already sent (without resend); 503 e-mail not configured. |
+| POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. Subject and body from the server's records only; the content (bounded, links and e-mail addresses removed) only draws the PDF. 409 when not asked for / already sent (without resend); 429 over the sending caps; 503 e-mail not configured. |
 | GET | /admin/pilots | `AdminPilot[]` (ADMIN_EMAILS only; 403 otherwise). `GET /session` says `admin`. |
+| GET | /admin/mail?pilot=&kind= | `AdminMail[]`: the e-mail action log, newest first (300), ADMIN_EMAILS only. |
 | GET, POST | /passengers | List (by name); create. |
 | GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`) and moves their Form 731 signature and signing link to the key `seat:<seat>` (still valid). A flight PUT naming a passenger that is not the pilot's (e.g. deleted meanwhile) drops the link and keeps the snapshot. |
 | GET, POST | /waypoints | Saved custom points (names upper-cased). |
@@ -221,8 +235,8 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /flights/:id/restore, /copy, /opened | |
 | GET | /flights/:id/forms | Form 731 and GenDec state; `gendec.handling`: handling at each end at the flight's time (AIP + the flight's last NOTAM briefing) and who sends the GenDec. |
 | POST | /flights/:id/forms/gendec/handled | `{handled: true \| false \| null}`: the flight's override (`options.genDecHandled`; a PUT of the flight never changes it). |
-| GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units,areas} | Current AIRAC, read-only. |
-| GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 20 ICAO ids), cached per station; stale reports up to 3 h when upstream fails. |
+| GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units,areas} | Current AIRAC, read-only. /ref/bundle has an ETag by AIRAC (304 on If-None-Match) and `Cache-Control: private, max-age=86400`. |
+| GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 6 ICAO ids; the client splits longer lists), cached per station; stale reports up to 3 h when upstream fails. |
 
 Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flight_crew → passengers), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
 
@@ -258,6 +272,8 @@ npx tsx tools/build_seed.ts   # print the owner's seeded aircraft (003 is applie
 The W&B and performance sheets are computed in the browser (weather, models), so the export sends what it shows as `WbPerfContent` (text as printed + chart geometry) and the server draws the PDF with its own writer: nothing to install on Vercel, no headless browser. The client hashes `wbPerfText` (SHA-256, crypto.subtle) the way the server does, to show "changed since it was sent".
 
 The signed-in pilot is one copy for the app (AuthGate): `setPilot` is posted to the other tabs (BroadcastChannel) and a tab re-reads `/api/me` when it comes to the foreground, so details fixed in an export's tab show everywhere at once. Exports read it with `usePilot()`, never their own `GET /me`.
+
+Abuse limits (env, optional): `HCAA_DAILY_CAP` (forms to the HCAA per 24 h, all pilots; default 200), `STORAGE_QUOTA_MB` (per pilot; default 300).
 
 With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`, `ADMIN_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 

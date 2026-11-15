@@ -56,7 +56,8 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   try {
     res = await fetch('/api/' + path, {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+      // always JSON for anything but GET: the API refuses other types (CSRF defence, api/_lib/app.ts)
+      headers: method === 'GET' ? {} : { 'Content-Type': 'application/json' },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       credentials: 'same-origin',
     });
@@ -110,6 +111,7 @@ export const api = {
   session: () => request<SessionResponse>('GET', 'session'),
   login: (credential: string) => request<LoginResponse>('POST', 'login', { credential }),
   logout: () => request<{ ok: true }>('POST', 'logout'),
+  revokeAllSessions: () => request<{ ok: true }>('POST', 'session/revoke-all'),
 
   me: {
     get: () => request<Pilot>('GET', 'me'),

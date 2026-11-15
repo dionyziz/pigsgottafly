@@ -81,7 +81,7 @@ export const conflict = (msg: string, body?: unknown) => new HttpError(409, msg,
 export const reply = (status: number, body?: unknown, headers?: Record<string, string>): Reply => new Reply(status, body, headers);
 
 export function send(res: Res, status: number, body?: unknown, headers: Record<string, string> = {}): void {
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers });
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers });
   res.end(body === undefined ? '' : JSON.stringify(body));
 }
 

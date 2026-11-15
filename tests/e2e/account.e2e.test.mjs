@@ -69,7 +69,7 @@ test('the privacy policy and terms render with their sections and date', async (
 });
 
 test('profile: download my data, then delete the account with a typed confirmation', async () => {
-  const api = async (method, path, body) => (await fetch(`${local.url}/api/${path}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })).json();
+  const api = async (method, path, body) => (await fetch(`${local.url}/api/${path}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })).json();
   await api('PUT', 'me', { fullName: 'Test Pilot', phone: '+30 690 000 0000', homeAerodrome: 'LGTT', settings: { taxiOutMin: 10, taxiInMin: 10, reserveMin: 45 } });
   await api('POST', 'passengers', { fullName: 'Pat Passenger' });
   await api('POST', 'aircraft', { registration: 'SX-BYE' });

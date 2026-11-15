@@ -2,7 +2,8 @@
 // (https://aviationweather.gov/api/data/metar and /taf, JSON). The browser cannot call it directly
 // (no CORS), so the API fetches on its behalf.
 //
-//   - Up to MAX_IDS ICAO codes per request; anything that is not 4 letters is ignored.
+//   - Up to MAX_IDS (6) ICAO codes per request; anything that is not 4 letters is ignored. Rate-limited
+//     per pilot (rateLimit.ts).
 //   - Per-station cache: METAR 5 min, TAF 10 min, "no report" (e.g. LGTT) remembered as well, so a
 //     non-reporting aerodrome does not cost a request every time.
 //   - Graceful failure: if one of the two upstream requests fails, the other's reports are still
@@ -14,8 +15,9 @@
 import type { Route } from '../http.js';
 import { HttpError, reply } from '../http.js';
 import type { MetarTafResponse } from '../../../src/shared/api.js';
+import { rateLimit } from '../rateLimit.js';
 
-export const MAX_IDS = 20;
+export const MAX_IDS = 6;
 export const METAR_TTL_MS = 5 * 60 * 1000;
 export const TAF_TTL_MS = 10 * 60 * 1000;
 /** Cached reports are served this long when the upstream fails. */
@@ -153,6 +155,7 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
         const ids = parseIds(ctx.query.get('ids'));
         if (!ids.length) throw new HttpError(400, 'ids: one or more ICAO codes');
         if (ids.length > MAX_IDS) throw new HttpError(400, `at most ${MAX_IDS} aerodromes`);
+        if (ctx.db) await rateLimit(ctx.db, 'metar', { pilotId: ctx.pilot?.id, req: ctx.req });
         const body = await get(ids);
         return reply(200, body, { 'Cache-Control': 'private, max-age=60' });
       },

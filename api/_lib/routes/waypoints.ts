@@ -2,6 +2,7 @@
 import type { Route } from '../http.js';
 import { newId, notFound, reply } from '../http.js';
 import { toWaypoint, waypointInput } from '../rows.js';
+import { checkCount } from '../limits.js';
 import type { Queryable } from '../db.js';
 
 async function get(db: Queryable, pilotId: string, id: string) {
@@ -19,6 +20,7 @@ export const routes: Route[] = [
     method: 'POST', path: '/waypoints',
     async handler({ db, pilot, body }) {
       const w = waypointInput(await body(), { name: '', lat: NaN, lon: NaN, notes: '' });
+      await checkCount(db, pilot.id, 'waypoints');
       const now = Date.now();
       const [r] = await db.query(
         'INSERT INTO waypoints (id, pilot_id, name, lat, lon, notes, created, updated) VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *',

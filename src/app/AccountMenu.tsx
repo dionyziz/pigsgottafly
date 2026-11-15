@@ -1,4 +1,4 @@
-// Top-right account menu: Profile, Hangar, Operators, Passengers, My waypoints, (admins: Pilots), Terms, Privacy, Sign out.
+// Top-right account menu: Profile, Hangar, Operators, Passengers, My waypoints, (admins: Pilots), Terms, Privacy, Sign out, Sign out everywhere.
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from './session';
@@ -6,7 +6,7 @@ import { useSession } from './session';
 const MINOR = { fontSize: 'var(--fs-sm)', color: 'var(--ink-2)', padding: '6px 16px' };
 
 export function AccountMenu() {
-  const { pilot, session, signOut } = useSession();
+  const { pilot, session, signOut, signOutEverywhere } = useSession();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -37,7 +37,12 @@ export function AccountMenu() {
           <hr />
           <Link to="/terms" role="menuitem" style={MINOR}>Terms of Service</Link>
           <Link to="/privacy" role="menuitem" style={MINOR}>Privacy Policy</Link>
-          {session.mode === 'google' && (<><hr /><button role="menuitem" onClick={() => void signOut()}>Sign out</button></>)}
+          {session.mode === 'google' && (<>
+            <hr />
+            <button role="menuitem" onClick={() => void signOut()}>Sign out</button>
+            <button role="menuitem" style={MINOR} data-testid="sign-out-everywhere"
+              onClick={() => { if (window.confirm('Sign out on every device where you are signed in?')) void signOutEverywhere(); }}>Sign out everywhere</button>
+          </>)}
         </div>
       )}
     </div>

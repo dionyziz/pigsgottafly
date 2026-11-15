@@ -1,9 +1,10 @@
-// GET /session, POST /login, POST /logout
+// GET /session, POST /login, POST /logout, POST /session/revoke-all (sign out everywhere)
 import type { Route } from '../http.js';
 import { HttpError, newId, reply } from '../http.js';
 import type { Queryable } from '../db.js';
 import { sendLogged } from '../sendCaps.js';
-import { createSession, emailAllowed, hashToken, localPilotRow, sessionCookie, sessionPilotRow, SESSION_MS, tokenFrom, verifyGoogleToken } from '../auth.js';
+import { rateLimit } from '../rateLimit.js';
+import { createSession, emailAllowed, purgeExpiredSessions, hashToken, localPilotRow, sessionCookie, sessionPilotRow, SESSION_MS, tokenFrom, verifyGoogleToken } from '../auth.js';
 import { toPilot } from '../rows.js';
 import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
 import { randomBytes } from 'node:crypto';
@@ -61,8 +62,9 @@ export const routes: Route[] = [
   },
   {
     method: 'POST', path: '/login', auth: false,
-    async handler({ db, config, body }) {
+    async handler({ db, config, body, req }) {
       if (!config.googleClientId) throw new HttpError(404, 'sign-in is not enabled');
+      await rateLimit(db, 'login', { req });
       const { credential } = await body();
       if (typeof credential !== 'string' || !credential) throw new HttpError(400, 'credential is required');
       let claims;
@@ -84,9 +86,18 @@ export const routes: Route[] = [
       );
       // a new account: tell the admins (never blocks or fails the sign-in)
       if (row.inserted === true) await notifySignup(db, config.adminEmails ?? [], { pilotId: row.id, name: claims.name || '', email, at: now });
+      await purgeExpiredSessions(db);
       const tok = await createSession(db, row.id);
       const out: LoginResponse = { ok: true, pilot: toPilot(row) };
       return reply(200, out, { 'Set-Cookie': sessionCookie(tok, SESSION_MS / 1000, config.secureCookie) });
+    },
+  },
+  {
+    // "Sign out everywhere": every session of the pilot ends, this one included
+    method: 'POST', path: '/session/revoke-all',
+    async handler({ db, pilot, config }) {
+      await db.query('DELETE FROM sessions WHERE pilot_id = $1', [pilot.id]);
+      return reply(200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0, config.secureCookie) });
     },
   },
   {

@@ -191,3 +191,13 @@ describe('signing link caps', () => {
     expect(r.body.error).toMatch(/Too many signing links: at most 60 in 24 hours/);
   });
 });
+
+describe('signing link expiry', () => {
+  test('the end of the day after the flight, but never more than 14 days after the link was made', async () => {
+    const { linkExpiry } = await import('../../api/_lib/routes/forms');
+    const now = Date.parse('2026-11-16T10:00:00Z');
+    expect(linkExpiry('2026-11-20', now)).toBe(Date.parse('2026-11-22T00:00:00Z'));
+    expect(linkExpiry('2027-03-01', now)).toBe(now + 14 * 24 * 3600e3);
+    expect(linkExpiry('', now)).toBe(now + 7 * 24 * 3600e3);
+  });
+});

@@ -16,7 +16,7 @@ import { launch, startServer, ROOT } from './harness.mjs';
 let server, browser, page;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const api = async (method, p, body) => {
-  const r = await fetch(`${server.url}/api/${p}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${server.url}/api/${p}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   if (!r.ok) throw new Error(`${method} ${p}: ${r.status} ${await r.text()}`);
   return r.status === 204 ? null : r.json();
 };

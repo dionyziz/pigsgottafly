@@ -243,6 +243,8 @@ export function decodeMetarTafResponse(r: MetarTafResponse): MetarTafResult {
 }
 
 const ICAO_RE = /^[A-Z]{4}$/;
+/** Aerodromes per request to GET /api/weather/metar (api/_lib/routes/weather.ts MAX_IDS). */
+export const METAR_MAX_IDS = 6;
 const metarCache = new Map<string, { at: number; p: Promise<MetarTafResult> }>();
 /** Client cache lifetime; the proxy caches too. */
 export const METAR_CLIENT_TTL_MS = 2 * 60 * 1000;
@@ -258,9 +260,11 @@ export function fetchMetarTaf(icaos: string[], opts: { force?: boolean; now?: ()
   const key = ids.join(',');
   const hit = metarCache.get(key);
   if (hit && !opts.force && now() - hit.at < METAR_CLIENT_TTL_MS) return hit.p;
-  const p = api.weather
-    .metar(ids)
-    .then(decodeMetarTafResponse)
+  // the proxy takes METAR_MAX_IDS aerodromes per request
+  const groups: string[][] = [];
+  for (let i = 0; i < ids.length; i += METAR_MAX_IDS) groups.push(ids.slice(i, i + METAR_MAX_IDS));
+  const p = Promise.all(groups.map((g) => api.weather.metar(g)))
+    .then((rs) => decodeMetarTafResponse({ stations: Object.assign({}, ...rs.map((r) => r.stations)), fetched: Math.min(...rs.map((r) => r.fetched)) }))
     .catch((e: unknown): MetarTafResult => {
       metarCache.delete(key);
       const msg = (e as { offline?: boolean })?.offline ? 'offline' : String((e as Error)?.message || e);
