@@ -101,9 +101,11 @@ api/
                            006_briefing_filing.ts, 007_aircraft_attachments.ts (compass swing report files),
                            008–010 forms (signatures, links, send claims), 011_fleet_fpl_equipment.ts,
                            012_ref_ad_hours_2609.ts (generated: aerodrome operational hours and handling),
-                           013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id))
+                           013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id)),
+                           014_aircraft_fuels_provenance.ts (approved fuels list; seeded notes/paths cleared),
+                           015_aircraft_photo_documents.ts (attachment kinds photo/document, chunk table)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
-                           attachments.ts, shares.ts, notams.ts, filing.ts
+                           attachments.ts, files.ts (photo, documents: chunked), shares.ts, notams.ts, filing.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
@@ -114,7 +116,8 @@ tools/extract_ad_hours.ts  eAIP AD 2.3, AD 1.6.N.3/4 text → tools/ad_hours.jso
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
 tools/parse_ad_airspace.py eAIP AD 2.17, AD 1.6.N.17 text → src/data/ref/ad-airspaces.json (aerodrome CTR/ATZ: limits,
                            class, units; client map layer only, REF.adAirspaces — not in the ref_* tables)
-tools/build_seed.ts        data/aircraft/*.json → migration 003 (one-time hangar/profile of the EXISTING pilot)
+tools/build_seed.ts        data/aircraft/*.json → fleetSeed(): the owner's SX-ASV/SX-ASG as the migrations leave them
+                           (003, frozen, + 014; checked by tests/api/migrations.test.ts); used by the tests
 data/                      aip.js, vfr.js, sun.js (made by the Python tools from the eAIP; sources for build_ref.ts),
                            aircraft/{reims-f172m,fleet,compass-cards}.json
 tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calculator cases), data/, exports/, screens/
@@ -160,6 +163,12 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | PUT, DELETE | /aircraft/:id/shares/:pilotId | Change the role / remove (owner or editor); anyone may remove themselves ("remove from my hangar"). The owner is not a share. Removing clears that pilot's default if it was this aircraft. |
 | POST | /aircraft/:id/attachments | (editor or owner) `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
 | GET, DELETE | /aircraft/:id/attachments/:fileId | GET returns `Attachment` (`AttachmentRef` + base64 `data`). |
+| GET | /aircraft/:id/files | `AircraftFiles` {photo, documents} (anyone with access). The aircraft list/get also carry `photo`. |
+| POST | /aircraft/:id/files | (editor or owner) `AircraftFileStart` {kind photo (JPEG/PNG/WebP ≤ 5 MB, resized to 1600 px in the browser) or document (PDF ≤ 80 MB), name, title, mime, size} → 201 `AircraftFile` (incomplete). |
+| PUT | /aircraft/:id/files/:fileId/chunks/:seq | (editor or owner) `{data}` base64, `AIRCRAFT_FILE_CHUNK_BYTES` (2 MiB) each but the last: a POH never needs a request above the ~4.5 MB serverless limit. |
+| POST | /aircraft/:id/files/:fileId/complete | All chunks in → the file is listed; a new photo replaces the old. |
+| GET | /aircraft/:id/files/:fileId/chunks/:seq | `{data}`: the client assembles a Blob (src/data/aircraftFiles.ts) for the PDF viewer (iframe of a blob: URL; CSP frame-src blob:) or a download. |
+| PUT, DELETE | /aircraft/:id/files/:fileId | (editor or owner) `{title}` / remove. Saving the aircraft only removes unreferenced swing *reports*. |
 | GET, POST | /passengers | List (by name); create. |
 | GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`). |
 | GET, POST | /waypoints | Saved custom points (names upper-cased). |
@@ -187,7 +196,7 @@ Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/a
 - Migrations are TS modules (SQL as a default-exported string, or a `run(q)` function) listed in `api/_lib/migrate.ts`, so the Vercel bundle contains them. The runner records each one in `schema_migrations`, applies each in its own transaction, and serialises runners with a session advisory lock (plus an in-process queue for PGlite). It runs from `openDb()`: on server start, in tests, and on the Vercel cold start before serving.
   - `001_schema` converts the v2 production schema in place: `users` → `pilots` (same ids), `sessions.user_id` → `pilot_id` (sessions survive), `flights` → `legacy_flights` (kept as a backup). It then creates the new tables.
   - `002_ref_2609` (generated by `tools/build_ref.ts`) loads the reference data for AIRAC 09/26.
-  - `003_existing_pilot_data` (generated by `tools/build_seed.ts`) is one-time: the owner's account (matched by the SHA-256 of its e-mail, so the address is not in this public repo) gets its profile values and SX-ASV/SX-ASG; every pilot existing when it runs gets `seeded_at` set, the others with nothing. Pilots created later have `seeded_at` set at creation, so they get nothing.
+  - `003_existing_pilot_data` (generated by `tools/build_seed.ts` at the time; frozen since) is one-time: the owner's account (matched by the SHA-256 of its e-mail, so the address is not in this public repo) gets its profile values and SX-ASV/SX-ASG; every pilot existing when it runs gets `seeded_at` set, the others with nothing. Pilots created later have `seeded_at` set at creation, so they get nothing.
   - `004_legacy_flights` converts each `legacy_flights` row (v2 `data` JSON) into a v3 flight: same id, version and timestamps. Waypoints are matched to aerodromes and VFR points, otherwise they become custom points. `ov` altitude/TAS/wind overrides become legOverrides, `taxiMin` becomes taxiOutMin, and the PIC goes on the manifest. A v2 ATC/terminal list the pilot edited (hidden rows, rows added by hand, `T.<row>.*` cells) becomes the v3 generated list with those edits applied (`legacyAtc`); an unedited one stays null (generated). Typed-over computed cells (`L<i>.ete` etc.) and per-flight fuelFlow/fuelExtra have no v3 equivalent and stay only in `legacy_flights`.
 - **New AIRAC**: regenerate `data/*.js` (AIP-UPDATE.md), then add a NEW migration with the new ref data. Never edit an applied migration. Point `tools/build_ref.ts` at the new file.
 
@@ -202,7 +211,7 @@ npm test             # vitest: tests/unit + tests/api
 npm run test:e2e     # vite build + headless Chrome (CDP, SwiftShader WebGL) smoke test
 npm run build        # dist/
 npm run ref          # regenerate src/data/ref/*.json + migration 002 from data/*.js
-npx tsx tools/build_seed.ts   # regenerate migration 003
+npx tsx tools/build_seed.ts   # print the owner's seeded aircraft (003 is applied and frozen)
 ```
 With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 

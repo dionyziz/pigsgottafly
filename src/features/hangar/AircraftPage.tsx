@@ -15,6 +15,7 @@ import type { HangarAircraft } from '../../shared/sharing';
 import { localToday } from '../lobby/format';
 import { ConfirmDialog, EmptyState, KebabMenu } from '../lobby/ui';
 import { CompassSection } from './CompassSection';
+import { DocumentsSection, PhotoControl } from './AircraftFiles';
 import { MassBalanceSection } from './MassBalanceSection';
 import { validateAircraft, type SectionId } from './model';
 import { PerformanceSection } from './PerformanceSection';
@@ -31,10 +32,11 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'mb', label: 'Mass and balance' },
   { id: 'performance', label: 'Performance' },
   { id: 'compass', label: 'Compass swing' },
+  { id: 'documents', label: 'Documents' },
 ];
 
 export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
-  const { id: _i, created: _c, updated: _u, access: _a, ...rest } = a as HangarAircraft;
+  const { id: _i, created: _c, updated: _u, access: _a, photo: _p, ...rest } = a as HangarAircraft;
   return rest;
 }
 
@@ -125,6 +127,8 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
         <Link to="/hangar" className="back" aria-label="Back to the hangar" title="Hangar">
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 3L5 9l6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </Link>
+        <PhotoControl aircraftId={aircraft.id} registration={aircraft.registration} photo={aircraft.photo} canEdit={!readOnly}
+          onChange={(p) => onSaved({ ...aircraft, photo: p })} />
         <div>
           <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
           <div className="muted">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</div>
@@ -163,6 +167,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           <PerformanceSection {...props} />
           <CompassSection {...props} today={today} aircraftId={aircraft.id} />
           </fieldset>
+          <DocumentsSection aircraftId={aircraft.id} canEdit={!readOnly} />
 
           {readOnly ? (
             <div className="ac-viewonly card" data-testid="aircraft-viewonly">

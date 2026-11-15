@@ -4,7 +4,7 @@
 //   edit   : change the aircraft and its files, and manage the sharing (add, change, remove people)
 //   view   : see the aircraft and use it on their own flights (navlog, W&B, performance, FPL)
 // Anyone with access can remove their own access ("remove from my hangar").
-import type { Aircraft, EpochMs, Id } from './types.js';
+import type { Aircraft, AircraftFile, EpochMs, Id } from './types.js';
 
 export type ShareRole = 'view' | 'edit';
 export type AircraftRole = 'owner' | ShareRole;
@@ -26,7 +26,8 @@ export interface AircraftAccess {
 }
 
 /** GET /api/aircraft and /api/aircraft/:id return aircraft with the session pilot's access. */
-export type HangarAircraft = Aircraft & { access: AircraftAccess };
+/** `photo`: the aircraft's photo (metadata; null without one). */
+export type HangarAircraft = Aircraft & { access: AircraftAccess; photo?: AircraftFile | null };
 
 /**
  * GET /api/aircraft/:id/shares → AircraftSharing (anyone with access; the owner first, then by name).

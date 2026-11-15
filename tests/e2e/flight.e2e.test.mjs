@@ -390,7 +390,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => document.querySelector('[data-testid=wb-export]')?.dataset.ready === 'true', { timeout: 20000 });
   const wb = Object.fromEntries(await page.eval(() => [...document.querySelectorAll('[data-line]')].map((r) => [r.dataset.line, [...r.cells].slice(1).map((c) => c.textContent.trim())])));
   const mb = asv.massBalance, arm = (id) => mb.stations.find((s) => s.id === id).armM;
-  const fuelKg = 144 * asv.fuel.densityKgPerL, burnKg = (4 + exp.totals.trip) * asv.fuel.densityKgPerL;
+  const fuelKg = 144 * asv.fuel.types[0].densityKgPerL, burnKg = (4 + exp.totals.trip) * asv.fuel.types[0].densityKgPerL;
   const rowsExp = {
     empty: [mb.emptyMassKg, mb.emptyMassKg * mb.emptyArmM], fuel: [fuelKg, fuelKg * arm('fuel')],
     front: [80, 80 * arm('front')], rear: [62, 62 * arm('rear')], bag1: [0, 0], bag2: [0, 0],

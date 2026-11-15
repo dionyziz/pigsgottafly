@@ -13,7 +13,7 @@ import { DEFAULT_FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
 import { parseItem18 } from '../exports/fpl/fpl';
 
 export type IssueLevel = 'error' | 'warning';
-export type SectionId = 'identity' | 'fpl' | 'speeds' | 'fuel' | 'mb' | 'performance' | 'compass';
+export type SectionId = 'identity' | 'fpl' | 'speeds' | 'fuel' | 'mb' | 'performance' | 'compass' | 'documents';
 
 export interface Issue {
   level: IssueLevel;

@@ -295,7 +295,7 @@ describe('migrations', () => {
       [JSON.stringify({ ...before.fuel, type: 'MOGAS', densityKgPerL: 0.75 }), JSON.stringify(tpl.massBalance), JSON.stringify(before.performance), JSON.stringify(tpl.equipment)]);
     const flights = await db.query(`SELECT count(*)::int AS n FROM flights`);
 
-    expect(await migrate(db, withOwner(OWNER))).toEqual(['013_aircraft_shares', '014_aircraft_fuels_provenance']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['013_aircraft_shares', '014_aircraft_fuels_provenance', '015_aircraft_photo_documents']);
     const asv = (await ownerAircraft(db, 'u1')).find((a) => a.registration === 'SX-ASV')!;
     const seed = fleetSeed().find((a) => a.registration === 'SX-ASV')!;
     expect(asv).toEqual({ ...seed, equipment: { ...seed.equipment, ...FLEET_EQUIPMENT_011 }, colours: FLEET_COLOURS_011['SX-ASV'] });

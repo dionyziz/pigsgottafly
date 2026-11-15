@@ -337,6 +337,49 @@ export interface Attachment extends AttachmentRef {
   data: string;
 }
 
+// Aircraft photo and documents (POH/AFM, weighing report, … as PDFs). Stored in aircraft_attachments
+// (kind 'photo' / 'document', migration 015) in chunks, because a POH (10–40 MB) is far above the
+// serverless request and response limits (~4.5 MB): the client uploads and downloads it chunk by
+// chunk (AIRCRAFT_FILE_CHUNK_BYTES each, base64 in JSON) and assembles a Blob to view or save.
+export type AircraftFileKind = 'photo' | 'document';
+export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const DOCUMENT_TYPES = ['application/pdf'] as const;
+/** Bytes per chunk (2 MiB: 2.8 MB as base64, well within the request/response limits). */
+export const AIRCRAFT_FILE_CHUNK_BYTES = 2 * 1024 * 1024;
+/** The photo is resized in the browser (longest side PHOTO_MAX_PX) before upload. */
+export const PHOTO_MAX_PX = 1600;
+export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+export const DOCUMENT_MAX_BYTES = 80 * 1024 * 1024;
+
+/** A photo or document of an aircraft (metadata; the content comes chunk by chunk). */
+export interface AircraftFile {
+  id: Id;
+  kind: AircraftFileKind;
+  /** Shown name, e.g. 'POH', 'Weighing report 2024' ('' for the photo). */
+  title: string;
+  /** Original file name. */
+  name: string;
+  mime: string;
+  /** Bytes. */
+  size: number;
+  /** Number of chunks of the content. */
+  chunks: number;
+  uploaded: EpochMs;
+}
+/** POST /api/aircraft/:id/files: starts an upload; the file appears once all chunks are in (POST …/complete). */
+export interface AircraftFileStart {
+  kind: AircraftFileKind;
+  name: string;
+  title: string;
+  mime: string;
+  size: number;
+}
+/** GET /api/aircraft/:id/files */
+export interface AircraftFiles {
+  photo: AircraftFile | null;
+  documents: AircraftFile[];
+}
+
 export interface Aircraft {
   id: Id;
   /** e.g. 'SX-ASV' (FPL item 7 drops the hyphen). */
