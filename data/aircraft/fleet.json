@@ -4,24 +4,51 @@
     "type": "reims-f172m",
     "serial": "F172M01513",
     "operator": "Aeroclub Mesogeion",
-    "cruiseTasKt": 92, "patternTasKt": 80,
+    "cruiseTasKt": 92,
+    "patternTasKt": 80,
     "emptyMass": {
       "_source": "DAS (EL.145.0078) weight and balance report, 14-11-2024 (trn-docs/SXASV_WB_FORM_2024.pdf)",
-      "kg": 691.20, "armM": 1.0403, "momentKgM": 719.12,
-      "includesUnusableFuel": true, "includesOil": true,
+      "kg": 691.2,
+      "armM": 1.0403,
+      "momentKgM": 719.12,
+      "includesUnusableFuel": true,
+      "includesOil": true,
       "_note": "Report prints 103.97 cm in the SUM row and 104.03 cm as the C.G.; 71911.59 / 691.20 = 104.04 cm."
-    }
+    },
+    "fuel": {
+      "tanks": "standard",
+      "usableL": 144,
+      "_source": "mesogeion-aeroclub.gr/wbp.php: 'SX-ASV: max 144lt'"
+    },
+    "categories": [
+      "normal",
+      "utility"
+    ],
+    "utilityNote": "Utility: no rear passengers, no baggage; front seats set forward to 0.90 m (club W&B calculator)."
   },
   "SX-ASG": {
     "type": "reims-f172m",
     "serial": "F172M1091",
     "operator": "Aeroclub Mesogeion",
-    "cruiseTasKt": 92, "patternTasKt": 80,
+    "cruiseTasKt": 92,
+    "patternTasKt": 80,
     "emptyMass": {
       "_source": "Weight and balance report signed 28 FEB 2024, scales calibrated 22-JAN-24 (trn-docs/SXASG_WB_FORM_2024.pdf)",
-      "kg": 692.00, "armM": 1.1398, "momentKgM": 788.77,
-      "includesUnusableFuel": false, "includesOil": true,
+      "kg": 692.0,
+      "armM": 1.1398,
+      "momentKgM": 788.77,
+      "includesUnusableFuel": false,
+      "includesOil": true,
       "_note": "Weighed with fuel tanks and fuel system empty, oil full (8 qt), 4 life vests, fire extinguisher, flight manual. Unusable fuel (15 L) must be added. CG 113.98 cm is ~10 cm aft of SX-ASV's."
-    }
-  }
+    },
+    "fuel": {
+      "tanks": "long-range",
+      "usableL": 182,
+      "_source": "mesogeion-aeroclub.gr/wbp.php: 'SX-ASG: max 182lt'"
+    },
+    "categories": [
+      "normal"
+    ]
+  },
+  "_crosscheck": "Club calculator envelope (moment kg·m, mass kg): utility (600,675) (780,890) (807,905) (927,905) (700,675); normal (600,675) (780,890) (1020,1043) (1258,1043) (805,675). Digitised from the AFM chart; within ~1% of the AFM limits used in reims-f172m.json. It uses fuel arm 1.22 m (AFM sheet: 1.215)."
 }
