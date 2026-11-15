@@ -85,3 +85,20 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 - SX-ASV and SX-ASG: make/model, the latest weighing report (empty mass and arm), the POH mass & balance section (stations, envelopes), the POH take-off/landing performance charts, fuel capacity and burn, equipment list, and colours.
 - Form 731: the blank form (PDF or photo), and what it is filed with.
 - Licence number and nationality, if they should appear on the forms.
+
+## Additions (15 Nov 2026)
+
+### Weather hazards along the route
+- For every leg, at its planned time and altitude, and for departure/destination at take-off/landing time: flag **thunderstorms** in the vicinity (Open-Meteo `weather_code` 95–99 and high CAPE near the leg; TAF/METAR `TS`, `CB`) and **visibility below 10 km** (Open-Meteo `visibility`; TAF/METAR visibility groups).
+- "Vicinity": sample the leg corridor (e.g. every ~10 NM along the leg and ±5 NM either side) within ±1 h of the leg's time.
+- Show warnings on the map (highlight the affected leg/area), in the navlog strip, and on the navlog export; say the source and forecast time. Unit-tested with recorded fixtures.
+
+### NOTAMs relevant to the flight
+- Load NOTAMs for the departure, destination and en-route/nearby aerodromes and for the FIR (LGGG), from the autorouter briefing API once API access is granted (it is requested), with a fallback source that needs no key if one is available; cache per flight.
+- Keep only what is relevant: effective during block-off → block-on (with a margin), Q-line position/radius intersecting the route corridor or the aerodromes used, vertical limits overlapping the planned altitudes (VFR, typically below FL100), and not IFR-only items (e.g. approach procedures) unless they concern the aerodromes used. Show a count of hidden ones with "show all".
+- Display: a NOTAM panel in the editor (decoded where possible, raw text always available) and areas drawn on the map; include them in a briefing export.
+
+### Filing the flight plan via autorouter
+- Server-side autorouter API client using the app account credentials (Vercel secrets AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD; OAuth client credentials). API access has been requested from autorouter; until granted, the feature must show a clear "filing not enabled yet" state.
+- AFTN addressees for Greek VFR plans generated from AIP Greece ENR 1.11 (and ENR 1.10/1.2.13 rules) per route — departure ARO/ATSU, FICs (ATHINAI/MAKEDONIA), TMAs/CTRs and military units affected — shown to the pilot for review and passed in the `addresses` field.
+- File / Delay / Cancel buttons on the flight plan export; status (filed, manual correction, rejected, …) polled and stored on the flight; DEP/ARR messages optional. Every action logged per pilot. Tests mock the autorouter API; nothing is filed for real in tests.
