@@ -4,7 +4,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { client, startApi, type Client } from './helpers';
 import { setMailTransport } from '../../api/_lib/mail';
-import { LINK_DAILY_CAP, LINK_FLIGHT_CAP, MAIL_DAILY_CAP, MAIL_FLIGHT_FORM_CAP } from '../../api/_lib/sendCaps';
+import { LINK_DAILY_CAP, LINK_FLIGHT_CAP, MAIL_DAILY_CAP, MAIL_FLIGHT_FORM_CAP, MAIL_RECIPIENT_CAP } from '../../api/_lib/sendCaps';
+import { wbPerfContentOf } from '../../src/shared/declarations';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
@@ -45,6 +46,9 @@ async function flight(c: Client, pax = false): Promise<{ id: string; paxKey?: st
   return { id: f.id, paxKey };
 }
 const sendGendec = (c: Client, id: string) => c.call('POST', `flights/${id}/forms/gendec/send`, { resend: true });
+/** The 10-minute pause between two sends of a flight's form, passed. */
+const later = (flightId: string) => db.query('UPDATE mail_log SET at = at - 660000 WHERE flight_id = $1', [flightId]);
+const day = (n: number) => new Date(Date.now() + n * 24 * 3600e3).toISOString().slice(0, 10);
 
 describe('e-mail caps', () => {
   test(`a form goes out at most ${MAIL_FLIGHT_FORM_CAP} times per flight in 24 h, re-sends included; failures do not count`, async () => {
@@ -55,7 +59,10 @@ describe('e-mail caps', () => {
     expect((await sendGendec(c, f.id)).status).toBe(502);
     mockMail();
     const n0 = sent;
-    for (let i = 0; i < MAIL_FLIGHT_FORM_CAP; i++) expect((await sendGendec(c, f.id)).status).toBe(200);
+    for (let i = 0; i < MAIL_FLIGHT_FORM_CAP; i++) {
+      expect((await sendGendec(c, f.id)).status).toBe(200);
+      await later(f.id);
+    }
     const r = await sendGendec(c, f.id);
     expect(r.status).toBe(429);
     expect(r.body.error).toMatch(/already e-mailed 5 times for this flight in the last 24 hours\. Try again after \d\d:\d\d UTC\./);
@@ -74,7 +81,10 @@ describe('e-mail caps', () => {
     for (let i = 0; i < MAIL_DAILY_CAP - 4; i++) await db.query('INSERT INTO mail_log (id, pilot_id, flight_id, form, at) VALUES ($1,$2,$3,$4,$5)', [`new${i}`, id, `fy${i}`, '731', now - 3600e3 * (1 + i / 10)]);
     const f1 = await flight(c);
     const f2 = await flight(c);
-    for (let i = 0; i < 4; i++) expect((await sendGendec(c, i < 2 ? f1.id : f2.id)).status).toBe(200);
+    for (let i = 0; i < 4; i++) {
+      expect((await sendGendec(c, i < 2 ? f1.id : f2.id)).status).toBe(200);
+      await db.query('UPDATE mail_log SET at = at - 660000 WHERE flight_id = ANY($1)', [[f1.id, f2.id]]);
+    }
     const n0 = sent;
     const r = await sendGendec(c, (await flight(c)).id);
     expect(r.status).toBe(429);
@@ -83,9 +93,69 @@ describe('e-mail caps', () => {
     expect(r.body.retryAfter).toBeGreaterThan(21 * 3600);
     expect(r.body.retryAfter).toBeLessThan(22 * 3600);
     expect(sent).toBe(n0);
-    // the refused attempt left no reservation behind
-    const [{ n }] = await db.query('SELECT count(*)::int AS n FROM mail_log WHERE pilot_id = $1 AND at > $2', [id, now - 24 * 3600e3]);
+    // the refused attempt is logged as capped and does not count
+    const [{ n }] = await db.query(`SELECT count(*)::int AS n FROM mail_log WHERE pilot_id = $1 AND at > $2 AND result IN ('pending', 'sent')`, [id, now - 24 * 3600e3]);
     expect(n).toBe(MAIL_DAILY_CAP);
+    const [capped] = await db.query(`SELECT * FROM mail_log WHERE pilot_id = $1 AND result = 'capped'`, [id]);
+    expect(capped).toMatchObject({ form: 'gendec', recipient: 'gendec@hcaa.gov.gr' });
+  });
+
+  test('every send is logged: recipient, subject, result, message id', async () => {
+    const { c, id } = await pilot('log');
+    mockMail();
+    const f = await flight(c);
+    expect((await sendGendec(c, f.id)).status).toBe(200);
+    setMailTransport(async () => { throw new Error('provider down'); });
+    await later(f.id);
+    expect((await sendGendec(c, f.id)).status).toBe(502);
+    const rows = await db.query('SELECT form, recipient, subject, result, message_id, error FROM mail_log WHERE pilot_id = $1 ORDER BY result DESC', [id]); // sent, failed
+    expect(rows).toEqual([
+      expect.objectContaining({ form: 'gendec', recipient: 'gendec@hcaa.gov.gr', result: 'sent', message_id: `m-${sent}` }),
+      expect.objectContaining({ form: 'gendec', result: 'failed', message_id: null, error: 'provider down' }),
+    ]);
+    expect(rows[0].subject).toMatch(/^General Declaration · /);
+  });
+
+  test('HCAA forms only from yesterday to 14 days ahead', async () => {
+    const { c } = await pilot('window');
+    mockMail();
+    for (const [d, status] of [[-2, 409], [-1, 200], [14, 200], [15, 409]] as const) {
+      const f = (await c.call('POST', 'flights', { date: day(d), blockOff: '08:00', route: [pt('LGAV', 'a'), pt('LGTT', 'b')] })).body;
+      const r = await sendGendec(c, f.id);
+      expect(`${d}: ${r.status}`).toBe(`${d}: ${status}`);
+    }
+  });
+
+  test('a global daily cap on everything sent to the HCAA (HCAA_DAILY_CAP)', async () => {
+    const { c } = await pilot('global');
+    mockMail();
+    const prev = process.env.HCAA_DAILY_CAP;
+    const [{ n }] = await db.query(`SELECT count(*)::int AS n FROM mail_log WHERE form IN ('731', 'gendec') AND at > $1 AND result IN ('pending', 'sent')`, [Date.now() - 24 * 3600e3]);
+    process.env.HCAA_DAILY_CAP = String(n + 1);
+    try {
+      expect((await sendGendec(c, (await flight(c)).id)).status).toBe(200);
+      const r = await sendGendec(c, (await flight(c)).id);
+      expect(r.status).toBe(429);
+      expect(r.body.error).toMatch(/daily limit of forms sent to the HCAA/);
+    } finally {
+      if (prev === undefined) delete process.env.HCAA_DAILY_CAP; else process.env.HCAA_DAILY_CAP = prev;
+    }
+  });
+
+  test(`at most ${MAIL_RECIPIENT_CAP} declarations a day to one operator address`, async () => {
+    const { c, id } = await pilot('decl');
+    mockMail();
+    const o = (await c.call('POST', 'operators', { name: 'Busy Club', requiresWbPerf: true, declarationsEmail: 'ops@busy.example' })).body;
+    const ac = (await c.call('POST', 'aircraft', { registration: 'SX-BSY', operatorId: o.id })).body;
+    const now = Date.now();
+    for (let i = 0; i < MAIL_RECIPIENT_CAP; i++) {
+      await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at, recipient, result) VALUES ($1,$2,$3,'wbperf',$4,'OPS@busy.example','sent')`, [`d${i}-${id}`, id, `fz${i}`, now - 3600e3]);
+    }
+    const content = wbPerfContentOf({ wb: { rows: [{ label: 'Empty', mass: '700' }] } });
+    const f = (await c.call('POST', 'flights', { aircraftId: ac.id, date: day(1) })).body;
+    const r = await c.call('POST', `flights/${f.id}/declarations/send`, { content });
+    expect(r.status).toBe(429);
+    expect(r.body.error).toMatch(/10 declarations to ops@busy.example/);
   });
 
   test('caps are per pilot', async () => {

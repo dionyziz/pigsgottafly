@@ -73,7 +73,7 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     all('SELECT flight_id, fetched, params, doc FROM flight_notams WHERE pilot_id = $1 ORDER BY fetched'),
     all('SELECT flight_id, provider, provider_id, status, eobt, fpl, addresses, message, filed, updated FROM flight_filings WHERE pilot_id = $1'),
     all('SELECT flight_id, at, action, ok, message, detail FROM filing_log WHERE pilot_id = $1 ORDER BY at'),
-    all('SELECT flight_id, form, at FROM mail_log WHERE pilot_id = $1 ORDER BY at'),
+    all('SELECT flight_id, form, at, recipient, subject, result FROM mail_log WHERE pilot_id = $1 ORDER BY at'),
   ]);
   const crewOf = (id: string) => crew.filter((c) => c.flight_id === id);
   return {
@@ -104,7 +104,7 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
       signingLinks: links.map((l) => ({ flightId: l.flight_id, person: l.person_key, created: num(l.created), firstOpened: num(l.first_opened), lastOpened: num(l.last_opened), revoked: !!l.revoked, expires: num(l.expires) })),
       signatures: signatures.map((s) => ({ flightId: s.flight_id, person: s.person_key, name: s.signer_name, signedAt: num(s.signed_at), formHash: s.text_hash })),
       submissions: submissions.map((s) => ({ flightId: s.flight_id, form: s.form, sentAt: num(s.sent_at), to: s.to_addr, messageId: s.message_id })),
-      emailsSent: mailLog.map((m) => ({ flightId: m.flight_id, form: m.form, at: num(m.at) })),
+      emailsSent: mailLog.map((m) => ({ flightId: m.flight_id, form: m.form, at: num(m.at), to: m.recipient, subject: m.subject, result: m.result })),
     },
     notamBriefings: briefings.map((b) => ({ flightId: b.flight_id, fetched: num(b.fetched), params: b.params, briefing: b.doc })),
     flightPlanFilings: filings.map((f) => ({ flightId: f.flight_id, provider: f.provider, providerId: f.provider_id, status: f.status, eobt: num(f.eobt), fpl: f.fpl, addresses: f.addresses, message: f.message, filed: num(f.filed), updated: num(f.updated) })),

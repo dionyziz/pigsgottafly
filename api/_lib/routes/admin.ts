@@ -1,13 +1,29 @@
-// Admin (read-only): GET /admin/pilots lists every pilot with their activity and sharing. Only for
-// the admins of ADMIN_EMAILS (Ctx.isAdmin); everyone else gets 403.
+// Admin (read-only), only for the admins of ADMIN_EMAILS (Ctx.isAdmin); everyone else gets 403:
+//   GET /admin/pilots                      every pilot with their activity and sharing
+//   GET /admin/mail?pilot=<id>&kind=<k>    the e-mail action log (mail_log, sendCaps.ts), newest first, 300 at most
 import type { Route } from '../http.js';
 import { HttpError } from '../http.js';
 import { personName } from '../access.js';
-import type { AdminPilot, AdminShare } from '../../../src/shared/api.js';
+import type { AdminMail, AdminPilot, AdminShare } from '../../../src/shared/api.js';
 
 type Row = Record<string, any>;
 
 export const routes: Route[] = [
+  {
+    method: 'GET', path: '/admin/mail',
+    async handler({ db, isAdmin, query }): Promise<AdminMail[]> {
+      if (!isAdmin) throw new HttpError(403, 'admins only');
+      const pilot = query.get('pilot') || null;
+      const kind = query.get('kind') || null;
+      const rows = await db.query(`SELECT m.*, p.email, p.full_name, p.name FROM mail_log m LEFT JOIN pilots p ON p.id = m.pilot_id
+        WHERE ($1::text IS NULL OR m.pilot_id = $1) AND ($2::text IS NULL OR m.form = $2) ORDER BY m.at DESC LIMIT 300`, [pilot, kind]);
+      return rows.map((r: Row) => ({
+        id: r.id, at: Number(r.at), pilotId: r.pilot_id ?? null, pilot: r.pilot_id ? personName(r.full_name, r.name) || r.email || r.pilot_id : '',
+        kind: r.form, flightId: r.flight_id ?? null, recipient: r.recipient ?? '', subject: r.subject ?? '', result: r.result,
+        messageId: r.message_id ?? null, error: r.error ?? null,
+      }));
+    },
+  },
   {
     method: 'GET', path: '/admin/pilots',
     async handler({ db, isAdmin }): Promise<AdminPilot[]> {

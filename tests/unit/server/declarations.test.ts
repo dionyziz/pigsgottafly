@@ -3,7 +3,7 @@
 // the same on both sides, and the PDF renders (one loading sheet + one page per sector).
 import { describe, expect, test } from 'vitest';
 import zlib from 'node:zlib';
-import { wbPerfContentOf, wbPerfText } from '../../../src/shared/declarations';
+import { sheetText, wbPerfContentOf, wbPerfText } from '../../../src/shared/declarations';
 import { sha256Url } from '../../../src/features/exports/wbperf/declaration';
 import { wbPerfHash } from '../../../api/_lib/routes/declarations';
 import { wbPerfPdf } from '../../../api/_lib/declarationPdf';
@@ -55,5 +55,26 @@ describe('W&B and performance declarations', () => {
     expect(pages).toContain('(PERFORMANCE LOG)');
     expect(pages).toContain('(Aeroleschi Test)');
     expect(pages).toContain('(Electronically signed 2026-11-20 08:00Z)');
+  });
+});
+
+describe('free text on the sheets', () => {
+  test('links, domain names and e-mail addresses are removed; the sheet data stays', () => {
+    expect(sheetText('Verify at https://evil.example/login now', 100)).toBe('Verify at now');
+    expect(sheetText('go to www.evil.example or evil.example/x, mail a@b.example', 100)).toBe('go to or mail');
+    expect(sheetText('1040.2 kg · CG 1.010 m · 1050.40 kg·m', 100)).toBe('1040.2 kg · CG 1.010 m · 1050.40 kg·m');
+    expect(sheetText('LGTT 150850Z 36010KT CAVOK 18/09 Q1015', 100)).toBe('LGTT 150850Z 36010KT CAVOK 18/09 Q1015');
+    expect(sheetText('a‮b\nc', 100)).toBe('a b c');
+    expect(sheetText('x'.repeat(500), 60)).toHaveLength(60);
+  });
+
+  test('lists and strings are tightly bounded', () => {
+    const c = wbPerfContentOf({ route: 'R'.repeat(5000), wb: { rows: Array.from({ length: 500 }, () => ({ label: 'L'.repeat(900) })), limits: Array(100).fill('x') }, perf: { notes: Array(100).fill('n'), pages: Array(50).fill({}) } });
+    expect(c.route.length).toBeLessThanOrEqual(200);
+    expect(c.wb.rows.length).toBeLessThanOrEqual(40);
+    expect(c.wb.rows[0].label.length).toBeLessThanOrEqual(60);
+    expect(c.wb.limits.length).toBeLessThanOrEqual(12);
+    expect(c.perf.notes.length).toBeLessThanOrEqual(10);
+    expect(c.perf.pages.length).toBeLessThanOrEqual(6);
   });
 });

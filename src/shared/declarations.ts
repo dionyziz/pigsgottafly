@@ -88,29 +88,40 @@ export interface DeclarationsState {
 }
 
 // ------------------------------------------------------------------------------------------------
-// Normalization: rebuilt from the known fields only, strings and lists bounded (the server renders
-// it; the client hashes the same normalized value).
+// Normalization: rebuilt from the known fields only, strings and lists tightly bounded, and free text
+// kept to the sheet's data: no control characters, no links, no e-mail addresses (the server renders
+// it into a PDF e-mailed to the operator; the client hashes the same normalized value).
 
-const S = (v: unknown, max = 600): string => (typeof v === 'string' ? v : v == null ? '' : String(v)).slice(0, max);
+const LINK = /\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)\S*/gi;
+const EMAIL = /\S+@\S+/g;
+/** A domain name with an optional path: 'evil.example/login', 'bit.ly'. Letters-only last label. */
+const DOMAIN = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b(?:\/\S*)?/gi;
+/** Text as printed on the sheets: links and e-mail addresses removed, whitespace collapsed. */
+export function sheetText(v: unknown, max: number): string {
+  const t = typeof v === 'string' ? v : v == null ? '' : String(v);
+  return t.slice(0, max * 2).replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ')
+    .replace(LINK, '').replace(EMAIL, '').replace(DOMAIN, '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+const S = (v: unknown, max = 200): string => sheetText(v, max);
 const B = (v: unknown): boolean => v === true;
-const N = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+const N = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-1e6, Math.min(1e6, v)) : 0);
 function L<T>(v: unknown, max: number, f: (x: any) => T): T[] {
   return Array.isArray(v) ? v.slice(0, max).map((x) => f(x && typeof x === 'object' ? x : {})) : [];
 }
-const LS = (v: unknown, max: number, len: number): string[] => (Array.isArray(v) ? v.slice(0, max).map((x) => S(x, len)) : []);
+const LS = (v: unknown, max: number, len: number): string[] => (Array.isArray(v) ? v.slice(0, max).map((x) => S(x, len)).filter(Boolean) : []);
 const O = (v: unknown): Record<string, any> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {});
 const V = (v: unknown): Verdict => (v === 'pass' || v === 'fail' ? v : 'incomplete');
 const pair = (p: unknown): [number, number] => (Array.isArray(p) ? [N(p[0]), N(p[1])] : [0, 0]);
 
 function row(r: Record<string, any>): WbPerfRow {
   const kind = ['line', 'person', 'total', 'burn'].includes(r.kind) ? r.kind : 'line';
-  return { kind, label: S(r.label, 200), note: S(r.note, 300), mass: S(r.mass, 20), arm: S(r.arm, 20), moment: S(r.moment, 20), over: B(r.over) };
+  return { kind, label: S(r.label, 60), note: S(r.note, 120), mass: S(r.mass, 12), arm: S(r.arm, 12), moment: S(r.moment, 14), over: B(r.over) };
 }
 function block(b: Record<string, any>): PerfBlockContent {
   return {
-    title: S(b.title, 100), aerodrome: S(b.aerodrome, 200), time: S(b.time, 60),
-    rows: L(b.rows, 40, (r) => ({ label: S(r.label, 100), value: S(r.value, 200), note: S(r.note, 300), status: ['ok', 'bad', 'warn'].includes(r.status) ? r.status : null })),
-    verdict: V(b.verdict), verdictText: S(b.verdictText, 200), weather: S(b.weather, 400), metar: S(b.metar, 600),
+    title: S(b.title, 60), aerodrome: S(b.aerodrome, 80), time: S(b.time, 40),
+    rows: L(b.rows, 30, (r) => ({ label: S(r.label, 60), value: S(r.value, 80), note: S(r.note, 120), status: ['ok', 'bad', 'warn'].includes(r.status) ? r.status : null })),
+    verdict: V(b.verdict), verdictText: S(b.verdictText, 120), weather: S(b.weather, 200), metar: S(b.metar, 400),
   };
 }
 
@@ -122,28 +133,28 @@ export function wbPerfContentOf(input: unknown): WbPerfContent {
   const chart = O(wb.chart);
   const perf = O(c.perf);
   return {
-    registration: S(c.registration, 20), makeModel: S(c.makeModel, 100), operator: S(c.operator, 200), date: S(c.date, 20),
-    pilot: S(c.pilot, 200), route: S(c.route, 400), category: S(c.category, 40),
+    registration: S(c.registration, 12), makeModel: S(c.makeModel, 60), operator: S(c.operator, 80), date: S(c.date, 20),
+    pilot: S(c.pilot, 80), route: S(c.route, 200), category: S(c.category, 30),
     wb: {
-      verdict: V(wb.verdict), verdictText: S(wb.verdictText, 200),
-      rows: L(wb.rows, 60, row), totals: L(wb.totals, 30, row),
-      checks: L(wb.checks, 20, (x) => ({ label: S(x.label, 100), ok: B(x.ok), text: S(x.text, 200), categories: S(x.categories, 200) })),
+      verdict: V(wb.verdict), verdictText: S(wb.verdictText, 120),
+      rows: L(wb.rows, 40, row), totals: L(wb.totals, 12, row),
+      checks: L(wb.checks, 12, (x) => ({ label: S(x.label, 60), ok: B(x.ok), text: S(x.text, 120), categories: S(x.categories, 120) })),
       chart: {
         envelopes: L(chart.envelopes, 4, (e) => ({
-          label: S(e.label, 100),
+          label: S(e.label, 40),
           outline: Array.isArray(e.outline) ? e.outline.slice(0, 400).map(pair) : [],
           cgOutline: Array.isArray(e.cgOutline) ? e.cgOutline.slice(0, 400).map(pair) : null,
         })),
-        points: L(chart.points, 20, (p) => ({ label: S(p.label, 40), moment: N(p.moment), mass: N(p.mass), ok: p.ok === true ? true : p.ok === false ? false : null })),
+        points: L(chart.points, 12, (p) => ({ label: S(p.label, 30), moment: N(p.moment), mass: N(p.mass), ok: p.ok === true ? true : p.ok === false ? false : null })),
       },
-      limits: LS(wb.limits, 20, 400), weighing: S(wb.weighing, 400), note: S(wb.note, 600),
+      limits: LS(wb.limits, 12, 160), weighing: S(wb.weighing, 160), note: S(wb.note, 200),
     },
     perf: {
-      verdict: V(perf.verdict), verdictText: S(perf.verdictText, 200),
-      pages: L(perf.pages, 10, (p) => ({ label: S(p.label, 100), takeoff: block(O(p.takeoff)), landing: block(O(p.landing)), speeds: S(p.speeds, 400) })),
-      factors: L(perf.factors, 20, (f) => ({ label: S(f.label, 100), factor: S(f.factor, 40) })),
-      slopeRule: S(perf.slopeRule, 300),
-      notes: LS(perf.notes, 20, 600),
+      verdict: V(perf.verdict), verdictText: S(perf.verdictText, 120),
+      pages: L(perf.pages, 6, (p) => ({ label: S(p.label, 60), takeoff: block(O(p.takeoff)), landing: block(O(p.landing)), speeds: S(p.speeds, 200) })),
+      factors: L(perf.factors, 12, (f) => ({ label: S(f.label, 60), factor: S(f.factor, 20) })),
+      slopeRule: S(perf.slopeRule, 200),
+      notes: LS(perf.notes, 10, 200),
     },
   };
 }

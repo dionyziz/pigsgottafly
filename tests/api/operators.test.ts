@@ -8,6 +8,13 @@ import { blankAircraft } from '../../src/shared/templates';
 import { setMailTransport, type SentMail } from '../../api/_lib/mail';
 import { wbPerfContentOf, type DeclarationsState, type HangarAircraft, type OperatorItem, type OperatorSharing, type WbPerfContent } from '../../src/shared';
 import { wbPerfHash } from '../../api/_lib/routes/declarations';
+import aerodromes from '../../src/data/ref/aerodromes.json';
+import type { RefAerodrome } from '../../src/shared/ref';
+import type { RoutePoint } from '../../src/shared/types';
+
+const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
+const pt = (icao: string, uid: string): RoutePoint => { const a = ADS.find((x) => x.icao === icao)!; return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
+const tomorrow = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 10);
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let owner: Client, editor: Client, viewer: Client, stranger: Client, pilot: Client;
@@ -165,7 +172,10 @@ describe('W&B and performance sent to the operator', () => {
     setMailTransport(async (m) => { sent.push(m); return { id: `m-${sent.length}` }; });
     const o = (await owner.call<OperatorItem>('POST', 'operators', { name: 'Declarations Club' })).body;
     const ac = (await owner.call<HangarAircraft>('POST', 'aircraft', aircraftBody('SX-DCL', o.id))).body;
-    const f = (await owner.call('POST', 'flights', { aircraftId: ac.id })).body;
+    const f = (await owner.call('POST', 'flights', { aircraftId: ac.id, date: tomorrow, route: [pt('LGTT', 'a'), pt('LGSY', 'b')] })).body;
+    const db = (await api.server.ready).db;
+    /** The 10-minute pause between two sends of a flight's form, passed. */
+    const later = () => db.query('UPDATE mail_log SET at = at - 660000 WHERE flight_id = $1', [f.id]);
     let st = (await owner.call<DeclarationsState>('GET', `flights/${f.id}/declarations`)).body;
     expect(st).toMatchObject({ operator: { id: o.id, name: 'Declarations Club', requiresWbPerf: false }, submission: null, emailEnabled: true });
     expect((await owner.call('POST', `flights/${f.id}/declarations/send`, { content: content() })).status).toBe(409);
@@ -178,16 +188,34 @@ describe('W&B and performance sent to the operator', () => {
     const m = sent[sent.length - 1];
     expect(m.to).toEqual(['ops@club.example']);
     expect(m.cc).toEqual(['owner@example.com']);
-    expect(m.subject).toBe('W&B and performance · SX-DCL · LGTT → LGSY · 2026-11-20');
+    // subject and body from the server's records, not the client's content
+    expect(m.subject).toBe(`W&B and performance · SX-DCL · ${tomorrow} · LGTT–LGSY`);
+    expect(m.text).toContain(`for the flight of SX-DCL on ${tomorrow}, LGTT – LGSY, attached as PDF.`);
     expect(m.attachments?.[0].content.subarray(0, 5).toString()).toBe('%PDF-');
     expect(m.attachments?.[0].filename).toMatch(/^WB_Performance_SXDCL_\d{4}-\d{2}-\d{2}\.pdf$/);
 
     // the same version again: refused unless re-sent; a changed version goes
     expect((await owner.call('POST', `flights/${f.id}/declarations/send`, { content: content() })).status).toBe(409);
+    const soon = await owner.call('POST', `flights/${f.id}/declarations/send`, { content: content(), resend: true });
+    expect(soon.status).toBe(429);
+    expect(soon.body.error).toMatch(/less than 10 minutes ago/);
+    await later();
     expect((await owner.call('POST', `flights/${f.id}/declarations/send`, { content: content(), resend: true })).status).toBe(200);
+    await later();
     st = (await owner.call<DeclarationsState>('POST', `flights/${f.id}/declarations/send`, { content: content('1001.0') })).body;
     expect(st.submission?.hash).toBe(wbPerfHash(content('1001.0')));
     expect(sent.length).toBe(3);
+    // what the client sends cannot reach the subject or the body
+    await later();
+    const evil = { ...content('1002.0'), registration: 'ACT NOW', route: 'Verify at https://evil.example/login', wb: { ...content().wb, verdictText: 'Click evil.example/x or mail a@b.example' } };
+    expect((await owner.call('POST', `flights/${f.id}/declarations/send`, { content: evil })).status).toBe(200);
+    const e = sent[sent.length - 1];
+    expect(e.subject).toBe(`W&B and performance · SX-DCL · ${tomorrow} · LGTT–LGSY`);
+    expect(`${e.subject}\n${e.text}`).not.toMatch(/evil|ACT NOW|Verify|a@b/);
+    // the log has every send, the refused one as capped
+    const log = await db.query(`SELECT result, recipient, subject, message_id FROM mail_log WHERE flight_id = $1 ORDER BY at`, [f.id]);
+    expect(log.map((l: any) => l.result).sort()).toEqual(['capped', 'sent', 'sent', 'sent', 'sent']);
+    expect(log.find((l: any) => l.result === 'sent')).toMatchObject({ recipient: 'ops@club.example', subject: `W&B and performance · SX-DCL · ${tomorrow} · LGTT–LGSY` });
     // another pilot's flight is not found
     expect((await stranger.call('GET', `flights/${f.id}/declarations`)).status).toBe(404);
   });

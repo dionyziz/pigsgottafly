@@ -29,6 +29,7 @@ import type {
   Waypoint,
   WaypointInput,
   AdminPilot,
+  AdminMail,
   DeclarationsState,
   OperatorFiles,
   OperatorInput,
@@ -171,6 +172,8 @@ export const api = {
   /** Admins only (403 for everyone else). */
   admin: {
     pilots: () => request<AdminPilot[]>('GET', 'admin/pilots'),
+    mail: (f: { pilot?: string; kind?: string } = {}) =>
+      request<AdminMail[]>('GET', `admin/mail?${new URLSearchParams(Object.entries(f).filter(([, v]) => !!v) as [string, string][])}`),
   },
   /** The signing page (no sign-in). */
   sign: {

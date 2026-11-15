@@ -1,10 +1,13 @@
 // Admin (ADMIN_EMAILS only; the API answers 403 to everyone else): every pilot with their sign-up and
-// last sign-in, what they have (flights, aircraft, passengers, operators) and what they share. Read-only.
+// last sign-in, what they have (flights, aircraft, passengers, operators) and what they share; and the
+// e-mail action log (every outbound e-mail: forms to HCAA, declarations to operators, signup notices),
+// filterable by pilot and kind. Read-only.
+import { useState } from 'react';
 import { Loading } from '../../app/Loading';
 import { Shell } from '../../app/Shell';
 import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
-import type { AdminShare } from '../../shared';
+import type { AdminMail, AdminPilot, AdminShare } from '../../shared';
 import { EmptyState } from '../lobby/ui';
 import '../lobby/lists.css';
 
@@ -15,6 +18,50 @@ const when = (ms: number) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 const shareText = (s: AdminShare) => `${s.kind === 'aircraft' ? '' : 'operator '}${s.name} (${s.role === 'edit' ? 'editor' : 'viewer'}) ${s.pilot}`;
+
+const KINDS: [string, string][] = [['', 'All kinds'], ['731', 'Form 731'], ['gendec', 'General Declaration'], ['wbperf', 'W&B / performance'], ['signup', 'Signup notice'], ['signup-more', 'More signups']];
+const RESULT_CLASS: Record<AdminMail['result'], string> = { sent: '', pending: 'muted', failed: 'bad', capped: 'warn' };
+
+function MailLog({ pilots }: { pilots: AdminPilot[] }) {
+  const [pilot, setPilot] = useState('');
+  const [kind, setKind] = useState('');
+  const { data, error, loading } = useAsync(() => api.admin.mail({ pilot, kind }), [pilot, kind]);
+  return (
+    <>
+      <div className="page-head" style={{ marginTop: 32 }}>
+        <h2>E-mails</h2>
+        <select aria-label="Pilot" value={pilot} onChange={(e) => setPilot(e.target.value)} data-testid="admin-mail-pilot">
+          <option value="">All pilots</option>
+          {pilots.map((p) => <option key={p.id} value={p.id}>{p.name || p.email || p.id}</option>)}
+        </select>
+        <select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value)} data-testid="admin-mail-kind">
+          {KINDS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+        </select>
+      </div>
+      {error ? <EmptyState title="Could not load the e-mails">{error.message}</EmptyState>
+        : loading && !data ? <p><Loading /></p>
+        : !data?.length ? <p className="muted">No e-mails.</p> : (
+        <div className="card list-card">
+          <table className="list" data-testid="admin-mail">
+            <thead><tr><th>Time</th><th>Pilot</th><th>Kind</th><th>To</th><th>Subject</th><th>Result</th></tr></thead>
+            <tbody>
+              {data.map((m) => (
+                <tr key={m.id} data-mail-id={m.id}>
+                  <td className="mono">{when(m.at)}</td>
+                  <td>{m.pilot || <span className="muted">—</span>}</td>
+                  <td>{KINDS.find(([v]) => v === m.kind)?.[1] ?? m.kind}{m.flightId && <div className="hint mono">{m.flightId}</div>}</td>
+                  <td>{m.recipient}</td>
+                  <td>{m.subject}</td>
+                  <td className={RESULT_CLASS[m.result]}>{m.result}{m.error && <div className="hint">{m.error}</div>}{m.messageId && <div className="hint mono">{m.messageId}</div>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
 
 export function AdminPage() {
   const { data, error, loading } = useAsync(() => api.admin.pilots(), []);
@@ -53,6 +100,7 @@ export function AdminPage() {
           </table>
         </div>
       )}
+      {data && <MailLog pilots={data} />}
     </Shell>
   );
 }
