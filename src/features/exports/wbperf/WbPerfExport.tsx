@@ -6,6 +6,8 @@
 //
 // Usage (ExportPage): <WbPerfExport flight={flight} />. Loads the pilot, the aircraft and the
 // weather (winds aloft for trip fuel; surface forecast / METAR at take-off and landing) itself.
+// When the aircraft's operator asks for these sheets before each flight, a panel sends them to it
+// (./SendPanel.tsx).
 import type { Flight } from '../../../shared';
 import { routeText } from '../form731/common';
 import type { ShownSignature } from '../form731/Form731';
@@ -15,6 +17,8 @@ import { WbSheet } from '../wb/WbExport';
 import { perfSheetModel } from '../performance/model';
 import { PerfSheet, blockName } from '../performance/PerformanceExport';
 import { WarningList } from '../WarningList';
+import { OperatorSendPanel } from './SendPanel';
+import { wbPerfContent } from './declaration';
 import '../wb/xp.css';
 
 const chipTone = (v: string) => (v === 'pass' ? 'ok' : v === 'fail' ? 'danger' : 'warn');
@@ -51,6 +55,7 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
         </div>
         <WarningList warnings={warnings} aircraftId={flight.aircraftId} className="xp-warnings" testId="wbperf-warnings" />
       </div>
+      <OperatorSendPanel flightId={flight.id} content={st.weatherPending ? null : wbPerfContent(wb, perf)} />
       <div className="xp-stage">
         <WbSheet m={wb} signature={signature} />
         {perf.pages.map((pg, i) => <PerfSheet key={i} m={perf} page={pg} pageNo={i + 1} signature={signature} />)}

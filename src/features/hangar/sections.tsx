@@ -2,6 +2,7 @@
 // and compass cards are in their own files.) Each section edits the draft through `edit`.
 import type { AircraftInput, WakeCategory } from '../../shared/types';
 import { Check, Field, IssueList, NumInput, Section } from './fields';
+import { OperatorPicker } from '../operators/OperatorPicker';
 import { ADS_CODES, ITEM10A_CODES, SSR_CODES, addFuelType, issuesAt, join10a, join10b, makePrimaryFuel, otherFuelTypes, removeFuelType, split10a, split10b, type Issue } from './model';
 
 export interface SectionProps {
@@ -49,8 +50,8 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
         <Field focus="colours" label="Colours and markings" issues={at('colours')} hint="FPL item 19 A/, in capitals as filed">
           <input className="upper" value={a.colours} onChange={(e) => { const v = e.target.value.toUpperCase(); edit((d) => { d.colours = v; }); }} placeholder="e.g. WHITE WITH BLUE STRIPES" maxLength={200} />
         </Field>
-        <Field focus="operator" label="Operator" issues={at('operator')} hint="Owner or club, printed on the General Declaration">
-          <input value={a.operator} onChange={(e) => { const v = e.target.value; edit((d) => { d.operator = v; }); }} maxLength={200} />
+        <Field focus="operator" label="Operator" issues={at('operator')} hint="Owner or club: the General Declaration, FPL OPR/ and the W&B sheet print it">
+          <OperatorPicker a={a} edit={edit} />
         </Field>
       </div>
       <Field label="Notes" issues={at('notes')}>

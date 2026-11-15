@@ -24,6 +24,11 @@ export interface ApiConfig {
    * list means NOBODY (never "anyone"). Default: allowedEmails. Local mode: the local pilot.
    */
   autorouterPilots?: string[];
+  /**
+   * Lower-cased e-mails of the admins (ADMIN_EMAILS): they see /admin (every pilot) and get an
+   * e-mail for each new signup. Empty (the default) = no admin.
+   */
+  adminEmails?: string[];
 }
 
 export interface Ctx {
@@ -45,6 +50,8 @@ export interface Ctx {
   autorouterDenied: boolean;
   /** True when this pilot may not send forms by e-mail (no e-mail address to cc). */
   formsMailDenied: boolean;
+  /** True when the session pilot is an admin (config.adminEmails). */
+  isAdmin: boolean;
 }
 
 /** A handler returns the JSON body (status 200), a Reply (other status/headers), or undefined (204). */

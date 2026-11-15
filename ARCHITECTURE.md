@@ -24,6 +24,9 @@ src/
     constants.ts           DEFAULT_SETTINGS (unset values), SETTING_SUGGESTIONS, profileMissing(), seatLayout(),
                            seatStation(), validateCrew(), EXPORT_KINDS, legKey(), uid(), autoTitle(), emptyFlightDoc()
     templates.ts           aircraft TYPE templates (AFM data, blank airframe): aircraftFromTypeJson(), blankAircraft()
+    operators.ts           Operator, OperatorItem (access, viaAircraft), OperatorSharing; isEmail
+    declarations.ts        WbPerfContent (the W&B and performance sheets as sent to an operator), wbPerfContentOf
+                           (normalization, both sides), wbPerfText (hashed: "changed since sent"), DeclarationsState
   calc/                    pure calculations (no I/O, no DOM)
     nav.ts                 port of v2 js/nav.js: geodesy, wind triangle, deviation, NOAA sunset, computeLeg, summarize
     wmm.ts                 World Magnetic Model WMM2025: magneticVariation(lat, lon, date, altFt), wmmField, wmmValid
@@ -74,7 +77,11 @@ src/
   features/
     lobby/                 LobbyPage, NewFlightPage
     profile/               ProfilePage (?welcome=1 = first-use onboarding)
-    hangar/                HangarPage, AircraftPage
+    hangar/                HangarPage, AircraftPage; AircraftFiles (photo, DocumentsSection + PdfViewer for any FileScope),
+                           ShareDialog (aircraft or operator)
+    operators/             OperatorsPage, OperatorPage (details, W&B/performance requirement, documents, aircraft, who
+                           has access), OperatorPicker (the aircraft page's operator dropdown with "New operator…")
+    admin/                 AdminPage (/admin: every pilot; the API answers 403 to non-admins)
     passengers/            PassengersPage
     waypoints/             WaypointsPage
     editor/                EditorPage (layout: collapsible flight panel; resizable.tsx sizes panels by style during a
@@ -91,7 +98,8 @@ src/
                            fuel, W&B, performance, aerodrome hours at the planned times (aerodromeChecks.ts), warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope
-                           chart, then performance/ MD 4.4; /export/wb and /export/performance redirect to it),
+                           chart, then performance/ MD 4.4; /export/wb and /export/performance redirect to it;
+                           SendPanel + declaration.ts: "Send to <operator>" when the aircraft's operator asks for them),
                            briefing/ (NOTAM briefing); fix.ts + WarningList.tsx: every on-screen export warning links to
                            where it is fixed (editor /flights/:id?focus=<key>, hangar /hangar/:id?focus=<field>,
                            /profile?focus=<name>, the passenger dialog); src/app/focusParam.ts focuses + highlights
@@ -103,7 +111,10 @@ api/
   _lib/http.ts             Route, Ctx, Reply, HttpError, helpers
   _lib/auth.ts             verifyGoogleToken, sessions (hashed tokens), local pilot
   _lib/rows.ts             row ↔ entity mappers, input validation helpers
-  _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql
+  _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql, AIRCRAFT_FROM
+  _lib/operators.ts        operator access (owner / shared edit / view / view through an aircraft): operatorFor, listOperators
+  _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices)
+  _lib/declarationPdf.ts   the W&B and performance sheets as PDF (pdf.ts writer), from the client's WbPerfContent
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry
   _lib/migrations/         001_schema.ts, 002_ref_2609.ts (generated), 003_existing_pilot_data.ts (generated),
@@ -114,9 +125,12 @@ api/
                            013_aircraft_shares.ts (shared aircraft; flight/default FKs on aircraft(id)),
                            014_aircraft_fuels_provenance.ts (approved fuels list; seeded notes/paths cleared),
                            015_aircraft_photo_documents.ts (attachment kinds photo/document, chunk table),
-                           017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas)
+                           017_ref_areas_2609.ts (generated: ENR 5 areas, creates ref_areas),
+                           018_operators.ts (operators, operator_shares, aircraft.operator_id, operator_files/_chunks,
+                           'wbperf' form submissions; one operator per pilot and distinct aircraft.operator text)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
-                           attachments.ts, files.ts (photo, documents: chunked), shares.ts, notams.ts, filing.ts
+                           attachments.ts, files.ts (fileRoutes: aircraft photo/documents and operator documents, chunked),
+                           shares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
@@ -183,8 +197,15 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /aircraft/:id/files/:fileId/complete | All chunks in → the file is listed; a new photo replaces the old. |
 | GET | /aircraft/:id/files/:fileId/chunks/:seq | `{data}`: the client assembles a Blob (src/data/aircraftFiles.ts) for the PDF viewer (iframe of a blob: URL; CSP frame-src blob:) or a download. |
 | PUT, DELETE | /aircraft/:id/files/:fileId | (editor or owner) `{title}` / remove. Saving the aircraft only removes unreferenced swing *reports*. |
+| GET, POST | /operators | `OperatorItem[]`: own, shared, and seen through an aircraft (view); create (you own it). |
+| GET, PUT, DELETE | /operators/:id | GET any access; PUT owner or editor (merges; renames its aircraft's fallback text); DELETE owner (aircraft keep the name as text). `requiresWbPerf` needs `declarationsEmail`. |
+| GET, POST, PUT, DELETE | /operators/:id/shares[/:pilotId] | As for aircraft. GET also lists who sees it through an aircraft (`direct: false`, `via`: registrations); those change by sharing the aircraft. |
+| GET, POST, PUT, DELETE | /operators/:id/files… | Documents (operations manual), chunked like the aircraft files. |
+| GET | /flights/:id/declarations | `DeclarationsState`: the flight's aircraft's operator, the last sending (`hash`). |
+| POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. 409 when not asked for / already sent (without resend); 503 e-mail not configured. |
+| GET | /admin/pilots | `AdminPilot[]` (ADMIN_EMAILS only; 403 otherwise). `GET /session` says `admin`. |
 | GET, POST | /passengers | List (by name); create. |
-| GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`). |
+| GET, PUT, DELETE | /passengers/:id | Delete keeps manifest snapshots (`passengerId` becomes `null`) and moves their Form 731 signature and signing link to the key `seat:<seat>` (still valid). A flight PUT naming a passenger that is not the pilot's (e.g. deleted meanwhile) drops the link and keeps the snapshot. |
 | GET, POST | /waypoints | Saved custom points (names upper-cased). |
 | GET, PUT, DELETE | /waypoints/:id | |
 | GET | /flights | `?trash=1` lists the trash. Ordered by GREATEST(updated, opened). |
@@ -200,13 +221,15 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 
 Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flight_crew → passengers), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
 
+Operators (migration 018, `api/_lib/operators.ts`, `tests/api/operators.test.ts`) are shared the same way (`operator_shares`), and everyone with access to an aircraft views its operator: derived on every query, so it ends with the aircraft's share unless the operator is shared directly. Assigning an aircraft to an operator needs edit access to the operator. `Aircraft.operator` is the linked operator's name (joined as `operator_name`), else the old free text.
+
 Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/api/sharing.test.ts`): `aircraft.pilot_id` is the owner, `aircraft_shares` gives other pilots `view` (see it, use it on their flights) or `edit` (also change it and its files, manage sharing). Only the owner deletes. No access answers 404, too little 403. flights.aircraft_id and pilots.default_aircraft_id are plain FKs to aircraft(id) (ON DELETE SET NULL) and the API checks access. When access ends, the pilot's flights keep the aircraft id: the editor shows it as unavailable, a PUT keeps that unchanged id without the seat checks, forms/filing/exports see no aircraft; the pilot's default is cleared. Attachments keep pilot_id = owner.
 
 **Adding a route**: add it to the module that owns it (e.g. `api/_lib/routes/weather.ts` exports `routes: Route[]`). Every module is already listed in `routes/index.ts`, so the dispatcher needs no edits. A handler returns the body (200), `reply(status, body, headers)`, or `undefined` (204), and throws `HttpError` for errors.
 
 ## Database, migrations and seeds
 
-- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64), `aircraft_shares` (aircraft, pilot, role view|edit); shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`, `ref_areas` (ENR 5, migration 017); `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
+- Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64), `aircraft_shares` (aircraft, pilot, role view|edit), `operators`, `operator_shares`, `operator_files` + `operator_file_chunks`; shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`, `ref_areas` (ENR 5, migration 017); `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.
 - Migrations are TS modules (SQL as a default-exported string, or a `run(q)` function) listed in `api/_lib/migrate.ts`, so the Vercel bundle contains them. The runner records each one in `schema_migrations`, applies each in its own transaction, and serialises runners with a session advisory lock (plus an in-process queue for PGlite). It runs from `openDb()`: on server start, in tests, and on the Vercel cold start before serving.
   - `001_schema` converts the v2 production schema in place: `users` → `pilots` (same ids), `sessions.user_id` → `pilot_id` (sessions survive), `flights` → `legacy_flights` (kept as a backup). It then creates the new tables.
   - `002_ref_2609` (generated by `tools/build_ref.ts`) loads the reference data for AIRAC 09/26.
@@ -227,7 +250,11 @@ npm run build        # dist/
 npm run ref          # regenerate src/data/ref/*.json + migration 002 from data/*.js
 npx tsx tools/build_seed.ts   # print the owner's seeded aircraft (003 is applied and frozen)
 ```
-With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
+The W&B and performance sheets are computed in the browser (weather, models), so the export sends what it shows as `WbPerfContent` (text as printed + chart geometry) and the server draws the PDF with its own writer: nothing to install on Vercel, no headless browser. The client hashes `wbPerfText` (SHA-256, crypto.subtle) the way the server does, to show "changed since it was sent".
+
+The signed-in pilot is one copy for the app (AuthGate): `setPilot` is posted to the other tabs (BroadcastChannel) and a tab re-reads `/api/me` when it comes to the foreground, so details fixed in an export's tab show everywhere at once. Exports read it with `usePilot()`, never their own `GET /me`.
+
+With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`, `ADMIN_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 
 Deployment (not done by agents): Vercel builds with `vite build` to `dist/`. `vercel.json` rewrites `/api/*` to the function and every other non-file path to `index.html` (the SPA). HTML is served with no-cache, `/assets/*` is immutable, and www redirects to the apex. `.vercelignore` drops aip/, trn-docs/, tools/, tests/ and server/.
 

@@ -63,6 +63,8 @@ export interface ChartEnvelope {
 export interface WbSheetModel {
   registration: string;
   makeModel: string;
+  /** The aircraft's operator (its linked operator's name), '' when none. */
+  operator: string;
   date: string;
   pilot: string;
   route: string;
@@ -200,7 +202,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   if (!aircraft) {
     warnings.push('No aircraft chosen for this flight: the loading sheet cannot be computed.');
     return {
-      registration: '', makeModel: '', date: fmtDate(doc.date), pilot: pilotName, route, category, categoryLabel,
+      registration: '', makeModel: '', operator: '', date: fmtDate(doc.date), pilot: pilotName, route, category, categoryLabel,
       datum: '', weighing: '', fuelLabel: '', lines: [],
       takeoff: emptyLine('to', 'total', 'Total at take-off'), burn: emptyLine('burn', 'burn', 'Fuel used (taxi + trip)'),
       landing: emptyLine('ldg', 'total', 'Total at landing'), totals: [], zeroFuel: null, checks: [],
@@ -382,6 +384,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   return {
     registration: aircraft.registration,
     makeModel: aircraft.makeModel,
+    operator: aircraft.operator.trim(),
     date: fmtDate(doc.date),
     pilot: pilotName,
     route,

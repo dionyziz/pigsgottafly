@@ -43,11 +43,11 @@ const sha = (s: string) => crypto.createHash('sha256').update(s.trim().toLowerCa
 const withOwner = (email: string, list: Migration[] = MIGRATIONS): Migration[] =>
   list.map((m) => (m.sql?.includes(EXISTING_PILOT_PROFILE.ownerEmailSha256) ? { ...m, sql: m.sql.split(EXISTING_PILOT_PROFILE.ownerEmailSha256).join(sha(email)) } : m));
 const upTo = (name: string) => MIGRATIONS.slice(0, MIGRATIONS.findIndex((m) => m.name === name) + 1);
-/** The owner's aircraft as the API returns them, without ids and timestamps. */
+/** The owner's aircraft as the API returns them, without ids, timestamps and the operator's id (018). */
 async function ownerAircraft(db: Awaited<ReturnType<typeof connect>>, pilotId: string) {
   const { toAircraft } = await import('../../api/_lib/rows');
   const rows = await db.query(`SELECT * FROM aircraft WHERE pilot_id = $1 ORDER BY registration DESC`, [pilotId]);
-  return rows.map((r) => { const { id: _i, created: _c, updated: _u, ...rest } = toAircraft(r); return rest; });
+  return rows.map((r) => { const { id: _i, created: _c, updated: _u, operatorId: _o, ...rest } = toAircraft(r); return { ...rest, operatorId: null }; });
 }
 
 describe('migrations', () => {
@@ -318,6 +318,44 @@ describe('migrations', () => {
     const snap = await db.query(`SELECT * FROM aircraft ORDER BY id`);
     await db.exec(withOwner(OWNER).find((m) => m.name === '014_aircraft_fuels_provenance')!.sql!);
     expect((await db.query(`SELECT * FROM aircraft ORDER BY id`)).map(({ updated: _u, ...r }) => r)).toEqual(snap.map(({ updated: _u, ...r }) => r));
+    await db.close();
+  });
+
+  test('018 (operators) on a database at 017 with the seeded owner: one operator per distinct operator text, linked', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await db.query(`INSERT INTO users VALUES ('u2', 'g-sub-2', 'friend@example.com', 'A Friend', '', 3, 4)`);
+    await migrate(db, withOwner(OWNER, upTo('017_ref_areas_2609')));
+    const ins = (id: string, pilot: string, reg: string, operator: string, remarks: string) => db.query(
+      `INSERT INTO aircraft (id, pilot_id, registration, operator, cruise_tas_kt, pattern_tas_kt, fuel, mass_balance, performance, equipment, created, updated)
+       VALUES ($1, $2, $3, $4, 95, 80, '{}', '{}', '{}', $5::jsonb, 1, 1)`, [id, pilot, reg, operator, JSON.stringify({ remarks })]);
+    await ins('f1', 'u2', 'SX-FR1', ' Friends Club ', 'OPR TEL 210 1234567');
+    await ins('f2', 'u2', 'SX-FR2', 'FRIENDS CLUB', 'call the club first'); // same operator (case, spaces)
+    await ins('f3', 'u2', 'SX-FR3', '', '');
+    await ins('f4', 'u2', 'SX-FR4', 'Other Owner', 'OPR TEL +30 210 0000000 and ask for Bob'); // not only numbers: no phone
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['018_operators']);
+
+    const ops = await db.query(`SELECT pilot_id, name, phone FROM operators ORDER BY pilot_id, name`);
+    expect(ops).toEqual([
+      { pilot_id: 'u1', name: 'Aeroclub Mesogeion', phone: '+302108169910 +306974776230' },
+      { pilot_id: 'u2', name: 'Friends Club', phone: '210 1234567' },
+      { pilot_id: 'u2', name: 'Other Owner', phone: '' },
+    ]);
+    const link = await db.query(`SELECT a.registration, o.name FROM aircraft a LEFT JOIN operators o ON o.id = a.operator_id ORDER BY a.registration`);
+    expect(link).toEqual([
+      { registration: 'SX-ASG', name: 'Aeroclub Mesogeion' }, { registration: 'SX-ASV', name: 'Aeroclub Mesogeion' },
+      { registration: 'SX-FR1', name: 'Friends Club' }, { registration: 'SX-FR2', name: 'Friends Club' },
+      { registration: 'SX-FR3', name: null }, { registration: 'SX-FR4', name: 'Other Owner' },
+    ]);
+    // the owner's aircraft are otherwise unchanged
+    const asv = (await ownerAircraft(db, 'u1')).find((a) => a.registration === 'SX-ASV')!;
+    const seed = fleetSeed().find((a) => a.registration === 'SX-ASV')!;
+    expect(asv).toEqual({ ...seed, equipment: { ...seed.equipment, ...FLEET_EQUIPMENT_011 }, colours: FLEET_COLOURS_011['SX-ASV'] });
+    // the forms' check constraints now take the W&B and performance sheets
+    await db.query(`INSERT INTO flights (id, pilot_id, date, created, updated) VALUES ('fl', 'u1', '2026-11-20', 1, 1)`);
+    await db.query(`INSERT INTO form_submissions (flight_id, pilot_id, form, sent_at, message_id, to_addr, text_hash) VALUES ('fl', 'u1', 'wbperf', 1, 'm', 'ops@example.com', 'h')`);
+    await expect(db.query(`INSERT INTO form_submissions (flight_id, pilot_id, form, sent_at, message_id, to_addr, text_hash) VALUES ('fl', 'u1', 'other', 1, 'm', 'x', 'h')`)).rejects.toThrow();
     await db.close();
   });
 

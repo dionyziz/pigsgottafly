@@ -6,6 +6,7 @@
 //
 // Usage (ExportPage): <NavlogExport flight={flight} />. On screen the sheets are scaled to the
 // container width; in print each sheet fills one A4 landscape page (named page "md42").
+import { usePilot } from '../../../app/session';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
 import { buildLegs } from '../../../calc';
@@ -29,12 +30,12 @@ import './navlog.css';
 const METAR_HORIZON_MS = 6 * 3600 * 1000;
 
 export function NavlogExport({ flight }: { flight: Flight }) {
-  const pilotQ = useAsync<Pilot | null>(() => api.me.get().catch(() => null), []);
+  // the session's pilot: one copy for the whole app, so profile edits show here at once
+  const pilot: Pilot | null = usePilot();
   const acQ = useAsync<Aircraft | null>(
     () => (flight.aircraftId ? api.aircraft.get(flight.aircraftId).catch(() => null) : Promise.resolve(null)),
     [flight.aircraftId],
   );
-  const pilot = pilotQ.data ?? null;
   // the PIC's e-signature on every sheet, dated when the log is generated
   const [signedAt] = useState(() => Date.now());
   const signature: ShownSignature | null = pilot?.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
@@ -79,7 +80,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   }, [endIcaos.join(','), nearNow, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- the document
-  const loading = pilotQ.loading || acQ.loading;
+  const loading = acQ.loading;
   const doc: NavlogDocument | null = useMemo(() => {
     if (loading) return null;
     const computed = computeFlightNavlog({

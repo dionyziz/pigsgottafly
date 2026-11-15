@@ -15,8 +15,9 @@ export const accessibleSql = (alias: string, param: string) =>
   `(${alias}.pilot_id = ${param} OR EXISTS (SELECT 1 FROM aircraft_shares s_ WHERE s_.aircraft_id = ${alias}.id AND s_.pilot_id = ${param}))`;
 
 const SELECT = `SELECT a.*, CASE WHEN a.pilot_id = $1 THEN 'owner' ELSE s.role END AS access_role,
-    o.email AS owner_email, o.full_name AS owner_full_name, o.name AS owner_name, ${photoJsonSql('a')} AS photo_file
+    o.email AS owner_email, o.full_name AS owner_full_name, o.name AS owner_name, ${photoJsonSql('a')} AS photo_file, op.name AS operator_name
   FROM aircraft a JOIN pilots o ON o.id = a.pilot_id
+  LEFT JOIN operators op ON op.id = a.operator_id
   LEFT JOIN aircraft_shares s ON s.aircraft_id = a.id AND s.pilot_id = $1
   WHERE (a.pilot_id = $1 OR s.pilot_id IS NOT NULL)`;
 
@@ -51,6 +52,9 @@ export async function aircraftFor(db: Queryable, pilotId: string, id: string, ne
   }
   return r;
 }
+
+/** SQL select list + join for toAircraft(): the aircraft `a` with its operator's name (operator_name). */
+export const AIRCRAFT_FROM = `SELECT a.*, op.name AS operator_name FROM aircraft a LEFT JOIN operators op ON op.id = a.operator_id`;
 
 /** True when the pilot owns the aircraft or it is shared with them. */
 export async function canUseAircraft(db: Queryable, pilotId: string, id: string): Promise<boolean> {

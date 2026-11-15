@@ -3,7 +3,7 @@
 // Without a Google client id (local mode) every request is the one 'local' pilot.
 import crypto from 'node:crypto';
 import type { Queryable } from './db.js';
-import type { Req } from './http.js';
+import type { ApiConfig, Req } from './http.js';
 
 export const COOKIE = 'pgf_session';
 export const SESSION_MS = 365 * 24 * 3600e3;
@@ -97,4 +97,10 @@ export async function localPilotRow(q: Queryable): Promise<Record<string, any>> 
   );
   const [row] = await q.query(`SELECT * FROM pilots WHERE id = 'local'`);
   return row;
+}
+
+/** An admin: a signed-in pilot whose e-mail is in adminEmails (nobody when the list is empty). */
+export function isAdmin(config: Pick<ApiConfig, 'adminEmails'>, p: { email?: string | null } | null): boolean {
+  const email = String(p?.email || '').trim().toLowerCase();
+  return !!email && (config.adminEmails ?? []).includes(email);
 }

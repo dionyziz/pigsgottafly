@@ -92,9 +92,11 @@ export function passengerInputOf(f: PassengerForm): PassengerInput {
   };
 }
 
-export function PassengerDialog({ passenger, initialName, onClose, onSaved, focus }: {
+export function PassengerDialog({ passenger, initialName, onClose, onSaved, onDelete, focus }: {
   /** Inputs to highlight and focus (names), from a missing-details link. */
   focus?: string[];
+  /** Offers "Delete" for an existing passenger (the caller confirms and deletes). */
+  onDelete?: (p: Passenger) => void;
   passenger: Passenger | null;
   initialName?: string;
   onClose: () => void;
@@ -121,6 +123,10 @@ export function PassengerDialog({ passenger, initialName, onClose, onSaved, focu
 
   return (
     <Dialog title={passenger ? 'Edit passenger' : 'New passenger'} onClose={onClose} busy={busy} wide testId="passenger-dialog" footer={<>
+      {passenger && onDelete && (
+        <button type="button" className="ghost danger" onClick={() => onDelete(passenger)} disabled={busy} data-testid="passenger-delete"
+          style={error ? undefined : { marginRight: 'auto' }}>Delete</button>
+      )}
       {error && <p className="form-error" role="alert" style={{ marginRight: 'auto', alignSelf: 'center' }}>{error}</p>}
       <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
       <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>{passenger ? 'Save' : 'Add passenger'}</button>

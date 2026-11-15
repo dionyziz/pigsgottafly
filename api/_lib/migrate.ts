@@ -22,6 +22,7 @@ import aircraftShares013 from './migrations/013_aircraft_shares.js';
 import aircraftFuels014 from './migrations/014_aircraft_fuels_provenance.js';
 import aircraftPhotoDocuments015 from './migrations/015_aircraft_photo_documents.js';
 import refAreas017 from './migrations/017_ref_areas_2609.js';
+import { run as operators018 } from './migrations/018_operators.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -51,6 +52,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '014_aircraft_fuels_provenance', sql: aircraftFuels014 },
   { name: '015_aircraft_photo_documents', sql: aircraftPhotoDocuments015 },
   { name: '017_ref_areas_2609', sql: refAreas017 },
+  { name: '018_operators', run: operators018 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

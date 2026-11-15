@@ -10,10 +10,14 @@
 //   GET    /aircraft/:id/files/:fileId/chunks/:seq → { data }
 //   PUT    /aircraft/:id/files/:fileId             { title } → AircraftFile
 //   DELETE /aircraft/:id/files/:fileId             → 204
+// The same scheme serves an operator's documents (operations manual) under /operators/:id/files,
+// stored in operator_files / operator_file_chunks (migration 018) with the operator's access
+// (../operators.ts): fileRoutes() builds the routes of either from a FileScope.
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import type { Queryable } from '../db.js';
 import { aircraftFor } from '../access.js';
+import { operatorFor } from '../operators.js';
 import {
   AIRCRAFT_FILE_CHUNK_BYTES, DOCUMENT_MAX_BYTES, DOCUMENT_TYPES, PHOTO_MAX_BYTES, PHOTO_TYPES,
   type AircraftFile, type AircraftFileKind, type AircraftFiles,
@@ -32,13 +36,6 @@ export const photoJsonSql = (alias: string) => `(SELECT json_build_object('id', 
 const cleanText = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max) : '');
 const chunkCount = (size: number) => Math.max(1, Math.ceil(size / AIRCRAFT_FILE_CHUNK_BYTES));
 
-async function fileRow(db: Queryable, owner: string, aircraftId: string, fileId: string) {
-  const [r] = await db.query(`SELECT ${COLS}, complete FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 AND kind IN ('photo', 'document')`,
-    [fileId, aircraftId, owner]);
-  if (!r) throw notFound('no such file');
-  return r;
-}
-
 /** Base64 → its decoded byte length; 400 if it is not base64. */
 function base64Bytes(v: unknown): { data: string; size: number } {
   if (typeof v !== 'string' || !v) throw badRequest('data (base64) is required');
@@ -47,105 +44,145 @@ function base64Bytes(v: unknown): { data: string; size: number } {
   return { data, size: (data.length / 4) * 3 - (data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0) };
 }
 
+/** What files belong to: their routes, tables and access (aircraft or operator). */
+interface FileScope {
+  /** e.g. '/aircraft/:id/files' */
+  path: string;
+  /** Table of the file rows, and of their chunks (chunks.attachment_id → files.id). */
+  files: string;
+  chunks: string;
+  /** Column of the files table holding the parent's id. */
+  parent: string;
+  kinds: readonly AircraftFileKind[];
+  /** Checks the pilot's access to parent `id` (404 / 403); returns extra columns for a new file row. */
+  access(db: Queryable, pilotId: string, id: string, need: 'view' | 'edit'): Promise<Record<string, unknown>>;
+  /** After a file is completed, in its transaction. */
+  completed?(tx: Queryable, id: string): Promise<void>;
+}
+
+export function fileRoutes(scope: FileScope): Route[] {
+  const { files, chunks, parent, path: P } = scope;
+  const kinds = `kind IN (${scope.kinds.map((k) => `'${k}'`).join(', ')})`;
+  const fileRow = async (db: Queryable, parentId: string, fileId: string) => {
+    const [r] = await db.query(`SELECT ${COLS}, complete FROM ${files} WHERE id = $1 AND ${parent} = $2 AND ${kinds}`, [fileId, parentId]);
+    if (!r) throw notFound('no such file');
+    return r;
+  };
+  return [
+    {
+      method: 'GET', path: P,
+      async handler({ db, pilot, params }) {
+        await scope.access(db, pilot.id, params.id, 'view');
+        const rows = await db.query(`SELECT ${COLS} FROM ${files} WHERE ${parent} = $1 AND complete AND ${kinds} ORDER BY created`, [params.id]);
+        const all = rows.map(toFile);
+        const documents = all.filter((f) => f.kind === 'document');
+        if (!scope.kinds.includes('photo')) return { documents };
+        const photos = all.filter((f) => f.kind === 'photo');
+        return { photo: photos[photos.length - 1] ?? null, documents } satisfies AircraftFiles;
+      },
+    },
+    {
+      method: 'POST', path: P,
+      async handler({ db, pilot, params, body }) {
+        const extra = await scope.access(db, pilot.id, params.id, 'edit');
+        const v = (await body()) as Record<string, unknown>;
+        const kind = v.kind as AircraftFileKind;
+        if (!scope.kinds.includes(kind)) throw badRequest(`kind must be ${scope.kinds.join(' or ')}`);
+        const types: readonly string[] = kind === 'photo' ? PHOTO_TYPES : DOCUMENT_TYPES;
+        if (typeof v.mime !== 'string' || !types.includes(v.mime)) throw badRequest(`mime must be one of ${types.join(', ')}`);
+        const max = kind === 'photo' ? PHOTO_MAX_BYTES : DOCUMENT_MAX_BYTES;
+        if (typeof v.size !== 'number' || !Number.isInteger(v.size) || v.size <= 0) throw badRequest('size (bytes) is required');
+        if (v.size > max) throw badRequest(`the file is larger than ${Math.round(max / 1048576)} MB`);
+        const name = cleanText(v.name, 200) || (kind === 'photo' ? 'photo' : 'document.pdf');
+        const title = kind === 'document' ? cleanText(v.title, 120) || name.replace(/\.pdf$/i, '') : '';
+        // uploads that never completed (closed tab, lost connection) go after a day
+        await db.query(`DELETE FROM ${files} WHERE ${parent} = $1 AND NOT complete AND created < $2`, [params.id, Date.now() - 86400000]);
+        const cols = Object.keys(extra);
+        const [r] = await db.query(
+          `INSERT INTO ${files} (id, ${parent}, name, mime, size, created, kind, title, chunks, complete${cols.map((c) => `, ${c}`).join('')})
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE${cols.map((_, i) => `, $${10 + i}`).join('')}) RETURNING ${COLS}`,
+          [await newId('file'), params.id, name, v.mime, v.size, Date.now(), kind, title, chunkCount(v.size), ...Object.values(extra)],
+        );
+        return reply(201, toFile(r));
+      },
+    },
+    {
+      method: 'PUT', path: `${P}/:fileId/chunks/:seq`,
+      async handler({ db, pilot, params, body }) {
+        await scope.access(db, pilot.id, params.id, 'edit');
+        const f = await fileRow(db, params.id, params.fileId);
+        if (f.complete) throw new HttpError(409, 'the file is already complete');
+        const seq = Number(params.seq);
+        if (!Number.isInteger(seq) || seq < 0 || seq >= Number(f.chunks)) throw badRequest(`seq must be 0 … ${Number(f.chunks) - 1}`);
+        const { data, size } = base64Bytes(((await body()) as Record<string, unknown>).data);
+        const last = seq === Number(f.chunks) - 1;
+        const want = last ? Number(f.size) - AIRCRAFT_FILE_CHUNK_BYTES * seq : AIRCRAFT_FILE_CHUNK_BYTES;
+        if (size !== want) throw badRequest(`chunk ${seq} must be ${want} bytes`);
+        await db.query(`INSERT INTO ${chunks} (attachment_id, seq, size, data) VALUES ($1, $2, $3, $4)
+          ON CONFLICT (attachment_id, seq) DO UPDATE SET size = EXCLUDED.size, data = EXCLUDED.data`, [f.id, seq, size, data]);
+        return undefined;
+      },
+    },
+    {
+      method: 'POST', path: `${P}/:fileId/complete`,
+      async handler({ db, pilot, params }) {
+        await scope.access(db, pilot.id, params.id, 'edit');
+        const f = await fileRow(db, params.id, params.fileId);
+        const [{ n, bytes }] = await db.query(`SELECT count(*)::int AS n, COALESCE(sum(size), 0)::bigint AS bytes FROM ${chunks} WHERE attachment_id = $1`, [f.id]);
+        if (Number(n) !== Number(f.chunks) || Number(bytes) !== Number(f.size)) throw badRequest(`the upload is incomplete (${n} of ${f.chunks} chunks)`);
+        return db.transaction(async (tx) => {
+          await tx.query(`UPDATE ${files} SET complete = TRUE WHERE id = $1`, [f.id]);
+          // one photo per aircraft: the new one replaces the old
+          if (f.kind === 'photo') await tx.query(`DELETE FROM ${files} WHERE ${parent} = $1 AND kind = 'photo' AND id <> $2`, [params.id, f.id]);
+          await scope.completed?.(tx, params.id);
+          return toFile(f);
+        });
+      },
+    },
+    {
+      method: 'GET', path: `${P}/:fileId/chunks/:seq`,
+      async handler({ db, pilot, params }) {
+        await scope.access(db, pilot.id, params.id, 'view');
+        const f = await fileRow(db, params.id, params.fileId);
+        if (!f.complete) throw notFound('no such file');
+        const [c] = await db.query(`SELECT data FROM ${chunks} WHERE attachment_id = $1 AND seq = $2`, [f.id, Number(params.seq)]);
+        if (!c) throw notFound('no such chunk');
+        return reply(200, { data: c.data }, { 'Cache-Control': 'private, max-age=86400' });
+      },
+    },
+    {
+      method: 'PUT', path: `${P}/:fileId`,
+      async handler({ db, pilot, params, body }) {
+        await scope.access(db, pilot.id, params.id, 'edit');
+        const f = await fileRow(db, params.id, params.fileId);
+        const title = cleanText(((await body()) as Record<string, unknown>).title, 120);
+        if (!title && f.kind === 'document') throw badRequest('title is required');
+        const [r] = await db.query(`UPDATE ${files} SET title = $2 WHERE id = $1 RETURNING ${COLS}`, [f.id, title]);
+        return toFile(r);
+      },
+    },
+    {
+      method: 'DELETE', path: `${P}/:fileId`,
+      async handler({ db, pilot, params }) {
+        await scope.access(db, pilot.id, params.id, 'edit');
+        const f = await fileRow(db, params.id, params.fileId);
+        await db.query(`DELETE FROM ${files} WHERE id = $1`, [f.id]);
+        return undefined;
+      },
+    },
+  ];
+}
+
 export const routes: Route[] = [
-  {
-    method: 'GET', path: '/aircraft/:id/files',
-    async handler({ db, pilot, params }): Promise<AircraftFiles> {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'view')).pilot_id;
-      const rows = await db.query(`SELECT ${COLS} FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND complete AND kind IN ('photo', 'document')
-        ORDER BY created`, [params.id, owner]);
-      const files = rows.map(toFile);
-      const photos = files.filter((f) => f.kind === 'photo');
-      return { photo: photos[photos.length - 1] ?? null, documents: files.filter((f) => f.kind === 'document') };
-    },
-  },
-  {
-    method: 'POST', path: '/aircraft/:id/files',
-    async handler({ db, pilot, params, body }) {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'edit')).pilot_id;
-      const v = (await body()) as Record<string, unknown>;
-      const kind = v.kind as AircraftFileKind;
-      if (kind !== 'photo' && kind !== 'document') throw badRequest('kind must be photo or document');
-      const types: readonly string[] = kind === 'photo' ? PHOTO_TYPES : DOCUMENT_TYPES;
-      if (typeof v.mime !== 'string' || !types.includes(v.mime)) throw badRequest(`mime must be one of ${types.join(', ')}`);
-      const max = kind === 'photo' ? PHOTO_MAX_BYTES : DOCUMENT_MAX_BYTES;
-      if (typeof v.size !== 'number' || !Number.isInteger(v.size) || v.size <= 0) throw badRequest('size (bytes) is required');
-      if (v.size > max) throw badRequest(`the file is larger than ${Math.round(max / 1048576)} MB`);
-      const name = cleanText(v.name, 200) || (kind === 'photo' ? 'photo' : 'document.pdf');
-      const title = kind === 'document' ? cleanText(v.title, 120) || name.replace(/\.pdf$/i, '') : '';
-      // uploads that never completed (closed tab, lost connection) go after a day
-      await db.query(`DELETE FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND NOT complete AND created < $3`,
-        [params.id, owner, Date.now() - 86400000]);
-      const [r] = await db.query(
-        `INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created, kind, title, chunks, complete)
-         VALUES ($1, $2, $3, $4, $5, $6, '', $7, $8, $9, $10, FALSE) RETURNING ${COLS}`,
-        [await newId('file'), owner, params.id, name, v.mime, v.size, Date.now(), kind, title, chunkCount(v.size)],
-      );
-      return reply(201, toFile(r));
-    },
-  },
-  {
-    method: 'PUT', path: '/aircraft/:id/files/:fileId/chunks/:seq',
-    async handler({ db, pilot, params, body }) {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'edit')).pilot_id;
-      const f = await fileRow(db, owner, params.id, params.fileId);
-      if (f.complete) throw new HttpError(409, 'the file is already complete');
-      const seq = Number(params.seq);
-      if (!Number.isInteger(seq) || seq < 0 || seq >= Number(f.chunks)) throw badRequest(`seq must be 0 … ${Number(f.chunks) - 1}`);
-      const { data, size } = base64Bytes(((await body()) as Record<string, unknown>).data);
-      const last = seq === Number(f.chunks) - 1;
-      const want = last ? Number(f.size) - AIRCRAFT_FILE_CHUNK_BYTES * seq : AIRCRAFT_FILE_CHUNK_BYTES;
-      if (size !== want) throw badRequest(`chunk ${seq} must be ${want} bytes`);
-      await db.query(`INSERT INTO aircraft_attachment_chunks (attachment_id, seq, size, data) VALUES ($1, $2, $3, $4)
-        ON CONFLICT (attachment_id, seq) DO UPDATE SET size = EXCLUDED.size, data = EXCLUDED.data`, [f.id, seq, size, data]);
-      return undefined;
-    },
-  },
-  {
-    method: 'POST', path: '/aircraft/:id/files/:fileId/complete',
-    async handler({ db, pilot, params }) {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'edit')).pilot_id;
-      const f = await fileRow(db, owner, params.id, params.fileId);
-      const [{ n, bytes }] = await db.query(`SELECT count(*)::int AS n, COALESCE(sum(size), 0)::bigint AS bytes FROM aircraft_attachment_chunks WHERE attachment_id = $1`, [f.id]);
-      if (Number(n) !== Number(f.chunks) || Number(bytes) !== Number(f.size)) throw badRequest(`the upload is incomplete (${n} of ${f.chunks} chunks)`);
-      return db.transaction(async (tx) => {
-        await tx.query('UPDATE aircraft_attachments SET complete = TRUE WHERE id = $1', [f.id]);
-        // one photo per aircraft: the new one replaces the old
-        if (f.kind === 'photo') await tx.query(`DELETE FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND kind = 'photo' AND id <> $3`, [params.id, owner, f.id]);
-        await tx.query('UPDATE aircraft SET updated = $2 WHERE id = $1', [params.id, Date.now()]);
-        return toFile(f);
-      });
-    },
-  },
-  {
-    method: 'GET', path: '/aircraft/:id/files/:fileId/chunks/:seq',
-    async handler({ db, pilot, params }) {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'view')).pilot_id;
-      const f = await fileRow(db, owner, params.id, params.fileId);
-      if (!f.complete) throw notFound('no such file');
-      const [c] = await db.query('SELECT data FROM aircraft_attachment_chunks WHERE attachment_id = $1 AND seq = $2', [f.id, Number(params.seq)]);
-      if (!c) throw notFound('no such chunk');
-      return reply(200, { data: c.data }, { 'Cache-Control': 'private, max-age=86400' });
-    },
-  },
-  {
-    method: 'PUT', path: '/aircraft/:id/files/:fileId',
-    async handler({ db, pilot, params, body }) {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'edit')).pilot_id;
-      const f = await fileRow(db, owner, params.id, params.fileId);
-      const title = cleanText(((await body()) as Record<string, unknown>).title, 120);
-      if (!title && f.kind === 'document') throw badRequest('title is required');
-      const [r] = await db.query(`UPDATE aircraft_attachments SET title = $2 WHERE id = $1 RETURNING ${COLS}`, [f.id, title]);
-      return toFile(r);
-    },
-  },
-  {
-    method: 'DELETE', path: '/aircraft/:id/files/:fileId',
-    async handler({ db, pilot, params }) {
-      const owner = (await aircraftFor(db, pilot.id, params.id, 'edit')).pilot_id;
-      const f = await fileRow(db, owner, params.id, params.fileId);
-      await db.query('DELETE FROM aircraft_attachments WHERE id = $1', [f.id]);
-      return undefined;
-    },
-  },
+  // the aircraft's photo and documents (rows keep pilot_id = the aircraft's owner)
+  ...fileRoutes({
+    path: '/aircraft/:id/files', files: 'aircraft_attachments', chunks: 'aircraft_attachment_chunks', parent: 'aircraft_id', kinds: ['photo', 'document'],
+    access: async (db, pilotId, id, need) => ({ pilot_id: (await aircraftFor(db, pilotId, id, need)).pilot_id, data: '' }),
+    completed: async (tx, id) => { await tx.query('UPDATE aircraft SET updated = $2 WHERE id = $1', [id, Date.now()]); },
+  }),
+  // an operator's documents (operations manual)
+  ...fileRoutes({
+    path: '/operators/:id/files', files: 'operator_files', chunks: 'operator_file_chunks', parent: 'operator_id', kinds: ['document'],
+    access: async (db, pilotId, id, need) => { await operatorFor(db, pilotId, id, need); return {}; },
+  }),
 ];

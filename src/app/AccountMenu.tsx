@@ -1,4 +1,4 @@
-// Top-right account menu: Profile, Hangar, Passengers, My waypoints, Sign out.
+// Top-right account menu: Profile, Hangar, Operators, Passengers, My waypoints, (admins: Pilots), Sign out.
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSession } from './session';
@@ -28,8 +28,10 @@ export function AccountMenu() {
           <hr />
           <Link to="/profile" role="menuitem">Profile</Link>
           <Link to="/hangar" role="menuitem">Hangar</Link>
+          <Link to="/operators" role="menuitem">Operators</Link>
           <Link to="/passengers" role="menuitem">Passengers</Link>
           <Link to="/waypoints" role="menuitem">My waypoints</Link>
+          {session.admin && <><hr /><Link to="/admin" role="menuitem" data-testid="admin-link">Pilots (admin)</Link></>}
           {session.mode === 'google' && (<><hr /><button role="menuitem" onClick={() => void signOut()}>Sign out</button></>)}
         </div>
       )}

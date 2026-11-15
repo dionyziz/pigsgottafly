@@ -17,13 +17,14 @@ export const googleClaims = (sub: string, email: string) => ({
   exp: Math.floor(Date.now() / 1000) + 600,
 });
 
-export async function startApi(opts: { google?: boolean; allowedEmails?: string[]; db?: string } = {}) {
+export async function startApi(opts: { google?: boolean; allowedEmails?: string[]; adminEmails?: string[]; db?: string } = {}) {
   const google = opts.google ?? true;
   const s = createServer({
     db: opts.db ?? 'memory://',
     googleClientId: google ? CID : '',
     googleKeys: async () => [JWK],
     allowedEmails: opts.allowedEmails,
+    adminEmails: opts.adminEmails,
     client: (_req, res) => { res.writeHead(404); res.end(); },
   });
   await s.ready;

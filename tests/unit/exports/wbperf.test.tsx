@@ -212,7 +212,10 @@ describe('W&B sheet (MD 4.3)', () => {
     expect(html).toContain('NORMAL CATEGORY');
     expect(html).toContain('UTILITY CATEGORY');
     expect(html).toContain('PASS');
-    expect(html).not.toMatch(/MD 4\.\d|club/i);
+    // the aircraft's operator is printed (its name is the pilot's data); no club wording otherwise
+    expect(m.operator).toBe(ASV.operator.trim());
+    expect(html).toContain(`data-testid="wb-operator">${ASV.operator.trim()}<`);
+    expect(html.split(ASV.operator.trim()).join('')).not.toMatch(/MD 4\.\d|club/i);
     expect(fmtArm(0.94)).toBe('0.94');
     expect(fmtArm(1.215)).toBe('1.215');
   });

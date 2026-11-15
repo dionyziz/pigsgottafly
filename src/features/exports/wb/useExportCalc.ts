@@ -1,6 +1,7 @@
 // Loads what the W&B and performance exports need (pilot, aircraft, Open-Meteo winds aloft and
 // surface forecast, METAR when the flight is near) and runs computeExportCalc. Same fetching as
 // the navlog export, so the three printouts agree.
+import { usePilot } from '../../../app/session';
 import { useEffect, useMemo, useState } from 'react';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
 import { buildLegs } from '../../../calc';
@@ -30,12 +31,12 @@ export interface ExportCalcState {
 }
 
 export function useExportCalc(flight: Flight): ExportCalcState {
-  const pilotQ = useAsync<Pilot | null>(() => api.me.get().catch(() => null), []);
+  // the session's pilot: one copy for the whole app, so profile edits show here at once
+  const pilot: Pilot | null = usePilot();
   const acQ = useAsync<Aircraft | null>(
     () => (flight.aircraftId ? api.aircraft.get(flight.aircraftId).catch(() => null) : Promise.resolve(null)),
     [flight.aircraftId],
   );
-  const pilot = pilotQ.data ?? null;
   const aircraft = acQ.data ?? null;
 
   const legs = useMemo(() => buildLegs(flight.route, flight.date), [flight.route, flight.date]);
@@ -86,7 +87,7 @@ export function useExportCalc(flight: Flight): ExportCalcState {
     return () => { live = false; };
   }, [endIcaos.join(','), nearNow, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loading = pilotQ.loading || acQ.loading;
+  const loading = acQ.loading;
   const [nowMs] = useState(() => Date.now());
   const calc = useMemo(() => {
     if (loading) return null;

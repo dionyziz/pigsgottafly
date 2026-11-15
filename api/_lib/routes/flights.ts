@@ -85,8 +85,11 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
   if (errs.length) throw badRequest(errs.join('; '));
   const paxIds = d.crew.map((c) => c.passengerId).filter((x): x is string => !!x);
   if (paxIds.length) {
-    const own = await db.query('SELECT id FROM passengers WHERE pilot_id = $1 AND id = ANY($2::text[])', [pilotId, paxIds]);
-    if (own.length !== new Set(paxIds).size) throw badRequest('no such passenger');
+    // A passenger link that is not (or no longer) one of the pilot's passengers is dropped, the
+    // snapshot stays: an editor still holding a passenger deleted meanwhile saves without error,
+    // exactly as the database left the flight (flight_crew.passenger_id ON DELETE SET NULL).
+    const own = new Set((await db.query('SELECT id FROM passengers WHERE pilot_id = $1 AND id = ANY($2::text[])', [pilotId, paxIds])).map((r) => r.id as string));
+    if (own.size !== paxIds.length) d.crew = d.crew.map((c) => (c.passengerId && !own.has(c.passengerId) ? { ...c, passengerId: null } : c));
   }
   return d;
 }

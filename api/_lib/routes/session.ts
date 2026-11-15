@@ -5,6 +5,26 @@ import { createSession, emailAllowed, hashToken, localPilotRow, sessionCookie, s
 import { toPilot } from '../rows.js';
 import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
 import { randomBytes } from 'node:crypto';
+import { isAdmin } from '../auth.js';
+import { mailAvailability, sendSystemMail } from '../mail.js';
+
+/** Longest a sign-in waits for the signup notice (it is sent before the response, as a serverless
+ * function may be stopped once it has answered). */
+const NOTIFY_WAIT_MS = 4000;
+
+/** E-mails the admins (ADMIN_EMAILS) that a pilot signed up. Errors are logged, never thrown. */
+export async function notifySignup(admins: string[], p: { name: string; email: string; at: number }): Promise<void> {
+  if (!admins.length || !mailAvailability().enabled) return;
+  const when = new Date(p.at).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+  const send = sendSystemMail({
+    to: admins,
+    subject: `New pilot: ${p.name || p.email}`,
+    text: [`A new pilot signed up to Pig's Gotta Fly.`, '', `Name: ${p.name || '(none)'}`, `E-mail: ${p.email}`, `Time: ${when}`].join('\n'),
+  }).then(() => undefined, (e) => { console.warn('signup notice:', String((e as Error)?.message || e)); });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([send, new Promise<void>((r) => { timer = setTimeout(r, NOTIFY_WAIT_MS); })]);
+  clearTimeout(timer);
+}
 
 export const routes: Route[] = [
   {
@@ -12,7 +32,7 @@ export const routes: Route[] = [
     async handler({ db, config, req }): Promise<SessionResponse> {
       const google = !!config.googleClientId;
       const row = google ? await sessionPilotRow(db, req, config.allowedEmails) : await localPilotRow(db);
-      return { authed: !!row, mode: google ? 'google' : 'local', googleClientId: config.googleClientId || null, pilot: row ? toPilot(row) : null };
+      return { authed: !!row, mode: google ? 'google' : 'local', googleClientId: config.googleClientId || null, pilot: row ? toPilot(row) : null, admin: isAdmin(config, row) };
     },
   },
   {
@@ -35,9 +55,11 @@ export const routes: Route[] = [
       const [row] = await db.query(
         `INSERT INTO pilots (id, google_sub, email, name, picture, created, last_login, seeded_at) VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
          ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, picture = EXCLUDED.picture, last_login = EXCLUDED.last_login
-         RETURNING *`,
+         RETURNING *, (xmax = 0) AS inserted`,
         [`pl_${randomBytes(9).toString('base64url')}`, sub, email, claims.name || '', claims.picture || '', now],
       );
+      // a new account: tell the admins (never blocks or fails the sign-in)
+      if (row.inserted === true) await notifySignup(config.adminEmails ?? [], { name: claims.name || '', email, at: now });
       const tok = await createSession(db, row.id);
       const out: LoginResponse = { ok: true, pilot: toPilot(row) };
       return reply(200, out, { 'Set-Cookie': sessionCookie(tok, SESSION_MS / 1000, config.secureCookie) });

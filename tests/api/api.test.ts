@@ -131,7 +131,10 @@ describe('isolation between pilots, per entity', () => {
     expect((await a.call('POST', 'flights', { aircraftId: ac.id })).status).toBe(400);
     const f = (await a.call('POST', 'flights', {})).body as Flight;
     const crew = [...f.crew, { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'B Pax' } }];
-    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew }, version: f.version })).status).toBe(400);
+    // another pilot's passenger is never linked: the reference is dropped, the snapshot stays
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew }, version: f.version })).status).toBe(200);
+    const saved = (await a.call('GET', `flights/${f.id}`)).body as Flight;
+    expect(saved.crew[1]).toMatchObject({ passengerId: null, snapshot: { fullName: 'B Pax' } });
     expect((await a.call('PUT', 'me', { defaultAircraftId: ac.id })).status).toBe(400);
   });
   test('a flight id taken by another pilot is not reused', async () => {

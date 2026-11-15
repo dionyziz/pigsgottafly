@@ -35,6 +35,7 @@ export const routes: Route[] = [
       const w = waypointInput(await body(), cur);
       const [r] = await db.query('UPDATE waypoints SET name=$3, lat=$4, lon=$5, notes=$6, updated=$7 WHERE id=$1 AND pilot_id=$2 RETURNING *',
         [params.id, pilot.id, w.name, w.lat, w.lon, w.notes, Date.now()]);
+      if (!r) throw notFound('no such waypoint'); // deleted meanwhile
       return toWaypoint(r);
     },
   },

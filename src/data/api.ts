@@ -28,6 +28,13 @@ import type {
   SessionResponse,
   Waypoint,
   WaypointInput,
+  AdminPilot,
+  DeclarationsState,
+  OperatorFiles,
+  OperatorInput,
+  OperatorItem,
+  OperatorSharing,
+  WbPerfContent,
 } from '../shared';
 import type { FileRequest, FilingState } from '../shared/briefing';
 import type { FormsState, SigningView } from '../shared/forms';
@@ -71,6 +78,33 @@ function crud<T, I>(base: string) {
   };
 }
 
+/** Sharing endpoints of a shared record ('aircraft' or 'operators'): /<base>/:id/shares[/:pilotId]. */
+function sharesOf<S>(base: string) {
+  const at = (id: string) => `${base}/${encodeURIComponent(id)}/shares`;
+  return {
+    get: (id: string) => request<S>('GET', at(id)),
+    add: (id: string, email: string, role: ShareRole) => request<S>('POST', at(id), { email, role }),
+    setRole: (id: string, pilotId: string, role: ShareRole) => request<S>('PUT', `${at(id)}/${encodeURIComponent(pilotId)}`, { role }),
+    /** Removes a person; with your own pilot id, removes your own access. */
+    remove: (id: string, pilotId: string) => request<null>('DELETE', `${at(id)}/${encodeURIComponent(pilotId)}`),
+  };
+}
+
+/** Chunked files of a record ('aircraft' or 'operators'): /<base>/:id/files… (src/data/aircraftFiles.ts). */
+function filesOf<L>(base: string) {
+  const at = (id: string) => `${base}/${encodeURIComponent(id)}/files`;
+  return {
+    list: (id: string) => request<L>('GET', at(id)),
+    start: (id: string, input: AircraftFileStart) => request<AircraftFile>('POST', at(id), input),
+    putChunk: (id: string, fileId: string, seq: number, data: string) => request<null>('PUT', `${at(id)}/${encodeURIComponent(fileId)}/chunks/${seq}`, { data }),
+    complete: (id: string, fileId: string) => request<AircraftFile>('POST', `${at(id)}/${encodeURIComponent(fileId)}/complete`, {}),
+    chunk: (id: string, fileId: string, seq: number) => request<{ data: string }>('GET', `${at(id)}/${encodeURIComponent(fileId)}/chunks/${seq}`),
+    rename: (id: string, fileId: string, title: string) => request<AircraftFile>('PUT', `${at(id)}/${encodeURIComponent(fileId)}`, { title }),
+    remove: (id: string, fileId: string) => request<null>('DELETE', `${at(id)}/${encodeURIComponent(fileId)}`),
+  };
+}
+export type FilesApi = ReturnType<typeof filesOf<unknown>>;
+
 export const api = {
   session: () => request<SessionResponse>('GET', 'session'),
   login: (credential: string) => request<LoginResponse>('POST', 'login', { credential }),
@@ -83,14 +117,7 @@ export const api = {
   /** Own aircraft and those shared with the pilot, each with `access` (role, owner). */
   aircraft: crud<HangarAircraft, AircraftInput>('aircraft'),
   /** Who has access to an aircraft (src/shared/sharing.ts). */
-  shares: {
-    get: (aircraftId: string) => request<AircraftSharing>('GET', `aircraft/${encodeURIComponent(aircraftId)}/shares`),
-    add: (aircraftId: string, email: string, role: ShareRole) => request<AircraftSharing>('POST', `aircraft/${encodeURIComponent(aircraftId)}/shares`, { email, role }),
-    setRole: (aircraftId: string, pilotId: string, role: ShareRole) =>
-      request<AircraftSharing>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`, { role }),
-    /** Removes a person; with your own pilot id, removes the aircraft from your hangar. */
-    remove: (aircraftId: string, pilotId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/shares/${encodeURIComponent(pilotId)}`),
-  },
+  shares: sharesOf<AircraftSharing>('aircraft'),
   /** Files stored with an aircraft (compass swing reports). */
   attachments: {
     upload: (aircraftId: string, input: AttachmentInput) => request<AttachmentRef>('POST', `aircraft/${encodeURIComponent(aircraftId)}/attachments`, input),
@@ -98,17 +125,11 @@ export const api = {
     remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
   },
   /** Aircraft photo and documents (chunked: see src/data/aircraftFiles.ts for upload / download). */
-  files: {
-    list: (aircraftId: string) => request<AircraftFiles>('GET', `aircraft/${encodeURIComponent(aircraftId)}/files`),
-    start: (aircraftId: string, input: AircraftFileStart) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files`, input),
-    putChunk: (aircraftId: string, fileId: string, seq: number, data: string) =>
-      request<null>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/chunks/${seq}`, { data }),
-    complete: (aircraftId: string, fileId: string) => request<AircraftFile>('POST', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/complete`, {}),
-    chunk: (aircraftId: string, fileId: string, seq: number) =>
-      request<{ data: string }>('GET', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}/chunks/${seq}`),
-    rename: (aircraftId: string, fileId: string, title: string) => request<AircraftFile>('PUT', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`, { title }),
-    remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/files/${encodeURIComponent(fileId)}`),
-  },
+  files: filesOf<AircraftFiles>('aircraft'),
+  /** Operators (src/shared/operators.ts), their sharing and documents (operations manual). */
+  operators: crud<OperatorItem, OperatorInput>('operators'),
+  operatorShares: sharesOf<OperatorSharing>('operators'),
+  operatorFiles: filesOf<OperatorFiles>('operators'),
   passengers: crud<Passenger, PassengerInput>('passengers'),
   waypoints: crud<Waypoint, WaypointInput>('waypoints'),
 
@@ -139,6 +160,15 @@ export const api = {
     sendGenDec: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/send`),
     /** The flight's override of who sends the GenDec: true = a handler, false = the PIC, null = automatic (AIP + NOTAMs). */
     setGenDecHandled: (id: string, handled: boolean | null) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/handled`, { handled }),
+  },
+  /** The W&B and performance sheets e-mailed to the aircraft's operator (src/shared/declarations.ts). */
+  declarations: {
+    get: (id: string) => request<DeclarationsState>('GET', `flights/${encodeURIComponent(id)}/declarations`),
+    send: (id: string, content: WbPerfContent, resend: boolean) => request<DeclarationsState>('POST', `flights/${encodeURIComponent(id)}/declarations/send`, { content, resend }),
+  },
+  /** Admins only (403 for everyone else). */
+  admin: {
+    pilots: () => request<AdminPilot[]>('GET', 'admin/pilots'),
   },
   /** The signing page (no sign-in). */
   sign: {

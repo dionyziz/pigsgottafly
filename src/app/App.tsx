@@ -3,7 +3,8 @@
 //   /flights/new                   creates a flight, then → /flights/:id
 //   /flights/:id                   flight editor (map)
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
-//   /profile  /hangar  /hangar/:id  /passengers  /waypoints
+//   /profile  /hangar  /hangar/:id  /operators  /operators/:id  /passengers  /waypoints
+//   /admin                         every pilot (ADMIN_EMAILS only)
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { Loading } from './Loading';
@@ -25,6 +26,9 @@ const EditorPage = lazy(() => import('../features/editor').then((m) => ({ defaul
 const ExportPage = lazy(() => import('../features/exports').then((m) => ({ default: m.ExportPage })));
 // The Form 731 signing page: public (no sign-in), outside the AuthGate.
 const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ default: m.SignPage })));
+const OperatorsPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorsPage })));
+const OperatorPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorPage })));
+const AdminPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
@@ -65,6 +69,9 @@ export function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/hangar" element={<HangarPage />} />
               <Route path="/hangar/:id" element={<AircraftPage />} />
+              <Route path="/operators" element={<OperatorsPage />} />
+              <Route path="/operators/:id" element={<OperatorPage />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="/passengers" element={<PassengersPage />} />
               <Route path="/waypoints" element={<WaypointsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

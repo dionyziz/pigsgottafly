@@ -67,7 +67,8 @@ export function WbSheet({ m, signature }: { m: WbSheetModel; signature?: ShownSi
         <div><dt>Registration</dt><dd className="xp-fill">{m.registration}</dd></div>
         <div><dt>Aircraft</dt><dd className="xp-fill">{m.makeModel}</dd></div>
         <div><dt>Pilot</dt><dd className="xp-fill">{m.pilot}</dd></div>
-        <div className="wide"><dt>Route</dt><dd className="xp-fill">{m.route}</dd></div>
+        {m.operator && <div><dt>Operator</dt><dd className="xp-fill" data-testid="wb-operator">{m.operator}</dd></div>}
+        <div className={m.operator ? 'wide2' : 'wide'}><dt>Route</dt><dd className="xp-fill">{m.route}</dd></div>
         <div><dt>Category</dt><dd className="xp-fill">{m.categoryLabel}</dd></div>
       </dl>
 

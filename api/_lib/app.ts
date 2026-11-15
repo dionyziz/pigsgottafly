@@ -4,7 +4,7 @@
 import type { Db } from './db.js';
 import type { ApiConfig, Ctx, Req, Res, Route } from './http.js';
 import { compilePath, HttpError, readJsonObject, Reply, send } from './http.js';
-import { googleKeys, localPilotRow, sessionPilotRow } from './auth.js';
+import { googleKeys, isAdmin, localPilotRow, sessionPilotRow } from './auth.js';
 import type { Pilot } from '../../src/shared/types.js';
 import { toPilot } from './rows.js';
 import { ROUTES } from './routes/index.js';
@@ -17,6 +17,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiCon
     googleClientId: env.GOOGLE_CLIENT_ID || '',
     allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
+    adminEmails: emailList(env.ADMIN_EMAILS),
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots; unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
   };
@@ -31,6 +32,7 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
     googleKeys: opts.googleKeys || googleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
+    adminEmails: (opts.adminEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),
   };
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {
@@ -67,6 +69,7 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
           req, db, config, params, query: url.searchParams, pilot: pilot!, headers: {},
           autorouter: arOk ? autorouter : null, autorouterDenied: !!autorouter && !arOk,
           formsMailDenied: !formsMailFor(pilot),
+          isAdmin: isAdmin(config, pilot),
           body: () => (bodyP ||= readJsonObject(req)),
         };
         const out = await r.handler(ctx);

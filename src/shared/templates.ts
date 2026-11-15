@@ -45,6 +45,7 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
     wake: type.wake,
     serial: '',
     operator: '',
+    operatorId: null,
     homeBase: '',
     colours: '',
     cruiseTasKt: 0,

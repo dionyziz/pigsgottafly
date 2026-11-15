@@ -83,7 +83,8 @@ export function parseTtf(buf: Buffer): TtfInfo {
 
 /** Text → WinAnsi bytes: Greek transliterated (keeping case), anything else unencodable → '?'. */
 export function winAnsi(s: string): Buffer {
-  const t = transliterate(s, { keepCase: true }).normalize('NFC');
+  // signs WinAnsi lacks, spelled out (≤ in the W&B limits, − in signed numbers, → in routes)
+  const t = transliterate(s, { keepCase: true }).normalize('NFC').replace(/≤/g, '<=').replace(/≥/g, '>=').replace(/−/g, '-').replace(/→/g, '->');
   const out: number[] = [];
   for (const ch of t) {
     const u = ch.codePointAt(0)!;
