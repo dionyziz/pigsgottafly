@@ -112,3 +112,6 @@ ATC per flight = generated from `ref_atc_units` (departure, destination, en-rout
 - Draw every TMA (and MTMA) sector, CTR and ATZ from the AIP reference data with its exact lateral boundary (polygons, arcs and circles as published; ATZ/CTR circles from the aerodrome zone radii), styled like VFR charts by type and class.
 - Label each with its name, class and vertical limits (e.g. "ATHINAI TMA · C · 1500 ft – FL195"; "TATOI ATZ · GND – 2000 ft"); labels stay readable at each zoom level.
 - Hover shows name, class and limits; click shows the full details (lateral definition, vertical limits, controlling unit, callsign and frequencies, AIP source) and the legs of the route that enter it at their planned altitude.
+
+### Weather model
+- ECMWF IFS via Open-Meteo is the model for everything (winds aloft, temperatures, clouds, visibility, thunderstorms) — the pilot's long-standing choice. No multi-model comparison. All weather shown is advisory: a quiet "Advisory · ECMWF, run hh Z" note next to weather values and warnings; official briefing (TAF/METAR/GAMET/SIGMET) remains the pilot's responsibility.
