@@ -350,7 +350,6 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   if (!wb) warnings.push('The weight and balance could not be computed for this aircraft.');
   if (!doc.crew.length) warnings.push('The manifest is empty: no pilot or passengers in the balance.');
   const fuel = calc.computed.fuel;
-  if (fuel?.fobIsDefault) warnings.push(`Fuel on board is the default (required + reserve = ${trimNum(fuel.fobL)} L); set it in the flight editor if different.`);
   if (!calc.computed.navlog.legs.length) warnings.push('No route: no trip fuel, landing figures equal take-off.');
 
   let verdict: WbSheetModel['verdict'];
