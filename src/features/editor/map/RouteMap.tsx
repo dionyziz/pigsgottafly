@@ -15,7 +15,7 @@
 //   open map it becomes a custom point (a known point asks for a name); drag a leg's middle handle to insert a point;
 //   click a point to select it, Backspace/Delete removes it, right-click for more.
 //   Leg labels: magnetic course and distance (read-only), altitude (click to edit; Enter/Esc).
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
@@ -23,19 +23,23 @@ import type { RefAerodrome, RefBundle } from '../../../shared/ref';
 import { uid as newUid, DEFAULT_STOP_MIN, requestAllowed, type AerodromeRequest } from '../../../shared';
 import { buildLegs, distanceNm, magneticVariation, midpoint, norm360, trueCourse, type AltitudeDefault } from '../../../calc';
 import {
-  airspaceFeatures, aerodromeFeatures, areaFeatures, fisFeatures, midpointFeatures, routeLineFeatures, routePointFeatures,
-  vfrPointFeatures, vfrRouteFeatures, waypointFeatures, zoneFeatures,
+  airspaceFeatures, aerodromeFeatures, areaFeatures, fisFeatures, midpointFeatures, routeArrowFeatures, routeLineFeatures,
+  routePointFeatures, vfrPointFeatures, vfrRouteFeatures, waypointFeatures, zoneFeatures,
 } from './features';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from './labels';
 import {
-  autoWaypointName, buildCandidates, cleanWaypointName, findSnap, pointFromCandidate, routeCandidates,
+  autoWaypointName, buildCandidates, findSnap, pointFromCandidate, routeCandidates,
   SNAP_RADIUS_PX, type SnapCandidate, type SnapHit,
 } from './snap';
 import {
   addDrawnPoint, drawIndex, insertPoint, isBareRoundTrip, mercatorMid, movePoint, removeDrawnPoint, removePoint, renamePoint,
 } from './routeEdit';
 import { addSymbols } from './symbols';
-import { BASE_MAPS, buildStyle, CHART_LAYER_IDS, LGGG_BOUNDS, loadVectorBase, type BaseLayers, type BaseMapId, type DataSourceId } from './style';
+import { BASE_MAPS, buildStyle, CHART_LAYER_IDS, LGGG_BOUNDS, loadChartTokens, loadVectorBase, type BaseLayers, type DataSourceId } from './style';
+import { areaShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
+import { LayersControl, MapHint, MapToolbar, type DrawMode } from './MapToolbar';
+import { NameBox, PointMenu, type NamePrompt } from './PointMenu';
+import type { MenuItem } from '../../../ui';
 import { airspaceInfos, airspacesAt, isArea, type AirspaceInfo } from './airspace';
 import { AirspacePopover, AirspaceTip } from './AirspacePopover';
 import './map.css';
@@ -93,7 +97,7 @@ export interface RouteMapProps {
   aerodromeInfo?(a: RefAerodrome): AdDayInfo;
 }
 
-type Mode = 'idle' | 'draw' | 'custom';
+type Mode = DrawMode;
 
 interface Drag {
   uid: string;
@@ -108,15 +112,6 @@ interface Drag {
   hit: SnapHit | null;
 }
 
-interface NamePrompt {
-  x: number;
-  y: number;
-  title: string;
-  value: string;
-  confirm(name: string): void;
-  cancel(): void;
-}
-
 interface Menu {
   x: number;
   y: number;
@@ -129,33 +124,6 @@ interface Hover {
   name: string | null;
   detail: string | null;
   leg: string | null;
-}
-
-const PREFS_KEY = 'pgf:map';
-/** Per-browser map preferences. `tips` shows the editing hint bubble; closing the bubble turns it off
- *  and the layers popover turns it back on. */
-interface MapPrefs {
-  base: BaseMapId; ofm: boolean; chart: boolean; tips: boolean; notams: boolean;
-  /** ENR 5 areas (with the chart layers): prohibited / restricted / danger, military, other activities. */
-  prd: boolean; mil: boolean; act: boolean;
-}
-function loadPrefs(): MapPrefs {
-  const def: MapPrefs = { base: 'light', ofm: false, chart: true, tips: true, notams: true, prd: true, mil: true, act: true };
-  try {
-    const v = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
-    if (v && BASE_MAPS.some((b) => b.id === v.base)) {
-      return {
-        base: v.base, ofm: !!v.ofm, chart: v.chart !== false, tips: v.tips !== false, notams: v.notams !== false,
-        prd: v.prd !== false, mil: v.mil !== false, act: v.act !== false,
-      };
-    }
-  } catch { /* storage unavailable */ }
-  return def;
-}
-/** Which ENR 5 area kinds the layer toggles show. */
-const areaShown = (p: MapPrefs, kind: string) => (kind === 'MIL' ? p.mil : kind === 'ACT' ? p.act : p.prd);
-function savePrefs(p: MapPrefs) {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
 }
 
 function setData(map: MlMap, id: DataSourceId, data: unknown) {
@@ -233,7 +201,7 @@ export function RouteMap(props: RouteMapProps) {
   );
   const areaCount = useMemo(() => {
     const n = { prd: 0, mil: 0, act: 0 };
-    for (const a of allInfos) if (isArea(a.type)) n[a.type === 'MIL' ? 'mil' : a.type === 'ACT' ? 'act' : 'prd']++;
+    for (const a of allInfos) if (isArea(a.type)) n[areaToggle(a.type)]++;
     return n;
   }, [allInfos]);
   const live = useRef({ props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop, adPop });
@@ -249,6 +217,7 @@ export function RouteMap(props: RouteMapProps) {
     let m: MlMap | null = null;
     void loadVectorBase().then((vector) => {
       if (cancelled || !el.current) return;
+      loadChartTokens();
       const built = buildStyle(prefs.base, prefs.ofm, vector);
       baseLayers.current = built.baseLayers;
       m = createMap(el.current, built.style);
@@ -399,13 +368,25 @@ export function RouteMap(props: RouteMapProps) {
 
   // ------------------------------------------------------------------------------ route layers
   const drawing = mode !== 'idle';
+  /** The route point under the cursor (idle mode): its index, which is its feature id (generateId). */
+  const hoverPoint = useRef<number | null>(null);
+  const setHoverPoint = useCallback((i: number | null) => {
+    const m = mapRef.current;
+    if (!m || hoverPoint.current === i) return;
+    if (hoverPoint.current !== null) m.setFeatureState({ source: 'route-points', id: hoverPoint.current }, { hover: false });
+    hoverPoint.current = i;
+    if (i !== null) m.setFeatureState({ source: 'route-points', id: i }, { hover: true });
+  }, []);
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !loaded) return;
     setData(m, 'route-line', routeLineFeatures(shown));
+    setData(m, 'route-arrows', routeArrowFeatures(shown));
     setData(m, 'route-points', routePointFeatures(shown, selected));
     setData(m, 'route-mid', drawing || draft ? EMPTY : midpointFeatures(shown));
   }, [shown, selected, loaded, drawing, draft]);
+  // the indexes (feature ids) change with the route: the next mouse move finds the point again
+  useEffect(() => { if (loaded) setHoverPoint(null); }, [route, drawing, loaded, setHoverPoint]);
 
   useEffect(() => {
     const m = mapRef.current;
@@ -739,6 +720,7 @@ export function RouteMap(props: RouteMapProps) {
       }
       const shift = e.originalEvent.shiftKey;
       const d = drag.current;
+      if (d || L.mode !== 'idle') setHoverPoint(null);
       if (d) {
         // the button is up but we never got its mouseup (released outside the window, …)
         if ((e.originalEvent.buttons & 1) === 0) { cancelDrag(); return; }
@@ -780,6 +762,7 @@ export function RouteMap(props: RouteMapProps) {
       }
       // idle: hover feedback
       const pt = hitPoint(e.point);
+      setHoverPoint(pt);
       const mid = pt === null ? hitMid(e.point) : null;
       if (hoverMid !== undefined && mid !== hoverMid) { m.setFeatureState({ source: 'route-mid', id: hoverMid }, { hover: false }); hoverMid = undefined; }
       if (mid !== null) { hoverMid = mid; m.setFeatureState({ source: 'route-mid', id: mid }, { hover: true }); }
@@ -829,6 +812,7 @@ export function RouteMap(props: RouteMapProps) {
           orig: { uid, kind: 'custom', refId: null, name: autoWaypointName(L.route), ...ll }, hit: null,
         };
       } else return;
+      setHoverPoint(null);
       m.getCanvas().style.cursor = 'grabbing';
       m.getContainer().classList.add('is-dragging');
       // Capture phase on window: the release must end the drag wherever it happens, also over a leg
@@ -966,7 +950,7 @@ export function RouteMap(props: RouteMapProps) {
       }
     };
 
-    const onOut = () => { setAirTip(null); setWxTip(null); setNotamTip(null); setAdTip(null); setHintAway(false); if (!live.current.airPop) highlightAirspace(null); if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
+    const onOut = () => { setHoverPoint(null); setAirTip(null); setWxTip(null); setNotamTip(null); setAdTip(null); setHintAway(false); if (!live.current.airPop) highlightAirspace(null); if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
 
     m.on('mousemove', onMove);
     m.on('mousedown', onDown);
@@ -985,7 +969,7 @@ export function RouteMap(props: RouteMapProps) {
       cancelDragRef.current = null;
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [loaded, snapAt, placeCustom, stopDrawing, askName]);
+  }, [loaded, snapAt, placeCustom, stopDrawing, askName, setHoverPoint]);
 
   // ---------------------------------------------------------------------------------- keyboard
   useEffect(() => {
@@ -999,6 +983,7 @@ export function RouteMap(props: RouteMapProps) {
       if (e.key === 'Escape') {
         if (drag.current) cancelDragRef.current?.();
         else if (L.adPop) setAdPop(null);
+        else if (notamLive.current.pop) setNotamPop(null);
         else if (L.airPop) setAirPop(null);
         else if (L.layersOpen) setLayersOpen(false);
         else if (L.menu) setMenu(null);
@@ -1030,17 +1015,6 @@ export function RouteMap(props: RouteMapProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [stopDrawing]);
-
-  // The layers popover closes on any press outside it (the map included).
-  const layersEl = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!layersOpen) return;
-    const onDown = (e: PointerEvent) => {
-      if (layersEl.current && !layersEl.current.contains(e.target as Node)) setLayersOpen(false);
-    };
-    document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [layersOpen]);
 
   // ------------------------------------------------------------------------------- menu actions
   const menuPoint = menu ? route.find((p) => p.uid === menu.uid) ?? null : null;
@@ -1081,6 +1055,40 @@ export function RouteMap(props: RouteMapProps) {
     setToEnd(true);
     setMode('draw');
   };
+  const menuItems = (p: RoutePoint): MenuItem[] => {
+    const items: MenuItem[] = [];
+    if (p.kind === 'custom') {
+      items.push({ label: 'Rename…', onSelect: () => void doRename() });
+      if (props.onSaveWaypoint) items.push({ label: saving ? 'Saving…' : 'Save to my waypoints', onSelect: () => void doSave(), disabled: saving });
+    }
+    if (p.kind === 'aerodrome' && props.onRequest) {
+      const onRequest = props.onRequest;
+      const idx = route.findIndex((q) => q.uid === p.uid);
+      const cur = props.requests?.[p.uid];
+      const set = (kind: AerodromeRequest['kind'] | null, stopMin?: number) => { onRequest(p.uid, kind, stopMin); setMenu(null); };
+      const askStop = () => {
+        const v = window.prompt(`Intermediate stop at ${p.name}: minutes on the ground`, String(cur?.stopMin ?? DEFAULT_STOP_MIN));
+        const n = v == null ? NaN : Math.round(Number(v));
+        if (isFinite(n) && n > 0) set('stop', n);
+      };
+      if (cur?.kind === 'touch-and-go') items.push({ label: 'Remove touch-and-go request', onSelect: () => set(null), testId: 'menu-tng-remove' });
+      else if (requestAllowed(route, idx, 'touch-and-go')) {
+        items.push({ label: idx === 0 ? 'Request touch-and-go before leaving' : 'Request touch-and-go', onSelect: () => set('touch-and-go'), testId: 'menu-tng' });
+      }
+      if (cur?.kind === 'stop') {
+        items.push({ label: `Change stop (${cur.stopMin ?? DEFAULT_STOP_MIN} min)…`, onSelect: askStop });
+        items.push({ label: 'Remove stop request', onSelect: () => set(null), testId: 'menu-stop-remove' });
+      } else if (requestAllowed(route, idx, 'stop')) items.push({ label: 'Request intermediate stop…', onSelect: askStop, testId: 'menu-stop' });
+    }
+    const ad = p.kind === 'aerodrome' && props.aerodromeInfo ? refData.aerodromes.find((x) => x.id === p.refId) : undefined;
+    if (ad && menu) {
+      const at = { x: menu.x, y: menu.y };
+      items.push({ label: 'Aerodrome hours…', onSelect: () => { setAdPop({ ...at, a: ad }); setMenu(null); }, testId: 'menu-ad-hours' });
+    }
+    if (route[route.length - 1]?.uid === p.uid) items.push({ label: 'Continue drawing', onSelect: continueFrom });
+    items.push({ label: 'Remove point', onSelect: doRemove, danger: true });
+    return items;
+  };
 
   // ----------------------------------------------------------------------------------- render
   const closing = mode !== 'idle' && drawIndex(route, toEnd) < route.length ? route[route.length - 1] : null;
@@ -1104,58 +1112,21 @@ export function RouteMap(props: RouteMapProps) {
       {failed && <div className="pgf-map-failed">{failed}</div>}
 
       {!failed && (
-        <div className="pgf-map-toolbar" role="toolbar" aria-label="Route tools">
-          <ToolButton active={mode === 'draw'} onClick={() => { setToEnd(false); setMode(mode === 'draw' ? 'idle' : 'draw'); }} title="Draw route (D)" testid="map-draw">
-            <IconPen /> <span>{route.length ? 'Extend' : 'Draw'}</span>
-          </ToolButton>
-          <ToolButton active={mode === 'custom'} onClick={() => { setToEnd(false); setMode(mode === 'custom' ? 'idle' : 'custom'); }} title="Place a custom named point (W, or Shift-click while drawing)" testid="map-custom">
-            <IconPin /> <span>Custom point</span>
-          </ToolButton>
-          <span className="pgf-map-sep" />
-          <ToolButton onClick={() => props.onUndo?.()} disabled={!props.canUndo} title="Undo (⌘Z)" testid="map-undo"><IconUndo /></ToolButton>
-          <ToolButton onClick={() => props.onRedo?.()} disabled={!props.canRedo} title="Redo (⇧⌘Z)" testid="map-redo"><IconRedo /></ToolButton>
-          <span className="pgf-map-sep" />
-          <ToolButton onClick={fitRoute} disabled={!route.length} title="Zoom to the route" testid="map-fit"><IconFit /></ToolButton>
-        </div>
+        <MapToolbar
+          mode={mode} hasRoute={route.length > 0} onMode={(m) => { setToEnd(false); setMode(m); }}
+          onUndo={props.onUndo} onRedo={props.onRedo} canUndo={props.canUndo} canRedo={props.canRedo} onFit={fitRoute}
+        />
       )}
 
       {!failed && (
-        <div className="pgf-map-layers" ref={layersEl}>
-          <button type="button" className={'pgf-map-btn' + (layersOpen ? ' is-active' : '')} onClick={() => setLayersOpen((v) => !v)} title="Map layers" aria-expanded={layersOpen} data-testid="map-layers">
-            <IconLayers />
-          </button>
-          {layersOpen && (
-            <div className="pgf-map-pop" role="dialog" aria-label="Map layers">
-              <div className="pgf-map-pop-h">Base map</div>
-              <div className="pgf-seg">
-                {BASE_MAPS.map((b) => (
-                  <button key={b.id} type="button" className={prefs.base === b.id ? 'is-on' : ''} onClick={() => setPrefs({ ...prefs, base: b.id })}>{b.label}</button>
-                ))}
-              </div>
-              <label className="pgf-check"><input type="checkbox" checked={prefs.chart} onChange={(e) => setPrefs({ ...prefs, chart: e.target.checked })} /> Chart layers <span className="muted">AIRAC {refData.airac.id}</span></label>
-              <div className="pgf-map-pop-sub" role="group" aria-label="AIP ENR 5 areas">
-                <label className="pgf-check"><input type="checkbox" checked={prefs.prd} disabled={!prefs.chart} onChange={(e) => setPrefs({ ...prefs, prd: e.target.checked })} data-testid="map-areas-prd" /> Prohibited, restricted, danger <span className="muted">{areaCount.prd}</span></label>
-                <label className="pgf-check"><input type="checkbox" checked={prefs.mil} disabled={!prefs.chart} onChange={(e) => setPrefs({ ...prefs, mil: e.target.checked })} data-testid="map-areas-mil" /> Military training areas <span className="muted">{areaCount.mil}</span></label>
-                <label className="pgf-check"><input type="checkbox" checked={prefs.act} disabled={!prefs.chart} onChange={(e) => setPrefs({ ...prefs, act: e.target.checked })} data-testid="map-areas-act" /> Local flying areas <span className="muted">{areaCount.act}</span></label>
-              </div>
-              <label className="pgf-check"><input type="checkbox" checked={prefs.ofm} onChange={(e) => setPrefs({ ...prefs, ofm: e.target.checked })} /> openflightmaps overlay</label>
-              <label className="pgf-check"><input type="checkbox" checked={prefs.tips} onChange={(e) => setPrefs({ ...prefs, tips: e.target.checked })} data-testid="map-tips" /> Editing tips</label>
-              <label className="pgf-check"><input type="checkbox" checked={prefs.notams} onChange={(e) => setPrefs({ ...prefs, notams: e.target.checked })} data-testid="map-notams" /> NOTAM areas{notamMarks.length ? <span className="muted">{notamMarks.length}</span> : null}</label>
-              <div className="pgf-legend">
-                <span><i className="lg-tma" /> TMA</span><span><i className="lg-mtma" /> MTMA</span><span><i className="lg-zone" /> CTR</span><span><i className="lg-atz" /> ATZ</span><span><i className="lg-zone-g" /> Class G zone</span>
-                <span><i className="lg-p" /> Prohibited</span><span><i className="lg-r" /> Restricted</span><span><i className="lg-d" /> Danger</span><span><i className="lg-mil" /> Military</span><span><i className="lg-act" /> Local flying</span>
-                <span><i className="lg-vfr" /> VFR route</span><span><i className="lg-route" /> Your route</span>
-              </div>
-            </div>
-          )}
-        </div>
+        <LayersControl
+          open={layersOpen} onOpen={setLayersOpen} prefs={prefs} onPrefs={setPrefs}
+          airac={refData.airac.id} areaCount={areaCount} notamCount={notamMarks.length}
+        />
       )}
 
       {hint && prefs.tips && !failed && (
-        <div ref={hintEl} className={'pgf-map-hint' + (hintAway ? ' is-away' : '')} data-testid="map-hint">
-          <span>{hint}</span>
-          <button type="button" className="pgf-map-hint-x" onClick={() => setPrefs({ ...prefs, tips: false })} title="Hide tips (turn them back on under Map layers)" aria-label="Hide tips" data-testid="map-hint-close"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></button>
-        </div>
+        <MapHint text={hint} away={hintAway} onClose={() => setPrefs({ ...prefs, tips: false })} hintRef={hintEl} />
       )}
 
       {hover && (hover.name || hover.detail || hover.leg) && !prompt && (
@@ -1197,43 +1168,7 @@ export function RouteMap(props: RouteMapProps) {
 
       {prompt && <NameBox prompt={prompt} />}
 
-      {menu && menuPoint && (
-        <div className="pgf-menu" style={{ left: menu.x + 6, top: menu.y + 6 }} role="menu" data-testid="point-menu" onMouseDown={(e) => e.stopPropagation()}>
-          <div className="pgf-menu-h">{menuPoint.name}<span className="muted"> · {KIND_LABEL[menuPoint.kind]}</span></div>
-          {menuPoint.kind === 'custom' && <button type="button" role="menuitem" onClick={doRename}>Rename…</button>}
-          {menuPoint.kind === 'custom' && props.onSaveWaypoint && (
-            <button type="button" role="menuitem" onClick={doSave} disabled={saving}>{saving ? 'Saving…' : 'Save to my waypoints'}</button>
-          )}
-          {menuPoint.kind === 'aerodrome' && props.onRequest && (() => {
-            const idx = route.findIndex((p) => p.uid === menuPoint.uid);
-            const cur = props.requests?.[menuPoint.uid];
-            const set = (kind: AerodromeRequest['kind'] | null, stopMin?: number) => { props.onRequest!(menuPoint.uid, kind, stopMin); setMenu(null); };
-            const askStop = () => {
-              const v = window.prompt(`Intermediate stop at ${menuPoint.name}: minutes on the ground`, String(cur?.stopMin ?? DEFAULT_STOP_MIN));
-              const n = v == null ? NaN : Math.round(Number(v));
-              if (isFinite(n) && n > 0) set('stop', n);
-            };
-            return (
-              <>
-                {cur?.kind === 'touch-and-go'
-                  ? <button type="button" role="menuitem" data-testid="menu-tng-remove" onClick={() => set(null)}>Remove touch-and-go request</button>
-                  : requestAllowed(route, idx, 'touch-and-go') && <button type="button" role="menuitem" data-testid="menu-tng" onClick={() => set('touch-and-go')}>{idx === 0 ? 'Request touch-and-go before leaving' : 'Request touch-and-go'}</button>}
-                {cur?.kind === 'stop'
-                  ? <><button type="button" role="menuitem" onClick={askStop}>Change stop ({cur.stopMin ?? DEFAULT_STOP_MIN} min)…</button>
-                    <button type="button" role="menuitem" data-testid="menu-stop-remove" onClick={() => set(null)}>Remove stop request</button></>
-                  : requestAllowed(route, idx, 'stop') && <button type="button" role="menuitem" data-testid="menu-stop" onClick={askStop}>Request intermediate stop…</button>}
-              </>
-            );
-          })()}
-          {menuPoint.kind === 'aerodrome' && props.aerodromeInfo && (() => {
-            const a = refData.aerodromes.find((x) => x.id === menuPoint.refId);
-            return a ? <button type="button" role="menuitem" data-testid="menu-ad-hours" onClick={() => { setAdPop({ x: menu.x, y: menu.y, a }); setMenu(null); }}>Aerodrome hours…</button> : null;
-          })()}
-          {route[route.length - 1]?.uid === menuPoint.uid && <button type="button" role="menuitem" onClick={continueFrom}>Continue drawing</button>}
-          <button type="button" role="menuitem" className="danger" onClick={doRemove}>Remove point</button>
-          {saveErr && <div className="pgf-menu-err">{saveErr}</div>}
-        </div>
-      )}
+      {menu && menuPoint && <PointMenu x={menu.x} y={menu.y} title={menuPoint.name} detail={KIND_LABEL[menuPoint.kind]} items={menuItems(menuPoint)} error={saveErr} />}
     </div>
   );
 }
@@ -1244,60 +1179,5 @@ const KIND_LABEL: Record<RoutePoint['kind'], string> = {
   waypoint: 'my waypoint',
   custom: 'custom point',
 };
-
-function NameBox({ prompt }: { prompt: NamePrompt }) {
-  const [value, setValue] = useState(prompt.value);
-  const [bad, setBad] = useState(false);
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
-  const submit = () => {
-    const n = cleanWaypointName(value);
-    if (!n) { setBad(true); ref.current?.focus(); return; }
-    prompt.confirm(n);
-  };
-  return (
-    <form
-      className="pgf-name"
-      style={{ left: prompt.x, top: prompt.y }}
-      onSubmit={(e) => { e.preventDefault(); submit(); }}
-      onMouseDown={(e) => e.stopPropagation()}
-      data-testid="name-prompt"
-    >
-      <label htmlFor="pgf-name-input">{prompt.title}</label>
-      <div className="pgf-name-row">
-        <input
-          id="pgf-name-input"
-          ref={ref}
-          value={value}
-          maxLength={24}
-          autoComplete="off"
-          spellCheck={false}
-          className={bad ? 'is-invalid' : ''}
-          onChange={(e) => { setValue(e.target.value.toUpperCase()); setBad(false); }}
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); prompt.cancel(); } }}
-        />
-        <button type="submit" className="pgf-name-ok">OK</button>
-      </div>
-      {bad && <div className="pgf-name-err">Letters, digits, spaces and . / _ -</div>}
-    </form>
-  );
-}
-
-function ToolButton({ children, onClick, title, active, disabled, testid }: { children: ReactNode; onClick(): void; title: string; active?: boolean; disabled?: boolean; testid?: string }) {
-  return (
-    <button type="button" className={'pgf-map-btn' + (active ? ' is-active' : '')} onClick={onClick} title={title} aria-label={title} aria-pressed={active} disabled={disabled} data-testid={testid}>
-      {children}
-    </button>
-  );
-}
-
-// Icons (24-unit stroke icons)
-const svg = (d: ReactNode) => <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
-const IconPen = () => svg(<><circle cx="5" cy="19" r="2" /><circle cx="19" cy="5" r="2" /><path d="M6.5 17.5 10 11l4 2 3.5-6.5" /></>);
-const IconPin = () => svg(<><path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21Z" /><path d="M10 10.5h4M12 8.5v4" /></>);
-const IconUndo = () => svg(<><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></>);
-const IconRedo = () => svg(<><path d="m15 14 5-5-5-5" /><path d="M20 9H10a6 6 0 0 0 0 12h3" /></>);
-const IconFit = () => svg(<><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /><path d="M8.5 15.5 12 9l3.5 6.5" /></>);
-const IconLayers = () => svg(<><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></>);
 
 export type { SnapCandidate };

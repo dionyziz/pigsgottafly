@@ -42,7 +42,8 @@
   --chart-vfr-fill: var(--ok-fill);
   --chart-seat: rgba(31, 95, 191, 0.45);
   --chart-active-fill: rgba(31, 95, 191, 0.08);
-  /* map layers (match the MapLibre style in src/features/editor/map) */
+  /* map layers: the MapLibre style reads these (editor/map/style.ts loadChartTokens; its defaults are
+     the same values, checked by a unit test) */
   --map-bg: #e9edf1;
   --map-tma: #2f64c0;
   --map-mtma: #8a3b9c;
@@ -54,6 +55,17 @@
   --map-danger-area: #b45309;
   --map-mil: #5b4a8a;
   --map-activity: #2e7d32;
+  --map-aerodrome: #1d3f8f;
+  --map-fis: #6b7480;
+  --map-prohibited: #b71c1c;
+  --map-waypoint: #7a3db8;
+  --map-paper: #ffffff;
+  --map-halo: rgba(255, 255, 255, 0.92);
+  --map-notam: #c77700;
+  --map-notam-off: #7a828c;
+  --map-notam-selected: #1f5fbf;
+  --map-hazard: #d64545;
+  --map-hazard-warn: #d49a06;
   /* type */
   --font: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;

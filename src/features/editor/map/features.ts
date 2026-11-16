@@ -172,6 +172,34 @@ export function routeLineFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<
   return fc([{ type: 'Feature', geometry: { type: 'LineString', coordinates: route.map((p) => [p.lon, p.lat]) }, properties: {} }]);
 }
 
+const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+const mercLat = (y: number) => (Math.atan(Math.sinh(y)) * 180) / Math.PI;
+
+/** Where the direction arrows of a leg sit, as fractions of its drawn length (the middle has the
+ *  insert handle and the leg label). */
+export const ARROW_AT = [0.3, 0.7] as const;
+
+/** Direction-of-flight arrowheads: points along each leg's drawn (Mercator-straight) line, `rot` = the
+ *  line's direction in degrees clockwise from north (the icon points north). */
+export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
+  const out: Feature<Point, Record<string, unknown>>[] = [];
+  for (let i = 0; i + 1 < route.length; i++) {
+    const a = route[i], b = route[i + 1];
+    const ya = mercY(a.lat), yb = mercY(b.lat);
+    const dx = ((b.lon - a.lon) * Math.PI) / 180, dy = yb - ya;
+    if (Math.hypot(dx, dy) < 1e-9) continue;
+    const rot = Math.round(((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360 * 10) / 10;
+    for (const t of ARROW_AT) {
+      out.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [a.lon + (b.lon - a.lon) * t, mercLat(ya + dy * t)] },
+        properties: { leg: i, rot },
+      });
+    }
+  }
+  return fc(out);
+}
+
 /** Route points with their role (dep / arr / mid) and selection. */
 export function routePointFeatures(route: RoutePoint[], selectedUid: string | null): FC<Point> {
   return fc(

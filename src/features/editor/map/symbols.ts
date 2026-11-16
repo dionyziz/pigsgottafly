@@ -22,7 +22,7 @@ function make(size: number, draw: (g: CanvasRenderingContext2D, s: number) => vo
 function ring(g: CanvasRenderingContext2D, s: number, r: number, width: number, color: string) {
   g.beginPath();
   g.arc(s / 2, s / 2, r, 0, Math.PI * 2);
-  g.fillStyle = 'rgba(255,255,255,0.92)';
+  g.fillStyle = CHART.halo;
   g.fill();
   g.lineWidth = width;
   g.strokeStyle = color;
@@ -31,7 +31,7 @@ function ring(g: CanvasRenderingContext2D, s: number, r: number, width: number, 
 
 function runwayBar(g: CanvasRenderingContext2D, s: number, len: number, width: number, color: string) {
   // vertical bar (north–south); the layer rotates the icon to the runway heading
-  g.fillStyle = '#fff';
+  g.fillStyle = CHART.paper;
   g.fillRect(s / 2 - width / 2 - 1.2, s / 2 - len / 2 - 1.2, width + 2.4, len + 2.4);
   g.fillStyle = color;
   g.fillRect(s / 2 - width / 2, s / 2 - len / 2, width, len);
@@ -68,11 +68,11 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
   'pgf-vfr': () => make(18, (g, s) => {
     triangle(g, s, 6.4);
     g.fillStyle = CHART.vfr; g.fill();
-    g.lineWidth = 1.4; g.strokeStyle = '#fff'; g.stroke();
+    g.lineWidth = 1.4; g.strokeStyle = CHART.paper; g.stroke();
   }),
   'pgf-vfr-ofm': () => make(18, (g, s) => {
     triangle(g, s, 5.6);
-    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+    g.fillStyle = CHART.halo; g.fill();
     g.lineWidth = 1.6; g.strokeStyle = CHART.vfr; g.stroke();
   }),
   'pgf-wpt': () => make(20, (g, s) => {
@@ -81,12 +81,20 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
     g.moveTo(c, c - r); g.lineTo(c + k, c - k); g.lineTo(c + r, c); g.lineTo(c + k, c + k);
     g.lineTo(c, c + r); g.lineTo(c - k, c + k); g.lineTo(c - r, c); g.lineTo(c - k, c - k); g.closePath();
     g.fillStyle = CHART.waypoint; g.fill();
-    g.lineWidth = 1.2; g.strokeStyle = '#fff'; g.stroke();
+    g.lineWidth = 1.2; g.strokeStyle = CHART.paper; g.stroke();
   }),
   // one-way arrow along a VFR route (points along the line direction = image +x)
   'pgf-arrow': () => make(14, (g, s) => {
     g.beginPath(); g.moveTo(s / 2 - 3, s / 2 - 4); g.lineTo(s / 2 + 3, s / 2); g.lineTo(s / 2 - 3, s / 2 + 4);
     g.lineWidth = 2; g.strokeStyle = CHART.vfr; g.stroke();
+  }),
+  // direction of flight on a route leg (points north; the layer rotates it to the leg): an arrowhead
+  // a little wider than the route line, with a white edge
+  'pgf-route-arrow': () => make(22, (g, s) => {
+    const c = s / 2;
+    g.beginPath(); g.moveTo(c, c - 7); g.lineTo(c + 6.5, c + 5.5); g.lineTo(c, c + 2.5); g.lineTo(c - 6.5, c + 5.5); g.closePath();
+    g.lineWidth = 3; g.strokeStyle = CHART.paper; g.stroke();
+    g.fillStyle = CHART.route; g.fill();
   }),
   // restricted-area hatching (a fill-pattern tile: diagonal lines that join across tiles)
   'pgf-hatch-r': () => make(8, (g, s) => {
