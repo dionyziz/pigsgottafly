@@ -404,6 +404,30 @@ describe('airspace on the map', () => {
     const tma = airspaceFeatures(airspaceInfos(AIRSPACES)).features.find((f) => f.properties.id === 'ATHINAI-TMA-1')!;
     expect(tma.properties.label).toMatch(/^ATHINAI TMA · [A-G] · \d+ ft AGL – FL\d{3}$/);
   });
+  it('the FIR is a simple closed ring around the outlying aerodromes, on the OSM border over land', () => {
+    const fir = firRing(FIR)!;
+    expect(FIR.boundary[0]).toEqual(FIR.boundary[FIR.boundary.length - 1]);
+    const side = (p: number[], q: number[], r: number[]) =>
+      Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+    const n = fir.length - 1;
+    let crossings = 0;
+    for (let i = 0; i < n; i++)
+      for (let j = i + 2; j < n - (i === 0 ? 1 : 0); j++) {
+        const [a, b, c, d] = [fir[i], fir[i + 1], fir[j], fir[j + 1]];
+        if (Math.max(c[0], d[0]) < Math.min(a[0], b[0]) || Math.min(c[0], d[0]) > Math.max(a[0], b[0])) continue;
+        if (side(a, b, c) * side(a, b, d) <= 0 && side(c, d, a) * side(c, d, b) <= 0) crossings++;
+      }
+    expect(crossings).toBe(0);
+    for (const id of ['LGTT', 'LGKR', 'LGAL', 'LGSM', 'LGRP', 'LGKO']) {
+      const a = AERODROMES.find((x) => x.id === id)!;
+      expect(pointInRing(a.lon, a.lat, fir), id).toBe(true);
+    }
+    // Greek side of the Albanian border near Konitsa and of the Evros; Albania and Türkiye outside
+    expect(pointInRing(20.75, 40.05, fir)).toBe(true);
+    expect(pointInRing(20.55, 40.15, fir)).toBe(false);
+    expect(pointInRing(26.25, 41.0, fir)).toBe(true);
+    expect(pointInRing(26.4, 41.0, fir)).toBe(false);
+  });
   it('airspace the AIP limits by the FIR boundary stops at it (Samos, Alexandroupolis); the rest is untouched', () => {
     const fir = firRing(FIR)!;
     const clipped = airspaceInfos(AIRSPACES, AD_AIRSPACES, [], FIR);

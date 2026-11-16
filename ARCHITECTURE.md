@@ -252,9 +252,11 @@ tools/extract_ad_hours.ts  eAIP AD 2.3, AD 1.6.N.3/4 text → tools/ad_hours.jso
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
 tools/parse_ad_airspace.py eAIP AD 2.17, AD 1.6.N.17 text → src/data/ref/ad-airspaces.json (aerodrome CTR/ATZ: limits,
                            class, units; client map layer only, REF.adAirspaces — not in the ref_* tables)
-tools/build_fir.ts         AIP ENR 2.1 FIR / CTA lines + Natural Earth 1:10m land borders (npm world-atlas countries-10m.json,
-                           shared TopoJSON arcs) → src/data/ref/fir.json; the Corfu strait and the Aegean line to Türkiye are
-                           documented approximations; client map layer only (REF.fir)
+tools/build_fir.ts         AIP ENR 2.1 FIR / CTA lines + the OpenStreetMap land borders (the base map's source: the ways the
+                           Greece relation shares with each neighbour's, from the Overpass query in its header, 25 m
+                           Douglas-Peucker) → src/data/ref/fir.json, checked closed, simple and around the outlying
+                           aerodromes; the Corfu strait and the Aegean line to Türkiye are documented approximations;
+                           client map layer only (REF.fir)
 tools/smoke.ts             post-deploy smoke test: npm run smoke -- https://pigsgottafly.com
 .github/workflows/uptime.yml  every 10 min: /api/health and / must answer 200 (a failed run e-mails the repo owner)
 tools/build_seed.ts        data/aircraft/*.json → fleetSeed(): the owner's SX-ASV/SX-ASG as the migrations leave them

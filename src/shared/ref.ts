@@ -299,7 +299,7 @@ export interface RefFis {
 export interface RefFir {
   id: string;
   name: string;
-  /** Closed ring, [lat, lon]: AIP ENR 2.1 at sea, the Natural Earth land borders, approximations noted in the tool. */
+  /** Closed ring, [lat, lon]: AIP ENR 2.1 at sea, the OpenStreetMap land borders, approximations noted in the tool. */
   boundary: [number, number][];
   /** A dividing line inside the FIR (ATHINAI CTA / MAKEDONIA CTA), [lat, lon], west to east. */
   divider: { label: string; line: [number, number][] };
