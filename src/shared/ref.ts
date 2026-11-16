@@ -290,6 +290,17 @@ export interface RefFis {
   source: string;
 }
 
+/** The FIR (client map layer, src/data/ref/fir.json from tools/build_fir.ts; not in the ref_* tables). */
+export interface RefFir {
+  id: string;
+  name: string;
+  /** Closed ring, [lat, lon]: AIP ENR 2.1 at sea, the Natural Earth land borders, approximations noted in the tool. */
+  boundary: [number, number][];
+  /** A dividing line inside the FIR (ATHINAI CTA / MAKEDONIA CTA), [lat, lon], west to east. */
+  divider: { label: string; line: [number, number][] };
+  source: string;
+}
+
 export interface RefVfrPoint {
   /** '<chart>/<NAME>' (with '#2' etc. for repeated names on one chart). */
   id: string;
@@ -349,4 +360,6 @@ export interface RefBundle {
   adAirspaces?: RefAdAirspace[];
   /** ENR 5 areas (ref_areas, from migration 017). */
   areas?: RefArea[];
+  /** The FIR boundary (client map layer). */
+  fir?: RefFir;
 }

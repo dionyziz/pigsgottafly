@@ -5,7 +5,9 @@
 //   2. the ENR 5 areas on the map: hover and click details (identity only: no route section, the
 //      vertical limits once), links to the AIP PDFs (areas, airspace, aerodromes);
 //   3. the flight panel collapses and expands (button, keyboard, dragging its edge; remembered);
-//   4. resizing the panels keeps the map canvas the size of its container in every painted frame.
+//   4. resizing the panels keeps the map canvas the size of its container in every painted frame;
+//   5. the layer toggles (kept per flight; the profile's choice for new flights), the FIR, tooltips inside
+//      the map near its edges, the hint's close button.
 // Screenshots go to tests/e2e/artifacts/map-*.png.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -311,5 +313,66 @@ test('the flight panel collapses and expands (button, keyboard, dragging its edg
   await page.waitFor(() => !document.querySelector('[data-testid=editor-panel]').hidden);
   const wAgain = await page.eval(() => document.querySelector('[data-testid=editor-panel]').getBoundingClientRect().width);
   assert.ok(Math.abs(wAgain - wOpen) <= 1, `${wAgain} vs ${wOpen}`);
+  assert.deepEqual(page.errors, []);
+});
+
+test('layers: separate toggles kept per flight, the profile choice for new flights, the FIR drawn; tooltips stay inside the map; the hint X stays clickable', async () => {
+  const layerVis = (id) => page.eval((id) => document.querySelector('.pgf-map-canvas').__pgfMap.getLayoutProperty(id, 'visibility') ?? 'visible', id);
+  const hidden = (id) => page.waitFor((id) => document.querySelector('.pgf-map-canvas')?.__pgfMap?.getLayoutProperty(id, 'visibility') === 'none', { args: [id], timeout: 10000 });
+  const ready = () => page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
+  // the FIR boundary and the ATHINAI | MAKEDONIA line
+  const fir = await page.eval(() => document.querySelector('.pgf-map-canvas').__pgfMap.getSource('fir').serialize().data.features.map((f) => f.properties.label));
+  assert.deepEqual(fir, ['LGGG ATHINAI FIR', 'ATHINAI | MAKEDONIA']);
+  assert.equal(await layerVis('fir-line'), 'visible');
+  // turn VFR routes and TMAs off on this flight
+  await page.click('[data-testid=map-layers]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=map-vfr-routes]'));
+  await page.click('[data-testid=map-vfr-routes]');
+  await page.click('[data-testid=map-tma]');
+  await hidden('vfr-route-line');
+  assert.equal(await layerVis('airspace-line'), 'none');
+  assert.equal(await layerVis('aerodrome-icon'), 'visible');
+  assert.equal(await layerVis('route-line'), 'visible');
+  await shot('8-layers-off');
+  await page.click('[data-testid=map-layers]');
+  await waitSaved();
+  const f = await api('GET', `flights/${flightId}`);
+  assert.deepEqual([f.options.mapLayers.vfrRoutes, f.options.mapLayers.tma, f.options.mapLayers.aerodromes], [false, false, true]);
+  // remembered for this flight
+  await page.reload();
+  await ready();
+  await hidden('vfr-route-line');
+  // a new flight starts from the profile's choice
+  await page.goto(`${server.url}/profile`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=profile-map-layers] [data-testid=map-aerodromes]'));
+  await page.click('[data-testid=profile-map-layers] [data-testid=map-aerodromes]');
+  await page.click('[data-testid=profile-form] button[type=submit]');
+  for (let i = 0; i < 100 && (await api('GET', 'me')).settings.mapLayers?.aerodromes !== false; i++) await sleep(50);
+  const nf = await api('POST', 'flights', {});
+  assert.deepEqual([nf.options.mapLayers.aerodromes, nf.options.mapLayers.vfrRoutes], [false, true]);
+  await page.goto(`${server.url}/flights/${nf.id}`);
+  await ready();
+  await hidden('aerodrome-icon');
+  // tooltips near the right and bottom edges stay fully inside the map
+  await page.eval(() => { const b = document.querySelector('[data-testid=map-draw]'); if (b.getAttribute('aria-pressed') === 'true') b.click(); });
+  await jump(37.9, 23.7, 9);
+  await sleep(500);
+  const box = await page.eval(() => { const r = document.querySelector('.pgf-map').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; });
+  for (const at of [{ x: box.r - 70, y: box.t + 300 }, { x: box.l + 300, y: box.b - 6 }]) {
+    await hover(at.x, at.y);
+    await page.waitFor(() => !!document.querySelector('[data-testid=airspace-tip]'), { timeout: 5000 });
+    const tip = await page.eval(() => { const r = document.querySelector('[data-testid=airspace-tip]').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; });
+    assert.ok(tip.l >= box.l && tip.t >= box.t && tip.r <= box.r && tip.b <= box.b, `tip ${JSON.stringify(tip)} inside ${JSON.stringify(box)}`);
+  }
+  await shot('9-tip-edge');
+  // the hint stays visible over its close button, which closes it
+  await page.click('[data-testid=map-draw]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=map-hint-close]'));
+  const x = await page.eval(() => { const r = document.querySelector('[data-testid=map-hint-close]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
+  await hover(x.x - 10, x.y);
+  await hover(x.x, x.y);
+  assert.ok(!(await page.eval(() => document.querySelector('[data-testid=map-hint]').classList.contains('is-away'))));
+  await clickAt(x.x, x.y);
+  await page.waitFor(() => !document.querySelector('[data-testid=map-hint]'));
   assert.deepEqual(page.errors, []);
 });

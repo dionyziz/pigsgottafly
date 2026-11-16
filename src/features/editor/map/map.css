@@ -27,16 +27,23 @@
 .pgf-map-pop {
   position: absolute; top: 0; right: 38px; width: 248px; padding: var(--s3);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg);
-  display: flex; flex-direction: column; gap: 10px; font-size: var(--fs-sm); color: var(--ink);
+  display: flex; flex-direction: column; gap: 12px; font-size: var(--fs-sm); color: var(--ink);
+  overflow: auto; overscroll-behavior: contain;
 }
-.pgf-map-pop-h { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-/* layer toggles (ui Check): the count or AIRAC on the right */
-.pgf-map-pop label.check { display: flex; font-size: inherit; }
-.pgf-map-pop label.check > span { flex: 1; display: flex; align-items: baseline; gap: 6px; }
-.pgf-map-pop label.check .muted { margin-left: auto; color: var(--muted); font-size: var(--fs-xs); }
+.pgf-map-airac { font-size: var(--fs-xs); }
+
+/* layer toggles (MapLayerToggles: the map's popover and the profile) */
+.pgf-layers { display: flex; flex-direction: column; gap: 10px; font-size: var(--fs-sm); color: var(--ink); }
+.pgf-layers-h { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.pgf-layers-group { display: flex; flex-direction: column; gap: 6px; }
+.pgf-layers-sep { padding-top: 10px; border-top: 1px solid var(--line); }
+.pgf-layers label.check { display: flex; font-size: inherit; }
+.pgf-layers label.check > span { flex: 1; display: flex; align-items: baseline; gap: 6px; }
+.pgf-layers label.check .muted { margin-left: auto; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
 .pgf-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: var(--fs-xs); }
 .pgf-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .pgf-legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; }
+.pgf-legend .lg-fir { border-color: var(--map-fis); border-top-style: dashed; }
 .pgf-legend .lg-tma { border-color: var(--map-tma); }
 .pgf-legend .lg-mtma { border-color: var(--map-mtma); border-top-style: dashed; }
 .pgf-legend .lg-zone { border-color: var(--map-zone); border-top-style: dashed; }
@@ -50,11 +57,8 @@
 .pgf-legend .lg-d { border-color: var(--map-danger-area); border-top-style: dashed; }
 .pgf-legend .lg-mil { border-color: var(--map-mil); border-top-style: dashed; }
 .pgf-legend .lg-act { border-color: var(--map-activity); border-top-style: dotted; }
-.pgf-map-pop-sub { display: flex; flex-direction: column; gap: 6px; padding-left: 22px; margin-top: -4px; font-size: var(--fs-xs); }
-.pgf-map-pop-sub label:has(input:disabled) { opacity: 0.55; cursor: default; }
-
 /* hint bubble: top left, under the toolbar (out of the way of the route and the snap tooltip, which
-   follow the cursor below it); it fades out while the cursor is near it */
+   follow the cursor below it); it fades out while the cursor is near it, but not near its close button */
 .pgf-map-hint {
   position: absolute; top: calc(var(--s3) + 48px); left: var(--s3); z-index: 2;
   max-width: min(400px, calc(100% - 80px)); padding: 6px 10px 6px 12px; border-radius: 8px;
@@ -63,7 +67,6 @@
   display: flex; align-items: flex-start; gap: 8px; transition: opacity 0.15s ease;
 }
 .pgf-map-hint.is-away { opacity: 0; }
-.pgf-map-hint.is-away .pgf-map-hint-x { pointer-events: none; }
 /* (ui CloseButton) */
 .pgf-map-hint .pgf-map-hint-x {
   pointer-events: auto; flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center;

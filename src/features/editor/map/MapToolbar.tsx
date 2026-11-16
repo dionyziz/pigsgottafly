@@ -1,10 +1,10 @@
 // The map's controls: the route toolbar (draw, custom point, undo/redo, zoom to the route), the layers
-// button with its popover (base map, chart layers, ENR 5 areas, overlay, tips, NOTAM areas, legend) and
+// button with its popover (MapLayerToggles, tips, legend) and
 // the editing hint bubble.
-import { useEffect, useRef, type ReactNode, type Ref } from 'react';
-import { Check, CloseButton, Icon, Segmented } from '../../../ui';
-import { BASE_MAPS, type BaseMapId } from './style';
-import type { MapPrefs } from './mapPrefs';
+import { useEffect, useLayoutEffect, useRef, type ReactNode, type Ref } from 'react';
+import { Check, CloseButton, Icon } from '../../../ui';
+import type { MapLayers } from '../../../shared/mapLayers';
+import { MapLayerToggles } from './MapLayerToggles';
 
 export type DrawMode = 'idle' | 'draw' | 'custom';
 
@@ -43,11 +43,13 @@ function ToolButton({ children, onClick, title, active, disabled, testid }: { ch
   );
 }
 
-export function LayersControl({ open, onOpen, prefs, onPrefs, airac, areaCount, notamCount }: {
+export function LayersControl({ open, onOpen, layers, onLayers, tips, onTips, airac, areaCount, notamCount }: {
   open: boolean;
   onOpen(open: boolean): void;
-  prefs: MapPrefs;
-  onPrefs(p: MapPrefs): void;
+  layers: MapLayers;
+  onLayers(l: MapLayers): void;
+  tips: boolean;
+  onTips(v: boolean): void;
   airac: string;
   areaCount: { prd: number; mil: number; act: number };
   notamCount: number;
@@ -62,8 +64,20 @@ export function LayersControl({ open, onOpen, prefs, onPrefs, airac, areaCount, 
     document.addEventListener('pointerdown', onDown, true);
     return () => document.removeEventListener('pointerdown', onDown, true);
   }, [open, onOpen]);
-  const set = <K extends keyof MapPrefs>(k: K) => (v: MapPrefs[K]) => onPrefs({ ...prefs, [k]: v });
-  const n = (v: number) => <span className="muted">{v}</span>;
+  // the popover scrolls inside the map (above the navlog strip)
+  useLayoutEffect(() => {
+    const host = el.current?.closest('.pgf-map');
+    if (!open || !host) return;
+    const fit = () => {
+      const pop = el.current?.querySelector<HTMLElement>('.pgf-map-pop');
+      if (pop) pop.style.maxHeight = `${Math.max(160, host.getBoundingClientRect().bottom - pop.getBoundingClientRect().top - 12)}px`;
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(fit);
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [open]);
   return (
     <div className="pgf-map-layers" ref={el}>
       <button type="button" className={'pgf-map-btn' + (open ? ' is-active' : '')} onClick={() => onOpen(!open)} title="Map layers" aria-expanded={open} data-testid="map-layers">
@@ -71,20 +85,11 @@ export function LayersControl({ open, onOpen, prefs, onPrefs, airac, areaCount, 
       </button>
       {open && (
         <div className="pgf-map-pop" role="dialog" aria-label="Map layers">
-          <div className="pgf-map-pop-h">Base map</div>
-          <Segmented<BaseMapId> sm label="Base map" value={prefs.base} onChange={set('base')} testId="map-base"
-            options={BASE_MAPS.map((b) => ({ value: b.id, label: b.label }))} />
-          <Check checked={prefs.chart} onChange={set('chart')} testId="map-chart">Chart layers <span className="muted">AIRAC {airac}</span></Check>
-          <div className="pgf-map-pop-sub" role="group" aria-label="AIP ENR 5 areas">
-            <Check checked={prefs.prd} disabled={!prefs.chart} onChange={set('prd')} testId="map-areas-prd">Prohibited, restricted, danger {n(areaCount.prd)}</Check>
-            <Check checked={prefs.mil} disabled={!prefs.chart} onChange={set('mil')} testId="map-areas-mil">Military training areas {n(areaCount.mil)}</Check>
-            <Check checked={prefs.act} disabled={!prefs.chart} onChange={set('act')} testId="map-areas-act">Local flying areas {n(areaCount.act)}</Check>
-          </div>
-          <Check checked={prefs.ofm} onChange={set('ofm')} testId="map-ofm">openflightmaps overlay</Check>
-          <Check checked={prefs.tips} onChange={set('tips')} testId="map-tips">Editing tips</Check>
-          <Check checked={prefs.notams} onChange={set('notams')} testId="map-notams">NOTAM areas {notamCount ? n(notamCount) : null}</Check>
+          <MapLayerToggles value={layers} onChange={onLayers} counts={{ ...areaCount, notams: notamCount }}
+            extra={<div className="pgf-layers-group pgf-layers-sep"><Check checked={tips} onChange={onTips} testId="map-tips">Editing tips</Check></div>} />
+          <div className="pgf-map-airac muted">AIRAC {airac}</div>
           <div className="pgf-legend">
-            <span><i className="lg-tma" /> TMA</span><span><i className="lg-mtma" /> MTMA</span><span><i className="lg-zone" /> CTR</span><span><i className="lg-atz" /> ATZ</span><span><i className="lg-zone-g" /> Class G zone</span>
+            <span><i className="lg-fir" /> FIR</span><span><i className="lg-tma" /> TMA</span><span><i className="lg-mtma" /> MTMA</span><span><i className="lg-zone" /> CTR</span><span><i className="lg-atz" /> ATZ</span><span><i className="lg-zone-g" /> Class G zone</span>
             <span><i className="lg-p" /> Prohibited</span><span><i className="lg-r" /> Restricted</span><span><i className="lg-d" /> Danger</span><span><i className="lg-mil" /> Military</span><span><i className="lg-act" /> Local flying</span>
             <span><i className="lg-vfr" /> VFR route</span><span><i className="lg-route" /> Your route</span>
           </div>
@@ -94,7 +99,8 @@ export function LayersControl({ open, onOpen, prefs, onPrefs, airac, areaCount, 
   );
 }
 
-/** The editing hint (top left); it fades out while the cursor is near it (`away`). */
+/** The editing hint (top left); it fades out while the cursor is near it (`away`), except near its close
+ *  button, which stays visible and clickable. */
 export function MapHint({ text, away, onClose, hintRef }: { text: string; away: boolean; onClose(): void; hintRef: Ref<HTMLDivElement> }) {
   return (
     <div ref={hintRef} className={'pgf-map-hint' + (away ? ' is-away' : '')} data-testid="map-hint">

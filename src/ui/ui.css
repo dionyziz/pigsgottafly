@@ -84,14 +84,21 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .tabs button { border-radius: var(--r-pill); padding: 5px 12px; font-size: var(--fs-sm); border-color: transparent; background: transparent; color: var(--ink-2); }
 .tabs button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
 
-/* ---- segmented control (Segmented.tsx) */
-.seg { display: flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; }
-.seg button { flex: 1; justify-content: center; height: var(--ctl-h); padding: 0 12px; border: 0; border-radius: 0; background: var(--surface); color: var(--ink-2); font-weight: 500; }
-.seg.sm button { height: var(--ctl-h-sm); font-size: var(--fs-sm); }
-.seg button + button { border-left: 1px solid var(--line-strong); }
-.seg button:hover { background: var(--hover); color: var(--ink); }
-.seg button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); }
-.seg button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+/* ---- segmented control (SegmentedControl.tsx): each button has the full border and overlaps its
+   neighbour by 1px, so the outer border and every divider are one even 1px line; the pressed button
+   sits on top with an accent border */
+.segmented { display: flex; }
+.segmented > button {
+  flex: 1 1 0; min-width: 0; justify-content: center; height: var(--ctl-h); margin: 0; padding: 0 12px;
+  border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); color: var(--ink-2); font-weight: 500;
+}
+.segmented > button + button { margin-left: -1px; }
+.segmented > button:first-child { border-top-left-radius: var(--r-sm); border-bottom-left-radius: var(--r-sm); }
+.segmented > button:last-child { border-top-right-radius: var(--r-sm); border-bottom-right-radius: var(--r-sm); }
+.segmented.sm > button { height: var(--ctl-h-sm); font-size: var(--fs-sm); }
+.segmented > button:hover { background: var(--hover); color: var(--ink); }
+.segmented > button[aria-pressed='true'] { position: relative; z-index: 1; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.segmented > button:focus-visible { position: relative; z-index: 2; outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 
 /* ---- combobox (aerodrome picker) */
 .combo { position: relative; }

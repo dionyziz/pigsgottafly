@@ -1,33 +1,41 @@
-// Per-browser map preferences (base map, layers, editing tips), kept in localStorage.
-import { BASE_MAPS, type BaseMapId } from './style';
+// Map preferences. The layer selection belongs to the flight (FlightOptions.mapLayers; a new flight
+// gets the pilot's PilotSettings.mapLayers); only the editing tips are per browser (localStorage).
+import { DEFAULT_MAP_LAYERS, mapLayersOf, type MapLayers } from '../../../shared/mapLayers';
 
 const PREFS_KEY = 'pgf:map';
 
-/** `tips` shows the editing hint bubble; closing the bubble turns it off and the layers popover turns
- *  it back on. */
-export interface MapPrefs {
-  base: BaseMapId; ofm: boolean; chart: boolean; tips: boolean; notams: boolean;
-  /** ENR 5 areas (with the chart layers): prohibited / restricted / danger, military, other activities. */
-  prd: boolean; mil: boolean; act: boolean;
-}
+/** `tips` shows the editing hint bubble; closing the bubble turns it off and the layers popover turns it back on. */
+export interface MapPrefs { tips: boolean }
 
-export const DEFAULT_PREFS: MapPrefs = { base: 'light', ofm: false, chart: true, tips: true, notams: true, prd: true, mil: true, act: true };
-
-export function loadPrefs(): MapPrefs {
+function stored(): Record<string, unknown> | null {
   try {
     const v = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
-    if (v && BASE_MAPS.some((b) => b.id === v.base)) {
-      return {
-        base: v.base, ofm: !!v.ofm, chart: v.chart !== false, tips: v.tips !== false, notams: v.notams !== false,
-        prd: v.prd !== false, mil: v.mil !== false, act: v.act !== false,
-      };
-    }
-  } catch { /* storage unavailable */ }
-  return { ...DEFAULT_PREFS };
+    return v && typeof v === 'object' ? v : null;
+  } catch { return null; }
+}
+
+export function loadPrefs(): MapPrefs {
+  return { tips: stored()?.tips !== false };
 }
 
 export function savePrefs(p: MapPrefs): void {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch { /* ignore */ }
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify({ ...(stored() ?? {}), tips: p.tips })); } catch { /* ignore */ }
+}
+
+/** The layers this browser used before they were kept per flight (null: none stored). */
+export function legacyLayers(): MapLayers | null {
+  const v = stored();
+  if (!v || typeof v.base !== 'string') return null;
+  const l = mapLayersOf(v);
+  if (!l) return null;
+  // the old "Chart layers" switch hid all of our chart layers together
+  if (v.chart === false) for (const k of ['fir', 'tma', 'zones', 'aerodromes', 'vfrPoints', 'vfrRoutes', 'waypoints', 'prd', 'mil', 'act'] as const) l[k] = false;
+  return l;
+}
+
+/** The flight's layers, else the pilot's choice for new flights, else what this browser used, else all. */
+export function flightLayers(flight: unknown, pilot: unknown): MapLayers {
+  return mapLayersOf(flight) ?? mapLayersOf(pilot) ?? legacyLayers() ?? { ...DEFAULT_MAP_LAYERS };
 }
 
 /** The ENR 5 area kinds and the toggle that shows each. */
@@ -35,4 +43,11 @@ export type AreaToggle = 'prd' | 'mil' | 'act';
 export const areaToggle = (kind: string): AreaToggle => (kind === 'MIL' ? 'mil' : kind === 'ACT' ? 'act' : 'prd');
 
 /** Which ENR 5 area kinds the layer toggles show. */
-export const areaShown = (p: MapPrefs, kind: string): boolean => p[areaToggle(kind)];
+export const areaShown = (l: MapLayers, kind: string): boolean => l[areaToggle(kind)];
+
+/** Whether an airspace / zone / area type is shown (hover and click details follow the layers). */
+export function airspaceShown(l: MapLayers, type: string): boolean {
+  if (type === 'TMA' || type === 'MTMA') return l.tma;
+  if (type === 'CTR' || type === 'ATZ') return l.zones;
+  return areaShown(l, type);
+}

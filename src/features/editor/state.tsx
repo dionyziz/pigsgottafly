@@ -4,7 +4,7 @@
 // SHARED CONTRACT (frozen until integration): map and panels read everything through useEditor()
 // and change the flight only through update().
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Aircraft, Flight, FlightDoc, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
+import type { Aircraft, Flight, FlightDoc, MapLayers, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
 import { autoTitle, EMPTY_SUMMARY, requestTiming } from '../../shared';
 import { buildLegs, defaultAltitudes, type AltitudeDefault, type LegGeometry } from '../../calc';
 import { REF } from '../../data/ref';
@@ -23,6 +23,8 @@ export interface EditorValue {
    * an undo step and never a reason for a save on its own if nothing changed.
    */
   setDerived(v: { eteMin: number | null; fuelL: number | null }): void;
+  /** The map's layer selection (options.mapLayers): saved with the flight, not an undo step (undo/redo keep it). */
+  setMapLayers(l: MapLayers): void;
   undo(): void;
   redo(): void;
   canUndo: boolean;
@@ -144,13 +146,26 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
     flightStore.save(flight.id, next);
   }, [flight.id, hangar]);
 
+  const setMapLayers = useCallback((mapLayers: MapLayers) => {
+    const cur = docRef.current;
+    const next = { ...cur, options: { ...cur.options, mapLayers } };
+    docRef.current = next;
+    setDoc(next);
+    flightStore.save(flight.id, next);
+  }, [flight.id]);
+  /** A history entry with the current map layers (they are not part of undo). */
+  const withView = (d: FlightDoc): FlightDoc => {
+    const l = docRef.current.options.mapLayers;
+    return l === d.options.mapLayers ? d : { ...d, options: { ...d.options, mapLayers: l } };
+  };
+
   const undo = useCallback(() => {
     const h = hist.current;
     const prev = h.past.pop();
     if (!prev) return;
     h.future.push(docRef.current);
     h.key = '';
-    commit(prev);
+    commit(withView(prev));
   }, [commit]);
   const redo = useCallback(() => {
     const h = hist.current;
@@ -158,11 +173,11 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
     if (!next) return;
     h.past.push(docRef.current);
     h.key = '';
-    commit(next);
+    commit(withView(next));
   }, [commit]);
 
   const value: EditorValue = {
-    flight, doc, update, setDerived, undo, redo,
+    flight, doc, update, setDerived, setMapLayers, undo, redo,
     canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0, saveStatus,
     pilot, hangar, passengers, waypoints, passengersLoaded, reloadLists, aircraft, ref: REF,
     legs, altitudeDefaults, altitudesFt,

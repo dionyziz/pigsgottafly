@@ -8,6 +8,7 @@ import type {
   RefArea,
   RefAtcUnit,
   RefBundle,
+  RefFir,
   RefFis,
   RefRunway,
   RefSunTable,
@@ -27,6 +28,8 @@ import sunJson from './sun.json';
 import areasJson from './areas.json';
 // Not from build_ref.ts: tools/parse_ad_airspace.py (AD 2.17), client only.
 import adAirspacesJson from './ad-airspaces.json';
+// Not from build_ref.ts: tools/build_fir.ts (ENR 2.1 + Natural Earth borders), client only.
+import firJson from './fir.json';
 
 export const AIRAC = airacJson as RefAirac;
 export const AERODROMES = aerodromesJson as unknown as RefAerodrome[];
@@ -39,6 +42,8 @@ export const ATC_UNITS = atcUnitsJson as unknown as RefAtcUnit[];
 /** Aerodrome CTRs and ATZs (AD 2.17 / AD 1.6.N.17). */
 export const AD_AIRSPACES = adAirspacesJson as unknown as RefAdAirspace[];
 /** ENR 5.1 / 5.2 / 5.3 areas (prohibited, restricted, danger, military, other activities). */
+/** The LGGG FIR boundary and the ATHINAI / MAKEDONIA line. */
+export const FIR = firJson as unknown as RefFir;
 export const AREAS = areasJson as unknown as RefArea[];
 /** AIP GEN 2.7 sunset tables keyed by ICAO. */
 export const SUN_TABLES = sunJson as unknown as Record<string, RefSunTable>;
@@ -54,6 +59,7 @@ export const REF: RefBundle = {
   atcUnits: ATC_UNITS,
   adAirspaces: AD_AIRSPACES,
   areas: AREAS,
+  fir: FIR,
 };
 
 const byId = new Map(AERODROMES.map((a) => [a.id, a]));

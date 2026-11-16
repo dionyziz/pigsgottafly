@@ -23,7 +23,7 @@ import type { RefAerodrome, RefBundle } from '../../../shared/ref';
 import { uid as newUid, DEFAULT_STOP_MIN, requestAllowed, type AerodromeRequest } from '../../../shared';
 import { buildLegs, distanceNm, magneticVariation, midpoint, norm360, trueCourse, type AltitudeDefault } from '../../../calc';
 import {
-  airspaceFeatures, aerodromeFeatures, areaFeatures, fisFeatures, midpointFeatures, routeArrowFeatures, routeLineFeatures,
+  airspaceFeatures, aerodromeFeatures, areaFeatures, firFeatures, midpointFeatures, routeArrowFeatures, routeLineFeatures,
   routePointFeatures, vfrPointFeatures, vfrRouteFeatures, waypointFeatures, zoneFeatures,
 } from './features';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from './labels';
@@ -35,10 +35,12 @@ import {
   addDrawnPoint, drawIndex, insertPoint, isBareRoundTrip, mercatorMid, movePoint, removeDrawnPoint, removePoint, renamePoint,
 } from './routeEdit';
 import { addSymbols } from './symbols';
-import { BASE_MAPS, buildStyle, CHART_LAYER_IDS, LGGG_BOUNDS, loadChartTokens, loadVectorBase, type BaseLayers, type DataSourceId } from './style';
-import { areaShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
+import { BASE_MAPS, buildStyle, LAYER_GROUPS, LGGG_BOUNDS, loadChartTokens, loadVectorBase, type BaseLayers, type DataSourceId } from './style';
+import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
+import type { MapLayers } from '../../../shared/mapLayers';
 import { LayersControl, MapHint, MapToolbar, type DrawMode } from './MapToolbar';
 import { NameBox, PointMenu, type NamePrompt } from './PointMenu';
+import { MapTip } from './MapPopover';
 import type { MenuItem } from '../../../ui';
 import { airspaceInfos, airspacesAt, isArea, type AirspaceInfo } from './airspace';
 import { AirspacePopover, AirspaceTip } from './AirspacePopover';
@@ -95,6 +97,9 @@ export interface RouteMapProps {
   onRequest?(uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number): void;
   /** An aerodrome's hours on the flight's date (AIP + NOTAMs), for its tooltip and details. */
   aerodromeInfo?(a: RefAerodrome): AdDayInfo;
+  /** The layers shown (the flight's selection); the route is always drawn. */
+  layers: MapLayers;
+  onLayers(l: MapLayers): void;
 }
 
 type Mode = DrawMode;
@@ -162,6 +167,7 @@ export function RouteMap(props: RouteMapProps) {
   const [failed, setFailed] = useState<string | null>(null);
 
   const [prefs, setPrefs] = useState(loadPrefs);
+  const layers = props.layers;
   const [layersOpen, setLayersOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(() => (route.length < 2 || isBareRoundTrip(route) ? 'draw' : 'idle'));
   /** Drawing appends after the last point even on a round trip ("Continue drawing" on it). */
@@ -190,22 +196,26 @@ export function RouteMap(props: RouteMapProps) {
 
   const shown = draft ?? route;
   const legs = useMemo(() => buildLegs(shown, date), [shown, date]);
-  const candidates = useMemo(() => buildCandidates(refData.aerodromes, refData.vfrPoints, waypoints), [refData, waypoints]);
+  // snapping follows the layers: only what is on the map (the route's own points always)
+  const candidates = useMemo(
+    () => buildCandidates(layers.aerodromes ? refData.aerodromes : [], layers.vfrPoints ? refData.vfrPoints : [], layers.waypoints ? waypoints : []),
+    [refData, waypoints, layers.aerodromes, layers.vfrPoints, layers.waypoints],
+  );
 
   // Everything the (once-bound) map handlers read.
   const allInfos = useMemo(() => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? []), [refData]);
   const airInfos = useMemo(
-    () => allInfos.filter((a) => !isArea(a.type) || areaShown(prefs, a.type)),
+    () => allInfos.filter((a) => airspaceShown(layers, a.type)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allInfos, prefs.prd, prefs.mil, prefs.act],
+    [allInfos, layers.tma, layers.zones, layers.prd, layers.mil, layers.act],
   );
   const areaCount = useMemo(() => {
     const n = { prd: 0, mil: 0, act: 0 };
     for (const a of allInfos) if (isArea(a.type)) n[areaToggle(a.type)]++;
     return n;
   }, [allInfos]);
-  const live = useRef({ props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop, adPop });
-  live.current = { props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, prefs, airPop, adPop };
+  const live = useRef({ props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, layers, airPop, adPop });
+  live.current = { props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, layers, airPop, adPop };
   const drag = useRef<Drag | null>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
   const suppressClick = useRef(false);
@@ -218,7 +228,7 @@ export function RouteMap(props: RouteMapProps) {
     void loadVectorBase().then((vector) => {
       if (cancelled || !el.current) return;
       loadChartTokens();
-      const built = buildStyle(prefs.base, prefs.ofm, vector);
+      const built = buildStyle(layers.base, layers.ofm, vector);
       baseLayers.current = built.baseLayers;
       m = createMap(el.current, built.style);
     });
@@ -263,9 +273,9 @@ export function RouteMap(props: RouteMapProps) {
       const { refData: r, waypoints: w } = live.current.props;
       const variation = magneticVariation(38, 24, new Date().toISOString().slice(0, 10));
       setData(m, 'airspaces', airspaceFeatures(r.airspaces));
-      setData(m, 'zones', zoneFeatures(live.current.airInfos));
+      setData(m, 'zones', zoneFeatures(allInfos));
       setData(m, 'areas', areaFeatures(live.current.airInfos));
-      setData(m, 'fis', fisFeatures(r.fis));
+      setData(m, 'fir', firFeatures(r.fir));
       setData(m, 'vfr-routes', vfrRouteFeatures(r.vfrRoutes, r.vfrPoints));
       setData(m, 'vfr-points', vfrPointFeatures(r.vfrPoints));
       setData(m, 'aerodromes', aerodromeFeatures(r.aerodromes, variation));
@@ -303,10 +313,13 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (!m || !loaded) return;
     const bl = baseLayers.current;
-    if (bl) for (const b of BASE_MAPS) for (const l of bl[b.id]) if (m.getLayer(l.id)) m.setLayoutProperty(l.id, 'visibility', b.id === prefs.base && l.visible ? 'visible' : 'none');
-    m.setLayoutProperty('ofm', 'visibility', prefs.ofm ? 'visible' : 'none');
-    for (const id of CHART_LAYER_IDS) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', prefs.chart ? 'visible' : 'none');
-  }, [prefs, loaded]);
+    if (bl) for (const b of BASE_MAPS) for (const l of bl[b.id]) if (m.getLayer(l.id)) m.setLayoutProperty(l.id, 'visibility', b.id === layers.base && l.visible ? 'visible' : 'none');
+    m.setLayoutProperty('ofm', 'visibility', layers.ofm ? 'visible' : 'none');
+    for (const [k, ids] of Object.entries(LAYER_GROUPS)) {
+      const v = layers[k as keyof typeof LAYER_GROUPS] ? 'visible' : 'none';
+      for (const id of ids) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', v);
+    }
+  }, [layers, loaded]);
   useEffect(() => savePrefs(prefs), [prefs]);
   useEffect(() => {
     const m = mapRef.current;
@@ -346,16 +359,16 @@ export function RouteMap(props: RouteMapProps) {
   const notamList = props.notams;
   const notamMarks = useMemo(() => mapNotams(notamList ?? []), [notamList]);
   const notamLive = useRef<{ marks: MapNotam[]; pop: boolean }>({ marks: [], pop: false });
-  notamLive.current = { marks: prefs.notams ? notamMarks : [], pop: !!notamPop };
+  notamLive.current = { marks: layers.notams ? notamMarks : [], pop: !!notamPop };
   useEffect(() => {
     const m = mapRef.current;
-    if (m && loaded) setNotamLayer(m, notamMarks, props.selectedNotam ?? null, prefs.notams, 'route-casing');
-  }, [notamMarks, props.selectedNotam, prefs.notams, loaded]);
+    if (m && loaded) setNotamLayer(m, notamMarks, props.selectedNotam ?? null, layers.notams, 'route-casing');
+  }, [notamMarks, props.selectedNotam, layers.notams, loaded]);
   // a NOTAM picked in the panel: bring its area into view
   const selectedNotam = props.selectedNotam ?? null;
   useEffect(() => {
     const m = mapRef.current;
-    const mk = selectedNotam && prefs.notams ? notamMarks.find((n) => n.key === selectedNotam) : undefined;
+    const mk = selectedNotam && layers.notams ? notamMarks.find((n) => n.key === selectedNotam) : undefined;
     if (!m || !loaded || !mk) return;
     const view = m.getBounds();
     if (mk.ring.some((c) => view.contains(c))) return;
@@ -396,11 +409,13 @@ export function RouteMap(props: RouteMapProps) {
     m.getContainer().classList.toggle('is-drawing', drawing);
   }, [drawing, loaded]);
 
-  // Airspace tooltip/details belong to idle mode with the chart layers on.
+  // Tooltips and details belong to idle mode, and to the layers shown.
   useEffect(() => {
-    if (drawing) { setWxTip(null); setNotamTip(null); setNotamPop(null); setAdTip(null); setAdPop(null); }
-    if (drawing || !prefs.chart) { setAirTip(null); setAirPop(null); }
-  }, [drawing, prefs.chart]);
+    if (drawing) { setWxTip(null); setNotamTip(null); setNotamPop(null); setAdTip(null); setAdPop(null); setAirTip(null); setAirPop(null); }
+  }, [drawing]);
+  useEffect(() => { setAirTip(null); setAirPop(null); }, [airInfos]);
+  useEffect(() => { if (!layers.aerodromes) setAdTip(null); }, [layers.aerodromes]);
+  useEffect(() => { if (!layers.notams) { setNotamTip(null); setNotamPop(null); } }, [layers.notams]);
 
   // The route may shrink below 2 points from elsewhere (undo, panel): offer drawing again.
   useEffect(() => {
@@ -695,7 +710,7 @@ export function RouteMap(props: RouteMapProps) {
         const q = L.route[routeIndex];
         return q.kind === 'aerodrome' ? ads.find((a) => a.id === q.refId) ?? null : null;
       }
-      if (!L.prefs.chart) return null;
+      if (!L.layers.aerodromes) return null;
       let best: RefAerodrome | null = null, bd = 10;
       for (const a of ads) {
         const q = m.project([a.lon, a.lat]);
@@ -714,9 +729,13 @@ export function RouteMap(props: RouteMapProps) {
       const L = live.current;
       const he = hintEl.current;
       if (he) {
-        const r = he.getBoundingClientRect(), c = m.getContainer().getBoundingClientRect();
-        const x = e.point.x + c.left, y = e.point.y + c.top, pad = 48;
-        setHintAway(x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad);
+        // near the bubble it fades out (it never hides what the pilot points at), except near its close
+        // button, which stays visible and clickable
+        const c = m.getContainer().getBoundingClientRect();
+        const x = e.point.x + c.left, y = e.point.y + c.top;
+        const near = (r: DOMRect, pad: number) => x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+        const close = he.querySelector('[data-testid=map-hint-close]');
+        setHintAway(near(he.getBoundingClientRect(), 48) && !(close && near(close.getBoundingClientRect(), 24)));
       }
       const shift = e.originalEvent.shiftKey;
       const d = drag.current;
@@ -778,7 +797,7 @@ export function RouteMap(props: RouteMapProps) {
       const nk = pt === null && mid === null && !ad && !wx.length && !L.airPop && !notamLive.current.pop ? notamKeysAt(m, e.point, notamLive.current.marks) : [];
       setNotamTip(nk.length ? { x: e.point.x, y: e.point.y, keys: nk } : null);
       // airspace under the cursor: name, class and limits; the smallest one is highlighted
-      const air = pt === null && mid === null && !ad && !wx.length && !nk.length && L.prefs.chart && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
+      const air = pt === null && mid === null && !ad && !wx.length && !nk.length && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
       highlightAirspace(air[0] ?? null);
       setAirTip(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
     };
@@ -905,7 +924,7 @@ export function RouteMap(props: RouteMapProps) {
           return;
         }
         // a click on open map shows the airspace there (a second click closes it)
-        const air = i === null && !L.airPop && L.prefs.chart ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
+        const air = i === null && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
         setAirPop(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
         setAirTip(null);
         highlightAirspace(air[0] ?? null);
@@ -1120,27 +1139,28 @@ export function RouteMap(props: RouteMapProps) {
 
       {!failed && (
         <LayersControl
-          open={layersOpen} onOpen={setLayersOpen} prefs={prefs} onPrefs={setPrefs}
+          open={layersOpen} onOpen={setLayersOpen} layers={layers} onLayers={props.onLayers}
+          tips={prefs.tips} onTips={(tips) => setPrefs({ ...prefs, tips })}
           airac={refData.airac.id} areaCount={areaCount} notamCount={notamMarks.length}
         />
       )}
 
       {hint && prefs.tips && !failed && (
-        <MapHint text={hint} away={hintAway} onClose={() => setPrefs({ ...prefs, tips: false })} hintRef={hintEl} />
+        <MapHint text={hint} away={hintAway} onClose={() => { setPrefs({ ...prefs, tips: false }); setHintAway(false); }} hintRef={hintEl} />
       )}
 
       {hover && (hover.name || hover.detail || hover.leg) && !prompt && (
-        <div className="pgf-snap-tip" style={{ left: hover.x + 16, top: hover.y + 14 }} data-testid="snap-tip">
+        <MapTip x={hover.x} y={hover.y} className="pgf-snap-tip" testId="snap-tip">
           {hover.name && <b>{hover.name}</b>}
           {hover.detail && <span className="pgf-snap-detail">{hover.detail}</span>}
           {hover.leg && <span className="pgf-snap-leg">{hover.leg}</span>}
-        </div>
+        </MapTip>
       )}
 
       {wxTip && !airPop && !hover && mode === 'idle' && (
-        <div className="pgf-snap-tip pgf-wx-tip" style={{ left: wxTip.x + 16, top: wxTip.y + 14 }} data-testid="hazard-tip">
+        <MapTip x={wxTip.x} y={wxTip.y} className="pgf-snap-tip pgf-wx-tip" testId="hazard-tip">
           {wxTip.items.map((h) => <span key={h.label} className={'is-' + h.level}>{h.label}</span>)}
-        </div>
+        </MapTip>
       )}
       {notamTip && !notamPop && !airPop && !hover && mode === 'idle' && <NotamTip x={notamTip.x} y={notamTip.y} items={notamsOf(notamTip.keys)} />}
       {notamPop && notamsOf(notamPop.keys).length > 0 && (

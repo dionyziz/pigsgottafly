@@ -17,4 +17,4 @@ export { CardSection, Panel } from './Panels';
 export { WarningList, type WarningEntry, type WarningFix, type WarningLevel } from './WarningList';
 export { useHighlightFields } from './useHighlightFields';
 export { FilePicker, PdfViewer, useObjectUrl } from './Files';
-export { Segmented, type SegmentedOption } from './Segmented';
+export { SegmentedControl, type SegmentedOption } from './SegmentedControl';

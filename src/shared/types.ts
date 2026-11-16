@@ -10,6 +10,8 @@
 // Imports inside src/shared and src/calc use explicit '.js' extensions: the API (Vercel, Node ESM)
 // imports these files too.
 
+import type { MapLayers } from './mapLayers.js';
+
 export type Id = string;
 /** 'YYYY-MM-DD' */
 export type IsoDate = string;
@@ -62,6 +64,8 @@ export interface PilotSettings {
    * (FlightOptions.genDecHandled).
    */
   handledAerodromes?: string[];
+  /** Map layers of a new flight (copied to FlightOptions.mapLayers). Missing or null = all shown. */
+  mapLayers?: MapLayers | null;
 }
 
 /** Identity details used on the forms (Form 731, GenDec, FPL item 19 C/). */
@@ -573,6 +577,8 @@ export interface FlightOptions {
    * true = a handler submits it, false = the PIC sends it; null / missing = automatic.
    */
   genDecHandled?: boolean | null;
+  /** The map's layer selection for this flight; missing on older flights (the pilot's setting applies). */
+  mapLayers?: MapLayers | null;
 }
 
 /** Lobby row data, computed by the client on save. */
