@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { ageOn, daysBetween, flightSearchText, fmtDate, fmtHm, matchesQuery, relativeDay, splitFlights, utcToLocal } from '../../../src/features/lobby/format';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
 import { resolveAerodrome, searchAerodromes } from '../../../src/features/profile/AerodromePicker';
-import { toUpdate } from '../../../src/features/profile/ProfilePage';
+import { formOf, toUpdate, validateProfile, type ProfileForm } from '../../../src/features/profile/ProfilePage';
 import { passengerInputOf, passengerForm } from '../../../src/features/passengers/PassengerDialog';
-import { EMPTY_SUMMARY, type FlightCrew, type FlightListItem } from '../../../src/shared';
+import { personForm, validatePerson } from '../../../src/features/passengers/person';
+import { validateWaypoint } from '../../../src/features/waypoints/WaypointsPage';
+import { EMPTY_PERSON, EMPTY_SUMMARY, type FlightCrew, type FlightListItem, type Pilot, type Waypoint } from '../../../src/shared';
 import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
 import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
 
@@ -117,21 +119,22 @@ describe('aerodrome picker', () => {
 });
 
 describe('profile form', () => {
-  const base = {
-    fullName: ' Test Pilot ', phone: '+30 690', licenceNo: '', nationality: 'greek', relation: 'M123', dateOfBirth: '', weightKg: '80',
-    idType: '' as const, idNumber: '', homeAerodrome: 'lgtt', defaultAircraftId: '', defaultAlternate: '', taxiOutMin: '', taxiInMin: '12', reserveMin: '',
-    finalReserveMin: '', windModel: 'ecmwf_ifs025' as const, enrouteAerodromeRadiusNm: '',
+  const base: ProfileForm = {
+    fullName: ' Test Pilot ', phone: '+30 690', licenceNo: '', nationality: 'greek', relation: 'M123', dateOfBirth: '', weightKg: 80,
+    idType: '', idNumber: '', notes: '', homeAerodrome: 'lgtt', defaultAircraftId: '', defaultAlternate: '', taxiOutMin: null, taxiInMin: 12, reserveMin: null,
+    finalReserveMin: null, enrouteAerodromeRadiusNm: null,
   };
   it('never fills pilot-specific values the pilot left empty', () => {
     const u = toUpdate(base, true);
     expect(u).toEqual({ fullName: 'Test Pilot', phone: '+30 690', homeAerodrome: 'LGTT', settings: { taxiOutMin: null, taxiInMin: 12, reserveMin: null } });
   });
-  it('sends the full profile outside onboarding', () => {
+  it('sends the full profile outside onboarding, without the wind model', () => {
     const u = toUpdate(base, false);
     expect(u.nationality).toBe('GREEK');
     expect(u.weightKg).toBe(80);
     expect(u.defaultAircraftId).toBeNull();
-    expect(u.settings).toMatchObject({ finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, windModel: 'ecmwf_ifs025', defaultAlternate: null });
+    expect(u.settings).toMatchObject({ finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, defaultAlternate: null });
+    expect(u.settings).not.toHaveProperty('windModel');
     expect(toUpdate({ ...base, defaultAlternate: 'lgav' }, false).settings?.defaultAlternate).toBe('LGAV');
     expect(() => toUpdate({ ...base, defaultAlternate: 'nowhere' }, false)).toThrow(/not an aerodrome/);
   });
@@ -140,19 +143,51 @@ describe('profile form', () => {
     expect(() => toUpdate({ ...base, phone: '' }, true)).toThrow(/phone/);
     expect(() => toUpdate({ ...base, homeAerodrome: 'ZZZZ' }, true)).toThrow(/not an aerodrome/);
     expect(() => toUpdate({ ...base, homeAerodrome: '' }, true)).toThrow(/home aerodrome/);
-    expect(() => toUpdate({ ...base, taxiOutMin: '-5' }, true)).toThrow(/Taxi out/);
-    expect(() => toUpdate({ ...base, weightKg: 'abc' }, false)).toThrow(/Weight/);
+    expect(() => toUpdate({ ...base, taxiOutMin: -5 }, true)).toThrow(/Taxi out/);
+    expect(() => toUpdate({ ...base, weightKg: 400 }, false)).toThrow(/Weight/);
+  });
+  it('names every bad field, the person fields first', () => {
+    const issues = validateProfile({ ...base, fullName: '', phone: '', homeAerodrome: 'ZZZZ', defaultAlternate: 'nowhere', reserveMin: 9999 }, false);
+    expect(issues.map((i) => i.field)).toEqual(['fullName', 'phone', 'homeAerodrome', 'reserveMin', 'defaultAlternate']);
+    // first use asks only name, phone, home and the three planning numbers
+    expect(validateProfile({ ...base, weightKg: 400, defaultAlternate: 'nowhere' }, true)).toEqual([]);
+  });
+  it('fills the form from the pilot', () => {
+    const f = formOf({ ...EMPTY_PERSON, id: 'p', email: '', fullName: 'A B', licenceNo: 'L1', homeAerodrome: 'LGTT', defaultAircraftId: null,
+      settings: { taxiOutMin: 10, taxiInMin: null, reserveMin: 45, finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, defaultAlternate: 'LGAV' } } as unknown as Pilot);
+    expect(f).toMatchObject({ fullName: 'A B', licenceNo: 'L1', homeAerodrome: 'LGTT', taxiOutMin: 10, taxiInMin: null, reserveMin: 45, defaultAlternate: 'LGAV', weightKg: null });
   });
 });
 
 describe('passenger form', () => {
   it('normalises input and validates', () => {
-    const f = { ...passengerForm(null, 'Jane  Doe'), weightKg: '62,5', nationality: 'greek', dateOfBirth: '1990-01-02' };
+    const f = { ...passengerForm(null, 'Jane  Doe'), weightKg: 62.5, nationality: 'greek', dateOfBirth: '1990-01-02' };
     expect(passengerInputOf(f)).toMatchObject({ fullName: 'Jane Doe', weightKg: 62.5, nationality: 'GREEK', dateOfBirth: '1990-01-02', phone: '' });
-    expect(passengerInputOf({ ...f, weightKg: '' }).weightKg).toBeNull();
+    expect(passengerInputOf({ ...f, weightKg: null }).weightKg).toBeNull();
     expect(() => passengerInputOf({ ...f, fullName: '' })).toThrow(/name/);
-    expect(() => passengerInputOf({ ...f, weightKg: '400' })).toThrow(/Weight/);
+    expect(() => passengerInputOf({ ...f, weightKg: 400 })).toThrow(/Weight/);
     expect(() => passengerInputOf({ ...f, dateOfBirth: '2999-01-01' })).toThrow(/future/);
+  });
+  it('reports each problem under its field', () => {
+    const f = { ...personForm(null), dateOfBirth: '2026-02-30', weightKg: 0 };
+    expect(validatePerson(f, { today: '2026-11-16' })).toEqual([
+      { field: 'fullName', message: 'Enter the full name' },
+      { field: 'dateOfBirth', message: 'Not a valid date' },
+      { field: 'weightKg', message: 'Weight must be 1–300 kg' },
+    ]);
+    // the pilot needs a phone too; a passenger does not
+    expect(validatePerson({ ...personForm(null, 'X') }, { pilot: true }).map((i) => i.field)).toEqual(['phone']);
+    expect(validatePerson({ ...personForm(null, 'X') })).toEqual([]);
+  });
+});
+
+describe('waypoint form', () => {
+  const existing = [{ id: 'w1', name: 'ZOFRI', lat: 37.9, lon: 23.7, notes: '', created: 0, updated: 0 }] as Waypoint[];
+  it('names the bad field', () => {
+    expect(validateWaypoint('', 'x', existing).map((i) => i.field)).toEqual(['name', 'position']);
+    expect(validateWaypoint('zofri', '375430N 0234334E', existing)).toEqual([{ field: 'name', message: 'You already have ZOFRI' }]);
+    expect(validateWaypoint('zofri', '375430N 0234334E', existing, 'w1')).toEqual([]);
+    expect(validateWaypoint('kavos', '', existing)).toEqual([{ field: 'position', message: 'Enter a position' }]);
   });
 });
 

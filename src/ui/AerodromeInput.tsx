@@ -35,6 +35,8 @@ export function AerodromeTextInput({ value, onChange, name, id, required, placeh
   const resolved = resolveAerodrome(value);
   const exactOnly = !!resolved && hits.length === 1 && code(hits[0]) === value.trim().toUpperCase();
   const unknown = !!value.trim() && !resolved;
+  // The red line hides only while suggestions are on screen (a focused field with none keeps it).
+  const listShown = open && !exactOnly && hits.length > 0;
   return (
     <Combobox<RefAerodrome>
       text={value}
@@ -45,12 +47,12 @@ export function AerodromeTextInput({ value, onChange, name, id, required, placeh
       onPick={(a) => onChange(code(a), a)}
       suppress={exactOnly}
       name={name} id={id} required={required} placeholder={placeholder} autoFocus={autoFocus} disabled={disabled} ariaLabel={ariaLabel} testId={testId}
-      inputClassName={(unknown && !open) || invalid ? 'invalid' : undefined}
+      inputClassName={(unknown && !listShown) || invalid ? 'invalid' : undefined}
       onOpenChange={setOpen}
     >
       {status && value.trim() ? (
         resolved ? <div className="combo-hint ok" data-testid="aerodrome-status">{resolved.name}{resolved.elevFt != null ? ` · elevation ${resolved.elevFt} ft` : ''}</div>
-          : !open && <div className="combo-hint bad" data-testid="aerodrome-status">Not an aerodrome in the current AIP</div>
+          : !listShown && <div className="combo-hint bad" data-testid="aerodrome-status">Not an aerodrome in the current AIP</div>
       ) : null}
     </Combobox>
   );

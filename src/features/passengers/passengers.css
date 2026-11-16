@@ -1,0 +1,3 @@
+/* Passengers list: dates and measurements never wrap; the missing-details links read as the hint. */
+table.list.people td.date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.list.people .hint button.linkish { color: var(--accent); font-size: inherit; }

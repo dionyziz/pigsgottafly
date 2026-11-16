@@ -106,9 +106,11 @@ src/
                            hangar/fields (Field/Check/NumInput/Section/parseNum), app/Loading, app/XIcon
   features/
     lobby/                 LobbyPage, NewFlightPage
-    profile/               ProfilePage (?welcome=1 = first-use onboarding)
+    profile/               ProfilePage (?welcome=1 = first-use onboarding; embeds PersonFields; follows the pilot until edited)
     hangar/                HangarPage, AircraftPage
-    passengers/            PassengersPage
+    passengers/            PassengersPage, PassengerDialog + PilotDetailsDialog, PersonFields (the one person editor),
+                           person.ts (form state, validatePerson → {field, message}[]), formIssues.ts (useFormIssues:
+                           messages under their fields, first bad field focused; also used by profile and waypoints)
     waypoints/             WaypointsPage
     editor/                EditorPage (layout: collapsible flight panel; resizable.tsx sizes panels by style during a
                            drag, RouteMap resizes the canvas in the same frame), state.tsx (EditorProvider/useEditor: SHARED EDITOR CONTRACT),

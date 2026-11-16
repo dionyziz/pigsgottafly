@@ -1,98 +1,127 @@
-// Profile: the pilot's details for the forms (name, phone, licence, nationality, ID, aeroclub member
-// code for Form 731, weight for W&B), home aerodrome, default aircraft and planning defaults (taxi
-// out/in, fuel reserve, final reserve, wind model). With ?welcome=1 it is the first-use onboarding:
-// only name, phone, home aerodrome, taxi and reserve are asked. Nothing pilot-specific is prefilled
-// (pilot correction #1): unset values show neutral placeholders and are never saved silently.
-import { DateInput } from '../../app/DateInput';
-import { useEffect, useMemo, useState } from 'react';
+// Profile: the pilot's details for the forms (the person editor shared with passengers, plus the
+// licence number), home aerodrome, default aircraft and planning defaults (taxi out/in, fuel
+// reserve, final reserve, ATC list radius). With ?welcome=1 (or while name, phone or home is
+// missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
+// Nothing pilot-specific is prefilled (pilot correction #1): unset values show neutral placeholders.
+// The form follows the pilot (another tab, a dialog) until it is edited.
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFocusParam } from '../../app/focusParam';
 import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
-import { useAsync } from '../../data/useAsync';
-import { profileMissing, SETTING_SUGGESTIONS, WIND_MODELS, type Pilot, type PilotUpdate, type WindModel } from '../../shared';
-import { AerodromePicker, resolveAerodrome } from './AerodromePicker';
+import { useEntity } from '../../data/entities';
+import { resolveAerodrome } from '../../data/ref';
+import { profileMissing, SETTING_SUGGESTIONS, type Pilot, type PilotUpdate } from '../../shared';
+import { errorMessage } from '../../shared/format';
+import { AerodromeTextInput, CardSection, Field, NumberField } from '../../ui';
+import { useFormIssues, type FormIssue } from '../passengers/formIssues';
+import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from '../passengers/person';
+import { PersonFields, type SetPerson } from '../passengers/PersonFields';
 import '../lobby/lists.css';
 
-interface Form {
-  fullName: string; phone: string; licenceNo: string; nationality: string; relation: string;
-  dateOfBirth: string; weightKg: string; idType: '' | 'ID' | 'PASSPORT'; idNumber: string;
+export interface ProfileForm extends PersonForm {
+  licenceNo: string;
   homeAerodrome: string; defaultAircraftId: string; defaultAlternate: string;
-  taxiOutMin: string; taxiInMin: string; reserveMin: string; finalReserveMin: string;
-  windModel: WindModel; enrouteAerodromeRadiusNm: string;
+  taxiOutMin: number | null; taxiInMin: number | null; reserveMin: number | null;
+  finalReserveMin: number | null; enrouteAerodromeRadiusNm: number | null;
 }
 
-const s = (v: number | null | undefined) => (v == null ? '' : String(v));
+type ProfileField = PersonField | 'homeAerodrome' | 'defaultAlternate' | 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin' | 'enrouteAerodromeRadiusNm';
 
-function formOf(p: Pilot): Form {
+const MINUTES_MAX = 600;
+const RADIUS_MAX_NM = 50;
+
+export function formOf(p: Pilot): ProfileForm {
   return {
-    fullName: p.fullName, phone: p.phone, licenceNo: p.licenceNo, nationality: p.nationality, relation: p.relation,
-    dateOfBirth: p.dateOfBirth ?? '', weightKg: s(p.weightKg), idType: p.idType, idNumber: p.idNumber,
+    ...personForm(p), licenceNo: p.licenceNo,
     homeAerodrome: p.homeAerodrome ?? '', defaultAircraftId: p.defaultAircraftId ?? '', defaultAlternate: p.settings.defaultAlternate ?? '',
-    taxiOutMin: s(p.settings.taxiOutMin), taxiInMin: s(p.settings.taxiInMin), reserveMin: s(p.settings.reserveMin),
-    finalReserveMin: s(p.settings.finalReserveMin), windModel: p.settings.windModel,
-    enrouteAerodromeRadiusNm: s(p.settings.enrouteAerodromeRadiusNm),
+    taxiOutMin: p.settings.taxiOutMin, taxiInMin: p.settings.taxiInMin, reserveMin: p.settings.reserveMin,
+    finalReserveMin: p.settings.finalReserveMin, enrouteAerodromeRadiusNm: p.settings.enrouteAerodromeRadiusNm,
   };
 }
 
-/** Parses an optional non-negative number field; throws a readable message. */
-function num(v: string, label: string, max: number): number | null {
-  const t = v.trim().replace(',', '.');
-  if (!t) return null;
-  const n = Number(t);
-  if (!isFinite(n) || n < 0 || n > max) throw new Error(`${label} must be a number between 0 and ${max}`);
-  return n;
+const LABEL: Partial<Record<ProfileField, string>> = {
+  taxiOutMin: 'Taxi out', taxiInMin: 'Taxi in', reserveMin: 'Fuel reserve', finalReserveMin: 'Final reserve', enrouteAerodromeRadiusNm: 'Radius',
+};
+
+/** What is wrong with the profile, field by field (empty when it can be saved). */
+export function validateProfile(f: ProfileForm, welcome: boolean): FormIssue<ProfileField>[] {
+  const out: FormIssue<ProfileField>[] = validatePerson(f, { pilot: true });
+  const unknown = (t: string) => `“${t.trim()}” is not an aerodrome in the current AIP`;
+  if (!f.homeAerodrome.trim()) out.push({ field: 'homeAerodrome', message: 'Choose your home aerodrome' });
+  else if (!resolveAerodrome(f.homeAerodrome)) out.push({ field: 'homeAerodrome', message: unknown(f.homeAerodrome) });
+  const range = (k: ProfileField, v: number | null, max: number) => {
+    if (v != null && (!isFinite(v) || v < 0 || v > max)) out.push({ field: k, message: `${LABEL[k]} must be 0–${max}` });
+  };
+  range('taxiOutMin', f.taxiOutMin, MINUTES_MAX);
+  range('taxiInMin', f.taxiInMin, MINUTES_MAX);
+  range('reserveMin', f.reserveMin, MINUTES_MAX);
+  if (welcome) return out.filter((i) => !['dateOfBirth', 'weightKg'].includes(i.field));
+  if (f.defaultAlternate.trim() && !resolveAerodrome(f.defaultAlternate)) out.push({ field: 'defaultAlternate', message: unknown(f.defaultAlternate) });
+  range('finalReserveMin', f.finalReserveMin, MINUTES_MAX);
+  range('enrouteAerodromeRadiusNm', f.enrouteAerodromeRadiusNm, RADIUS_MAX_NM);
+  return out;
 }
 
-export function toUpdate(f: Form, welcome: boolean): PilotUpdate {
+/** The profile update of a form (call validateProfile first). */
+export function profileUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
   const home = resolveAerodrome(f.homeAerodrome);
-  if (!f.fullName.trim()) throw new Error('Please enter your full name');
-  if (!f.phone.trim()) throw new Error('Please enter your phone number');
-  if (!home) throw new Error(f.homeAerodrome.trim() ? `“${f.homeAerodrome.trim()}” is not an aerodrome in the current AIP` : 'Please choose your home aerodrome');
+  const person = personInput(f);
   const base: PilotUpdate = {
-    fullName: f.fullName.trim(), phone: f.phone.trim(), homeAerodrome: home.icao || home.id,
-    settings: {
-      taxiOutMin: num(f.taxiOutMin, 'Taxi out', 600), taxiInMin: num(f.taxiInMin, 'Taxi in', 600), reserveMin: num(f.reserveMin, 'Fuel reserve', 600),
-    },
+    fullName: person.fullName, phone: person.phone, homeAerodrome: home ? home.icao || home.id : null,
+    settings: { taxiOutMin: f.taxiOutMin, taxiInMin: f.taxiInMin, reserveMin: f.reserveMin },
   };
   if (welcome) return base;
   const altn = resolveAerodrome(f.defaultAlternate);
-  if (f.defaultAlternate.trim() && !altn) throw new Error(`“${f.defaultAlternate.trim()}” is not an aerodrome in the current AIP`);
   return {
     ...base,
-    licenceNo: f.licenceNo.trim(), nationality: f.nationality.trim().toUpperCase(), relation: f.relation.trim(),
-    dateOfBirth: f.dateOfBirth || null, weightKg: num(f.weightKg, 'Weight', 300), idType: f.idType, idNumber: f.idNumber.trim(),
+    licenceNo: f.licenceNo.trim(), nationality: person.nationality, relation: person.relation,
+    dateOfBirth: person.dateOfBirth, weightKg: person.weightKg, idType: person.idType, idNumber: person.idNumber,
     defaultAircraftId: f.defaultAircraftId || null,
     settings: {
       ...base.settings,
-      finalReserveMin: num(f.finalReserveMin, 'Final reserve', 600) ?? 0,
-      windModel: f.windModel,
-      enrouteAerodromeRadiusNm: num(f.enrouteAerodromeRadiusNm, 'En-route aerodrome radius', 50) ?? 2,
+      finalReserveMin: f.finalReserveMin ?? 0,
+      enrouteAerodromeRadiusNm: f.enrouteAerodromeRadiusNm ?? 2,
       defaultAlternate: altn ? altn.icao || altn.id : null,
     },
   };
 }
 
-function Unit({ unit, children }: { unit: string; children: React.ReactNode }) {
-  return <div className="unit-input">{children}<span>{unit}</span></div>;
+/** Form → profile update; throws the first problem's message. */
+export function toUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
+  const [first] = validateProfile(f, welcome);
+  if (first) throw new Error(first.message);
+  return profileUpdate(f, welcome);
 }
 
+const sameForm = (a: ProfileForm, b: ProfileForm) => JSON.stringify(a) === JSON.stringify(b);
+
 export function ProfilePage() {
-  const { pilot, setPilot } = useSession();
+  const { pilot } = useSession();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
   const welcome = params.get('welcome') === '1' || profileMissing(pilot).length > 0;
-  const initial = useMemo(() => formOf(pilot), [pilot]);
-  const [f, setF] = useState<Form>(initial);
+  // The pilot the form was filled from; the form follows a newer pilot unless it has been edited.
+  const [base, setBase] = useState<Pilot>(pilot);
+  const initial = useMemo(() => formOf(base), [base]);
+  const [f, setF] = useState<ProfileForm>(initial);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data: hangar } = useAsync(() => api.aircraft.list(), []);
-  const dirty = JSON.stringify(f) !== JSON.stringify(initial);
+  const { data: hangar } = useEntity('aircraft');
+  const formRef = useRef<HTMLFormElement>(null);
+  const issues = useFormIssues<ProfileField>(formRef);
+  const dirty = !sameForm(f, initial);
   // ?focus=<input name>: a warning elsewhere (an export) linked here
   useFocusParam(() => document.querySelector('main') ?? document);
+
+  useEffect(() => {
+    if (pilot === base || dirty) return;
+    setBase(pilot);
+    setF(formOf(pilot));
+  }, [pilot, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!dirty) return;
@@ -101,137 +130,93 @@ export function ProfilePage() {
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  const set = <K extends keyof Form>(k: K) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value as Form[K] }));
+  const put = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => { setF((x) => ({ ...x, [k]: v })); issues.clear(k as ProfileField); };
+  const setPerson: SetPerson = (k, v) => put(k, v as ProfileForm[typeof k]);
+  const text = (k: 'defaultAircraftId') => (e: { target: { value: string } }) => put(k, e.target.value);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    let patch: PilotUpdate;
-    try { patch = toUpdate(f, welcome); } catch (err) { setError((err as Error).message); return; }
+    if (!issues.check(validateProfile(f, welcome))) { setError(null); return; }
     setBusy(true);
     try {
-      const p = await api.me.update(patch);
-      setPilot(p);
+      // api.me.update stores the pilot for every page and tab.
+      const p = await api.me.update(profileUpdate(f, welcome));
+      setBase(p);
       setF(formOf(p));
       setError(null);
       if (welcome && !profileMissing(p).length) {
         navigate('/', { replace: true });
-        if (hangar && hangar.length === 0) toast('Welcome aboard. Add your aircraft to the hangar next.', { label: 'Open hangar', onClick: () => navigate('/hangar') });
+        if (hangar && hangar.length === 0) toast('Welcome aboard. Add your aircraft next.', { label: 'Open hangar', onClick: () => navigate('/hangar') });
         else toast('Welcome aboard.');
       } else {
         toast('Profile saved');
       }
     } catch (err) {
-      setError(String((err as Error).message || err));
+      setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   };
 
-  const notSet = (v: string) => (v.trim() ? null : <span className="notset">Not set</span>);
+  const notSet = (v: number | null) => (v == null ? <span className="notset">Not set</span> : null);
+  const minutes = (k: 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin', placeholder?: string) => (
+    <NumberField name={k} value={f[k]} onChange={(v) => put(k, v)} min={0} max={MINUTES_MAX} integer unit="min" placeholder={placeholder} />
+  );
 
   return (
     <Shell>
-      {welcome ? (
-        <div className="welcome card">
-          <img src="/icon.svg" alt="" />
-          <div>
-            <h1 style={{ fontSize: 'var(--fs-xl)' }}>Welcome to Pig's Gotta Fly</h1>
-            <p>Before your first flight, tell us who you are, where you fly from and how you plan. You can change all of this later in your profile.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="page-head"><h1>Profile</h1></div>
-      )}
-      <form className="card" style={{ maxWidth: 760 }} onSubmit={save} data-testid="profile-form" noValidate>
-        <section className="form-section">
-          <header><h2>About you</h2><p>As printed on the navigation log, Form 731, the General Declaration and the flight plan (item 19).</p></header>
-          <div className="grid2">
-            <label className="field"><span>Full name<span className="req" aria-hidden>*</span></span>
-              <input name="fullName" value={f.fullName} onChange={set('fullName')} required autoComplete="name" placeholder="As on your licence" autoFocus={welcome && !f.fullName} />
-            </label>
-            <label className="field"><span>Phone<span className="req" aria-hidden>*</span></span>
-              <input name="phone" type="tel" value={f.phone} onChange={set('phone')} required autoComplete="tel" placeholder="+30 …" />
-            </label>
-          </div>
-          {!welcome && (<>
-            <div className="grid2">
-              <label className="field">Licence number<input name="licenceNo" value={f.licenceNo} onChange={set('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" /></label>
-              <label className="field">Nationality<input name="nationality" value={f.nationality} onChange={set('nationality')} placeholder="e.g. GREEK" /></label>
-            </div>
-            <div className="grid3">
-              <label className="field">Date of birth<DateInput name="dateOfBirth" value={f.dateOfBirth} onChange={set('dateOfBirth')} /></label>
-              <label className="field">Body weight<Unit unit="kg"><input name="weightKg" inputMode="decimal" value={f.weightKg} onChange={set('weightKg')} placeholder="for W&B" /></Unit></label>
-              <label className="field">ID / passport number<input name="idNumber" value={f.idNumber} onChange={set('idNumber')} placeholder="e.g. AK 123456" /></label>
-            </div>
-          </>)}
-        </section>
+      <div className="page-head"><h1>Profile</h1></div>
+      <form className="card" style={{ maxWidth: 760 }} onSubmit={save} data-testid="profile-form" noValidate ref={formRef}>
+        <CardSection id="about" title="About you" plain>
+          <PersonFields f={f} set={setPerson} issues={issues.of} pilot minimal={welcome} autoFocus={welcome && !f.fullName} />
+        </CardSection>
 
-        <section className="form-section">
-          <header><h2>Home aerodrome</h2><p>New flights start here and return here{welcome ? '' : ', with the default alternate filled in'}.</p></header>
+        <CardSection id="home" title="Home aerodrome" plain>
           <div className="grid2">
-            <label className="field"><span>Aerodrome<span className="req" aria-hidden>*</span></span>
-              <AerodromePicker name="homeAerodrome" value={f.homeAerodrome} onChange={(v) => setF((x) => ({ ...x, homeAerodrome: v }))} required />
-            </label>
+            <Field label="Aerodrome" req issues={f.homeAerodrome.trim() ? [] : issues.of('homeAerodrome')}>
+              <AerodromeTextInput name="homeAerodrome" value={f.homeAerodrome} onChange={(t) => put('homeAerodrome', t)} required invalid={issues.of('homeAerodrome').length > 0} />
+            </Field>
             {!welcome && (
-              <label className="field">Default aircraft
+              <Field label="Default aircraft">
                 {hangar && hangar.length === 0 ? (
-                  <div className="muted" style={{ padding: '7px 0' }}>Your hangar is empty. <Link to="/hangar">Add an aircraft</Link></div>
+                  <div className="muted" style={{ padding: '7px 0' }}>Hangar empty. <Link to="/hangar">Add an aircraft</Link></div>
                 ) : (
-                  <select name="defaultAircraftId" value={f.defaultAircraftId} onChange={set('defaultAircraftId')}>
+                  <select name="defaultAircraftId" value={f.defaultAircraftId} onChange={text('defaultAircraftId')}>
                     <option value="">None</option>
                     {(hangar || []).map((a) => <option key={a.id} value={a.id}>{a.registration}{a.makeModel ? ` · ${a.makeModel}` : ''}</option>)}
                   </select>
                 )}
-              </label>
+              </Field>
             )}
             {!welcome && (
-              <label className="field" data-testid="profile-default-alternate">Default alternate aerodrome
-                <AerodromePicker name="defaultAlternate" value={f.defaultAlternate} onChange={(v) => setF((x) => ({ ...x, defaultAlternate: v }))} placeholder="Optional, e.g. LGAV" />
-                <span className="hint">Pre-filled as the alternate (FPL item 16) of new flights; change it per flight under Flight plan</span>
-              </label>
+              <Field label="Default alternate" testId="profile-default-alternate">
+                <AerodromeTextInput name="defaultAlternate" value={f.defaultAlternate} onChange={(t) => put('defaultAlternate', t)} placeholder="Optional" invalid={issues.of('defaultAlternate').length > 0} />
+              </Field>
             )}
           </div>
-        </section>
+        </CardSection>
 
-        <section className="form-section">
-          <header><h2>Planning defaults</h2><p>Copied into each new flight, where you can still change them. Leave a field empty and flights will ask for it.</p></header>
+        <CardSection id="planning" title="Planning defaults" plain>
           <div className="grid3">
-            <label className="field"><span>Taxi out {notSet(f.taxiOutMin)}</span>
-              <Unit unit="min"><input name="taxiOutMin" inputMode="numeric" value={f.taxiOutMin} placeholder={`e.g. ${SETTING_SUGGESTIONS.taxiOutMin}`} onChange={set('taxiOutMin')} /></Unit>
-              <span className="hint">Block off to take-off</span>
-            </label>
-            <label className="field"><span>Taxi in {notSet(f.taxiInMin)}</span>
-              <Unit unit="min"><input name="taxiInMin" inputMode="numeric" value={f.taxiInMin} placeholder={`e.g. ${SETTING_SUGGESTIONS.taxiInMin}`} onChange={set('taxiInMin')} /></Unit>
-              <span className="hint">Landing to block on</span>
-            </label>
-            <label className="field"><span>Fuel reserve {notSet(f.reserveMin)}</span>
-              <Unit unit="min"><input name="reserveMin" inputMode="numeric" value={f.reserveMin} placeholder={`e.g. ${SETTING_SUGGESTIONS.reserveMin}`} onChange={set('reserveMin')} /></Unit>
-              <span className="hint">Fuel on board defaults to required fuel plus this</span>
-            </label>
+            <Field label={<>Taxi out {notSet(f.taxiOutMin)}</>} issues={issues.of('taxiOutMin')}>{minutes('taxiOutMin', `e.g. ${SETTING_SUGGESTIONS.taxiOutMin}`)}</Field>
+            <Field label={<>Taxi in {notSet(f.taxiInMin)}</>} issues={issues.of('taxiInMin')}>{minutes('taxiInMin', `e.g. ${SETTING_SUGGESTIONS.taxiInMin}`)}</Field>
+            <Field label={<>Fuel reserve {notSet(f.reserveMin)}</>} issues={issues.of('reserveMin')}>{minutes('reserveMin', `e.g. ${SETTING_SUGGESTIONS.reserveMin}`)}</Field>
           </div>
           {!welcome && (
             <div className="grid3">
-              <label className="field">Final reserve in required fuel
-                <Unit unit="min"><input name="finalReserveMin" inputMode="numeric" value={f.finalReserveMin} onChange={set('finalReserveMin')} placeholder="0" /></Unit>
-                <span className="hint">0 = required is allowance + trip, as on the paper navlog</span>
-              </label>
-              <label className="field">Winds aloft model
-                <select name="windModel" value={f.windModel} onChange={set('windModel')}>
-                  {(Object.keys(WIND_MODELS) as WindModel[]).map((k) => <option key={k} value={k}>{WIND_MODELS[k]}</option>)}
-                </select>
-              </label>
-              <label className="field">ATC list: aerodromes within
-                <Unit unit="NM"><input name="enrouteAerodromeRadiusNm" inputMode="decimal" value={f.enrouteAerodromeRadiusNm} onChange={set('enrouteAerodromeRadiusNm')} placeholder="2" /></Unit>
-                <span className="hint">of the route are listed</span>
-              </label>
+              <Field label="Final reserve in required fuel" issues={issues.of('finalReserveMin')}>{minutes('finalReserveMin', '0')}</Field>
+              <Field label="ATC list: aerodromes within" issues={issues.of('enrouteAerodromeRadiusNm')}>
+                <NumberField name="enrouteAerodromeRadiusNm" value={f.enrouteAerodromeRadiusNm} onChange={(v) => put('enrouteAerodromeRadiusNm', v)} min={0} max={RADIUS_MAX_NM} unit="NM" placeholder="2" />
+              </Field>
             </div>
           )}
-        </section>
+        </CardSection>
 
         <div className="form-actions">
           {error && <p className="form-error" role="alert">{error}</p>}
+          {issues.issues.length > 0 && !error && <p className="form-error" role="alert">{issues.issues.length === 1 ? '1 field to fix' : `${issues.issues.length} fields to fix`}</p>}
           <span className="spacer" />
-          {!welcome && dirty && <button type="button" className="ghost" onClick={() => { setF(initial); setError(null); }} disabled={busy}>Discard changes</button>}
+          {!welcome && dirty && <button type="button" className="ghost" onClick={() => { setBase(pilot); setF(formOf(pilot)); issues.check([]); setError(null); }} disabled={busy}>Discard</button>}
           <button className="primary" type="submit" disabled={busy || (!welcome && !dirty)}>{welcome ? 'Continue' : busy ? 'Saving…' : 'Save'}</button>
         </div>
       </form>
