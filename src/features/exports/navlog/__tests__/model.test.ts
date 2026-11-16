@@ -239,7 +239,7 @@ describe('surface weather in the header', () => {
     expect(h.sky).toBe('SKC');
     // LGAV 03L/R and 21L/R: north-easterly wind → 03L/R
     expect(h.runway).toBe('03L/R');
-    expect(out.sources[0]).toBe('Winds aloft ECMWF IFS 0.25°, fetched 08:00Z');
+    expect(out.sources[0]).toBe('Winds aloft: fetched 08:00Z');
     expect(out.sources[1]).toBe('LGAV forecast 09:00Z');
     expect(out.sources[2]).toMatch(/^LGKR forecast \d\d:\d\dZ$/);
     // leg midpoint had no data: flagged

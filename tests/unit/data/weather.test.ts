@@ -75,8 +75,8 @@ describe('surface', () => {
   });
 
   test('surfaceConditions: true wind, QNH from MSL pressure, label with the valid time', () => {
-    const c = surfaceConditions(locs[1], T('2026-11-15T08:00Z'), 'ECMWF IFS 0.25°')!;
-    expect(c).toMatchObject({ source: 'forecast', tempC: 17, dewC: 13.4, qnhHpa: 1025.5, label: 'ECMWF IFS 0.25° forecast for 08:00Z' });
+    const c = surfaceConditions(locs[1], T('2026-11-15T08:00Z'))!;
+    expect(c).toMatchObject({ source: 'forecast', tempC: 17, dewC: 13.4, qnhHpa: 1025.5, label: 'Forecast for 08:00Z' });
     near(c.wind!.dirTrueDeg!, 16, 1e-6); near(c.wind!.speedKt, 11.1, 1e-6);
     expect(toPerfWind(c)).toEqual({ dirTrueDeg: c.wind!.dirTrueDeg, speedKt: c.wind!.speedKt, gustKt: null });
     expect(surfaceConditions(null, T('2026-11-15T08:00Z'))).toBeNull();
@@ -106,7 +106,7 @@ describe('surface', () => {
 
   test('chooseSurface: current METAR near the time wins (gaps filled from the forecast); else the forecast', () => {
     const metar = parseMetar('METAR LGAV 151320Z 05009KT 010V070 9999 FEW025 SCT050 17/12 Q1024 NOSIG', NOW);
-    const fc = surfaceConditions(locs[1], T('2026-11-15T14:00Z'), 'ECMWF IFS 0.25°');
+    const fc = surfaceConditions(locs[1], T('2026-11-15T14:00Z'));
     const now = T('2026-11-15T13:36Z');
     const a = chooseSurface({ metar, forecast: fc, timeMs: T('2026-11-15T14:00Z'), nowMs: now })!;
     expect(a).toMatchObject({ source: 'metar', label: 'METAR LGAV 151320Z', tempC: 17, dewC: 12, qnhHpa: 1024, wind: { dirTrueDeg: 50, speedKt: 9, gustKt: null } });

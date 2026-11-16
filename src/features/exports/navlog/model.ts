@@ -242,8 +242,7 @@ export function endpointWeather(
   const ad = p ? endpointAerodrome(p, o.aerodromes) : null;
   const dayMs = Date.parse(o.date + 'T00:00:00Z');
   const timeMs = dayMs + minutes * 60000;
-  const label = o.weather?.source?.modelLabel ?? 'Forecast';
-  const forecast = isFinite(timeMs) ? surfaceConditions(loc, timeMs, label) : null;
+  const forecast = isFinite(timeMs) ? surfaceConditions(loc, timeMs) : null;
   const sample = loc && loc.hourly && isFinite(timeMs) ? sampleSurface(loc.hourly, timeMs, loc.elevation) : null;
   const metar = ad?.icao ? o.metar?.stations[ad.icao]?.metar ?? null : null;
   const conditions = isFinite(timeMs) ? chooseSurface({ metar, forecast, timeMs, nowMs: o.nowMs }) : null;
@@ -427,7 +426,10 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   // ---- weather sources: one short piece each, shown on screen above the sheet (not printed)
   const sources: string[] = [];
   if (nLegs) {
-    sources.push(weather && weather.status === 'ok' ? `Winds aloft ${weather.message}` : 'Winds aloft: none, calm wind used');
+    // the model is named on the About page only: 'run 2026-11-15 12Z, fetched 08:00Z'
+    const model = weather?.source?.modelLabel;
+    const detail = weather && model && weather.message.startsWith(model + ', ') ? weather.message.slice(model.length + 2) : weather?.message;
+    sources.push(weather && weather.status === 'ok' ? `Winds aloft: ${detail}` : 'Winds aloft: none, calm wind used');
     const typed = navlog.legs.filter((l) => l.windSource === 'override').map((l) => l.index + 1);
     if (typed.length) sources.push(`wind typed on leg${typed.length > 1 ? 's' : ''} ${typed.join(', ')}`);
     const dayMs = Date.parse(doc.date + 'T00:00:00Z');

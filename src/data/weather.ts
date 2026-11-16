@@ -424,11 +424,11 @@ export interface SurfaceConditions {
 const fin = (x: number) => (isFinite(x) ? x : null);
 
 /** Forecast surface conditions at a time from an Open-Meteo location. */
-export function surfaceConditions(loc: OpenMeteoLocation | null, timeMs: number, modelLabel = 'Forecast'): SurfaceConditions | null {
+export function surfaceConditions(loc: OpenMeteoLocation | null, timeMs: number): SurfaceConditions | null {
   const s = loc && loc.hourly ? sampleSurface(loc.hourly, timeMs, loc.elevation) : null;
   if (!s) return null;
   return {
-    source: 'forecast', label: `${modelLabel} forecast for ${hhmmZ(timeMs)}`, timeMs,
+    source: 'forecast', label: `Forecast for ${hhmmZ(timeMs)}`, timeMs,
     tempC: fin(s.temp), dewC: fin(s.dew), qnhHpa: fin(s.qnh),
     wind: s.wind ? { dirTrueDeg: s.wind.spd < 0.5 ? null : s.wind.dir, speedKt: s.wind.spd, gustKt: null } : null,
   };

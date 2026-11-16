@@ -293,7 +293,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const times = navlog?.blockOffSet ? navlog.times : undefined;
   const takeoffMs = fin(dayMs) && times ? dayMs + times.takeoffMin * 60000 : NaN;
   const landingMs = fin(dayMs) && times ? dayMs + times.landingMin * 60000 : NaN;
-  const modelLabel = weather?.source?.modelLabel ?? 'Forecast';
   const endpoint = (
     phase: 'takeoff' | 'landing', ad: RefAerodrome | null, loc: OpenMeteoLocation | null, timeMs: number,
     massWb: WbResult | null = wb,
@@ -303,7 +302,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     stopKind?: 'stop' | 'touch-and-go',
   ): EndpointCalc => {
     const reports = ad?.icao && metar ? metar.stations[ad.icao] ?? null : null;
-    const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs, modelLabel) : null;
+    const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs) : null;
     const surface = fin(timeMs) ? chooseSurface({ metar: reports?.metar ?? null, forecast, timeMs }) : null;
     const { massKg, massSource, reason: massReason } = performanceMass(massWb, phase, aircraft?.massBalance.mtowKg, wbMissingWeights.length);
     let perf: AerodromePerf | null = null;
