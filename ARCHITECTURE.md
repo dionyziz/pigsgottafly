@@ -107,7 +107,8 @@ src/
   features/
     lobby/                 LobbyPage, NewFlightPage
     profile/               ProfilePage (?welcome=1 = first-use onboarding)
-    hangar/                HangarPage, AircraftPage
+    hangar/                HangarPage, AircraftPage (inputs named by their issue path: a save-bar issue focuses its input,
+                           issueTarget); stations, envelope points, compass cards and their points reorder by drag handle
     passengers/            PassengersPage
     waypoints/             WaypointsPage
     editor/                EditorPage (layout: collapsible flight panel; resizable.tsx sizes panels by style during a
@@ -184,7 +185,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 
 - **Freshness**: pages read the pilot's records through `useEntity` (or `useAsync` with `invalidatedBy`), never a one-off `api.*.get()` in an effect; mutations go through `api.*` (which invalidates). The session pilot (`usePilot()`) is the 'pilot' entity, so a profile change in any page or tab, or a window focus, refreshes it.
 - **Formatting**: use `src/shared/format.ts` / `date.ts` (no local `pad2`, `fmtDate`, `clockZ` copies). Local time is always Greek time (`LOCAL_TZ`), whatever the device zone. `tsconfig` has `noUnusedLocals`.
-- **Units**: kg, m (arms), kg·m, L, kt, ft, NM (route), m (runway), °C, hPa. Dates are `YYYY-MM-DD`, clock times are `HH:MM` UTC, and record timestamps are epoch ms.
+- **Units**: kg, m (arms), kg·m, L, kt, ft, NM (route), m (runway), °C, hPa. Fuel densities are not per aircraft: the W&B always uses `FUEL_DENSITY` (`src/shared/fuel.ts`: AVGAS 0.72, MOGAS 0.75, Jet A-1 0.80); a stored `densityKgPerL` is ignored and the hangar saves the standard value. Dates are `YYYY-MM-DD`, clock times are `HH:MM` UTC, and record timestamps are epoch ms.
 - **Imports**: `src/shared`, `src/calc`, `api/` and `tools/` use explicit `.js` extensions, because the API runs as Node ESM. `tsconfig.node.json` (NodeNext) enforces this. Client code (`src/app`, `src/features`, `src/data`) uses Bundler resolution: no extensions, and `../shared` works.
 - **Nothing pilot-specific is an app default** (pilot correction #1). A new pilot starts with an empty profile (`homeAerodrome: null`, taxi and reserve `null`) and an empty hangar. The app asks for the profile on first use (the onboarding redirect to `/profile?welcome=1`). `SETTING_SUGGESTIONS` are placeholders only. Calculations treat `null` as "not set" and warn. Only the pilot who already existed in production gets his stated values (LGTT, 15/15/60) and SX-ASV/SX-ASG, through one-time migration 003.
 - **Route points** always store a name, lat and lon snapshot, plus `kind` and `refId` (aerodrome id, VFR point id `CHART/NAME`, saved waypoint id, or `null` for a custom point). Per-leg overrides are keyed by `legKey(a, b) = "<a.uid>><b.uid>"`, so inserting a point resets only the leg it splits.

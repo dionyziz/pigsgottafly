@@ -94,7 +94,7 @@ export function planningFix(text: string): Fix | null {
   if (/TAS not set|cruising speed/i.test(t)) return aircraft('cruiseTasKt');
   if (/compass card/i.test(t)) return aircraft('compass');
   if (/empty mass is not set/i.test(t)) return aircraft('emptyMassKg');
-  if (/fuel density|no fuel station|unknown station|arm .* is outside/i.test(t)) return aircraft(/density/i.test(t) ? 'fuel' : 'mb');
+  if (/no fuel station|unknown station|arm .* is outside/i.test(t)) return aircraft('mb');
   if (/performance tables|outside the AFM table/i.test(t)) return aircraft('performance');
   if (/reserve not set in the profile/i.test(t)) return { kind: 'profile', focus: 'reserveMin' };
   if (/usable fuel capacity not set/i.test(t)) return aircraft('fuel');

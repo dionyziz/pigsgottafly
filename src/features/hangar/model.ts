@@ -9,7 +9,7 @@ import type {
   AircraftInput, CompassCard, Envelope, EnvelopePoint, FuelSpec, FuelType, LandingTable, MassBalance, PerformanceFactors, PerformanceTables,
   Station, StationKind, TakeoffTable,
 } from '../../shared/types';
-import { DEFAULT_FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
+import { FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
 import { isIsoDate, parseIsoDate } from '../../shared/date';
 import { parseItem18 } from '../exports/fpl/fpl';
 
@@ -274,12 +274,6 @@ export function setArmRange(s: Station, end: 0 | 1, v: number | null): void {
   const hi = end === 1 ? (v ?? s.armM) : (cur?.[1] ?? s.armM);
   s.armRangeM = [lo, hi];
 }
-/** Moves item i of a list by d (−1 up, +1 down). */
-export function moveItem<T>(xs: T[], i: number, d: -1 | 1): void {
-  const j = i + d;
-  if (j < 0 || j >= xs.length) return;
-  [xs[i], xs[j]] = [xs[j], xs[i]];
-}
 /** A new combined limit over the baggage areas. */
 export function addCombinedLimit(mb: MassBalance): void {
   mb.combinedLimits.push({ stations: mb.stations.filter((s) => s.kind === 'baggage').map((s) => s.id), maxKg: 0 });
@@ -294,10 +288,10 @@ export function addUtilityEnvelope(mb: MassBalance): Envelope {
 // ---------------------------------------------------------------------------------------------
 // Approved fuels
 
-/** Adds an approved fuel at its default density (no-op if already listed). */
+/** Adds an approved fuel (at its standard density; no-op if already listed). */
 export function addFuelType(f: FuelSpec, t: FuelType): void {
   if (f.types.some((g) => g.type === t)) return;
-  f.types.push({ type: t, densityKgPerL: DEFAULT_FUEL_DENSITY[t] });
+  f.types.push({ type: t, densityKgPerL: FUEL_DENSITY[t] });
 }
 /** Removes an approved fuel (the last one stays). */
 export function removeFuelType(f: FuelSpec, t: FuelType): void {
@@ -509,9 +503,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   const f = a.fuel;
   if (!f.types.length) err('fuel', 'fuel.types', 'Give at least one approved fuel.');
   if (new Set(f.types.map((g) => g.type)).size !== f.types.length) err('fuel', 'fuel.types', 'A fuel type is listed twice.');
-  f.types.forEach((g, i) => {
-    if (!(g.densityKgPerL >= 0.5 && g.densityKgPerL <= 1)) err('fuel', `fuel.types.${i}.densityKgPerL`, `${g.type} density must be between 0.5 and 1.0 kg/L.`);
-  });
   if (!(f.usableL > 0)) warn('fuel', 'fuel.usableL', 'Usable fuel not set: fuel on board cannot be checked.');
   if (f.totalL > 0 && f.usableL > f.totalL) err('fuel', 'fuel.usableL', 'Usable fuel is more than the total capacity.');
   if (f.totalL > 0 && f.usableL > 0 && Math.abs(f.usableL + f.unusableL - f.totalL) > 0.5 && f.usableL + f.unusableL < f.totalL)

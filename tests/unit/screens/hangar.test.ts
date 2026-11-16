@@ -181,10 +181,10 @@ describe('copies', () => {
 });
 
 describe('approved fuels and the item 18 field', () => {
-  test('fuel types: at least one, each once, densities in range', () => {
+  test('fuel types: at least one, each once; a stored density is not checked (the standard one is used)', () => {
     const a = structuredClone(fleetSeed()[0]);
     a.fuel.types[1].densityKgPerL = 7.5;
-    expect(errors(a).map((i) => i.path)).toContain('fuel.types.1.densityKgPerL');
+    expect(errors(a)).toEqual([]);
     a.fuel.types = [{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'AVGAS', densityKgPerL: 0.72 }];
     expect(errors(a).map((i) => i.path)).toContain('fuel.types');
     a.fuel.types = [];

@@ -1,7 +1,8 @@
 // Approved fuels of an aircraft and the fuel on board of a flight by type. Shared by the client
 // (hangar, editor, exports), the API (validation, reading old rows) and the tests.
 //
-// An aircraft lists one or more approved fuels (FuelSpec.types), each with its W&B density. A
+// An aircraft lists one or more approved fuels (FuelSpec.types). Densities are not per aircraft:
+// the W&B uses the standard density of each type (FUEL_DENSITY), whatever a stored row says. A
 // flight gives its fuel on board as a total (FlightDoc.fobL, or the default required + reserve)
 // and, when the pilot splits it, as litres per type (FlightOptions.fuelL). Mixed tanks are
 // allowed: the fuel mass is Σ litres × density, and the fuel burnt in flight is taken from the mix
@@ -10,8 +11,10 @@ import type { FuelGrade, FuelSpec, FuelType } from './types.js';
 
 export const FUEL_TYPES: FuelType[] = ['AVGAS', 'MOGAS', 'JET A-1'];
 
-/** Default densities, kg/L (MD 4.3: AVGAS 0.72, MOGAS 0.75; Jet A-1 0.80). Editable per aircraft. */
-export const DEFAULT_FUEL_DENSITY: Record<FuelType, number> = { AVGAS: 0.72, MOGAS: 0.75, 'JET A-1': 0.8 };
+/** Standard densities, kg/L (MD 4.3: AVGAS 0.72, MOGAS 0.75; Jet A-1 0.80): the only ones the W&B uses. */
+export const FUEL_DENSITY: Record<FuelType, number> = { AVGAS: 0.72, MOGAS: 0.75, 'JET A-1': 0.8 };
+/** Old name of FUEL_DENSITY. */
+export const DEFAULT_FUEL_DENSITY = FUEL_DENSITY;
 
 const isFuelType = (t: unknown): t is FuelType => typeof t === 'string' && (FUEL_TYPES as string[]).includes(t);
 const fin = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -30,14 +33,20 @@ export function normalizeFuelSpec(f: any): FuelSpec {
   return { types: [{ type: t, densityKgPerL: rho }], ...rest } as FuelSpec;
 }
 
-/** The aircraft's usual fuel (the first approved one); AVGAS at 0.72 when none is listed. */
+/** The aircraft's usual fuel (the first approved one; AVGAS when none is listed), at its standard density. */
 export function primaryFuel(spec: Pick<FuelSpec, 'types'>): FuelGrade {
-  return spec.types?.[0] ?? { type: 'AVGAS', densityKgPerL: DEFAULT_FUEL_DENSITY.AVGAS };
+  const type = spec.types?.[0]?.type ?? 'AVGAS';
+  return { type, densityKgPerL: fuelDensity(type) };
 }
 
-/** Density of a type on this aircraft (its own value if approved, else the default). */
-export function fuelDensity(spec: Pick<FuelSpec, 'types'>, type: FuelType): number {
-  return spec.types?.find((g) => g.type === type)?.densityKgPerL ?? DEFAULT_FUEL_DENSITY[type];
+/** The standard density of a fuel type, kg/L. */
+export function fuelDensity(type: FuelType): number {
+  return FUEL_DENSITY[type] ?? FUEL_DENSITY.AVGAS;
+}
+
+/** The approved fuels at their standard densities (a stored density is ignored). */
+export function standardFuelTypes(types: readonly FuelGrade[]): FuelGrade[] {
+  return types.map((g) => ({ type: g.type, densityKgPerL: fuelDensity(g.type) }));
 }
 
 /** 'AVGAS', 'AVGAS or MOGAS', 'AVGAS, MOGAS or JET A-1'. */
@@ -97,7 +106,7 @@ export function fuelLoad(spec: Pick<FuelSpec, 'types'>, totalL: number, byType?:
     const k = sum > 0 && total > 0 ? total / sum : 0;
     parts = order.filter((t) => split[t]).map((t) => {
       const litres = Math.abs(k - 1) < 1e-9 ? (split[t] as number) : (split[t] as number) * k;
-      const densityKgPerL = fuelDensity(spec, t);
+      const densityKgPerL = fuelDensity(t);
       return { type: t, litres, densityKgPerL, kg: litres * densityKgPerL };
     }).filter((p) => p.litres > 0);
   } else {

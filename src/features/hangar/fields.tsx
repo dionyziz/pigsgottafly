@@ -1,9 +1,10 @@
-// Form controls for the aircraft page: an editable point table. NumInput, Field, IssueList, Check
-// and Section moved to src/ui (NumberField, Field, IssueList, Check, CardSection) and are
-// re-exported here for the old imports.
+// Form controls of the aircraft page: an editable point table, NumInput (NumberField where an empty
+// field commits 0 unless optional) and Section (CardSection with the page's class). The hangar
+// imports Field, IssueList and Check from src/ui; the re-exports below are shims for old imports.
 import { useId, type ReactNode } from 'react';
+import { moveAt } from '../../shared/list';
 import { parseDecimal } from '../../shared/number';
-import { CardSection, NumberField } from '../../ui';
+import { CardSection, DragHandle, NumberField, RowRemove, useSortable } from '../../ui';
 
 export { Check, Field, IssueList } from '../../ui';
 
@@ -42,9 +43,10 @@ export function Section({ id, title, intro, actions, children }: { id: string; t
 
 /**
  * Editable table of [x, y] points (envelope vertices, compass card rows). Rows can be added,
- * removed and moved; `extra` renders an additional read-only cell per row.
+ * removed and reordered (drag handle, or Alt+↑/↓); `extra` renders an additional read-only cell per
+ * row. `name` names the inputs `<name>.<row>.x` / `.y`, so the save bar's issues can focus them.
  */
-export function PointTable({ points, onChange, xLabel, yLabel, xUnit, yUnit, xProps, yProps, extra, extraLabel, addPoint, caption, minRows = 0 }: {
+export function PointTable({ points, onChange, xLabel, yLabel, xUnit, yUnit, xProps, yProps, extra, extraLabel, addPoint, caption, minRows = 0, name }: {
   points: [number, number][];
   onChange: (p: [number, number][]) => void;
   xLabel: string;
@@ -58,32 +60,34 @@ export function PointTable({ points, onChange, xLabel, yLabel, xUnit, yUnit, xPr
   addPoint?: (points: [number, number][]) => [number, number];
   caption?: string;
   minRows?: number;
+  name?: string;
 }) {
   const id = useId();
   const set = (i: number, k: 0 | 1, v: number | null) => onChange(points.map((p, j) => (j === i ? (k === 0 ? [v ?? 0, p[1]] : [p[0], v ?? 0]) : p)));
-  const move = (i: number, d: -1 | 1) => {
-    const j = i + d;
-    if (j < 0 || j >= points.length) return;
-    const n = points.slice();
-    [n[i], n[j]] = [n[j], n[i]];
-    onChange(n);
-  };
+  const sort = useSortable({ count: points.length, onMove: (from, to) => onChange(moveAt(points, from, to)) });
   const add = () => onChange([...points, addPoint ? addPoint(points) : (points.length ? [...points[points.length - 1]] as [number, number] : [0, 0])]);
   return (
     <div className="pt-table">
       <table aria-describedby={caption ? id : undefined}>
-        <thead><tr><th>#</th><th>{xLabel}{xUnit && <span className="u"> {xUnit}</span>}</th><th>{yLabel}{yUnit && <span className="u"> {yUnit}</span>}</th>{extra && <th>{extraLabel}</th>}<th /></tr></thead>
+        <thead>
+          <tr>
+            <th className="drag" /><th className="idx">#</th>
+            <th className="num">{xLabel}{xUnit && <span className="u"> {xUnit}</span>}</th>
+            <th className="num">{yLabel}{yUnit && <span className="u"> {yUnit}</span>}</th>
+            {extra && <th className="num">{extraLabel}</th>}
+            <th />
+          </tr>
+        </thead>
         <tbody>
           {points.map((p, i) => (
-            <tr key={i}>
+            <tr key={i} {...sort.itemProps(i)}>
+              <td className="drag"><DragHandle {...sort.handleProps(i)} label={`Move point ${i + 1}`} /></td>
               <td className="muted idx">{i + 1}</td>
-              <td><NumInput value={p[0]} onChange={(v) => set(i, 0, v)} ariaLabel={`${xLabel} ${i + 1}`} {...xProps} /></td>
-              <td><NumInput value={p[1]} onChange={(v) => set(i, 1, v)} ariaLabel={`${yLabel} ${i + 1}`} {...yProps} /></td>
-              {extra && <td className="extra">{extra(p, i)}</td>}
+              <td className="num"><NumInput value={p[0]} onChange={(v) => set(i, 0, v)} ariaLabel={`${xLabel} ${i + 1}`} name={name && `${name}.${i}.x`} {...xProps} /></td>
+              <td className="num"><NumInput value={p[1]} onChange={(v) => set(i, 1, v)} ariaLabel={`${yLabel} ${i + 1}`} name={name && `${name}.${i}.y`} {...yProps} /></td>
+              {extra && <td className="extra num">{extra(p, i)}</td>}
               <td className="row-tools">
-                <button type="button" className="icon sm" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up" title="Move up">↑</button>
-                <button type="button" className="icon sm" onClick={() => move(i, 1)} disabled={i === points.length - 1} aria-label="Move down" title="Move down">↓</button>
-                <button type="button" className="icon sm danger" onClick={() => onChange(points.filter((_, j) => j !== i))} disabled={points.length <= minRows} aria-label="Remove row" title="Remove">×</button>
+                <RowRemove onClick={() => onChange(points.filter((_, j) => j !== i))} disabled={points.length <= minRows} label={`Remove point ${i + 1}`} />
               </td>
             </tr>
           ))}
