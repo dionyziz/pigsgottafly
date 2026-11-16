@@ -10,11 +10,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiRequestError } from '../../../data/api';
 import type { FormsState } from '../../../shared/forms';
+import { fmtLocalClock, fmtLocalDayTime } from '../../../shared/format';
+import { Chip, Loading, Panel } from '../../../ui';
 import type { ShownSignature } from './Form731';
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const hm = (ms: number) => { const d = new Date(ms); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
-const dayHm = (ms: number) => { const d = new Date(ms); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${hm(ms)}`; };
+// times shown to the pilot are local (Greek) time
+const hm = (ms: number) => fmtLocalClock(ms);
+const dayHm = (ms: number) => fmtLocalDayTime(ms);
 const firstName = (s: string) => s.trim().split(/\s+/)[0] || s;
 const errText = (e: unknown) => (e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.');
 
@@ -74,7 +76,13 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
       setBusy('');
     }
   };
-  if (!st) return <div className="pgf-panel no-print" data-testid="f731-signatures">{err ? <span className="pgf-err">{err}</span> : <span className="muted">Loading signatures…</span>}</div>;
+  if (!st) {
+    return (
+      <Panel title="Signatures" testId="f731-signatures">
+        {err ? <div className="form-error" role="alert">{err}</div> : <Loading variant="sm" />}
+      </Panel>
+    );
+  }
 
   const url = (token: string) => `${window.location.origin}/sign/${token}`;
   const share = async (name: string, token: string) => {
@@ -91,11 +99,11 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
   const needLinks = pax.some((s) => !s.signed && (!s.link || s.link.revoked || s.link.expires < Date.now()));
 
   return (
-    <div className="pgf-panel no-print" data-testid="f731-signatures">
-      <div className="pgf-panel-head">
-        <h3>Signatures</h3>
-        <span className={`chip ${f.allSigned ? 'ok' : 'warn'}`} data-testid="f731-summary">{signatureSummary(st)}</span>
-        <span className="spacer" />
+    <Panel
+      title="Signatures"
+      testId="f731-signatures"
+      status={<Chip tone={f.allSigned ? 'ok' : 'warn'} testId="f731-summary">{signatureSummary(st)}</Chip>}
+      actions={<>
         {pax.length > 0 && (
           <button onClick={() => run('links', () => api.forms.requestLinks(flightId))} disabled={!!busy || !needLinks} data-testid="f731-request">
             {busy === 'links' ? 'Creating links…' : 'Request signatures'}
@@ -106,15 +114,16 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
           onClick={() => run('send', () => api.forms.send731(flightId))}>
           {busy === 'send' ? 'Sending…' : sub ? 'Re-send to HCAA' : 'Send to HCAA'}
         </button>
-      </div>
+      </>}
+    >
       {sub && (
         <div className="pgf-note" data-testid="f731-sent">
           Sent to {sub.to} on {dayHm(sub.sentAt)}{sub.changed ? ' · the form has changed since: re-send once everyone has signed again' : ''}.
         </div>
       )}
       {!st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
-      {err && <div className="pgf-err" role="alert">{err}</div>}
-      <ul>
+      {err && <div className="form-error" role="alert">{err}</div>}
+      <ul className="pgf-people">
         {f.signatures.map((s) => {
           const token = links[s.key];
           const l = s.link;
@@ -146,6 +155,6 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
         })}
       </ul>
       {Object.keys(links).length > 0 && <div className="pgf-note">Links are shown once: send them now. A lost link can be replaced with “New link”.</div>}
-    </div>
+    </Panel>
   );
 }

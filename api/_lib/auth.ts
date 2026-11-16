@@ -9,9 +9,11 @@ export const COOKIE = 'pgf_session';
 export const SESSION_MS = 365 * 24 * 3600e3;
 
 const GOOGLE_CERTS = 'https://www.googleapis.com/oauth2/v3/certs';
+/** Google's signing keys are refetched after this long. */
+const GOOGLE_CERTS_TTL_MS = 3600e3;
 let certCache: { at: number; keys: JsonWebKey[] } = { at: 0, keys: [] };
 export async function googleKeys(): Promise<JsonWebKey[]> {
-  if (Date.now() - certCache.at < 3600e3 && certCache.keys.length) return certCache.keys;
+  if (Date.now() - certCache.at < GOOGLE_CERTS_TTL_MS && certCache.keys.length) return certCache.keys;
   const r = await fetch(GOOGLE_CERTS);
   certCache = { at: Date.now(), keys: ((await r.json()) as { keys: JsonWebKey[] }).keys };
   return certCache.keys;

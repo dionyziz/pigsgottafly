@@ -2,15 +2,9 @@
    values, verdict badge, notes and signature line. Screen: the sheet on the page background;
    print: one sheet per A4 page, no margins outside the sheet's own. */
 
-.xp-loading { padding: 24px; }
 .xp-doc { display: flex; flex-direction: column; gap: 16px; }
-.xp-status { display: flex; flex-direction: column; gap: 8px; }
-.xp-status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.xp-status-row .spacer { flex: 1; }
-.xp-warnings {
-  margin: 0; padding: 10px 14px 10px 30px; border-radius: 8px; font-size: 13px;
-  background: var(--warn-soft); border: 1px solid var(--warn-line); color: var(--warn);
-}
+/* the status panel (src/ui Panel) is as wide as the sheet */
+.xp-doc > .xp-status { max-width: 210mm; }
 .xp-sources { margin: 0; padding-left: 18px; font-size: 12px; color: var(--ink-2); }
 
 .xp-stage { overflow-x: auto; padding: 2px 2px 16px; }

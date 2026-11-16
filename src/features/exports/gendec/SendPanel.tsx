@@ -8,16 +8,22 @@ import { useState } from 'react';
 import { AipRefText } from '../../../app/AipLink';
 import { api, ApiRequestError } from '../../../data/api';
 import type { FormsState } from '../../../shared/forms';
+import { fmtLocalDayTime } from '../../../shared/format';
+import { Chip, Loading, Panel } from '../../../ui';
 import type { useFormsState } from '../form731/SignaturesPanel';
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const dayHm = (ms: number) => { const d = new Date(ms); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const errText = (e: unknown) => (e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.');
 
 export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: ReturnType<typeof useFormsState> }) {
   const { st, setSt, err, setErr } = forms;
   const [busy, setBusy] = useState('');
-  if (!st) return <div className="pgf-panel no-print" data-testid="gendec-send">{err ? <span className="pgf-err">{err}</span> : <span className="muted">Loading…</span>}</div>;
+  if (!st) {
+    return (
+      <Panel title="Send to HCAA" testId="gendec-send">
+        {err ? <div className="form-error" role="alert">{err}</div> : <Loading variant="sm" />}
+      </Panel>
+    );
+  }
   const g = st.gendec;
   const sub = g.submission;
   const h = g.handling;
@@ -36,24 +42,26 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
   // The checkbox shows the decision in force; ticking it to the automatic value goes back to automatic.
   const handledNow = !g.pilotSends;
   const setHandled = (v: boolean) => run('handled', () => api.forms.setGenDecHandled(flightId, v === !h.autoPilotSends ? null : v));
+  const fromNotams = h.ends.some((e) => /NOTAM/.test(e.reason));
 
   return (
-    <div className="pgf-panel no-print" data-testid="gendec-send">
-      <div className="pgf-panel-head">
-        <h3>Send to HCAA</h3>
-        <span className={`chip ${g.pilotSends ? (sub && !sub.changed ? 'ok' : 'warn') : 'ok'}`} data-testid="gendec-status">
+    <Panel
+      title="Send to HCAA"
+      testId="gendec-send"
+      status={(
+        <Chip tone={g.pilotSends ? (sub && !sub.changed ? 'ok' : 'warn') : 'ok'} testId="gendec-status">
           {!g.pilotSends ? 'Handled: the handler submits the General Declaration' : sub ? (sub.changed ? 'Changed since it was sent' : 'Sent') : 'Not sent'}
-        </span>
-        <span className="spacer" />
-        {g.pilotSends && (
-          <button className="primary" data-testid="gendec-send-button" disabled={!!busy || !st.emailEnabled || (!!sub && !sub.changed) || g.content.placeCount < 2}
-            title={!st.emailEnabled ? st.emailReason ?? '' : undefined}
-            onClick={() => run('send', () => api.forms.sendGenDec(flightId))}>
-            {busy === 'send' ? 'Sending…' : sub ? 'Re-send to HCAA' : 'Send to HCAA'}
-          </button>
-        )}
-      </div>
-      {sub && <div className="pgf-note">Sent to {sub.to} on {dayHm(sub.sentAt)} (cc you; replies go to you).</div>}
+        </Chip>
+      )}
+      actions={g.pilotSends && (
+        <button className="primary" data-testid="gendec-send-button" disabled={!!busy || !st.emailEnabled || (!!sub && !sub.changed) || g.content.placeCount < 2}
+          title={!st.emailEnabled ? st.emailReason ?? '' : undefined}
+          onClick={() => run('send', () => api.forms.sendGenDec(flightId))}>
+          {busy === 'send' ? 'Sending…' : sub ? 'Re-send to HCAA' : 'Send to HCAA'}
+        </button>
+      )}
+    >
+      {sub && <div className="pgf-note">Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)} (cc you; replies go to you).</div>}
       {g.pilotSends && !st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
       {h.ends.length > 0 && (
         <ul className="pgf-note pgf-handling" data-testid="gendec-handling">
@@ -64,19 +72,21 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
           ))}
         </ul>
       )}
-      <div className="pgf-note">
+      <div className="pgf-note pgf-handled">
         <label>
           <input type="checkbox" checked={handledNow} disabled={!!busy} onChange={(e) => setHandled(e.target.checked)} data-testid="gendec-handled" />{' '}
           A handler submits the General Declaration for this flight
         </label>
         {h.override !== null && (
           <>
-            {' '}<span className="muted">(set for this flight; from the AIP{h.ends.some((e) => /NOTAM/.test(e.reason)) ? ' and NOTAMs' : ''}: {h.autoPilotSends ? 'you send it' : 'handled'})</span>{' '}
+            <Chip sm testId="gendec-override">
+              Set for this flight · {fromNotams ? 'AIP and NOTAMs' : 'AIP'}: {h.autoPilotSends ? 'you send it' : 'handled'}
+            </Chip>
             <button type="button" className="linkish" disabled={!!busy} onClick={() => run('handled', () => api.forms.setGenDecHandled(flightId, null))} data-testid="gendec-handled-auto">Use the automatic decision</button>
           </>
         )}
       </div>
-      {err && <div className="pgf-err" role="alert">{err}</div>}
-    </div>
+      {err && <div className="form-error" role="alert">{err}</div>}
+    </Panel>
   );
 }

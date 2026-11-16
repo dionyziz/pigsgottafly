@@ -17,6 +17,8 @@
 
 export const AUTOROUTER_BASE = 'https://api.autorouter.aero/v1.0';
 const TIMEOUT_MS = 15000;
+/** NOTAM rows per request (autorouter pages its results). */
+const NOTAM_PAGE_ROWS = 100;
 
 export interface AutorouterSettings {
   email: string;
@@ -133,15 +135,15 @@ export class AutorouterClient {
   /** NOTAMs whose item A is one of `itemas`, valid at some time in [from, to] (ms). Pages through all results. */
   async notams(itemas: string[], from: number, to: number, maxRows = 1000): Promise<AutorouterNotamRow[]> {
     const rows: AutorouterNotamRow[] = [];
-    for (let offset = 0; offset < maxRows; offset += 100) {
+    for (let offset = 0; offset < maxRows; offset += NOTAM_PAGE_ROWS) {
       const q = new URLSearchParams({
-        itemas: JSON.stringify(itemas), offset: String(offset), limit: '100',
+        itemas: JSON.stringify(itemas), offset: String(offset), limit: String(NOTAM_PAGE_ROWS),
         startvalidity: String(Math.floor(from / 1000)), endvalidity: String(Math.ceil(to / 1000)),
       });
       const page = await this.call<{ total?: number; rows?: AutorouterNotamRow[] }>('GET', `/notam?${q}`);
       const got = Array.isArray(page?.rows) ? page.rows : [];
       rows.push(...got);
-      if (got.length < 100 || rows.length >= (Number(page?.total) || 0)) break;
+      if (got.length < NOTAM_PAGE_ROWS || rows.length >= (Number(page?.total) || 0)) break;
     }
     return rows;
   }

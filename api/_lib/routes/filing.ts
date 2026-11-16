@@ -22,6 +22,15 @@ import type { FilingLogEntry, FilingRecord, FilingState, FilingStatus } from '..
 import { generateAddressees } from '../addressees.js';
 import { flightContext } from '../flightContext.js';
 
+/** Longest FPL message accepted (an AFTN message is far shorter). */
+const MAX_FPL_CHARS = 4000;
+/** Most AFTN addressees per filing. */
+const MAX_ADDRESSES = 50;
+/** An EOBT may be this far in the past (a late delay)… */
+const EOBT_PAST_MS = 30 * 60e3;
+/** …and at most this far ahead (5 days). */
+const EOBT_AHEAD_MS = 120 * 3600e3;
+
 const STATUSES = new Set<FilingStatus>(['created', 'filed', 'manual_correction', 'suspended', 'departed', 'terminated', 'arriving', 'arrived', 'closed', 'cancelled', 'rejected']);
 /** Plans in these states can no longer be delayed or cancelled. */
 const FINAL = new Set<FilingStatus>(['closed', 'cancelled', 'rejected', 'arrived']);
@@ -92,14 +101,14 @@ async function attempt<T>(db: Queryable, pilotId: string, flightId: string, acti
 export function checkFpl(v: unknown): string {
   if (typeof v !== 'string') throw badRequest('fpl must be the ICAO FPL message');
   const fpl = v.trim().replace(/\r\n?/g, '\n');
-  if (fpl.length > 4000) throw badRequest('fpl is too long');
+  if (fpl.length > MAX_FPL_CHARS) throw badRequest('fpl is too long');
   if (!/^\(FPL-[A-Z0-9]{2,7}-[\s\S]+\)$/.test(fpl)) throw badRequest('fpl must be an ICAO message: (FPL-…)');
   if (!/^[A-Z0-9 \n()\-/.:+,]*$/.test(fpl)) throw badRequest('fpl contains characters AFTN cannot carry');
   return fpl;
 }
 export function checkAddresses(v: unknown): string[] {
   if (!Array.isArray(v)) throw badRequest('addresses must be an array');
-  if (v.length > 50) throw badRequest('too many addresses');
+  if (v.length > MAX_ADDRESSES) throw badRequest('too many addresses');
   const out = v.map((a) => {
     const s = typeof a === 'string' ? a.trim().toUpperCase() : '';
     if (!/^[A-Z]{8}$/.test(s)) throw badRequest(`invalid AFTN address: ${String(a).slice(0, 20)}`);
@@ -124,7 +133,7 @@ export function checkFplAircraft(fpl: string, registration: string | null): void
 function checkEobt(v: unknown, field = 'eobt'): number {
   if (typeof v !== 'number' || !Number.isFinite(v)) throw badRequest(`${field} must be a time (ms since 1970)`);
   const now = Date.now();
-  if (v < now - 30 * 60e3 || v > now + 120 * 3600e3) throw badRequest(`${field} must be between now and 5 days ahead`);
+  if (v < now - EOBT_PAST_MS || v > now + EOBT_AHEAD_MS) throw badRequest(`${field} must be between now and 5 days ahead`);
   return v;
 }
 

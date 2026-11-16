@@ -125,7 +125,10 @@ src/
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope
                            chart, then performance/ MD 4.4; /export/wb and /export/performance redirect to it),
-                           briefing/ (NOTAM briefing); fix.ts + WarningList.tsx: every on-screen export warning links to
+                           briefing/ (NOTAM briefing). The flight is loaded after flightStore.flushNow() and refetched on
+                           focus / 'flights' changes; aircraft and passengers via useEntity (useExportData.ts); weather via
+                           useFlightWeather; screen panels are src/ui Panel. fix.ts + WarningList.tsx (ExportWarnings, the one
+                           .export-warnings box around src/ui WarningList): every on-screen export warning links to
                            where it is fixed (editor /flights/:id?focus=<key>, hangar /hangar/:id?focus=<field>,
                            /profile?focus=<name>, the passenger dialog); src/app/focusParam.ts focuses + highlights
                            the target (data-focus keys on the inputs; editor panel Sections open for their keys)
@@ -136,6 +139,7 @@ api/
   _lib/http.ts             Route, Ctx, Reply, HttpError, helpers
   _lib/auth.ts             verifyGoogleToken, sessions (hashed tokens), local pilot
   _lib/rows.ts             row ↔ entity mappers, input validation helpers
+  _lib/pgErrors.ts         database errors by SQLSTATE (unique / FK / check → 400 or 409), never by message text
   _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry

@@ -8,6 +8,8 @@ import type { Flight } from '../../../shared';
 import { ApiRequestError } from '../../../data/api';
 import { fetchNotams, type NotamBriefing } from '../../../data/notams';
 import { usePilot } from '../../../app/session';
+import { Chip, Panel } from '../../../ui';
+import { ExportWarnings } from '../WarningList';
 import type { ShownSignature } from '../form731/Form731';
 import { SignLine } from '../wb/SignLine';
 import '../form731/forms.css';
@@ -37,16 +39,18 @@ export function BriefingExport({ flight }: { flight: Flight }) {
   const m = briefingModel({ doc: flight, title: flight.summary.title || flight.title, briefing });
   return (
     <div className="xp-doc print-sheet-page" data-testid="briefing-export" data-ready={busy ? 'false' : 'true'} data-status={m.status}>
-      <div className="xp-status no-print">
-        <div className="xp-status-row">
-          <span className={`chip ${busy ? '' : m.status === 'ok' ? (m.relevant.length ? 'warn' : 'ok') : 'warn'}`}>
-            {busy ? 'Loading NOTAMs…' : m.status === 'ok' ? `${m.relevant.length} relevant, ${m.hidden.length} hidden` : 'NOTAMs not loaded'}
-          </span>
-          <span className="spacer" />
-          <button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={busy}>Reload NOTAMs</button>
-        </div>
-        {error && <ul className="xp-warnings"><li>{error}</li></ul>}
-      </div>
+      <Panel
+        title="NOTAMs"
+        className="xp-status"
+        status={(
+          <Chip tone={busy ? undefined : m.status === 'ok' ? (m.relevant.length ? 'warn' : 'ok') : 'warn'}>
+            {busy ? 'Loading…' : m.status === 'ok' ? `${m.relevant.length} relevant, ${m.hidden.length} hidden` : 'Not loaded'}
+          </Chip>
+        )}
+        actions={<button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={busy}>Reload NOTAMs</button>}
+      >
+        <ExportWarnings warnings={error ? [error] : []} classify={false} testId="briefing-warnings" />
+      </Panel>
       <div className="xp-stage"><BriefingSheet m={m} signature={signature} /></div>
     </div>
   );

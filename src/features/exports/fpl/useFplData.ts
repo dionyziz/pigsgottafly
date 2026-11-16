@@ -1,13 +1,14 @@
-// Loads what the FPL needs outside the editor: the flight's aircraft, the winds aloft for the
-// navlog (EET), and the fuel plan (endurance). Calculations come from src/calc; the weather from
-// src/data/weather (Open-Meteo), as in the editor (panels/calc.tsx).
-import { useEffect, useMemo, useState } from 'react';
-import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, planFuel, type FuelPlan, type NavlogResult } from '../../../calc';
+// What the FPL needs outside the editor: the flight's aircraft (shared entity cache), the winds
+// aloft for the navlog (EET), and the fuel plan (endurance). Calculations come from src/calc; the
+// weather from useFlightWeather, as for the other exports and the editor.
+import { useMemo } from 'react';
+import { computeNavlog, defaultAltitudes, navlogAircraft, planFuel, type FuelPlan, type NavlogResult } from '../../../calc';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
 import { requestTiming } from '../../../shared';
-import { api } from '../../../data/api';
 import { REF, SUN_TABLES } from '../../../data/ref';
-import { fetchRouteWeather, windProviderFromLegs, type RouteWeather } from '../../../data/weather';
+import { useFlightWeather } from '../../../data/useFlightWeather';
+import { windProviderFromLegs, type RouteWeather } from '../../../data/weather';
+import { useFlightAircraft } from '../useExportData';
 
 export interface FplData {
   aircraft: Aircraft | null;
@@ -28,20 +29,12 @@ function safe<T>(f: () => T): T | null {
 }
 
 export function useFplData(flight: Flight, pilot: Pilot): FplData {
-  const [aircraft, setAircraft] = useState<Aircraft | null>(null);
-  const [aircraftLoading, setAircraftLoading] = useState(!!flight.aircraftId);
-  useEffect(() => {
-    let live = true;
-    if (!flight.aircraftId) { setAircraft(null); setAircraftLoading(false); return; }
-    setAircraftLoading(true);
-    api.aircraft.get(flight.aircraftId)
-      .then((a) => { if (live) setAircraft(a); })
-      .catch(() => { if (live) setAircraft(null); })
-      .finally(() => { if (live) setAircraftLoading(false); });
-    return () => { live = false; };
-  }, [flight.aircraftId]);
-
-  const legs = useMemo(() => buildLegs(flight.route, flight.date), [flight.route, flight.date]);
+  const { aircraft, loading: aircraftLoading } = useFlightAircraft(flight.aircraftId);
+  const wx = useFlightWeather({
+    date: flight.date, route: flight.route, options: flight.options, model: flight.options.windModel || pilot.settings.windModel,
+  });
+  const { legs, weather } = wx;
+  const weatherLoading = wx.weatherLoading && legs.length > 0;
   const overrides = useMemo(() => legs.map((l) => flight.legOverrides[l.key]), [legs, flight.legOverrides]);
   const timing = useMemo(() => requestTiming(flight.route, flight.options), [flight.route, flight.options]);
   const altitudesFt = useMemo(() => {
@@ -49,22 +42,6 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
     const d = defaultAltitudes(flight.route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }, ov, timing.patternPoints);
     return d.map((x, i) => ov[i] ?? x.altFt);
   }, [flight.route, overrides, timing]);
-
-  const [weather, setWeather] = useState<RouteWeather | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(legs.length > 0);
-  useEffect(() => {
-    let live = true;
-    if (!legs.length) { setWeather(null); setWeatherLoading(false); return; }
-    setWeatherLoading(true);
-    fetchRouteWeather({
-      date: flight.date,
-      model: flight.options.windModel,
-      legMidpoints: legs.map((l) => ({ lat: +l.mid.lat.toFixed(3), lon: +l.mid.lon.toFixed(3) })),
-      departure: null,
-      destination: null,
-    }).then((w) => { if (live) { setWeather(w); setWeatherLoading(false); } });
-    return () => { live = false; };
-  }, [legs, flight.date, flight.options.windModel]);
 
   const navlog = useMemo(() => {
     if (!legs.length || !aircraft) return null;

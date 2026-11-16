@@ -10,7 +10,11 @@
 .export-bar > button { grid-column: 2; grid-row: 1; }
 @media print { .export-bar { display: none !important; } }
 
-/* A warning that links to where it is fixed (WarningList) */
-.pgf-warn-link { color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
-.pgf-warn-link:hover { text-decoration: underline; }
-.pgf-warn-link .pgf-fix { margin-left: 8px; font-weight: 600; white-space: nowrap; color: var(--accent); display: inline-block; }
+/* Screen panels above the sheets (src/ui Panel): centred over the sheet */
+.export-page .panel { margin-inline: auto; }
+.export-page .panel > * { min-width: 0; }
+
+/* The one warnings box of the exports (ExportWarnings: src/ui WarningList inside) */
+.export-warnings { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border-radius: var(--r); font-size: var(--fs-sm); background: var(--warn-soft); border: 1px solid var(--warn-line); color: var(--warn); }
+.export-warnings.danger { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.export-warnings-title { font-weight: 600; }
