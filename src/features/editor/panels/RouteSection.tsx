@@ -83,10 +83,9 @@ export function RouteSection() {
   const to = route.length > 1 ? route[route.length - 1] : undefined;
   const set = (end: 'from' | 'to') => (a: RefAerodrome) =>
     update((d: FlightDoc) => ({ ...d, route: setRouteEnd(d.route, end, a) }), { coalesce: `route-${end}` });
-  const between = Math.max(0, route.length - 2);
   const badge = (
     <span className="muted">
-      {from ? `${from.name} → ${to ? to.name : '?'}${between ? ` · ${between} via` : ''}` : 'No route'}
+      {from ? `${from.name} → ${to ? to.name : '?'}` : 'No route'}
     </span>
   );
   return (

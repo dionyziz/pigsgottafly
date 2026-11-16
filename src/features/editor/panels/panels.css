@@ -34,10 +34,15 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 /* manifest */
 .ep-crew { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .ep-crew-row { display: flex; align-items: center; gap: var(--s2); padding: 8px 6px 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
-.ep-role { flex: none; font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.04em; padding: 2px 6px; border-radius: var(--r-sm); background: var(--hover); color: var(--ink-2); }
+.ep-role { flex: none; width: 36px; text-align: center; box-sizing: border-box; font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.04em; padding: 2px 6px; border-radius: var(--r-sm); background: var(--hover); color: var(--ink-2); }
 .ep-role.pic { background: var(--accent-soft); color: var(--accent); }
 .ep-crew-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.ep-crew-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ep-crew-name { display: flex; align-items: center; gap: 2px; min-width: 0; font-weight: 500; }
+.ep-crew-fullname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ep-crew-name button.icon { padding: 3px; border-radius: var(--r-sm); color: var(--muted); }
+.ep-crew-name button.icon:hover { color: var(--ink); }
+/* reset and remove keep their places on every row, with or without remove */
+.ep-crew-row .ep-row-actions { width: 56px; justify-content: flex-start; }
 .ep-crew-sub { display: flex; gap: 6px; align-items: center; }
 .ep-crew-sub select { padding: 3px 6px; font-size: var(--fs-sm); flex: 1; min-width: 0; }
 .ep-weight { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); }

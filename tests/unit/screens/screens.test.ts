@@ -175,13 +175,13 @@ describe('profile form', () => {
     enrouteAerodromeRadiusNm: null,
     mapLayers: null,
   };
-  it('never fills pilot-specific values the pilot left empty', () => {
+  it('taxi left empty at sign-up is 15 min; other pilot-specific values stay empty', () => {
     const u = toUpdate(base, true);
     expect(u).toEqual({
       fullName: 'Test Pilot',
       phone: '+30 690',
       homeAerodrome: 'LGTT',
-      settings: { taxiOutMin: null, taxiInMin: 12, reserveMin: null },
+      settings: { taxiOutMin: 15, taxiInMin: 12, reserveMin: null },
     });
   });
   it('sends the full profile outside onboarding, without the wind model', () => {

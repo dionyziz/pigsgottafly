@@ -73,7 +73,7 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
   const me = await api('GET', 'me');
   assert.equal(me.homeAerodrome, 'LGTT');
-  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin, me.settings.reserveMin], [12, null, null]);
+  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin, me.settings.reserveMin], [12, 15, null]);
 
   // flights: two upcoming (out of creation order), one past
   const day = 86400000;

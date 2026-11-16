@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: PilotSettings = {
 };
 
 /** Generic suggestions shown as input PLACEHOLDERS only; never stored without the pilot typing them. */
-export const SETTING_SUGGESTIONS = { taxiOutMin: 10, taxiInMin: 10, reserveMin: 45 } as const;
+export const SETTING_SUGGESTIONS = { taxiOutMin: 15, taxiInMin: 15, reserveMin: 45 } as const;
 
 /** Profile fields the app asks for on first use (onboarding) before anything else. */
 export function profileMissing(p: {

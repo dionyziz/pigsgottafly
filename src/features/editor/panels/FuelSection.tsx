@@ -206,7 +206,7 @@ export function FuelSection() {
           v={<span className="tnum">{fuel.landingFuelL} L</span>}
           sub={
             <span className="tnum" data-testid="fuel-landing-endurance">
-              {fmtDur(fuel.landingEnduranceMin)} left
+              {fmtDur(fuel.landingEnduranceMin)}
             </span>
           }
         />

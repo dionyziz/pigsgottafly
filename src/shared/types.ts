@@ -33,9 +33,9 @@ export type WindModel = 'ecmwf_ifs025' | 'gfs_seamless' | 'icon_seamless' | 'bes
 
 /**
  * Per-pilot planning defaults; copied into a new flight where the flight has its own field.
- * No pilot-specific values are app defaults. A new pilot starts with null here;
- * the UI asks for them (SETTING_SUGGESTIONS in constants.ts are placeholders only, never saved
- * silently). Calculations treat null as "not set" and warn.
+ * A new pilot starts with null here; sign-up saves taxi out/in as 15 min when left empty
+ * (SETTING_SUGGESTIONS in constants.ts), other fields stay null until set.
+ * Calculations treat null as "not set" and warn.
  */
 export interface PilotSettings {
   /** Block-off → take-off, minutes. null = not set yet. Copied to new flights. */

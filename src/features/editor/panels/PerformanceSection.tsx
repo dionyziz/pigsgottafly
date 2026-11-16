@@ -285,20 +285,7 @@ function Endpoint({ e }: { e: EndpointCalc }) {
                       {m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}
                     </span>
                   }
-                  sub={
-                    !extrap && !p.alternative ? undefined : (
-                      <>
-                        {extrap && <span data-testid="todr-extrapolated">{extrap}</span>}
-                        {extrap && p.alternative ? '; ' : ''}
-                        {p.alternative && (
-                          <span data-testid="todr-methods">
-                            {p.distances.method === 'afm' ? 'AFM' : 'DA'} method;{' '}
-                            {p.alternative.method === 'afm' ? 'AFM' : 'DA'} {m(p.alternative.requiredTotalM)}
-                          </span>
-                        )}
-                      </>
-                    )
-                  }
+                  sub={extrap ? <span data-testid="todr-extrapolated">{extrap}</span> : undefined}
                 />
               </>
             ) : (
@@ -316,20 +303,7 @@ function Endpoint({ e }: { e: EndpointCalc }) {
                     {m(p.distances.requiredTotalM)} / {m(p.availableTotalM)}
                   </span>
                 }
-                sub={
-                  !extrap && !p.alternative ? undefined : (
-                    <>
-                      {extrap && <span data-testid="ldr-extrapolated">{extrap}</span>}
-                      {extrap && p.alternative ? '; ' : ''}
-                      {p.alternative && (
-                        <span data-testid="ldr-methods">
-                          {p.distances.method === 'afm' ? 'AFM' : 'DA'} method;{' '}
-                          {p.alternative.method === 'afm' ? 'AFM' : 'DA'} {m(p.alternative.requiredTotalM)}
-                        </span>
-                      )}
-                    </>
-                  )
-                }
+                sub={extrap ? <span data-testid="ldr-extrapolated">{extrap}</span> : undefined}
               />
             ))}
         </div>

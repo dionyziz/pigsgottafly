@@ -477,6 +477,24 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
       ['PAX', pax.id, rearLeft, 62],
     ],
   );
+  // manifest rows line up: role tags, seat selects and the reset buttons share their columns; edit sits by the name
+  const cols = await page.eval(() =>
+    [...document.querySelectorAll('[data-testid=manifest] > li')].map((li) => {
+      const x = (sel) => Math.round(li.querySelector(sel).getBoundingClientRect().left);
+      const name = li.querySelector('.ep-crew-fullname').getBoundingClientRect();
+      const edit = li.querySelector('[data-testid$=-edit]').getBoundingClientRect();
+      return [
+        x('.ep-role'),
+        Math.round(li.querySelector('.ep-role').getBoundingClientRect().width),
+        x('[data-testid=crew-seat]'),
+        x('.ep-row-actions button'),
+        Math.round(edit.left - name.right) < 12,
+      ];
+    }),
+  );
+  assert.equal(cols.length, 2);
+  assert.deepEqual(cols[0], cols[1]);
+  assert.equal(cols[0][4], true);
   await page.waitFor(() => document.querySelectorAll('[data-testid=navlog-row]').length === 3, { timeout: 15000 });
   await sleep(500);
   await shot('4-editor');

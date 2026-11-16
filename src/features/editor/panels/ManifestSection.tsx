@@ -169,9 +169,35 @@ export function ManifestSection() {
             >
               <span className={'ep-role ' + c.role.toLowerCase()}>{c.role}</span>
               <div className="ep-crew-main">
-                <div className="ep-crew-name" title={c.snapshot.fullName}>
-                  {c.snapshot.fullName || (
-                    <span className="warn-text">{c.role === 'PIC' ? 'Your name is not set' : 'No name'}</span>
+                <div className="ep-crew-name">
+                  <span className="ep-crew-fullname" title={c.snapshot.fullName}>
+                    {c.snapshot.fullName || (
+                      <span className="warn-text">{c.role === 'PIC' ? 'Your name is not set' : 'No name'}</span>
+                    )}
+                  </span>
+                  {c.role === 'PIC' && (
+                    <button
+                      type="button"
+                      className="icon"
+                      title="Edit my details"
+                      aria-label="Edit my details"
+                      data-testid="pic-edit"
+                      onClick={() => setEditingMe(true)}
+                    >
+                      <Icon name="edit" size={14} />
+                    </button>
+                  )}
+                  {pax && (
+                    <button
+                      type="button"
+                      className="icon"
+                      title={`Edit ${pax.fullName}`}
+                      aria-label={`Edit ${pax.fullName}`}
+                      data-testid="pax-edit"
+                      onClick={() => setEditingPax(pax)}
+                    >
+                      <Icon name="edit" size={14} />
+                    </button>
                   )}
                 </div>
                 <div className="ep-crew-sub">
@@ -206,30 +232,6 @@ export function ManifestSection() {
                 </div>
               </div>
               <div className="ep-row-actions">
-                {c.role === 'PIC' && (
-                  <button
-                    type="button"
-                    className="icon"
-                    title="Edit my details"
-                    aria-label="Edit my details"
-                    data-testid="pic-edit"
-                    onClick={() => setEditingMe(true)}
-                  >
-                    <Icon name="edit" size={14} />
-                  </button>
-                )}
-                {pax && (
-                  <button
-                    type="button"
-                    className="icon"
-                    title={`Edit ${pax.fullName}`}
-                    aria-label={`Edit ${pax.fullName}`}
-                    data-testid="pax-edit"
-                    onClick={() => setEditingPax(pax)}
-                  >
-                    <Icon name="edit" size={14} />
-                  </button>
-                )}
                 {linked && (
                   <button
                     type="button"

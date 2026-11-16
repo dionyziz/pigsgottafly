@@ -115,7 +115,16 @@ export function profileUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
     homeAerodrome: home ? home.icao || home.id : null,
     settings: { taxiOutMin: f.taxiOutMin, taxiInMin: f.taxiInMin, reserveMin: f.reserveMin },
   };
-  if (welcome) return base;
+  // taxi left empty at sign-up: 15 min each way
+  if (welcome)
+    return {
+      ...base,
+      settings: {
+        ...base.settings,
+        taxiOutMin: f.taxiOutMin ?? SETTING_SUGGESTIONS.taxiOutMin,
+        taxiInMin: f.taxiInMin ?? SETTING_SUGGESTIONS.taxiInMin,
+      },
+    };
   const altn = resolveAerodrome(f.defaultAlternate);
   return {
     ...base,
