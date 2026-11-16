@@ -1,8 +1,10 @@
 // Airspace on the map: one shape for TMAs/MTMAs (ENR 2.1), aerodrome CTRs/ATZs (AD 2.17) and the ENR 5
 // navigation-warning areas (prohibited, restricted, danger, military, other activities), chart labels,
 // and which of them lie under the cursor. Pure (no map), unit-tested.
+import polygonClipping from 'polygon-clipping';
+
 import { deg, R_NM, rad } from '../../../calc';
-import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef } from '../../../shared/ref';
+import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef, RefFir } from '../../../shared/ref';
 
 /** Point at distance/bearing from a start (great circle), [lon, lat]. */
 export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
@@ -111,14 +113,44 @@ function bboxOf(ring: [number, number][]): [number, number, number, number] {
   return [w, s, e, n];
 }
 
+/** The AIP limits this airspace by the FIR boundary ("limited to East by ATHINAI - ISTANBUL FIR boundaries"). */
+const FIR_LIMITED = /\bFIR\b/i;
+
+/** The FIR as a closed [lon, lat] ring, for clipping. */
+export function firRing(fir: RefFir | undefined): [number, number][] | null {
+  return fir && fir.boundary.length >= 3
+    ? closed(fir.boundary.map(([lat, lon]) => [lon, lat] as [number, number]))
+    : null;
+}
+
+/** The part of `ring` inside the FIR (its largest piece); the ring itself when nothing is left or no FIR. */
+export function clipToFir(ring: [number, number][], fir: [number, number][] | null): [number, number][] {
+  if (!fir) return ring;
+  const pieces = polygonClipping.intersection([ring], [fir]);
+  let best: [number, number][] | null = null;
+  let bestArea = 0;
+  for (const [outer] of pieces) {
+    const a = Math.abs(ringArea(outer));
+    if (a > bestArea) [best, bestArea] = [outer, a];
+  }
+  return best ? closed(best) : ring;
+}
+
+function ringArea(r: [number, number][]): number {
+  let a = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]);
+  return a / 2;
+}
+
 function closed(ring: [number, number][]): [number, number][] {
   if (!ring.length) return ring;
   const [f, l] = [ring[0], ring[ring.length - 1]];
   return f[0] === l[0] && f[1] === l[1] ? ring : [...ring, f];
 }
 
-export function fromTma(s: RefAirspace): AirspaceInfo {
-  const ring = closed(s.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
+export function fromTma(s: RefAirspace, fir: [number, number][] | null = null): AirspaceInfo {
+  let ring = closed(s.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
+  if (FIR_LIMITED.test(s.note ?? '')) ring = clipToFir(ring, fir);
   const type: AirspaceType = s.kind === 'MTMA' ? 'MTMA' : 'TMA';
   return {
     id: s.id,
@@ -138,12 +170,13 @@ export function fromTma(s: RefAirspace): AirspaceInfo {
   };
 }
 
-export function fromAd(z: RefAdAirspace): AirspaceInfo | null {
+export function fromAd(z: RefAdAirspace, fir: [number, number][] | null = null): AirspaceInfo | null {
   let ring: [number, number][];
   if (z.circle) ring = circleRing(z.circle.lat, z.circle.lon, z.circle.radiusNm, 72);
   else if (z.polygon && z.polygon.length >= 3)
     ring = closed(z.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
   else return null;
+  if (FIR_LIMITED.test(`${z.lateral} ${z.lateralNote ?? ''}`)) ring = clipToFir(ring, fir);
   const notes: string[] = [];
   if (z.lateralNote) notes.push(z.lateralNote);
   if (z.verticalNote) notes.push(z.verticalNote);
@@ -200,10 +233,16 @@ export function fromArea(a: RefArea): AirspaceInfo | null {
 }
 
 /** All airspace shown on the map: TMAs/MTMAs, then CTRs and ATZs, then the ENR 5 areas. */
-export function airspaceInfos(tmas: RefAirspace[], ad: RefAdAirspace[] = [], areas: RefArea[] = []): AirspaceInfo[] {
-  const out = tmas.filter((s) => s.polygon.length >= 3).map(fromTma);
+export function airspaceInfos(
+  tmas: RefAirspace[],
+  ad: RefAdAirspace[] = [],
+  areas: RefArea[] = [],
+  fir?: RefFir,
+): AirspaceInfo[] {
+  const firR = firRing(fir);
+  const out = tmas.filter((s) => s.polygon.length >= 3).map((s) => fromTma(s, firR));
   for (const z of ad) {
-    const i = fromAd(z);
+    const i = fromAd(z, firR);
     if (i) out.push(i);
   }
   for (const a of areas) {

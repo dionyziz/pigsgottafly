@@ -239,7 +239,7 @@ export interface RefAdAirspace {
   circle?: { lat: number; lon: number; radiusNm: number };
   /** Closed ring, [lat, lon] (arcs written out). */
   polygon?: [number, number][];
-  /** e.g. 'Limited to East by ATHINAI - ISTANBUL FIR boundaries' (the drawn circle is not clipped). */
+  /** e.g. 'Limited to East by ATHINAI - ISTANBUL FIR boundaries' (the drawn shape is clipped to the FIR). */
   lateralNote?: string;
   verticalNote?: string;
   units: RefAtcUnitRef[];

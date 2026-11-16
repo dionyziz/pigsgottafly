@@ -259,7 +259,7 @@ export function RouteMap(props: RouteMapProps) {
 
   // Everything the (once-bound) map handlers read.
   const allInfos = useMemo(
-    () => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? []),
+    () => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? [], refData.fir),
     [refData],
   );
   const airInfos = useMemo(() => allInfos.filter((a) => airspaceShown(layers, a.type)), [allInfos, layers]);
@@ -361,7 +361,7 @@ export function RouteMap(props: RouteMapProps) {
       addSymbols(m);
       const { refData: r, waypoints: w } = live.current.props;
       const variation = magneticVariation(38, 24, new Date().toISOString().slice(0, 10));
-      setData(m, 'airspaces', airspaceFeatures(r.airspaces));
+      setData(m, 'airspaces', airspaceFeatures(allInfos));
       setData(m, 'zones', zoneFeatures(allInfos));
       setData(m, 'areas', areaFeatures(live.current.airInfos));
       setData(m, 'fir', firFeatures(r.fir));

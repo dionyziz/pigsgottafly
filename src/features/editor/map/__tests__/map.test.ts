@@ -4,13 +4,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { distanceNm } from '../../../../calc';
-import { AD_AIRSPACES, AERODROMES, AIRSPACES, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
+import { AD_AIRSPACES, AERODROMES, AIRSPACES, FIR, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import type { RoutePoint, Waypoint } from '../../../../shared';
 import { legKey } from '../../../../shared';
 import {
   airspaceInfos,
   airspaceLabel,
   airspacesAt,
+  contains,
+  firRing,
   fmtVertical,
   fmtVLimit,
   fromArea,
@@ -358,7 +360,7 @@ describe('map GeoJSON', () => {
     for (const [x, y] of ring) expect(distanceNm({ lat: 38, lon: 23.7 }, { lat: y, lon: x })).toBeCloseTo(5, 6);
   });
   it('airspace polygons are closed rings in [lon, lat] with chart labels', () => {
-    const f = airspaceFeatures(AIRSPACES);
+    const f = airspaceFeatures(airspaceInfos(AIRSPACES));
     expect(f.features.length).toBe(AIRSPACES.length);
     const ath = f.features.find((x) => x.properties.id === 'ATHINAI-TMA-1')!;
     const ring = ath.geometry.coordinates[0];
@@ -399,8 +401,46 @@ describe('airspace on the map', () => {
     expect(airspaceLabel({ name: 'DEKELIA TATOI MIL ATZ', cls: 'D', lower: 'SFC', upper: '5000 FT' })).toBe(
       'DEKELIA TATOI MIL ATZ · D · SFC – 5000 ft',
     );
-    const tma = airspaceFeatures(AIRSPACES).features.find((f) => f.properties.id === 'ATHINAI-TMA-1')!;
+    const tma = airspaceFeatures(airspaceInfos(AIRSPACES)).features.find((f) => f.properties.id === 'ATHINAI-TMA-1')!;
     expect(tma.properties.label).toMatch(/^ATHINAI TMA · [A-G] · \d+ ft AGL – FL\d{3}$/);
+  });
+  it('airspace the AIP limits by the FIR boundary stops at it (Samos, Alexandroupolis); the rest is untouched', () => {
+    const fir = firRing(FIR)!;
+    const clipped = airspaceInfos(AIRSPACES, AD_AIRSPACES, [], FIR);
+    const byId = (id: string) => clipped.find((a) => a.id === id)!;
+    for (const id of [
+      'SAMOS-TMA-1',
+      'LGSM-CTR',
+      'LGSM-ATZ',
+      'ALEXANDROUPOLIS-TMA-1',
+      'LGAL-CTR',
+      'LGKO-CTR',
+      'LGHI-CTR',
+    ]) {
+      const a = byId(id);
+      // every vertex inside the FIR or on its boundary
+      const toEdge = (x: number, y: number) =>
+        Math.min(
+          ...fir.slice(1).map(([bx, by], k) => {
+            const [ax, ay] = fir[k];
+            const t = Math.max(
+              0,
+              Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2 || 1)),
+            );
+            return Math.hypot(ax + t * (bx - ax) - x, ay + t * (by - ay) - y);
+          }),
+        );
+      for (const [x, y] of a.ring) if (!pointInRing(x, y, fir)) expect(toEdge(x, y)).toBeLessThan(1e-6);
+    }
+    // Kuşadası and Didim (Türkiye) are not in the Samos TMA; the aerodromes still are in their zones
+    expect(contains(byId('SAMOS-TMA-1'), 27.26, 37.86)).toBe(false);
+    expect(contains(byId('SAMOS-TMA-1'), 27.26, 37.38)).toBe(false);
+    expect(contains(byId('LGSM-ATZ'), 26.9122, 37.6892)).toBe(true);
+    expect(contains(byId('LGAL-CTR'), 25.9561, 40.8558)).toBe(true);
+    expect(contains(byId('ALEXANDROUPOLIS-TMA-1'), 26.3, 40.85)).toBe(false); // east of the Evros
+    expect(contains(byId('ALEXANDROUPOLIS-TMA-1'), 26.1, 40.85)).toBe(true); // west of it
+    // not FIR-limited: same shape with or without the FIR
+    expect(byId('LGLR-CTR').ring).toEqual(infos.find((a) => a.id === 'LGLR-CTR')!.ring);
   });
   it('zones are drawn as published: CTR and ATZ apart, with class (LGLR is a CTR of 10 NM and an ATZ of 7 NM)', () => {
     const f = zoneFeatures(infos).features;

@@ -3,12 +3,15 @@
 
 /* hangar list */
 .ac-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--s4); }
-.ac-card { display: flex; flex-direction: column; overflow: visible; transition: box-shadow 0.15s; }
+.ac-card { position: relative; display: flex; flex-direction: column; overflow: visible; transition: box-shadow 0.15s; }
+/* the registration link covers the whole card; the menu sits above it */
+.ac-card-link::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+.ac-card-link:hover { text-decoration: none; }
+.ac-card .kebab { position: relative; z-index: 1; }
 .ac-card:hover { box-shadow: var(--shadow); }
 .ac-card-head { display: flex; align-items: center; gap: var(--s2); padding: 14px 10px 0 18px; }
 .ac-card .reg { font-size: var(--fs-xl); font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
 .ac-card-body { display: flex; flex-direction: column; gap: var(--s3); padding: 4px 18px 16px; color: var(--ink); flex: 1; }
-.ac-card-body:hover { text-decoration: none; }
 .ac-card .type { font-size: var(--fs-sm); color: var(--ink-2); }
 .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px var(--s4); margin: 0; }
 .figs div { display: flex; flex-direction: column; }

@@ -383,6 +383,42 @@ test('aircraft page: layout, autosave, item 18, fuels, photo and documents', asy
   );
   await shot('hangar-cards');
 
+  // the whole card opens the aircraft; the menu still opens the menu
+  const at = (sel, fx, fy) =>
+    page.eval(
+      (s, a, b) => {
+        const r = document.querySelector(s).getBoundingClientRect();
+        return [r.left + r.width * a, r.top + r.height * b];
+      },
+      sel,
+      fx,
+      fy,
+    );
+  const click = async ([x, y]) => {
+    for (const type of ['mousePressed', 'mouseReleased'])
+      await page.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
+  };
+  const card = `[data-aircraft-id="${ac.id}"]`;
+  await click(await at(`${card} .kebab button`, 0.5, 0.5));
+  await page.waitFor(() => !!document.querySelector('.kebab .menu'));
+  assert.equal(new URL(await page.eval(() => location.href)).pathname, '/hangar');
+  await page.send('Input.dispatchKeyEvent', {
+    type: 'keyDown',
+    key: 'Escape',
+    code: 'Escape',
+    windowsVirtualKeyCode: 27,
+  });
+  await page.waitFor(() => !document.querySelector('.kebab .menu'));
+  for (const [fx, fy] of [
+    [0.97, 0.98], // bottom-right corner, past the chips
+    [0.6, 0.45], // header row, between the registration and the menu
+  ]) {
+    await click(await at(card, fx, fy));
+    await page.waitFor((id) => location.pathname === `/hangar/${id}`, { args: [ac.id] });
+    await page.goto(`${server.url}/hangar`);
+    await page.waitFor((s) => !!document.querySelector(s), { args: [card] });
+  }
+
   // phone width: the header fits, no horizontal scroll
   await page.viewport(390, 844);
   await page.goto(`${server.url}/hangar/${ac.id}`);

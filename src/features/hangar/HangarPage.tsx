@@ -100,7 +100,7 @@ export function HangarPage() {
             const seats = a.massBalance.stations.flatMap((s) => (s.kind === 'seat' ? s.seats || [] : [])).length;
             return (
               <div key={a.id} className="ac-card card" data-aircraft-id={a.id}>
-                <Link to={`/hangar/${a.id}`} className="ac-card-photo" tabIndex={-1} aria-hidden="true">
+                <div className="ac-card-photo">
                   <AircraftPhoto
                     aircraftId={a.id}
                     photo={a.photo}
@@ -108,9 +108,9 @@ export function HangarPage() {
                     className="card-top"
                     alt=""
                   />
-                </Link>
+                </div>
                 <div className="ac-card-head">
-                  <Link to={`/hangar/${a.id}`} className="reg mono">
+                  <Link to={`/hangar/${a.id}`} className="reg mono ac-card-link">
                     {a.registration}
                   </Link>
                   {isDefault && <Chip tone="ok">Default</Chip>}
@@ -137,7 +137,7 @@ export function HangarPage() {
                     <SharedChip access={a.access} />
                   </div>
                 )}
-                <Link to={`/hangar/${a.id}`} className="ac-card-body">
+                <div className="ac-card-body">
                   <div className="type">
                     {a.makeModel || <span className="muted">Type not set</span>}
                     {a.icaoType && (
@@ -190,7 +190,7 @@ export function HangarPage() {
                     )}
                   </div>
                   {miss.length > 0 && <div className="hint missing">Not set: {miss.join(', ')}</div>}
-                </Link>
+                </div>
               </div>
             );
           })}

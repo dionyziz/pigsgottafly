@@ -3,7 +3,7 @@
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 
 import type { RoutePoint, Waypoint } from '../../../shared';
-import type { RefAerodrome, RefAirspace, RefFir, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
+import type { RefAerodrome, RefFir, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import { type AirspaceInfo, airspaceLabel, fmtVertical, isArea } from './airspace';
 import { mercatorMid } from './routeEdit';
 import { aerodromeName } from './snap';
@@ -102,25 +102,16 @@ export function fmtLimit(s: string): string {
 }
 
 /** TMA/MTMA polygons with a chart label "ATHINAI TMA · D · 1000 ft AGL – FL155". */
-export function airspaceFeatures(airspaces: RefAirspace[]): FC<Polygon> {
+export function airspaceFeatures(infos: AirspaceInfo[]): FC<Polygon> {
   return fc(
-    airspaces
-      .filter((s) => s.polygon.length >= 3)
-      .map((s) => {
-        const ring = s.polygon.map(([lat, lon]) => [lon, lat] as [number, number]);
-        const [f, l] = [ring[0], ring[ring.length - 1]];
-        if (f[0] !== l[0] || f[1] !== l[1]) ring.push(f);
-        return {
-          type: 'Feature',
-          id: s.id,
-          geometry: { type: 'Polygon', coordinates: [ring] },
-          properties: {
-            id: s.id,
-            kind: s.kind,
-            label: airspaceLabel({ name: s.name, cls: s.class, lower: s.lower, upper: s.upper }),
-          },
-        };
-      }),
+    infos
+      .filter((s) => s.type === 'TMA' || s.type === 'MTMA')
+      .map((s) => ({
+        type: 'Feature',
+        id: s.id,
+        geometry: { type: 'Polygon', coordinates: [s.ring] },
+        properties: { id: s.id, kind: s.type, label: airspaceLabel(s) },
+      })),
   );
 }
 
