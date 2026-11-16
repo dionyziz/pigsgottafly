@@ -125,9 +125,12 @@ src/
     profile/               ProfilePage (?welcome=1 = first-use onboarding; embeds PersonFields; follows the pilot until edited),
                            AccountSection (download my data, delete account with a typed confirmation)
     legal/                 /privacy and /terms (public, no sign-in; linked from the sign-in screen and the account menu)
-    hangar/                HangarPage, AircraftPage (inputs named by their issue path: a save-bar issue focuses its input,
-                           issueTarget); stations, envelope points, compass cards and their points reorder by drag handle;
-                           AircraftFiles (photo, DocumentsSection for any FileScope), ShareDialog (aircraft or operator)
+    hangar/                HangarPage, AircraftPage (autosave: useAutosave, debounced PUT of the whole aircraft, on blur,
+                           Ctrl+S and leaving; "Saving…/Saved" by the registration; a bar only for errors (links focus
+                           their inputs, issueTarget: inputs are named by their issue path) or a failed save (Retry);
+                           useScrollSpy: the section nav follows the scroll); stations, envelope points, compass cards
+                           and their points reorder by drag handle; AircraftFiles (photo, else the aircraft's placeholder
+                           picture public/aircraft/placeholder-N.webp; DocumentsSection for any FileScope), ShareDialog
     operators/             OperatorsPage (useEntity('operators')), OperatorPage (details, W&B/performance requirement,
                            documents, aircraft, who has access), OperatorPicker (the aircraft page's operator dropdown
                            with "New operator…")
@@ -201,7 +204,8 @@ api/
                            030_mail_log.ts (every e-mail sent for a pilot, for the sending caps),
                            031_mail_log_details.ts (the e-mail action log: recipient, subject, result, message id, error;
                            app mails without a pilot), 032_rate_limits.ts (token buckets; indexes for the upload sweep),
-                           040_app_errors.ts (app_errors, app_error_alerts; IF NOT EXISTS)
+                           040_app_errors.ts (app_errors, app_error_alerts; IF NOT EXISTS),
+                           043_aircraft_placeholder.ts (aircraft.placeholder 1–3: random at creation, backfilled)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form; HCAA_DAILY_CAP
                            (default 200) for all pilots together; signing links 60/24 h and 20 per flight
@@ -276,12 +280,12 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | DELETE | /me | `{confirm: <account e-mail>}` (local mode `"delete"`): deletes the pilot and everything they own (routes/account.ts: every table's `pilot_id` rows, then the pilot with its cascades; owned aircraft go even when shared), ends all sessions, clears the cookie. |
 | GET | /me/export | Everything the pilot owns as a JSON download (GDPR portability; files listed without their bytes). |
 | GET, POST | /aircraft | List (by registration): own and shared aircraft, each with `access` (`HangarAircraft`: role, owner); create from `AircraftInput` (you own it). 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
-| GET, PUT, DELETE | /aircraft/:id | GET: any access; PUT: owner or editor (403 for viewers); DELETE: owner only. PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); files no card references are deleted on PUT. POST drops `report` references. |
+| GET, PUT, DELETE | /aircraft/:id | GET: any access; PUT: owner or editor (403 for viewers); DELETE: owner only. PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); on PUT, reports the stored cards referenced and these do not are deleted, and unreferenced uploads older than 30 min (a save may leave before an upload ends). POST drops `report` references. |
 | GET, POST | /aircraft/:id/shares | Sharing (`src/shared/sharing.ts`): GET anyone with access (owner first); POST `{email, role: 'view'\|'edit'}` by owner/editor → 201. 404 for an e-mail with no account (case-insensitive), 400 for yourself or the owner, 409 when they already have access. |
 | PUT, DELETE | /aircraft/:id/shares/:pilotId | Change the role / remove (owner or editor); anyone may remove themselves ("remove from my hangar"). The owner is not a share. Removing clears that pilot's default if it was this aircraft. |
 | POST | /aircraft/:id/attachments | (editor or owner) `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
 | GET, DELETE | /aircraft/:id/attachments/:fileId | GET returns `Attachment` (`AttachmentRef` + base64 `data`). |
-| GET | /aircraft/:id/files | `AircraftFiles` {photo, documents} (anyone with access). The aircraft list/get also carry `photo`. |
+| GET | /aircraft/:id/files | `AircraftFiles` {photo, documents} (anyone with access). The aircraft list/get also carry `photo` and `placeholder` (1–3, the picture shown without a photo; set at creation, never changed). |
 | POST | /aircraft/:id/files | (editor or owner) `AircraftFileStart` {kind photo (JPEG/PNG/WebP ≤ 5 MB, resized to 1600 px in the browser) or document (PDF ≤ 80 MB), name, title, mime, size} → 201 `AircraftFile` (incomplete). |
 | PUT | /aircraft/:id/files/:fileId/chunks/:seq | (editor or owner) `{data}` base64, `AIRCRAFT_FILE_CHUNK_BYTES` (2 MiB) each but the last: a POH never needs a request above the ~4.5 MB serverless limit. |
 | POST | /aircraft/:id/files/:fileId/complete | All chunks in → the file is listed; a new photo replaces the old. |

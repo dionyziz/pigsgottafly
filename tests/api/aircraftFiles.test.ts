@@ -107,14 +107,34 @@ describe('aircraft documents and photo', () => {
     const ac = (await owner.call('GET', `aircraft/${acId}`)).body;
     const report = await owner.call('POST', `aircraft/${acId}/attachments`, { name: 'swing.pdf', mime: 'application/pdf', data: Buffer.from('%PDF-1.4').toString('base64') });
     expect(report.status).toBe(201);
-    const { id: _i, created: _c, updated: _u, access: _a, photo: _p, ...input } = ac;
+    const { id: _i, created: _c, updated: _u, access: _a, photo: _p, placeholder: _ph, ...input } = ac;
     expect((await owner.call('PUT', `aircraft/${acId}`, input)).status).toBe(200);
     const files = (await owner.call('GET', `aircraft/${acId}/files`)).body;
     expect(files.photo).not.toBeNull();
     expect(files.documents).toHaveLength(1);
-    expect((await owner.call('GET', `aircraft/${acId}/attachments/${report.body.id}`)).status).toBe(404); // the unreferenced report went
+    // the unreferenced report is new: kept for now (attachments.test.ts: deleted after the grace period)
+    expect((await owner.call('GET', `aircraft/${acId}/attachments/${report.body.id}`)).status).toBe(200);
     // the document routes do not serve swing reports, nor the report routes documents
     expect((await owner.call('GET', `aircraft/${acId}/attachments/${files.documents[0].id}`)).status).toBe(404);
+  });
+
+  test('every aircraft has a placeholder picture 1–3, chosen at creation and kept through saves and photo changes', async () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 12; i++) {
+      const r = await owner.call('POST', 'aircraft', { ...fleetSeed()[1], registration: `SX-PH${i}` });
+      expect(r.status).toBe(201);
+      expect([1, 2, 3]).toContain(r.body.placeholder);
+      seen.add(r.body.placeholder);
+      // kept: a save cannot change it
+      const put = await owner.call('PUT', `aircraft/${r.body.id}`, { notes: 'x', placeholder: r.body.placeholder === 1 ? 2 : 1 });
+      expect(put.body.placeholder).toBe(r.body.placeholder);
+      expect((await viewer.call('GET', 'aircraft')).status).toBe(200);
+      expect((await owner.call('GET', 'aircraft')).body.find((x: any) => x.id === r.body.id).placeholder).toBe(r.body.placeholder);
+      expect((await owner.call('DELETE', `aircraft/${r.body.id}`)).status).toBe(204);
+    }
+    expect(seen.size).toBeGreaterThan(1); // random (1 in 3^11 to fail by chance)
+    const shown = (await owner.call('GET', `aircraft/${acId}`)).body.placeholder;
+    expect((await viewer.call('GET', `aircraft/${acId}`)).body.placeholder).toBe(shown);
   });
 
   test('removing a document; deleting the aircraft removes its files', async () => {

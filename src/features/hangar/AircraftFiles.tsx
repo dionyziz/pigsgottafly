@@ -1,4 +1,4 @@
-// The aircraft's photo (hangar cards, aircraft page header) and documents (POH/AFM and other PDFs,
+// The aircraft's photo or its placeholder picture (hangar cards, aircraft page header) and documents (POH/AFM and other PDFs,
 // read in an in-app viewer). Content comes and goes in chunks (src/data/aircraftFiles.ts). Anyone
 // with access sees them; owners and editors add, replace, rename and remove. The documents section
 // and the PDF viewer also serve an operator's documents (operations manual): they take a FileScope.
@@ -7,7 +7,7 @@ import { isoDay as fmtDate } from '../../shared/date';
 import { errorMessage, fmtSize } from '../../shared/format';
 import { aircraftScope, fileBlob, resizePhoto, saveBlob, uploadFile, type FileScope } from '../../data/aircraftFiles';
 import { DOCUMENT_MAX_BYTES, PHOTO_TYPES, type AircraftFile } from '../../shared/types';
-import { FilePicker, Loading, PdfViewer, RowRemove } from '../../ui';
+import { FilePicker, Icon, Loading, PdfViewer, RowRemove } from '../../ui';
 import { Section } from './fields';
 
 
@@ -39,28 +39,26 @@ function useFileUrl(scope: FileScope, f: AircraftFile | null | undefined): strin
   return url;
 }
 
-/** Neutral placeholder: a light-aircraft outline. */
-function PhotoPlaceholder() {
-  return (
-    <svg viewBox="0 0 64 40" aria-hidden="true" className="ac-photo-ph">
-      <path d="M6 22h22l6-12h4l-2 12h14l4-6h3l-1 8 1 8h-3l-4-6H36l2 12h-4l-6-12H6c-2 0-3-1-3-2s1-2 3-2z" fill="currentColor" />
-    </svg>
-  );
-}
+/** The picture shown without a photo: public/aircraft/placeholder-N.webp (N stored with the aircraft, 1–3). */
+export const placeholderUrl = (n: number | undefined) => `/aircraft/placeholder-${n && n >= 1 && n <= 3 ? Math.round(n) : 1}.webp`;
 
-/** The aircraft's photo (or the placeholder), filling its box: className 'card-top' (hangar card) or 'head'. */
-export function AircraftPhoto({ aircraftId, photo, className = '', alt }: { aircraftId: string; photo: AircraftFile | null | undefined; className?: string; alt: string }) {
+/** The aircraft's photo (or its placeholder picture), cover-cropped in its box: className 'card-top' (hangar card) or 'head'. */
+export function AircraftPhoto({ aircraftId, photo, placeholder, className = '', alt }: {
+  aircraftId: string; photo: AircraftFile | null | undefined; placeholder?: number; className?: string; alt: string;
+}) {
   const url = useFileUrl(aircraftScope(aircraftId), photo);
   return (
     <div className={'ac-photo ' + className} data-testid="aircraft-photo">
-      {photo && url ? <img src={url} alt={alt} /> : <PhotoPlaceholder />}
+      {photo && url ? <img src={url} alt={alt} />
+        : photo ? null
+        : <img src={placeholderUrl(placeholder)} alt="" className="ph" data-testid="aircraft-placeholder" />}
     </div>
   );
 }
 
-/** Header photo with add / change / remove for owners and editors. */
-export function PhotoControl({ aircraftId, registration, photo, canEdit, onChange }: {
-  aircraftId: string; registration: string; photo: AircraftFile | null | undefined; canEdit: boolean; onChange: (p: AircraftFile | null) => void;
+/** Header photo; owners and editors add or change it from an overlay on hover, and remove it. */
+export function PhotoControl({ aircraftId, registration, photo, placeholder, canEdit, onChange }: {
+  aircraftId: string; registration: string; photo: AircraftFile | null | undefined; placeholder?: number; canEdit: boolean; onChange: (p: AircraftFile | null) => void;
 }) {
   const [busy, setBusy] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -83,17 +81,21 @@ export function PhotoControl({ aircraftId, registration, photo, canEdit, onChang
     try { await aircraftScope(aircraftId).files.remove(aircraftId, photo.id); onChange(null); } catch (e) { setErr(errorMessage(e)); }
   };
   return (
-    <div className="ac-head-photo">
-      <AircraftPhoto aircraftId={aircraftId} photo={photo} className="head" alt={`${registration}`} />
+    <div className={'ac-head-photo' + (canEdit ? ' editable' : '') + (busy !== null ? ' busy' : '')}>
+      <AircraftPhoto aircraftId={aircraftId} photo={photo} placeholder={placeholder} className="head" alt={registration} />
       {canEdit && (
-        <div className="ac-photo-tools">
-          <FilePicker accept={PHOTO_TYPES.join(',')} onPick={(f) => void pick(f)} disabled={busy !== null} className="ghost sm" testId="photo-pick" inputTestId="photo-file">
-            {busy !== null ? `Uploading ${Math.round(busy * 100)}%` : photo ? 'Change photo' : 'Add photo'}
+        <>
+          <FilePicker accept={PHOTO_TYPES.join(',')} onPick={(f) => void pick(f)} disabled={busy !== null} className="ac-photo-overlay" testId="photo-pick" inputTestId="photo-file">
+            {busy !== null ? `${Math.round(busy * 100)}%` : <><Icon name="upload" size={14} />{photo ? 'Change photo' : 'Add photo'}</>}
           </FilePicker>
-          {photo && busy === null && <button type="button" className="ghost sm danger" onClick={() => void remove()}>Remove</button>}
-        </div>
+          {photo && busy === null && (
+            <button type="button" className="icon ac-photo-remove" onClick={() => void remove()} aria-label="Remove photo" title="Remove photo" data-testid="photo-remove">
+              <Icon name="trash" size={13} />
+            </button>
+          )}
+        </>
       )}
-      {err && <span className="issue error" role="alert">{err}</span>}
+      {err && <span className="issue error ac-photo-err" role="alert">{err}</span>}
     </div>
   );
 }

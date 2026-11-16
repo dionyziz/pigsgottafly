@@ -71,7 +71,7 @@ export const routes: Route[] = [
       const { id: _i, created: _c, updated: _u, ...cur } = toAircraft(row);
       const a = aircraftInput(await body(), cur);
       await checkOperator(db, pilot.id, a, cur.operatorId);
-      const { cards, unused } = await checkReports(db, ownerId, params.id, a.compassCards);
+      const { cards, unused } = await checkReports(db, ownerId, params.id, a.compassCards, cur.compassCards);
       a.compassCards = cards;
       await write(db, ownerId, params.id, a, false);
       // swing reports no card refers to any more (replaced, removed, or uploaded and never saved)

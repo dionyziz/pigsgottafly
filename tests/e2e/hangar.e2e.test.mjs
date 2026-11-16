@@ -1,7 +1,9 @@
-// End-to-end test of the aircraft page: the stations grid lines up, the envelope charts scroll with
-// their tables (not sticky), the item 18 field warns only about indicators the flight plan drops,
-// the approved fuels, and the photo and documents (chunked upload through the file inputs, the PDF
-// opened in the in-app viewer).
+// End-to-end test of the aircraft page: the header lines up with the body, edits save on their own
+// (no save bar; a bar only for errors, with links to their fields), the section nav follows the
+// scroll, the stations grid lines up, the envelope charts scroll with their tables (not sticky), the
+// item 18 field warns only about indicators the flight plan drops, the approved fuels, the placeholder
+// picture and the photo, and documents (chunked upload through the file inputs, the PDF opened in the
+// in-app viewer).
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -18,6 +20,17 @@ before(async () => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pgf-hangar-'));
 });
 after(async () => { await page?.close(); await browser?.close(); await server?.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
+const shot = async (name) => { if (process.env.SHOTS) await page.screenshot(name, { fullPage: false }); };
+/** Polls an async condition (in node) until it holds. */
+async function until(fn, timeout = 10000) {
+  const end = Date.now() + timeout;
+  for (;;) {
+    const v = await fn();
+    if (v) return v;
+    if (Date.now() > end) throw new Error('until: timed out');
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
 
 const api = async (method, p, body) => {
   const r = await fetch(`${server.url}/api/${p}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -38,13 +51,61 @@ function pdfFile(bytes) {
   return { f, buf };
 }
 
-test('aircraft page: layout, item 18, fuels, photo and documents', async () => {
+test('aircraft page: layout, autosave, item 18, fuels, photo and documents', async () => {
   await api('PUT', 'me', { fullName: 'Test Pilot', phone: '+30 690 000 0000', homeAerodrome: 'LGTT' });
   const [asv] = fleetSeed();
   const ac = await api('POST', 'aircraft', { ...asv, equipment: { ...asv.equipment, item18Extras: 'NAV/SBAS RMK/GARMIN GNS430W' } });
   await page.viewport(1400, 1000);
   await page.goto(`${server.url}/hangar/${ac.id}`);
   await page.waitFor(() => !!document.querySelector('[data-testid=aircraft-page]'));
+
+  // header: the back arrow over the section nav, the photo's left edge on the cards' left edge
+  const head = await page.eval(() => {
+    const r = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom }; };
+    return { back: r('.ac-head .back'), nav: r('.ac-nav'), photo: r('.ac-photo.head'), card: r('#identity'), h1: r('.ac-title h1') };
+  });
+  assert.ok(head.back.left >= head.nav.left - 1 && head.back.right <= head.nav.right + 1, 'back arrow over the nav');
+  assert.ok(Math.abs(head.photo.left - head.card.left) <= 1, `photo left ${head.photo.left} vs card left ${head.card.left}`);
+  assert.ok(head.h1.left > head.photo.right, 'registration beside the photo');
+  // no photo yet: the aircraft's own placeholder picture, and "Add photo" inside the box
+  assert.ok([1, 2, 3].includes(ac.placeholder), `placeholder ${ac.placeholder}`);
+  await page.waitFor((n) => {
+    const i = document.querySelector('.ac-photo.head [data-testid=aircraft-placeholder]');
+    return i && i.complete && i.naturalWidth === 800 && i.getAttribute('src') === `/aircraft/placeholder-${n}.webp`;
+  }, { args: [ac.placeholder] });
+  const overlay = await page.eval(() => {
+    const o = document.querySelector('[data-testid=photo-pick]').getBoundingClientRect();
+    const p = document.querySelector('.ac-photo.head').getBoundingClientRect();
+    return { inside: o.left >= p.left - 1 && o.right <= p.right + 1 && o.top >= p.top - 1 && o.bottom <= p.bottom + 1, text: document.querySelector('[data-testid=photo-pick]').textContent };
+  });
+  assert.deepEqual(overlay, { inside: true, text: 'Add photo' });
+  // nothing edited: no status, no bar
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=save-status]').textContent), '');
+  assert.equal(await page.eval(() => !!document.querySelector('.ac-savebar, [data-testid=problem-bar]')), false);
+  await shot('aircraft-head');
+  const ph = await page.eval(() => { const b = document.querySelector('.ac-head-photo').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: ph[0], y: ph[1] });
+  await page.waitFor(() => getComputedStyle(document.querySelector('[data-testid=photo-pick]')).opacity === '1');
+  await shot('aircraft-head-hover');
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 5, y: 600 });
+
+  // the section nav follows the scroll; a click scrolls there and puts it in the URL
+  const activeNav = () => page.eval(() => document.querySelector('.ac-nav a.active > span')?.textContent);
+  assert.equal(await activeNav(), 'Identity');
+  await page.eval(() => { const e = document.getElementById('fuel'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 80); });
+  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Fuel');
+  await page.eval(() => { const e = document.getElementById('mb'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 80); });
+  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Mass and balance');
+  await shot('aircraft-scrollspy');
+  await page.eval(() => [...document.querySelectorAll('.ac-nav a')].find((a) => a.firstChild.textContent === 'Performance').click());
+  await page.waitFor(() => location.hash === '#performance' && document.querySelector('.ac-nav a.active > span')?.textContent === 'Performance');
+  await page.waitFor(() => Math.abs(document.getElementById('performance').getBoundingClientRect().top - 80) < 40, { timeout: 5000 });
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.equal(await activeNav(), 'Performance');
+  await page.eval(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Documents');
+  await page.eval(() => window.scrollTo(0, 0));
+  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Identity');
 
   // item 18: NAV/ and RMK/ are kept by the flight plan, so no warning
   assert.equal(await page.eval(() => [...document.querySelectorAll('#fpl .issue')].map((e) => e.textContent).join('|')), '');
@@ -80,22 +141,34 @@ test('aircraft page: layout, item 18, fuels, photo and documents', async () => {
   await mouse('mouseMoved', [from[0], (from[1] + to[1]) / 2]);
   await mouse('mouseMoved', to);
   await mouse('mouseReleased', to);
-  await page.waitFor(() => !!document.querySelector('.ac-savebar.dirty'));
-  await page.key('s', 2); // Ctrl+S
-  await page.waitFor(() => !document.querySelector('.ac-savebar.dirty'));
-  assert.deepEqual(await ids(), [before[1], before[0], ...before.slice(2)]);
+  // saved on its own: "Saved" next to the registration, and no save bar
+  await until(async () => JSON.stringify(await ids()) === JSON.stringify([before[1], before[0], ...before.slice(2)]));
+  await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved');
+  assert.equal(await page.eval(() => !!document.querySelector('.ac-savebar, [data-testid=problem-bar]')), false);
 
-  // a save-bar issue focuses its own input
+  // typing: one save after the pause, with the whole text
+  await page.eval(() => window.scrollTo(0, 0));
+  await page.type('input[name=colours]', 'WHITE RED STRIPES');
+  await page.waitFor(() => /Saving/.test(document.querySelector('[data-testid=save-status]')?.textContent));
+  await shot('aircraft-saving');
+  await until(async () => (await api('GET', `aircraft/${ac.id}`)).colours === 'WHITE RED STRIPES');
+  await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved');
+
+  // an error holds the save back: a bar lists it, and its link focuses the input
   await page.eval(() => window.scrollTo(0, document.body.scrollHeight));
   await page.type('input[name="fuel.usableL"]', '999');
   await page.blur();
-  await page.click('.issue-sum');
-  await page.waitFor(() => !!document.querySelector('[data-testid=issue-go]'));
-  await page.eval(() => [...document.querySelectorAll('[data-testid=issue-go]')].find((b) => /more than the total capacity/.test(b.textContent)).click());
+  await page.waitFor(() => !!document.querySelector('[data-testid=problem-bar] [data-testid=issue-go]'));
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=save-status]').textContent), 'Not saved');
+  await shot('aircraft-error-bar');
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.equal((await api('GET', `aircraft/${ac.id}`)).fuel.usableL, 144);
+  await page.eval(() => [...document.querySelectorAll('[data-testid=problem-bar] [data-testid=issue-go]')].find((b) => /more than the total capacity/.test(b.textContent)).click());
   await page.waitFor(() => document.activeElement?.getAttribute('name') === 'fuel.usableL' && document.activeElement.classList.contains('attention'));
-  await page.type('input[name="fuel.usableL"]', '144');
+  await page.type('input[name="fuel.usableL"]', '140');
   await page.blur();
-  await page.waitFor(() => !document.querySelector('.ac-savebar.dirty'));
+  await page.waitFor(() => !document.querySelector('[data-testid=problem-bar]'));
+  await until(async () => (await api('GET', `aircraft/${ac.id}`)).fuel.usableL === 140);
 
   // envelope charts are in normal flow next to their tables
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.env-row .chart-col')].map((e) => getComputedStyle(e).position)), ['static', 'static']);
@@ -142,11 +215,35 @@ test('aircraft page: layout, item 18, fuels, photo and documents', async () => {
   fs.writeFileSync(path.join(tmp, 'plane.png'), Buffer.from(png, 'base64'));
   await page.eval(() => window.scrollTo(0, 0));
   await setFile('[data-testid=photo-file]', path.join(tmp, 'plane.png'));
-  await page.waitFor(() => !!document.querySelector('.ac-photo.head img'), { timeout: 20000 });
+  await page.waitFor(() => /^blob:/.test(document.querySelector('.ac-photo.head img')?.getAttribute('src') || ''), { timeout: 20000 });
+  await page.waitFor(() => document.querySelector('.ac-photo.head img').complete);
   const dims = await page.eval(() => { const i = document.querySelector('.ac-photo.head img'); return [i.naturalWidth, i.naturalHeight]; });
   assert.deepEqual(dims, [1600, 1067]);
   assert.equal((await api('GET', `aircraft/${ac.id}/files`)).photo.mime, 'image/jpeg');
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=photo-pick]').textContent), 'Change photo');
   await page.goto(`${server.url}/hangar`);
-  await page.waitFor((id) => !!document.querySelector(`[data-aircraft-id="${id}"] .ac-photo.card-top img`), { args: [ac.id] });
+  await page.waitFor((id) => /^blob:/.test(document.querySelector(`[data-aircraft-id="${id}"] .ac-photo.card-top img`)?.getAttribute('src') || ''), { args: [ac.id] });
+
+  // removing the photo brings back the same placeholder
+  await page.goto(`${server.url}/hangar/${ac.id}`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=photo-remove]'));
+  await page.eval(() => document.querySelector('[data-testid=photo-remove]').click());
+  await page.waitFor((n) => document.querySelector('.ac-photo.head [data-testid=aircraft-placeholder]')?.getAttribute('src') === `/aircraft/placeholder-${n}.webp`, { args: [ac.placeholder] });
+  assert.equal((await api('GET', `aircraft/${ac.id}`)).placeholder, ac.placeholder);
+
+  // hangar cards show the placeholder, cover-cropped
+  await api('POST', 'aircraft', { ...asv, registration: 'SX-PIG' });
+  await page.goto(`${server.url}/hangar`);
+  await page.waitFor(() => [...document.querySelectorAll('.ac-photo.card-top [data-testid=aircraft-placeholder]')].filter((i) => i.complete && i.naturalWidth).length === 2);
+  assert.equal(await page.eval(() => getComputedStyle(document.querySelector('.ac-photo.card-top img')).objectFit), 'cover');
+  await shot('hangar-cards');
+
+  // phone width: the header fits, no horizontal scroll
+  await page.viewport(390, 844);
+  await page.goto(`${server.url}/hangar/${ac.id}`);
+  await page.waitFor(() => !!document.querySelector('.ac-photo.head [data-testid=aircraft-placeholder]'));
+  assert.ok(await page.eval(() => document.documentElement.scrollWidth <= window.innerWidth), 'no horizontal scroll');
+  await shot('aircraft-phone');
+  await page.viewport(1400, 1000);
   assert.deepEqual(page.errors, []);
 });

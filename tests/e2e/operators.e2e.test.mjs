@@ -70,8 +70,8 @@ test('an operator that asks for the W&B and performance sheets gets them from th
   await page.goto(`${url}/hangar/${ac.id}`);
   await page.waitFor((id) => !!document.querySelector(`[data-testid=aircraft-operator] option[value="${id}"]`), { args: [opId] });
   await page.select('[data-testid=aircraft-operator]', opId);
-  await clickText('.ac-savebar button', 'Save');
-  await page.waitFor(() => /All changes saved/.test(document.querySelector('.ac-savebar')?.textContent || ''));
+  // the aircraft page saves on its own
+  await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved', { timeout: 10000 });
   const linked = await api('GET', `aircraft/${ac.id}`);
   assert.deepEqual([linked.operatorId, linked.operator], [opId, 'Test Aero Club']);
   // the operator lists it
