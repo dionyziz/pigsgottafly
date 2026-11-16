@@ -17,13 +17,19 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { OperatorItem, Passenger, Pilot, Waypoint } from '../shared';
 import type { HangarAircraft } from '../shared/sharing';
 import { api } from './api';
-import {
-type EntitySnapshot,
-  getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity, } from './entityStore';
+import { type EntitySnapshot, getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity } from './entityStore';
 
 export {
-  clearEntities,   type EntityKey, type EntitySnapshot,
-getEntity, invalidate, loadEntity, onInvalidate, onRevalidate, putEntity, subscribeEntity,
+  clearEntities,
+  type EntityKey,
+  type EntitySnapshot,
+  getEntity,
+  invalidate,
+  loadEntity,
+  onInvalidate,
+  onRevalidate,
+  putEntity,
+  subscribeEntity,
 } from './entityStore';
 
 export interface Entities {
@@ -62,11 +68,16 @@ export function useEntity<K extends CachedEntityKey>(key: K): EntityState<Entiti
     const s = getEntity(key);
     if (s.data === undefined || s.stale) void loadEntity(key).catch(() => {});
   }, [key]);
-  const reload = useCallback(async () => { await loadEntity(key, { force: true }).catch(() => {}); }, [key]);
-  const setData = useCallback((next: Entities[K] | ((prev: Entities[K] | undefined) => Entities[K])) => {
-    const prev = getEntity<Entities[K]>(key).data;
-    putEntity(key, typeof next === 'function' ? (next)(prev) : next);
+  const reload = useCallback(async () => {
+    await loadEntity(key, { force: true }).catch(() => {});
   }, [key]);
+  const setData = useCallback(
+    (next: Entities[K] | ((prev: Entities[K] | undefined) => Entities[K])) => {
+      const prev = getEntity<Entities[K]>(key).data;
+      putEntity(key, typeof next === 'function' ? next(prev) : next);
+    },
+    [key],
+  );
   return {
     data: snap.data,
     error: snap.data === undefined ? snap.error : null,

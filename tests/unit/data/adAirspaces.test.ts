@@ -84,7 +84,13 @@ describe('aerodrome airspace data: read off the AIP', () => {
   test('LGAV CTR is the published quadrilateral, not a circle; ATZ 5 NM to 3000 FT', () => {
     const r = z('LGAV-CTR');
     expect(r.circle).toBeUndefined();
-    expect(r.polygon).toEqual([[37.75, 23.633333], [38.166667, 24.033333], [38.166667, 24.3], [37.666667, 23.816667], [37.75, 23.633333]]);
+    expect(r.polygon).toEqual([
+      [37.75, 23.633333],
+      [38.166667, 24.033333],
+      [38.166667, 24.3],
+      [37.666667, 23.816667],
+      [37.75, 23.633333],
+    ]);
     expect(r.upper).toBe('7000 FT');
     expect(r.units.map((u) => u.callsign)).toEqual(['ATHINAI APPROACH', 'ATHINAI TMA INFORMATION']);
     expect([z('LGAV-ATZ').circle?.radiusNm, z('LGAV-ATZ').upper]).toEqual([5, '3000 FT']);

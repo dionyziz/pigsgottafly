@@ -25,15 +25,20 @@ describe('AIP links', () => {
   });
   test('URLs of the PDFs (spaces encoded), the start page when there is no PDF', () => {
     expect(aipUrl('AD 2 LGAV')).toBe(AIP_EAIP_BASE + 'eaip/pdf/AD%202/AD2-LGAV/LG_AD_2_LGAV_en.pdf');
-    expect(aipUrl('AD 1.6.5.3')).toBe(AIP_EAIP_BASE + 'eaip/pdf/ad%201/AD%201.6%20CAT%20B%20AERODROMES/catb/LG_AD_1_6_5_LGTT_en.pdf');
+    expect(aipUrl('AD 1.6.5.3')).toBe(
+      AIP_EAIP_BASE + 'eaip/pdf/ad%201/AD%201.6%20CAT%20B%20AERODROMES/catb/LG_AD_1_6_5_LGTT_en.pdf',
+    );
     expect(aipUrl('ENR 5.1')).toBe(AIP_EAIP_BASE + 'eaip/pdf/enr%205/LG_ENR_5_1_en.pdf');
     expect(aipUrl('ENR 9.9')).toBe(AIP_EAIP_INDEX);
     expect(hasAipPdf('ENR 9.9')).toBe(false);
   });
   test('every AIP source the map and panels show has its PDF', () => {
     const sources = [
-      ...AERODROMES.map((a) => a.source), ...AERODROMES.flatMap((a) => (a.hours ? [a.hours.source, a.hours.handling.source] : [])),
-      ...AIRSPACES.map((a) => a.source), ...AD_AIRSPACES.map((a) => a.source), ...AREAS.map((a) => a.source),
+      ...AERODROMES.map((a) => a.source),
+      ...AERODROMES.flatMap((a) => (a.hours ? [a.hours.source, a.hours.handling.source] : [])),
+      ...AIRSPACES.map((a) => a.source),
+      ...AD_AIRSPACES.map((a) => a.source),
+      ...AREAS.map((a) => a.source),
     ];
     const missing = [...new Set(sources)].filter((s) => !hasAipPdf(s));
     expect(missing).toEqual([]);
@@ -56,10 +61,18 @@ describe('AIP links', () => {
 describe('AIP references inside texts', () => {
   test('are found, with the aerodrome of an AD 2 reference taken from the text before it', () => {
     expect(aipRefParts('Departure LGTT closed at 16:20Z (12:00–14:00Z): hours HJ (AIP AD 1.6.5.3).')).toEqual([
-      { text: 'Departure LGTT closed at 16:20Z (12:00–14:00Z): hours HJ (AIP ' }, { text: 'AD 1.6.5.3', ref: 'AD 1.6.5.3' }, { text: ').' },
+      { text: 'Departure LGTT closed at 16:20Z (12:00–14:00Z): hours HJ (AIP ' },
+      { text: 'AD 1.6.5.3', ref: 'AD 1.6.5.3' },
+      { text: ').' },
     ]);
-    expect(aipRefParts('LGAV: handling H24 (AIP AD 2.3)').filter((p) => p.ref)).toEqual([{ text: 'AD 2.3', ref: 'LGAV AD 2.3' }]);
-    expect(aipRefParts('see LGAV AD 2.17 and ENR 2.1').filter((p) => p.ref).map((p) => p.ref)).toEqual(['LGAV AD 2.17', 'ENR 2.1']);
+    expect(aipRefParts('LGAV: handling H24 (AIP AD 2.3)').filter((p) => p.ref)).toEqual([
+      { text: 'AD 2.3', ref: 'LGAV AD 2.3' },
+    ]);
+    expect(
+      aipRefParts('see LGAV AD 2.17 and ENR 2.1')
+        .filter((p) => p.ref)
+        .map((p) => p.ref),
+    ).toEqual(['LGAV AD 2.17', 'ENR 2.1']);
     expect(aipRefParts('no reference here')).toEqual([{ text: 'no reference here' }]);
   });
 });

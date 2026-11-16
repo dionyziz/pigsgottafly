@@ -39,7 +39,10 @@ describe('runway data: every direction', () => {
       if (r.headingTrueDeg === null) continue;
       expect(Math.abs(norm180(r.headingTrueDeg - n)), `${name(r)} TRUE ${r.headingTrueDeg}`).toBeLessThanOrEqual(12);
       const o = opposite(r);
-      if (o.headingTrueDeg !== null) expect(Math.abs(Math.abs(norm180(r.headingTrueDeg - o.headingTrueDeg)) - 180), name(r)).toBeLessThanOrEqual(0.6);
+      if (o.headingTrueDeg !== null)
+        expect(Math.abs(Math.abs(norm180(r.headingTrueDeg - o.headingTrueDeg)) - 180), name(r)).toBeLessThanOrEqual(
+          0.6,
+        );
       if (r.magVarDeg !== null) {
         expect(r.magVarDeg > 3.5 && r.magVarDeg < 7, `${name(r)} var ${r.magVarDeg}`).toBe(true);
         expect(Math.abs(norm180(r.headingTrueDeg - r.magVarDeg - r.headingMagDeg))).toBeLessThan(0.06);
@@ -73,7 +76,10 @@ describe('runway data: every direction', () => {
       const o = opposite(r);
       if (o.thrLat === null || r.lengthM === null) continue;
       const m = distanceNm(thr(r), thr(o)) * 1852;
-      expect(m <= r.lengthM + 5 && m >= r.lengthM * 0.6, `${name(r)} THR-THR ${m.toFixed(0)} M, RWY ${r.lengthM} M`).toBe(true);
+      expect(
+        m <= r.lengthM + 5 && m >= r.lengthM * 0.6,
+        `${name(r)} THR-THR ${m.toFixed(0)} M, RWY ${r.lengthM} M`,
+      ).toBe(true);
     }
   });
 
@@ -85,26 +91,42 @@ describe('runway data: every direction', () => {
       expect(r.lengthM, n).toBe(opposite(r).lengthM);
       for (const k of ['toraM', 'todaM', 'asdaM', 'ldaM'] as const) {
         const v = r[k];
-        if (v === null) { expect(r.gaps, n).toContain(k.replace(/M$/, '').toUpperCase()); continue; }
+        if (v === null) {
+          expect(r.gaps, n).toContain(k.replace(/M$/, '').toUpperCase());
+          continue;
+        }
         expect(v > 0, `${n} ${k}`).toBe(true);
       }
       if (r.lengthM === null) continue;
       if (r.toraM !== null) expect(r.toraM, `${n} TORA`).toBeLessThanOrEqual(r.lengthM);
       if (r.ldaM !== null) expect(r.ldaM, `${n} LDA`).toBeLessThanOrEqual(r.lengthM);
-      if (r.toraM !== null && r.todaM !== null) expect(r.todaM >= r.toraM && r.todaM <= r.toraM * 1.5, `${n} TODA`).toBe(true);
+      if (r.toraM !== null && r.todaM !== null)
+        expect(r.todaM >= r.toraM && r.todaM <= r.toraM * 1.5, `${n} TODA`).toBe(true);
       // ASDA may include a stopway (LGTP: 1941 M RWY + 85 M SWY)
-      if (r.toraM !== null && r.asdaM !== null) expect(r.asdaM >= r.toraM && r.asdaM <= r.lengthM + 300, `${n} ASDA`).toBe(true);
+      if (r.toraM !== null && r.asdaM !== null)
+        expect(r.asdaM >= r.toraM && r.asdaM <= r.lengthM + 300, `${n} ASDA`).toBe(true);
     }
   });
 
   test('slopes: plausible, opposite in the two directions, and the AIP sign agrees with the threshold elevations', () => {
     for (const r of RW) {
-      const o = opposite(r), n = name(r);
-      if (r.slopePct === null) { expect([null, 'aip-unsigned'], n).toContain(r.slopeSource); continue; }
+      const o = opposite(r),
+        n = name(r);
+      if (r.slopePct === null) {
+        expect([null, 'aip-unsigned'], n).toContain(r.slopeSource);
+        continue;
+      }
       expect(Math.abs(r.slopePct), n).toBeLessThan(2.5);
       if (o.slopePct !== null && r.slopeSource !== 'aip') expect(r.slopePct + o.slopePct, n).toBeCloseTo(0, 6);
-      if (r.slopeSource === 'aip' && r.slopePct !== 0 && r.thresholdElevSource === 'aip' && o.thresholdElevSource === 'aip') {
-        expect(Math.sign(o.thresholdElevFt! - r.thresholdElevFt!), `${n} slope ${r.slopeText}`).toBe(Math.sign(r.slopePct));
+      if (
+        r.slopeSource === 'aip' &&
+        r.slopePct !== 0 &&
+        r.thresholdElevSource === 'aip' &&
+        o.thresholdElevSource === 'aip'
+      ) {
+        expect(Math.sign(o.thresholdElevFt! - r.thresholdElevFt!), `${n} slope ${r.slopeText}`).toBe(
+          Math.sign(r.slopePct),
+        );
       }
       if (r.slopeSource === 'thr-elevations') expect(r.gaps).toContain('slope');
     }
@@ -123,11 +145,28 @@ describe('runway data: values read off the AIP PDFs', () => {
   test('LGTT Dekelia/Tatoi (AD 1.6.5.12/13, page AD 1.6.5-3, AMDT 11/24)', () => {
     expect(runwaysOf('LGTT').map((r) => r.designator)).toEqual(['03', '21']);
     expect(rw('LGTT', '03')).toMatchObject({
-      headingTrueDeg: 27.46, lengthM: 1868, widthM: 45, surface: 'ASPH', strength: 'LCN 45',
-      toraM: 1868, todaM: 1868, asdaM: 1868, ldaM: 1718, thresholdElevFt: 745.3, declaredRemark: 'DTHR 150 M',
-      thrLat: 38.102161, thrLon: 23.779239, slopeText: 'NIL', slopeSource: 'thr-elevations',
+      headingTrueDeg: 27.46,
+      lengthM: 1868,
+      widthM: 45,
+      surface: 'ASPH',
+      strength: 'LCN 45',
+      toraM: 1868,
+      todaM: 1868,
+      asdaM: 1868,
+      ldaM: 1718,
+      thresholdElevFt: 745.3,
+      declaredRemark: 'DTHR 150 M',
+      thrLat: 38.102161,
+      thrLon: 23.779239,
+      slopeText: 'NIL',
+      slopeSource: 'thr-elevations',
     });
-    expect(rw('LGTT', '21')).toMatchObject({ headingTrueDeg: 207.46, ldaM: 1741, thresholdElevFt: 845.9, declaredRemark: 'DTHR 127 M' });
+    expect(rw('LGTT', '21')).toMatchObject({
+      headingTrueDeg: 207.46,
+      ldaM: 1741,
+      thresholdElevFt: 845.9,
+      declaredRemark: 'DTHR 127 M',
+    });
     // slope is not published; the thresholds (745.3 / 845.9 FT, ~1591 M apart) make RWY 03 ~1.9 % uphill
     expect(rw('LGTT', '03').slopePct).toBeCloseTo(1.92, 2);
     expect(rw('LGTT', '21').slopePct).toBeCloseTo(-1.92, 2);
@@ -137,31 +176,71 @@ describe('runway data: values read off the AIP PDFs', () => {
   });
 
   test('LGKR Kerkira (AD 2 LGKR-5)', () => {
-    expect(rw('LGKR', '16')).toMatchObject({ headingTrueDeg: 169, lengthM: 2373, widthM: 45, toraM: 2373, todaM: 2373, asdaM: 2373, ldaM: 1963, thresholdElevFt: 6.3 });
-    expect(rw('LGKR', '34')).toMatchObject({ headingTrueDeg: 349, ldaM: 2314, thresholdElevFt: 5.91, thrLat: 39.592067, thrLon: 19.914653 });
+    expect(rw('LGKR', '16')).toMatchObject({
+      headingTrueDeg: 169,
+      lengthM: 2373,
+      widthM: 45,
+      toraM: 2373,
+      todaM: 2373,
+      asdaM: 2373,
+      ldaM: 1963,
+      thresholdElevFt: 6.3,
+    });
+    expect(rw('LGKR', '34')).toMatchObject({
+      headingTrueDeg: 349,
+      ldaM: 2314,
+      thresholdElevFt: 5.91,
+      thrLat: 39.592067,
+      thrLon: 19.914653,
+    });
   });
 
   test('LGIO Ioannina (AD 2 LGIO-5)', () => {
-    expect(rw('LGIO', '14')).toMatchObject({ headingTrueDeg: 141.69, lengthM: 2402, ldaM: 2402, thresholdElevFt: 1549.5, thrLat: 39.705808, thrLon: 20.813233 });
+    expect(rw('LGIO', '14')).toMatchObject({
+      headingTrueDeg: 141.69,
+      lengthM: 2402,
+      ldaM: 2402,
+      thresholdElevFt: 1549.5,
+      thrLat: 39.705808,
+      thrLon: 20.813233,
+    });
     expect(rw('LGIO', '32')).toMatchObject({ headingTrueDeg: 321.7, ldaM: 2282, thresholdElevFt: 1557.08 });
   });
 
   test('LGKA Kastoria (AD 2 LGKA-5)', () => {
-    expect(rw('LGKA', '12')).toMatchObject({ headingTrueDeg: 125, lengthM: 2698, widthM: 45, toraM: 2698, ldaM: 2516, thresholdElevFt: 2166.08, strength: 'PCN 40/F/C/X/T' });
+    expect(rw('LGKA', '12')).toMatchObject({
+      headingTrueDeg: 125,
+      lengthM: 2698,
+      widthM: 45,
+      toraM: 2698,
+      ldaM: 2516,
+      thresholdElevFt: 2166.08,
+      strength: 'PCN 40/F/C/X/T',
+    });
     expect(rw('LGKA', '30')).toMatchObject({ headingTrueDeg: 305, ldaM: 2698, thresholdElevFt: 2118.91 });
     // MAG VAR 3.50°E JAN 2010 + 0.075°/year → ~4.8°E at AIRAC 09/26
     expect(rw('LGKA', '12').magVarDeg).toBeCloseTo(4.76, 1);
   });
 
   test('LGKZ Kozani (AD 2 LGKZ-4)', () => {
-    expect(rw('LGKZ', '14')).toMatchObject({ headingTrueDeg: 143, lengthM: 1822, widthM: 30, toraM: 1822, ldaM: 1641, thresholdElevFt: 2049.58 });
+    expect(rw('LGKZ', '14')).toMatchObject({
+      headingTrueDeg: 143,
+      lengthM: 1822,
+      widthM: 30,
+      toraM: 1822,
+      ldaM: 1641,
+      thresholdElevFt: 2049.58,
+    });
     expect(rw('LGKZ', '32')).toMatchObject({ headingTrueDeg: 323, ldaM: 1822, thresholdElevFt: 1967.83 });
   });
 
   test('slopes printed without a usable direction are kept unsigned (adverse both ways), never dropped', () => {
     for (const r of RUNWAYS as any[]) {
       const n = `${r.aerodromeId} ${r.designator}`;
-      const printed = typeof r.slopeText === 'string' && /^[+\-–]?\s*\d+(?:[.,]\d+)?\s*%$/.test(r.slopeText.trim()) && parseFloat(r.slopeText.replace(/[^\d.]/g, '')) > 0;
+      const printed =
+        typeof r.slopeText === 'string' &&
+        /^[+\-–]?\s*\d+(?:[.,]\d+)?\s*%$/.test(r.slopeText.trim()) &&
+        parseFloat(r.slopeText.replace(/[^\d.]/g, '')) > 0;
       if (printed) expect(r.slopePct !== null || r.slopeUnsignedPct > 0, n).toBe(true);
       if (r.slopeUnsignedPct != null) {
         expect(r.slopePct, n).toBeNull();
@@ -177,8 +256,19 @@ describe('runway data: values read off the AIP PDFs', () => {
   });
 
   test('LGMG Megara (AD 1.6.18): distances published, bearing/thresholds not, slope sign ambiguous', () => {
-    expect(rw('LGMG', '08R')).toMatchObject({ lengthM: 1205, widthM: 38, toraM: 1205, todaM: 1205, asdaM: 1205, ldaM: 1205,
-      headingTrueDeg: null, headingMagDeg: 80, headingMagSource: 'designator', slopePct: null, slopeText: '- 0.16 %' });
+    expect(rw('LGMG', '08R')).toMatchObject({
+      lengthM: 1205,
+      widthM: 38,
+      toraM: 1205,
+      todaM: 1205,
+      asdaM: 1205,
+      ldaM: 1205,
+      headingTrueDeg: null,
+      headingMagDeg: 80,
+      headingMagSource: 'designator',
+      slopePct: null,
+      slopeText: '- 0.16 %',
+    });
     expect(rw('LGMG', '08R').gaps).toEqual(expect.arrayContaining(['true bearing', 'threshold coordinates', 'slope']));
   });
 
@@ -201,9 +291,13 @@ test('migration 005 replaces the AIRAC runway rows with the full records', async
   const db = await connect('memory://');
   const list = [...MIGRATIONS.filter((m) => m.name < '005'), { name: '005_ref_runways_2609', sql: runways005 }];
   await migrate(db, list);
-  const rows = await db.query<{ doc: RefRunwayFull }>(`SELECT doc FROM ref_runways WHERE airac = '2609' ORDER BY aerodrome_id, designator`);
+  const rows = await db.query<{ doc: RefRunwayFull }>(
+    `SELECT doc FROM ref_runways WHERE airac = '2609' ORDER BY aerodrome_id, designator`,
+  );
   expect(rows.length).toBe(RW.length);
-  const tt = rows.map((x) => (typeof x.doc === 'string' ? JSON.parse(x.doc) : x.doc)).find((d) => d.aerodromeId === 'LGTT' && d.designator === '03');
+  const tt = rows
+    .map((x) => (typeof x.doc === 'string' ? JSON.parse(x.doc) : x.doc))
+    .find((d) => d.aerodromeId === 'LGTT' && d.designator === '03');
   expect(tt).toMatchObject({ ldaM: 1718, toraM: 1868, headingTrueDeg: 27.46 });
   await db.close();
 });

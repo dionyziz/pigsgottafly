@@ -15,7 +15,14 @@ import { buildLegs, computeNavlog, defaultAltitudes, type NavlogInput } from '..
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../src/data/hazardWeather';
 import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
 import { flightWeatherPlan } from '../../../src/data/useFlightWeather';
-import { clearCache, fetchRouteWeather, type RouteWeather,sampleAt, surfaceConditions, windProviderFromLegs } from '../../../src/data/weather';
+import {
+  clearCache,
+  fetchRouteWeather,
+  type RouteWeather,
+  sampleAt,
+  surfaceConditions,
+  windProviderFromLegs,
+} from '../../../src/data/weather';
 import type { RoutePoint, WindModel } from '../../../src/shared';
 import type { CompassCard } from '../../../src/shared';
 import { fakeOpenMeteo, gridApi } from '../../helpers/openMeteoGrid';
@@ -23,45 +30,132 @@ import { externalCalls } from '../../setup/noExternalApis';
 import * as before from './legacy/weatherBefore';
 
 const NOW = Date.parse('2026-11-15T13:36:00Z');
-const ad = (icao: string): RoutePoint => { const a = aerodrome(icao)!; return { uid: 'ad-' + icao, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
-const vfr = (id: string): RoutePoint => { const p = vfrPoint(id)!; return { uid: id, kind: 'vfr', refId: id, name: p.name, lat: p.lat, lon: p.lon }; };
-const custom = (name: string, lat: number, lon: number): RoutePoint => ({ uid: 'c-' + name, kind: 'custom', refId: null, name, lat, lon });
+const ad = (icao: string): RoutePoint => {
+  const a = aerodrome(icao)!;
+  return { uid: 'ad-' + icao, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };
+};
+const vfr = (id: string): RoutePoint => {
+  const p = vfrPoint(id)!;
+  return { uid: id, kind: 'vfr', refId: id, name: p.name, lat: p.lat, lon: p.lon };
+};
+const custom = (name: string, lat: number, lon: number): RoutePoint => ({
+  uid: 'c-' + name,
+  kind: 'custom',
+  refId: null,
+  name,
+  lat,
+  lon,
+});
 const ctx = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes };
 const ASV_CARD = cards['SX-ASV'][0] as unknown as CompassCard;
-const ASV = { cruiseTasKt: 92, patternTasKt: 80, burnLph: 30, taxiAllowanceL: 4, card: ASV_CARD.points, cardExpires: ASV_CARD.expires, cardName: ASV_CARD.name };
+const ASV = {
+  cruiseTasKt: 92,
+  patternTasKt: 80,
+  burnLph: 30,
+  taxiAllowanceL: 4,
+  card: ASV_CARD.points,
+  cardExpires: ASV_CARD.expires,
+  cardName: ASV_CARD.name,
+};
 
-interface Case { name: string; date: string; blockOff: string; model: WindModel; route: () => RoutePoint[]; stopAt?: number[] }
+interface Case {
+  name: string;
+  date: string;
+  blockOff: string;
+  model: WindModel;
+  route: () => RoutePoint[];
+  stopAt?: number[];
+}
 const CASES: Case[] = [
-  { name: 'LGTT → LGMG via DAPORI, KORINTHOS', date: '2026-11-16', blockOff: '07:00', model: 'ecmwf_ifs025', route: () => [ad('LGTT'), vfr('LGAV/DAPORI'), vfr('LGAV/KORINTHOS'), ad('LGMG')] },
-  { name: 'LGTT → LGSR → LGIR across the Aegean, a stop at LGSR', date: '2026-11-16', blockOff: '10:20', model: 'ecmwf_ifs025', route: () => [ad('LGTT'), ad('LGSR'), ad('LGIR')], stopAt: [1] },
-  { name: 'LGAV → LGKR, custom points, late evening into the next day', date: '2026-11-15', blockOff: '21:40', model: 'ecmwf_ifs025', route: () => [ad('LGAV'), custom('P1', 38.31, 22.9), custom('P2', 38.92, 21.17), ad('LGKR')] },
-  { name: 'LGTG → LGSY → LGKV, GFS', date: '2026-11-17', blockOff: '05:30', model: 'gfs_seamless', route: () => [ad('LGTG'), ad('LGSY'), ad('LGKV')] },
-  { name: 'LGTT → LGKZ over the mountains', date: '2026-11-16', blockOff: '12:00', model: 'ecmwf_ifs025', route: () => [ad('LGTT'), ad('LGKZ')] },
+  {
+    name: 'LGTT → LGMG via DAPORI, KORINTHOS',
+    date: '2026-11-16',
+    blockOff: '07:00',
+    model: 'ecmwf_ifs025',
+    route: () => [ad('LGTT'), vfr('LGAV/DAPORI'), vfr('LGAV/KORINTHOS'), ad('LGMG')],
+  },
+  {
+    name: 'LGTT → LGSR → LGIR across the Aegean, a stop at LGSR',
+    date: '2026-11-16',
+    blockOff: '10:20',
+    model: 'ecmwf_ifs025',
+    route: () => [ad('LGTT'), ad('LGSR'), ad('LGIR')],
+    stopAt: [1],
+  },
+  {
+    name: 'LGAV → LGKR, custom points, late evening into the next day',
+    date: '2026-11-15',
+    blockOff: '21:40',
+    model: 'ecmwf_ifs025',
+    route: () => [ad('LGAV'), custom('P1', 38.31, 22.9), custom('P2', 38.92, 21.17), ad('LGKR')],
+  },
+  {
+    name: 'LGTG → LGSY → LGKV, GFS',
+    date: '2026-11-17',
+    blockOff: '05:30',
+    model: 'gfs_seamless',
+    route: () => [ad('LGTG'), ad('LGSY'), ad('LGKV')],
+  },
+  {
+    name: 'LGTT → LGKZ over the mountains',
+    date: '2026-11-16',
+    blockOff: '12:00',
+    model: 'ecmwf_ifs025',
+    route: () => [ad('LGTT'), ad('LGKZ')],
+  },
 ];
-const ICON: Case = { name: 'LGTT → LGPZ, ICON (0.0625° grid)', date: '2026-11-16', blockOff: '09:00', model: 'icon_seamless', route: () => [ad('LGTT'), ad('LGEL'), ad('LGPZ')] };
+const ICON: Case = {
+  name: 'LGTT → LGPZ, ICON (0.0625° grid)',
+  date: '2026-11-16',
+  blockOff: '09:00',
+  model: 'icon_seamless',
+  route: () => [ad('LGTT'), ad('LGEL'), ad('LGPZ')],
+};
 
 /** A leg's data without its surface fields. */
-const aloft = (l: RouteWeather['legs'][number]) => l && ({
-  latitude: l.latitude, longitude: l.longitude,
-  hourly: Object.fromEntries(Object.entries(l.hourly).filter(([k]) => k === 'time' || /hPa$/.test(k))),
-});
+const aloft = (l: RouteWeather['legs'][number]) =>
+  l && {
+    latitude: l.latitude,
+    longitude: l.longitude,
+    hourly: Object.fromEntries(Object.entries(l.hourly).filter(([k]) => k === 'time' || /hPa$/.test(k))),
+  };
 
 const ALTS = [0, 500, 1500, 2500, 3500, 4500, 5500, 6500, 8500, 9500, 12000];
 
 function inputs(c: Case) {
   const route = c.route();
-  const options = { aerodromeRequests: (c.stopAt ?? []).map((i) => ({ pointUid: route[i].uid, kind: 'stop' as const, stopMin: 30 })) };
+  const options = {
+    aerodromeRequests: (c.stopAt ?? []).map((i) => ({ pointUid: route[i].uid, kind: 'stop' as const, stopMin: 30 })),
+  };
   const legs = buildLegs(route, c.date);
   const plan = flightWeatherPlan({ date: c.date, model: c.model, route, options, legs });
-  const wxReq = { date: c.date, model: c.model, legMidpoints: plan.mids, departure: plan.depLoc, destination: plan.destLoc, stops: plan.stops.map((s) => s.loc), now: () => NOW };
+  const wxReq = {
+    date: c.date,
+    model: c.model,
+    legMidpoints: plan.mids,
+    departure: plan.depLoc,
+    destination: plan.destLoc,
+    stops: plan.stops.map((s) => s.loc),
+    now: () => NOW,
+  };
   const hzReq = {
-    date: c.date, model: c.model, legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
+    date: c.date,
+    model: c.model,
+    legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
     departure: plan.departure ? { lat: plan.departure.lat, lon: plan.departure.lon } : null,
-    destination: plan.destination ? { lat: plan.destination.lat, lon: plan.destination.lon } : null, now: () => NOW,
+    destination: plan.destination ? { lat: plan.destination.lat, lon: plan.destination.lon } : null,
+    now: () => NOW,
   };
   const navIn = (w: RouteWeather): NavlogInput => ({
-    date: c.date, blockOff: c.blockOff, taxiOutMin: 15, taxiInMin: 10, legs, altitudesFt: defaultAltitudes(route, ctx).map((d) => d.altFt), overrides: [],
-    aircraft: ASV, winds: windProviderFromLegs(w.legs),
+    date: c.date,
+    blockOff: c.blockOff,
+    taxiOutMin: 15,
+    taxiInMin: 10,
+    legs,
+    altitudesFt: defaultAltitudes(route, ctx).map((d) => d.altFt),
+    overrides: [],
+    aircraft: ASV,
+    winds: windProviderFromLegs(w.legs),
   });
   return { route, legs, plan, wxReq, hzReq, navIn };
 }
@@ -70,20 +164,25 @@ function inputs(c: Case) {
 function outcome(c: Case, w: RouteWeather, hw: HazardWeather) {
   const { legs, plan, navIn } = inputs(c);
   const day = Date.parse(c.date + 'T00:00:00Z');
-  const winds = legs.map((_, i) => ALTS.map((alt) => {
-    const out = [];
-    for (let m = -60; m <= 48 * 60; m += 37) out.push(sampleAt(w.legs[i]!.hourly, alt, day + m * 60000));
-    return out;
-  }));
+  const winds = legs.map((_, i) =>
+    ALTS.map((alt) => {
+      const out = [];
+      for (let m = -60; m <= 48 * 60; m += 37) out.push(sampleAt(w.legs[i]!.hourly, alt, day + m * 60000));
+      return out;
+    }),
+  );
   const surface = [w.departure, w.destination, ...(w.stops ?? [])].map((loc) => {
     const out = [];
     for (let m = 0; m <= 47 * 60; m += 53) out.push(surfaceConditions(loc, day + m * 60000));
     return out;
   });
   const navlog = computeNavlog(navIn(w));
-  const elevFt = (a: typeof plan.departure) => (a ? a.elevFt ?? 0 : 0);
+  const elevFt = (a: typeof plan.departure) => (a ? (a.elevFt ?? 0) : 0);
   const hazards = computeRouteHazards({
-    hw, navlog, dayMs: day, nowMs: NOW,
+    hw,
+    navlog,
+    dayMs: day,
+    nowMs: NOW,
     departure: plan.departure ? { elevFt: elevFt(plan.departure), reports: null } : null,
     destination: plan.destination ? { elevFt: elevFt(plan.destination), reports: null } : null,
   });
@@ -99,7 +198,9 @@ describe('the server proxy gives the same forecast as the browser calling Open-M
     api = await gridApi({ fetch: om.fetch, now: () => NOW });
     apiIcon = await gridApi({ fetch: omIcon.fetch, now: () => NOW }, api.db);
   });
-  afterAll(async () => { await api.close(); });
+  afterAll(async () => {
+    await api.close();
+  });
   const found = { hazards: 0, legHazards: 0 };
 
   for (const c of [...CASES, ICON]) {
@@ -123,7 +224,8 @@ describe('the server proxy gives the same forecast as the browser calling Open-M
       expect({ ...w1, legs: null }).toEqual({ ...w0, legs: null });
       expect(h1).toEqual(h0);
       // and what is computed from it
-      const a = outcome(c, w0, h0), b = outcome(c, w1, h1);
+      const a = outcome(c, w0, h0),
+        b = outcome(c, w1, h1);
       expect(b.winds).toEqual(a.winds);
       expect(b.surface).toEqual(a.surface);
       expect(b.navlog).toEqual(a.navlog);
@@ -155,7 +257,8 @@ describe('the server proxy gives the same forecast as the browser calling Open-M
   });
 
   test('fewer Open-Meteo locations than before: each node once, shared by legs and flights', async () => {
-    const o2 = fakeOpenMeteo(), o3 = fakeOpenMeteo();
+    const o2 = fakeOpenMeteo(),
+      o3 = fakeOpenMeteo();
     const api2 = await gridApi({ fetch: o3.fetch, now: () => NOW }, api.db);
     await api.db.query('DELETE FROM weather_cache');
     for (const c of CASES) {

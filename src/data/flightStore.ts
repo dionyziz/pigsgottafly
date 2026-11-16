@@ -23,9 +23,27 @@ interface Cached {
 const key = (id: string) => `pgf.flight.${id}`;
 const PENDING = 'pgf.pending';
 const LS = {
-  get<T>(k: string): T | null { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
-  set(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or blocked */ } },
-  del(k: string) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+  get<T>(k: string): T | null {
+    try {
+      return JSON.parse(localStorage.getItem(k) || 'null');
+    } catch {
+      return null;
+    }
+  },
+  set(k: string, v: unknown) {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch {
+      /* full or blocked */
+    }
+  },
+  del(k: string) {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
+  },
 };
 
 /** The editable part of a Flight. */
@@ -36,7 +54,10 @@ export function docOf(f: Flight): FlightDoc {
 
 let status: SaveStatus = 'saved';
 const listeners = new Set<(s: SaveStatus) => void>();
-const setStatus = (s: SaveStatus) => { status = s; listeners.forEach((f) => f(s)); };
+const setStatus = (s: SaveStatus) => {
+  status = s;
+  listeners.forEach((f) => f(s));
+};
 let timer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 
@@ -48,7 +69,11 @@ function queue(id: string, delay = 700) {
   if (timer) clearTimeout(timer);
   timer = setTimeout(flush, delay);
 }
-const drop = (id: string) => LS.set(PENDING, (LS.get<string[]>(PENDING) || []).filter((x) => x !== id));
+const drop = (id: string) =>
+  LS.set(
+    PENDING,
+    (LS.get<string[]>(PENDING) || []).filter((x) => x !== id),
+  );
 
 async function flush(): Promise<void> {
   if (flushing) return;
@@ -57,7 +82,10 @@ async function flush(): Promise<void> {
   try {
     for (const id of LS.get<string[]>(PENDING) || []) {
       const c = LS.get<Cached>(key(id));
-      if (!c || !c.dirty) { drop(id); continue; }
+      if (!c || !c.dirty) {
+        drop(id);
+        continue;
+      }
       try {
         const r = await api.flights.update(id, c.doc, c.version);
         const now = LS.get<Cached>(key(id))!;
@@ -83,18 +111,32 @@ async function flush(): Promise<void> {
   }
   const left = (LS.get<string[]>(PENDING) || []).length;
   if (status !== 'error' || left) setStatus(left ? (failed ? 'offline' : 'saving') : 'saved');
-  if (left) { if (timer) clearTimeout(timer); timer = setTimeout(flush, failed ? 5000 : 300); }
+  if (left) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, failed ? 5000 : 300);
+  }
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => { void flush(); });
-  window.addEventListener('beforeunload', () => { if ((LS.get<string[]>(PENDING) || []).length) void flush(); });
+  window.addEventListener('online', () => {
+    void flush();
+  });
+  window.addEventListener('beforeunload', () => {
+    if ((LS.get<string[]>(PENDING) || []).length) void flush();
+  });
   if ((LS.get<string[]>(PENDING) || []).length) setTimeout(flush, 500);
 }
 
 export const flightStore = {
-  get status() { return status; },
-  onStatus(f: (s: SaveStatus) => void) { listeners.add(f); return () => { listeners.delete(f); }; },
+  get status() {
+    return status;
+  },
+  onStatus(f: (s: SaveStatus) => void) {
+    listeners.add(f);
+    return () => {
+      listeners.delete(f);
+    };
+  },
 
   /** Loads a flight: the server copy, unless we hold unsent edits of the same version. Null if missing. */
   async load(id: string): Promise<{ flight: Flight; doc: FlightDoc } | null> {
@@ -107,9 +149,15 @@ export const flightStore = {
       return { flight: f, doc: docOf(f) };
     } catch (e) {
       if (e instanceof ApiRequestError && e.auth) throw e;
-      if (e instanceof ApiRequestError && e.status === 404) { LS.del(key(id)); return null; }
+      if (e instanceof ApiRequestError && e.status === 404) {
+        LS.del(key(id));
+        return null;
+      }
       if (!cached) throw e;
-      return { flight: { ...cached.doc, id, version: cached.version, created: 0, updated: 0, opened: 0, deleted: false }, doc: cached.doc };
+      return {
+        flight: { ...cached.doc, id, version: cached.version, created: 0, updated: 0, opened: 0, deleted: false },
+        doc: cached.doc,
+      };
     }
   },
 

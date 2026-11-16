@@ -77,7 +77,8 @@ export function resolveDayTime(day: number, hour: number, minute: number, refMs:
   const ref = new Date(refMs);
   const limit = refMs + 2 * 86400000;
   for (let back = -1; back <= 2; back++) {
-    const y = ref.getUTCFullYear(), m = ref.getUTCMonth() - back;
+    const y = ref.getUTCFullYear(),
+      m = ref.getUTCMonth() - back;
     const first = new Date(Date.UTC(y, m, 1));
     // the day must exist in that month (e.g. 31 in a 30-day month is skipped)
     const daysInMonth = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
@@ -91,10 +92,12 @@ export function resolveDayTime(day: number, hour: number, minute: number, refMs:
 const WIND_RE = /^(\d{3}|VRB|\/\/\/)(\d{2,3}|\/\/)(?:G(\d{2,3}))?(KT|MPS|KMH)$/;
 const TEMP_RE = /^(M?\d{2}|\/\/)\/(M?\d{2}|\/\/)?$/;
 const CLOUD_RE = /^(FEW|SCT|BKN|OVC|VV)(\d{3}|\/\/\/)(CB|TCU|\/\/\/)?$/;
-const WX_RE = /^(?:[-+]|VC)?(?:MI|BC|PR|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PO|SQ|FC|SS|DS)+$|^(?:[-+]|VC)?(?:TS|SH)$/;
+const WX_RE =
+  /^(?:[-+]|VC)?(?:MI|BC|PR|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PO|SQ|FC|SS|DS)+$|^(?:[-+]|VC)?(?:TS|SH)$/;
 const TREND = new Set(['NOSIG', 'BECMG', 'TEMPO', 'RMK']);
 
-const tempOf = (s: string | undefined): number | null => (s && s !== '//' ? (s.startsWith('M') ? -Number(s.slice(1)) : Number(s)) : null);
+const tempOf = (s: string | undefined): number | null =>
+  s && s !== '//' ? (s.startsWith('M') ? -Number(s.slice(1)) : Number(s)) : null;
 
 function parseWind(tok: string): MetarWind | null {
   const m = WIND_RE.exec(tok);
@@ -115,8 +118,21 @@ function parseWind(tok: string): MetarWind | null {
  */
 export function parseMetar(raw: string, refMs: number = Date.now()): ParsedMetar {
   const out: ParsedMetar = {
-    raw: raw.trim(), type: 'METAR', station: '', timeMs: null, auto: false, nil: false, wind: null, cavok: false,
-    visibilityM: null, clouds: [], skyClear: null, weather: [], tempC: null, dewC: null, qnhHpa: null,
+    raw: raw.trim(),
+    type: 'METAR',
+    station: '',
+    timeMs: null,
+    auto: false,
+    nil: false,
+    wind: null,
+    cavok: false,
+    visibilityM: null,
+    clouds: [],
+    skyClear: null,
+    weather: [],
+    tempC: null,
+    dewC: null,
+    qnhHpa: null,
   };
   const toks = out.raw.replace(/=$/, '').split(/\s+/).filter(Boolean);
   let i = 0;
@@ -131,18 +147,42 @@ export function parseMetar(raw: string, refMs: number = Date.now()): ParsedMetar
   for (; i < toks.length; i++) {
     const t = toks[i];
     if (TREND.has(t)) break;
-    if (t === 'NIL') { out.nil = true; break; }
-    if (t === 'AUTO') { out.auto = true; continue; }
+    if (t === 'NIL') {
+      out.nil = true;
+      break;
+    }
+    if (t === 'AUTO') {
+      out.auto = true;
+      continue;
+    }
     if (t === 'COR') continue;
     if (!out.wind) {
       const w = parseWind(t);
-      if (w) { out.wind = w; continue; }
+      if (w) {
+        out.wind = w;
+        continue;
+      }
     }
     const vs = /^(\d{3})V(\d{3})$/.exec(t);
-    if (vs && out.wind) { out.wind.varFrom = Number(vs[1]); out.wind.varTo = Number(vs[2]); continue; }
-    if (t === 'CAVOK') { out.cavok = true; out.visibilityM = 9999; out.skyClear = 'CAVOK'; continue; }
-    if (/^\d{4}$/.test(t) && out.visibilityM === null) { out.visibilityM = Number(t); continue; }
-    if (/^\d{4}(N|NE|E|SE|S|SW|W|NW|NDV)$/.test(t)) { if (out.visibilityM === null) out.visibilityM = Number(t.slice(0, 4)); continue; }
+    if (vs && out.wind) {
+      out.wind.varFrom = Number(vs[1]);
+      out.wind.varTo = Number(vs[2]);
+      continue;
+    }
+    if (t === 'CAVOK') {
+      out.cavok = true;
+      out.visibilityM = 9999;
+      out.skyClear = 'CAVOK';
+      continue;
+    }
+    if (/^\d{4}$/.test(t) && out.visibilityM === null) {
+      out.visibilityM = Number(t);
+      continue;
+    }
+    if (/^\d{4}(N|NE|E|SE|S|SW|W|NW|NDV)$/.test(t)) {
+      if (out.visibilityM === null) out.visibilityM = Number(t.slice(0, 4));
+      continue;
+    }
     const sm = /^(P|M)?(\d+)(?:\/(\d+))?SM$/.exec(t);
     if (sm && out.visibilityM === null) {
       const miles = sm[3] ? Number(sm[2]) / Number(sm[3]) : Number(sm[2]);
@@ -159,29 +199,60 @@ export function parseMetar(raw: string, refMs: number = Date.now()): ParsedMetar
       });
       continue;
     }
-    if (t === 'NSC' || t === 'NCD' || t === 'SKC' || t === 'CLR') { out.skyClear = t; continue; }
+    if (t === 'NSC' || t === 'NCD' || t === 'SKC' || t === 'CLR') {
+      out.skyClear = t;
+      continue;
+    }
     const tp = TEMP_RE.exec(t);
-    if (tp && out.tempC === null) { out.tempC = tempOf(tp[1]); out.dewC = tempOf(tp[2]); continue; }
+    if (tp && out.tempC === null) {
+      out.tempC = tempOf(tp[1]);
+      out.dewC = tempOf(tp[2]);
+      continue;
+    }
     const q = /^Q(\d{3,4})$/.exec(t);
-    if (q) { out.qnhHpa = Number(q[1]); continue; }
+    if (q) {
+      out.qnhHpa = Number(q[1]);
+      continue;
+    }
     const a = /^A(\d{4})$/.exec(t);
-    if (a) { out.qnhHpa = Math.round((Number(a[1]) / 100) * INHG_TO_HPA * 10) / 10; continue; }
+    if (a) {
+      out.qnhHpa = Math.round((Number(a[1]) / 100) * INHG_TO_HPA * 10) / 10;
+      continue;
+    }
     if (/^RE/.test(t) || /^WS$/.test(t)) break; // recent weather / wind shear: end of the main body
-    if (WX_RE.test(t)) { out.weather.push(t); continue; }
+    if (WX_RE.test(t)) {
+      out.weather.push(t);
+      continue;
+    }
   }
   return out;
 }
 
 /** Decodes a raw TAF down to its header: station, issue time and validity period. */
 export function parseTaf(raw: string, refMs: number = Date.now()): ParsedTaf {
-  const out: ParsedTaf = { raw: raw.trim(), station: '', issuedMs: null, validFromMs: null, validToMs: null, amended: false, corrected: false };
+  const out: ParsedTaf = {
+    raw: raw.trim(),
+    station: '',
+    issuedMs: null,
+    validFromMs: null,
+    validToMs: null,
+    amended: false,
+    corrected: false,
+  };
   const toks = out.raw.split(/\s+/).filter(Boolean);
   let i = 0;
   if (toks[i] === 'TAF') i++;
-  while (toks[i] === 'AMD' || toks[i] === 'COR') { if (toks[i] === 'AMD') out.amended = true; else out.corrected = true; i++; }
+  while (toks[i] === 'AMD' || toks[i] === 'COR') {
+    if (toks[i] === 'AMD') out.amended = true;
+    else out.corrected = true;
+    i++;
+  }
   if (toks[i] && /^[A-Z][A-Z0-9]{3}$/.test(toks[i])) out.station = toks[i++];
   const it = toks[i] && /^(\d{2})(\d{2})(\d{2})Z$/.exec(toks[i]);
-  if (it) { out.issuedMs = resolveDayTime(Number(it[1]), Number(it[2]), Number(it[3]), refMs); i++; }
+  if (it) {
+    out.issuedMs = resolveDayTime(Number(it[1]), Number(it[2]), Number(it[3]), refMs);
+    i++;
+  }
   const vp = toks[i] && /^(\d{2})(\d{2})\/(\d{2})(\d{2})$/.exec(toks[i]);
   if (vp) {
     const base = out.issuedMs ?? refMs;
@@ -239,7 +310,13 @@ export function decodeMetarTafResponse(r: MetarTafResponse): MetarTafResult {
     const taf = s.taf ? parseTaf(s.taf, r.fetched) : null;
     stations[icao] = { metar, taf, observedMs: s.observed ?? metar?.timeMs ?? null };
   }
-  return { status: 'ok', message: `aviationweather.gov, fetched ${hhmmZ(r.fetched)}`, source: 'aviationweather.gov', fetchedMs: r.fetched, stations };
+  return {
+    status: 'ok',
+    message: `aviationweather.gov, fetched ${hhmmZ(r.fetched)}`,
+    source: 'aviationweather.gov',
+    fetchedMs: r.fetched,
+    stations,
+  };
 }
 
 const ICAO_RE = /^[A-Z]{4}$/;
@@ -253,10 +330,14 @@ export const METAR_CLIENT_TTL_MS = 2 * 60 * 1000;
  * METAR and TAF of the aerodromes (ICAO codes; others are ignored). Never rejects: on failure the
  * result has status 'error' and no stations, so callers fall back to the forecast.
  */
-export function fetchMetarTaf(icaos: string[], opts: { force?: boolean; now?: () => number } = {}): Promise<MetarTafResult> {
+export function fetchMetarTaf(
+  icaos: string[],
+  opts: { force?: boolean; now?: () => number } = {},
+): Promise<MetarTafResult> {
   const now = opts.now || Date.now;
   const ids = [...new Set(icaos.map((x) => (x || '').trim().toUpperCase()).filter((x) => ICAO_RE.test(x)))].sort();
-  if (!ids.length) return Promise.resolve({ status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: null, stations: {} });
+  if (!ids.length)
+    return Promise.resolve({ status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: null, stations: {} });
   const key = ids.join(',');
   const hit = metarCache.get(key);
   if (hit && !opts.force && now() - hit.at < METAR_CLIENT_TTL_MS) return hit.p;
@@ -264,11 +345,22 @@ export function fetchMetarTaf(icaos: string[], opts: { force?: boolean; now?: ()
   const groups: string[][] = [];
   for (let i = 0; i < ids.length; i += METAR_MAX_IDS) groups.push(ids.slice(i, i + METAR_MAX_IDS));
   const p = Promise.all(groups.map((g) => api.weather.metar(g)))
-    .then((rs) => decodeMetarTafResponse({ stations: Object.assign({}, ...rs.map((r) => r.stations)), fetched: Math.min(...rs.map((r) => r.fetched)) }))
+    .then((rs) =>
+      decodeMetarTafResponse({
+        stations: Object.assign({}, ...rs.map((r) => r.stations)),
+        fetched: Math.min(...rs.map((r) => r.fetched)),
+      }),
+    )
     .catch((e: unknown): MetarTafResult => {
       metarCache.delete(key);
       const msg = (e as { offline?: boolean })?.offline ? 'offline' : String((e as Error)?.message || e);
-      return { status: 'error', message: `METAR/TAF unavailable (${msg})`, source: 'aviationweather.gov', fetchedMs: null, stations: {} };
+      return {
+        status: 'error',
+        message: `METAR/TAF unavailable (${msg})`,
+        source: 'aviationweather.gov',
+        fetchedMs: null,
+        stations: {},
+      };
     });
   metarCache.set(key, { at: now(), p });
   return p;

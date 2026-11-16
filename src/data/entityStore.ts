@@ -10,7 +10,14 @@
 //   answer can never overwrite a newer one (or a value set with putEntity after it started).
 
 export type EntityKey = 'pilot' | 'passengers' | 'aircraft' | 'operators' | 'waypoints' | 'flights';
-export const ENTITY_KEYS: readonly EntityKey[] = ['pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'];
+export const ENTITY_KEYS: readonly EntityKey[] = [
+  'pilot',
+  'passengers',
+  'aircraft',
+  'operators',
+  'waypoints',
+  'flights',
+];
 
 /** BroadcastChannel name shared by every tab of the app. */
 export const CHANNEL_NAME = 'pgf';
@@ -51,7 +58,12 @@ let now = () => Date.now();
 function entry(key: EntityKey): Entry {
   let e = entries.get(key);
   if (!e) {
-    e = { snap: { data: undefined, error: null, fetching: false, at: 0, stale: true }, seq: 0, inflight: null, subs: new Set() };
+    e = {
+      snap: { data: undefined, error: null, fetching: false, at: 0, stale: true },
+      seq: 0,
+      inflight: null,
+      subs: new Set(),
+    };
     entries.set(key, e);
   }
   return e;
@@ -79,7 +91,9 @@ export function getEntity<T>(key: EntityKey): EntitySnapshot<T> {
 export function subscribeEntity(key: EntityKey, fn: () => void): () => void {
   const e = entry(key);
   e.subs.add(fn);
-  return () => { e.subs.delete(fn); };
+  return () => {
+    e.subs.delete(fn);
+  };
 }
 
 /**
@@ -94,11 +108,17 @@ export function loadEntity<T>(key: EntityKey, opts: { force?: boolean } = {}): P
   const my = ++e.seq;
   const p = fetch().then(
     (data) => {
-      if (my === e.seq) { e.inflight = null; emit(e, { data, error: null, fetching: false, at: now(), stale: false }); }
+      if (my === e.seq) {
+        e.inflight = null;
+        emit(e, { data, error: null, fetching: false, at: now(), stale: false });
+      }
       return (my === e.seq ? data : e.snap.data) as T;
     },
     (err: unknown) => {
-      if (my === e.seq) { e.inflight = null; emit(e, { error: err instanceof Error ? err : new Error(String(err)), fetching: false }); }
+      if (my === e.seq) {
+        e.inflight = null;
+        emit(e, { error: err instanceof Error ? err : new Error(String(err)), fetching: false });
+      }
       if (e.snap.data !== undefined) return e.snap.data as T;
       throw err;
     },
@@ -172,13 +192,17 @@ export function onInvalidate(keys: EntityKey | EntityKey[], fn: (key: EntityKey)
     if (!s) invalidationListeners.set(k, (s = new Set()));
     s.add(fn);
   }
-  return () => { for (const k of list) invalidationListeners.get(k)?.delete(fn); };
+  return () => {
+    for (const k of list) invalidationListeners.get(k)?.delete(fn);
+  };
 }
 
 /** Calls `fn` when the window regains focus or the tab becomes visible (refetch-on-focus). */
 export function onRevalidate(fn: () => void): () => void {
   revalidateListeners.add(fn);
-  return () => { revalidateListeners.delete(fn); };
+  return () => {
+    revalidateListeners.delete(fn);
+  };
 }
 
 /** The window got focus or the tab became visible: deferred invalidations, then stale-by-age refetches. */
@@ -199,12 +223,21 @@ export function revalidate() {
 
 let channel: BroadcastChannel | null = null;
 function post(keys: EntityKey[]) {
-  try { channel?.postMessage({ v: 1, type: 'invalidate', keys, from: tabId } satisfies BusMessage); } catch { /* closed */ }
+  try {
+    channel?.postMessage({ v: 1, type: 'invalidate', keys, from: tabId } satisfies BusMessage);
+  } catch {
+    /* closed */
+  }
 }
 /** Posts a stored value to the other tabs; false when it could not be posted. */
 function postValue(key: EntityKey, data: unknown): boolean {
   if (!channel) return true; // no other tabs to tell
-  try { channel.postMessage({ v: 1, type: 'put', key, data, from: tabId } satisfies BusMessage); return true; } catch { return false; }
+  try {
+    channel.postMessage({ v: 1, type: 'put', key, data, from: tabId } satisfies BusMessage);
+    return true;
+  } catch {
+    return false;
+  }
 }
 function onMessage(ev: MessageEvent) {
   const m = ev.data as (Partial<BusMessage> & { keys?: unknown; key?: unknown; data?: unknown }) | null;
@@ -229,12 +262,16 @@ export function startEntityBus() {
     try {
       channel = new BroadcastChannel(CHANNEL_NAME);
       channel.onmessage = onMessage;
-    } catch { channel = null; }
+    } catch {
+      channel = null;
+    }
   }
   if (!windowListening && typeof window !== 'undefined' && typeof document !== 'undefined') {
     windowListening = true;
     window.addEventListener('focus', revalidate);
-    document.addEventListener('visibilitychange', () => { if (!hidden()) revalidate(); });
+    document.addEventListener('visibilitychange', () => {
+      if (!hidden()) revalidate();
+    });
   }
 }
 if (typeof window !== 'undefined') startEntityBus();

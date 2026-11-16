@@ -54,8 +54,12 @@ const at = (a: RefAerodrome | null, p: RoutePoint): LatLon => r3(a ? { lat: a.la
 
 /** What to fetch for a route (pure; exported for tests). */
 export function flightWeatherPlan(args: {
-  date: string; model: WindModel | null | undefined; route: RoutePoint[];
-  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined; legs: LegGeometry[]; aerodromes?: RefAerodrome[];
+  date: string;
+  model: WindModel | null | undefined;
+  route: RoutePoint[];
+  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined;
+  legs: LegGeometry[];
+  aerodromes?: RefAerodrome[];
 }): FlightWeatherPlan {
   const ads = args.aerodromes ?? REF.aerodromes;
   const { route } = args;
@@ -70,7 +74,11 @@ export function flightWeatherPlan(args: {
   const mids = args.legs.map((l) => r3(l.mid));
   const depLoc = first ? at(departure, first) : null;
   const destLoc = last ? at(destination, last) : null;
-  const icaos = [...new Set([departure?.icao, ...stops.map((s) => s.aerodrome?.icao), destination?.icao].filter((x): x is string => !!x))];
+  const icaos = [
+    ...new Set(
+      [departure?.icao, ...stops.map((s) => s.aerodrome?.icao), destination?.icao].filter((x): x is string => !!x),
+    ),
+  ];
   const key = JSON.stringify([args.date, args.model ?? null, mids, depLoc, destLoc, stops.map((s) => s.loc)]);
   return { departure, destination, stops, mids, icaos, key, depLoc, destLoc };
 }
@@ -107,8 +115,11 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   const { date, route, options, model, debounceMs = 0, enabled = true } = input;
   const builtLegs = useMemo(() => (input.legs ? null : buildLegs(route, date)), [input.legs, route, date]);
   const legs = input.legs ?? builtLegs!;
-   
-  const plan = useMemo(() => flightWeatherPlan({ date, model, route, options, legs }), [date, model, route, options, legs]);
+
+  const plan = useMemo(
+    () => flightWeatherPlan({ date, model, route, options, legs }),
+    [date, model, route, options, legs],
+  );
 
   const [refreshCount, setRefreshCount] = useState(0);
   const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
@@ -124,7 +135,11 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   useEffect(() => {
     const current = wxSeq.next();
     if (!enabled) return;
-    if (!hasPoints || !date) { setWeather(null); setWeatherLoading(false); return; }
+    if (!hasPoints || !date) {
+      setWeather(null);
+      setWeatherLoading(false);
+      return;
+    }
     const force = refreshCount !== lastRefresh.current.wx;
     setWeatherLoading(true);
     const p = planRef.current;
@@ -132,14 +147,30 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
       if (!current()) return;
       lastRefresh.current.wx = refreshCount;
       fetchRouteWeather({
-        date, model, legMidpoints: p.mids, departure: p.depLoc, destination: p.destLoc, stops: p.stops.map((s) => s.loc), force,
+        date,
+        model,
+        legMidpoints: p.mids,
+        departure: p.depLoc,
+        destination: p.destLoc,
+        stops: p.stops.map((s) => s.loc),
+        force,
       }).then(
-        (w) => { if (current()) { setWeather(w); setWeatherLoading(false); } },
+        (w) => {
+          if (current()) {
+            setWeather(w);
+            setWeatherLoading(false);
+          }
+        },
         (e: unknown) => {
           if (!current()) return;
           setWeather({
-            status: 'error', message: `Winds unavailable: ${String((e as Error)?.message || e)}`,
-            legs: p.mids.map(() => null), departure: null, destination: null, stops: p.stops.map(() => null), source: null,
+            status: 'error',
+            message: `Winds unavailable: ${String((e as Error)?.message || e)}`,
+            legs: p.mids.map(() => null),
+            departure: null,
+            destination: null,
+            stops: p.stops.map(() => null),
+            source: null,
           });
           setWeatherLoading(false);
         },
@@ -162,16 +193,39 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   useEffect(() => {
     const current = metarSeq.next();
     if (!enabled) return;
-    if (!icaoKey) { setMetar(null); setMetarLoading(false); return; }
+    if (!icaoKey) {
+      setMetar(null);
+      setMetarLoading(false);
+      return;
+    }
     const force = refreshCount !== lastRefresh.current.metar;
     lastRefresh.current.metar = refreshCount;
     setMetarLoading(true);
     fetchMetarTaf(icaoKey.split(','), { force }).then(
-      (m) => { if (current()) { setMetar(m); setMetarLoading(false); } },
-      () => { if (current()) { setMetar(null); setMetarLoading(false); } },
+      (m) => {
+        if (current()) {
+          setMetar(m);
+          setMetarLoading(false);
+        }
+      },
+      () => {
+        if (current()) {
+          setMetar(null);
+          setMetarLoading(false);
+        }
+      },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [icaoKey, refreshCount, enabled]);
 
-  return { ...plan, legs, weather, weatherLoading: weatherLoading && hasPoints, metar, metarLoading, refresh, refreshCount };
+  return {
+    ...plan,
+    legs,
+    weather,
+    weatherLoading: weatherLoading && hasPoints,
+    metar,
+    metarLoading,
+    refresh,
+    refreshCount,
+  };
 }

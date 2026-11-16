@@ -158,7 +158,14 @@ export function fisSide(p: LatLon, boundary: [number, number][]): 'north' | 'sou
 
 const limitText = (x: string) => x.replace(/ FT AGL$/, "' AGL").replace(/ FT$/, "'");
 
-function entriesOf(role: AtcRole, group: string, keyPrefix: string, units: Unit[], baseRemark: string, listed?: Set<string>): AtcEntry[] {
+function entriesOf(
+  role: AtcRole,
+  group: string,
+  keyPrefix: string,
+  units: Unit[],
+  baseRemark: string,
+  listed?: Set<string>,
+): AtcEntry[] {
   return units.map((u) => {
     for (const cs of u.callsigns) listed?.add(`${cs}|${u.freqs[0] ?? ''}`);
     const key = `${keyPrefix}:${u.callsigns.join('+')}`;
@@ -210,14 +217,22 @@ function enroutePosition(a: RefAerodrome, legs: { from: LatLon; to: LatLon }[], 
   return best;
 }
 
-function fisEntries(fis: RefFis, route: RoutePoint[], legs: { from: LatLon; to: LatLon }[], listed: Set<string>): AtcEntry[] {
+function fisEntries(
+  fis: RefFis,
+  route: RoutePoint[],
+  legs: { from: LatLon; to: LatLon }[],
+  listed: Set<string>,
+): AtcEntry[] {
   const sides: string[] = [];
   // sample along each leg, so a leg crossing the boundary lists both sectors
   const samples: LatLon[] = [];
   if (legs.length) {
     for (const L of legs) {
       for (let k = 0; k <= 8; k++) {
-        samples.push({ lat: L.from.lat + ((L.to.lat - L.from.lat) * k) / 8, lon: L.from.lon + ((L.to.lon - L.from.lon) * k) / 8 });
+        samples.push({
+          lat: L.from.lat + ((L.to.lat - L.from.lat) * k) / 8,
+          lon: L.from.lon + ((L.to.lon - L.from.lon) * k) / 8,
+        });
       }
     }
   } else samples.push(...route);
@@ -228,7 +243,13 @@ function fisEntries(fis: RefFis, route: RoutePoint[], legs: { from: LatLon; to: 
   const units: Unit[] = [];
   for (const s of sides) {
     const u = fis.units.find((x) => x.side === s);
-    if (u && !listed.has(`${u.callsign}|${u.freqs[0] ?? ''}`)) units.push({ callsigns: [u.callsign], labels: ['INFO'], freqs: u.freqs.slice(0, 2), remark: `${s === 'north' ? 'North' : 'South'} sector` });
+    if (u && !listed.has(`${u.callsign}|${u.freqs[0] ?? ''}`))
+      units.push({
+        callsigns: [u.callsign],
+        labels: ['INFO'],
+        freqs: u.freqs.slice(0, 2),
+        remark: `${s === 'north' ? 'North' : 'South'} sector`,
+      });
   }
   if (!units.length) return [];
   return entriesOf('fis', 'FIS', 'fis', mergeUnits(units), '', listed);
@@ -343,7 +364,10 @@ export function atcLegRelevance(input: AtcGenInput): Map<string, number[]> {
       if (altOk && segmentEntersPolygon(L.from, L.to, v.polygon)) add(`as:${v.name}`, i);
     }
     for (let k = 0; k <= 8; k++) {
-      const p = { lat: L.from.lat + ((L.to.lat - L.from.lat) * k) / 8, lon: L.from.lon + ((L.to.lon - L.from.lon) * k) / 8 };
+      const p = {
+        lat: L.from.lat + ((L.to.lat - L.from.lat) * k) / 8,
+        lon: L.from.lon + ((L.to.lon - L.from.lon) * k) / 8,
+      };
       const u = fis.units.find((x) => x.side === fisSide(p, fis.boundary));
       if (u) add(`fis:${u.callsign}`, i);
     }
@@ -363,7 +387,11 @@ export function atcEntryLegs(e: Pick<AtcEntry, 'sourceKey'>, relevance: Map<stri
   const ad = /^ad:([^:]+)/.exec(k);
   if (ad) keys = [`ad:${ad[1]}`];
   else if (k.startsWith('as:')) keys = [k.slice(0, k.lastIndexOf(':') > 2 ? k.lastIndexOf(':') : k.length)];
-  else if (k.startsWith('fis:')) keys = k.slice(4).split('+').map((cs) => `fis:${cs}`);
+  else if (k.startsWith('fis:'))
+    keys = k
+      .slice(4)
+      .split('+')
+      .map((cs) => `fis:${cs}`);
   else return null;
   const found = keys.filter((x) => relevance.has(x));
   if (!found.length) return null;

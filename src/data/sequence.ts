@@ -24,7 +24,9 @@ export function sequencer(): Sequencer {
       const my = ++n;
       return () => my === n;
     },
-    cancel() { n++; },
+    cancel() {
+      n++;
+    },
   };
 }
 

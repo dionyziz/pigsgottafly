@@ -28,10 +28,18 @@ test('SX-ASV and SX-ASG from the weighing reports and the AFM', () => {
 
 test('both take AVGAS (usual) and MOGAS; no seeded notes, file paths or club captions', () => {
   for (const a of fleetSeed()) {
-    expect(a.fuel.types).toEqual([{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'MOGAS', densityKgPerL: 0.75 }]);
+    expect(a.fuel.types).toEqual([
+      { type: 'AVGAS', densityKgPerL: 0.72 },
+      { type: 'MOGAS', densityKgPerL: 0.75 },
+    ]);
     expect(a.notes).toBe('');
     expect(a.performance.factors.source).toBe('');
-    const texts = [a.massBalance.weighingSource, ...a.compassCards.map((c) => c.source), a.performance.takeoff.source, a.performance.landing.source];
+    const texts = [
+      a.massBalance.weighingSource,
+      ...a.compassCards.map((c) => c.source),
+      a.performance.takeoff.source,
+      a.performance.landing.source,
+    ];
     for (const t of texts) expect(t).not.toMatch(/trn-docs|\.pdf|Mesogeion|\[/i);
   }
 });

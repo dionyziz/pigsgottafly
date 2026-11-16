@@ -25,7 +25,14 @@ const vfr = (id: string): RoutePoint => {
   const p = vfrPoint(id)!;
   return { uid: `u-${id}`, kind: 'vfr', refId: p.id, name: p.name, lat: p.lat, lon: p.lon };
 };
-const custom = (name: string, lat: number, lon: number): RoutePoint => ({ uid: `u-${name}`, kind: 'custom', refId: null, name, lat, lon });
+const custom = (name: string, lat: number, lon: number): RoutePoint => ({
+  uid: `u-${name}`,
+  kind: 'custom',
+  refId: null,
+  name,
+  lat,
+  lon,
+});
 
 function gen(route: RoutePoint[], alts: number[], radius = 2): AtcEntry[] {
   return generateAtcList(atcInput(route, alts, REF, radius));
@@ -157,11 +164,27 @@ describe('real routes', () => {
 
   test('airspace vertical limits are respected (synthetic volume)', () => {
     const box: RefAirspace = {
-      id: 'TEST-1', name: 'TEST TMA', kind: 'TMA', class: 'C', sector: '', lower: '3000 FT', upper: 'FL 065',
-      polygon: [[37, 24], [37, 25], [38, 25], [38, 24]],
-      units: [{ callsign: 'TEST APPROACH', freqs: ['119.000', '120.000', '121.000'], hours: 'H24' }], note: '', source: '',
+      id: 'TEST-1',
+      name: 'TEST TMA',
+      kind: 'TMA',
+      class: 'C',
+      sector: '',
+      lower: '3000 FT',
+      upper: 'FL 065',
+      polygon: [
+        [37, 24],
+        [37, 25],
+        [38, 25],
+        [38, 24],
+      ],
+      units: [{ callsign: 'TEST APPROACH', freqs: ['119.000', '120.000', '121.000'], hours: 'H24' }],
+      note: '',
+      source: '',
     };
-    const input = (alt: number) => ({ ...atcInput([custom('A', 37.5, 23.5), custom('B', 37.5, 24.5)], [alt], REF, 2), airspaces: [box] });
+    const input = (alt: number) => ({
+      ...atcInput([custom('A', 37.5, 23.5), custom('B', 37.5, 24.5)], [alt], REF, 2),
+      airspaces: [box],
+    });
     expect(generateAtcList(input(2500)).some((e) => e.group === 'TEST TMA')).toBe(false);
     const hit = generateAtcList(input(4500)).find((e) => e.group === 'TEST TMA')!;
     expect(hit.primary).toBe('119.000');
@@ -177,7 +200,11 @@ describe('legs each row relates to', () => {
     const input = atcInput(route, [4500, 4500], REF, 2);
     const rel = atcLegRelevance(input);
     const list = generateAtcList(input);
-    const legsOf = (group: string) => atcEntryLegs(list.find((e) => e.group === group)!, rel);
+    const legsOf = (group: string) =>
+      atcEntryLegs(
+        list.find((e) => e.group === group)!,
+        rel,
+      );
     expect(legsOf('LGTT DEKELIA / TATOI')).toEqual([0]);
     expect(legsOf('LGSY SKIROS')).toEqual([1]);
     expect(legsOf('ATHINAI TMA')).toContain(0);
@@ -197,7 +224,17 @@ describe('legs each row relates to', () => {
 describe('regenerate', () => {
   test('keeps rows added by hand; optionally keeps edits of generated rows', () => {
     const gen1 = gen([ad('LGTT'), ad('LGSY')], [4500]);
-    const mine: AtcEntry = { id: 'x1', role: 'custom', group: 'Other', callsign: 'OLYMPIC OPS', service: '', primary: '131.500', backups: [], remark: '', sourceKey: null };
+    const mine: AtcEntry = {
+      id: 'x1',
+      role: 'custom',
+      group: 'Other',
+      callsign: 'OLYMPIC OPS',
+      service: '',
+      primary: '131.500',
+      backups: [],
+      remark: '',
+      sourceKey: null,
+    };
     const edited = [{ ...gen1[0], primary: '118.500', backups: [] }, mine];
     expect(regenerateAtcList(null, gen1)).toBe(gen1);
     const fresh = regenerateAtcList(edited, gen1);

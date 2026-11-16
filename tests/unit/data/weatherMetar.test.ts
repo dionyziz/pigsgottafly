@@ -3,7 +3,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import {
-  clearMetarCache, decodeMetarTafResponse, fetchMetarTaf, fmtMetarWind, parseMetar, parseTaf, resolveDayTime, tafCovers,
+  clearMetarCache,
+  decodeMetarTafResponse,
+  fetchMetarTaf,
+  fmtMetarWind,
+  parseMetar,
+  parseTaf,
+  resolveDayTime,
+  tafCovers,
 } from '../../../src/data/weatherMetar';
 import metars from '../../fixtures/weather/awc-metar-2026-11-15.json';
 import tafs from '../../fixtures/weather/awc-taf-2026-11-15.json';
@@ -29,40 +36,74 @@ describe('parseMetar', () => {
   test('LGAV: variable sector, trend not decoded', () => {
     const m = parseMetar('METAR LGAV 151320Z 05009KT 010V070 9999 FEW025 SCT050 17/12 Q1024 NOSIG', REF);
     expect(m).toMatchObject({
-      type: 'METAR', station: 'LGAV', timeMs: T('2026-11-15T13:20Z'), visibilityM: 9999, cavok: false, tempC: 17, dewC: 12, qnhHpa: 1024,
+      type: 'METAR',
+      station: 'LGAV',
+      timeMs: T('2026-11-15T13:20Z'),
+      visibilityM: 9999,
+      cavok: false,
+      tempC: 17,
+      dewC: 12,
+      qnhHpa: 1024,
       wind: { dirDeg: 50, speedKt: 9, gustKt: null, varFrom: 10, varTo: 70, variable: false, calm: false },
     });
     expect(fmtMetarWind(m.wind)).toBe('05009KT');
   });
 
   test('gusts, weather, CB, and a TEMPO wind that must not replace the observed one', () => {
-    const m = parseMetar('METAR LGKR 151320Z 27015G27KT 4000 -RA BKN012 OVC030CB 14/13 Q1009 TEMPO 33025G40KT TSRA', REF);
+    const m = parseMetar(
+      'METAR LGKR 151320Z 27015G27KT 4000 -RA BKN012 OVC030CB 14/13 Q1009 TEMPO 33025G40KT TSRA',
+      REF,
+    );
     expect(m.wind).toMatchObject({ dirDeg: 270, speedKt: 15, gustKt: 27 });
     expect(m.weather).toEqual(['-RA']);
     expect(m.visibilityM).toBe(4000);
-    expect(m.clouds).toEqual([{ cover: 'BKN', baseFt: 1200, type: null }, { cover: 'OVC', baseFt: 3000, type: 'CB' }]);
+    expect(m.clouds).toEqual([
+      { cover: 'BKN', baseFt: 1200, type: null },
+      { cover: 'OVC', baseFt: 3000, type: 'CB' },
+    ]);
     expect(fmtMetarWind(m.wind)).toBe('27015G27KT');
   });
 
   test('VRB, CAVOK, negative temperatures, month boundary', () => {
     const m = parseMetar('METAR LGKO 302350Z VRB03KT CAVOK M02/M05 Q1031=', T('2026-12-01T00:05Z'));
-    expect(m).toMatchObject({ timeMs: T('2026-11-30T23:50Z'), cavok: true, visibilityM: 9999, skyClear: 'CAVOK', tempC: -2, dewC: -5, qnhHpa: 1031 });
+    expect(m).toMatchObject({
+      timeMs: T('2026-11-30T23:50Z'),
+      cavok: true,
+      visibilityM: 9999,
+      skyClear: 'CAVOK',
+      tempC: -2,
+      dewC: -5,
+      qnhHpa: 1031,
+    });
     expect(m.wind).toMatchObject({ dirDeg: null, speedKt: 3, variable: true, calm: false });
     expect(fmtMetarWind(m.wind)).toBe('VRB03KT');
   });
 
   test('calm, statute miles, inHg, AUTO, remarks ignored', () => {
     const m = parseMetar('KJFK 151351Z AUTO 00000KT 10SM CLR 08/M01 A3012 RMK AO2 SLP199 T00831011', REF);
-    expect(m).toMatchObject({ station: 'KJFK', auto: true, visibilityM: 9999, skyClear: 'CLR', tempC: 8, dewC: -1, qnhHpa: 1020 });
+    expect(m).toMatchObject({
+      station: 'KJFK',
+      auto: true,
+      visibilityM: 9999,
+      skyClear: 'CLR',
+      tempC: 8,
+      dewC: -1,
+      qnhHpa: 1020,
+    });
     expect(m.wind).toMatchObject({ calm: true, speedKt: 0, dirDeg: null });
     expect(fmtMetarWind(m.wind)).toBe('00000KT');
   });
 
   test('MPS and KMH converted to kt; missing wind and temperature groups', () => {
-    expect(parseMetar('METAR UUEE 151330Z 18005MPS 9999 BKN020 03/01 Q1012', REF).wind).toMatchObject({ dirDeg: 180, speedKt: 10 });
+    expect(parseMetar('METAR UUEE 151330Z 18005MPS 9999 BKN020 03/01 Q1012', REF).wind).toMatchObject({
+      dirDeg: 180,
+      speedKt: 10,
+    });
     expect(parseMetar('METAR XXXX 151330Z 18036KMH 9999 03/01 Q1012', REF).wind).toMatchObject({ speedKt: 19 });
     const m = parseMetar('METAR LGXX 151320Z AUTO /////KT 9999 NCD 17/// Q1024', REF);
-    expect(m.wind).toBeNull(); expect(m.skyClear).toBe('NCD'); expect(m.qnhHpa).toBe(1024);
+    expect(m.wind).toBeNull();
+    expect(m.skyClear).toBe('NCD');
+    expect(m.qnhHpa).toBe(1024);
   });
 
   test('NIL report; garbage never throws', () => {
@@ -85,7 +126,13 @@ describe('parseTaf', () => {
 
   test('AMD, month boundary, hour 24, coverage', () => {
     const t = parseTaf('TAF AMD LGAV 302310Z 0100/0124 03014KT 9999 FEW015', T('2026-11-30T23:15Z'));
-    expect(t).toMatchObject({ amended: true, station: 'LGAV', issuedMs: T('2026-11-30T23:10Z'), validFromMs: T('2026-12-01T00:00Z'), validToMs: T('2026-12-02T00:00Z') });
+    expect(t).toMatchObject({
+      amended: true,
+      station: 'LGAV',
+      issuedMs: T('2026-11-30T23:10Z'),
+      validFromMs: T('2026-12-01T00:00Z'),
+      validToMs: T('2026-12-02T00:00Z'),
+    });
     expect(tafCovers(t, T('2026-12-01T12:00Z'))).toBe(true);
     expect(tafCovers(t, T('2026-12-02T01:00Z'))).toBe(false);
     expect(tafCovers(null, T('2026-12-01T12:00Z'))).toBe(false);
@@ -102,7 +149,10 @@ describe('parseTaf', () => {
 });
 
 describe('client', () => {
-  afterEach(() => { vi.unstubAllGlobals(); clearMetarCache(); });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearMetarCache();
+  });
 
   test('decodeMetarTafResponse uses the provider observation time', () => {
     const r = decodeMetarTafResponse({
@@ -120,7 +170,10 @@ describe('client', () => {
     const calls: string[] = [];
     vi.stubGlobal('fetch', async (url: string) => {
       calls.push(url);
-      return new Response(JSON.stringify({ fetched: REF, stations: { LGAV: { metar: metars[0].rawOb, taf: null, observed: null } } }), { status: 200 });
+      return new Response(
+        JSON.stringify({ fetched: REF, stations: { LGAV: { metar: metars[0].rawOb, taf: null, observed: null } } }),
+        { status: 200 },
+      );
     });
     const a = await fetchMetarTaf(['lgav', 'LGTT', 'LGAV', '', 'X1']);
     expect(calls).toEqual(['/api/weather/metar?ids=LGAV,LGTT']);
@@ -133,10 +186,19 @@ describe('client', () => {
     expect(calls).toHaveLength(2);
     expect(await fetchMetarTaf([])).toMatchObject({ status: 'ok', stations: {} });
 
-    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ error: 'weather service unavailable' }), { status: 502 }));
+    vi.stubGlobal(
+      'fetch',
+      async () => new Response(JSON.stringify({ error: 'weather service unavailable' }), { status: 502 }),
+    );
     const e = await fetchMetarTaf(['LGIR']);
-    expect(e).toMatchObject({ status: 'error', stations: {}, message: 'METAR/TAF unavailable (weather service unavailable)' });
-    vi.stubGlobal('fetch', async () => { throw new TypeError('Failed to fetch'); });
+    expect(e).toMatchObject({
+      status: 'error',
+      stations: {},
+      message: 'METAR/TAF unavailable (weather service unavailable)',
+    });
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Failed to fetch');
+    });
     expect((await fetchMetarTaf(['LGIR'])).message).toBe('METAR/TAF unavailable (offline)'); // the failure was not cached
   });
 });

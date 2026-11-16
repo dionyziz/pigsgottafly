@@ -5,7 +5,13 @@
 // server, a few requests at most per call.
 import type { IsoDate, WindModel } from '../shared';
 import {
-  GRID_MAX_LOCATIONS, GRID_MAX_POINTS, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation, type WeatherGridKind, type WeatherGridResponse,
+  GRID_MAX_LOCATIONS,
+  GRID_MAX_POINTS,
+  type ModelRun,
+  type OpenMeteoEndpoint,
+  type OpenMeteoLocation,
+  type WeatherGridKind,
+  type WeatherGridResponse,
 } from '../shared/weatherGrid';
 import { request } from './api';
 
@@ -20,12 +26,20 @@ interface Answer {
   message?: string;
   synthetic?: boolean;
 }
-interface Entry { p: Promise<Answer>; until: number; runMs: number | null; endpoint: OpenMeteoEndpoint | null }
+interface Entry {
+  p: Promise<Answer>;
+  until: number;
+  runMs: number | null;
+  endpoint: OpenMeteoEndpoint | null;
+}
 
 const cache = new Map<string, Entry>();
 /** The newest run seen per model and endpoint: entries of older runs are not used. */
 const latestRun = new Map<string, number>();
-export const clearGridCache = () => { cache.clear(); latestRun.clear(); };
+export const clearGridCache = () => {
+  cache.clear();
+  latestRun.clear();
+};
 
 export interface GridRequest {
   kind: WeatherGridKind;
@@ -68,38 +82,66 @@ export async function fetchGrid(req: GridRequest): Promise<GridResult> {
   const missing = locs.filter((k) => !usable(cache.get(base + k)));
   // nodes and points together, at most GRID_MAX_LOCATIONS (GRID_MAX_POINTS points) per request
   const chunks: string[][] = [];
-  let cur: string[] = [], points = 0;
+  let cur: string[] = [],
+    points = 0;
   for (const k of missing) {
     const point = k.startsWith('p:');
-    if (cur.length >= GRID_MAX_LOCATIONS || (point && points >= GRID_MAX_POINTS)) { chunks.push(cur); cur = []; points = 0; }
+    if (cur.length >= GRID_MAX_LOCATIONS || (point && points >= GRID_MAX_POINTS)) {
+      chunks.push(cur);
+      cur = [];
+      points = 0;
+    }
     cur.push(k);
     if (point) points++;
   }
   if (cur.length) chunks.push(cur);
   for (const chunk of chunks) {
-    const q = new URLSearchParams({ kind: req.kind, model: req.model, from: req.from, to: req.to, locs: chunk.join(';') });
+    const q = new URLSearchParams({
+      kind: req.kind,
+      model: req.model,
+      from: req.from,
+      to: req.to,
+      locs: chunk.join(';'),
+    });
     if (req.force) q.set('fresh', '1');
     const all = get(`weather/grid?${q}`).then((b) => b as WeatherGridResponse);
     for (const k of chunk) {
-      const p = all.then((r): Answer => ({ loc: r.locations?.[k] ?? null, endpoint: r.endpoint, run: r.run, message: r.message, synthetic: r.synthetic }));
+      const p = all.then((r): Answer => ({
+        loc: r.locations?.[k] ?? null,
+        endpoint: r.endpoint,
+        run: r.run,
+        message: r.message,
+        synthetic: r.synthetic,
+      }));
       const entry: Entry = { p, until: now + PENDING_MS, runMs: null, endpoint: null };
       cache.set(base + k, entry);
-      p.then((a) => {
-        if (a.run) {
-          const rk = runKey(a.endpoint);
-          if ((latestRun.get(rk) ?? -Infinity) < a.run.runMs) latestRun.set(rk, a.run.runMs);
-        }
-        entry.runMs = a.run ? a.run.runMs : null;
-        entry.endpoint = a.endpoint;
-        // an answer without data is not kept (the next call asks again)
-        if (!a.loc) { if (cache.get(base + k) === entry) cache.delete(base + k); return; }
-        all.then((r) => { entry.until = r.recheckMs; });
-      }, () => { if (cache.get(base + k) === entry) cache.delete(base + k); });
+      p.then(
+        (a) => {
+          if (a.run) {
+            const rk = runKey(a.endpoint);
+            if ((latestRun.get(rk) ?? -Infinity) < a.run.runMs) latestRun.set(rk, a.run.runMs);
+          }
+          entry.runMs = a.run ? a.run.runMs : null;
+          entry.endpoint = a.endpoint;
+          // an answer without data is not kept (the next call asks again)
+          if (!a.loc) {
+            if (cache.get(base + k) === entry) cache.delete(base + k);
+            return;
+          }
+          all.then((r) => {
+            entry.until = r.recheckMs;
+          });
+        },
+        () => {
+          if (cache.get(base + k) === entry) cache.delete(base + k);
+        },
+      );
     }
   }
   const settled = await Promise.allSettled(locs.map((k) => cache.get(base + k)!.p));
   const locations = new Map<string, OpenMeteoLocation | null>();
-  let first: Answer | null = null, failure: unknown = null;
+  let first: Answer | null = null,
+    failure: unknown = null;
   const messages = new Set<string>();
   settled.forEach((s, i) => {
     if (s.status === 'fulfilled') {
@@ -115,7 +157,9 @@ export async function fetchGrid(req: GridRequest): Promise<GridResult> {
   const f = first as Answer | null;
   if (failure) messages.add(String((failure as Error)?.message || failure));
   return {
-    locations, endpoint: f?.endpoint ?? null, run: f?.run ?? null,
+    locations,
+    endpoint: f?.endpoint ?? null,
+    run: f?.run ?? null,
     ...(messages.size ? { message: [...messages].join('; ') } : {}),
     ...(f?.synthetic ? { synthetic: true } : {}),
   };

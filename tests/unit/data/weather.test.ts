@@ -7,17 +7,31 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import { upstreamUrl } from '../../../api/_lib/routes/weatherGrid';
 import { pressureAltitudeFt, qnhFromStationPressure } from '../../../src/calc';
 import {
-  chooseSurface, clearCache, describeSource, fetchRouteWeather, fmtQnh,
-fmtTempDew, fmtWind, forecastAvailability,   type Hourly, type OpenMeteoLocation,
-sampleAt, sampleSurface,
-  surfaceConditions, surfaceFromMetar, toPerfWind, windProviderFromLegs, } from '../../../src/data/weather';
+  chooseSurface,
+  clearCache,
+  describeSource,
+  fetchRouteWeather,
+  fmtQnh,
+  fmtTempDew,
+  fmtWind,
+  forecastAvailability,
+  type Hourly,
+  type OpenMeteoLocation,
+  sampleAt,
+  sampleSurface,
+  surfaceConditions,
+  surfaceFromMetar,
+  toPerfWind,
+  windProviderFromLegs,
+} from '../../../src/data/weather';
 import { parseMetar } from '../../../src/data/weatherMetar';
 import fixture from '../../fixtures/weather/open-meteo-ecmwf-2026-11-15.json';
 import { fakeOpenMeteo, gridApi } from '../../helpers/openMeteoGrid';
 
 const locs = fixture as unknown as OpenMeteoLocation[];
 const h0 = locs[0].hourly;
-const near = (a: number, b: number, tol: number) => expect(Math.abs(a - b), `expected ${b}±${tol}, got ${a}`).toBeLessThanOrEqual(tol);
+const near = (a: number, b: number, tol: number) =>
+  expect(Math.abs(a - b), `expected ${b}±${tol}, got ${a}`).toBeLessThanOrEqual(tol);
 const T = (s: string) => Date.parse(s);
 const M_TO_FT = 1 / 0.3048;
 const NOW = T('2026-11-15T13:36:00Z');
@@ -28,26 +42,34 @@ describe('winds aloft', () => {
   test('exactly on a level and an hour gives the level values', () => {
     // 08:00, 850 hPa at 1575 m: 225° 2.8 kt, 8.6 °C
     const s = sampleAt(h0, 1575 * M_TO_FT, T('2026-11-15T08:00Z'))!;
-    near(s.dirDeg, 225, 1e-6); near(s.speedKt, 2.8, 1e-6); near(s.tempC, 8.6, 1e-9);
+    near(s.dirDeg, 225, 1e-6);
+    near(s.speedKt, 2.8, 1e-6);
+    near(s.tempC, 8.6, 1e-9);
   });
 
   test('half-way between two levels interpolates u/v and temperature', () => {
     // 08:00: 925 hPa 870 m 016°/5.6 kt 12.0 °C, 850 hPa 1575 m 225°/2.8 kt 8.6 °C; altitude 1222.5 m.
     // By hand: u/v mean → 352.69° 1.7155 kt; temperature 10.3 °C.
     const s = sampleAt(h0, 1222.5 * M_TO_FT, T('2026-11-15T08:00Z'))!;
-    near(s.dirDeg, 352.69, 0.01); near(s.speedKt, 1.7155, 1e-3); near(s.tempC, 10.3, 1e-9);
+    near(s.dirDeg, 352.69, 0.01);
+    near(s.speedKt, 1.7155, 1e-3);
+    near(s.tempC, 10.3, 1e-9);
   });
 
   test('half-way between two hours interpolates in time; above the top level uses the top level', () => {
     // 600 hPa (4381 m) 08:00 275°/26.6, 09:00 274°/27.4; 08:30 at 20000 ft. By hand: 274.49° 26.999 kt.
     const s = sampleAt(h0, 20000, T('2026-11-15T08:30Z'))!;
-    near(s.dirDeg, 274.49, 0.01); near(s.speedKt, 26.999, 1e-3); near(s.tempC, -5.2, 1e-9);
+    near(s.dirDeg, 274.49, 0.01);
+    near(s.speedKt, 26.999, 1e-3);
+    near(s.tempC, -5.2, 1e-9);
   });
 
   test('below the lowest level uses the lowest level (ECMWF has no 975/950 hPa: nulls are skipped)', () => {
     expect(h0['wind_speed_975hPa'][8]).toBeNull();
     const s = sampleAt(h0, 0, T('2026-11-15T08:00Z'))!; // 1000 hPa at 213 m: 036°/6.7 kt 16.0 °C
-    near(s.dirDeg, 36, 1e-6); near(s.speedKt, 6.7, 1e-6); near(s.tempC, 16, 1e-9);
+    near(s.dirDeg, 36, 1e-6);
+    near(s.speedKt, 6.7, 1e-6);
+    near(s.tempC, 16, 1e-9);
   });
 
   test('times outside the data (more than an hour) give null; NaN inputs give null', () => {
@@ -72,15 +94,25 @@ describe('surface', () => {
   test('sampleSurface interpolates in time', () => {
     // 08:00 → 09:00: MSL 1025.1 → 1025.2, 2 m 16.5 → 17.9 °C, dew 12.3, 10 m wind 049°/3.9 → 049°/3.6
     const s = sampleSurface(h0, T('2026-11-15T08:30Z'))!;
-    near(s.qnh, 1025.15, 1e-9); near(s.temp, 17.2, 1e-9); near(s.dew, 12.3, 1e-9);
-    near(s.wind!.dir, 49, 1e-6); near(s.wind!.spd, 3.75, 1e-9);
+    near(s.qnh, 1025.15, 1e-9);
+    near(s.temp, 17.2, 1e-9);
+    near(s.dew, 12.3, 1e-9);
+    near(s.wind!.dir, 49, 1e-6);
+    near(s.wind!.spd, 3.75, 1e-9);
     expect([fmtWind(s), fmtTempDew(s), fmtQnh(s)]).toEqual(['05004KT', '17/12', '1025']);
   });
 
   test('surfaceConditions: true wind, QNH from MSL pressure, label with the valid time', () => {
     const c = surfaceConditions(locs[1], T('2026-11-15T08:00Z'))!;
-    expect(c).toMatchObject({ source: 'forecast', tempC: 17, dewC: 13.4, qnhHpa: 1025.5, label: 'Forecast for 08:00Z' });
-    near(c.wind!.dirTrueDeg!, 16, 1e-6); near(c.wind!.speedKt, 11.1, 1e-6);
+    expect(c).toMatchObject({
+      source: 'forecast',
+      tempC: 17,
+      dewC: 13.4,
+      qnhHpa: 1025.5,
+      label: 'Forecast for 08:00Z',
+    });
+    near(c.wind!.dirTrueDeg!, 16, 1e-6);
+    near(c.wind!.speedKt, 11.1, 1e-6);
     expect(toPerfWind(c)).toEqual({ dirTrueDeg: c.wind!.dirTrueDeg, speedKt: c.wind!.speedKt, gustKt: null });
     expect(surfaceConditions(null, T('2026-11-15T08:00Z'))).toBeNull();
   });
@@ -91,7 +123,15 @@ describe('surface', () => {
     // L = 0.0065 K/m, T0 = 288.15 K): 1017.05 hPa. The model's MSLP (reduced with the actual cold
     // column) is a few hPa higher; using it would make the pressure altitude too low.
     const hours = ['2026-01-10T08:00', '2026-01-10T09:00'];
-    const hourly = { time: hours, pressure_msl: [1023, 1023], surface_pressure: [940, 940], temperature_2m: [-10, -10], dew_point_2m: [-12, -12], wind_speed_10m: [0, 0], wind_direction_10m: [0, 0] } as unknown as Hourly;
+    const hourly = {
+      time: hours,
+      pressure_msl: [1023, 1023],
+      surface_pressure: [940, 940],
+      temperature_2m: [-10, -10],
+      dew_point_2m: [-12, -12],
+      wind_speed_10m: [0, 0],
+      wind_direction_10m: [0, 0],
+    } as unknown as Hourly;
     const loc: OpenMeteoLocation = { hourly, latitude: 40.45, longitude: 21.28, elevation: 660 };
     const s = sampleSurface(hourly, T('2026-01-10T08:30Z'), 660)!;
     near(s.qnh, 1017.05, 0.05);
@@ -112,17 +152,28 @@ describe('surface', () => {
     const fc = surfaceConditions(locs[1], T('2026-11-15T14:00Z'));
     const now = T('2026-11-15T13:36Z');
     const a = chooseSurface({ metar, forecast: fc, timeMs: T('2026-11-15T14:00Z'), nowMs: now })!;
-    expect(a).toMatchObject({ source: 'metar', label: 'METAR LGAV 151320Z', tempC: 17, dewC: 12, qnhHpa: 1024, wind: { dirTrueDeg: 50, speedKt: 9, gustKt: null } });
+    expect(a).toMatchObject({
+      source: 'metar',
+      label: 'METAR LGAV 151320Z',
+      tempC: 17,
+      dewC: 12,
+      qnhHpa: 1024,
+      wind: { dirTrueDeg: 50, speedKt: 9, gustKt: null },
+    });
     // flight 3 h later: forecast
     expect(chooseSurface({ metar, forecast: fc, timeMs: T('2026-11-15T16:30Z'), nowMs: now })!.source).toBe('forecast');
     // METAR 2 h old: forecast
-    expect(chooseSurface({ metar, forecast: fc, timeMs: T('2026-11-15T14:00Z'), nowMs: T('2026-11-15T15:30Z') })!.source).toBe('forecast');
+    expect(
+      chooseSurface({ metar, forecast: fc, timeMs: T('2026-11-15T14:00Z'), nowMs: T('2026-11-15T15:30Z') })!.source,
+    ).toBe('forecast');
     // no forecast: METAR only when current, else null
     expect(chooseSurface({ metar, forecast: null, timeMs: T('2026-11-15T20:00Z'), nowMs: now })).toBeNull();
     // missing METAR temperature/QNH are filled from the forecast
     const bare = parseMetar('METAR LGAV 151320Z 05009KT 9999 NSC', NOW);
     const b = chooseSurface({ metar: bare, forecast: fc, timeMs: T('2026-11-15T13:30Z'), nowMs: now })!;
-    expect(b.source).toBe('metar'); expect(b.tempC).toBe(fc!.tempC); expect(b.qnhHpa).toBe(fc!.qnhHpa);
+    expect(b.source).toBe('metar');
+    expect(b.tempC).toBe(fc!.tempC);
+    expect(b.qnhHpa).toBe(fc!.qnhHpa);
   });
 
   test('surfaceFromMetar: VRB and calm have no direction; perf wind keeps VRB speed and gusts', () => {
@@ -130,7 +181,11 @@ describe('surface', () => {
     expect(vrb.wind).toEqual({ dirTrueDeg: null, speedKt: 3, gustKt: null });
     // VRB: no direction, the speed is kept (the performance check treats it as full crosswind)
     expect(toPerfWind(vrb)).toEqual({ dirTrueDeg: null, speedKt: 3, gustKt: null });
-    expect(toPerfWind(surfaceFromMetar(parseMetar('METAR LGTG 151320Z VRB15G25KT 9999 12/05 Q1020', NOW)))).toEqual({ dirTrueDeg: null, speedKt: 15, gustKt: 25 });
+    expect(toPerfWind(surfaceFromMetar(parseMetar('METAR LGTG 151320Z VRB15G25KT 9999 12/05 Q1020', NOW)))).toEqual({
+      dirTrueDeg: null,
+      speedKt: 15,
+      gustKt: 25,
+    });
     const calm = surfaceFromMetar(parseMetar('METAR LGTG 151320Z 00000KT CAVOK 12/05 Q1020', NOW))!;
     expect(calm.wind).toEqual({ dirTrueDeg: null, speedKt: 0, gustKt: null });
     expect(toPerfWind(calm)).toEqual({ dirTrueDeg: null, speedKt: 0, gustKt: null });
@@ -143,17 +198,40 @@ describe('surface', () => {
 
 describe('availability and fetching', () => {
   test('forecastAvailability by model horizon and the forecast endpoint’s 92 past days', () => {
-    expect(forecastAvailability('2026-11-30', 'ecmwf_ifs025', NOW)).toMatchObject({ kind: 'forecast', endpoint: 'forecast' });
-    expect(forecastAvailability('2026-12-01', 'ecmwf_ifs025', NOW)).toEqual({ kind: 'too-far', availableFrom: '2026-11-16', lastDate: '2026-11-30' });
+    expect(forecastAvailability('2026-11-30', 'ecmwf_ifs025', NOW)).toMatchObject({
+      kind: 'forecast',
+      endpoint: 'forecast',
+    });
+    expect(forecastAvailability('2026-12-01', 'ecmwf_ifs025', NOW)).toEqual({
+      kind: 'too-far',
+      availableFrom: '2026-11-16',
+      lastDate: '2026-11-30',
+    });
     expect(forecastAvailability('2026-12-01', 'gfs_seamless', NOW).kind).toBe('forecast');
     expect(forecastAvailability('2026-11-23', 'icon_seamless', NOW).kind).toBe('too-far');
     expect(forecastAvailability('2026-08-15', 'ecmwf_ifs025', NOW).kind).toBe('forecast');
-    expect(forecastAvailability('2026-08-01', 'ecmwf_ifs025', NOW)).toMatchObject({ kind: 'historical', endpoint: 'historical' });
+    expect(forecastAvailability('2026-08-01', 'ecmwf_ifs025', NOW)).toMatchObject({
+      kind: 'historical',
+      endpoint: 'historical',
+    });
     expect(forecastAvailability('', 'ecmwf_ifs025', NOW).kind).toBe('invalid');
   });
 
   test('upstream URL (server side): every location and every level', () => {
-    const u = new URL(upstreamUrl({ endpoint: 'forecast', kind: 'wind', model: 'gfs_seamless', nodes: true, locs: [{ lat: 38, lon: 23.75 }, { lat: 38.25, lon: 24 }], from: '2026-11-15', to: '2026-11-16' }));
+    const u = new URL(
+      upstreamUrl({
+        endpoint: 'forecast',
+        kind: 'wind',
+        model: 'gfs_seamless',
+        nodes: true,
+        locs: [
+          { lat: 38, lon: 23.75 },
+          { lat: 38.25, lon: 24 },
+        ],
+        from: '2026-11-15',
+        to: '2026-11-16',
+      }),
+    );
     expect(u.origin + u.pathname).toBe('https://api.open-meteo.com/v1/forecast');
     expect(u.searchParams.get('latitude')).toBe('38,38.25');
     expect(u.searchParams.get('longitude')).toBe('23.75,24');
@@ -161,28 +239,62 @@ describe('availability and fetching', () => {
     expect(u.searchParams.get('wind_speed_unit')).toBe('kn');
     expect(u.searchParams.get('hourly')!.split(',')).toHaveLength(9 * 4 + 9);
     expect(u.searchParams.get('hourly')!.split(',')).toContain('surface_pressure');
-    const p = new URL(upstreamUrl({ endpoint: 'historical', kind: 'wind', model: 'ecmwf_ifs025', nodes: false, locs: [{ lat: 37.936, lon: 23.945 }], from: '2026-01-01', to: '2026-01-01' }));
+    const p = new URL(
+      upstreamUrl({
+        endpoint: 'historical',
+        kind: 'wind',
+        model: 'ecmwf_ifs025',
+        nodes: false,
+        locs: [{ lat: 37.936, lon: 23.945 }],
+        from: '2026-01-01',
+        to: '2026-01-01',
+      }),
+    );
     expect(p.href).toMatch(/^https:\/\/historical-forecast-api\.open-meteo\.com\/v1\/forecast\?/);
   });
 
-  const mid = { lat: 38.1089, lon: 23.7838 }, dep = { lat: 37.9364, lon: 23.9445 };
+  const mid = { lat: 38.1089, lon: 23.7838 },
+    dep = { lat: 37.9364, lon: 23.9445 };
 
   test('fetchRouteWeather: through the server; winds at the grid node, surface at the aerodrome; source recorded; cached here and there', async () => {
     const om = fakeOpenMeteo();
     const api = await gridApi({ fetch: om.fetch, now: () => NOW });
     try {
-      const req = { date: '2026-11-15', model: 'ecmwf_ifs025' as const, legMidpoints: [mid], departure: dep, destination: null, get: api.get, now: () => NOW };
+      const req = {
+        date: '2026-11-15',
+        model: 'ecmwf_ifs025' as const,
+        legMidpoints: [mid],
+        departure: dep,
+        destination: null,
+        get: api.get,
+        now: () => NOW,
+      };
       const rw = await fetchRouteWeather(req);
       expect(rw.status).toBe('ok');
-      expect(rw.legs[0]!.latitude).toBe(38); expect(rw.legs[0]!.longitude).toBe(23.75);
-      expect(rw.departure!.longitude).toBe(24); expect(rw.destination).toBeNull();
-      expect(rw.source).toMatchObject({ provider: 'Open-Meteo', model: 'ecmwf_ifs025', endpoint: 'forecast', fetchedMs: NOW, coverFromMs: T('2026-11-15T00:00Z'), coverToMs: T('2026-11-16T23:00Z'), run: { runMs: 1794722400000, availableMs: 1794747938000 } });
+      expect(rw.legs[0]!.latitude).toBe(38);
+      expect(rw.legs[0]!.longitude).toBe(23.75);
+      expect(rw.departure!.longitude).toBe(24);
+      expect(rw.destination).toBeNull();
+      expect(rw.source).toMatchObject({
+        provider: 'Open-Meteo',
+        model: 'ecmwf_ifs025',
+        endpoint: 'forecast',
+        fetchedMs: NOW,
+        coverFromMs: T('2026-11-15T00:00Z'),
+        coverToMs: T('2026-11-16T23:00Z'),
+        run: { runMs: 1794722400000, availableMs: 1794747938000 },
+      });
       expect(rw.message).toBe('ECMWF IFS 0.25°, run 2026-11-15 06Z, fetched 13:36Z');
       expect(describeSource(rw.source!)).toBe(rw.message);
       expect(api.requests).toHaveLength(1);
       expect(new URLSearchParams(api.requests[0].split('?')[1]).get('locs')).toBe('38,23.75;p:37.936,23.945');
       // one Open-Meteo request for the node, one for the aerodrome, both days at once
-      expect(om.calls.map((c) => [new URL(c).searchParams.get('latitude'), new URL(c).searchParams.get('end_date')])).toEqual([['38', '2026-11-16'], ['37.936', '2026-11-16']]);
+      expect(
+        om.calls.map((c) => [new URL(c).searchParams.get('latitude'), new URL(c).searchParams.get('end_date')]),
+      ).toEqual([
+        ['38', '2026-11-16'],
+        ['37.936', '2026-11-16'],
+      ]);
       await fetchRouteWeather(req);
       expect(api.requests).toHaveLength(1); // cached in the browser
       // another leg in the same 0.25° cell: the same node, nothing new
@@ -196,14 +308,27 @@ describe('availability and fetching', () => {
       await fetchRouteWeather({ ...req, force: true }); // refresh: asks the server, which has this run already
       expect(api.requests).toHaveLength(3);
       expect(om.calls).toHaveLength(2);
-    } finally { await api.close(); }
+    } finally {
+      await api.close();
+    }
   });
 
   test('fetchRouteWeather: the last day alone at the edge of the range; no run when meta.json fails; errors without throwing', async () => {
     const om = fakeOpenMeteo({ lastDate: '2026-11-15', noMeta: true });
     const api = await gridApi({ fetch: om.fetch, now: () => NOW });
     try {
-      const rw = await fetchRouteWeather({ date: '2026-11-15', model: 'ecmwf_ifs025', legMidpoints: [{ lat: 38, lon: 23 }, { lat: 38, lon: 24 }], departure: null, destination: null, get: api.get, now: () => NOW });
+      const rw = await fetchRouteWeather({
+        date: '2026-11-15',
+        model: 'ecmwf_ifs025',
+        legMidpoints: [
+          { lat: 38, lon: 23 },
+          { lat: 38, lon: 24 },
+        ],
+        departure: null,
+        destination: null,
+        get: api.get,
+        now: () => NOW,
+      });
       expect(rw.status).toBe('ok');
       expect(rw.source!.run).toBeNull();
       expect(rw.message).toBe('ECMWF IFS 0.25°, fetched 13:36Z');
@@ -214,19 +339,50 @@ describe('availability and fetching', () => {
       const bad = fakeOpenMeteo();
       bad.fail(429, 'Daily API request limit exceeded. Please try again tomorrow.');
       const api2 = await gridApi({ fetch: bad.fetch, now: () => NOW }, api.db);
-      const e = await fetchRouteWeather({ date: '2026-11-16', model: 'ecmwf_ifs025', legMidpoints: [{ lat: 39, lon: 23 }], departure: null, destination: null, get: api2.get, now: () => NOW });
+      const e = await fetchRouteWeather({
+        date: '2026-11-16',
+        model: 'ecmwf_ifs025',
+        legMidpoints: [{ lat: 39, lon: 23 }],
+        departure: null,
+        destination: null,
+        get: api2.get,
+        now: () => NOW,
+      });
       expect(e).toMatchObject({ status: 'error', legs: [null], source: null });
       expect(e.message).toBe('Winds unavailable: Open-Meteo daily request limit reached; try again later');
 
-      const net = await fetchRouteWeather({ date: '2026-11-15', model: 'ecmwf_ifs025', legMidpoints: [{ lat: 37, lon: 23 }], departure: null, destination: null, get: async () => { throw new TypeError('Failed to fetch'); }, now: () => NOW });
+      const net = await fetchRouteWeather({
+        date: '2026-11-15',
+        model: 'ecmwf_ifs025',
+        legMidpoints: [{ lat: 37, lon: 23 }],
+        departure: null,
+        destination: null,
+        get: async () => {
+          throw new TypeError('Failed to fetch');
+        },
+        now: () => NOW,
+      });
       expect(net.status).toBe('error');
       expect(net.message).toBe('Winds unavailable: Failed to fetch');
-    } finally { await api.close(); }
+    } finally {
+      await api.close();
+    }
   });
 
   test('fetchRouteWeather: beyond the model horizon does not fetch', async () => {
     const calls: string[] = [];
-    const rw = await fetchRouteWeather({ date: '2026-12-20', model: 'ecmwf_ifs025', legMidpoints: [{ lat: 38, lon: 23 }], departure: null, destination: null, get: async (p) => { calls.push(p); return {}; }, now: () => NOW });
+    const rw = await fetchRouteWeather({
+      date: '2026-12-20',
+      model: 'ecmwf_ifs025',
+      legMidpoints: [{ lat: 38, lon: 23 }],
+      departure: null,
+      destination: null,
+      get: async (p) => {
+        calls.push(p);
+        return {};
+      },
+      now: () => NOW,
+    });
     expect(rw.status).toBe('unavailable');
     expect(rw.message).toBe('ECMWF IFS 0.25° forecast reaches 2026-11-30; winds for 2026-12-20 from 2026-12-05');
     expect(calls).toHaveLength(0);
@@ -236,11 +392,21 @@ describe('availability and fetching', () => {
     const om = fakeOpenMeteo();
     const api = await gridApi({ fetch: om.fetch, now: () => NOW });
     try {
-      const rw = await fetchRouteWeather({ date: '2026-03-10', model: 'ecmwf_ifs025', legMidpoints: [{ lat: 38, lon: 23 }], departure: null, destination: null, get: api.get, now: () => NOW });
+      const rw = await fetchRouteWeather({
+        date: '2026-03-10',
+        model: 'ecmwf_ifs025',
+        legMidpoints: [{ lat: 38, lon: 23 }],
+        departure: null,
+        destination: null,
+        get: api.get,
+        now: () => NOW,
+      });
       expect(rw.source).toMatchObject({ endpoint: 'historical', run: null });
       expect(rw.message).toBe('ECMWF IFS 0.25°, archived forecast, fetched 13:36Z');
       expect(om.calls).toHaveLength(1);
       expect(om.calls[0]).toMatch(/^https:\/\/historical-forecast-api/);
-    } finally { await api.close(); }
+    } finally {
+      await api.close();
+    }
   });
 });

@@ -16,11 +16,14 @@ import type { Passenger, Pilot, SessionResponse } from '../../../src/shared';
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
-  const promise = new Promise<T>((a) => { resolve = a; });
+  const promise = new Promise<T>((a) => {
+    resolve = a;
+  });
   return { promise, resolve };
 }
 
-const pilot = (over: Partial<Pilot> = {}): Pilot => ({ id: 'p1', fullName: 'A. Pilot', licenceNo: '', email: 'a@b', ...over }) as Pilot;
+const pilot = (over: Partial<Pilot> = {}): Pilot =>
+  ({ id: 'p1', fullName: 'A. Pilot', licenceNo: '', email: 'a@b', ...over }) as Pilot;
 const pax = (name: string) => ({ id: name, fullName: name }) as Passenger;
 
 beforeEach(() => {
@@ -32,7 +35,10 @@ beforeEach(() => {
   registerFetcher('operators', () => api.operators.list());
   registerFetcher('waypoints', () => api.waypoints.list());
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 afterAll(() => __resetEntityStoreForTests());
 
 describe('useEntity', () => {
@@ -44,15 +50,25 @@ describe('useEntity', () => {
   it('shares one copy between components and refetches after a mutation', async () => {
     let rows = [pax('Anna')];
     const list = vi.spyOn(api.passengers, 'list').mockImplementation(async () => rows);
-    render(<><List id="a" /><List id="b" /></>);
+    render(
+      <>
+        <List id="a" />
+        <List id="b" />
+      </>,
+    );
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('Anna'));
     expect(screen.getByTestId('b').textContent).toBe('Anna');
     expect(list).toHaveBeenCalledTimes(1);
 
     // a create through the API layer invalidates 'passengers'
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(pax('Bob')), { status: 201 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(pax('Bob')), { status: 201 })),
+    );
     rows = [pax('Anna'), pax('Bob')];
-    await act(async () => { await api.passengers.create({ fullName: 'Bob' } as never); });
+    await act(async () => {
+      await api.passengers.create({ fullName: 'Bob' } as never);
+    });
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('Anna,Bob'));
     expect(screen.getByTestId('b').textContent).toBe('Anna,Bob');
     vi.unstubAllGlobals();
@@ -60,7 +76,9 @@ describe('useEntity', () => {
 
   it('keeps showing the cached copy while it refetches', async () => {
     const d = deferred<Passenger[]>();
-    vi.spyOn(api.passengers, 'list').mockResolvedValueOnce([pax('Anna')]).mockReturnValueOnce(d.promise);
+    vi.spyOn(api.passengers, 'list')
+      .mockResolvedValueOnce([pax('Anna')])
+      .mockReturnValueOnce(d.promise);
     render(<List id="a" />);
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('Anna'));
     act(() => invalidate('passengers', { broadcast: false }));
@@ -70,7 +88,9 @@ describe('useEntity', () => {
   });
 
   it('refetches when another tab says the list changed', async () => {
-    vi.spyOn(api.passengers, 'list').mockResolvedValueOnce([pax('Anna')]).mockResolvedValueOnce([pax('Anna'), pax('Cleo')]);
+    vi.spyOn(api.passengers, 'list')
+      .mockResolvedValueOnce([pax('Anna')])
+      .mockResolvedValueOnce([pax('Anna'), pax('Cleo')]);
     render(<List id="a" />);
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('Anna'));
     const other = new BroadcastChannel(CHANNEL_NAME);
@@ -80,7 +100,10 @@ describe('useEntity', () => {
   });
 
   it('a hidden tab waits until it is shown', async () => {
-    const list = vi.spyOn(api.passengers, 'list').mockResolvedValueOnce([pax('Anna')]).mockResolvedValueOnce([pax('Dora')]);
+    const list = vi
+      .spyOn(api.passengers, 'list')
+      .mockResolvedValueOnce([pax('Anna')])
+      .mockResolvedValueOnce([pax('Dora')]);
     render(<List id="a" />);
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('Anna'));
     const vis = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
@@ -111,9 +134,14 @@ describe('what a mutation invalidates', () => {
   ];
   for (const [what, call, keys] of cases) {
     it(what, async () => {
-      vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response(null, { status: 204 })),
+      );
       const seen: string[] = [];
-      const off = onInvalidate(['pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'], (k) => { seen.push(k); });
+      const off = onInvalidate(['pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'], (k) => {
+        seen.push(k);
+      });
       await call();
       off();
       vi.unstubAllGlobals();
@@ -147,7 +175,9 @@ describe('useAsync', () => {
     act(() => invalidate('flights', { broadcast: false }));
     expect(screen.getByTestId('rows').textContent).toBe('v1'); // no loading flash
     await waitFor(() => expect(screen.getByTestId('rows').textContent).toBe('v2'));
-    act(() => { window.dispatchEvent(new Event('focus')); });
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
     await waitFor(() => expect(screen.getByTestId('rows').textContent).toBe('v3'));
   });
 });
@@ -155,16 +185,19 @@ describe('useAsync', () => {
 describe('sequencing helpers', () => {
   it('sequencer: only the newest request is current', () => {
     const s = sequencer();
-    const a = s.next(), b = s.next();
+    const a = s.next(),
+      b = s.next();
     expect(a()).toBe(false);
     expect(b()).toBe(true);
     s.cancel();
     expect(b()).toBe(false);
   });
   it('latestOnly: every caller gets the newest answer', async () => {
-    const d1 = deferred<number>(), d2 = deferred<number>();
+    const d1 = deferred<number>(),
+      d2 = deferred<number>();
     const f = latestOnly((d: Promise<number>) => d);
-    const p1 = f(d1.promise), p2 = f(d2.promise);
+    const p1 = f(d1.promise),
+      p2 = f(d2.promise);
     d2.resolve(2);
     d1.resolve(1);
     await expect(p1).resolves.toBe(2);
@@ -179,7 +212,14 @@ describe('session pilot freshness', () => {
     return (
       <>
         <p data-testid="missing">{p.licenceNo ? 'complete' : 'Missing licence number'}</p>
-        <button onClick={() => { setPilot({ ...p, phone: String(n) }); setN(n + 1); }}>bump</button>
+        <button
+          onClick={() => {
+            setPilot({ ...p, phone: String(n) });
+            setN(n + 1);
+          }}
+        >
+          bump
+        </button>
       </>
     );
   }
@@ -187,10 +227,19 @@ describe('session pilot freshness', () => {
 
   it('clears the warning when the profile changes through the API layer (same tab)', async () => {
     vi.spyOn(api, 'session').mockResolvedValue(session(pilot()));
-    render(<AuthGate><Missing /></AuthGate>);
+    render(
+      <AuthGate>
+        <Missing />
+      </AuthGate>,
+    );
     await waitFor(() => expect(screen.getByTestId('missing').textContent).toBe('Missing licence number'));
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(pilot({ licenceNo: 'GR.FCL.PPL.1' })), { status: 200 })));
-    await act(async () => { await api.me.update({ licenceNo: 'GR.FCL.PPL.1' }); });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify(pilot({ licenceNo: 'GR.FCL.PPL.1' })), { status: 200 })),
+    );
+    await act(async () => {
+      await api.me.update({ licenceNo: 'GR.FCL.PPL.1' });
+    });
     expect(screen.getByTestId('missing').textContent).toBe('complete');
     vi.unstubAllGlobals();
   });
@@ -198,7 +247,11 @@ describe('session pilot freshness', () => {
   it('clears the warning when another tab changes the profile', async () => {
     vi.spyOn(api, 'session').mockResolvedValue(session(pilot()));
     const me = vi.spyOn(api.me, 'get').mockResolvedValue(pilot({ licenceNo: 'GR.FCL.PPL.1' }));
-    render(<AuthGate><Missing /></AuthGate>);
+    render(
+      <AuthGate>
+        <Missing />
+      </AuthGate>,
+    );
     await waitFor(() => expect(screen.getByTestId('missing').textContent).toBe('Missing licence number'));
     const other = new BroadcastChannel(CHANNEL_NAME);
     other.postMessage({ v: 1, type: 'invalidate', keys: ['pilot'], from: 'tab-2' });
@@ -209,7 +262,11 @@ describe('session pilot freshness', () => {
 
   it('setPilot builds on the freshest pilot', async () => {
     vi.spyOn(api, 'session').mockResolvedValue(session(pilot()));
-    render(<AuthGate><Missing /></AuthGate>);
+    render(
+      <AuthGate>
+        <Missing />
+      </AuthGate>,
+    );
     await waitFor(() => screen.getByTestId('missing'));
     // a fresher pilot arrives (e.g. a refetch); a later setPilot from the page keeps it
     act(() => putEntity('pilot', pilot({ licenceNo: 'GR.FCL.PPL.1' })));

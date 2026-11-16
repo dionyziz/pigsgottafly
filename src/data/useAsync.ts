@@ -7,9 +7,9 @@
 // Those refetches run in the background: `loading` stays false and the current data stays shown;
 // a failed background refetch keeps the data and is not reported.
 // For the pilot's passengers, aircraft, waypoints and profile, prefer useEntity (src/data/entities.ts).
-import { type DependencyList,useCallback, useEffect, useRef, useState } from 'react';
+import { type DependencyList, useCallback, useEffect, useRef, useState } from 'react';
 
-import { type EntityKey,onInvalidate, onRevalidate } from './entityStore';
+import { type EntityKey, onInvalidate, onRevalidate } from './entityStore';
 
 export interface UseAsyncOptions {
   refetchOnFocus?: boolean;
@@ -34,7 +34,11 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList, opts: Us
     if (!quiet) setLoading(true);
     try {
       const v = await runRef.current();
-      if (n === seq.current) { hasData.current = true; setData(v); setError(null); }
+      if (n === seq.current) {
+        hasData.current = true;
+        setData(v);
+        setError(null);
+      }
     } catch (e) {
       if (n === seq.current && !quiet) setError(e as Error);
     } finally {
@@ -43,19 +47,31 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList, opts: Us
   }, []);
   const reload = useCallback(() => load(false), [load]);
   // new deps: a foreground load (its answer replaces whatever the old deps loaded)
-  useEffect(() => { hasData.current = false; void load(false); }, [run, load]);
+  useEffect(() => {
+    hasData.current = false;
+    void load(false);
+  }, [run, load]);
   // unmounted: drop whatever is still in flight
-  useEffect(() => () => { seq.current++; }, []);
+  useEffect(
+    () => () => {
+      seq.current++;
+    },
+    [],
+  );
 
   const keys = opts.invalidatedBy === undefined ? '' : ([] as EntityKey[]).concat(opts.invalidatedBy).join(',');
   useEffect(() => {
     if (!keys) return;
-    return onInvalidate(keys.split(',') as EntityKey[], () => { void load(true); });
+    return onInvalidate(keys.split(',') as EntityKey[], () => {
+      void load(true);
+    });
   }, [keys, load]);
   const onFocus = !!opts.refetchOnFocus;
   useEffect(() => {
     if (!onFocus) return;
-    return onRevalidate(() => { void load(true); });
+    return onRevalidate(() => {
+      void load(true);
+    });
   }, [onFocus, load]);
 
   return { data, error, loading, reload, setData };

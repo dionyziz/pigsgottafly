@@ -3,19 +3,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  __resetEntityStoreForTests, CHANNEL_NAME, clearEntities, getEntity, invalidate, loadEntity, onInvalidate, putEntity,
-  registerFetcher, revalidate, subscribeEntity,
+  __resetEntityStoreForTests,
+  CHANNEL_NAME,
+  clearEntities,
+  getEntity,
+  invalidate,
+  loadEntity,
+  onInvalidate,
+  putEntity,
+  registerFetcher,
+  revalidate,
+  subscribeEntity,
 } from '../../../src/data/entityStore';
 
 function deferred<T>() {
   let resolve!: (v: T) => void, reject!: (e: unknown) => void;
-  const promise = new Promise<T>((a, b) => { resolve = a; reject = b; });
+  const promise = new Promise<T>((a, b) => {
+    resolve = a;
+    reject = b;
+  });
   return { promise, resolve, reject };
 }
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 let clock = 1000;
-beforeEach(() => { clock = 1000; __resetEntityStoreForTests({ now: () => clock }); });
+beforeEach(() => {
+  clock = 1000;
+  __resetEntityStoreForTests({ now: () => clock });
+});
 afterEach(() => __resetEntityStoreForTests());
 
 describe('entity cache', () => {
@@ -31,7 +46,11 @@ describe('entity cache', () => {
 
   it('keeps only the newest answer: a slow older request never overwrites a newer one', async () => {
     const calls: ReturnType<typeof deferred<string[]>>[] = [];
-    registerFetcher('passengers', () => { const d = deferred<string[]>(); calls.push(d); return d.promise; });
+    registerFetcher('passengers', () => {
+      const d = deferred<string[]>();
+      calls.push(d);
+      return d.promise;
+    });
     const first = loadEntity('passengers');
     const second = loadEntity('passengers', { force: true });
     calls[1].resolve(['new']);
@@ -53,7 +72,10 @@ describe('entity cache', () => {
 
   it('a failed refetch keeps the data; a failed first load reports the error', async () => {
     let fail = false;
-    registerFetcher('aircraft', async () => { if (fail) throw new Error('down'); return ['SX-ASV']; });
+    registerFetcher('aircraft', async () => {
+      if (fail) throw new Error('down');
+      return ['SX-ASV'];
+    });
     await loadEntity('aircraft');
     fail = true;
     await expect(loadEntity('aircraft', { force: true })).resolves.toEqual(['SX-ASV']);
@@ -140,15 +162,24 @@ describe('other tabs (BroadcastChannel)', () => {
       other.postMessage({ v: 1, type: 'invalidate', keys: ['pilot', 'bogus'], from: 'another-tab' });
       await vi.waitFor(() => expect(getEntity('pilot').data).toMatchObject({ licenceNo: 'GR.FCL.PPL.1' }));
       expect(heard).toEqual(['pilot']);
-      off(); off2();
+      off();
+      off2();
 
       // a value another tab stored is taken as it is, even in a hidden tab (no refetch to defer)
       vi.stubGlobal('document', { visibilityState: 'hidden' });
       try {
-        other.postMessage({ v: 1, type: 'put', key: 'pilot', data: { id: 'p1', licenceNo: 'GR.FCL.PPL.2' }, from: 'another-tab' });
+        other.postMessage({
+          v: 1,
+          type: 'put',
+          key: 'pilot',
+          data: { id: 'p1', licenceNo: 'GR.FCL.PPL.2' },
+          from: 'another-tab',
+        });
         await vi.waitFor(() => expect(getEntity('pilot').data).toMatchObject({ licenceNo: 'GR.FCL.PPL.2' }));
         expect(fetch).toHaveBeenCalledTimes(1);
-      } finally { vi.unstubAllGlobals(); }
+      } finally {
+        vi.unstubAllGlobals();
+      }
     } finally {
       other.close();
     }

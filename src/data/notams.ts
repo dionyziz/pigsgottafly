@@ -51,7 +51,8 @@ export function fmtNotamLevel(ft: number, upper: boolean): string {
 
 /** Vertical limits: items F/G as written when given, else the Q-line, e.g. 'SFC – 2500 ft AMSL'. */
 export function notamLimits(n: Pick<Notam, 'lowerFt' | 'upperFt' | 'lowerText' | 'upperText'>): string {
-  if (n.lowerText || n.upperText) return `${n.lowerText ?? fmtNotamLevel(n.lowerFt, false)} – ${n.upperText ?? fmtNotamLevel(n.upperFt, true)}`;
+  if (n.lowerText || n.upperText)
+    return `${n.lowerText ?? fmtNotamLevel(n.lowerFt, false)} – ${n.upperText ?? fmtNotamLevel(n.upperFt, true)}`;
   return `${fmtNotamLevel(n.lowerFt, false)} – ${fmtNotamLevel(n.upperFt, true)}`;
 }
 
@@ -78,12 +79,15 @@ const R_NM = 3440.065;
  */
 export function circleRing(center: { lat: number; lon: number }, radiusNm: number, steps = 64): [number, number][] {
   const toRad = Math.PI / 180;
-  const lat1 = center.lat * toRad, lon1 = center.lon * toRad, d = radiusNm / R_NM;
+  const lat1 = center.lat * toRad,
+    lon1 = center.lon * toRad,
+    d = radiusNm / R_NM;
   const out: [number, number][] = [];
   for (let i = 0; i <= steps; i++) {
     const brg = ((i % steps) / steps) * 2 * Math.PI;
     const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg));
-    const lon2 = lon1 + Math.atan2(Math.sin(brg) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+    const lon2 =
+      lon1 + Math.atan2(Math.sin(brg) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
     out.push([+(lon2 / toRad).toFixed(6), +(lat2 / toRad).toFixed(6)]);
   }
   return out;

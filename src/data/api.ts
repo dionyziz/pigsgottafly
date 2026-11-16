@@ -41,10 +41,13 @@ import type {
 import type { FileRequest, FilingState } from '../shared/briefing';
 import type { FormsState, SigningView } from '../shared/forms';
 import type { AppErrorDetail, AppErrorGroup } from '../shared/monitoring';
-import { type EntityKey,invalidate, putEntity } from './entityStore';
+import { type EntityKey, invalidate, putEntity } from './entityStore';
 
 /** After a successful mutation: whatever shows `keys` refetches, in this tab and the others. */
-function changes<A extends unknown[], R>(keys: EntityKey | EntityKey[], fn: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
+function changes<A extends unknown[], R>(
+  keys: EntityKey | EntityKey[],
+  fn: (...a: A) => Promise<R>,
+): (...a: A) => Promise<R> {
   return async (...a: A) => {
     const r = await fn(...a);
     invalidate(keys);
@@ -53,14 +56,22 @@ function changes<A extends unknown[], R>(keys: EntityKey | EntityKey[], fn: (...
 }
 
 export class ApiRequestError extends Error {
-  constructor(public status: number, message: string, public body: unknown) {
+  constructor(
+    public status: number,
+    message: string,
+    public body: unknown,
+  ) {
     super(message);
     this.name = 'ApiRequestError';
   }
   /** Not signed in. */
-  get auth() { return this.status === 401; }
+  get auth() {
+    return this.status === 401;
+  }
   /** Network failure (offline): status 0. */
-  get offline() { return this.status === 0; }
+  get offline() {
+    return this.status === 0;
+  }
 }
 
 export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -77,14 +88,20 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     throw new ApiRequestError(0, 'offline', null);
   }
   const out = res.status === 204 ? null : await res.json().catch(() => null);
-  if (res.status === 401 && typeof window !== 'undefined' && path !== 'session') window.dispatchEvent(new Event('pgf:unauthorized'));
-  if (res.status >= 500) reportApiFailure(method, path, res.status, (out && typeof (out).error === 'string' && (out).error) || '');
-  if (!res.ok) throw new ApiRequestError(res.status, (out && (out).error) || `HTTP ${res.status}`, out);
+  if (res.status === 401 && typeof window !== 'undefined' && path !== 'session')
+    window.dispatchEvent(new Event('pgf:unauthorized'));
+  if (res.status >= 500)
+    reportApiFailure(method, path, res.status, (out && typeof out.error === 'string' && out.error) || '');
+  if (!res.ok) throw new ApiRequestError(res.status, (out && out.error) || `HTTP ${res.status}`, out);
   return out as T;
 }
 
 /** What else a mutation of an entity changes (the server derives it from the entity). */
-interface AlsoChanges { create?: EntityKey[]; update?: EntityKey[]; remove?: EntityKey[] }
+interface AlsoChanges {
+  create?: EntityKey[];
+  update?: EntityKey[];
+  remove?: EntityKey[];
+}
 
 /** List/get/create/update/remove of one entity; every mutation invalidates `key` (plus `also`). */
 function crud<T, I>(base: string, key: EntityKey, also: AlsoChanges = {}) {
@@ -92,8 +109,12 @@ function crud<T, I>(base: string, key: EntityKey, also: AlsoChanges = {}) {
     list: () => request<T[]>('GET', base),
     get: (id: string) => request<T>('GET', `${base}/${encodeURIComponent(id)}`),
     create: changes([key, ...(also.create ?? [])], (input: I) => request<T>('POST', base, input)),
-    update: changes([key, ...(also.update ?? [])], (id: string, patch: Partial<I>) => request<T>('PUT', `${base}/${encodeURIComponent(id)}`, patch)),
-    remove: changes([key, ...(also.remove ?? [])], (id: string) => request<null>('DELETE', `${base}/${encodeURIComponent(id)}`)),
+    update: changes([key, ...(also.update ?? [])], (id: string, patch: Partial<I>) =>
+      request<T>('PUT', `${base}/${encodeURIComponent(id)}`, patch),
+    ),
+    remove: changes([key, ...(also.remove ?? [])], (id: string) =>
+      request<null>('DELETE', `${base}/${encodeURIComponent(id)}`),
+    ),
   };
 }
 
@@ -104,9 +125,13 @@ function sharesOf<S>(base: string, keys: EntityKey[], removeAlso: EntityKey[]) {
   return {
     get: (id: string) => request<S>('GET', at(id)),
     add: changes(keys, (id: string, email: string, role: ShareRole) => request<S>('POST', at(id), { email, role })),
-    setRole: changes(keys, (id: string, pilotId: string, role: ShareRole) => request<S>('PUT', `${at(id)}/${encodeURIComponent(pilotId)}`, { role })),
+    setRole: changes(keys, (id: string, pilotId: string, role: ShareRole) =>
+      request<S>('PUT', `${at(id)}/${encodeURIComponent(pilotId)}`, { role }),
+    ),
     /** Removes a person; with your own pilot id, removes your own access. */
-    remove: changes([...keys, ...removeAlso], (id: string, pilotId: string) => request<null>('DELETE', `${at(id)}/${encodeURIComponent(pilotId)}`)),
+    remove: changes([...keys, ...removeAlso], (id: string, pilotId: string) =>
+      request<null>('DELETE', `${at(id)}/${encodeURIComponent(pilotId)}`),
+    ),
   };
 }
 
@@ -117,11 +142,18 @@ function filesOf<L>(base: string, key: EntityKey) {
   return {
     list: (id: string) => request<L>('GET', at(id)),
     start: (id: string, input: AircraftFileStart) => request<AircraftFile>('POST', at(id), input),
-    putChunk: (id: string, fileId: string, seq: number, data: string) => request<null>('PUT', `${at(id)}/${encodeURIComponent(fileId)}/chunks/${seq}`, { data }),
-    complete: changes(key, (id: string, fileId: string) => request<AircraftFile>('POST', `${at(id)}/${encodeURIComponent(fileId)}/complete`, {})),
-    chunk: (id: string, fileId: string, seq: number) => request<{ data: string }>('GET', `${at(id)}/${encodeURIComponent(fileId)}/chunks/${seq}`),
-    rename: (id: string, fileId: string, title: string) => request<AircraftFile>('PUT', `${at(id)}/${encodeURIComponent(fileId)}`, { title }),
-    remove: changes(key, (id: string, fileId: string) => request<null>('DELETE', `${at(id)}/${encodeURIComponent(fileId)}`)),
+    putChunk: (id: string, fileId: string, seq: number, data: string) =>
+      request<null>('PUT', `${at(id)}/${encodeURIComponent(fileId)}/chunks/${seq}`, { data }),
+    complete: changes(key, (id: string, fileId: string) =>
+      request<AircraftFile>('POST', `${at(id)}/${encodeURIComponent(fileId)}/complete`, {}),
+    ),
+    chunk: (id: string, fileId: string, seq: number) =>
+      request<{ data: string }>('GET', `${at(id)}/${encodeURIComponent(fileId)}/chunks/${seq}`),
+    rename: (id: string, fileId: string, title: string) =>
+      request<AircraftFile>('PUT', `${at(id)}/${encodeURIComponent(fileId)}`, { title }),
+    remove: changes(key, (id: string, fileId: string) =>
+      request<null>('DELETE', `${at(id)}/${encodeURIComponent(fileId)}`),
+    ),
   };
 }
 export type FilesApi = ReturnType<typeof filesOf<unknown>>;
@@ -144,20 +176,33 @@ export const api = {
     remove: (confirm: string) => request<{ ok: true }>('DELETE', 'me', { confirm }),
   },
   /** Own aircraft and those shared with the pilot, each with `access` (role, owner). */
-  aircraft: crud<HangarAircraft, AircraftInput>('aircraft', 'aircraft', { create: ['pilot', 'operators'], update: ['operators'], remove: ['pilot', 'operators'] }),
+  aircraft: crud<HangarAircraft, AircraftInput>('aircraft', 'aircraft', {
+    create: ['pilot', 'operators'],
+    update: ['operators'],
+    remove: ['pilot', 'operators'],
+  }),
   /** Who has access to an aircraft (src/shared/sharing.ts). */
   shares: sharesOf<AircraftSharing>('aircraft', ['aircraft', 'operators'], ['pilot']),
   /** Files stored with an aircraft (compass swing reports). */
   attachments: {
-    upload: (aircraftId: string, input: AttachmentInput) => request<AttachmentRef>('POST', `aircraft/${encodeURIComponent(aircraftId)}/attachments`, input),
-    get: (aircraftId: string, fileId: string) => request<Attachment>('GET', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
-    remove: (aircraftId: string, fileId: string) => request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
+    upload: (aircraftId: string, input: AttachmentInput) =>
+      request<AttachmentRef>('POST', `aircraft/${encodeURIComponent(aircraftId)}/attachments`, input),
+    get: (aircraftId: string, fileId: string) =>
+      request<Attachment>(
+        'GET',
+        `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`,
+      ),
+    remove: (aircraftId: string, fileId: string) =>
+      request<null>('DELETE', `aircraft/${encodeURIComponent(aircraftId)}/attachments/${encodeURIComponent(fileId)}`),
   },
   /** Aircraft photo and documents (chunked: see src/data/aircraftFiles.ts for upload / download). */
   files: filesOf<AircraftFiles>('aircraft', 'aircraft'),
   /** Operators (src/shared/operators.ts), their sharing and documents (operations manual). A change of
    * an operator changes its aircraft too (the operator's name is printed as theirs). */
-  operators: crud<OperatorItem, OperatorInput>('operators', 'operators', { update: ['aircraft'], remove: ['aircraft'] }),
+  operators: crud<OperatorItem, OperatorInput>('operators', 'operators', {
+    update: ['aircraft'],
+    remove: ['aircraft'],
+  }),
   operatorShares: sharesOf<OperatorSharing>('operators', ['operators'], ['aircraft']),
   operatorFiles: filesOf<OperatorFiles>('operators', 'operators'),
   passengers: crud<Passenger, PassengerInput>('passengers', 'passengers', { remove: ['flights'] }),
@@ -169,10 +214,14 @@ export const api = {
     get: (id: string) => request<Flight>('GET', `flights/${encodeURIComponent(id)}`),
     create: changes('flights', (input: FlightCreateRequest = {}) => request<Flight>('POST', 'flights', input)),
     /** 409 → ApiRequestError with body = the current Flight. */
-    update: changes('flights', (id: string, flight: FlightDoc, version: number) => request<FlightUpdateResponse>('PUT', `flights/${encodeURIComponent(id)}`, { flight, version })),
+    update: changes('flights', (id: string, flight: FlightDoc, version: number) =>
+      request<FlightUpdateResponse>('PUT', `flights/${encodeURIComponent(id)}`, { flight, version }),
+    ),
     trash: changes('flights', (id: string) => request<null>('DELETE', `flights/${encodeURIComponent(id)}`)),
     restore: changes('flights', (id: string) => request<Flight>('POST', `flights/${encodeURIComponent(id)}/restore`)),
-    copy: changes('flights', (id: string, req: FlightCopyRequest = {}) => request<Flight>('POST', `flights/${encodeURIComponent(id)}/copy`, req)),
+    copy: changes('flights', (id: string, req: FlightCopyRequest = {}) =>
+      request<Flight>('POST', `flights/${encodeURIComponent(id)}/copy`, req),
+    ),
     opened: (id: string) => request<null>('POST', `flights/${encodeURIComponent(id)}/opened`),
   },
 
@@ -184,26 +233,38 @@ export const api = {
   forms: {
     get: (id: string) => request<FormsState>('GET', `flights/${encodeURIComponent(id)}/forms`),
     requestLinks: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links`),
-    renewLink: (id: string, key: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/renew`),
-    revokeLink: (id: string, key: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/revoke`),
+    renewLink: (id: string, key: string) =>
+      request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/renew`),
+    revokeLink: (id: string, key: string) =>
+      request<FormsState>(
+        'POST',
+        `flights/${encodeURIComponent(id)}/forms/731/links/${encodeURIComponent(key)}/revoke`,
+      ),
     send731: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/731/send`),
     sendGenDec: (id: string) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/send`),
     /** The flight's override of who sends the GenDec: true = a handler, false = the PIC, null = automatic (AIP + NOTAMs). */
-    setGenDecHandled: (id: string, handled: boolean | null) => request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/handled`, { handled }),
+    setGenDecHandled: (id: string, handled: boolean | null) =>
+      request<FormsState>('POST', `flights/${encodeURIComponent(id)}/forms/gendec/handled`, { handled }),
   },
   /** The W&B and performance sheets e-mailed to the aircraft's operator (src/shared/declarations.ts). */
   declarations: {
     get: (id: string) => request<DeclarationsState>('GET', `flights/${encodeURIComponent(id)}/declarations`),
-    send: (id: string, content: WbPerfContent, resend: boolean) => request<DeclarationsState>('POST', `flights/${encodeURIComponent(id)}/declarations/send`, { content, resend }),
+    send: (id: string, content: WbPerfContent, resend: boolean) =>
+      request<DeclarationsState>('POST', `flights/${encodeURIComponent(id)}/declarations/send`, { content, resend }),
   },
   /** Admins only (403 for everyone else). */
   admin: {
     pilots: () => request<AdminPilot[]>('GET', 'admin/pilots'),
     mail: (f: { pilot?: string; kind?: string } = {}) =>
-      request<AdminMail[]>('GET', `admin/mail?${new URLSearchParams(Object.entries(f).filter(([, v]) => !!v) as [string, string][])}`),
-    errors: (status: 'open' | 'resolved' | 'all' = 'open') => request<AppErrorGroup[]>('GET', `admin/errors?status=${status}`),
+      request<AdminMail[]>(
+        'GET',
+        `admin/mail?${new URLSearchParams(Object.entries(f).filter(([, v]) => !!v) as [string, string][])}`,
+      ),
+    errors: (status: 'open' | 'resolved' | 'all' = 'open') =>
+      request<AppErrorGroup[]>('GET', `admin/errors?status=${status}`),
     error: (fingerprint: string) => request<AppErrorDetail>('GET', `admin/errors/${encodeURIComponent(fingerprint)}`),
-    resolveError: (fingerprint: string) => request<{ ok: true }>('POST', `admin/errors/${encodeURIComponent(fingerprint)}/resolve`),
+    resolveError: (fingerprint: string) =>
+      request<{ ok: true }>('POST', `admin/errors/${encodeURIComponent(fingerprint)}/resolve`),
   },
   /** The signing page (no sign-in). */
   sign: {
@@ -213,12 +274,16 @@ export const api = {
   /** Flight-plan filing through autorouter (api/_lib/routes/filing.ts). 503 = filing not enabled. */
   filing: {
     get: (id: string) => request<FilingState>('GET', `flights/${encodeURIComponent(id)}/filing`),
-    file: (id: string, req: FileRequest) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing`, req),
-    delay: (id: string, eobt: number) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/delay`, { eobt }),
-    cancel: (id: string, reason?: string) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/cancel`, { reason }),
+    file: (id: string, req: FileRequest) =>
+      request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing`, req),
+    delay: (id: string, eobt: number) =>
+      request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/delay`, { eobt }),
+    cancel: (id: string, reason?: string) =>
+      request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/cancel`, { reason }),
     refresh: (id: string) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/refresh`),
   },
   weather: {
-    metar: (icaos: string[]) => request<MetarTafResponse>('GET', `weather/metar?ids=${icaos.map(encodeURIComponent).join(',')}`),
+    metar: (icaos: string[]) =>
+      request<MetarTafResponse>('GET', `weather/metar?ids=${icaos.map(encodeURIComponent).join(',')}`),
   },
 };

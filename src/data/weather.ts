@@ -17,19 +17,42 @@ import type { IsoDate, LatLon, WindModel } from '../shared';
 import { WIND_MODELS } from '../shared';
 import { isoDay } from '../shared/date';
 import {
-  DEFAULT_MODEL, forecastAvailability, GRID_STEP_DEG,   type Hourly, LEVELS, type ModelRun, nodeKey, type OpenMeteoEndpoint, type OpenMeteoLocation,
-pointKey, snapToGrid,
+  DEFAULT_MODEL,
+  forecastAvailability,
+  GRID_STEP_DEG,
+  type Hourly,
+  LEVELS,
+  type ModelRun,
+  nodeKey,
+  type OpenMeteoEndpoint,
+  type OpenMeteoLocation,
+  pointKey,
+  snapToGrid,
 } from '../shared/weatherGrid';
 import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
 import type { MetarWind, ParsedMetar } from './weatherMetar';
 
 export {
-  DEFAULT_MODEL, FORECAST_PAST_DAYS,   type ForecastAvailability, forecastAvailability,
-type Hourly, LEVELS, MODEL_HORIZON_DAYS, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation,
-SURFACE, } from '../shared/weatherGrid';
+  DEFAULT_MODEL,
+  FORECAST_PAST_DAYS,
+  type ForecastAvailability,
+  forecastAvailability,
+  type Hourly,
+  LEVELS,
+  MODEL_HORIZON_DAYS,
+  type ModelRun,
+  type OpenMeteoEndpoint,
+  type OpenMeteoLocation,
+  SURFACE,
+} from '../shared/weatherGrid';
 export const MODEL_LABELS = WIND_MODELS;
 
-interface Level { z: number; u: number; v: number; temp: number }
+interface Level {
+  z: number;
+  u: number;
+  v: number;
+  temp: number;
+}
 const val = (h: Hourly, k: string, i: number) => (h[k] as (number | null)[] | undefined)?.[i];
 const times = (h: Hourly) => h.time.map((t) => Date.parse(t.endsWith('Z') ? t : t + 'Z'));
 /** How far outside the data's hours a time may be and still be answered (the edge value is used). */
@@ -53,11 +76,18 @@ function atHeight(h: Hourly, idx: number, altFt: number): { u: number; v: number
   const altM = altFt * 0.3048;
   const lv: Level[] = [];
   for (const l of LEVELS) {
-    const z = val(h, `geopotential_height_${l}hPa`, idx), ws = val(h, `wind_speed_${l}hPa`, idx);
-    const wd = val(h, `wind_direction_${l}hPa`, idx), t = val(h, `temperature_${l}hPa`, idx);
+    const z = val(h, `geopotential_height_${l}hPa`, idx),
+      ws = val(h, `wind_speed_${l}hPa`, idx);
+    const wd = val(h, `wind_direction_${l}hPa`, idx),
+      t = val(h, `temperature_${l}hPa`, idx);
     if ([z, ws, wd, t].every((x) => x !== null && x !== undefined && isFinite(x))) {
       const r = ((wd as number) * Math.PI) / 180;
-      lv.push({ z: z as number, u: -(ws as number) * Math.sin(r), v: -(ws as number) * Math.cos(r), temp: t as number });
+      lv.push({
+        z: z as number,
+        u: -(ws as number) * Math.sin(r),
+        v: -(ws as number) * Math.cos(r),
+        temp: t as number,
+      });
     }
   }
   if (!lv.length) return null;
@@ -65,7 +95,8 @@ function atHeight(h: Hourly, idx: number, altFt: number): { u: number; v: number
   if (altM <= lv[0].z) return lv[0];
   if (altM >= lv[lv.length - 1].z) return lv[lv.length - 1];
   for (let k = 0; k < lv.length - 1; k++) {
-    const a = lv[k], b = lv[k + 1];
+    const a = lv[k],
+      b = lv[k + 1];
     if (altM >= a.z && altM <= b.z) {
       const f = (altM - a.z) / (b.z - a.z);
       return { u: a.u + (b.u - a.u) * f, v: a.v + (b.v - a.v) * f, temp: a.temp + (b.temp - a.temp) * f };
@@ -86,7 +117,8 @@ export function sampleAt(h: Hourly, altFt: number, timeMs: number): WindSample |
   if (!isFinite(altFt)) return null;
   const br = bracket(h, timeMs);
   if (!br) return null;
-  const a = atHeight(h, br.i, altFt), b = atHeight(h, br.j, altFt);
+  const a = atHeight(h, br.i, altFt),
+    b = atHeight(h, br.j, altFt);
   if (!a || !b) {
     const x = a || b;
     if (!x) return null;
@@ -130,34 +162,52 @@ export function sampleSurface(h: Hourly, timeMs: number, elevationM?: number | n
   if (!br) return null;
   const { i, j, f } = br;
   const at = (k: string) => {
-    const a = val(h, k, i), b = val(h, k, j);
+    const a = val(h, k, i),
+      b = val(h, k, j);
     if (a == null && b == null) return NaN;
     if (a == null) return b as number;
     if (b == null) return a;
-    return (a) + ((b) - (a)) * f;
+    return a + (b - a) * f;
   };
   const uv = (x: number) => {
-    const ws = val(h, 'wind_speed_10m', x), wd = val(h, 'wind_direction_10m', x);
+    const ws = val(h, 'wind_speed_10m', x),
+      wd = val(h, 'wind_direction_10m', x);
     if (ws == null || wd == null) return null;
-    const r = ((wd) * Math.PI) / 180;
-    return { u: -(ws) * Math.sin(r), v: -(ws) * Math.cos(r) };
+    const r = (wd * Math.PI) / 180;
+    return { u: -ws * Math.sin(r), v: -ws * Math.cos(r) };
   };
-  const A = uv(i), B = uv(j);
+  const A = uv(i),
+    B = uv(j);
   let wind = null;
   if (A || B) {
-    const a = (A || B)!, b = (B || A)!;
+    const a = (A || B)!,
+      b = (B || A)!;
     wind = toDirSpd(a.u + (b.u - a.u) * f, a.v + (b.v - a.v) * f);
   }
   const mslp = at('pressure_msl');
   const psfc = at('surface_pressure');
-  const qnh = isFinite(psfc) && psfc > 0 && typeof elevationM === 'number' && isFinite(elevationM) ? qnhFromStationPressure(psfc, elevationM / 0.3048) : mslp;
-  const out: SurfaceSample = { qnh, mslp, psfc, temp: at('temperature_2m'), dew: at('dew_point_2m'), wind, low: at('cloud_cover_low'), mid: at('cloud_cover_mid'), high: at('cloud_cover_high') };
+  const qnh =
+    isFinite(psfc) && psfc > 0 && typeof elevationM === 'number' && isFinite(elevationM)
+      ? qnhFromStationPressure(psfc, elevationM / 0.3048)
+      : mslp;
+  const out: SurfaceSample = {
+    qnh,
+    mslp,
+    psfc,
+    temp: at('temperature_2m'),
+    dew: at('dew_point_2m'),
+    wind,
+    low: at('cloud_cover_low'),
+    mid: at('cloud_cover_mid'),
+    high: at('cloud_cover_high'),
+  };
   return isFinite(out.temp) || wind ? out : null;
 }
 
 const two = (t: number) => (Math.round(t) < 0 ? 'M' : '') + String(Math.abs(Math.round(t))).padStart(2, '0');
 export const fmtQnh = (s: SurfaceSample | null) => (s && isFinite(s.qnh) ? String(Math.round(s.qnh)) : '');
-export const fmtTempDew = (s: SurfaceSample | null) => (s && isFinite(s.temp) ? `${two(s.temp)}/${isFinite(s.dew) ? two(s.dew) : '//'}` : '');
+export const fmtTempDew = (s: SurfaceSample | null) =>
+  s && isFinite(s.temp) ? `${two(s.temp)}/${isFinite(s.dew) ? two(s.dew) : '//'}` : '';
 /** METAR wind group, e.g. 23004KT; calm 00000KT. */
 export function fmtWind(s: SurfaceSample | null): string {
   if (!s || !s.wind) return '';
@@ -237,7 +287,10 @@ export interface RouteWeather {
 }
 
 const hhmmZ = (ms: number) => new Date(ms).toISOString().slice(11, 16) + 'Z';
-const runLabel = (ms: number) => { const d = new Date(ms); return `${d.toISOString().slice(0, 10)} ${String(d.getUTCHours()).padStart(2, '0')}Z`; };
+const runLabel = (ms: number) => {
+  const d = new Date(ms);
+  return `${d.toISOString().slice(0, 10)} ${String(d.getUTCHours()).padStart(2, '0')}Z`;
+};
 
 /** One-line description of a forecast source for the UI and printouts. */
 export function describeSource(s: ForecastSource): string {
@@ -249,8 +302,15 @@ export function describeSource(s: ForecastSource): string {
   return parts.join(', ');
 }
 
-const empty = (status: RouteWeather['status'], message: string, n: number): RouteWeather =>
-  ({ status, message, legs: Array(n).fill(null), departure: null, destination: null, stops: [], source: null });
+const empty = (status: RouteWeather['status'], message: string, n: number): RouteWeather => ({
+  status,
+  message,
+  legs: Array(n).fill(null),
+  departure: null,
+  destination: null,
+  stops: [],
+  source: null,
+});
 
 const DAY = 86400000;
 const dayMs = (d: IsoDate) => Date.parse(d + 'T00:00:00Z');
@@ -270,7 +330,12 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
   if (!n && !req.departure && !req.destination) return empty('idle', '', 0);
   const av = forecastAvailability(req.date, model, now());
   if (av.kind === 'invalid') return empty('idle', 'No flight date', n);
-  if (av.kind === 'too-far') return empty('unavailable', `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}; winds for ${req.date} from ${av.availableFrom}`, n);
+  if (av.kind === 'too-far')
+    return empty(
+      'unavailable',
+      `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}; winds for ${req.date} from ${av.availableFrom}`,
+      n,
+    );
   const legKeys = req.legMidpoints.map((m) => nodeKey(windNode(m, model)));
   const depKey = req.departure ? pointKey(req.departure) : null;
   const destKey = req.destination ? pointKey(req.destination) : null;
@@ -279,22 +344,42 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
   const next = isoDay(dayMs(req.date) + DAY);
   const d1 = next <= av.lastDate ? next : req.date;
   try {
-    const r = await fetchGrid({ kind: 'wind', model, from: req.date, to: d1, locs: order, force: req.force, get: req.get, now });
-    const at = (k: string | null) => (k ? r.locations.get(k) ?? null : null);
+    const r = await fetchGrid({
+      kind: 'wind',
+      model,
+      from: req.date,
+      to: d1,
+      locs: order,
+      force: req.force,
+      get: req.get,
+      now,
+    });
+    const at = (k: string | null) => (k ? (r.locations.get(k) ?? null) : null);
     if (order.every((k) => !at(k))) return empty('error', `Winds unavailable: ${r.message || 'no data'}`, n);
     const legs = legKeys.map(at);
     const firstLoc = at(order[0]);
     const ts = firstLoc?.hourly?.time ? times(firstLoc.hourly) : [];
     const endpoint = r.endpoint ?? av.endpoint;
     const source: ForecastSource = {
-      provider: 'Open-Meteo', model, modelLabel: MODEL_LABELS[model] || model, endpoint, run: endpoint === 'forecast' ? r.run : null,
-      fetchedMs: now(), coverFromMs: ts.length ? ts[0] : null, coverToMs: ts.length ? ts[ts.length - 1] : null,
+      provider: 'Open-Meteo',
+      model,
+      modelLabel: MODEL_LABELS[model] || model,
+      endpoint,
+      run: endpoint === 'forecast' ? r.run : null,
+      fetchedMs: now(),
+      coverFromMs: ts.length ? ts[0] : null,
+      coverToMs: ts.length ? ts[ts.length - 1] : null,
       ...(r.synthetic ? { synthetic: true } : {}),
     };
     const gaps = legs.some((l) => !l) && r.message ? ` (some legs without winds: ${r.message})` : '';
     return {
-      status: 'ok', message: describeSource(source) + gaps,
-      legs, departure: at(depKey), destination: at(destKey), stops: stopKeys.map(at), source,
+      status: 'ok',
+      message: describeSource(source) + gaps,
+      legs,
+      departure: at(depKey),
+      destination: at(destKey),
+      stops: stopKeys.map(at),
+      source,
     };
   } catch (e) {
     return empty('error', `Winds unavailable: ${String((e as Error)?.message || e)}`, n);
@@ -326,8 +411,12 @@ export function surfaceConditions(loc: OpenMeteoLocation | null, timeMs: number)
   const s = loc && loc.hourly ? sampleSurface(loc.hourly, timeMs, loc.elevation) : null;
   if (!s) return null;
   return {
-    source: 'forecast', label: `Forecast for ${hhmmZ(timeMs)}`, timeMs,
-    tempC: fin(s.temp), dewC: fin(s.dew), qnhHpa: fin(s.qnh),
+    source: 'forecast',
+    label: `Forecast for ${hhmmZ(timeMs)}`,
+    timeMs,
+    tempC: fin(s.temp),
+    dewC: fin(s.dew),
+    qnhHpa: fin(s.qnh),
     wind: s.wind ? { dirTrueDeg: s.wind.spd < 0.5 ? null : s.wind.dir, speedKt: s.wind.spd, gustKt: null } : null,
   };
 }
@@ -337,8 +426,12 @@ export function surfaceFromMetar(m: ParsedMetar | null): SurfaceConditions | nul
   if (!m || m.nil || m.timeMs === null) return null;
   const w: MetarWind | null = m.wind;
   return {
-    source: 'metar', label: `${m.type} ${m.station} ${new Date(m.timeMs).toISOString().slice(8, 10)}${hhmmZ(m.timeMs).replace(':', '')}`,
-    timeMs: m.timeMs, tempC: m.tempC, dewC: m.dewC, qnhHpa: m.qnhHpa,
+    source: 'metar',
+    label: `${m.type} ${m.station} ${new Date(m.timeMs).toISOString().slice(8, 10)}${hhmmZ(m.timeMs).replace(':', '')}`,
+    timeMs: m.timeMs,
+    tempC: m.tempC,
+    dewC: m.dewC,
+    qnhHpa: m.qnhHpa,
     wind: w ? { dirTrueDeg: w.calm ? null : w.dirDeg, speedKt: w.calm ? 0 : w.speedKt, gustKt: w.gustKt } : null,
     raw: m.raw,
   };
@@ -354,13 +447,26 @@ export const METAR_MAX_AGE_MS = 90 * 60 * 1000;
  * 90 min old) and the time of interest is within 90 min of its observation; otherwise the
  * forecast; otherwise whichever exists. Missing METAR fields are filled from the forecast.
  */
-export function chooseSurface(o: { metar: ParsedMetar | null; forecast: SurfaceConditions | null; timeMs: number; nowMs?: number }): SurfaceConditions | null {
+export function chooseSurface(o: {
+  metar: ParsedMetar | null;
+  forecast: SurfaceConditions | null;
+  timeMs: number;
+  nowMs?: number;
+}): SurfaceConditions | null {
   const m = surfaceFromMetar(o.metar);
   const now = o.nowMs ?? Date.now();
   const useMetar = !!m && now - m.timeMs <= METAR_MAX_AGE_MS && Math.abs(o.timeMs - m.timeMs) <= METAR_USE_WINDOW_MS;
   if (useMetar && m) {
     const f = o.forecast;
-    return f ? { ...m, tempC: m.tempC ?? f.tempC, dewC: m.dewC ?? f.dewC, qnhHpa: m.qnhHpa ?? f.qnhHpa, wind: m.wind ?? f.wind } : m;
+    return f
+      ? {
+          ...m,
+          tempC: m.tempC ?? f.tempC,
+          dewC: m.dewC ?? f.dewC,
+          qnhHpa: m.qnhHpa ?? f.qnhHpa,
+          wind: m.wind ?? f.wind,
+        }
+      : m;
   }
   return o.forecast;
 }
@@ -371,7 +477,9 @@ export function chooseSurface(o: { metar: ParsedMetar | null; forecast: SurfaceC
  * speed is then treated as crosswind, with no headwind credit). Gusts are passed on for the
  * crosswind-limit check. Null = no wind known (calm assumed, flagged).
  */
-export function toPerfWind(s: SurfaceConditions | null): { dirTrueDeg: number | null; speedKt: number; gustKt: number | null } | null {
+export function toPerfWind(
+  s: SurfaceConditions | null,
+): { dirTrueDeg: number | null; speedKt: number; gustKt: number | null } | null {
   const w = s?.wind;
   if (!w || !isFinite(w.speedKt)) return null;
   const gustKt = w.gustKt != null && isFinite(w.gustKt) && w.gustKt > w.speedKt ? w.gustKt : null;

@@ -5,7 +5,15 @@ import fs from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
 import type { RefArea } from '../../../src/shared/ref';
-import { normLimit, parseCoord, parseEnr51, parseEnr52, parseEnr53, parseLateral, splitActivity } from '../../../tools/parse_enr5';
+import {
+  normLimit,
+  parseCoord,
+  parseEnr51,
+  parseEnr52,
+  parseEnr53,
+  parseLateral,
+  splitActivity,
+} from '../../../tools/parse_enr5';
 
 // ---- Verbatim excerpts (pdftotext -layout) of AIP Greece ENR 5, AIRAC 09/26:
 // ENR 5.1 pages 1, 3, 4 and 9; ENR 5.2 page 1; ENR 5.3 page 1.
@@ -536,7 +544,7 @@ const nm = (a: [number, number], b: [number, number]) =>
 describe('helpers', () => {
   test('parseCoord', () => {
     expect(parseCoord('375820N 0234333E')).toEqual([37.972222, 23.725833]);
-    expect(parseCoord('375323.28N 0234430.84E')).toEqual([37.889800, 23.741900]);
+    expect(parseCoord('375323.28N 0234430.84E')).toEqual([37.8898, 23.7419]);
     // Greek capital Nu / Epsilon, as the AIP sometimes prints them.
     expect(parseCoord('365024Ν 0232645Ε')).toEqual([36.84, 23.445833]);
     expect(parseCoord('3758N 02343E')).toEqual([37.966667, 23.716667]);
@@ -544,8 +552,15 @@ describe('helpers', () => {
   });
 
   test('parseLateral', () => {
-    expect(parseLateral('A circle, 3 NM centered on 382815N 0222945E.').circle).toEqual({ lat: 38.470833, lon: 22.495833, radiusNm: 3 });
-    expect(parseLateral('A circle, 800 M radius centered on 405722N 0243226E.').circle!.radiusNm).toBeCloseTo(800 / 1852, 4);
+    expect(parseLateral('A circle, 3 NM centered on 382815N 0222945E.').circle).toEqual({
+      lat: 38.470833,
+      lon: 22.495833,
+      radiusNm: 3,
+    });
+    expect(parseLateral('A circle, 800 M radius centered on 405722N 0243226E.').circle!.radiusNm).toBeCloseTo(
+      800 / 1852,
+      4,
+    );
     // Open ring is closed; a following target-zone description is ignored.
     const g = parseLateral(
       '374800N 0210500E - 374800N 0211700E- 373100N 0212000E - 373150N 0210800E - 374800N 0210500E. The target zone of above area is a circle, radius 1 KM centred on 374700N 0211430E.',
@@ -555,16 +570,25 @@ describe('helpers', () => {
     const open = parseLateral('353200N 0241000E - 353700N 0241000E - 353700N 0241500E - 353200N 0241500E.');
     expect(open.polygon).toHaveLength(5);
     expect(open.polygon![4]).toEqual(open.polygon![0]);
-    expect(parseLateral('393500N 0224300E - 393600N 0224600E - 392400N 0224600E - 393500N 0224300E excluding STEFANOVIKION ATZ.').geometryNote).toMatch(
-      /STEFANOVIKION ATZ/,
-    );
+    expect(
+      parseLateral(
+        '393500N 0224300E - 393600N 0224600E - 392400N 0224600E - 393500N 0224300E excluding STEFANOVIKION ATZ.',
+      ).geometryNote,
+    ).toMatch(/STEFANOVIKION ATZ/);
   });
 
   test('normLimit and splitActivity', () => {
     expect(normLimit('FL400')).toBe('FL 400');
     expect(normLimit('1000FT ALT')).toBe('1000 FT ALT');
     expect(normLimit('GND / MSL')).toBe('GND/MSL');
-    expect(splitActivity(['Daily 0500-1500, except FRI, SAT, SUN and', 'HOL.', 'Firing: Air-to-air, Surface-to-air, Surface-to-', 'surface.'])).toEqual({
+    expect(
+      splitActivity([
+        'Daily 0500-1500, except FRI, SAT, SUN and',
+        'HOL.',
+        'Firing: Air-to-air, Surface-to-air, Surface-to-',
+        'surface.',
+      ]),
+    ).toEqual({
       activity: 'Daily 0500-1500, except FRI, SAT, SUN and HOL.',
       remarks: 'Firing: Air-to-air, Surface-to-air, Surface-to-surface.',
     });
@@ -575,15 +599,42 @@ describe('ENR 5.1', () => {
   const p = byId(parseEnr51([ENR51_P1, ENR51_P3, ENR51_P4, ENR51_P9].join('\n')));
 
   test('prohibited areas: LGP1 circle in metres, LGP4 polygon', () => {
-    expect([...p.keys()].filter((id) => id.startsWith('LGP'))).toEqual(['LGP1', 'LGP4', 'LGP5', 'LGP6', 'LGP7', 'LGP8', 'LGP9', 'LGP10', 'LGP12', 'LGP13']);
+    expect([...p.keys()].filter((id) => id.startsWith('LGP'))).toEqual([
+      'LGP1',
+      'LGP4',
+      'LGP5',
+      'LGP6',
+      'LGP7',
+      'LGP8',
+      'LGP9',
+      'LGP10',
+      'LGP12',
+      'LGP13',
+    ]);
     const p1 = p.get('LGP1')!;
-    expect(p1).toMatchObject({ kind: 'P', name: 'ACROPOLIS', upper: '5000 FT ALT', lower: 'GND', activity: 'H24', source: 'ENR 5.1' });
+    expect(p1).toMatchObject({
+      kind: 'P',
+      name: 'ACROPOLIS',
+      upper: '5000 FT ALT',
+      lower: 'GND',
+      activity: 'H24',
+      source: 'ENR 5.1',
+    });
     expect(p1.circle).toEqual({ lat: 37.972222, lon: 23.725833, radiusNm: 0.378 });
     expect(p1.polygon).toBeUndefined();
     expect(p1.lateral).toBe('A circle, 700 M radius centered on 375820N 0234333E.');
-    expect(p1.remarks).toBe('Prohibited to all flights.\nArchaeological Monuments protected area.\na) Propeller aircraft above 5000 FT\nb) Jet aircraft above 10000 FT');
+    expect(p1.remarks).toBe(
+      'Prohibited to all flights.\nArchaeological Monuments protected area.\na) Propeller aircraft above 5000 FT\nb) Jet aircraft above 10000 FT',
+    );
     const p4 = p.get('LGP4')!;
-    expect(p4).toMatchObject({ kind: 'P', name: 'LAKI (LEROS ISLAND)', upper: '3000 FT ALT', lower: 'GND/MSL', activity: 'H24', remarks: 'Prohibited to GAT flights and UAS.' });
+    expect(p4).toMatchObject({
+      kind: 'P',
+      name: 'LAKI (LEROS ISLAND)',
+      upper: '3000 FT ALT',
+      lower: 'GND/MSL',
+      activity: 'H24',
+      remarks: 'Prohibited to GAT flights and UAS.',
+    });
     expect(p4.polygon).toEqual([
       [37.101111, 26.834722],
       [37.168889, 26.834722],
@@ -592,7 +643,11 @@ describe('ENR 5.1', () => {
       [37.101111, 26.834722],
     ]);
     expect(p.get('LGP7')!.name).toBe('REVYTHOUSSA (FLARESTACK – REVYTHOUSSA ISLAND)');
-    expect(p.get('LGP10')!).toMatchObject({ upper: '5000 FT ALT', lower: 'GND', circle: { lat: 40.475, lon: 21.338889, radiusNm: 1 } });
+    expect(p.get('LGP10')!).toMatchObject({
+      upper: '5000 FT ALT',
+      lower: 'GND',
+      circle: { lat: 40.475, lon: 21.338889, radiusNm: 1 },
+    });
     expect(p.get('LGP10')!.remarks).toBe('Prohibited to GAT flights and UAS.\nProtection of Fur Farms.');
     // Limits printed beside the second coordinate line.
     expect(p.get('LGP13')!).toMatchObject({ upper: '4000 FT ALT', lower: 'GND' });
@@ -603,8 +658,22 @@ describe('ENR 5.1', () => {
     expect(p.has('LGR20')).toBe(false);
     const a = p.get('LGR20A')!;
     const b = p.get('LGR20B')!;
-    expect(a).toMatchObject({ kind: 'R', group: 'LGR20', name: 'SALAMIS', upper: '2000 FT ALT', lower: 'GND/MSL', activity: 'H24' });
-    expect(b).toMatchObject({ kind: 'R', group: 'LGR20', name: 'SALAMIS', upper: '1000 FT ALT', lower: 'GND/MSL', activity: 'H24' });
+    expect(a).toMatchObject({
+      kind: 'R',
+      group: 'LGR20',
+      name: 'SALAMIS',
+      upper: '2000 FT ALT',
+      lower: 'GND/MSL',
+      activity: 'H24',
+    });
+    expect(b).toMatchObject({
+      kind: 'R',
+      group: 'LGR20',
+      name: 'SALAMIS',
+      upper: '1000 FT ALT',
+      lower: 'GND/MSL',
+      activity: 'H24',
+    });
     expect(a.polygon).toHaveLength(6);
     expect(a.polygon![0]).toEqual([37.916667, 23.430556]);
     expect(b.polygon).toEqual([
@@ -625,29 +694,50 @@ describe('ENR 5.1', () => {
   });
 
   test('LGR23 sub-areas, LGR24 lower limit above ground, LGR27 multi-line schedule with FL 240', () => {
-    expect(p.get('LGR23A')!).toMatchObject({ group: 'LGR23', upper: '5000 FT ALT', lower: 'GND/MSL', activity: 'SR-SS' });
+    expect(p.get('LGR23A')!).toMatchObject({
+      group: 'LGR23',
+      upper: '5000 FT ALT',
+      lower: 'GND/MSL',
+      activity: 'SR-SS',
+    });
     expect(p.get('LGR23B')!).toMatchObject({ group: 'LGR23', upper: '3000 FT ALT', lower: 'GND' });
     expect(p.get('LGR23A')!.polygon).toHaveLength(8);
     expect(p.get('LGR24')!).toMatchObject({ upper: '5000 FT ALT', lower: '3500 FT ALT', activity: 'SR-SS.' });
     const r27 = p.get('LGR27')!;
     expect(r27).toMatchObject({ kind: 'R', name: 'LITHINON', upper: 'FL 240', lower: 'GND/MSL' });
     expect(r27.activity).toBe('MON 0400 -1200\nTUE, WED, THU 0400-1200 and 1600-2100\nFRI 0400-1200 except HOL');
-    expect(r27.remarks).toBe('Training Flights\nATS Routes affected:\na) AWY M978 (TIPUS-OTREX)\nb) AWY R78 (TIPUS-OTREX)');
+    expect(r27.remarks).toBe(
+      'Training Flights\nATS Routes affected:\na) AWY M978 (TIPUS-OTREX)\nb) AWY R78 (TIPUS-OTREX)',
+    );
     expect(r27.polygon).toHaveLength(9);
     expect(r27.polygon![1]).toEqual([34.766667, 24.9]);
     expect(p.get('LGR28')!).toMatchObject({ activity: 'Activated by NOTAM', upper: '1000 FT ALT', lower: 'GND/MSL' });
-    expect(p.get('LGR25')!.remarks).toBe('Hellenic Air force \\Training Flights\nThe area is activated under the authorization of TANAGRA APP.');
+    expect(p.get('LGR25')!.remarks).toBe(
+      'Hellenic Air force \\Training Flights\nThe area is activated under the authorization of TANAGRA APP.',
+    );
   });
 
   test('danger areas: LGD61, its buffer zone LGD61Z, LGD63 circle, LGD65 wrapped schedule', () => {
     const d61 = p.get('LGD61')!;
-    expect(d61).toMatchObject({ kind: 'D', name: 'ZAKINTHOS', upper: 'FL 400', lower: 'MSL', activity: 'AMC manageable area.\nActivated by EAUP/EUUP.' });
+    expect(d61).toMatchObject({
+      kind: 'D',
+      name: 'ZAKINTHOS',
+      upper: 'FL 400',
+      lower: 'MSL',
+      activity: 'AMC manageable area.\nActivated by EAUP/EUUP.',
+    });
     expect(d61.remarks).toBe(
       'Firing: Air-to-air, Surface-to-surface, Surface-to-air, Air-to-surface.\nAndravida APP has been designated as the authority to grand and issue clearances for crossing the area.\nLGD72B2 not to be activated simultaneously.\nATS route affected:\nAWY A145/UA145 (LORNO-BERAP).',
     );
     expect(d61.polygon).toHaveLength(5);
     const z = p.get('LGD61Z')!;
-    expect(z).toMatchObject({ kind: 'D', name: '', upper: 'FL 415', lower: 'FL 295', remarks: 'For IFR flight planning purposes only.' });
+    expect(z).toMatchObject({
+      kind: 'D',
+      name: '',
+      upper: 'FL 415',
+      lower: 'FL 295',
+      remarks: 'For IFR flight planning purposes only.',
+    });
     expect(z.group).toBeUndefined();
     expect(p.get('LGD63')!).toMatchObject({
       upper: 'FL 120',
@@ -663,7 +753,13 @@ describe('ENR 5.1', () => {
     expect(p.has('LGD67')).toBe(false);
     const big = p.get('LGD67A')!;
     const small = p.get('LGD67B')!;
-    expect(big).toMatchObject({ group: 'LGD67', upper: '4000 FT ALT', lower: 'GND', activity: 'Activated by NOTAM.', remarks: 'Artillery firing.' });
+    expect(big).toMatchObject({
+      group: 'LGD67',
+      upper: '4000 FT ALT',
+      lower: 'GND',
+      activity: 'Activated by NOTAM.',
+      remarks: 'Artillery firing.',
+    });
     expect(small).toMatchObject({ group: 'LGD67', upper: '2000 FT ALT', lower: 'GND' });
     const c: [number, number] = [38.05, 23.4];
     const chordA: [number, number] = [38.024167, 23.372778];
@@ -694,7 +790,13 @@ describe('ENR 5.2', () => {
     );
     expect(t1.polygon).toHaveLength(7);
     expect(t1.polygon![0]).toEqual([39.283333, 21.933333]);
-    expect(p.get('LGTSA1Z')!).toMatchObject({ kind: 'MIL', name: '', upper: 'FL 660', lower: 'FL 285', remarks: 'For IFR flight planning purposes only.' });
+    expect(p.get('LGTSA1Z')!).toMatchObject({
+      kind: 'MIL',
+      name: '',
+      upper: 'FL 660',
+      lower: 'FL 285',
+      remarks: 'For IFR flight planning purposes only.',
+    });
     expect(p.get('LGTSA2')!).toMatchObject({ name: 'ANCHIALOS', upper: 'UNL', lower: 'FL 290' });
     expect(p.get('LGTSA3')!).toMatchObject({ name: 'LARISSA', upper: 'UNL', lower: 'FL 200' });
   });
@@ -703,11 +805,24 @@ describe('ENR 5.2', () => {
 describe('ENR 5.3', () => {
   const p = byId(parseEnr53(ENR53_P1));
   test('local flying areas', () => {
-    expect([...p.keys()]).toEqual(['AGRINION', 'ASSIMI', 'KALATHOS', 'LACONIA-1', 'LACONIA-2', 'LIMNES', 'NYMFOPETRA', 'POLYKASTRO', 'ROPA', 'SIDARI']);
+    expect([...p.keys()]).toEqual([
+      'AGRINION',
+      'ASSIMI',
+      'KALATHOS',
+      'LACONIA-1',
+      'LACONIA-2',
+      'LIMNES',
+      'NYMFOPETRA',
+      'POLYKASTRO',
+      'ROPA',
+      'SIDARI',
+    ]);
     const ag = p.get('AGRINION')!;
     expect(ag).toMatchObject({ kind: 'ACT', name: 'AGRINION', upper: '6000 FT ALT', lower: 'GND', source: 'ENR 5.3' });
     expect(ag.activity).toBe('MON, WED: 0900-SS, SAT, SUN and HOL: SR-SS.');
-    expect(ag.remarks).toBe('Parachute jumping\nAuthority: AGRINION Aeroclub\nPermission to cross this area during activity may be given by AKTION APP.');
+    expect(ag.remarks).toBe(
+      'Parachute jumping\nAuthority: AGRINION Aeroclub\nPermission to cross this area during activity may be given by AKTION APP.',
+    );
     expect(ag.polygon).toEqual([
       [38.6, 21.566667],
       [38.633333, 21.433333],
@@ -727,13 +842,21 @@ describe('ENR 5.3', () => {
     expect(l1.polygon![0]).toEqual([37.033333, 22.483333]);
     expect(l2.polygon![2]).toEqual([36.8, 22.783333]);
     // Authority and remarks columns touch here ('IRAKION Aeroclub Permission …').
-    expect(p.get('ASSIMI')!.remarks).toBe('Training flights\nAuthority: IRAKION Aeroclub\nPermission to cross this area may be given by IRAKLION APP.');
-    expect(p.get('NYMFOPETRA')!).toMatchObject({ upper: '3000 FT ALT', lower: '2500 FT ALT', activity: 'Daily SR-SS.' });
+    expect(p.get('ASSIMI')!.remarks).toBe(
+      'Training flights\nAuthority: IRAKION Aeroclub\nPermission to cross this area may be given by IRAKLION APP.',
+    );
+    expect(p.get('NYMFOPETRA')!).toMatchObject({
+      upper: '3000 FT ALT',
+      lower: '2500 FT ALT',
+      activity: 'Daily SR-SS.',
+    });
   });
 });
 
 describe('tools/enr5_areas.json', () => {
-  const areas: RefArea[] = JSON.parse(fs.readFileSync(new URL('../../../tools/enr5_areas.json', import.meta.url), 'utf8'));
+  const areas: RefArea[] = JSON.parse(
+    fs.readFileSync(new URL('../../../tools/enr5_areas.json', import.meta.url), 'utf8'),
+  );
   test('ids are unique and every area is complete', () => {
     expect(new Set(areas.map((a) => a.id)).size).toBe(areas.length);
     for (const a of areas) {
@@ -766,7 +889,13 @@ describe('tools/enr5_areas.json', () => {
     expect(n((a) => a.kind === 'R')).toBeGreaterThanOrEqual(43);
     // ENR 5.1.3: 49 LGD areas (sub-areas and Z buffer zones included); ENR 5.1.4: LGC101 sectors A, A1, A2, B, C.
     expect(n((a) => a.kind === 'D' && a.id.startsWith('LGD'))).toBeGreaterThanOrEqual(49);
-    expect(areas.filter((a) => a.group === 'LGC101').map((a) => a.id)).toEqual(['LGC101A', 'LGC101A1', 'LGC101A2', 'LGC101B', 'LGC101C']);
+    expect(areas.filter((a) => a.group === 'LGC101').map((a) => a.id)).toEqual([
+      'LGC101A',
+      'LGC101A1',
+      'LGC101A2',
+      'LGC101B',
+      'LGC101C',
+    ]);
     // ENR 5.2.1: LGTSA1–7 and their Z buffer zones.
     expect(n((a) => a.kind === 'MIL')).toBeGreaterThanOrEqual(14);
     // ENR 5.3.1: 10 entries, LACONIA as LACONIA 1 and 2.
@@ -779,11 +908,17 @@ describe('tools/enr5_areas.json', () => {
   test('spot checks on the full text', () => {
     const p = byId(areas);
     expect(p.get('LGD77')!).toMatchObject({ upper: 'FL 290', lower: 'GND' });
-    expect(p.get('LGD77')!.activity).toBe('FL 140: Daily SR-1300 and SS-21 00 except FRI, SAT, SUN and HOL.\nFL 290: Every WED, THU 0530-0730 except HOL.');
+    expect(p.get('LGD77')!.activity).toBe(
+      'FL 140: Daily SR-1300 and SS-21 00 except FRI, SAT, SUN and HOL.\nFL 290: Every WED, THU 0530-0730 except HOL.',
+    );
     expect(p.get('LGR30A')!.polygon![0]).toEqual([38.25, 22.2]);
     expect(p.get('LGD83Z')!.polygon![0]).toEqual([36.84, 23.445833]);
     expect(p.get('LGR34W')!.geometryNote).toMatch(/STEFANOVIKION ATZ/);
-    expect(p.get('TRIPOLIS')!).toMatchObject({ upper: 'FL 170', lower: 'FL 120', activity: 'Daily SR-SS except SAT, SUN and HOL.' });
+    expect(p.get('TRIPOLIS')!).toMatchObject({
+      upper: 'FL 170',
+      lower: 'FL 120',
+      activity: 'Daily SR-SS except SAT, SUN and HOL.',
+    });
     expect(p.get('LGTSA6')!).toMatchObject({ upper: 'FL 400', lower: 'FL 305' });
   });
 });

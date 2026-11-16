@@ -2,7 +2,7 @@
 // (api.files / api.operatorFiles, api/_lib/routes/files.ts),
 // the photo's resize in the browser, and a per-session cache of downloaded content (a file id's
 // content never changes: a replaced photo or document gets a new id).
-import { AIRCRAFT_FILE_CHUNK_BYTES, type AircraftFile, type AircraftFileKind,PHOTO_MAX_PX } from '../shared/types';
+import { AIRCRAFT_FILE_CHUNK_BYTES, type AircraftFile, type AircraftFileKind, PHOTO_MAX_PX } from '../shared/types';
 import { api, type FilesApi } from './api';
 
 function toBase64(bytes: Uint8Array): string {
@@ -18,7 +18,10 @@ function fromBase64(data: string): Uint8Array {
 }
 
 /** Whose files: the aircraft's (api.files) or an operator's (api.operatorFiles), by id. */
-export interface FileScope { files: FilesApi; id: string }
+export interface FileScope {
+  files: FilesApi;
+  id: string;
+}
 export const aircraftScope = (aircraftId: string): FileScope => ({ files: api.files, id: aircraftId });
 export const operatorScope = (operatorId: string): FileScope => ({ files: api.operatorFiles, id: operatorId });
 
@@ -26,12 +29,24 @@ export const operatorScope = (operatorId: string): FileScope => ({ files: api.op
  * Uploads `blob` as the aircraft's photo or a document, chunk by chunk; `onProgress` gets 0…1.
  * Returns the stored file (a new photo replaces the old one when it completes).
  */
-export async function uploadFile(scope: FileScope, blob: Blob, meta: { kind: AircraftFileKind; name: string; title?: string },
-  onProgress?: (f: number) => void): Promise<AircraftFile> {
+export async function uploadFile(
+  scope: FileScope,
+  blob: Blob,
+  meta: { kind: AircraftFileKind; name: string; title?: string },
+  onProgress?: (f: number) => void,
+): Promise<AircraftFile> {
   const { files, id } = scope;
-  const f = await files.start(id, { kind: meta.kind, name: meta.name, title: meta.title ?? '', mime: blob.type, size: blob.size });
+  const f = await files.start(id, {
+    kind: meta.kind,
+    name: meta.name,
+    title: meta.title ?? '',
+    mime: blob.type,
+    size: blob.size,
+  });
   for (let seq = 0; seq < f.chunks; seq++) {
-    const part = new Uint8Array(await blob.slice(seq * AIRCRAFT_FILE_CHUNK_BYTES, (seq + 1) * AIRCRAFT_FILE_CHUNK_BYTES).arrayBuffer());
+    const part = new Uint8Array(
+      await blob.slice(seq * AIRCRAFT_FILE_CHUNK_BYTES, (seq + 1) * AIRCRAFT_FILE_CHUNK_BYTES).arrayBuffer(),
+    );
     await files.putChunk(id, f.id, seq, toBase64(part));
     onProgress?.((seq + 1) / f.chunks);
   }
@@ -80,7 +95,8 @@ export async function resizePhoto(file: Blob, maxPx = PHOTO_MAX_PX): Promise<Blo
   try {
     const k = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
     if (k === 1 && file.type === 'image/jpeg') return file;
-    const w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+    const w = Math.max(1, Math.round(bmp.width * k)),
+      h = Math.max(1, Math.round(bmp.height * k));
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
@@ -88,7 +104,9 @@ export async function resizePhoto(file: Blob, maxPx = PHOTO_MAX_PX): Promise<Blo
     ctx.fillStyle = '#fff'; // transparent PNG areas become white, not black
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(bmp, 0, 0, w, h);
-    return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('could not encode the photo'))), 'image/jpeg', 0.85));
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('could not encode the photo'))), 'image/jpeg', 0.85),
+    );
   } finally {
     bmp.close();
   }

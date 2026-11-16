@@ -1,15 +1,15 @@
 # Generated, vendored or not ours
-dist/
-node_modules/
+/dist/
+/node_modules/
 package-lock.json
-aip/
-trn-docs/
-data/
+/aip/
+/trn-docs/
+/data/
 src/data/ref/
 tools/**/*.json
 tests/e2e/artifacts/
 tests/fixtures/
-public/
+/public/
 server/pgdata/
 # Applied migrations are frozen (byte for byte)
 api/_lib/migrations/

@@ -14,31 +14,59 @@ const metarCalls: string[][] = [];
 let nextWeather: () => Promise<RouteWeather>;
 vi.mock('../../../src/data/weather', async (orig) => ({
   ...(await orig<object>()),
-  fetchRouteWeather: (req: any) => { weatherCalls.push(req); return nextWeather(); },
+  fetchRouteWeather: (req: any) => {
+    weatherCalls.push(req);
+    return nextWeather();
+  },
 }));
 vi.mock('../../../src/data/weatherMetar', async (orig) => ({
   ...(await orig<object>()),
-  fetchMetarTaf: (ids: string[]) => { metarCalls.push(ids); return Promise.resolve({ status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: 1, stations: {} }); },
+  fetchMetarTaf: (ids: string[]) => {
+    metarCalls.push(ids);
+    return Promise.resolve({ status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: 1, stations: {} });
+  },
 }));
 const { flightWeatherPlan, metarRelevant, useFlightWeather } = await import('../../../src/data/useFlightWeather');
 const { buildLegs } = await import('../../../src/calc');
 
-afterEach(() => { cleanup(); weatherCalls.length = 0; metarCalls.length = 0; });
+afterEach(() => {
+  cleanup();
+  weatherCalls.length = 0;
+  metarCalls.length = 0;
+});
 
-const ok = (legs: number): RouteWeather => ({ status: 'ok', message: 'ok', legs: new Array(legs).fill(null), departure: null, destination: null, stops: [], source: null });
+const ok = (legs: number): RouteWeather => ({
+  status: 'ok',
+  message: 'ok',
+  legs: new Array(legs).fill(null),
+  departure: null,
+  destination: null,
+  stops: [],
+  source: null,
+});
 const route = (): RoutePoint[] => ['LGTT', 'LGMG', 'LGSY'].map((id) => aerodromePoint(aerodrome(id)!));
 const today = new Date().toISOString().slice(0, 10);
 
 function Probe({ r, date, metar }: { r: RoutePoint[]; date: string; metar?: 'near' | 'always' }) {
   const [options] = [{ aerodromeRequests: [{ pointUid: r[1].uid, kind: 'stop' as const, stopMin: 30 }] }];
   const wx = useFlightWeather({ date, route: r, options, model: null, metar });
-  return <p data-testid="wx">{wx.weatherLoading ? 'loading' : wx.weather?.status ?? 'none'}|{wx.icaos.join(',')}|{wx.stops.length}</p>;
+  return (
+    <p data-testid="wx">
+      {wx.weatherLoading ? 'loading' : (wx.weather?.status ?? 'none')}|{wx.icaos.join(',')}|{wx.stops.length}
+    </p>
+  );
 }
 
 describe('flightWeatherPlan / metarRelevant', () => {
   it('includes intermediate stops and their ICAO codes, once', () => {
     const r = route();
-    const p = flightWeatherPlan({ date: today, model: null, route: r, options: { aerodromeRequests: [{ pointUid: r[1].uid, kind: 'touch-and-go' }] }, legs: buildLegs(r, today) });
+    const p = flightWeatherPlan({
+      date: today,
+      model: null,
+      route: r,
+      options: { aerodromeRequests: [{ pointUid: r[1].uid, kind: 'touch-and-go' }] },
+      legs: buildLegs(r, today),
+    });
     expect(p.departure?.icao).toBe('LGTT');
     expect(p.destination?.icao).toBe('LGSY');
     expect(p.stops.map((s) => s.aerodrome?.icao)).toEqual(['LGMG']);
@@ -82,7 +110,10 @@ describe('useFlightWeather', () => {
 
   it('only the newest request sets the weather', async () => {
     let release!: (w: RouteWeather) => void;
-    nextWeather = () => new Promise((r) => { release = r; });
+    nextWeather = () =>
+      new Promise((r) => {
+        release = r;
+      });
     const r = route();
     const { rerender } = render(<Probe r={r} date={today} />);
     const first = release;
