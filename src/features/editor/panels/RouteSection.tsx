@@ -83,11 +83,7 @@ export function RouteSection() {
   const to = route.length > 1 ? route[route.length - 1] : undefined;
   const set = (end: 'from' | 'to') => (a: RefAerodrome) =>
     update((d: FlightDoc) => ({ ...d, route: setRouteEnd(d.route, end, a) }), { coalesce: `route-${end}` });
-  const badge = (
-    <span className="muted">
-      {from ? `${from.name} → ${to ? to.name : '?'}` : 'No route'}
-    </span>
-  );
+  const badge = <span className="muted">{from ? `${from.name} → ${to ? to.name : '?'}` : 'No route'}</span>;
   return (
     <Section id="route" title="Route" badge={badge}>
       <div className="ep-grid2" data-testid="route-ends" data-focus="route">
