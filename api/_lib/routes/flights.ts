@@ -12,7 +12,7 @@ import type { Queryable } from '../db.js';
 import { checkCount } from '../limits.js';
 import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
-import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, validateCrew } from '../../../src/shared/constants.js';
+import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, PERSON_KEYS, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, validateCrew } from '../../../src/shared/constants.js';
 import { findAerodrome } from './ref.js';
 import { aerodromePoint } from '../../../src/shared/aerodrome.js';
 import { accessibleSql, canUseAircraft } from '../access.js';
@@ -81,7 +81,9 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
     if (typeof c.seat !== 'string' || c.seat.length > 40) throw badRequest(`crew[${i}].seat must be a seat id`);
     // the snapshot feeds W&B (weight) and the forms: same checks as a passenger record
     const snapshot = personColumns(obj(c.snapshot, `crew[${i}].snapshot`), EMPTY_PERSON);
-    return { role: c.role, passengerId: c.passengerId || null, seat: c.seat, snapshot };
+    if (c.overrides != null && !Array.isArray(c.overrides)) throw badRequest(`crew[${i}].overrides must be an array`);
+    const overrides = PERSON_KEYS.filter((k) => c.overrides?.includes(k));
+    return { role: c.role, passengerId: c.passengerId || null, seat: c.seat, snapshot, overrides };
   });
   const errs = validateCrew(d.crew, seats);
   if (errs.length) throw badRequest(errs.join('; '));
@@ -104,8 +106,8 @@ async function writeCrew(q: Queryable, pilotId: string, flightId: string, crew: 
   await q.query('DELETE FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilotId]);
   for (const [i, c] of crew.entries()) {
     await q.query(
-      'INSERT INTO flight_crew (flight_id, pilot_id, position, role, passenger_id, seat, snapshot) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)',
-      [flightId, pilotId, i, c.role, c.passengerId || null, c.seat, JSON.stringify(c.snapshot)],
+      'INSERT INTO flight_crew (flight_id, pilot_id, position, role, passenger_id, seat, snapshot, overrides) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb)',
+      [flightId, pilotId, i, c.role, c.passengerId || null, c.seat, JSON.stringify(c.snapshot), JSON.stringify(c.overrides ?? [])],
     );
   }
 }

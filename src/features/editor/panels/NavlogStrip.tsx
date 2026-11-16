@@ -6,7 +6,7 @@ import { useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { fmtAltitude, fmtHdg } from '../../../calc';
 import type { RouteWeather } from '../../../data/weather';
-import { fmtClock, fmtDuration } from '../../../shared/format';
+import { fmtClock, fmtDuration, fmtEte } from '../../../shared/format';
 import { Icon } from '../../../ui';
 import { editorWarningFix, focusInEditor } from '../focus';
 import { useEditor } from '../state';
@@ -25,6 +25,7 @@ const signed = (x: number | undefined) => (fin(x) ? (x > 0 ? `+${x}` : x < 0 ? `
 const hdg = (x: number | undefined) => (fin(x) ? fmtHdg(x) : '');
 const fmtMin = (min: number) => fmtClock(min, { fallback: '--:--' });
 const fmtDur = (min: number) => fmtDuration(min, { fallback: '–' });
+const fmtLegTime = (min: number) => fmtEte(min, { fallback: '–' });
 
 /** The forecast in a few characters: the model run ('06Z run'), or why there is none. */
 export function weatherRunText(weather: RouteWeather | null, loading: boolean, hasLegs: boolean): { text: string; title?: string; tone?: 'warn' } {
@@ -151,7 +152,7 @@ export function NavlogStrip() {
                       <td className="num"><b>{hdg(r.ch ?? r.mh)}</b></td>
                       <td className="num">{fin(r.gs) ? r.gs : ''}</td>
                       <td className="num">{r.dist}</td>
-                      <td className="num">{fin(r.ete) ? fmtDur(r.ete) : ''}</td>
+                      <td className="num">{fin(r.ete) ? fmtLegTime(r.ete) : ''}</td>
                       <td className="num">{fin(r.endMin) && fin(dayMs) ? fmtMin(r.endMin) : ''}</td>
                       <td className="num">{fin(r.fuel) ? r.fuel : ''}</td>
                     </tr>
@@ -162,7 +163,7 @@ export function NavlogStrip() {
                 <tr>
                   <td colSpan={12}>{navlog.legs.length} legs{!navlog.blockOffSet && <> · <button type="button" className="linkish" data-testid="navlog-blockoff-fix" onClick={() => focusInEditor('blockOff')}>block-off not set: 12:00Z assumed</button></>}</td>
                   <td className="num">{navlog.totals.dist}</td>
-                  <td className="num">{fmtDur(navlog.totals.ete)}</td>
+                  <td className="num">{fmtLegTime(navlog.totals.ete)}</td>
                   <td />
                   <td className="num">{navlog.totals.tripFuel}</td>
                 </tr>

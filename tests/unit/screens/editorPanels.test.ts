@@ -1,11 +1,11 @@
 // Editor panel helpers: the manifest following the passenger list, the take-off/landing weather
 // line, the navlog strip's forecast run, and the in-place fixes of warnings.
 import { describe, expect, it } from 'vitest';
-import { followPerson } from '../../../src/features/editor/panels/ManifestSection';
+import { applyPerson, editCrewField, followPerson, resetCrew } from '../../../src/features/editor/panels/manifest';
 import { weatherText } from '../../../src/features/editor/panels/PerformanceSection';
 import { weatherRunText } from '../../../src/features/editor/panels/NavlogStrip';
 import { editorWarningFix, onEditorFocus, sectionOf } from '../../../src/features/editor/focus';
-import type { PersonDetails } from '../../../src/shared';
+import type { FlightCrew, PersonDetails } from '../../../src/shared';
 
 const person = (o: Partial<PersonDetails> = {}): PersonDetails => ({
   fullName: 'Maria P', phone: '+30 690', dateOfBirth: '1990-04-02', weightKg: 62, idNumber: 'AK 1', idType: 'ID', nationality: 'GR', relation: '', ...o,
@@ -23,6 +23,36 @@ describe('followPerson', () => {
   it('nothing changed: the same object', () => {
     const snap = person({ weightKg: 70 });
     expect(followPerson(snap, person(), person())).toBe(snap);
+  });
+  it('a field edited on the flight stays when the list changes it', () => {
+    const out = followPerson(person({ weightKg: 70 }), person(), person({ weightKg: 65, phone: '+30 691' }), ['weightKg']);
+    expect(out).toEqual(person({ weightKg: 70, phone: '+30 691' }));
+  });
+});
+
+describe('manifest overrides', () => {
+  const row = (o: Partial<FlightCrew> = {}): FlightCrew => ({ role: 'PAX', passengerId: 'p1', seat: 'rear-left', snapshot: person(), ...o });
+  it('editing a field on the flight marks it once', () => {
+    const a = editCrewField(row(), 'weightKg', 70);
+    expect(a.snapshot.weightKg).toBe(70);
+    expect(a.overrides).toEqual(['weightKg']);
+    expect(editCrewField(a, 'weightKg', 72).overrides).toEqual(['weightKg']);
+  });
+  it('saved details (dialog) apply to every field but the edited ones', () => {
+    const a = editCrewField(row(), 'weightKg', 70);
+    const b = applyPerson(a, person({ weightKg: 64, idNumber: 'AK 9' }));
+    expect(b.snapshot).toEqual(person({ weightKg: 70, idNumber: 'AK 9' }));
+    expect(b.overrides).toEqual(['weightKg']);
+    expect(applyPerson(b, b.snapshot)).toBe(b);
+    // without an override the weight follows
+    expect(applyPerson(row(), person({ weightKg: 64 })).snapshot.weightKg).toBe(64);
+  });
+  it('reset takes the saved details and clears the overrides', () => {
+    const a = editCrewField(row(), 'weightKg', 70);
+    const r = resetCrew(a, person({ weightKg: 64 }));
+    expect(r.snapshot.weightKg).toBe(64);
+    expect(r.overrides).toBeUndefined();
+    expect(followPerson(r.snapshot, person({ weightKg: 64 }), person({ weightKg: 60 }), r.overrides).weightKg).toBe(60);
   });
 });
 

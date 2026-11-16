@@ -163,7 +163,7 @@ describe('flights', () => {
     expect(f.taxiOutMin).toBe(15);
     expect(f.taxiInMin).toBe(10);
     expect(f.aircraftId).toBe(ac.id);
-    expect(f.crew).toEqual([{ role: 'PIC', passengerId: null, seat: 'front-left', snapshot: expect.objectContaining({ fullName: 'Alice Pilot', weightKg: 70 }) }]);
+    expect(f.crew).toEqual([{ role: 'PIC', passengerId: null, seat: 'front-left', snapshot: expect.objectContaining({ fullName: 'Alice Pilot', weightKg: 70 }), overrides: [] }]);
     expect(f.version).toBe(1);
     const row = ((await a.call('GET', 'flights')).body as any[]).find((x) => x.id === f.id);
     expect(row.points).toEqual(['LGTT', 'LGTT']);
@@ -181,12 +181,18 @@ describe('flights', () => {
     const got = (await a.call('GET', `flights/${f.id}`)).body as Flight;
     expect(got.crew.map((c) => c.role)).toEqual(['PIC', 'PAX']);
     expect(got.fobL).toBe(100);
+    // fields edited on the flight (unknown names dropped) are kept with the row
+    expect(got.crew[1].overrides).toEqual([]);
+    const edited = [crew[0], { ...crew[1], snapshot: { fullName: 'Bob Pax', weightKg: 84 }, overrides: ['weightKg', 'bogus'] }];
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: edited }, version: 2 })).status).toBe(200);
+    expect(((await a.call('GET', `flights/${f.id}`)).body as Flight).crew[1]).toMatchObject({ snapshot: { weightKg: 84 }, overrides: ['weightKg'] });
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: [crew[0], { ...crew[1], overrides: 'weightKg' }] }, version: 3 })).status).toBe(400);
     // manifest rules
     const twoPics = [...crew, { role: 'PIC', passengerId: null, seat: 'rear-left', snapshot: {} }];
-    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: twoPics }, version: 2 })).status).toBe(400);
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: twoPics }, version: 3 })).status).toBe(400);
     const sameSeat = [crew[0], { ...crew[1], seat: 'front-left' }];
-    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: sameSeat }, version: 2 })).status).toBe(400);
-    expect((await a.call('PUT', `flights/${f.id}`, { flight: { blockOff: '25:00' }, version: 2 })).status).toBe(400);
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: sameSeat }, version: 3 })).status).toBe(400);
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { blockOff: '25:00' }, version: 3 })).status).toBe(400);
     // deleting the passenger keeps the snapshot
     expect((await a.call('DELETE', `passengers/${pax.id}`)).status).toBe(204);
     const after = (await a.call('GET', `flights/${f.id}`)).body as Flight;
@@ -201,6 +207,7 @@ describe('flights', () => {
     expect(c.status).toBe(201);
     expect(c.body.title).toBe('Copy of Trip');
     expect(c.body.crew.length).toBe(2);
+    expect(c.body.crew[1].overrides).toEqual(['weightKg']);
     expect((await a.call('POST', `flights/${f.id}/opened`)).status).toBe(204);
   });
 });

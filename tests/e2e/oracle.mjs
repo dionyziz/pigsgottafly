@@ -43,6 +43,8 @@ export const signed = (d) => (d > 0 ? '+' + d : d < 0 ? '\u2212' + -d : '0');
 export const hmm = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 /** Durations as the app shows them: '1h44', '0h10'. */
 export const dur = (m) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`;
+/** Navlog leg times (ETE/ATE columns): '00:10', '01:44'. */
+export const legTime = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 // legs: [{a,b,alt,tas,wd,ws}] (wd/ws as displayed integers) ; returns expected written cells per leg + totals
 export function navlog(legs, { variation = 5, card = null, flow = 30, extra = 4 } = {}) {
@@ -74,7 +76,7 @@ export function navlog(legs, { variation = 5, card = null, flow = 30, extra = 4 
     cells: rows.map((r) => ({
       tc: hdg(r.tc), wca: signed(r.wca), th: hdg(r.th), var: signed(-Math.round(variation)), mh: hdg(r.mh),
       dev: r.dev === null ? '' : r.dev === 0 ? '0' : signed(r.dev), ch: r.ch === null ? '' : hdg(r.ch),
-      dist: String(r.dist), rem: String(r.rem), gs: String(r.gs), ete: dur(r.ete), ate: dur(r.ate), fuel: String(r.fuel),
+      dist: String(r.dist), rem: String(r.rem), gs: String(r.gs), ete: legTime(r.ete), ate: legTime(r.ate), fuel: String(r.fuel),
     })),
   };
 }

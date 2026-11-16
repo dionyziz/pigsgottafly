@@ -8,7 +8,7 @@ import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerD
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
-import { addPicToCrew } from './manifest';
+import { addPicToCrew, applyPerson, editCrewField, followPerson, resetCrew } from './manifest';
 import { Chip, Icon, NumberField, PersonPicker } from '../../../ui';
 import { KV, Section } from './ui';
 
@@ -21,24 +21,10 @@ export function personOf(p: Pilot | Passenger): PersonDetails {
 
 const FALLBACK_LABELS: Record<string, string> = { 'front-left': 'Front left', 'front-right': 'Front right', 'rear-left': 'Rear left', 'rear-right': 'Rear right' };
 
-const PERSON_KEYS = ['fullName', 'phone', 'dateOfBirth', 'weightKg', 'idNumber', 'idType', 'nationality', 'relation'] as const;
-
-/**
- * The snapshot after the person's record changed from `before` to `after`: the fields that changed
- * there are copied; the rest (e.g. a weight typed for this flight) are kept.
- */
-export function followPerson(snapshot: PersonDetails, before: PersonDetails, after: PersonDetails): PersonDetails {
-  let out = snapshot;
-  for (const k of PERSON_KEYS) {
-    if (before[k] !== after[k] && out[k] !== after[k]) out = { ...out, [k]: after[k] };
-  }
-  return out;
-}
-
 /**
  * Keeps the manifest's linked people in step with the passenger list and the profile: an edit there
- * (here, on another page or in another tab) updates the snapshot; a passenger deleted from the list
- * is unlinked (the snapshot stays on the manifest).
+ * (here, on another page or in another tab) updates the snapshot, except the fields edited on this
+ * flight; a passenger deleted from the list is unlinked (the snapshot stays on the manifest).
  */
 function useCrewSync() {
   const { doc, update, passengers, passengersLoaded, pilot } = useEditor();
@@ -60,7 +46,7 @@ function useCrewSync() {
       if (!after) return c.role === 'PAX' ? { ...c, passengerId: null } : c;
       const was = before?.get(k);
       if (!was) return c;
-      const snapshot = followPerson(c.snapshot, was, after);
+      const snapshot = followPerson(c.snapshot, was, after, c.overrides);
       return snapshot === c.snapshot ? c : { ...c, snapshot };
     });
     if (next.some((c, i) => c !== crew[i])) update((d) => ({ ...d, crew: d.crew.map((c, i) => (crew[i] === c ? next[i] : c)) }), { coalesce: 'crew-sync' });
@@ -110,7 +96,7 @@ export function ManifestSection() {
   const refresh = (i: number) => {
     const c = doc.crew[i];
     const src = c.role === 'PIC' ? pilot : passengers.find((p) => p.id === c.passengerId);
-    if (src) setCrew(i, (x) => ({ ...x, snapshot: personOf(src) }));
+    if (src) setCrew(i, (x) => resetCrew(x, personOf(src)));
   };
   // The PIC goes back to front left; whoever sits there moves to a free seat.
   const seatIds = seats.map((s) => s.id);
@@ -158,7 +144,7 @@ export function ManifestSection() {
                   </select>
                   <NumberField value={c.snapshot.weightKg} min={1} max={300} width={84} unit="kg" ariaLabel={`Weight of ${c.snapshot.fullName}`}
                     testId="crew-weight" className="ep-num" invalid={c.snapshot.weightKg == null}
-                    onChange={(v) => setCrew(i, (x) => ({ ...x, snapshot: { ...x.snapshot, weightKg: v } }), `w-${i}`)} />
+                    onChange={(v) => setCrew(i, (x) => editCrewField(x, 'weightKg', v), `w-${i}`)} />
                 </div>
               </div>
               <div className="ep-row-actions">
@@ -251,7 +237,7 @@ export function ManifestSection() {
       {editingMe && (
         <PilotDetailsDialog onClose={() => setEditingMe(false)} onSaved={(p) => {
           setEditingMe(false);
-          update((d) => ({ ...d, crew: d.crew.map((c) => (c.role === 'PIC' ? { ...c, snapshot: personOf(p) } : c)) }));
+          update((d) => ({ ...d, crew: d.crew.map((c) => (c.role === 'PIC' ? applyPerson(c, personOf(p)) : c)) }));
         }} />
       )}
       {creating !== null && (
@@ -272,8 +258,8 @@ export function ManifestSection() {
           onClose={() => setEditingPax(null)}
           onSaved={async (p) => {
             setEditingPax(null);
-            // the snapshot takes the saved details (the list refetch then finds nothing to change)
-            update((d) => ({ ...d, crew: d.crew.map((c) => (c.passengerId === p.id ? { ...c, snapshot: personOf(p) } : c)) }));
+            // the snapshot takes the saved details but the fields edited on this flight (the list refetch then finds nothing to change)
+            update((d) => ({ ...d, crew: d.crew.map((c) => (c.passengerId === p.id ? applyPerson(c, personOf(p)) : c)) }));
             await reloadLists().catch(() => {});
           }}
         />

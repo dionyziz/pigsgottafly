@@ -6,7 +6,8 @@ import { aircraftFromTypeJson, emptyFlightDoc, legKey, DEFAULT_SETTINGS } from '
 import type { Aircraft, AtcEntry, CompassCard, FlightDoc, RoutePoint } from '../../../../shared';
 import type { RouteWeather, OpenMeteoLocation } from '../../../../data/weather';
 import { parseMetar, type MetarTafResult } from '../../../../data/weatherMetar';
-import { fmtHdg, fmtDuration, fmtSigned } from '../../../../calc';
+import { fmtHdg, fmtSigned } from '../../../../calc';
+import { fmtEte } from '../../../../shared/format';
 import { generateAtcList, atcInput, atcLegRelevance } from '../../../../data/atc';
 import reims from '../../../../../data/aircraft/reims-f172m.json';
 import cards from '../../../../../data/aircraft/compass-cards.json';
@@ -70,13 +71,14 @@ describe('one sheet', () => {
       expect(c.ch).toBe(fmtHdg(r.ch!));
       expect(c.dist).toBe(String(r.dist));
       expect(c.gs).toBe(String(r.gs));
-      expect(c.ete).toBe(fmtDuration(r.ete!));
+      expect(c.ete).toMatch(/^\d\d:\d\d$/);
+      expect(c.ete).toBe(fmtEte(r.ete!));
       expect(c.fuel).toBe(String(r.fuel));
       expect(c.windMissing).toBe(false);
     });
     // remaining distance/time after each leg
     expect(s.legs[2]!.rem).toBe('0');
-    expect(s.legs[2]!.ate).toBe('0h00');
+    expect(s.legs[2]!.ate).toBe('00:00');
     expect(s.legs[0]!.rem).toBe(String(computed.navlog.legs[1].dist + computed.navlog.legs[2].dist));
     expect(s.legs.slice(3).every((x) => x === null)).toBe(true);
   });
@@ -91,7 +93,7 @@ describe('one sheet', () => {
     expect(s.bottomName).toBe('');
     expect(s.header).toMatchObject({ date: DATE, aircraft: 'SX-ASV', blockStart: '09:00Z', est: 'EST 30lt/h = 0.5lt/min' });
     const t = computed.navlog.totals;
-    expect(s.totals).toMatchObject({ dist: String(t.dist), ete: fmtDuration(t.ete), fuel: String(t.tripFuel + 4) });
+    expect(s.totals).toMatchObject({ dist: String(t.dist), ete: fmtEte(t.ete), fuel: String(t.tripFuel + 4) });
     expect(s.totals.sunset).toMatch(/^SUNSET \d\d:\d\dZ$/);
   });
 

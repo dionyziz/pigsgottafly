@@ -21,9 +21,10 @@
 // Weather sources (winds aloft model run, METAR or forecast at each end) are listed on screen only.
 import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
 import { requestTiming } from '../../../shared';
+import { fmtEte } from '../../../shared/format';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
-  buildLegs, defaultAltitudes, fmtAltitude, fmtClock, fmtDuration, fmtHdg, fmtSigned, isLocalFlight, magneticVariation, navlogAircraft, planFuel,
+  buildLegs, defaultAltitudes, fmtAltitude, fmtClock, fmtHdg, fmtSigned, isLocalFlight, magneticVariation, navlogAircraft, planFuel,
   computeNavlog, type FuelPlan, type LegGeometry, type NavlogResult,
 } from '../../../calc';
 import { atcEntryLegs, endpointAerodrome } from '../../../data/atc';
@@ -343,8 +344,8 @@ function legRow(nl: NavlogResult['legs'][number]): SheetLeg {
     dist: num(nl.dist),
     rem: num(nl.distRem),
     gs: num(nl.gs),
-    ete: nl.ete === undefined ? '' : fmtDuration(nl.ete),
-    ate: nl.ateRem === undefined ? '' : fmtDuration(nl.ateRem),
+    ete: nl.ete === undefined ? '' : fmtEte(nl.ete),
+    ate: nl.ateRem === undefined ? '' : fmtEte(nl.ateRem),
     fuel: num(nl.fuel),
     altMissing: !isFinite(nl.altFt),
     windMissing: nl.windMissing,
@@ -384,7 +385,7 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const rows = navlog.legs.map(legRow);
   const totals = {
     dist: nLegs ? String(navlog.totals.dist) : '',
-    ete: nLegs ? fmtDuration(navlog.totals.ete) : '',
+    ete: nLegs ? fmtEte(navlog.totals.ete) : '',
     fuel: nLegs && burn && burn > 0 ? String(navlog.totals.fuel) : '',
     sunset: navlog.sunsetMin !== null && nLegs ? `SUNSET ${fmtClock(navlog.sunsetMin)}Z` : '',
   };
