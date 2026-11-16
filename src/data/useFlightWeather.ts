@@ -131,11 +131,11 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const hasPoints = plan.mids.length > 0 || !!plan.depLoc;
   // one request per plan key (route, date, model) and refresh, with the plan of that render
-  const requestWeather = useEffectEvent((current: () => boolean) => {
+  const requestWeather = useEffectEvent((current: () => boolean): (() => void) | undefined => {
     if (!hasPoints || !date) {
       setWeather(null);
       setWeatherLoading(false);
-      return;
+      return undefined;
     }
     const force = refreshCount !== lastRefresh.current.wx;
     setWeatherLoading(true);
@@ -178,6 +178,7 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
       return () => clearTimeout(t);
     }
     go();
+    return undefined;
   });
   useEffect(() => {
     const current = wxSeq.next();

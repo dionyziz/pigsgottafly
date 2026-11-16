@@ -5,11 +5,14 @@
     "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true
   }

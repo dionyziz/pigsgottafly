@@ -579,7 +579,7 @@ export function buildFpl(input: FplInput): FplResult {
   }
   if (!typeOk) add('TYP', cleanText(input.makeModel) || MISSING);
   if (cleanText(input.operator)) add('OPR', cleanText(input.operator));
-  const zAlts = alts.filter((a, i) => altn[i] === 'ZZZZ');
+  const zAlts = alts.filter((_, i) => altn[i] === 'ZZZZ');
   if (zAlts.length) add('ALTN', zAlts.map(zzzzText).join(' '));
 
   // The flight's remarks, then the hangar's extras: generated indicators win over the same ones
