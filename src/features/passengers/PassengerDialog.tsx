@@ -2,97 +2,31 @@
 // on the spot with <PassengerDialog passenger={null} initialName="…" onSaved={…} />.
 // The pilot is a passenger too: <PilotDetailsDialog /> edits the pilot's own person details (plus the
 // licence number) with the same form, saved to the profile (PUT /api/me).
-import { DateInput } from '../../app/DateInput';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { api } from '../../data/api';
-import { EMPTY_PERSON, type Passenger, type PassengerInput, type Pilot } from '../../shared';
+import type { Passenger, PassengerInput, Pilot } from '../../shared';
+import { errorMessage } from '../../shared/format';
 import { useSession } from '../../app/session';
-import { Dialog } from '../lobby/ui';
+import { Dialog, DialogFooter, useHighlightFields } from '../../ui';
+import { useFormIssues } from './formIssues';
+import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from './person';
+import { PersonFields, type SetPerson } from './PersonFields';
 
-export interface PassengerForm {
-  fullName: string; phone: string; dateOfBirth: string; weightKg: string;
-  idType: '' | 'ID' | 'PASSPORT'; idNumber: string; nationality: string; relation: string; notes: string;
-  /** Pilot only. */
-  licenceNo?: string;
-}
+export { passengerForm, passengerInputOf, personForm, type PersonForm, type PersonForm as PassengerForm } from './person';
 
-type SetField = <K extends keyof PassengerForm>(k: K) => (e: { target: { value: string } }) => void;
-
-/** The person form shared by passengers and the pilot (pilot: licence number instead of notes). */
-/** Draw attention to the named inputs (from a "missing details" link): highlight them and focus the first. */
-function useAttention(form: React.RefObject<HTMLFormElement | null>, names: string[]) {
-  const key = names.join(',');
-  useEffect(() => {
-    const el = form.current;
-    if (!el || !key) return;
-    const inputs = key.split(',').map((n) => el.querySelector<HTMLInputElement>(`[name="${n}"]`)).filter((x): x is HTMLInputElement => !!x);
-    inputs.forEach((i) => {
-      i.classList.add('attention');
-      i.addEventListener('input', () => i.classList.remove('attention'), { once: true });
-    });
-    // after the dialog's own autofocus
-    const t = setTimeout(() => { inputs[0]?.focus(); inputs[0]?.select(); }, 60);
-    return () => clearTimeout(t);
-  }, [form, key]);
-}
-
-function PersonFields({ f, set, onSubmit, pilot = false, focus = [] }: { f: PassengerForm; set: SetField; onSubmit: (e?: React.FormEvent) => void; pilot?: boolean; focus?: string[] }) {
+/** The dialog's form state, its field problems and the fields a link asked to highlight. */
+function usePersonDialog(initial: () => PersonForm, focus: readonly string[]) {
   const ref = useRef<HTMLFormElement>(null);
-  useAttention(ref, focus);
-  return (
-  <form className="stack" onSubmit={onSubmit} ref={ref}>
-      <div className="grid2">
-        <label className="field"><span>Full name<span className="req" aria-hidden>*</span></span>
-          <input name="fullName" value={f.fullName} onChange={set('fullName')} required data-autofocus={focus.length ? undefined : true} placeholder={pilot ? 'As on your licence' : 'As on their ID'} />
-        </label>
-        <label className="field">Phone<input name="phone" type="tel" value={f.phone} onChange={set('phone')} placeholder="+30 …" /></label>
-      </div>
-      <div className="grid3">
-        <label className="field">Date of birth<DateInput name="dateOfBirth" value={f.dateOfBirth} onChange={set('dateOfBirth')} /></label>
-        <label className="field">Weight
-          <div className="unit-input"><input name="weightKg" inputMode="decimal" value={f.weightKg} onChange={set('weightKg')} placeholder="for W&B" /><span>kg</span></div>
-        </label>
-        <label className="field">Nationality<input name="nationality" value={f.nationality} onChange={set('nationality')} placeholder="e.g. GREEK" /></label>
-      </div>
-      <div className="grid2">
-        <label className="field">ID / passport number<input name="idNumber" value={f.idNumber} onChange={set('idNumber')} placeholder="e.g. AK 123456" /></label>
-        {pilot && <label className="field">Licence number<input name="licenceNo" value={f.licenceNo ?? ''} onChange={set('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" /></label>}
-      </div>
-      {!pilot && <label className="field">Notes<textarea name="notes" rows={2} value={f.notes} onChange={set('notes')} /></label>}
-      <button type="submit" hidden />
-    </form>
-  );
+  const [f, setF] = useState<PersonForm>(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const issues = useFormIssues<PersonField>(ref);
+  useHighlightFields(ref, focus);
+  const set: SetPerson = (k, v) => { setF((x) => ({ ...x, [k]: v })); issues.clear(k as PersonField); };
+  return { ref, f, set, busy, setBusy, error, setError, issues };
 }
 
-export function passengerForm(p: Passenger | null, initialName = ''): PassengerForm {
-  const b = p ?? { ...EMPTY_PERSON, notes: '' };
-  return {
-    fullName: p ? b.fullName : initialName, phone: b.phone, dateOfBirth: b.dateOfBirth ?? '', weightKg: b.weightKg == null ? '' : String(b.weightKg),
-    idType: b.idType, idNumber: b.idNumber, nationality: b.nationality, relation: b.relation, notes: b.notes,
-  };
-}
-
-/** Form → API input; throws a readable message on invalid values. */
-export function passengerInputOf(f: PassengerForm): PassengerInput {
-  const fullName = f.fullName.trim().replace(/\s+/g, ' ');
-  if (!fullName) throw new Error('Please enter the full name');
-  let weightKg: number | null = null;
-  const w = f.weightKg.trim().replace(',', '.');
-  if (w) {
-    weightKg = Number(w);
-    if (!isFinite(weightKg) || weightKg <= 0 || weightKg > 300) throw new Error('Weight must be between 1 and 300 kg');
-  }
-  if (f.dateOfBirth) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.dateOfBirth)) throw new Error('Date of birth is not a valid date');
-    if (f.dateOfBirth > new Date().toISOString().slice(0, 10)) throw new Error('Date of birth is in the future');
-  }
-  return {
-    fullName, phone: f.phone.trim(), dateOfBirth: f.dateOfBirth || null, weightKg,
-    idType: f.idType, idNumber: f.idNumber.trim(), nationality: f.nationality.trim().toUpperCase(), relation: f.relation.trim(), notes: f.notes.trim(),
-  };
-}
-
-export function PassengerDialog({ passenger, initialName, onClose, onSaved, focus }: {
+export function PassengerDialog({ passenger, initialName, onClose, onSaved, focus = [] }: {
   /** Inputs to highlight and focus (names), from a missing-details link. */
   focus?: string[];
   passenger: Passenger | null;
@@ -100,68 +34,62 @@ export function PassengerDialog({ passenger, initialName, onClose, onSaved, focu
   onClose: () => void;
   onSaved: (p: Passenger, created: boolean) => void;
 }) {
-  const [f, setF] = useState<PassengerForm>(() => passengerForm(passenger, initialName));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const set: SetField = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const d = usePersonDialog(() => personForm(passenger, initialName), focus);
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    let input: PassengerInput;
-    try { input = passengerInputOf(f); } catch (err) { setError((err as Error).message); return; }
-    setBusy(true);
+    if (!d.issues.check(validatePerson(d.f))) return;
+    const input: PassengerInput = personInput(d.f);
+    d.setBusy(true);
+    d.setError(null);
     try {
       const p = passenger ? await api.passengers.update(passenger.id, input) : await api.passengers.create(input);
       onSaved(p, !passenger);
     } catch (err) {
-      setError(String((err as Error).message || err));
-      setBusy(false);
+      d.setError(errorMessage(err));
+      d.setBusy(false);
     }
   };
 
   return (
-    <Dialog title={passenger ? 'Edit passenger' : 'New passenger'} onClose={onClose} busy={busy} wide testId="passenger-dialog" footer={<>
-      {error && <p className="form-error" role="alert" style={{ marginRight: 'auto', alignSelf: 'center' }}>{error}</p>}
-      <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-      <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>{passenger ? 'Save' : 'Add passenger'}</button>
-    </>}>
-      <PersonFields f={f} set={set} onSubmit={submit} focus={focus} />
+    <Dialog title={passenger ? 'Edit passenger' : 'New passenger'} onClose={onClose} busy={d.busy} wide testId="passenger-dialog"
+      footer={<DialogFooter onCancel={onClose} busy={d.busy} error={d.error} primary={{ label: passenger ? 'Save' : 'Add passenger', onClick: () => void submit() }} />}>
+      <form className="stack" onSubmit={submit} ref={d.ref} noValidate>
+        <PersonFields f={d.f} set={d.set} issues={d.issues.of} autoFocus={!focus.length} />
+        <button type="submit" hidden />
+      </form>
     </Dialog>
   );
 }
 
 /** The pilot's own person details (as on the forms and for W&B), edited like a passenger's. */
-export function PilotDetailsDialog({ onClose, onSaved, focus }: { onClose: () => void; onSaved?: (p: Pilot) => void; focus?: string[] }) {
-  const { pilot, setPilot } = useSession();
-  const [f, setF] = useState<PassengerForm>(() => ({ ...passengerForm({ ...pilot, id: pilot.id, notes: '', created: 0, updated: 0 }), licenceNo: pilot.licenceNo }));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const set: SetField = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+export function PilotDetailsDialog({ onClose, onSaved, focus = [] }: { onClose: () => void; onSaved?: (p: Pilot) => void; focus?: string[] }) {
+  const { pilot } = useSession();
+  const d = usePersonDialog(() => personForm(pilot), focus);
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    let input: PassengerInput;
-    try { input = passengerInputOf(f); } catch (err) { setError((err as Error).message); return; }
-    if (!input.phone) { setError('Please enter your phone number'); return; }
-    setBusy(true);
+    if (!d.issues.check(validatePerson(d.f, { pilot: true }))) return;
+    const { notes: _notes, ...person } = personInput(d.f);
+    d.setBusy(true);
+    d.setError(null);
     try {
-      const { notes: _notes, ...person } = input;
-      const p = await api.me.update({ ...person, licenceNo: (f.licenceNo ?? '').trim() });
-      setPilot(p);
+      // api.me.update stores the pilot for every page and tab.
+      const p = await api.me.update({ ...person, licenceNo: (d.f.licenceNo ?? '').trim() });
       onSaved?.(p);
     } catch (err) {
-      setError(String((err as Error).message || err));
-      setBusy(false);
+      d.setError(errorMessage(err));
+      d.setBusy(false);
     }
   };
 
   return (
-    <Dialog title="Your details" onClose={onClose} busy={busy} wide testId="pilot-dialog" footer={<>
-      {error && <p className="form-error" role="alert" style={{ marginRight: 'auto', alignSelf: 'center' }}>{error}</p>}
-      <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-      <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>Save</button>
-    </>}>
-      <PersonFields f={f} set={set} onSubmit={submit} pilot focus={focus} />
+    <Dialog title="Your details" onClose={onClose} busy={d.busy} wide testId="pilot-dialog"
+      footer={<DialogFooter onCancel={onClose} busy={d.busy} error={d.error} primary={{ label: 'Save', onClick: () => void submit() }} />}>
+      <form className="stack" onSubmit={submit} ref={d.ref} noValidate>
+        <PersonFields f={d.f} set={d.set} issues={d.issues.of} pilot autoFocus={!focus.length} />
+        <button type="submit" hidden />
+      </form>
     </Dialog>
   );
 }

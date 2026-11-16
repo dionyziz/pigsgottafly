@@ -1,20 +1,21 @@
 // My waypoints: the pilot's saved custom points (list, search, rename in place, edit position/notes,
 // delete) beside a small map. Points are usually saved from the flight editor; here a click on the
 // map, or typed coordinates, adds one too.
-import { Loading } from '../../app/Loading';
 import { useMemo, useRef, useState } from 'react';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
-import { useAsync } from '../../data/useAsync';
+import { useEntity } from '../../data/entities';
 import type { LatLon, Waypoint } from '../../shared';
+import { errorMessage } from '../../shared/format';
+import { AsyncView, ConfirmDialog, Dialog, DialogFooter, EmptyState, Field, KebabMenu, SearchBox, rowClick } from '../../ui';
 import { matchesQuery } from '../lobby/format';
-import { ConfirmDialog, Dialog, EmptyState, KebabMenu } from '../lobby/ui';
+import { useFormIssues, type FormIssue } from '../passengers/formIssues';
 import { formatDms, normaliseWaypointName, parseLatLon } from './coords';
 import { WaypointMap } from './WaypointMap';
 
 export function WaypointsPage() {
-  const { data, error, loading, reload, setData } = useAsync(() => api.waypoints.list(), []);
+  const { data, error, loading, reload, setData } = useEntity('waypoints');
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [renaming, setRenamingState] = useState<{ id: string; name: string } | null>(null);
@@ -34,9 +35,8 @@ export function WaypointsPage() {
     setRenaming(null);
     if (!w || !name || name === w.name) return;
     if (all.some((x) => x.id !== w.id && x.name === name)) { toast(`You already have a waypoint called ${name}`); return; }
-    setData((d) => d?.map((x) => (x.id === w.id ? { ...x, name } : x)));
-    try { await api.waypoints.update(w.id, { name }); } catch (e) { toast(`Could not rename: ${(e as Error).message}`); }
-    await reload();
+    setData((d) => (d ?? []).map((x) => (x.id === w.id ? { ...x, name } : x)));
+    try { await api.waypoints.update(w.id, { name }); } catch (e) { toast(`Could not rename: ${errorMessage(e)}`); await reload(); }
   };
 
   return (
@@ -44,24 +44,16 @@ export function WaypointsPage() {
       <div className="page-head">
         <h1>My waypoints</h1>
         <span className="spacer" />
-        {all.length > 0 && (
-          <div className="searchbox sm">
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" strokeWidth="1.6" /><path d="M11 11l3.5 3.5" strokeWidth="1.6" strokeLinecap="round" /></svg>
-            <input type="search" placeholder="Search waypoints" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search waypoints" />
-          </div>
-        )}
+        {all.length > 0 && <SearchBox sm value={q} onChange={setQ} placeholder="Search waypoints" />}
         <button className="primary" onClick={() => setEditing({ new: null })} data-testid="add-waypoint">Add waypoint</button>
       </div>
-      {error && !data ? (
-        <EmptyState title="Could not load your waypoints" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
-      ) : loading && !data ? (
-        <p><Loading /></p>
-      ) : (
+      <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle="Could not load your waypoints">
+        {() => (
         <div className="wp-layout">
           <div>
             {all.length === 0 ? (
               <EmptyState title="No saved waypoints yet">
-                Points you name on the map while planning (say, ZOFRI) can be saved here and reused on any flight. Click the map to add one now.
+                Click the map to add one.
               </EmptyState>
             ) : rows.length === 0 ? (
               <EmptyState title="No matching waypoints">Nothing matches “{q}”.</EmptyState>
@@ -72,7 +64,7 @@ export function WaypointsPage() {
                   <tbody>
                     {rows.map((w) => (
                       <tr key={w.id} className={'clickable' + (w.id === selected ? ' selected' : '')} data-waypoint-id={w.id}
-                        onClick={(e) => { if (!(e.target as HTMLElement).closest('button, input, .menu')) setSelected(w.id); }}>
+                        onClick={rowClick(() => setSelected(w.id))}>
                         <td>
                           {renaming?.id === w.id ? (
                             <form className="inline-edit" onSubmit={(e) => { e.preventDefault(); (e.currentTarget.querySelector('input') as HTMLInputElement | null)?.blur(); }}>
@@ -105,20 +97,33 @@ export function WaypointsPage() {
           </div>
           <WaypointMap waypoints={all} selectedId={selected} onSelect={setSelected} onMapClick={(lat, lon) => setEditing({ new: { lat, lon } })} />
         </div>
-      )}
+        )}
+      </AsyncView>
       {editing && (
         <WaypointDialog waypoint={'new' in editing ? null : editing} at={'new' in editing ? editing.new : null} existing={all}
           onClose={() => setEditing(null)}
-          onSaved={(w, created) => { setEditing(null); setSelected(w.id); void reload(); toast(created ? `Saved ${w.name}` : `Updated ${w.name}`); }} />
+          onSaved={(w, created) => { setEditing(null); setSelected(w.id); toast(created ? `Saved ${w.name}` : `Updated ${w.name}`); }} />
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.name}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
-          onConfirm={async () => { await api.waypoints.remove(deleting.id); if (selected === deleting.id) setSelected(null); await reload(); toast(`Deleted ${deleting.name}`); }}>
+          onConfirm={async () => { await api.waypoints.remove(deleting.id); if (selected === deleting.id) setSelected(null); toast(`Deleted ${deleting.name}`); }}>
           Flights that already go through {deleting.name} keep it at the same position.
         </ConfirmDialog>
       )}
     </Shell>
   );
+}
+
+type WaypointField = 'name' | 'position';
+
+/** What is wrong with a waypoint being saved, field by field. */
+export function validateWaypoint(name: string, pos: string, existing: Waypoint[], id?: string): FormIssue<WaypointField>[] {
+  const out: FormIssue<WaypointField>[] = [];
+  const n = normaliseWaypointName(name);
+  if (!n) out.push({ field: 'name', message: 'Enter a name' });
+  else if (existing.some((x) => x.id !== id && x.name === n)) out.push({ field: 'name', message: `You already have ${n}` });
+  if (!parseLatLon(pos)) out.push({ field: 'position', message: pos.trim() ? 'Position not recognised' : 'Enter a position' });
+  return out;
 }
 
 function WaypointDialog({ waypoint, at, existing, onClose, onSaved }: {
@@ -129,47 +134,44 @@ function WaypointDialog({ waypoint, at, existing, onClose, onSaved }: {
   onSaved: (w: Waypoint, created: boolean) => void;
 }) {
   const start = waypoint ?? at;
+  const form = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(waypoint?.name ?? '');
   const [pos, setPos] = useState(start ? `${start.lat.toFixed(6)}, ${start.lon.toFixed(6)}` : '');
   const [notes, setNotes] = useState(waypoint?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const issues = useFormIssues<WaypointField>(form);
   const parsed = parseLatLon(pos);
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    const n = normaliseWaypointName(name);
-    if (!n) { setError('Please give the waypoint a name'); return; }
-    if (existing.some((x) => x.id !== waypoint?.id && x.name === n)) { setError(`You already have a waypoint called ${n}`); return; }
-    if (!parsed) { setError('Position not recognised. Try 37.9083, 23.7261 or 375430N 0234334E'); return; }
+    if (!issues.check(validateWaypoint(name, pos, existing, waypoint?.id)) || !parsed) return;
     setBusy(true);
+    setError(null);
     try {
-      const input = { name: n, lat: parsed.lat, lon: parsed.lon, notes: notes.trim() };
+      const input = { name: normaliseWaypointName(name), lat: parsed.lat, lon: parsed.lon, notes: notes.trim() };
       const w = waypoint ? await api.waypoints.update(waypoint.id, input) : await api.waypoints.create(input);
       onSaved(w, !waypoint);
     } catch (err) {
-      setError(String((err as Error).message || err));
+      setError(errorMessage(err));
       setBusy(false);
     }
   };
 
   return (
-    <Dialog title={waypoint ? `Edit ${waypoint.name}` : 'New waypoint'} onClose={onClose} busy={busy} testId="waypoint-dialog" footer={<>
-      <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-      <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>Save</button>
-    </>}>
-      <form className="stack" onSubmit={submit}>
-        <label className="field">Name
-          <input name="name" value={name} onChange={(e) => setName(e.target.value)} data-autofocus maxLength={40} placeholder="e.g. ZOFRI" style={{ textTransform: 'uppercase', fontFamily: 'var(--mono)' }} />
-        </label>
-        <label className="field">Position
-          <input name="position" value={pos} onChange={(e) => setPos(e.target.value)} placeholder="37.9083, 23.7261 or 375430N 0234334E" className={pos.trim() && !parsed ? 'invalid' : undefined} />
-          <span className="hint mono">{parsed ? formatDms(parsed) : 'Decimal degrees, degrees and minutes, or ICAO 375430N 0234334E'}</span>
-        </label>
-        <label className="field">Notes<textarea name="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+    <Dialog title={waypoint ? `Edit ${waypoint.name}` : 'New waypoint'} onClose={onClose} busy={busy} testId="waypoint-dialog"
+      footer={<DialogFooter onCancel={onClose} busy={busy} error={error} primary={{ label: 'Save', onClick: () => void submit() }} />}>
+      <form className="stack" onSubmit={submit} ref={form} noValidate>
+        <Field label="Name" issues={issues.of('name')}>
+          <input name="name" value={name} onChange={(e) => { setName(e.target.value); issues.clear('name'); }} data-autofocus maxLength={40} placeholder="e.g. ZOFRI" style={{ textTransform: 'uppercase', fontFamily: 'var(--mono)' }} />
+        </Field>
+        <Field label="Position" issues={issues.of('position')} hint={parsed ? <span className="mono">{formatDms(parsed)}</span> : undefined}>
+          <input name="position" value={pos} onChange={(e) => { setPos(e.target.value); issues.clear('position'); }}
+            placeholder="37.9083, 23.7261 or 375430N 0234334E" className={pos.trim() && !parsed ? 'invalid' : undefined} />
+        </Field>
+        <Field label="Notes"><textarea name="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         <button type="submit" hidden />
       </form>
-      {error && <p className="form-error" role="alert">{error}</p>}
     </Dialog>
   );
 }

@@ -35,7 +35,9 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.type('input[name=phone]', '+30 690 000 0000');
   await page.type('input[name=homeAerodrome]', 'ZZZZ');
   await page.click('[data-testid=profile-form] button[type=submit]');
-  await page.waitFor(() => /not an aerodrome/.test(document.querySelector('[data-testid=profile-form] .form-error')?.textContent || ''));
+  // the error is at the field: the aerodrome turns red, says why, and has the focus
+  await page.waitFor(() => /Not an aerodrome/.test(document.querySelector('[data-testid=aerodrome-status]')?.textContent || '')
+    && document.activeElement?.name === 'homeAerodrome' && document.activeElement.classList.contains('invalid'));
   await page.type('input[name=homeAerodrome]', 'tatoi');
   await page.waitFor(() => [...document.querySelectorAll('.combo-list li')].some((l) => l.textContent.startsWith('LGTT')));
   await clickText('.combo-list li .code', 'LGTT');
@@ -105,7 +107,12 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.goto(server.url + '/passengers');
   await page.click('[data-testid=add-passenger]');
   await page.waitFor(() => !!document.querySelector('[data-testid=passenger-dialog]'));
+  // saving without a name: the message is under the name, which gets the focus
+  await clickText('[data-testid=passenger-dialog] button', 'Add passenger');
+  await page.waitFor(() => document.querySelector('[data-testid=passenger-dialog] input[name=fullName]')?.closest('.field.invalid')?.textContent.includes('Enter the full name')
+    && document.activeElement?.name === 'fullName');
   await page.type('[data-testid=passenger-dialog] input[name=fullName]', 'Jane Doe');
+  assert.equal(await page.eval(() => document.querySelectorAll('[data-testid=passenger-dialog] .field.invalid').length), 0);
   await page.type('[data-testid=passenger-dialog] input[name=weightKg]', '62.5');
   await page.type('[data-testid=passenger-dialog] input[name=idNumber]', 'AB123456');
   await clickText('[data-testid=passenger-dialog] button', 'Add passenger');
@@ -113,6 +120,16 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await shot('lists-passengers');
   const [pax] = await api('GET', 'passengers');
   assert.deepEqual([pax.fullName, pax.weightKg, pax.idNumber], ['Jane Doe', 62.5, 'AB123456']);
+  // "Missing … date of birth" opens the dialog at that field
+  await clickText(`[data-passenger-id="${pax.id}"] .hint button`, 'date of birth');
+  await page.waitFor(() => !!document.querySelector('[data-testid=passenger-dialog]') && document.activeElement?.name === 'dateOfBirth');
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=passenger-dialog]'));
+  // a link from the forms ("Add your ID") opens the pilot's details at the ID field
+  await page.goto(server.url + '/passengers?edit=me&fields=idNumber');
+  await page.waitFor(() => !!document.querySelector('[data-testid=pilot-dialog]') && document.activeElement?.name === 'idNumber');
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=pilot-dialog]'));
   await page.click(`[data-passenger-id="${pax.id}"] .nm`);
   await page.waitFor(() => !!document.querySelector('[data-testid=passenger-dialog]'));
   await shot('lists-passenger-dialog');
