@@ -91,7 +91,8 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
       trip += fin(f) ? f : 0;
     }
     const landing = fuel - charge - trip;
-    const kind = last === n - 1 ? 'destination' as const : stops.includes(last) ? 'stop' as const : 'touch-and-go' as const;
+    const kind =
+      last === n - 1 ? ('destination' as const) : stops.includes(last) ? ('stop' as const) : ('touch-and-go' as const);
     out.push({
       index: out.length,
       fromPoint: first,
@@ -116,7 +117,10 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
 }
 
 /** W&B of each sector: the same loading, with the sector's take-off and landing fuel. */
-export function sectorBalances(base: Omit<WbInput, 'fuelTakeoffL' | 'fuelLandingL'>, sectors: readonly FlightSector[]): WbResult[] {
+export function sectorBalances(
+  base: Omit<WbInput, 'fuelTakeoffL' | 'fuelLandingL'>,
+  sectors: readonly FlightSector[],
+): WbResult[] {
   return sectors.map((s) => weightAndBalance({ ...base, fuelTakeoffL: s.fuelTakeoffL, fuelLandingL: s.fuelLandingL }));
 }
 
@@ -131,6 +135,12 @@ export interface StopSectors {
 
 export function stopsOf(sectors: readonly FlightSector[]): StopSectors[] {
   const out: StopSectors[] = [];
-  for (let i = 0; i + 1 < sectors.length; i++) out.push({ pointIndex: sectors[i].toPoint, kind: sectors[i].ends === 'touch-and-go' ? 'touch-and-go' : 'stop', before: sectors[i], after: sectors[i + 1] });
+  for (let i = 0; i + 1 < sectors.length; i++)
+    out.push({
+      pointIndex: sectors[i].toPoint,
+      kind: sectors[i].ends === 'touch-and-go' ? 'touch-and-go' : 'stop',
+      before: sectors[i],
+      after: sectors[i + 1],
+    });
   return out;
 }

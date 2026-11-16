@@ -18,7 +18,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {t && (
         <div className="toast no-print" role="status">
           <span>{t.text}</span>
-          {t.action && <button onClick={() => { t.action!.onClick(); setT(null); }}>{t.action.label}</button>}
+          {t.action && (
+            <button
+              onClick={() => {
+                t.action!.onClick();
+                setT(null);
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
         </div>
       )}
     </ToastContext.Provider>

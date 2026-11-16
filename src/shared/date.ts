@@ -29,7 +29,15 @@ const dayFmt = new Map<string, Intl.DateTimeFormat>();
 function zoneParts(ms: number, timeZone: string): Record<string, string> {
   let f = dayFmt.get(timeZone);
   if (!f) {
-    f = new Intl.DateTimeFormat('en-GB', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    f = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
     dayFmt.set(timeZone, f);
   }
   const out: Record<string, string> = {};
@@ -57,7 +65,8 @@ export function fmtDate(d: string | null | undefined): string {
 
 /** Whole days from `from` to `to` (both 'YYYY-MM-DD'); null if either is invalid. */
 export function daysBetween(from: string, to: string): number | null {
-  const a = parseIsoDate(from), b = parseIsoDate(to);
+  const a = parseIsoDate(from),
+    b = parseIsoDate(to);
   return a === null || b === null ? null : Math.round((b - a) / DAY_MS);
 }
 
@@ -81,11 +90,14 @@ export function relativeDay(d: string, today: string): string {
 
 /** Age in whole years on `on` for a date of birth; null if either is unknown. */
 export function ageOn(dob: string | null | undefined, on: string): number | null {
-  const b = parseIsoDate(dob), d = parseIsoDate(on);
+  const b = parseIsoDate(dob),
+    d = parseIsoDate(on);
   if (b === null || d === null) return null;
-  const B = new Date(b), D = new Date(d);
+  const B = new Date(b),
+    D = new Date(d);
   let age = D.getUTCFullYear() - B.getUTCFullYear();
-  if (D.getUTCMonth() < B.getUTCMonth() || (D.getUTCMonth() === B.getUTCMonth() && D.getUTCDate() < B.getUTCDate())) age--;
+  if (D.getUTCMonth() < B.getUTCMonth() || (D.getUTCMonth() === B.getUTCMonth() && D.getUTCDate() < B.getUTCDate()))
+    age--;
   return age;
 }
 
@@ -104,7 +116,9 @@ export function utcToLocal(date: string, hhmm: string, timeZone = LOCAL_TZ): str
 export function localOffsetLabel(ms: number, timeZone = LOCAL_TZ): string {
   if (!Number.isFinite(ms)) return 'LT';
   try {
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone, timeZoneName: 'shortOffset' }).formatToParts(new Date(ms));
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone, timeZoneName: 'shortOffset' }).formatToParts(
+      new Date(ms),
+    );
     const tz = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
     return tz.replace('GMT', 'UTC') || 'LT';
   } catch {

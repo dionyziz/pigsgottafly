@@ -7,27 +7,54 @@ import { Icon } from './Icon';
 const DEFAULT_STORE = 'pgf.collapsed';
 
 function readStore(store: string): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(store) || '{}') || {}; } catch { return {}; }
+  try {
+    return JSON.parse(localStorage.getItem(store) || '{}') || {};
+  } catch {
+    return {};
+  }
 }
 function writeStore(store: string, id: string, collapsed: boolean) {
   try {
     const all = readStore(store);
-    if (collapsed) all[id] = true; else delete all[id];
+    if (collapsed) all[id] = true;
+    else delete all[id];
     localStorage.setItem(store, JSON.stringify(all));
-  } catch { /* storage unavailable: not remembered */ }
+  } catch {
+    /* storage unavailable: not remembered */
+  }
 }
 
 /** Open state of a collapsible box, remembered under `store`[id]. `openNow()` opens it without remembering. */
-export function useCollapsed(id: string, { store = DEFAULT_STORE, defaultCollapsed = false }: { store?: string; defaultCollapsed?: boolean } = {}) {
+export function useCollapsed(
+  id: string,
+  { store = DEFAULT_STORE, defaultCollapsed = false }: { store?: string; defaultCollapsed?: boolean } = {},
+) {
   const [collapsed, setCollapsed] = useState(() => readStore(store)[id] ?? defaultCollapsed);
-  const toggle = () => setCollapsed((c) => { writeStore(store, id, !c); return !c; });
+  const toggle = () =>
+    setCollapsed((c) => {
+      writeStore(store, id, !c);
+      return !c;
+    });
   const openNow = () => setCollapsed(false);
   return { collapsed, toggle, openNow };
 }
 
 const INTERACTIVE = 'button, a, input, select, textarea, label, [data-no-toggle]';
 
-export function Collapsible({ id, title, badge, actions, children, store, defaultCollapsed, openWhen, className, testId, sectionRef, summary }: {
+export function Collapsible({
+  id,
+  title,
+  badge,
+  actions,
+  children,
+  store,
+  defaultCollapsed,
+  openWhen,
+  className,
+  testId,
+  sectionRef,
+  summary,
+}: {
   id: string;
   title: ReactNode;
   /** Next to the title, also when collapsed: a short summary or a status chip. */
@@ -59,20 +86,47 @@ export function Collapsible({ id, title, badge, actions, children, store, defaul
   };
   const onKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.target !== e.currentTarget) return;
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle();
+    }
   };
   return (
-    <section ref={sectionRef} className={'collapsible' + (collapsed ? ' collapsed' : '') + (className ? ' ' + className : '')} data-testid={testId ?? `section-${id}`}>
-      <header className="collapsible-head" role="button" tabIndex={0} aria-expanded={!collapsed} onClick={onClick} onKeyDown={onKey}>
+    <section
+      ref={sectionRef}
+      className={'collapsible' + (collapsed ? ' collapsed' : '') + (className ? ' ' + className : '')}
+      data-testid={testId ?? `section-${id}`}
+    >
+      <header
+        className="collapsible-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        onClick={onClick}
+        onKeyDown={onKey}
+      >
         <Icon name="caret" size={12} className="collapsible-caret" />
         <span className="collapsible-title">{title}</span>
         {badge && <span className="collapsible-badge">{badge}</span>}
         <span className="spacer" />
         {!collapsed && actions && (
-          <span className="collapsible-actions" data-no-toggle onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>{actions}</span>
+          <span
+            className="collapsible-actions"
+            data-no-toggle
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {actions}
+          </span>
         )}
       </header>
-      {collapsed ? (summary ? <div className="collapsible-summary">{summary}</div> : null) : <div className="collapsible-body">{children}</div>}
+      {collapsed ? (
+        summary ? (
+          <div className="collapsible-summary">{summary}</div>
+        ) : null
+      ) : (
+        <div className="collapsible-body">{children}</div>
+      )}
     </section>
   );
 }

@@ -18,14 +18,17 @@ export const norm180 = (d: number): number => {
 
 /** Great-circle distance, NM (haversine). */
 export function distanceNm(a: LatLon, b: LatLon): number {
-  const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+  const dLat = rad(b.lat - a.lat),
+    dLon = rad(b.lon - a.lon);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
   return 2 * R_NM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 /** Initial great-circle true course a → b, degrees [0, 360). */
 export function trueCourse(a: LatLon, b: LatLon): number {
-  const la1 = rad(a.lat), la2 = rad(b.lat), dl = rad(b.lon - a.lon);
+  const la1 = rad(a.lat),
+    la2 = rad(b.lat),
+    dl = rad(b.lon - a.lon);
   const y = Math.sin(dl) * Math.cos(la2);
   const x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dl);
   return norm360(deg(Math.atan2(y, x)));
@@ -33,8 +36,12 @@ export function trueCourse(a: LatLon, b: LatLon): number {
 
 /** Great-circle midpoint. */
 export function midpoint(a: LatLon, b: LatLon): LatLon {
-  const la1 = rad(a.lat), lo1 = rad(a.lon), la2 = rad(b.lat), dl = rad(b.lon - a.lon);
-  const bx = Math.cos(la2) * Math.cos(dl), by = Math.cos(la2) * Math.sin(dl);
+  const la1 = rad(a.lat),
+    lo1 = rad(a.lon),
+    la2 = rad(b.lat),
+    dl = rad(b.lon - a.lon);
+  const bx = Math.cos(la2) * Math.cos(dl),
+    by = Math.cos(la2) * Math.sin(dl);
   const la = Math.atan2(Math.sin(la1) + Math.sin(la2), Math.sqrt((Math.cos(la1) + bx) ** 2 + by ** 2));
   const lo = lo1 + Math.atan2(by, Math.cos(la1) + bx);
   return { lat: deg(la), lon: deg(lo) };
@@ -48,8 +55,12 @@ function proj(p: LatLon, lat0: number): { x: number; y: number } {
 /** Distance from p to segment a–b, NM, and the position t ∈ [0,1] of the closest point. */
 export function pointSegDistNm(p: LatLon, a: LatLon, b: LatLon): { dist: number; t: number } {
   const lat0 = (a.lat + b.lat + p.lat) / 3;
-  const P = proj(p, lat0), A = proj(a, lat0), B = proj(b, lat0);
-  const dx = B.x - A.x, dy = B.y - A.y, L2 = dx * dx + dy * dy;
+  const P = proj(p, lat0),
+    A = proj(a, lat0),
+    B = proj(b, lat0);
+  const dx = B.x - A.x,
+    dy = B.y - A.y,
+    L2 = dx * dx + dy * dy;
   let t = L2 ? ((P.x - A.x) * dx + (P.y - A.y) * dy) / L2 : 0;
   t = Math.max(0, Math.min(1, t));
   return { dist: Math.hypot(P.x - (A.x + t * dx), P.y - (A.y + t * dy)), t };
@@ -59,7 +70,10 @@ export function pointSegDistNm(p: LatLon, a: LatLon, b: LatLon): { dist: number;
 export function pointInPolygon(p: LatLon, poly: [number, number][]): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const yi = poly[i][0], xi = poly[i][1], yj = poly[j][0], xj = poly[j][1];
+    const yi = poly[i][0],
+      xi = poly[i][1],
+      yj = poly[j][0],
+      xj = poly[j][1];
     if (yi > p.lat !== yj > p.lat && p.lon < ((xj - xi) * (p.lat - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
@@ -67,7 +81,10 @@ export function pointInPolygon(p: LatLon, poly: [number, number][]): boolean {
 
 function segIntersect(p1: LatLon, p2: LatLon, p3: LatLon, p4: LatLon): boolean {
   const d = (a: LatLon, b: LatLon, c: LatLon) => (c.lon - a.lon) * (b.lat - a.lat) - (b.lon - a.lon) * (c.lat - a.lat);
-  const d1 = d(p3, p4, p1), d2 = d(p3, p4, p2), d3 = d(p1, p2, p3), d4 = d(p1, p2, p4);
+  const d1 = d(p3, p4, p1),
+    d2 = d(p3, p4, p2),
+    d3 = d(p1, p2, p3),
+    d4 = d(p1, p2, p4);
   return d1 > 0 !== d2 > 0 && d3 > 0 !== d4 > 0;
 }
 
@@ -175,7 +192,8 @@ function sunEventUtcMinutes(dateStr: string, lat: number, lon: number, rise: boo
   for (let k = 0; k < 3; k++) {
     const t = (jd + minutes / 1440 - 2451545) / 36525;
     const { decl, eqt } = calc(t);
-    const cosH = Math.cos(rad(90.833)) / (Math.cos(rad(lat)) * Math.cos(rad(decl))) - Math.tan(rad(lat)) * Math.tan(rad(decl));
+    const cosH =
+      Math.cos(rad(90.833)) / (Math.cos(rad(lat)) * Math.cos(rad(decl))) - Math.tan(rad(lat)) * Math.tan(rad(decl));
     if (cosH < -1 || cosH > 1) return null;
     const H = deg(Math.acos(cosH)) * (rise ? -1 : 1);
     minutes = 720 - 4 * (lon - H) - eqt;
@@ -201,7 +219,10 @@ export const fmtHmm = (min: number): string => {
 export { fmtAltitude, fmtClock, fmtDuration, TRANSITION_ALTITUDE_FT } from '../shared/format.js';
 /** '0930', '09:30', '09:30Z' → minutes after midnight; NaN if invalid. */
 export function parseClock(s: string | null | undefined): number {
-  const m = String(s || '').trim().toUpperCase().match(/^(\d{1,2}):?(\d{2})\s*Z?$/);
+  const m = String(s || '')
+    .trim()
+    .toUpperCase()
+    .match(/^(\d{1,2}):?(\d{2})\s*Z?$/);
   if (!m || +m[1] > 23 || +m[2] > 59) return NaN;
   return +m[1] * 60 + +m[2];
 }
@@ -295,7 +316,8 @@ export interface NavTotals {
 /** Fills distRem/ateRem on each row (mutates) and returns the totals. */
 export function summarize(rows: ComputedLeg[], extraFuel: number): NavTotals {
   const n = rows.length;
-  let remD = 0, remT = 0;
+  let remD = 0,
+    remT = 0;
   for (let i = n - 1; i >= 0; i--) {
     rows[i].distRem = remD;
     rows[i].ateRem = remT;

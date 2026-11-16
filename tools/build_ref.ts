@@ -46,8 +46,25 @@ function loadWindowGlobal(file: string, name: string): any {
   return ctx.window[name];
 }
 
-const MONTHS: Record<string, string> = { JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06', JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12' };
-const slug = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+const MONTHS: Record<string, string> = {
+  JAN: '01',
+  FEB: '02',
+  MAR: '03',
+  APR: '04',
+  MAY: '05',
+  JUN: '06',
+  JUL: '07',
+  AUG: '08',
+  SEP: '09',
+  OCT: '10',
+  NOV: '11',
+  DEC: '12',
+};
+const slug = (s: string) =>
+  s
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 export function buildRef() {
   const AIP = loadWindowGlobal('data/aip.js', 'AIP');
@@ -56,12 +73,31 @@ export function buildRef() {
 
   const m = /AMDT (\d\d)\/(\d\d) \(wef (\d+) ([A-Z]{3}) (\d{4})\)/.exec(AIP.airac);
   if (!m) throw new Error('cannot parse AIRAC: ' + AIP.airac);
-  const airac: RefAirac = { id: m[2] + m[1], name: AIP.airac, effective: `${m[5]}-${MONTHS[m[4]]}-${m[3].padStart(2, '0')}` };
+  const airac: RefAirac = {
+    id: m[2] + m[1],
+    name: AIP.airac,
+    effective: `${m[5]}-${MONTHS[m[4]]}-${m[3].padStart(2, '0')}`,
+  };
 
   const aerodromes: RefAerodrome[] = AIP.aerodromes.map((a: any) => ({
-    id: a.id, icao: a.icao ?? null, name: a.name, lat: a.lat, lon: a.lon, elevFt: a.elevFt ?? null,
-    runways: a.runways, freqs: a.freqs.map((f: any) => ({ service: f.service, callsign: f.callsign, mhz: f.mhz, role: f.role, remark: f.remark ?? '' })),
-    zones: a.zones, water: !!a.water, source: a.source ?? '', notes: a.notes ?? '',
+    id: a.id,
+    icao: a.icao ?? null,
+    name: a.name,
+    lat: a.lat,
+    lon: a.lon,
+    elevFt: a.elevFt ?? null,
+    runways: a.runways,
+    freqs: a.freqs.map((f: any) => ({
+      service: f.service,
+      callsign: f.callsign,
+      mhz: f.mhz,
+      role: f.role,
+      remark: f.remark ?? '',
+    })),
+    zones: a.zones,
+    water: !!a.water,
+    source: a.source ?? '',
+    notes: a.notes ?? '',
   }));
 
   // One row per runway direction, as loaded by migration 002 (no physical data). Kept unchanged because 002
@@ -74,9 +110,20 @@ export function buildRef() {
       ends.forEach((d, i) => {
         const n = parseInt(d, 10);
         baseRunways.push({
-          aerodromeId: a.id, designator: d, reciprocal: ends[1 - i], headingMagDeg: isFinite(n) ? n * 10 : NaN,
-          headingTrueDeg: null, lengthM: null, widthM: null, surface: null, toraM: null, todaM: null, asdaM: null, ldaM: null,
-          slopePct: null, thresholdElevFt: a.elevFt,
+          aerodromeId: a.id,
+          designator: d,
+          reciprocal: ends[1 - i],
+          headingMagDeg: isFinite(n) ? n * 10 : NaN,
+          headingTrueDeg: null,
+          lengthM: null,
+          widthM: null,
+          surface: null,
+          toraM: null,
+          todaM: null,
+          asdaM: null,
+          ldaM: null,
+          slopePct: null,
+          thresholdElevFt: a.elevFt,
         });
       });
     }
@@ -90,8 +137,17 @@ export function buildRef() {
     const k = (seenAs.get(base) || 0) + 1;
     seenAs.set(base, k);
     return {
-      id: `${base}-${k}`, name: v.name, kind: v.kind, class: v.class ?? '', sector: v.sector ?? '', lower: v.lower, upper: v.upper,
-      polygon: v.polygon, units: v.units ?? [], note: v.note ?? '', source: v.source ?? '',
+      id: `${base}-${k}`,
+      name: v.name,
+      kind: v.kind,
+      class: v.class ?? '',
+      sector: v.sector ?? '',
+      lower: v.lower,
+      upper: v.upper,
+      polygon: v.polygon,
+      units: v.units ?? [],
+      note: v.note ?? '',
+      source: v.source ?? '',
     };
   });
 
@@ -110,7 +166,15 @@ export function buildRef() {
     const base = `${r.chart}:${r.a}>${r.b}`;
     const k = (seenRt.get(base) || 0) + 1;
     seenRt.set(base, k);
-    return { id: k === 1 ? base : `${base}#${k}`, chart: r.chart, a: r.a, b: r.b, minFt: r.min, maxFt: r.max, oneway: !!r.oneway };
+    return {
+      id: k === 1 ? base : `${base}#${k}`,
+      chart: r.chart,
+      a: r.a,
+      b: r.b,
+      minFt: r.min,
+      maxFt: r.max,
+      oneway: !!r.oneway,
+    };
   });
 
   const atcUnits: RefAtcUnit[] = [];
@@ -118,7 +182,15 @@ export function buildRef() {
     const groups = new Map<string, RefAtcUnit>();
     for (const f of a.freqs) {
       const cs = f.callsign || f.service;
-      if (!groups.has(cs)) groups.set(cs, { id: `ad:${a.id}:${cs}`, kind: 'aerodrome', owner: a.id, callsign: cs, service: f.service, freqs: [] });
+      if (!groups.has(cs))
+        groups.set(cs, {
+          id: `ad:${a.id}:${cs}`,
+          kind: 'aerodrome',
+          owner: a.id,
+          callsign: cs,
+          service: f.service,
+          freqs: [],
+        });
       groups.get(cs)!.freqs.push({ mhz: f.mhz, role: f.role, remark: f.remark });
     }
     atcUnits.push(...groups.values());
@@ -129,23 +201,57 @@ export function buildRef() {
       const id = `as:${v.name}:${u.callsign}`;
       if (seenUnit.has(id)) continue;
       seenUnit.add(id);
-      atcUnits.push({ id, kind: 'airspace', owner: v.name, callsign: u.callsign, service: u.callsign.split(/\s+/).pop() || '',
-        freqs: u.freqs.map((mhz, i) => ({ mhz, role: i === 0 ? 'primary' : 'secondary', remark: u.hours ? `Hours ${u.hours}` : '' })) });
+      atcUnits.push({
+        id,
+        kind: 'airspace',
+        owner: v.name,
+        callsign: u.callsign,
+        service: u.callsign.split(/\s+/).pop() || '',
+        freqs: u.freqs.map((mhz, i) => ({
+          mhz,
+          role: i === 0 ? 'primary' : 'secondary',
+          remark: u.hours ? `Hours ${u.hours}` : '',
+        })),
+      });
     }
   }
   for (const u of fis.units) {
-    atcUnits.push({ id: `fis:${u.callsign}`, kind: 'fis', owner: 'FIS', callsign: u.callsign, service: 'INFO',
-      freqs: u.freqs.map((mhz, i) => ({ mhz, role: i === 0 ? 'primary' : 'secondary', remark: `${u.side} sector` })) });
+    atcUnits.push({
+      id: `fis:${u.callsign}`,
+      kind: 'fis',
+      owner: 'FIS',
+      callsign: u.callsign,
+      service: 'INFO',
+      freqs: u.freqs.map((mhz, i) => ({ mhz, role: i === 0 ? 'primary' : 'secondary', remark: `${u.side} sector` })),
+    });
   }
 
   const sun: Record<string, RefSunTable> = SUN;
 
   // The aerodromes as shipped to the client and loaded by HOURS_MIGRATION: with their operational hours.
   // `aerodromes` (002) stays without them.
-  const rawHours: Record<string, AipHoursText> = fs.existsSync(HOURS_JSON) ? JSON.parse(fs.readFileSync(HOURS_JSON, 'utf8')) : {};
-  const aerodromesFull: RefAerodrome[] = aerodromes.map((a) => (rawHours[a.id] ? { ...a, hours: adHoursFromAip(rawHours[a.id]) } : a));
+  const rawHours: Record<string, AipHoursText> = fs.existsSync(HOURS_JSON)
+    ? JSON.parse(fs.readFileSync(HOURS_JSON, 'utf8'))
+    : {};
+  const aerodromesFull: RefAerodrome[] = aerodromes.map((a) =>
+    rawHours[a.id] ? { ...a, hours: adHoursFromAip(rawHours[a.id]) } : a,
+  );
   const areas: RefArea[] = fs.existsSync(AREAS_JSON) ? JSON.parse(fs.readFileSync(AREAS_JSON, 'utf8')) : [];
-  return { airac, aerodromes, aerodromesFull, baseRunways, runways, runwayWarnings, airspaces, fis, vfrPoints, vfrRoutes, atcUnits, sun, areas };
+  return {
+    airac,
+    aerodromes,
+    aerodromesFull,
+    baseRunways,
+    runways,
+    runwayWarnings,
+    airspaces,
+    fis,
+    vfrPoints,
+    vfrRoutes,
+    atcUnits,
+    sun,
+    areas,
+  };
 }
 
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
@@ -169,14 +275,44 @@ export function refSql(r: ReturnType<typeof buildRef>): string {
   const ins = (table: string, cols: string, rows: string[]) => {
     for (const c of chunks(rows)) L.push(`INSERT INTO ${table} (${cols}) VALUES\n${c.join(',\n')};`);
   };
-  ins('ref_aerodromes', 'airac, id, icao, name, lat, lon, doc', r.aerodromes.map((a) => `(${A}, ${q(a.id)}, ${a.icao ? q(a.icao) : 'NULL'}, ${q(a.name)}, ${n(a.lat)}, ${n(a.lon)}, ${j(a)})`));
-  ins('ref_runways', 'airac, aerodrome_id, designator, doc', r.baseRunways.map((w) => `(${A}, ${q(w.aerodromeId)}, ${q(w.designator)}, ${j(w)})`));
-  ins('ref_airspaces', 'airac, id, name, kind, doc', r.airspaces.map((v) => `(${A}, ${q(v.id)}, ${q(v.name)}, ${q(v.kind)}, ${j(v)})`));
+  ins(
+    'ref_aerodromes',
+    'airac, id, icao, name, lat, lon, doc',
+    r.aerodromes.map(
+      (a) => `(${A}, ${q(a.id)}, ${a.icao ? q(a.icao) : 'NULL'}, ${q(a.name)}, ${n(a.lat)}, ${n(a.lon)}, ${j(a)})`,
+    ),
+  );
+  ins(
+    'ref_runways',
+    'airac, aerodrome_id, designator, doc',
+    r.baseRunways.map((w) => `(${A}, ${q(w.aerodromeId)}, ${q(w.designator)}, ${j(w)})`),
+  );
+  ins(
+    'ref_airspaces',
+    'airac, id, name, kind, doc',
+    r.airspaces.map((v) => `(${A}, ${q(v.id)}, ${q(v.name)}, ${q(v.kind)}, ${j(v)})`),
+  );
   L.push(`INSERT INTO ref_fis (airac, doc) VALUES (${A}, ${j(r.fis)});`);
-  ins('ref_waypoints', 'airac, id, name, lat, lon, chart, doc', r.vfrPoints.map((p) => `(${A}, ${q(p.id)}, ${q(p.name)}, ${n(p.lat)}, ${n(p.lon)}, ${q(p.chart)}, ${j(p)})`));
-  ins('ref_vfr_routes', 'airac, id, chart, a, b, doc', r.vfrRoutes.map((x) => `(${A}, ${q(x.id)}, ${q(x.chart)}, ${q(x.a)}, ${q(x.b)}, ${j(x)})`));
-  ins('ref_atc_units', 'airac, id, kind, owner, doc', r.atcUnits.map((u) => `(${A}, ${q(u.id)}, ${q(u.kind)}, ${q(u.owner)}, ${j(u)})`));
-  ins('ref_sun', 'airac, icao, doc', Object.entries(r.sun).map(([icao, t]) => `(${A}, ${q(icao)}, ${j(t)})`));
+  ins(
+    'ref_waypoints',
+    'airac, id, name, lat, lon, chart, doc',
+    r.vfrPoints.map((p) => `(${A}, ${q(p.id)}, ${q(p.name)}, ${n(p.lat)}, ${n(p.lon)}, ${q(p.chart)}, ${j(p)})`),
+  );
+  ins(
+    'ref_vfr_routes',
+    'airac, id, chart, a, b, doc',
+    r.vfrRoutes.map((x) => `(${A}, ${q(x.id)}, ${q(x.chart)}, ${q(x.a)}, ${q(x.b)}, ${j(x)})`),
+  );
+  ins(
+    'ref_atc_units',
+    'airac, id, kind, owner, doc',
+    r.atcUnits.map((u) => `(${A}, ${q(u.id)}, ${q(u.kind)}, ${q(u.owner)}, ${j(u)})`),
+  );
+  ins(
+    'ref_sun',
+    'airac, icao, doc',
+    Object.entries(r.sun).map(([icao, t]) => `(${A}, ${q(icao)}, ${j(t)})`),
+  );
   return L.join('\n') + '\n';
 }
 
@@ -189,7 +325,9 @@ export function runwaySql(r: ReturnType<typeof buildRef>): string {
     `DELETE FROM ref_runways WHERE airac = ${A};`,
   ];
   for (const c of chunks(r.runways as RefRunwayFull[])) {
-    L.push(`INSERT INTO ref_runways (airac, aerodrome_id, designator, doc) VALUES\n${c.map((w) => `(${A}, ${q(w.aerodromeId)}, ${q(w.designator)}, ${j(w)})`).join(',\n')};`);
+    L.push(
+      `INSERT INTO ref_runways (airac, aerodrome_id, designator, doc) VALUES\n${c.map((w) => `(${A}, ${q(w.aerodromeId)}, ${q(w.designator)}, ${j(w)})`).join(',\n')};`,
+    );
   }
   return L.join('\n') + '\n';
 }
@@ -203,7 +341,9 @@ export function hoursSql(r: ReturnType<typeof buildRef>): string {
   ];
   for (const a of r.aerodromesFull) {
     if (!a.hours) continue;
-    L.push(`UPDATE ref_aerodromes SET doc = doc || jsonb_build_object('hours', ${j(a.hours)}) WHERE airac = ${A} AND id = ${q(a.id)};`);
+    L.push(
+      `UPDATE ref_aerodromes SET doc = doc || jsonb_build_object('hours', ${j(a.hours)}) WHERE airac = ${A} AND id = ${q(a.id)};`,
+    );
   }
   return L.join('\n') + '\n';
 }
@@ -225,7 +365,9 @@ export function areasSql(r: ReturnType<typeof buildRef>): string {
     `DELETE FROM ref_areas WHERE airac = ${A};`,
   ];
   for (const c of chunks(r.areas)) {
-    L.push(`INSERT INTO ref_areas (airac, id, kind, name, doc) VALUES\n${c.map((a) => `(${A}, ${q(a.id)}, ${q(a.kind)}, ${q(a.name)}, ${j(a)})`).join(',\n')};`);
+    L.push(
+      `INSERT INTO ref_areas (airac, id, kind, name, doc) VALUES\n${c.map((a) => `(${A}, ${q(a.id)}, ${q(a.kind)}, ${q(a.name)}, ${j(a)})`).join(',\n')};`,
+    );
   }
   return L.join('\n') + '\n';
 }
@@ -261,7 +403,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     if (cur === text) continue;
     stale++;
     if (check) console.error('stale:', path.relative(ROOT, f));
-    else { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, text); console.log('wrote', path.relative(ROOT, f)); }
+    else {
+      fs.mkdirSync(path.dirname(f), { recursive: true });
+      fs.writeFileSync(f, text);
+      console.log('wrote', path.relative(ROOT, f));
+    }
   }
   if (check && stale) process.exit(1);
   if (!check && !stale) console.log('reference data up to date');

@@ -8,7 +8,13 @@ function setup(max = 20) {
   let t = 1_000_000;
   const out: ClientErrorReport[] = [];
   const report = createReporter((r) => out.push(r), { now: () => t, max });
-  return { report, out, advance: (ms: number) => { t += ms; } };
+  return {
+    report,
+    out,
+    advance: (ms: number) => {
+      t += ms;
+    },
+  };
 }
 
 describe('client error reporter', () => {
@@ -35,17 +41,34 @@ describe('client error reporter', () => {
 
   test('stale chunks, extensions and browser noise are not reported', () => {
     const { report, out } = setup();
-    expect(report({ source: 'react', message: 'Failed to fetch dynamically imported module: https://x/assets/a.js' })).toBe(false);
+    expect(
+      report({ source: 'react', message: 'Failed to fetch dynamically imported module: https://x/assets/a.js' }),
+    ).toBe(false);
     expect(report({ source: 'error', message: 'Script error.' })).toBe(false);
-    expect(report({ source: 'error', message: 'ResizeObserver loop completed with undelivered notifications.' })).toBe(false);
-    expect(report({ source: 'error', message: 'boom', stack: 'at x (chrome-extension://abc/content.js:1:1)' })).toBe(false);
+    expect(report({ source: 'error', message: 'ResizeObserver loop completed with undelivered notifications.' })).toBe(
+      false,
+    );
+    expect(report({ source: 'error', message: 'boom', stack: 'at x (chrome-extension://abc/content.js:1:1)' })).toBe(
+      false,
+    );
     expect(out).toHaveLength(0);
   });
 
   test('scrubbed before sending: path only, ids masked, no e-mails', () => {
     const { report, out } = setup();
-    report({ source: 'api', message: 'failed for a@b.com', method: 'PUT', status: 502, apiPath: '/api/flights/fl_Xk3abcdEF?x=1', url: 'https://pigsgottafly.com/flights/fl_Xk3abcdEF/export/navlog?token=s3cret#x' });
-    expect(out[0]).toMatchObject({ message: 'failed for <email>', apiPath: '/api/flights/:id', url: '/flights/:id/export/navlog' });
+    report({
+      source: 'api',
+      message: 'failed for a@b.com',
+      method: 'PUT',
+      status: 502,
+      apiPath: '/api/flights/fl_Xk3abcdEF?x=1',
+      url: 'https://pigsgottafly.com/flights/fl_Xk3abcdEF/export/navlog?token=s3cret#x',
+    });
+    expect(out[0]).toMatchObject({
+      message: 'failed for <email>',
+      apiPath: '/api/flights/:id',
+      url: '/flights/:id/export/navlog',
+    });
   });
 });
 
@@ -70,6 +93,16 @@ import { isIgnorable as ignorable3p } from '../../../src/app/errorReporter';
 import { test as t3p, expect as e3p } from 'vitest';
 t3p('errors entirely inside third-party scripts are ignored; ours are kept', () => {
   (globalThis as any).location ??= { origin: 'https://pigsgottafly.com' };
-  e3p(ignorable3p('pa', 'Error: pa\n    at _.Tk (https://accounts.google.com/gsi/client:179:95)\n    at ql (https://accounts.google.com/gsi/client:285:499)')).toBe(true);
-  e3p(ignorable3p('boom', `Error: boom\n    at x (${(globalThis as any).location.origin}/assets/index-abc.js:1:2)\n    at y (https://accounts.google.com/gsi/client:1:1)`)).toBe(false);
+  e3p(
+    ignorable3p(
+      'pa',
+      'Error: pa\n    at _.Tk (https://accounts.google.com/gsi/client:179:95)\n    at ql (https://accounts.google.com/gsi/client:285:499)',
+    ),
+  ).toBe(true);
+  e3p(
+    ignorable3p(
+      'boom',
+      `Error: boom\n    at x (${(globalThis as any).location.origin}/assets/index-abc.js:1:2)\n    at y (https://accounts.google.com/gsi/client:1:1)`,
+    ),
+  ).toBe(false);
 });

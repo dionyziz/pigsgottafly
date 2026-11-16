@@ -11,10 +11,14 @@ export function sunTableIndex(date: string): number {
 
 /** Sunset, whole minutes after 00:00 UTC (rounded down), or null. */
 export function sunsetMinutes(date: string, p: LatLon, tables: Record<string, RefSunTable>): number | null {
-  let best: RefSunTable | null = null, bd = Infinity;
+  let best: RefSunTable | null = null,
+    bd = Infinity;
   for (const t of Object.values(tables)) {
     const d = distanceNm(p, t);
-    if (d < bd) { bd = d; best = t; }
+    if (d < bd) {
+      bd = d;
+      best = t;
+    }
   }
   if (best && bd < 120) {
     const v = best.ss[sunTableIndex(date)];

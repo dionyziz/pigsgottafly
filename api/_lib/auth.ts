@@ -33,7 +33,11 @@ export interface GoogleClaims {
 }
 
 /** Verify a Google ID token (JWT, RS256) and return its claims, or throw. */
-export async function verifyGoogleToken(token: string, clientId: string, getKeys: () => Promise<JsonWebKey[]> = googleKeys): Promise<GoogleClaims> {
+export async function verifyGoogleToken(
+  token: string,
+  clientId: string,
+  getKeys: () => Promise<JsonWebKey[]> = googleKeys,
+): Promise<GoogleClaims> {
   const parts = String(token).split('.');
   if (parts.length !== 3) throw new Error('malformed token');
   const [h, p, sig] = parts;
@@ -42,7 +46,12 @@ export async function verifyGoogleToken(token: string, clientId: string, getKeys
   if (header.alg !== 'RS256') throw new Error('unexpected algorithm');
   const jwk = (await getKeys()).find((k) => (k as any).kid === header.kid);
   if (!jwk) throw new Error('unknown signing key');
-  const ok = crypto.verify('RSA-SHA256', Buffer.from(`${h}.${p}`), crypto.createPublicKey({ key: jwk as any, format: 'jwk' }), Buffer.from(sig, 'base64url'));
+  const ok = crypto.verify(
+    'RSA-SHA256',
+    Buffer.from(`${h}.${p}`),
+    crypto.createPublicKey({ key: jwk as any, format: 'jwk' }),
+    Buffer.from(sig, 'base64url'),
+  );
   if (!ok) throw new Error('bad signature');
   if (claims.aud !== clientId) throw new Error('wrong audience');
   if (!['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss)) throw new Error('wrong issuer');
@@ -64,7 +73,11 @@ export function tokenFrom(req: Req): string | undefined {
 /** Creates a session for a pilot; returns the raw token for the cookie. */
 export async function createSession(q: Queryable, pilotId: string): Promise<string> {
   const tok = crypto.randomBytes(24).toString('base64url');
-  await q.query('INSERT INTO sessions (token_hash, pilot_id, created) VALUES ($1, $2, $3)', [hashToken(tok), pilotId, Date.now()]);
+  await q.query('INSERT INTO sessions (token_hash, pilot_id, created) VALUES ($1, $2, $3)', [
+    hashToken(tok),
+    pilotId,
+    Date.now(),
+  ]);
   return tok;
 }
 
@@ -72,7 +85,12 @@ export async function createSession(q: Queryable, pilotId: string): Promise<stri
  * The pilot row of a valid session, or null. With an allow-list, a pilot whose email is no longer on
  * it is signed out everywhere (all their sessions are deleted), not just refused at the next login.
  */
-export async function sessionPilotRow(q: Queryable, req: Req, allowedEmails: string[] = [], onRenew?: (token: string) => void): Promise<Record<string, any> | null> {
+export async function sessionPilotRow(
+  q: Queryable,
+  req: Req,
+  allowedEmails: string[] = [],
+  onRenew?: (token: string) => void,
+): Promise<Record<string, any> | null> {
   const t = tokenFrom(req);
   if (!t) return null;
   const now = Date.now();
@@ -101,7 +119,14 @@ export async function purgeExpiredSessions(q: Queryable): Promise<void> {
 
 /** True when the allow-list is empty (anyone) or contains the email (case-insensitive). */
 export function emailAllowed(email: unknown, allowedEmails: string[]): boolean {
-  return !allowedEmails.length || allowedEmails.includes(String(email || '').trim().toLowerCase());
+  return (
+    !allowedEmails.length ||
+    allowedEmails.includes(
+      String(email || '')
+        .trim()
+        .toLowerCase(),
+    )
+  );
 }
 
 /** Local mode: the single 'local' pilot, created on first use (empty profile, empty hangar). */
@@ -117,6 +142,8 @@ export async function localPilotRow(q: Queryable): Promise<Record<string, any>> 
 
 /** An admin: a signed-in pilot whose e-mail is in adminEmails (nobody when the list is empty). */
 export function isAdmin(config: Pick<ApiConfig, 'adminEmails'>, p: { email?: string | null } | null): boolean {
-  const email = String(p?.email || '').trim().toLowerCase();
+  const email = String(p?.email || '')
+    .trim()
+    .toLowerCase();
   return !!email && (config.adminEmails ?? []).includes(email);
 }

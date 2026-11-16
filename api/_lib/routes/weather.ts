@@ -28,11 +28,27 @@ export const TIMEOUT_MS = 15000;
 /** Extra attempts after a timeout, network error or 5xx. */
 export const RETRIES = 1;
 
-interface MetarRow { icaoId?: string; rawOb?: string; obsTime?: number; reportTime?: string }
-interface TafRow { icaoId?: string; rawTAF?: string; issueTime?: string; mostRecent?: number }
+interface MetarRow {
+  icaoId?: string;
+  rawOb?: string;
+  obsTime?: number;
+  reportTime?: string;
+}
+interface TafRow {
+  icaoId?: string;
+  rawTAF?: string;
+  issueTime?: string;
+  mostRecent?: number;
+}
 
-interface Entry<T> { at: number; value: T | null }
-interface MetarValue { raw: string; observed: number | null }
+interface Entry<T> {
+  at: number;
+  value: T | null;
+}
+interface MetarValue {
+  raw: string;
+  observed: number | null;
+}
 
 export interface WeatherProxyOptions {
   fetch?: typeof fetch;
@@ -44,12 +60,20 @@ export interface WeatherProxyOptions {
 }
 
 class UpstreamError extends Error {
-  constructor(message: string, readonly retryable: boolean) { super(message); }
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+  }
 }
 
 /** Parses ?ids= (comma or space separated), upper-cased, de-duplicated, valid ICAO only. */
 export function parseIds(q: string | null): string[] {
-  const ids = (q || '').toUpperCase().split(/[\s,]+/).filter((x) => /^[A-Z]{4}$/.test(x));
+  const ids = (q || '')
+    .toUpperCase()
+    .split(/[\s,]+/)
+    .filter((x) => /^[A-Z]{4}$/.test(x));
   return [...new Set(ids)];
 }
 
@@ -58,7 +82,12 @@ export function pickMetars(rows: MetarRow[]): Map<string, MetarValue> {
   const out = new Map<string, MetarValue>();
   for (const r of rows) {
     if (!r || typeof r.icaoId !== 'string' || typeof r.rawOb !== 'string' || !r.rawOb.trim()) continue;
-    const observed = typeof r.obsTime === 'number' && isFinite(r.obsTime) ? r.obsTime * 1000 : (r.reportTime ? Date.parse(r.reportTime) || null : null);
+    const observed =
+      typeof r.obsTime === 'number' && isFinite(r.obsTime)
+        ? r.obsTime * 1000
+        : r.reportTime
+          ? Date.parse(r.reportTime) || null
+          : null;
     const prev = out.get(r.icaoId);
     if (!prev || (observed ?? 0) > (prev.observed ?? 0)) out.set(r.icaoId, { raw: r.rawOb.trim(), observed });
   }
@@ -97,7 +126,11 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
     if (res.status === 204) return [];
     if (!res.ok) throw new UpstreamError(`${kind} HTTP ${res.status}`, res.status >= 500 || res.status === 429);
     let body: unknown;
-    try { body = await res.json(); } catch (e) { throw new UpstreamError(`${kind}: ${String((e as Error)?.message || e)}`, true); }
+    try {
+      body = await res.json();
+    } catch (e) {
+      throw new UpstreamError(`${kind}: ${String((e as Error)?.message || e)}`, true);
+    }
     if (!Array.isArray(body)) throw new UpstreamError(`${kind}: unexpected response`, false);
     return body;
   }
@@ -115,9 +148,17 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
   }
 
   /** Refreshes one cache for the ids that are missing or expired; false if the upstream failed. */
-  async function refresh<T>(cache: Map<string, Entry<T>>, ttl: number, ids: string[], load: (ids: string[]) => Promise<Map<string, T>>): Promise<boolean> {
+  async function refresh<T>(
+    cache: Map<string, Entry<T>>,
+    ttl: number,
+    ids: string[],
+    load: (ids: string[]) => Promise<Map<string, T>>,
+  ): Promise<boolean> {
     const t = now();
-    const need = ids.filter((id) => { const e = cache.get(id); return !e || t - e.at >= ttl; });
+    const need = ids.filter((id) => {
+      const e = cache.get(id);
+      return !e || t - e.at >= ttl;
+    });
     if (!need.length) return true;
     try {
       const got = await load(need);
@@ -139,7 +180,8 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
     const stations: MetarTafResponse['stations'] = {};
     let any = false;
     for (const id of ids) {
-      const m = usable(metarCache.get(id)), f = usable(tafCache.get(id));
+      const m = usable(metarCache.get(id)),
+        f = usable(tafCache.get(id));
       if (m || f) any = true;
       if (!m?.value && !f?.value) continue;
       stations[id] = { metar: m?.value?.raw ?? null, taf: f?.value ?? null, observed: m?.value?.observed ?? null };
@@ -150,7 +192,8 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
 
   const routes: Route[] = [
     {
-      method: 'GET', path: '/weather/metar',
+      method: 'GET',
+      path: '/weather/metar',
       async handler(ctx) {
         const ids = parseIds(ctx.query.get('ids'));
         if (!ids.length) throw new HttpError(400, 'ids: one or more ICAO codes');
@@ -161,7 +204,14 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
       },
     },
   ];
-  return { routes, get, clear: () => { metarCache.clear(); tafCache.clear(); } };
+  return {
+    routes,
+    get,
+    clear: () => {
+      metarCache.clear();
+      tafCache.clear();
+    },
+  };
 }
 
 // one proxy (and cache) per API configuration that brings its own upstream (tests), else the shared one
@@ -173,4 +223,10 @@ const proxyFor = (o: WeatherProxyOptions | undefined) => {
   if (!p) proxies.set(o, (p = createWeatherProxy(o)));
   return p;
 };
-export const routes: Route[] = shared.routes.map((r) => ({ ...r, handler: (ctx) => proxyFor(ctx.config?.aviationWeather).routes.find((x) => x.path === r.path)!.handler(ctx) }));
+export const routes: Route[] = shared.routes.map((r) => ({
+  ...r,
+  handler: (ctx) =>
+    proxyFor(ctx.config?.aviationWeather)
+      .routes.find((x) => x.path === r.path)!
+      .handler(ctx),
+}));

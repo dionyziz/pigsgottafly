@@ -37,11 +37,15 @@ export const CLOSEST_ROUTE_MAX_NM = 10;
 
 /** Nearest aerodrome within maxNm, or null. */
 export function nearestAerodrome(p: LatLon, aerodromes: RefAerodrome[], maxNm: number): RefAerodrome | null {
-  let best: RefAerodrome | null = null, bd = Infinity;
+  let best: RefAerodrome | null = null,
+    bd = Infinity;
   for (const a of aerodromes) {
     if (!isFinite(a.lat) || !isFinite(a.lon)) continue;
     const d = distanceNm(p, a);
-    if (d < bd) { bd = d; best = a; }
+    if (d < bd) {
+      bd = d;
+      best = a;
+    }
   }
   return bd <= maxNm ? best : null;
 }
@@ -56,15 +60,19 @@ export function nearestAerodrome(p: LatLon, aerodromes: RefAerodrome[], maxNm: n
  */
 export function vfrRouteBetween(a: LatLon, b: LatLon, ctx: AltitudeContext): RefVfrRoute | null {
   const near = (p: LatLon) => ctx.vfrPoints.filter((v) => distanceNm(p, v) <= 1.5);
-  const A = near(a), B = near(b);
-  for (const va of A) for (const vb of B) {
-    if (va.name === vb.name) continue;
-    const r = ctx.vfrRoutes.find(
-      (r) => r.chart === va.chart && r.chart === vb.chart &&
-        ((r.a === va.name && r.b === vb.name) || (!r.oneway && r.a === vb.name && r.b === va.name)),
-    );
-    if (r) return r;
-  }
+  const A = near(a),
+    B = near(b);
+  for (const va of A)
+    for (const vb of B) {
+      if (va.name === vb.name) continue;
+      const r = ctx.vfrRoutes.find(
+        (r) =>
+          r.chart === va.chart &&
+          r.chart === vb.chart &&
+          ((r.a === va.name && r.b === vb.name) || (!r.oneway && r.a === vb.name && r.b === va.name)),
+      );
+      if (r) return r;
+    }
   return null;
 }
 
@@ -95,17 +103,24 @@ export function chartedSegments(ctx: AltitudeContext): ChartedSegment[] {
   for (const p of ctx.vfrPoints) {
     const k = p.chart + '/' + p.name;
     const l = byKey.get(k);
-    if (l) l.push(p); else byKey.set(k, [p]);
+    if (l) l.push(p);
+    else byKey.set(k, [p]);
   }
   const segs: ChartedSegment[] = [];
   for (const r of ctx.vfrRoutes) {
-    const A = byKey.get(r.chart + '/' + r.a), B = byKey.get(r.chart + '/' + r.b);
+    const A = byKey.get(r.chart + '/' + r.a),
+      B = byKey.get(r.chart + '/' + r.b);
     if (!A || !B) continue;
-    let best: ChartedSegment | null = null, bl = Infinity;
-    for (const a of A) for (const b of B) {
-      const l = distanceNm(a, b);
-      if (l < bl) { bl = l; best = { route: r, a: { lat: a.lat, lon: a.lon }, b: { lat: b.lat, lon: b.lon } }; }
-    }
+    let best: ChartedSegment | null = null,
+      bl = Infinity;
+    for (const a of A)
+      for (const b of B) {
+        const l = distanceNm(a, b);
+        if (l < bl) {
+          bl = l;
+          best = { route: r, a: { lat: a.lat, lon: a.lon }, b: { lat: b.lat, lon: b.lon } };
+        }
+      }
     if (best) segs.push(best);
   }
   segCache.set(ctx.vfrRoutes, { points: ctx.vfrPoints, segs });
@@ -142,17 +157,25 @@ const isCustom = (p: RoutePoint) => p.kind === 'custom' || p.kind === 'waypoint'
  * @param overrides altitude typed for each leg (NaN/undefined = none); "previous leg" uses the
  *                  effective (possibly overridden) altitude of the previous leg.
  */
-export function defaultAltitudes(route: RoutePoint[], ctx: AltitudeContext, overrides: (number | undefined)[] = [], patternPoints: boolean[] = []): AltitudeDefault[] {
+export function defaultAltitudes(
+  route: RoutePoint[],
+  ctx: AltitudeContext,
+  overrides: (number | undefined)[] = [],
+  patternPoints: boolean[] = [],
+): AltitudeDefault[] {
   const n = Math.max(0, route.length - 1);
   const out: AltitudeDefault[] = [];
   const effective: number[] = [];
   for (let i = 0; i < n; i++) {
-    const a = route[i], b = route[i + 1];
+    const a = route[i],
+      b = route[i + 1];
     const r = vfrRouteBetween(a, b, ctx);
     let d: AltitudeDefault | null = null;
     if (r) d = { altFt: r.maxFt, source: 'vfr-route', route: r };
-    else if ((i === n - 1 || patternPoints[i + 1]) && isFinite(patternAltitudeFt(b, ctx))) d = { altFt: patternAltitudeFt(b, ctx), source: 'pattern', route: null };
-    else if (i > 0 && patternPoints[i] && isFinite(patternAltitudeFt(a, ctx))) d = { altFt: patternAltitudeFt(a, ctx), source: 'pattern', route: null };
+    else if ((i === n - 1 || patternPoints[i + 1]) && isFinite(patternAltitudeFt(b, ctx)))
+      d = { altFt: patternAltitudeFt(b, ctx), source: 'pattern', route: null };
+    else if (i > 0 && patternPoints[i] && isFinite(patternAltitudeFt(a, ctx)))
+      d = { altFt: patternAltitudeFt(a, ctx), source: 'pattern', route: null };
     else if (isCustom(a) || isCustom(b)) {
       const ref = isCustom(a) && isCustom(b) ? midpoint(a, b) : isCustom(a) ? a : b;
       const c = closestVfrRoute(ref, ctx, trueCourse(a, b));

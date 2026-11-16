@@ -6,8 +6,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import {
-  installStaleBuildReload, isChunkLoadError, nav, reloadForNewBuild, resetStaleBuildState, RELOAD_GUARD_MS,
-  RELOAD_PENDING_MS, staleReloadPending, STALE_RELOAD_KEY,
+  installStaleBuildReload,
+  isChunkLoadError,
+  nav,
+  reloadForNewBuild,
+  resetStaleBuildState,
+  RELOAD_GUARD_MS,
+  RELOAD_PENDING_MS,
+  staleReloadPending,
+  STALE_RELOAD_KEY,
 } from '../../../src/app/staleBuild';
 import { ErrorBoundary } from '../../../src/app/ErrorBoundary';
 
@@ -17,19 +24,30 @@ beforeEach(() => {
   t += 24 * 3600e3;
   reloads = 0;
   nav.now = () => t;
-  nav.reload = () => { reloads++; };
+  nav.reload = () => {
+    reloads++;
+  };
   sessionStorage.clear();
   resetStaleBuildState();
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
-function Boom({ error }: { error: Error }): never { throw error; }
+function Boom({ error }: { error: Error }): never {
+  throw error;
+}
 
 describe('stale build reload', () => {
   test('chunk errors are recognised (Chrome, Firefox, Safari, CSS)', () => {
-    expect(isChunkLoadError(new TypeError('Failed to fetch dynamically imported module: https://x/assets/a.js'))).toBe(true);
-    expect(isChunkLoadError(new TypeError('error loading dynamically imported module: https://x/assets/a.js'))).toBe(true);
+    expect(isChunkLoadError(new TypeError('Failed to fetch dynamically imported module: https://x/assets/a.js'))).toBe(
+      true,
+    );
+    expect(isChunkLoadError(new TypeError('error loading dynamically imported module: https://x/assets/a.js'))).toBe(
+      true,
+    );
     expect(isChunkLoadError(new TypeError('Importing a module script failed.'))).toBe(true);
     expect(isChunkLoadError(new Error('Unable to preload CSS for /assets/a.css'))).toBe(true);
     expect(isChunkLoadError(new TypeError("can't access property 'default', n is undefined"))).toBe(false);
@@ -66,7 +84,11 @@ describe('stale build reload', () => {
   });
 
   test('ErrorBoundary: a chunk error shows the loading screen and reloads', () => {
-    render(<ErrorBoundary><Boom error={new TypeError('error loading dynamically imported module: https://x/assets/Editor.js')} /></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <Boom error={new TypeError('error loading dynamically imported module: https://x/assets/Editor.js')} />
+      </ErrorBoundary>,
+    );
     expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.queryByText('Something went wrong')).toBeNull();
     expect(reloads).toBe(1);
@@ -74,13 +96,21 @@ describe('stale build reload', () => {
 
   test('ErrorBoundary: any error while a reload is pending shows the loading screen, not the error', () => {
     expect(reloadForNewBuild()).toBe(true); // vite:preloadError
-    render(<ErrorBoundary><Boom error={new TypeError("can't access property 'default', n is undefined")} /></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <Boom error={new TypeError("can't access property 'default', n is undefined")} />
+      </ErrorBoundary>,
+    );
     expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.queryByText('Something went wrong')).toBeNull();
   });
 
   test('ErrorBoundary: without a pending reload, an error is shown', () => {
-    render(<ErrorBoundary><Boom error={new Error('real bug')} /></ErrorBoundary>);
+    render(
+      <ErrorBoundary>
+        <Boom error={new Error('real bug')} />
+      </ErrorBoundary>,
+    );
     expect(screen.getByText('Something went wrong')).toBeTruthy();
     expect(screen.getByText('real bug')).toBeTruthy();
     expect(reloads).toBe(0);

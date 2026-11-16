@@ -15,10 +15,28 @@ export const aircraft: Aircraft = {
 
 export const pilot: Pilot = {
   ...EMPTY_PERSON,
-  id: 'p1', email: '', name: '', picture: '', licenceNo: '', homeAerodrome: 'LGTT', defaultAircraftId: null,
-  settings: { taxiOutMin: null, taxiInMin: null, reserveMin: null, finalReserveMin: 0, windModel: 'best_match', enrouteAerodromeRadiusNm: 2 },
-  created: 0, lastLogin: 0,
-  fullName: 'Pat Pilot', phone: '+30 690 000 0000', idNumber: 'AB 123456', idType: 'ID', relation: 'MEMBER 0042',
+  id: 'p1',
+  email: '',
+  name: '',
+  picture: '',
+  licenceNo: '',
+  homeAerodrome: 'LGTT',
+  defaultAircraftId: null,
+  settings: {
+    taxiOutMin: null,
+    taxiInMin: null,
+    reserveMin: null,
+    finalReserveMin: 0,
+    windModel: 'best_match',
+    enrouteAerodromeRadiusNm: 2,
+  },
+  created: 0,
+  lastLogin: 0,
+  fullName: 'Pat Pilot',
+  phone: '+30 690 000 0000',
+  idNumber: 'AB 123456',
+  idType: 'ID',
+  relation: 'MEMBER 0042',
 };
 
 export function ad(id: string, uid: string): RoutePoint {
@@ -29,8 +47,16 @@ export function vfr(name: string, uid: string): RoutePoint {
   return { uid, kind: 'vfr', refId: `LGAV/${name}`, name, lat: 38, lon: 23.6 };
 }
 
-export const pax = (name: string, seat: string, extra: Partial<FlightCrew['snapshot']> = {}, id = name): FlightCrew => ({
-  role: 'PAX', passengerId: id, seat, snapshot: { ...EMPTY_PERSON, fullName: name, ...extra },
+export const pax = (
+  name: string,
+  seat: string,
+  extra: Partial<FlightCrew['snapshot']> = {},
+  id = name,
+): FlightCrew => ({
+  role: 'PAX',
+  passengerId: id,
+  seat,
+  snapshot: { ...EMPTY_PERSON, fullName: name, ...extra },
 });
 
 export function flight(over: Partial<FlightDoc> = {}): FlightDoc {

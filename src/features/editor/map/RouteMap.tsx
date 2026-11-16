@@ -21,21 +21,62 @@ import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefBundle } from '../../../shared/ref';
 import { uid as newUid, DEFAULT_STOP_MIN, requestAllowed, type AerodromeRequest } from '../../../shared';
-import { buildLegs, distanceNm, magneticVariation, midpoint, norm360, trueCourse, type AltitudeDefault } from '../../../calc';
 import {
-  airspaceFeatures, aerodromeFeatures, areaFeatures, firFeatures, midpointFeatures, routeArrowFeatures, routeLineFeatures,
-  routePointFeatures, vfrPointFeatures, vfrRouteFeatures, waypointFeatures, zoneFeatures,
+  buildLegs,
+  distanceNm,
+  magneticVariation,
+  midpoint,
+  norm360,
+  trueCourse,
+  type AltitudeDefault,
+} from '../../../calc';
+import {
+  airspaceFeatures,
+  aerodromeFeatures,
+  areaFeatures,
+  firFeatures,
+  midpointFeatures,
+  routeArrowFeatures,
+  routeLineFeatures,
+  routePointFeatures,
+  vfrPointFeatures,
+  vfrRouteFeatures,
+  waypointFeatures,
+  zoneFeatures,
 } from './features';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from './labels';
 import {
-  autoWaypointName, buildCandidates, findSnap, pointFromCandidate, routeCandidates,
-  SNAP_RADIUS_PX, type SnapCandidate, type SnapHit,
+  autoWaypointName,
+  buildCandidates,
+  findSnap,
+  pointFromCandidate,
+  routeCandidates,
+  SNAP_RADIUS_PX,
+  type SnapCandidate,
+  type SnapHit,
 } from './snap';
 import {
-  addDrawnPoint, drawIndex, insertPoint, isBareRoundTrip, mercatorMid, movePoint, removeDrawnPoint, removePoint, renamePoint,
+  addDrawnPoint,
+  drawIndex,
+  insertPoint,
+  isBareRoundTrip,
+  mercatorMid,
+  movePoint,
+  removeDrawnPoint,
+  removePoint,
+  renamePoint,
 } from './routeEdit';
 import { addSymbols } from './symbols';
-import { BASE_MAPS, buildStyle, LAYER_GROUPS, LGGG_BOUNDS, loadChartTokens, loadVectorBase, type BaseLayers, type DataSourceId } from './style';
+import {
+  BASE_MAPS,
+  buildStyle,
+  LAYER_GROUPS,
+  LGGG_BOUNDS,
+  loadChartTokens,
+  loadVectorBase,
+  type BaseLayers,
+  type DataSourceId,
+} from './style';
 import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
 import type { MapLayers } from '../../../shared/mapLayers';
 import { LayersControl, MapHint, MapToolbar, type DrawMode } from './MapToolbar';
@@ -147,12 +188,18 @@ function legReadout(a: LatLon, b: LatLon, date: string): string {
   const d = distanceNm(a, b);
   if (d < 0.05) return '';
   const mid = midpoint(a, b);
-  const mc = norm360(trueCourse(a, b) - magneticVariation(mid.lat, mid.lon, date || new Date().toISOString().slice(0, 10)));
+  const mc = norm360(
+    trueCourse(a, b) - magneticVariation(mid.lat, mid.lon, date || new Date().toISOString().slice(0, 10)),
+  );
   return `${fmtCourse(mc)}  ${fmtDistance(d)}`;
 }
 
 /** What a leg label shows (it is re-rendered when this changes). */
-function labelKey(leg: { mcMag: number; distNm: number }, alt: LegAltitude | undefined, haz: LegHazards | undefined): string {
+function labelKey(
+  leg: { mcMag: number; distNm: number },
+  alt: LegAltitude | undefined,
+  haz: LegHazards | undefined,
+): string {
   const altFt = alt?.altFt ?? NaN;
   return `${fmtCourse(leg.mcMag)}|${fmtDistance(leg.distNm)}|${fmtAltitude(altFt)}|${alt?.overridden ? 1 : 0}|${alt?.source ?? ''}|${haz ? haz.level + ':' + haz.labels.join(';') : ''}`;
 }
@@ -178,7 +225,11 @@ export function RouteMap(props: RouteMapProps) {
   /** Airspaces under the cursor (idle mode), smallest first. */
   const [airTip, setAirTip] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
   /** Weather hazard texts under the cursor (idle mode). */
-  const [wxTip, setWxTip] = useState<{ x: number; y: number; items: { level: 'danger' | 'warn'; label: string }[] } | null>(null);
+  const [wxTip, setWxTip] = useState<{
+    x: number;
+    y: number;
+    items: { level: 'danger' | 'warn'; label: string }[];
+  } | null>(null);
   /** Airspace details opened by a click. */
   const [airPop, setAirPop] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
   /** NOTAM areas under the cursor (keys, smallest first) and the NOTAM details opened by a click. */
@@ -196,12 +247,20 @@ export function RouteMap(props: RouteMapProps) {
   const legs = useMemo(() => buildLegs(shown, date), [shown, date]);
   // snapping follows the layers: only what is on the map (the route's own points always)
   const candidates = useMemo(
-    () => buildCandidates(layers.aerodromes ? refData.aerodromes : [], layers.vfrPoints ? refData.vfrPoints : [], layers.waypoints ? waypoints : []),
+    () =>
+      buildCandidates(
+        layers.aerodromes ? refData.aerodromes : [],
+        layers.vfrPoints ? refData.vfrPoints : [],
+        layers.waypoints ? waypoints : [],
+      ),
     [refData, waypoints, layers.aerodromes, layers.vfrPoints, layers.waypoints],
   );
 
   // Everything the (once-bound) map handlers read.
-  const allInfos = useMemo(() => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? []), [refData]);
+  const allInfos = useMemo(
+    () => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? []),
+    [refData],
+  );
   const airInfos = useMemo(
     () => allInfos.filter((a) => airspaceShown(layers, a.type)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,8 +271,40 @@ export function RouteMap(props: RouteMapProps) {
     for (const a of allInfos) if (isArea(a.type)) n[areaToggle(a.type)]++;
     return n;
   }, [allInfos]);
-  const live = useRef({ props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, layers, airPop, adPop });
-  live.current = { props, mode, toEnd, route, shown, candidates, selected, prompt, menu, editingLeg, layersOpen, airInfos, layers, airPop, adPop };
+  const live = useRef({
+    props,
+    mode,
+    toEnd,
+    route,
+    shown,
+    candidates,
+    selected,
+    prompt,
+    menu,
+    editingLeg,
+    layersOpen,
+    airInfos,
+    layers,
+    airPop,
+    adPop,
+  });
+  live.current = {
+    props,
+    mode,
+    toEnd,
+    route,
+    shown,
+    candidates,
+    selected,
+    prompt,
+    menu,
+    editingLeg,
+    layersOpen,
+    airInfos,
+    layers,
+    airPop,
+    adPop,
+  };
   const drag = useRef<Drag | null>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
   const suppressClick = useRef(false);
@@ -300,7 +391,10 @@ export function RouteMap(props: RouteMapProps) {
   const fitRoute = useCallback(() => {
     const m = mapRef.current;
     if (!m || !route.length) return;
-    if (route.length === 1) { m.easeTo({ center: [route[0].lon, route[0].lat], zoom: Math.max(m.getZoom(), 9) }); return; }
+    if (route.length === 1) {
+      m.easeTo({ center: [route[0].lon, route[0].lat], zoom: Math.max(m.getZoom(), 9) });
+      return;
+    }
     const b = new maplibregl.LngLatBounds();
     for (const q of route) b.extend([q.lon, q.lat]);
     m.fitBounds(b, { padding: 90, maxZoom: 11 });
@@ -311,7 +405,11 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (!m || !loaded) return;
     const bl = baseLayers.current;
-    if (bl) for (const b of BASE_MAPS) for (const l of bl[b.id]) if (m.getLayer(l.id)) m.setLayoutProperty(l.id, 'visibility', b.id === layers.base && l.visible ? 'visible' : 'none');
+    if (bl)
+      for (const b of BASE_MAPS)
+        for (const l of bl[b.id])
+          if (m.getLayer(l.id))
+            m.setLayoutProperty(l.id, 'visibility', b.id === layers.base && l.visible ? 'visible' : 'none');
     m.setLayoutProperty('ofm', 'visibility', layers.ofm ? 'visible' : 'none');
     for (const [k, ids] of Object.entries(LAYER_GROUPS)) {
       const v = layers[k as keyof typeof LAYER_GROUPS] ? 'visible' : 'none';
@@ -328,12 +426,15 @@ export function RouteMap(props: RouteMapProps) {
   // the canvas and redraw in the same frame, before it is painted. MapLibre's own observer is throttled
   // and redraws a frame later, which shows a cleared canvas or an uncovered strip while dragging.
   useEffect(() => {
-    const m = mapRef.current, c = el.current;
+    const m = mapRef.current,
+      c = el.current;
     if (!m || !c || typeof ResizeObserver === 'undefined') return;
-    let w = c.clientWidth, h = c.clientHeight;
+    let w = c.clientWidth,
+      h = c.clientHeight;
     const ro = new ResizeObserver(() => {
       if (c.clientWidth === w && c.clientHeight === h) return;
-      w = c.clientWidth; h = c.clientHeight;
+      w = c.clientWidth;
+      h = c.clientHeight;
       m.resize();
       m.redraw();
     });
@@ -375,7 +476,8 @@ export function RouteMap(props: RouteMapProps) {
     m.fitBounds(b, { padding: 80, maxZoom: Math.max(m.getZoom(), 8) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNotam, loaded]);
-  const notamsOf = (keys: string[]) => keys.map((k) => (notamList ?? []).find((n) => n.key === k)).filter((n): n is Notam => !!n);
+  const notamsOf = (keys: string[]) =>
+    keys.map((k) => (notamList ?? []).find((n) => n.key === k)).filter((n): n is Notam => !!n);
 
   // ------------------------------------------------------------------------------ route layers
   const drawing = mode !== 'idle';
@@ -384,7 +486,8 @@ export function RouteMap(props: RouteMapProps) {
   const setHoverPoint = useCallback((i: number | null) => {
     const m = mapRef.current;
     if (!m || hoverPoint.current === i) return;
-    if (hoverPoint.current !== null) m.setFeatureState({ source: 'route-points', id: hoverPoint.current }, { hover: false });
+    if (hoverPoint.current !== null)
+      m.setFeatureState({ source: 'route-points', id: hoverPoint.current }, { hover: false });
     hoverPoint.current = i;
     if (i !== null) m.setFeatureState({ source: 'route-points', id: i }, { hover: true });
   }, []);
@@ -397,23 +500,46 @@ export function RouteMap(props: RouteMapProps) {
     setData(m, 'route-mid', drawing || draft ? EMPTY : midpointFeatures(shown));
   }, [shown, selected, loaded, drawing, draft]);
   // the indexes (feature ids) change with the route: the next mouse move finds the point again
-  useEffect(() => { if (loaded) setHoverPoint(null); }, [route, drawing, loaded, setHoverPoint]);
+  useEffect(() => {
+    if (loaded) setHoverPoint(null);
+  }, [route, drawing, loaded, setHoverPoint]);
 
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !loaded) return;
-    if (!drawing) { setData(m, 'route-band', EMPTY); setData(m, 'snap', EMPTY); }
+    if (!drawing) {
+      setData(m, 'route-band', EMPTY);
+      setData(m, 'snap', EMPTY);
+    }
     m.getCanvas().style.cursor = drawing ? 'crosshair' : '';
     m.getContainer().classList.toggle('is-drawing', drawing);
   }, [drawing, loaded]);
 
   // Tooltips and details belong to idle mode, and to the layers shown.
   useEffect(() => {
-    if (drawing) { setWxTip(null); setNotamTip(null); setNotamPop(null); setAdTip(null); setAdPop(null); setAirTip(null); setAirPop(null); }
+    if (drawing) {
+      setWxTip(null);
+      setNotamTip(null);
+      setNotamPop(null);
+      setAdTip(null);
+      setAdPop(null);
+      setAirTip(null);
+      setAirPop(null);
+    }
   }, [drawing]);
-  useEffect(() => { setAirTip(null); setAirPop(null); }, [airInfos]);
-  useEffect(() => { if (!layers.aerodromes) setAdTip(null); }, [layers.aerodromes]);
-  useEffect(() => { if (!layers.notams) { setNotamTip(null); setNotamPop(null); } }, [layers.notams]);
+  useEffect(() => {
+    setAirTip(null);
+    setAirPop(null);
+  }, [airInfos]);
+  useEffect(() => {
+    if (!layers.aerodromes) setAdTip(null);
+  }, [layers.aerodromes]);
+  useEffect(() => {
+    if (!layers.notams) {
+      setNotamTip(null);
+      setNotamPop(null);
+    }
+  }, [layers.notams]);
 
   // The route may shrink below 2 points from elsewhere (undo, panel): offer drawing again.
   useEffect(() => {
@@ -423,29 +549,40 @@ export function RouteMap(props: RouteMapProps) {
 
   // ------------------------------------------------------------------------------- leg labels
   // (none while a point is dragged: the hazards belong to the legs before the drag)
-  const legHazards = useMemo(() => (draft ? new Map<number, LegHazards>() : hazardsByLeg(hazardMarks ?? [])), [hazardMarks, draft]);
-  const markers = useRef(new Map<string, { marker: maplibregl.Marker; el: HTMLDivElement; inner: HTMLDivElement; text: string; at: string }>());
+  const legHazards = useMemo(
+    () => (draft ? new Map<number, LegHazards>() : hazardsByLeg(hazardMarks ?? [])),
+    [hazardMarks, draft],
+  );
+  const markers = useRef(
+    new Map<
+      string,
+      { marker: maplibregl.Marker; el: HTMLDivElement; inner: HTMLDivElement; text: string; at: string }
+    >(),
+  );
 
   /** Rotate/offset/size the labels of these legs (all when omitted). */
-  const layoutLabels = useCallback((only?: Set<string>) => {
-    const m = mapRef.current;
-    if (!m) return;
-    for (const leg of legs) {
-      if (only && !only.has(leg.key)) continue;
-      const rec = markers.current.get(leg.key);
-      if (!rec) continue;
-      const a = m.project([leg.from.lon, leg.from.lat]);
-      const b = m.project([leg.to.lon, leg.to.lat]);
-      const pl = placeLabel(a, b);
-      const editing = live.current.editingLeg === leg.key;
-      const lm = editing ? 'full' : labelMode(pl.lengthPx);
-      rec.el.dataset.mode = lm;
-      // distance from the line to the label's centre: half the label's height plus a small gap
-      const off = lm === 'compact' ? 21 : 17;
-      const k = off * pl.side;
-      rec.inner.style.transform = `translate(${(pl.normal.x * k).toFixed(1)}px, ${(pl.normal.y * k).toFixed(1)}px) rotate(${pl.angleDeg.toFixed(1)}deg)`;
-    }
-  }, [legs]);
+  const layoutLabels = useCallback(
+    (only?: Set<string>) => {
+      const m = mapRef.current;
+      if (!m) return;
+      for (const leg of legs) {
+        if (only && !only.has(leg.key)) continue;
+        const rec = markers.current.get(leg.key);
+        if (!rec) continue;
+        const a = m.project([leg.from.lon, leg.from.lat]);
+        const b = m.project([leg.to.lon, leg.to.lat]);
+        const pl = placeLabel(a, b);
+        const editing = live.current.editingLeg === leg.key;
+        const lm = editing ? 'full' : labelMode(pl.lengthPx);
+        rec.el.dataset.mode = lm;
+        // distance from the line to the label's centre: half the label's height plus a small gap
+        const off = lm === 'compact' ? 21 : 17;
+        const k = off * pl.side;
+        rec.inner.style.transform = `translate(${(pl.normal.x * k).toFixed(1)}px, ${(pl.normal.y * k).toFixed(1)}px) rotate(${pl.angleDeg.toFixed(1)}deg)`;
+      }
+    },
+    [legs],
+  );
 
   useEffect(() => {
     const m = mapRef.current;
@@ -467,7 +604,9 @@ export function RouteMap(props: RouteMapProps) {
         const inner = document.createElement('div');
         inner.className = 'pgf-leg-inner';
         elx.appendChild(inner);
-        const marker = new maplibregl.Marker({ element: elx, anchor: 'center' }).setLngLat(mercatorMid(leg.from, leg.to)).addTo(m);
+        const marker = new maplibregl.Marker({ element: elx, anchor: 'center' })
+          .setLngLat(mercatorMid(leg.from, leg.to))
+          .addTo(m);
         rec = { marker, el: elx, inner, text: '', at: '' };
         markers.current.set(leg.key, rec);
       }
@@ -485,25 +624,52 @@ export function RouteMap(props: RouteMapProps) {
       rec.el.dataset.drawing = drawing ? '1' : '';
     });
     for (const [k, rec] of markers.current) {
-      if (!keep.has(k)) { rec.marker.remove(); markers.current.delete(k); }
+      if (!keep.has(k)) {
+        rec.marker.remove();
+        markers.current.delete(k);
+      }
     }
     layoutLabels(moved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [legs, altitudes, legHazards, loaded, drawing, layoutLabels]);
 
-  useEffect(() => () => { for (const r of markers.current.values()) r.marker.remove(); markers.current.clear(); }, []);
+  useEffect(
+    () => () => {
+      for (const r of markers.current.values()) r.marker.remove();
+      markers.current.clear();
+    },
+    [],
+  );
 
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !loaded) return;
     let raf = 0;
-    const on = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; layoutLabels(); }); };
+    const on = () => {
+      if (!raf)
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          layoutLabels();
+        });
+    };
     m.on('zoom', on);
     m.on('resize', on);
-    return () => { m.off('zoom', on); m.off('resize', on); if (raf) cancelAnimationFrame(raf); };
+    return () => {
+      m.off('zoom', on);
+      m.off('resize', on);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [loaded, layoutLabels]);
 
-  function renderLegLabel(inner: HTMLDivElement, key: string, mc: number, dist: number, altFt: number, alt: LegAltitude | undefined, haz: LegHazards | undefined) {
+  function renderLegLabel(
+    inner: HTMLDivElement,
+    key: string,
+    mc: number,
+    dist: number,
+    altFt: number,
+    alt: LegAltitude | undefined,
+    haz: LegHazards | undefined,
+  ) {
     inner.textContent = '';
     if (haz) {
       // weather on this leg: a small badge; its texts show on hover (and in the navlog strip)
@@ -528,12 +694,24 @@ export function RouteMap(props: RouteMapProps) {
     btn.title = !isFinite(altFt) ? 'Set altitude' : 'Edit altitude';
     btn.dataset.testid = 'leg-alt';
     stopMapEvents(btn);
-    btn.addEventListener('click', (e) => { e.stopPropagation(); startAltEdit(key); });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startAltEdit(key);
+    });
     inner.append(course, d, btn);
   }
 
   function stopMapEvents(node: HTMLElement) {
-    for (const t of ['mousedown', 'mouseup', 'click', 'dblclick', 'pointerdown', 'touchstart', 'wheel', 'contextmenu'] as const) {
+    for (const t of [
+      'mousedown',
+      'mouseup',
+      'click',
+      'dblclick',
+      'pointerdown',
+      'touchstart',
+      'wheel',
+      'contextmenu',
+    ] as const) {
       node.addEventListener(t, (e) => e.stopPropagation(), { passive: t === 'touchstart' || t === 'wheel' });
     }
   }
@@ -578,9 +756,13 @@ export function RouteMap(props: RouteMapProps) {
     };
     input.addEventListener('keydown', (e) => {
       e.stopPropagation();
-      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
-      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
-      else input.classList.remove('is-invalid');
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      } else input.classList.remove('is-invalid');
     });
     input.addEventListener('blur', () => {
       // a typo on blur is dropped rather than trapping focus
@@ -588,7 +770,8 @@ export function RouteMap(props: RouteMapProps) {
       if (typeof v === 'number' && !isFinite(v)) finish(false);
       else finish(true);
     });
-    if (btn) btn.replaceWith(input); else rec.inner.appendChild(input);
+    if (btn) btn.replaceWith(input);
+    else rec.inner.appendChild(input);
     rec.el.dataset.mode = 'full';
     rec.el.classList.add('is-editing');
     input.focus();
@@ -628,41 +811,74 @@ export function RouteMap(props: RouteMapProps) {
     const own = findSnap(pt, routeCandidates(live.current.shown, exceptUid), project, SNAP_RADIUS_PX, box);
     const ref = findSnap(pt, live.current.candidates, project, SNAP_RADIUS_PX, box);
     // the aerodrome keeps its priority over the route's own copy of the point it shadowed
-    const shadowedOwn = !!(own && ref?.shadowed && own.cand.lat === ref.shadowed.lat && own.cand.lon === ref.shadowed.lon);
+    const shadowedOwn = !!(
+      own &&
+      ref?.shadowed &&
+      own.cand.lat === ref.shadowed.lat &&
+      own.cand.lon === ref.shadowed.lon
+    );
     if (own && !shadowedOwn && (!ref || own.distPx <= ref.distPx + ref.cand.penaltyPx)) return own;
     return ref;
   }, []);
 
   function showSnap(m: MlMap, hit: SnapHit | null) {
-    setData(m, 'snap', hit ? { type: 'Feature', geometry: { type: 'Point', coordinates: [hit.cand.lon, hit.cand.lat] }, properties: {} } : EMPTY);
+    setData(
+      m,
+      'snap',
+      hit
+        ? { type: 'Feature', geometry: { type: 'Point', coordinates: [hit.cand.lon, hit.cand.lat] }, properties: {} }
+        : EMPTY,
+    );
   }
 
   // ------------------------------------------------------------------------------- name prompt
   const askName = useCallback((at: { x: number; y: number }, title: string, value: string): Promise<string | null> => {
     return new Promise((resolve) => {
       setPrompt({
-        x: at.x, y: at.y, title, value,
-        confirm: (name) => { setPrompt(null); resolve(name); },
-        cancel: () => { setPrompt(null); resolve(null); },
+        x: at.x,
+        y: at.y,
+        title,
+        value,
+        confirm: (name) => {
+          setPrompt(null);
+          resolve(name);
+        },
+        cancel: () => {
+          setPrompt(null);
+          resolve(null);
+        },
       });
     });
   }, []);
 
-  const placeCustom = useCallback(async (lngLat: { lng: number; lat: number }, at: { x: number; y: number }) => {
-    const { route: r, props: p } = live.current;
-    const name = await askName(at, 'Name this point', autoWaypointName(r));
-    if (!name) return;
-    const pt: RoutePoint = { uid: newUid(), kind: 'custom', refId: null, name, lat: +lngLat.lat.toFixed(6), lon: +lngLat.lng.toFixed(6) };
-    p.onRouteChange(addDrawnPoint(live.current.route, pt, live.current.toEnd));
-    p.onCustomWaypoint?.(pt);
-  }, [askName]);
+  const placeCustom = useCallback(
+    async (lngLat: { lng: number; lat: number }, at: { x: number; y: number }) => {
+      const { route: r, props: p } = live.current;
+      const name = await askName(at, 'Name this point', autoWaypointName(r));
+      if (!name) return;
+      const pt: RoutePoint = {
+        uid: newUid(),
+        kind: 'custom',
+        refId: null,
+        name,
+        lat: +lngLat.lat.toFixed(6),
+        lon: +lngLat.lng.toFixed(6),
+      };
+      p.onRouteChange(addDrawnPoint(live.current.route, pt, live.current.toEnd));
+      p.onCustomWaypoint?.(pt);
+    },
+    [askName],
+  );
 
   const stopDrawing = useCallback(() => {
     setMode('idle');
     setToEnd(false);
     setHover(null);
     const m = mapRef.current;
-    if (m) { setData(m, 'route-band', EMPTY); setData(m, 'snap', EMPTY); }
+    if (m) {
+      setData(m, 'route-band', EMPTY);
+      setData(m, 'snap', EMPTY);
+    }
   }, []);
 
   // --------------------------------------------------------------------------- map interaction
@@ -677,11 +893,15 @@ export function RouteMap(props: RouteMapProps) {
     // would return a just-removed point lying under another).
     const hitPoint = (p: { x: number; y: number }): number | null => {
       const r = live.current.route;
-      let best: number | null = null, bd = 10;
+      let best: number | null = null,
+        bd = 10;
       for (let i = r.length - 1; i >= 0; i--) {
         const q = m.project([r[i].lon, r[i].lat]);
         const d = Math.hypot(q.x - p.x, q.y - p.y);
-        if (d < bd) { bd = d; best = i; }
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
       }
       return best;
     };
@@ -701,21 +921,29 @@ export function RouteMap(props: RouteMapProps) {
       const ads = L.props.refData.aerodromes;
       if (routeIndex !== null) {
         const q = L.route[routeIndex];
-        return q.kind === 'aerodrome' ? ads.find((a) => a.id === q.refId) ?? null : null;
+        return q.kind === 'aerodrome' ? (ads.find((a) => a.id === q.refId) ?? null) : null;
       }
       if (!L.layers.aerodromes) return null;
-      let best: RefAerodrome | null = null, bd = 10;
+      let best: RefAerodrome | null = null,
+        bd = 10;
       for (const a of ads) {
         const q = m.project([a.lon, a.lat]);
         const d = Math.hypot(q.x - p.x, q.y - p.y);
-        if (d < bd) { bd = d; best = a; }
+        if (d < bd) {
+          bd = d;
+          best = a;
+        }
       }
       return best;
     };
 
     const onMove = (e: MapMouseEvent) => {
       lastMove = e;
-      if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (lastMove) handleMove(lastMove); });
+      if (!raf)
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          if (lastMove) handleMove(lastMove);
+        });
     };
 
     const handleMove = (e: MapMouseEvent) => {
@@ -725,8 +953,10 @@ export function RouteMap(props: RouteMapProps) {
         // near the bubble it fades out (it never hides what the pilot points at), except near its close
         // button, which stays visible and clickable
         const c = m.getContainer().getBoundingClientRect();
-        const x = e.point.x + c.left, y = e.point.y + c.top;
-        const near = (r: DOMRect, pad: number) => x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+        const x = e.point.x + c.left,
+          y = e.point.y + c.top;
+        const near = (r: DOMRect, pad: number) =>
+          x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
         const close = he.querySelector('[data-testid=map-hint-close]');
         setHintAway(near(he.getBoundingClientRect(), 48) && !(close && near(close.getBoundingClientRect(), 24)));
       }
@@ -735,7 +965,10 @@ export function RouteMap(props: RouteMapProps) {
       if (d || L.mode !== 'idle') setHoverPoint(null);
       if (d) {
         // the button is up but we never got its mouseup (released outside the window, …)
-        if ((e.originalEvent.buttons & 1) === 0) { cancelDrag(); return; }
+        if ((e.originalEvent.buttons & 1) === 0) {
+          cancelDrag();
+          return;
+        }
         if (!d.moved && Math.hypot(e.point.x - d.start.x, e.point.y - d.start.y) < 3) return;
         d.moved = true;
         const hit = shift ? null : snapAt(e.point, d.uid);
@@ -743,7 +976,15 @@ export function RouteMap(props: RouteMapProps) {
         showSnap(m, hit);
         const moved: RoutePoint = hit
           ? { ...pointFromCandidate(hit.cand, d.uid) }
-          : { ...d.orig, uid: d.uid, lat: e.lngLat.lat, lon: e.lngLat.lng, kind: 'custom', refId: null, name: d.orig.name };
+          : {
+              ...d.orig,
+              uid: d.uid,
+              lat: e.lngLat.lat,
+              lon: e.lngLat.lng,
+              kind: 'custom',
+              refId: null,
+              name: d.orig.name,
+            };
         const next = d.base.map((q) => (q.uid === d.uid ? moved : q));
         if (d.insert && !d.base.some((q) => q.uid === d.uid)) next.splice(d.index, 0, moved);
         setDraft(next);
@@ -759,15 +1000,29 @@ export function RouteMap(props: RouteMapProps) {
         const last = L.route[at - 1];
         const next = L.route[at];
         if (last) {
-          const coords = [[last.lon, last.lat], [target.lon, target.lat]];
+          const coords = [
+            [last.lon, last.lat],
+            [target.lon, target.lat],
+          ];
           if (next) coords.push([next.lon, next.lat]);
-          setData(m, 'route-band', { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} });
+          setData(m, 'route-band', {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: coords },
+            properties: {},
+          });
         }
         const custom = !hit;
         setHover({
-          x: e.point.x, y: e.point.y,
+          x: e.point.x,
+          y: e.point.y,
           name: hit ? hit.cand.name : null,
-          detail: hit ? snapDetail(hit) : custom ? (L.route.length ? 'Custom point: click and name it' : 'Click to start at a custom point') : null,
+          detail: hit
+            ? snapDetail(hit)
+            : custom
+              ? L.route.length
+                ? 'Custom point: click and name it'
+                : 'Click to start at a custom point'
+              : null,
           leg: last ? legReadout(last, target, L.props.date) : null,
         });
         return;
@@ -776,21 +1031,34 @@ export function RouteMap(props: RouteMapProps) {
       const pt = hitPoint(e.point);
       setHoverPoint(pt);
       const mid = pt === null ? hitMid(e.point) : null;
-      if (hoverMid !== undefined && mid !== hoverMid) { m.setFeatureState({ source: 'route-mid', id: hoverMid }, { hover: false }); hoverMid = undefined; }
-      if (mid !== null) { hoverMid = mid; m.setFeatureState({ source: 'route-mid', id: mid }, { hover: true }); }
+      if (hoverMid !== undefined && mid !== hoverMid) {
+        m.setFeatureState({ source: 'route-mid', id: hoverMid }, { hover: false });
+        hoverMid = undefined;
+      }
+      if (mid !== null) {
+        hoverMid = mid;
+        m.setFeatureState({ source: 'route-mid', id: mid }, { hover: true });
+      }
       m.getCanvas().style.cursor = pt !== null ? 'grab' : mid !== null ? 'copy' : '';
       // an aerodrome under the cursor: its hours on the flight's date
       const ad = mid === null && !L.airPop && !L.adPop && !notamLive.current.pop ? adAt(e.point, pt) : null;
       setAdTip(ad ? { x: e.point.x, y: e.point.y, a: ad } : null);
       if (ad && pt === null) m.getCanvas().style.cursor = 'pointer';
       // weather hazard bands/rings under the cursor: their texts (they are not printed on the chart)
-      const wx = pt === null && mid === null && !L.airPop && !ad ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
+      const wx =
+        pt === null && mid === null && !L.airPop && !ad ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
       setWxTip(wx.length ? { x: e.point.x, y: e.point.y, items: wx } : null);
       // NOTAM areas under the cursor: ID, validity and limits
-      const nk = pt === null && mid === null && !ad && !wx.length && !L.airPop && !notamLive.current.pop ? notamKeysAt(m, e.point, notamLive.current.marks) : [];
+      const nk =
+        pt === null && mid === null && !ad && !wx.length && !L.airPop && !notamLive.current.pop
+          ? notamKeysAt(m, e.point, notamLive.current.marks)
+          : [];
       setNotamTip(nk.length ? { x: e.point.x, y: e.point.y, keys: nk } : null);
       // airspace under the cursor: name, class and limits; the smallest one is highlighted
-      const air = pt === null && mid === null && !ad && !wx.length && !nk.length && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
+      const air =
+        pt === null && mid === null && !ad && !wx.length && !nk.length && !L.airPop
+          ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat)
+          : [];
       highlightAirspace(air[0] ?? null);
       setAirTip(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
     };
@@ -798,7 +1066,8 @@ export function RouteMap(props: RouteMapProps) {
     let hoverAir: AirspaceInfo | null = null;
     const highlightAirspace = (a: AirspaceInfo | null) => {
       if (hoverAir?.id === a?.id) return;
-      const src = (x: AirspaceInfo) => (x.type === 'CTR' || x.type === 'ATZ' ? 'zones' : isArea(x.type) ? 'areas' : 'airspaces');
+      const src = (x: AirspaceInfo) =>
+        x.type === 'CTR' || x.type === 'ATZ' ? 'zones' : isArea(x.type) ? 'areas' : 'airspaces';
       if (hoverAir) m.setFeatureState({ source: src(hoverAir), id: hoverAir.id }, { hover: false });
       hoverAir = a;
       if (a) m.setFeatureState({ source: src(a), id: a.id }, { hover: true });
@@ -813,15 +1082,30 @@ export function RouteMap(props: RouteMapProps) {
         const uid = L.route[index].uid;
         e.preventDefault();
         setSelected(uid);
-        drag.current = { uid, index, insert: false, start: { x: e.point.x, y: e.point.y }, moved: false, base: L.route, orig: L.route[index], hit: null };
+        drag.current = {
+          uid,
+          index,
+          insert: false,
+          start: { x: e.point.x, y: e.point.y },
+          moved: false,
+          base: L.route,
+          orig: L.route[index],
+          hit: null,
+        };
       } else if (mid !== null) {
         const leg = mid;
         e.preventDefault();
         const uid = newUid();
         const ll = { lat: e.lngLat.lat, lon: e.lngLat.lng };
         drag.current = {
-          uid, index: leg + 1, insert: true, start: { x: e.point.x, y: e.point.y }, moved: false, base: L.route,
-          orig: { uid, kind: 'custom', refId: null, name: autoWaypointName(L.route), ...ll }, hit: null,
+          uid,
+          index: leg + 1,
+          insert: true,
+          start: { x: e.point.x, y: e.point.y },
+          moved: false,
+          base: L.route,
+          orig: { uid, kind: 'custom', refId: null, name: autoWaypointName(L.route), ...ll },
+          hit: null,
         };
       } else return;
       setHoverPoint(null);
@@ -858,8 +1142,13 @@ export function RouteMap(props: RouteMapProps) {
       const d = endDrag();
       if (!d) return;
       suppressClick.current = true;
-      setTimeout(() => { suppressClick.current = false; }, 0);
-      if (!d.moved) { setDraft(null); return; }
+      setTimeout(() => {
+        suppressClick.current = false;
+      }, 0);
+      if (!d.moved) {
+        setDraft(null);
+        return;
+      }
       const L = live.current;
       const rect = m.getContainer().getBoundingClientRect();
       const at = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
@@ -871,8 +1160,15 @@ export function RouteMap(props: RouteMapProps) {
       else {
         let name = d.orig.kind === 'custom' && !d.insert ? d.orig.name : '';
         if (!name) {
-          const asked = await askName(at, d.insert ? 'Name the new point' : 'Name this point', autoWaypointName(L.route));
-          if (!asked) { setDraft(null); return; }
+          const asked = await askName(
+            at,
+            d.insert ? 'Name the new point' : 'Name this point',
+            autoWaypointName(L.route),
+          );
+          if (!asked) {
+            setDraft(null);
+            return;
+          }
           name = asked;
         }
         point = { uid: d.uid, kind: 'custom', refId: null, name, lat: +ll.lat.toFixed(6), lon: +ll.lng.toFixed(6) };
@@ -882,21 +1178,29 @@ export function RouteMap(props: RouteMapProps) {
       setDraft(null);
       live.current.props.onRouteChange(next);
       // keep the point selected under its (possibly new) uid
-      if (!d.insert) setSelected(next.find((q) => q.lat === point.lat && q.lon === point.lon && q.name === point.name)?.uid ?? null);
-      if (point.kind === 'custom' && (d.insert || d.orig.kind !== 'custom')) live.current.props.onCustomWaypoint?.(next.find((q) => q.lat === point.lat && q.lon === point.lon) ?? point);
+      if (!d.insert)
+        setSelected(next.find((q) => q.lat === point.lat && q.lon === point.lon && q.name === point.name)?.uid ?? null);
+      if (point.kind === 'custom' && (d.insert || d.orig.kind !== 'custom'))
+        live.current.props.onCustomWaypoint?.(next.find((q) => q.lat === point.lat && q.lon === point.lon) ?? point);
     };
 
     const onClick = (e: MapMouseEvent) => {
       if (suppressClick.current) return;
       const L = live.current;
       setMenu(null);
-      if (L.prompt) { L.prompt.cancel(); return; }
+      if (L.prompt) {
+        L.prompt.cancel();
+        return;
+      }
       if (L.mode === 'idle') {
         const i = hitPoint(e.point);
         setSelected(i === null ? null : L.route[i].uid);
         // a click on a charted aerodrome opens its hours (a second click closes them)
         setAdTip(null);
-        if (L.adPop) { setAdPop(null); return; }
+        if (L.adPop) {
+          setAdPop(null);
+          return;
+        }
         const ad = i === null && !L.airPop && !notamLive.current.pop ? adAt(e.point, null) : null;
         if (ad) {
           setAdPop({ x: e.point.x, y: e.point.y, a: ad });
@@ -907,7 +1211,10 @@ export function RouteMap(props: RouteMapProps) {
         }
         // a click on a NOTAM area opens its details (a second click closes them)
         setNotamTip(null);
-        if (notamLive.current.pop) { setNotamPop(null); return; }
+        if (notamLive.current.pop) {
+          setNotamPop(null);
+          return;
+        }
         const nk = i === null && !L.airPop ? notamKeysAt(m, e.point, notamLive.current.marks) : [];
         if (nk.length) {
           setNotamPop({ x: e.point.x, y: e.point.y, keys: nk });
@@ -933,12 +1240,18 @@ export function RouteMap(props: RouteMapProps) {
         const qp = m.project([q.lon, q.lat]);
         return Math.hypot(qp.x - e.point.x, qp.y - e.point.y) <= 8;
       };
-      if ((last && L.route.length >= 2 && near(last)) || near(next)) { stopDrawing(); return; }
+      if ((last && L.route.length >= 2 && near(last)) || near(next)) {
+        stopDrawing();
+        return;
+      }
       const hit = shift ? null : snapAt(e.point);
       if (hit) {
         const same = (q: RoutePoint | undefined) => !!q && hit.cand.lat === q.lat && hit.cand.lon === q.lon;
         if (same(last)) return;
-        if (same(next)) { stopDrawing(); return; }
+        if (same(next)) {
+          stopDrawing();
+          return;
+        }
         L.props.onRouteChange(addDrawnPoint(L.route, pointFromCandidate(hit.cand, newUid()), L.toEnd));
         return;
       }
@@ -946,7 +1259,10 @@ export function RouteMap(props: RouteMapProps) {
     };
 
     const onDbl = (e: MapMouseEvent) => {
-      if (live.current.mode !== 'idle') { e.preventDefault(); stopDrawing(); }
+      if (live.current.mode !== 'idle') {
+        e.preventDefault();
+        stopDrawing();
+      }
     };
 
     const onContext = (e: MapMouseEvent) => {
@@ -962,7 +1278,22 @@ export function RouteMap(props: RouteMapProps) {
       }
     };
 
-    const onOut = () => { setHoverPoint(null); setAirTip(null); setWxTip(null); setNotamTip(null); setAdTip(null); setHintAway(false); if (!live.current.airPop) highlightAirspace(null); if (!drag.current) { setHover(null); if (live.current.mode !== 'idle') { setData(m, 'route-band', EMPTY); showSnap(m, null); } } };
+    const onOut = () => {
+      setHoverPoint(null);
+      setAirTip(null);
+      setWxTip(null);
+      setNotamTip(null);
+      setAdTip(null);
+      setHintAway(false);
+      if (!live.current.airPop) highlightAirspace(null);
+      if (!drag.current) {
+        setHover(null);
+        if (live.current.mode !== 'idle') {
+          setData(m, 'route-band', EMPTY);
+          showSnap(m, null);
+        }
+      }
+    };
 
     m.on('mousemove', onMove);
     m.on('mousedown', onDown);
@@ -987,9 +1318,14 @@ export function RouteMap(props: RouteMapProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Escape closes the layers popover even while one of its checkboxes has the focus.
-      if (e.key === 'Escape' && live.current.layersOpen && !drag.current) { e.preventDefault(); setLayersOpen(false); return; }
+      if (e.key === 'Escape' && live.current.layersOpen && !drag.current) {
+        e.preventDefault();
+        setLayersOpen(false);
+        return;
+      }
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable))
+        return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const L = live.current;
       if (e.key === 'Escape') {
@@ -1029,7 +1365,7 @@ export function RouteMap(props: RouteMapProps) {
   }, [stopDrawing]);
 
   // ------------------------------------------------------------------------------- menu actions
-  const menuPoint = menu ? route.find((p) => p.uid === menu.uid) ?? null : null;
+  const menuPoint = menu ? (route.find((p) => p.uid === menu.uid) ?? null) : null;
   const doRename = async () => {
     if (!menu || !menuPoint) return;
     const at = { x: menu.x, y: menu.y };
@@ -1071,31 +1407,56 @@ export function RouteMap(props: RouteMapProps) {
     const items: MenuItem[] = [];
     if (p.kind === 'custom') {
       items.push({ label: 'Rename…', onSelect: () => void doRename() });
-      if (props.onSaveWaypoint) items.push({ label: saving ? 'Saving…' : 'Save to my waypoints', onSelect: () => void doSave(), disabled: saving });
+      if (props.onSaveWaypoint)
+        items.push({
+          label: saving ? 'Saving…' : 'Save to my waypoints',
+          onSelect: () => void doSave(),
+          disabled: saving,
+        });
     }
     if (p.kind === 'aerodrome' && props.onRequest) {
       const onRequest = props.onRequest;
       const idx = route.findIndex((q) => q.uid === p.uid);
       const cur = props.requests?.[p.uid];
-      const set = (kind: AerodromeRequest['kind'] | null, stopMin?: number) => { onRequest(p.uid, kind, stopMin); setMenu(null); };
+      const set = (kind: AerodromeRequest['kind'] | null, stopMin?: number) => {
+        onRequest(p.uid, kind, stopMin);
+        setMenu(null);
+      };
       const askStop = () => {
-        const v = window.prompt(`Intermediate stop at ${p.name}: minutes on the ground`, String(cur?.stopMin ?? DEFAULT_STOP_MIN));
+        const v = window.prompt(
+          `Intermediate stop at ${p.name}: minutes on the ground`,
+          String(cur?.stopMin ?? DEFAULT_STOP_MIN),
+        );
         const n = v == null ? NaN : Math.round(Number(v));
         if (isFinite(n) && n > 0) set('stop', n);
       };
-      if (cur?.kind === 'touch-and-go') items.push({ label: 'Remove touch-and-go request', onSelect: () => set(null), testId: 'menu-tng-remove' });
+      if (cur?.kind === 'touch-and-go')
+        items.push({ label: 'Remove touch-and-go request', onSelect: () => set(null), testId: 'menu-tng-remove' });
       else if (requestAllowed(route, idx, 'touch-and-go')) {
-        items.push({ label: idx === 0 ? 'Request touch-and-go before leaving' : 'Request touch-and-go', onSelect: () => set('touch-and-go'), testId: 'menu-tng' });
+        items.push({
+          label: idx === 0 ? 'Request touch-and-go before leaving' : 'Request touch-and-go',
+          onSelect: () => set('touch-and-go'),
+          testId: 'menu-tng',
+        });
       }
       if (cur?.kind === 'stop') {
         items.push({ label: `Change stop (${cur.stopMin ?? DEFAULT_STOP_MIN} min)…`, onSelect: askStop });
         items.push({ label: 'Remove stop request', onSelect: () => set(null), testId: 'menu-stop-remove' });
-      } else if (requestAllowed(route, idx, 'stop')) items.push({ label: 'Request intermediate stop…', onSelect: askStop, testId: 'menu-stop' });
+      } else if (requestAllowed(route, idx, 'stop'))
+        items.push({ label: 'Request intermediate stop…', onSelect: askStop, testId: 'menu-stop' });
     }
-    const ad = p.kind === 'aerodrome' && props.aerodromeInfo ? refData.aerodromes.find((x) => x.id === p.refId) : undefined;
+    const ad =
+      p.kind === 'aerodrome' && props.aerodromeInfo ? refData.aerodromes.find((x) => x.id === p.refId) : undefined;
     if (ad && menu) {
       const at = { x: menu.x, y: menu.y };
-      items.push({ label: 'Aerodrome hours…', onSelect: () => { setAdPop({ ...at, a: ad }); setMenu(null); }, testId: 'menu-ad-hours' });
+      items.push({
+        label: 'Aerodrome hours…',
+        onSelect: () => {
+          setAdPop({ ...at, a: ad });
+          setMenu(null);
+        },
+        testId: 'menu-ad-hours',
+      });
     }
     if (route[route.length - 1]?.uid === p.uid) items.push({ label: 'Continue drawing', onSelect: continueFrom });
     items.push({ label: 'Remove point', onSelect: doRemove, danger: true });
@@ -1104,19 +1465,20 @@ export function RouteMap(props: RouteMapProps) {
 
   // ----------------------------------------------------------------------------------- render
   const closing = mode !== 'idle' && drawIndex(route, toEnd) < route.length ? route[route.length - 1] : null;
-  const hint = mode === 'custom'
-    ? closing
-      ? `Click to place a custom point before ${closing.name} and name it · Esc to stop`
-      : 'Click to place a custom point and name it · Esc to stop'
-    : mode === 'draw'
-      ? route.length === 0
-        ? 'Click your departure aerodrome to start'
-        : closing
-          ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
-          : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
-      : route.length >= 2
-        ? 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
-        : '';
+  const hint =
+    mode === 'custom'
+      ? closing
+        ? `Click to place a custom point before ${closing.name} and name it · Esc to stop`
+        : 'Click to place a custom point and name it · Esc to stop'
+      : mode === 'draw'
+        ? route.length === 0
+          ? 'Click your departure aerodrome to start'
+          : closing
+            ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
+            : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
+        : route.length >= 2
+          ? 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
+          : '';
 
   return (
     <div className="pgf-map" data-testid="map" data-ready={loaded ? '1' : undefined}>
@@ -1125,21 +1487,44 @@ export function RouteMap(props: RouteMapProps) {
 
       {!failed && (
         <MapToolbar
-          mode={mode} hasRoute={route.length > 0} onMode={(m) => { setToEnd(false); setMode(m); }}
-          onUndo={props.onUndo} onRedo={props.onRedo} canUndo={props.canUndo} canRedo={props.canRedo} onFit={fitRoute}
+          mode={mode}
+          hasRoute={route.length > 0}
+          onMode={(m) => {
+            setToEnd(false);
+            setMode(m);
+          }}
+          onUndo={props.onUndo}
+          onRedo={props.onRedo}
+          canUndo={props.canUndo}
+          canRedo={props.canRedo}
+          onFit={fitRoute}
         />
       )}
 
       {!failed && (
         <LayersControl
-          open={layersOpen} onOpen={setLayersOpen} layers={layers} onLayers={props.onLayers}
-          tips={prefs.tips} onTips={(tips) => setPrefs({ ...prefs, tips })}
-          airac={refData.airac.id} areaCount={areaCount} notamCount={notamMarks.length}
+          open={layersOpen}
+          onOpen={setLayersOpen}
+          layers={layers}
+          onLayers={props.onLayers}
+          tips={prefs.tips}
+          onTips={(tips) => setPrefs({ ...prefs, tips })}
+          airac={refData.airac.id}
+          areaCount={areaCount}
+          notamCount={notamMarks.length}
         />
       )}
 
       {hint && prefs.tips && !failed && (
-        <MapHint text={hint} away={hintAway} onClose={() => { setPrefs({ ...prefs, tips: false }); setHintAway(false); }} hintRef={hintEl} />
+        <MapHint
+          text={hint}
+          away={hintAway}
+          onClose={() => {
+            setPrefs({ ...prefs, tips: false });
+            setHintAway(false);
+          }}
+          hintRef={hintEl}
+        />
       )}
 
       {hover && (hover.name || hover.detail || hover.leg) && !prompt && (
@@ -1152,13 +1537,21 @@ export function RouteMap(props: RouteMapProps) {
 
       {wxTip && !airPop && !hover && mode === 'idle' && (
         <MapTip x={wxTip.x} y={wxTip.y} className="pgf-snap-tip pgf-wx-tip" testId="hazard-tip">
-          {wxTip.items.map((h) => <span key={h.label} className={'is-' + h.level}>{h.label}</span>)}
+          {wxTip.items.map((h) => (
+            <span key={h.label} className={'is-' + h.level}>
+              {h.label}
+            </span>
+          ))}
         </MapTip>
       )}
-      {notamTip && !notamPop && !airPop && !hover && mode === 'idle' && <NotamTip x={notamTip.x} y={notamTip.y} items={notamsOf(notamTip.keys)} />}
+      {notamTip && !notamPop && !airPop && !hover && mode === 'idle' && (
+        <NotamTip x={notamTip.x} y={notamTip.y} items={notamsOf(notamTip.keys)} />
+      )}
       {notamPop && notamsOf(notamPop.keys).length > 0 && (
         <NotamPopover
-          x={notamPop.x} y={notamPop.y} items={notamsOf(notamPop.keys)}
+          x={notamPop.x}
+          y={notamPop.y}
+          items={notamsOf(notamPop.keys)}
           legName={(i) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '')}
           onOpen={(k) => props.onNotamSelect?.(k)}
           onClose={() => setNotamPop(null)}
@@ -1169,18 +1562,37 @@ export function RouteMap(props: RouteMapProps) {
         <AerodromeTip x={adTip.x} y={adTip.y} a={adTip.a} info={props.aerodromeInfo(adTip.a)} />
       )}
       {adPop && props.aerodromeInfo && (
-        <AerodromePopover x={adPop.x} y={adPop.y} a={adPop.a} info={props.aerodromeInfo(adPop.a)} airac={refData.airac.id} onClose={() => setAdPop(null)} />
+        <AerodromePopover
+          x={adPop.x}
+          y={adPop.y}
+          a={adPop.a}
+          info={props.aerodromeInfo(adPop.a)}
+          airac={refData.airac.id}
+          onClose={() => setAdPop(null)}
+        />
       )}
       {airPop && (
         <AirspacePopover
-          x={airPop.x} y={airPop.y} items={airPop.items} airac={refData.airac.id}
+          x={airPop.x}
+          y={airPop.y}
+          items={airPop.items}
+          airac={refData.airac.id}
           onClose={() => setAirPop(null)}
         />
       )}
 
       {prompt && <NameBox prompt={prompt} />}
 
-      {menu && menuPoint && <PointMenu x={menu.x} y={menu.y} title={menuPoint.name} detail={KIND_LABEL[menuPoint.kind]} items={menuItems(menuPoint)} error={saveErr} />}
+      {menu && menuPoint && (
+        <PointMenu
+          x={menu.x}
+          y={menu.y}
+          title={menuPoint.name}
+          detail={KIND_LABEL[menuPoint.kind]}
+          items={menuItems(menuPoint)}
+          error={saveErr}
+        />
+      )}
     </div>
   );
 }

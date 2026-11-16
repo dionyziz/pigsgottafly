@@ -26,19 +26,29 @@ const header = (req: Req, name: string): string => {
 export function crossSiteRefusal(req: Req): { status: number; error: string } | null {
   const method = (req.method || 'GET').toUpperCase();
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return null;
-  if (header(req, 'sec-fetch-site').toLowerCase() === 'cross-site') return { status: 403, error: 'cross-site request refused' };
+  if (header(req, 'sec-fetch-site').toLowerCase() === 'cross-site')
+    return { status: 403, error: 'cross-site request refused' };
   const origin = header(req, 'origin');
   if (origin) {
     const host = (header(req, 'x-forwarded-host') || header(req, 'host')).split(',')[0].trim().toLowerCase();
     let originHost = '';
-    try { originHost = new URL(origin).host.toLowerCase(); } catch { /* 'null' or garbage */ }
+    try {
+      originHost = new URL(origin).host.toLowerCase();
+    } catch {
+      /* 'null' or garbage */
+    }
     if (!originHost || originHost !== host) return { status: 403, error: 'cross-site request refused' };
   }
-  if (!isJsonContentType(req.headers['content-type'])) return { status: 415, error: 'send the request as application/json' };
+  if (!isJsonContentType(req.headers['content-type']))
+    return { status: 415, error: 'send the request as application/json' };
   return null;
 }
 
-const emailList = (v: string | undefined) => (v || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+const emailList = (v: string | undefined) =>
+  (v || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiConfig, 'googleKeys' | 'secureCookie'> {
   return {
@@ -46,13 +56,18 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiCon
     allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
     adminEmails: emailList(env.ADMIN_EMAILS),
-    ...(env.OPEN_METEO_DAILY_BUDGET ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } } : {}),
+    ...(env.OPEN_METEO_DAILY_BUDGET
+      ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } }
+      : {}),
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots; unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
   };
 }
 
-export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[] = ROUTES): (req: Req, res: Res) => Promise<void> {
+export function createApi(
+  opts: { db: Db } & Partial<ApiConfig>,
+  routes: Route[] = ROUTES,
+): (req: Req, res: Res) => Promise<void> {
   const allowedEmails = (opts.allowedEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean);
   const config: ApiConfig = {
     googleClientId: opts.googleClientId || '',
@@ -67,10 +82,18 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
   };
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {
-    console.warn('autorouter: neither AUTOROUTER_PILOTS nor ALLOWED_EMAILS is set; NOTAMs and filing are disabled for every pilot');
+    console.warn(
+      'autorouter: neither AUTOROUTER_PILOTS nor ALLOWED_EMAILS is set; NOTAMs and filing are disabled for every pilot',
+    );
   }
   const listed = (list: string[], p: Pilot | null): boolean =>
-    !!p && (!config.googleClientId || list.includes(String(p.email || '').trim().toLowerCase()));
+    !!p &&
+    (!config.googleClientId ||
+      list.includes(
+        String(p.email || '')
+          .trim()
+          .toLowerCase(),
+      ));
   /** The shared autorouter account is for the listed pilots only (local mode: the local pilot). */
   const autorouterFor = (p: Pilot | null): boolean => listed(config.autorouterPilots!, p);
   /** Any signed-in pilot may e-mail forms; the pilot is cc'd, so an e-mail address is needed. */
@@ -80,13 +103,21 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
 
   /** Records a 5xx answer (or the unhandled error behind it) in app_errors; never throws. */
   const monitor = (req: Req, status: number, e: unknown, route: string | null, pilot: Pilot | null) =>
-    recordError(db, {
-      kind: 'server',
-      message: e instanceof Error ? e.message : typeof (e as any)?.error === 'string' ? (e as any).error : `HTTP ${status}`,
-      stack: e instanceof Error && !(e instanceof HttpError) ? e.stack : null,
-      route, method: req.method || null, status, pilotId: pilot?.id ?? null,
-      userAgent: String(req.headers['user-agent'] || '') || null,
-    }, { adminEmails: config.adminEmails });
+    recordError(
+      db,
+      {
+        kind: 'server',
+        message:
+          e instanceof Error ? e.message : typeof (e as any)?.error === 'string' ? (e as any).error : `HTTP ${status}`,
+        stack: e instanceof Error && !(e instanceof HttpError) ? e.stack : null,
+        route,
+        method: req.method || null,
+        status,
+        pilotId: pilot?.id ?? null,
+        userAgent: String(req.headers['user-agent'] || '') || null,
+      },
+      { adminEmails: config.adminEmails },
+    );
 
   return async function handle(req, res) {
     let route: string | null = null;
@@ -107,7 +138,9 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
         let renewed: string | null = null;
         if (r.auth !== false) {
           const row = config.googleClientId
-            ? await sessionPilotRow(db, req, config.allowedEmails, (tok) => { renewed = sessionCookie(tok, SESSION_MS / 1000, config.secureCookie); })
+            ? await sessionPilotRow(db, req, config.allowedEmails, (tok) => {
+                renewed = sessionCookie(tok, SESSION_MS / 1000, config.secureCookie);
+              })
             : await localPilotRow(db);
           if (!row) return send(res, 401, { error: 'sign in' });
           pilot = toPilot(row);
@@ -115,8 +148,15 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
         let bodyP: Promise<any> | null = null;
         const arOk = autorouterFor(pilot);
         const ctx: Ctx = {
-          req, db, config, params, query: url.searchParams, pilot: pilot!, headers: renewed ? { 'Set-Cookie': renewed } : {},
-          autorouter: arOk ? autorouter : null, autorouterDenied: !!autorouter && !arOk,
+          req,
+          db,
+          config,
+          params,
+          query: url.searchParams,
+          pilot: pilot!,
+          headers: renewed ? { 'Set-Cookie': renewed } : {},
+          autorouter: arOk ? autorouter : null,
+          autorouterDenied: !!autorouter && !arOk,
           formsMailDenied: !formsMailFor(pilot),
           isAdmin: isAdmin(config, pilot),
           body: () => (bodyP ||= readJsonObject(req)),

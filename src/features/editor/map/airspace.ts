@@ -6,7 +6,10 @@ import { deg, rad, R_NM } from '../../../calc';
 
 /** Point at distance/bearing from a start (great circle), [lon, lat]. */
 export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
-  const d = distNm / R_NM, b = rad(bearingDeg), p1 = rad(lat), l1 = rad(lon);
+  const d = distNm / R_NM,
+    b = rad(bearingDeg),
+    p1 = rad(lat),
+    l1 = rad(lon);
   const p2 = Math.asin(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(b));
   const l2 = l1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(p1), Math.cos(d) - Math.sin(p1) * Math.sin(p2));
   return [deg(l2), deg(p2)];
@@ -95,8 +98,16 @@ export function airspaceLabel(a: Pick<AirspaceInfo, 'name' | 'cls' | 'lower' | '
 }
 
 function bboxOf(ring: [number, number][]): [number, number, number, number] {
-  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
-  for (const [x, y] of ring) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); }
+  let w = Infinity,
+    s = Infinity,
+    e = -Infinity,
+    n = -Infinity;
+  for (const [x, y] of ring) {
+    w = Math.min(w, x);
+    e = Math.max(e, x);
+    s = Math.min(s, y);
+    n = Math.max(n, y);
+  }
   return [w, s, e, n];
 }
 
@@ -110,24 +121,48 @@ export function fromTma(s: RefAirspace): AirspaceInfo {
   const ring = closed(s.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
   const type: AirspaceType = s.kind === 'MTMA' ? 'MTMA' : 'TMA';
   return {
-    id: s.id, name: s.name, sector: s.sector, type, cls: s.class, lower: s.lower, upper: s.upper,
+    id: s.id,
+    name: s.name,
+    sector: s.sector,
+    type,
+    cls: s.class,
+    lower: s.lower,
+    upper: s.upper,
     lateral: `Polygon, ${ring.length - 1} points`,
-    notes: s.note ? [s.note] : [], units: s.units, remarks: '', source: s.source || 'ENR 2.1', ring, bbox: bboxOf(ring),
+    notes: s.note ? [s.note] : [],
+    units: s.units,
+    remarks: '',
+    source: s.source || 'ENR 2.1',
+    ring,
+    bbox: bboxOf(ring),
   };
 }
 
 export function fromAd(z: RefAdAirspace): AirspaceInfo | null {
   let ring: [number, number][];
   if (z.circle) ring = circleRing(z.circle.lat, z.circle.lon, z.circle.radiusNm, 72);
-  else if (z.polygon && z.polygon.length >= 3) ring = closed(z.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
+  else if (z.polygon && z.polygon.length >= 3)
+    ring = closed(z.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
   else return null;
   const notes: string[] = [];
   if (z.lateralNote) notes.push(z.lateralNote);
   if (z.verticalNote) notes.push(z.verticalNote);
   if (z.afis) notes.push('Class D only while ATC is provided. AFIS at present: RMZ, class G (see remarks).');
   return {
-    id: z.id, name: z.name, sector: '', type: z.kind, cls: z.class, lower: z.lower, upper: z.upper, lateral: z.lateral,
-    notes, units: z.units, remarks: z.remarks, source: z.source, ring, bbox: bboxOf(ring),
+    id: z.id,
+    name: z.name,
+    sector: '',
+    type: z.kind,
+    cls: z.class,
+    lower: z.lower,
+    upper: z.upper,
+    lateral: z.lateral,
+    notes,
+    units: z.units,
+    remarks: z.remarks,
+    source: z.source,
+    ring,
+    bbox: bboxOf(ring),
   };
 }
 
@@ -145,17 +180,36 @@ export function fromArea(a: RefArea): AirspaceInfo | null {
     lateral = `Polygon, ${ring.length - 1} points`;
   } else return null;
   return {
-    id: a.id, name: a.kind === 'ACT' ? a.name || a.id : a.name ? `${a.id} ${a.name}` : a.id, sector: '', type: a.kind, cls: '',
-    lower: a.lower, upper: a.upper, lateral, activity: a.activity, code: a.kind === 'ACT' ? a.name || a.id : a.id, notes: a.geometryNote ? [a.geometryNote] : [], units: [], remarks: a.remarks, source: a.source,
-    ring, bbox: bboxOf(ring),
+    id: a.id,
+    name: a.kind === 'ACT' ? a.name || a.id : a.name ? `${a.id} ${a.name}` : a.id,
+    sector: '',
+    type: a.kind,
+    cls: '',
+    lower: a.lower,
+    upper: a.upper,
+    lateral,
+    activity: a.activity,
+    code: a.kind === 'ACT' ? a.name || a.id : a.id,
+    notes: a.geometryNote ? [a.geometryNote] : [],
+    units: [],
+    remarks: a.remarks,
+    source: a.source,
+    ring,
+    bbox: bboxOf(ring),
   };
 }
 
 /** All airspace shown on the map: TMAs/MTMAs, then CTRs and ATZs, then the ENR 5 areas. */
 export function airspaceInfos(tmas: RefAirspace[], ad: RefAdAirspace[] = [], areas: RefArea[] = []): AirspaceInfo[] {
   const out = tmas.filter((s) => s.polygon.length >= 3).map(fromTma);
-  for (const z of ad) { const i = fromAd(z); if (i) out.push(i); }
-  for (const a of areas) { const i = fromArea(a); if (i) out.push(i); }
+  for (const z of ad) {
+    const i = fromAd(z);
+    if (i) out.push(i);
+  }
+  for (const a of areas) {
+    const i = fromArea(a);
+    if (i) out.push(i);
+  }
   return out;
 }
 
@@ -163,8 +217,9 @@ export function airspaceInfos(tmas: RefAirspace[], ad: RefAdAirspace[] = [], are
 export function pointInRing(lon: number, lat: number, ring: [number, number][]): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const [xi, yi] = ring[i], [xj, yj] = ring[j];
-    if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+    const [xi, yi] = ring[i],
+      [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
 }
@@ -178,5 +233,7 @@ const ORDER: Record<AirspaceType, number> = { P: 0, R: 1, D: 2, ATZ: 3, CTR: 4, 
 
 /** Airspaces containing a point: prohibited / restricted / danger areas first, then ATZ, CTR, other areas, TMA, MTMA. */
 export function airspacesAt(infos: AirspaceInfo[], lon: number, lat: number): AirspaceInfo[] {
-  return infos.filter((a) => contains(a, lon, lat)).sort((x, y) => ORDER[x.type] - ORDER[y.type] || limitFt(x.upper).ft - limitFt(y.upper).ft);
+  return infos
+    .filter((a) => contains(a, lon, lat))
+    .sort((x, y) => ORDER[x.type] - ORDER[y.type] || limitFt(x.upper).ft - limitFt(y.upper).ft);
 }

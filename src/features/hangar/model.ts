@@ -6,8 +6,19 @@
 // React (unit-tested in tests/unit/screens/hangar.test.ts and hangarScratch.test.ts, which builds
 // the owner's SX-ASV and SX-ASG from a blank aircraft with these operations).
 import type {
-  AircraftInput, CompassCard, Envelope, EnvelopePoint, FuelSpec, FuelType, LandingTable, MassBalance, PerformanceFactors, PerformanceTables,
-  Station, StationKind, TakeoffTable,
+  AircraftInput,
+  CompassCard,
+  Envelope,
+  EnvelopePoint,
+  FuelSpec,
+  FuelType,
+  LandingTable,
+  MassBalance,
+  PerformanceFactors,
+  PerformanceTables,
+  Station,
+  StationKind,
+  TakeoffTable,
 } from '../../shared/types';
 import { FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
 import { isIsoDate, parseIsoDate } from '../../shared/date';
@@ -34,13 +45,18 @@ export { isIsoDate } from '../../shared/date';
 
 /** Whole days from a to b ('YYYY-MM-DD'); null if either is invalid. */
 export function daysFromTo(a: string, b: string): number | null {
-  const x = parseIsoDate(a), y = parseIsoDate(b);
+  const x = parseIsoDate(a),
+    y = parseIsoDate(b);
   return x === null || y === null ? null : Math.round((y - x) / 86400000);
 }
 
 export type CardState = 'valid' | 'expiring' | 'expired' | 'unknown';
 /** Status of a compass card on `today`; `warnDays` before expiry it becomes 'expiring'. */
-export function cardStatus(card: Pick<CompassCard, 'expires'>, today: string, warnDays: number): { state: CardState; days: number | null } {
+export function cardStatus(
+  card: Pick<CompassCard, 'expires'>,
+  today: string,
+  warnDays: number,
+): { state: CardState; days: number | null } {
   const days = daysFromTo(today, card.expires);
   if (days === null) return { state: 'unknown', days: null };
   if (days < 0) return { state: 'expired', days };
@@ -50,7 +66,7 @@ export function cardStatus(card: Pick<CompassCard, 'expires'>, today: string, wa
 
 /** Deviation steer − for, normalised to −180…180. */
 export function deviationOf(forDeg: number, steerDeg: number): number {
-  let d = ((steerDeg - forDeg) % 360 + 540) % 360 - 180;
+  let d = ((((steerDeg - forDeg) % 360) + 540) % 360) - 180;
   if (d === -180) d = 180;
   return d;
 }
@@ -140,7 +156,32 @@ export function join10b(ssr: string, ads: string[]): string {
   return ssr + ads.join('');
 }
 
-const PBN_CODES = ['A1', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'C1', 'C2', 'C3', 'C4', 'D1', 'D2', 'D3', 'D4', 'L1', 'O1', 'O2', 'O3', 'O4', 'S1', 'S2', 'T1', 'T2'];
+const PBN_CODES = [
+  'A1',
+  'B1',
+  'B2',
+  'B3',
+  'B4',
+  'B5',
+  'B6',
+  'C1',
+  'C2',
+  'C3',
+  'C4',
+  'D1',
+  'D2',
+  'D3',
+  'D4',
+  'L1',
+  'O1',
+  'O2',
+  'O3',
+  'O4',
+  'S1',
+  'S2',
+  'T1',
+  'T2',
+];
 /** Invalid PBN/ designators in s ([] = valid). */
 export function badPbn(s: string): string[] {
   const t = s.toUpperCase().replace(/\s+/g, '');
@@ -157,9 +198,13 @@ export function badPbn(s: string): string[] {
 export function selfIntersects(poly: [number, number][]): boolean {
   const n = poly.length;
   if (n < 4) return false;
-  const cross = (o: number[], a: number[], b: number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const cross = (o: number[], a: number[], b: number[]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const inter = (p1: number[], p2: number[], p3: number[], p4: number[]) => {
-    const d1 = cross(p3, p4, p1), d2 = cross(p3, p4, p2), d3 = cross(p1, p2, p3), d4 = cross(p1, p2, p4);
+    const d1 = cross(p3, p4, p1),
+      d2 = cross(p3, p4, p2),
+      d3 = cross(p1, p2, p3),
+      d4 = cross(p1, p2, p4);
     return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
   };
   for (let i = 0; i < n; i++) {
@@ -175,7 +220,8 @@ export function selfIntersects(poly: [number, number][]): boolean {
 export function polygonArea(poly: [number, number][]): number {
   let a = 0;
   for (let i = 0; i < poly.length; i++) {
-    const p = poly[i], q = poly[(i + 1) % poly.length];
+    const p = poly[i],
+      q = poly[(i + 1) % poly.length];
     a += p[0] * q[1] - q[0] * p[1];
   }
   return a / 2;
@@ -187,10 +233,16 @@ export function insidePolygon(pt: [number, number], poly: [number, number][]): b
   const [x, y] = pt;
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i], [xj, yj] = poly[j];
-    const onSeg = Math.abs((xj - xi) * (y - yi) - (yj - yi) * (x - xi)) < 1e-9 && x >= Math.min(xi, xj) - 1e-9 && x <= Math.max(xi, xj) + 1e-9 && y >= Math.min(yi, yj) - 1e-9 && y <= Math.max(yi, yj) + 1e-9;
+    const [xi, yi] = poly[i],
+      [xj, yj] = poly[j];
+    const onSeg =
+      Math.abs((xj - xi) * (y - yi) - (yj - yi) * (x - xi)) < 1e-9 &&
+      x >= Math.min(xi, xj) - 1e-9 &&
+      x <= Math.max(xi, xj) + 1e-9 &&
+      y >= Math.min(yi, yj) - 1e-9 &&
+      y <= Math.max(yi, yj) + 1e-9;
     if (onSeg) return true;
-    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
 }
@@ -203,11 +255,14 @@ export function insidePolygon(pt: [number, number], poly: [number, number][]): b
 export function momentPolygonFromCg(poly: EnvelopePoint[], steps = 8): [number, number][] {
   const out: [number, number][] = [];
   for (let i = 0; i < poly.length; i++) {
-    const [a1, m1] = poly[i], [a2, m2] = poly[(i + 1) % poly.length];
+    const [a1, m1] = poly[i],
+      [a2, m2] = poly[(i + 1) % poly.length];
     const curved = Math.abs(a2 - a1) > 1e-9 && Math.abs(m2 - m1) > 1e-9;
     const n = curved ? steps : 1;
     for (let k = 0; k < n; k++) {
-      const t = k / n, a = a1 + (a2 - a1) * t, m = m1 + (m2 - m1) * t;
+      const t = k / n,
+        a = a1 + (a2 - a1) * t,
+        m = m1 + (m2 - m1) * t;
       out.push([Math.round(a * m * 10) / 10, Math.round(m * 10) / 10]);
     }
   }
@@ -238,7 +293,15 @@ const STATION_DEFAULTS: Record<StationKind, { id: string; name: string }> = {
 /** Adds a station of a kind (a seat station gets one seat); returns it. */
 export function addStation(mb: MassBalance, kind: StationKind): Station {
   const id = newStationId(mb.stations, STATION_DEFAULTS[kind].id);
-  const s: Station = { id, name: STATION_DEFAULTS[kind].name, kind, armM: 0, armRangeM: null, maxKg: null, seats: null };
+  const s: Station = {
+    id,
+    name: STATION_DEFAULTS[kind].name,
+    kind,
+    armM: 0,
+    armRangeM: null,
+    maxKg: null,
+    seats: null,
+  };
   if (kind === 'seat') s.seats = [{ id: newSeatId(mb.stations, id), label: 'Seat' }];
   mb.stations.push(s);
   return s;
@@ -248,14 +311,19 @@ export function setStationKind(mb: MassBalance, i: number, kind: StationKind): v
   const x = mb.stations[i];
   x.kind = kind;
   if (kind === 'seat' && !x.seats?.length) x.seats = [{ id: newSeatId(mb.stations, x.id), label: 'Seat' }];
-  if (kind !== 'seat') { x.seats = null; x.armRangeM = null; }
+  if (kind !== 'seat') {
+    x.seats = null;
+    x.armRangeM = null;
+  }
   if (kind !== 'baggage') x.maxKg = null;
 }
 /** Removes a station and its id from the combined limits (limits left empty go). */
 export function removeStation(mb: MassBalance, i: number): void {
   const [gone] = mb.stations.splice(i, 1);
   if (!gone) return;
-  mb.combinedLimits = mb.combinedLimits.map((c) => ({ ...c, stations: c.stations.filter((x) => x !== gone.id) })).filter((c) => c.stations.length);
+  mb.combinedLimits = mb.combinedLimits
+    .map((c) => ({ ...c, stations: c.stations.filter((x) => x !== gone.id) }))
+    .filter((c) => c.stations.length);
 }
 export function addSeat(mb: MassBalance, i: number, label = 'Seat'): void {
   const x = mb.stations[i];
@@ -269,7 +337,10 @@ export function removeSeat(mb: MassBalance, i: number, k: number): void {
 export function setArmRange(s: Station, end: 0 | 1, v: number | null): void {
   const cur = s.armRangeM ?? null;
   const other = cur ? cur[end === 0 ? 1 : 0] : null;
-  if (v == null && other == null) { s.armRangeM = null; return; }
+  if (v == null && other == null) {
+    s.armRangeM = null;
+    return;
+  }
   const lo = end === 0 ? (v ?? s.armM) : (cur?.[0] ?? s.armM);
   const hi = end === 1 ? (v ?? s.armM) : (cur?.[1] ?? s.armM);
   s.armRangeM = [lo, hi];
@@ -281,7 +352,13 @@ export function addCombinedLimit(mb: MassBalance): void {
 /** A utility category, starting as a copy of the normal CG envelope. */
 export function addUtilityEnvelope(mb: MassBalance): Envelope {
   const n = mb.envelopes.normal;
-  mb.envelopes.utility = { category: 'utility', maxKg: n.maxKg, polygon: n.polygon.map((q) => [...q] as [number, number]), momentPolygon: null, notes: '' };
+  mb.envelopes.utility = {
+    category: 'utility',
+    maxKg: n.maxKg,
+    polygon: n.polygon.map((q) => [...q] as [number, number]),
+    momentPolygon: null,
+    notes: '',
+  };
   return mb.envelopes.utility;
 }
 
@@ -350,7 +427,9 @@ export function addCompassCard(a: AircraftInput, today: string): CompassCard {
  * from the PBN field, OPR/ from the operator, TYP/ is only written with type ZZZZ. RMK/ text is
  * kept (added to the flight's RMK/), and so are NAV/, COM/ and the others.
  */
-export function item18Dropped(a: Pick<AircraftInput, 'equipment' | 'operator' | 'icaoType'>): { indicator: string; why: string }[] {
+export function item18Dropped(
+  a: Pick<AircraftInput, 'equipment' | 'operator' | 'icaoType'>,
+): { indicator: string; why: string }[] {
   const out: { indicator: string; why: string }[] = [];
   for (const p of parseItem18(a.equipment.item18Extras || '')) {
     if (out.some((d) => d.indicator === p.indicator)) continue;
@@ -358,7 +437,8 @@ export function item18Dropped(a: Pick<AircraftInput, 'equipment' | 'operator' | 
     if (['DOF', 'REG', 'DEP', 'DEST', 'ALTN', 'EET'].includes(p.indicator)) why = 'comes from the flight';
     else if (p.indicator === 'PBN' && a.equipment.pbn) why = 'comes from the PBN/ field';
     else if (p.indicator === 'OPR' && a.operator.trim()) why = 'comes from the operator';
-    else if (p.indicator === 'TYP' && /^[A-Z][A-Z0-9]{1,3}$/.test(a.icaoType) && a.icaoType !== 'ZZZZ') why = 'only used with type ZZZZ';
+    else if (p.indicator === 'TYP' && /^[A-Z][A-Z0-9]{1,3}$/.test(a.icaoType) && a.icaoType !== 'ZZZZ')
+      why = 'only used with type ZZZZ';
     if (why) out.push({ indicator: p.indicator, why });
   }
   return out;
@@ -367,7 +447,7 @@ export function item18Dropped(a: Pick<AircraftInput, 'equipment' | 'operator' | 
 // ---------------------------------------------------------------------------------------------
 // Performance table reshaping (column = pressure altitude, row = mass or headwind)
 
-const ISA = (ft: number) => r2(15 - 1.98 * ft / 1000);
+const ISA = (ft: number) => r2(15 - (1.98 * ft) / 1000);
 
 export function addTakeoffAltitude(t: TakeoffTable): TakeoffTable {
   const last = t.altitudesFt[t.altitudesFt.length - 1];
@@ -376,7 +456,10 @@ export function addTakeoffAltitude(t: TakeoffTable): TakeoffTable {
     ...t,
     altitudesFt: [...t.altitudesFt, alt],
     standardTempC: [...t.standardTempC, Math.round(ISA(alt))],
-    rows: t.rows.map((r) => ({ ...r, distances: r.distances.map((hw) => [...hw, [...(hw[hw.length - 1] ?? [0, 0])] as [number, number]]) })),
+    rows: t.rows.map((r) => ({
+      ...r,
+      distances: r.distances.map((hw) => [...hw, [...(hw[hw.length - 1] ?? [0, 0])] as [number, number]]),
+    })),
   };
 }
 export function removeTakeoffAltitude(t: TakeoffTable, i: number): TakeoffTable {
@@ -391,7 +474,18 @@ export function addTakeoffMassRow(t: TakeoffTable): TakeoffTable {
   const prev = t.rows[t.rows.length - 1];
   const headwindKt = prev ? [...prev.headwindKt] : [0];
   const blank = headwindKt.map(() => t.altitudesFt.map(() => [0, 0] as [number, number]));
-  return { ...t, rows: [...t.rows, { massKg: prev ? prev.massKg + 100 : 0, liftoffIas: '', headwindKt, distances: prev ? prev.distances.map((hw) => hw.map((p) => [...p] as [number, number])) : blank }] };
+  return {
+    ...t,
+    rows: [
+      ...t.rows,
+      {
+        massKg: prev ? prev.massKg + 100 : 0,
+        liftoffIas: '',
+        headwindKt,
+        distances: prev ? prev.distances.map((hw) => hw.map((p) => [...p] as [number, number])) : blank,
+      },
+    ],
+  };
 }
 export function removeTakeoffMassRow(t: TakeoffTable, i: number): TakeoffTable {
   return { ...t, rows: t.rows.filter((_, k) => k !== i) };
@@ -399,23 +493,53 @@ export function removeTakeoffMassRow(t: TakeoffTable, i: number): TakeoffTable {
 export function addHeadwind(t: TakeoffTable, row: number): TakeoffTable {
   return {
     ...t,
-    rows: t.rows.map((r, k) => k !== row ? r : {
-      ...r,
-      headwindKt: [...r.headwindKt, (r.headwindKt[r.headwindKt.length - 1] ?? -10) + 10],
-      distances: [...r.distances, t.altitudesFt.map((_, a) => [...(r.distances[r.distances.length - 1]?.[a] ?? [0, 0])] as [number, number])],
-    }),
+    rows: t.rows.map((r, k) =>
+      k !== row
+        ? r
+        : {
+            ...r,
+            headwindKt: [...r.headwindKt, (r.headwindKt[r.headwindKt.length - 1] ?? -10) + 10],
+            distances: [
+              ...r.distances,
+              t.altitudesFt.map(
+                (_, a) => [...(r.distances[r.distances.length - 1]?.[a] ?? [0, 0])] as [number, number],
+              ),
+            ],
+          },
+    ),
   };
 }
 export function removeHeadwind(t: TakeoffTable, row: number, i: number): TakeoffTable {
-  return { ...t, rows: t.rows.map((r, k) => k !== row ? r : { ...r, headwindKt: r.headwindKt.filter((_, j) => j !== i), distances: r.distances.filter((_, j) => j !== i) }) };
+  return {
+    ...t,
+    rows: t.rows.map((r, k) =>
+      k !== row
+        ? r
+        : {
+            ...r,
+            headwindKt: r.headwindKt.filter((_, j) => j !== i),
+            distances: r.distances.filter((_, j) => j !== i),
+          },
+    ),
+  };
 }
 export function addLandingAltitude(l: LandingTable): LandingTable {
   const last = l.altitudesFt[l.altitudesFt.length - 1];
   const alt = last == null ? 0 : last + 2500;
-  return { ...l, altitudesFt: [...l.altitudesFt, alt], standardTempC: [...l.standardTempC, Math.round(ISA(alt))], distances: [...l.distances, [...(l.distances[l.distances.length - 1] ?? [0, 0])] as [number, number]] };
+  return {
+    ...l,
+    altitudesFt: [...l.altitudesFt, alt],
+    standardTempC: [...l.standardTempC, Math.round(ISA(alt))],
+    distances: [...l.distances, [...(l.distances[l.distances.length - 1] ?? [0, 0])] as [number, number]],
+  };
 }
 export function removeLandingAltitude(l: LandingTable, i: number): LandingTable {
-  return { ...l, altitudesFt: l.altitudesFt.filter((_, k) => k !== i), standardTempC: l.standardTempC.filter((_, k) => k !== i), distances: l.distances.filter((_, k) => k !== i) };
+  return {
+    ...l,
+    altitudesFt: l.altitudesFt.filter((_, k) => k !== i),
+    standardTempC: l.standardTempC.filter((_, k) => k !== i),
+    distances: l.distances.filter((_, k) => k !== i),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -462,23 +586,38 @@ export function missingEssentials(a: AircraftInput): string[] {
  */
 export function validateAircraft(a: AircraftInput, today: string, cardWarnDays = 90): Issue[] {
   const out: Issue[] = [];
-  const err = (section: SectionId, path: string, message: string) => out.push({ level: 'error', section, path, message });
-  const warn = (section: SectionId, path: string, message: string) => out.push({ level: 'warning', section, path, message });
+  const err = (section: SectionId, path: string, message: string) =>
+    out.push({ level: 'error', section, path, message });
+  const warn = (section: SectionId, path: string, message: string) =>
+    out.push({ level: 'warning', section, path, message });
 
   // identity
   if (!a.registration.trim()) err('identity', 'registration', 'Registration is required.');
-  else if (!/^[A-Z0-9]{1,3}-?[A-Z0-9]{1,6}$/.test(a.registration)) warn('identity', 'registration', 'Registration is usually letters and digits with one hyphen, e.g. SX-ASV.');
+  else if (!/^[A-Z0-9]{1,3}-?[A-Z0-9]{1,6}$/.test(a.registration))
+    warn('identity', 'registration', 'Registration is usually letters and digits with one hyphen, e.g. SX-ASV.');
   if (!a.icaoType) warn('identity', 'icaoType', 'ICAO type designator not set (FPL item 9).');
-  else if (!/^[A-Z][A-Z0-9]{1,3}$/.test(a.icaoType)) err('identity', 'icaoType', 'ICAO type designator is 2–4 letters/digits starting with a letter, e.g. C172 (or ZZZZ).');
+  else if (!/^[A-Z][A-Z0-9]{1,3}$/.test(a.icaoType))
+    err(
+      'identity',
+      'icaoType',
+      'ICAO type designator is 2–4 letters/digits starting with a letter, e.g. C172 (or ZZZZ).',
+    );
   if (!a.colours.trim()) warn('identity', 'colours', 'Colours and markings not set (FPL item 19 A/).');
-  if (a.homeBase && !/^[A-Z]{4}$/.test(a.homeBase)) warn('identity', 'homeBase', 'Home base should be a 4-letter ICAO code.');
+  if (a.homeBase && !/^[A-Z]{4}$/.test(a.homeBase))
+    warn('identity', 'homeBase', 'Home base should be a 4-letter ICAO code.');
 
   // FPL
   const e = a.equipment;
   if (!e.item10a) warn('fpl', 'equipment.item10a', 'Item 10a not set.');
-  else if (!ITEM10A_RE.test(e.item10a)) err('fpl', 'equipment.item10a', `Item 10a “${e.item10a}” has invalid designators (N alone, or e.g. SDFGY).`);
+  else if (!ITEM10A_RE.test(e.item10a))
+    err('fpl', 'equipment.item10a', `Item 10a “${e.item10a}” has invalid designators (N alone, or e.g. SDFGY).`);
   if (!e.item10b) warn('fpl', 'equipment.item10b', 'Item 10b (transponder) not set.');
-  else if (!/^(N|[ACEHILPSX]?(?:[BUVDG][12])*)$/.test(e.item10b)) err('fpl', 'equipment.item10b', `Item 10b “${e.item10b}” is invalid (N, or a transponder letter then ADS codes, e.g. SB2).`);
+  else if (!/^(N|[ACEHILPSX]?(?:[BUVDG][12])*)$/.test(e.item10b))
+    err(
+      'fpl',
+      'equipment.item10b',
+      `Item 10b “${e.item10b}” is invalid (N, or a transponder letter then ADS codes, e.g. SB2).`,
+    );
   const bad = badPbn(e.pbn);
   if (bad.length) err('fpl', 'equipment.pbn', `Unknown PBN designators: ${bad.join(', ')}.`);
   else if (e.pbn && e.pbn.replace(/\s+/g, '').length / 2 > 8) err('fpl', 'equipment.pbn', 'At most 8 PBN designators.');
@@ -486,28 +625,52 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (has10aR && !e.pbn) warn('fpl', 'equipment.pbn', 'Item 10a has R: give the PBN/ capabilities.');
   if (!has10aR && e.pbn) warn('fpl', 'equipment.pbn', 'PBN/ is given but item 10a has no R.');
   const dropped = item18Dropped(a);
-  if (dropped.length) warn('fpl', 'equipment.item18Extras', `Left out of the flight plan: ${dropped.map((d) => `${d.indicator}/ (${d.why})`).join(', ')}.`);
+  if (dropped.length)
+    warn(
+      'fpl',
+      'equipment.item18Extras',
+      `Left out of the flight plan: ${dropped.map((d) => `${d.indicator}/ (${d.why})`).join(', ')}.`,
+    );
   if (e.dinghies) {
-    if (!Number.isInteger(e.dinghies.number) || e.dinghies.number < 1) err('fpl', 'equipment.dinghies.number', 'Number of dinghies must be a whole number of at least 1.');
-    if (!Number.isInteger(e.dinghies.capacity) || e.dinghies.capacity < 1) err('fpl', 'equipment.dinghies.capacity', 'Dinghy capacity must be a whole number of at least 1.');
+    if (!Number.isInteger(e.dinghies.number) || e.dinghies.number < 1)
+      err('fpl', 'equipment.dinghies.number', 'Number of dinghies must be a whole number of at least 1.');
+    if (!Number.isInteger(e.dinghies.capacity) || e.dinghies.capacity < 1)
+      err('fpl', 'equipment.dinghies.capacity', 'Dinghy capacity must be a whole number of at least 1.');
     if (!e.dinghies.colour.trim()) warn('fpl', 'equipment.dinghies.colour', 'Dinghy colour not set.');
   }
 
   // speeds
   if (!(a.cruiseTasKt > 0)) warn('speeds', 'cruiseTasKt', 'Cruise TAS not set.');
   if (!(a.patternTasKt > 0)) warn('speeds', 'patternTasKt', 'Pattern TAS not set.');
-  if (a.cruiseTasKt > 0 && a.patternTasKt > a.cruiseTasKt) warn('speeds', 'patternTasKt', 'Pattern TAS is higher than cruise TAS.');
-  if (a.climbTasKt != null && a.cruiseTasKt > 0 && a.climbTasKt > a.cruiseTasKt) warn('speeds', 'climbTasKt', 'Climb TAS is higher than cruise TAS.');
+  if (a.cruiseTasKt > 0 && a.patternTasKt > a.cruiseTasKt)
+    warn('speeds', 'patternTasKt', 'Pattern TAS is higher than cruise TAS.');
+  if (a.climbTasKt != null && a.cruiseTasKt > 0 && a.climbTasKt > a.cruiseTasKt)
+    warn('speeds', 'climbTasKt', 'Climb TAS is higher than cruise TAS.');
 
   // fuel
   const f = a.fuel;
   if (!f.types.length) err('fuel', 'fuel.types', 'Give at least one approved fuel.');
-  if (new Set(f.types.map((g) => g.type)).size !== f.types.length) err('fuel', 'fuel.types', 'A fuel type is listed twice.');
+  if (new Set(f.types.map((g) => g.type)).size !== f.types.length)
+    err('fuel', 'fuel.types', 'A fuel type is listed twice.');
   if (!(f.usableL > 0)) warn('fuel', 'fuel.usableL', 'Usable fuel not set.');
   if (f.totalL > 0 && f.usableL > f.totalL) err('fuel', 'fuel.usableL', 'Usable fuel is more than the total capacity.');
-  if (f.totalL > 0 && f.usableL > 0 && Math.abs(f.usableL + f.unusableL - f.totalL) > 0.5 && f.usableL + f.unusableL < f.totalL)
-    warn('fuel', 'fuel.totalL', `Usable + unusable (${r2(f.usableL + f.unusableL)} L) is less than the total ${f.totalL} L (fine if the tank option limits usable fuel).`);
-  if (f.totalL > 0 && f.usableL + f.unusableL > f.totalL + 0.5) err('fuel', 'fuel.unusableL', `Usable + unusable (${r2(f.usableL + f.unusableL)} L) is more than the total ${f.totalL} L.`);
+  if (
+    f.totalL > 0 &&
+    f.usableL > 0 &&
+    Math.abs(f.usableL + f.unusableL - f.totalL) > 0.5 &&
+    f.usableL + f.unusableL < f.totalL
+  )
+    warn(
+      'fuel',
+      'fuel.totalL',
+      `Usable + unusable (${r2(f.usableL + f.unusableL)} L) is less than the total ${f.totalL} L (fine if the tank option limits usable fuel).`,
+    );
+  if (f.totalL > 0 && f.usableL + f.unusableL > f.totalL + 0.5)
+    err(
+      'fuel',
+      'fuel.unusableL',
+      `Usable + unusable (${r2(f.usableL + f.unusableL)} L) is more than the total ${f.totalL} L.`,
+    );
   if (!(f.burnLph > 0)) warn('fuel', 'fuel.burnLph', 'Burn rate not set.');
   else if (f.burnLph > 500) err('fuel', 'fuel.burnLph', 'Burn rate looks wrong (over 500 L/h).');
 
@@ -516,14 +679,24 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (!(mb.mtowKg > 0)) warn('mb', 'massBalance.mtowKg', 'MTOW not set.');
   if (!(mb.emptyMassKg > 0)) warn('mb', 'massBalance.emptyMassKg', 'Empty mass not set.');
   else {
-    if (mb.mtowKg > 0 && mb.emptyMassKg >= mb.mtowKg) err('mb', 'massBalance.emptyMassKg', 'Empty mass is not below MTOW.');
+    if (mb.mtowKg > 0 && mb.emptyMassKg >= mb.mtowKg)
+      err('mb', 'massBalance.emptyMassKg', 'Empty mass is not below MTOW.');
     if (!(mb.emptyArmM > 0)) warn('mb', 'massBalance.emptyArmM', 'Empty CG arm not set.');
-    else if (mb.emptyMomentKgM > 0 && Math.abs(mb.emptyMassKg * mb.emptyArmM - mb.emptyMomentKgM) > Math.max(0.5, mb.emptyMomentKgM * 0.002))
-      warn('mb', 'massBalance.emptyMomentKgM', `Empty moment ${mb.emptyMomentKgM} differs from mass × arm = ${r2(mb.emptyMassKg * mb.emptyArmM)} kg·m.`);
+    else if (
+      mb.emptyMomentKgM > 0 &&
+      Math.abs(mb.emptyMassKg * mb.emptyArmM - mb.emptyMomentKgM) > Math.max(0.5, mb.emptyMomentKgM * 0.002)
+    )
+      warn(
+        'mb',
+        'massBalance.emptyMomentKgM',
+        `Empty moment ${mb.emptyMomentKgM} differs from mass × arm = ${r2(mb.emptyMassKg * mb.emptyArmM)} kg·m.`,
+      );
     if (!mb.weighingDate) warn('mb', 'massBalance.weighingDate', 'Weighing date not set.');
   }
-  if (mb.weighingDate && !isIsoDate(mb.weighingDate)) err('mb', 'massBalance.weighingDate', 'Weighing date is not a valid date.');
-  if (mb.mlwKg != null && mb.mtowKg > 0 && mb.mlwKg > mb.mtowKg) warn('mb', 'massBalance.mlwKg', 'Max landing mass is above MTOW.');
+  if (mb.weighingDate && !isIsoDate(mb.weighingDate))
+    err('mb', 'massBalance.weighingDate', 'Weighing date is not a valid date.');
+  if (mb.mlwKg != null && mb.mtowKg > 0 && mb.mlwKg > mb.mtowKg)
+    warn('mb', 'massBalance.mlwKg', 'Max landing mass is above MTOW.');
 
   const ids = new Set<string>();
   const seatIds = new Set<string>();
@@ -533,11 +706,14 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     else if (ids.has(s.id)) err('mb', `${p}.id`, `Two stations have the id “${s.id}”.`);
     ids.add(s.id);
     if (!s.name.trim()) err('mb', `${p}.name`, `Station ${s.id || i + 1} has no name.`);
-    if (!fin(s.armM) || s.armM < -5 || s.armM > 30) err('mb', `${p}.armM`, `Arm of ${s.name || s.id} must be a number of metres.`);
+    if (!fin(s.armM) || s.armM < -5 || s.armM > 30)
+      err('mb', `${p}.armM`, `Arm of ${s.name || s.id} must be a number of metres.`);
     if (s.armRangeM) {
       const [lo, hi] = s.armRangeM;
-      if (!(lo < hi)) err('mb', `${p}.armRangeM`, `Seat adjustment range of ${s.name} must go from lower to higher arm.`);
-      else if (s.armM < lo || s.armM > hi) warn('mb', `${p}.armRangeM`, `Arm ${s.armM} m of ${s.name} is outside its adjustment range ${lo}–${hi} m.`);
+      if (!(lo < hi))
+        err('mb', `${p}.armRangeM`, `Seat adjustment range of ${s.name} must go from lower to higher arm.`);
+      else if (s.armM < lo || s.armM > hi)
+        warn('mb', `${p}.armRangeM`, `Arm ${s.armM} m of ${s.name} is outside its adjustment range ${lo}–${hi} m.`);
     }
     if (s.kind === 'seat') {
       if (!s.seats || !s.seats.length) err('mb', `${p}.seats`, `Seat station ${s.name} has no seats.`);
@@ -547,7 +723,8 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
         seatIds.add(seat.id);
       }
     }
-    if (s.kind === 'baggage' && s.maxKg != null && !(s.maxKg > 0)) err('mb', `${p}.maxKg`, `Max load of ${s.name} must be positive (or empty for no limit).`);
+    if (s.kind === 'baggage' && s.maxKg != null && !(s.maxKg > 0))
+      err('mb', `${p}.maxKg`, `Max load of ${s.name} must be positive (or empty for no limit).`);
   });
   const fuelStations = mb.stations.filter((s) => s.kind === 'fuel');
   if (fuelStations.length === 0) warn('mb', 'massBalance.stations', 'No fuel station.');
@@ -555,8 +732,10 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (!mb.stations.some((s) => s.kind === 'seat')) warn('mb', 'massBalance.stations', 'No seat stations.');
   mb.combinedLimits.forEach((c, i) => {
     const missing = c.stations.filter((id) => !ids.has(id));
-    if (missing.length) err('mb', `massBalance.combinedLimits.${i}`, `Combined limit refers to unknown station ${missing.join(', ')}.`);
-    if (c.stations.length < 2) warn('mb', `massBalance.combinedLimits.${i}`, 'A combined limit should cover at least two stations.');
+    if (missing.length)
+      err('mb', `massBalance.combinedLimits.${i}`, `Combined limit refers to unknown station ${missing.join(', ')}.`);
+    if (c.stations.length < 2)
+      warn('mb', `massBalance.combinedLimits.${i}`, 'A combined limit should cover at least two stations.');
     if (!(c.maxKg > 0)) err('mb', `massBalance.combinedLimits.${i}`, 'Combined limit must be positive.');
   });
 
@@ -568,18 +747,22 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     if (en.polygon.length < 3) {
       (cat === 'normal' ? warn : err)('mb', `${p}.polygon`, `${label} CG envelope needs at least 3 points.`);
     } else {
-      if (en.polygon.some(([x, y]) => !fin(x) || !fin(y))) err('mb', `${p}.polygon`, `${label} CG envelope has an empty value.`);
-      else if (selfIntersects(en.polygon)) err('mb', `${p}.polygon`, `${label} CG envelope crosses itself: list the points in order around the outline.`);
+      if (en.polygon.some(([x, y]) => !fin(x) || !fin(y)))
+        err('mb', `${p}.polygon`, `${label} CG envelope has an empty value.`);
+      else if (selfIntersects(en.polygon))
+        err('mb', `${p}.polygon`, `${label} CG envelope crosses itself: list the points in order around the outline.`);
       else if (Math.abs(polygonArea(en.polygon)) < 1e-9) err('mb', `${p}.polygon`, `${label} CG envelope has no area.`);
       const top = Math.max(...en.polygon.map((q) => q[1]));
-      if (en.maxKg > 0 && Math.abs(top - en.maxKg) > 0.5) warn('mb', `${p}.polygon`, `${label} CG envelope tops out at ${top} kg but its max mass is ${en.maxKg} kg.`);
+      if (en.maxKg > 0 && Math.abs(top - en.maxKg) > 0.5)
+        warn('mb', `${p}.polygon`, `${label} CG envelope tops out at ${top} kg but its max mass is ${en.maxKg} kg.`);
     }
     if (!(en.maxKg > 0)) warn('mb', `${p}.maxKg`, `${label} max mass not set.`);
     else if (mb.mtowKg > 0 && en.maxKg > mb.mtowKg) err('mb', `${p}.maxKg`, `${label} max mass is above MTOW.`);
     const mp = en.momentPolygon;
     if (mp && mp.length) {
       if (mp.length < 3) err('mb', `${p}.momentPolygon`, `${label} moment envelope needs at least 3 points.`);
-      else if (mp.some(([x, y]) => !fin(x) || !fin(y))) err('mb', `${p}.momentPolygon`, `${label} moment envelope has an empty value.`);
+      else if (mp.some(([x, y]) => !fin(x) || !fin(y)))
+        err('mb', `${p}.momentPolygon`, `${label} moment envelope has an empty value.`);
       else if (selfIntersects(mp)) err('mb', `${p}.momentPolygon`, `${label} moment envelope crosses itself.`);
     }
   };
@@ -597,31 +780,70 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   const t = a.performance.takeoff;
   const ascending = (xs: number[]) => xs.every((x, i) => i === 0 || x > xs[i - 1]);
   if (t.rows.length) {
-    if (!ascending(t.altitudesFt)) err('performance', 'performance.takeoff.altitudesFt', 'Take-off table: pressure altitudes must increase left to right.');
-    if (t.standardTempC.length !== t.altitudesFt.length) err('performance', 'performance.takeoff.standardTempC', 'Take-off table: one standard temperature per altitude.');
-    if (!ascending(t.rows.map((r) => r.massKg))) err('performance', 'performance.takeoff.rows', 'Take-off table: masses must increase top to bottom.');
+    if (!ascending(t.altitudesFt))
+      err(
+        'performance',
+        'performance.takeoff.altitudesFt',
+        'Take-off table: pressure altitudes must increase left to right.',
+      );
+    if (t.standardTempC.length !== t.altitudesFt.length)
+      err('performance', 'performance.takeoff.standardTempC', 'Take-off table: one standard temperature per altitude.');
+    if (!ascending(t.rows.map((r) => r.massKg)))
+      err('performance', 'performance.takeoff.rows', 'Take-off table: masses must increase top to bottom.');
     t.rows.forEach((r, i) => {
-      if (!ascending(r.headwindKt)) err('performance', `performance.takeoff.rows.${i}`, `Take-off ${r.massKg} kg: headwinds must increase.`);
-      if (r.distances.length !== r.headwindKt.length || r.distances.some((hw) => hw.length !== t.altitudesFt.length)) err('performance', `performance.takeoff.rows.${i}`, `Take-off ${r.massKg} kg: table shape does not match the headings.`);
-      if (r.distances.some((hw) => hw.some(([g, tot]) => !(g > 0) || !(tot >= g)))) warn('performance', `performance.takeoff.rows.${i}`, `Take-off ${r.massKg} kg: every distance should be positive and the total at least the ground run.`);
+      if (!ascending(r.headwindKt))
+        err('performance', `performance.takeoff.rows.${i}`, `Take-off ${r.massKg} kg: headwinds must increase.`);
+      if (r.distances.length !== r.headwindKt.length || r.distances.some((hw) => hw.length !== t.altitudesFt.length))
+        err(
+          'performance',
+          `performance.takeoff.rows.${i}`,
+          `Take-off ${r.massKg} kg: table shape does not match the headings.`,
+        );
+      if (r.distances.some((hw) => hw.some(([g, tot]) => !(g > 0) || !(tot >= g))))
+        warn(
+          'performance',
+          `performance.takeoff.rows.${i}`,
+          `Take-off ${r.massKg} kg: every distance should be positive and the total at least the ground run.`,
+        );
     });
-    if (mb.mtowKg > 0 && Math.max(...t.rows.map((r) => r.massKg)) < mb.mtowKg) warn('performance', 'performance.takeoff.rows', 'Take-off table does not reach MTOW: heavier take-offs are extrapolated.');
+    if (mb.mtowKg > 0 && Math.max(...t.rows.map((r) => r.massKg)) < mb.mtowKg)
+      warn(
+        'performance',
+        'performance.takeoff.rows',
+        'Take-off table does not reach MTOW: heavier take-offs are extrapolated.',
+      );
   } else warn('performance', 'performance.takeoff', 'No take-off table.');
   const l = a.performance.landing;
   if (l.distances.length) {
-    if (!ascending(l.altitudesFt)) err('performance', 'performance.landing.altitudesFt', 'Landing table: pressure altitudes must increase left to right.');
-    if (l.standardTempC.length !== l.altitudesFt.length || l.distances.length !== l.altitudesFt.length) err('performance', 'performance.landing', 'Landing table: one temperature and one distance pair per altitude.');
-    if (l.distances.some(([g, tot]) => !(g > 0) || !(tot >= g))) warn('performance', 'performance.landing', 'Landing table: every distance should be positive and the total at least the ground roll.');
+    if (!ascending(l.altitudesFt))
+      err(
+        'performance',
+        'performance.landing.altitudesFt',
+        'Landing table: pressure altitudes must increase left to right.',
+      );
+    if (l.standardTempC.length !== l.altitudesFt.length || l.distances.length !== l.altitudesFt.length)
+      err('performance', 'performance.landing', 'Landing table: one temperature and one distance pair per altitude.');
+    if (l.distances.some(([g, tot]) => !(g > 0) || !(tot >= g)))
+      warn(
+        'performance',
+        'performance.landing',
+        'Landing table: every distance should be positive and the total at least the ground roll.',
+      );
   } else warn('performance', 'performance.landing', 'No landing table.');
   const pf = a.performance.factors;
-  if (!(pf.safetyFactorTakeoff >= 1)) err('performance', 'performance.factors.safetyFactorTakeoff', 'Take-off safety factor must be at least 1.');
-  if (!(pf.safetyFactorLanding >= 1)) err('performance', 'performance.factors.safetyFactorLanding', 'Landing safety factor must be at least 1.');
-  if (!(pf.slopeFactorPer2Pct >= 1)) err('performance', 'performance.factors.slopeFactorPer2Pct', 'Slope factor must be at least 1.');
+  if (!(pf.safetyFactorTakeoff >= 1))
+    err('performance', 'performance.factors.safetyFactorTakeoff', 'Take-off safety factor must be at least 1.');
+  if (!(pf.safetyFactorLanding >= 1))
+    err('performance', 'performance.factors.safetyFactorLanding', 'Landing safety factor must be at least 1.');
+  if (!(pf.slopeFactorPer2Pct >= 1))
+    err('performance', 'performance.factors.slopeFactorPer2Pct', 'Slope factor must be at least 1.');
   for (const [k, v] of Object.entries(pf.runwayCondition)) {
     if (!k.trim()) err('performance', 'performance.factors.runwayCondition', 'A runway condition has no name.');
-    if (!(v >= 1)) err('performance', 'performance.factors.runwayCondition', `Runway condition “${k}” factor must be at least 1.`);
+    if (!(v >= 1))
+      err('performance', 'performance.factors.runwayCondition', `Runway condition “${k}” factor must be at least 1.`);
   }
-  if (!(pf.maxCrosswindKt.takeoff > 0) || !(pf.maxCrosswindKt.landing > 0)) err('performance', 'performance.factors.maxCrosswindKt', 'Crosswind limits must be positive.');
+  if (!(pf.maxCrosswindKt.takeoff > 0) || !(pf.maxCrosswindKt.landing > 0))
+    err('performance', 'performance.factors.maxCrosswindKt', 'Crosswind limits must be positive.');
 
   // compass cards
   const names = new Set<string>();
@@ -631,8 +853,10 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     else if (names.has(c.name)) err('compass', `${p}.name`, `Two cards are called “${c.name}”.`);
     names.add(c.name);
     if (!isIsoDate(c.swung)) err('compass', `${p}.swung`, `${c.name || 'Card'}: swing date is missing or invalid.`);
-    if (!isIsoDate(c.expires)) err('compass', `${p}.expires`, `${c.name || 'Card'}: expiry date is missing or invalid.`);
-    else if (isIsoDate(c.swung) && (daysFromTo(c.swung, c.expires) ?? 0) <= 0) err('compass', `${p}.expires`, `${c.name}: expires before it was swung.`);
+    if (!isIsoDate(c.expires))
+      err('compass', `${p}.expires`, `${c.name || 'Card'}: expiry date is missing or invalid.`);
+    else if (isIsoDate(c.swung) && (daysFromTo(c.swung, c.expires) ?? 0) <= 0)
+      err('compass', `${p}.expires`, `${c.name}: expires before it was swung.`);
     else {
       const st = cardStatus(c, today, cardWarnDays);
       if (st.state === 'expired') warn('compass', `${p}.expires`, `${c.name}: expired ${-st.days!} days ago.`);
@@ -640,9 +864,12 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     }
     if (c.points.length < 2) err('compass', `${p}.points`, `${c.name || 'Card'}: needs at least two headings.`);
     const fors = c.points.map((q) => q[0]);
-    if (c.points.some(([fo, s]) => !fin(fo) || !fin(s) || fo < 0 || fo >= 360 || s < 0 || s >= 360)) err('compass', `${p}.points`, `${c.name || 'Card'}: headings must be 0–359°.`);
-    else if (new Set(fors).size !== fors.length) err('compass', `${p}.points`, `${c.name || 'Card'}: a heading is listed twice.`);
-    else if (c.points.some(([fo, s]) => Math.abs(deviationOf(fo, s)) > 10)) warn('compass', `${p}.points`, `${c.name}: a deviation is over 10°; check the card.`);
+    if (c.points.some(([fo, s]) => !fin(fo) || !fin(s) || fo < 0 || fo >= 360 || s < 0 || s >= 360))
+      err('compass', `${p}.points`, `${c.name || 'Card'}: headings must be 0–359°.`);
+    else if (new Set(fors).size !== fors.length)
+      err('compass', `${p}.points`, `${c.name || 'Card'}: a heading is listed twice.`);
+    else if (c.points.some(([fo, s]) => Math.abs(deviationOf(fo, s)) > 10))
+      warn('compass', `${p}.points`, `${c.name}: a deviation is over 10°; check the card.`);
   });
   if (!a.compassCards.length) warn('compass', 'compassCards', 'No compass card.');
 

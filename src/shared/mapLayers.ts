@@ -29,12 +29,34 @@ export interface MapLayers {
 
 export type MapLayerToggle = Exclude<keyof MapLayers, 'base'>;
 export const MAP_LAYER_TOGGLES: readonly MapLayerToggle[] = [
-  'fir', 'tma', 'zones', 'aerodromes', 'vfrPoints', 'vfrRoutes', 'waypoints', 'prd', 'mil', 'act', 'notams', 'ofm',
+  'fir',
+  'tma',
+  'zones',
+  'aerodromes',
+  'vfrPoints',
+  'vfrRoutes',
+  'waypoints',
+  'prd',
+  'mil',
+  'act',
+  'notams',
+  'ofm',
 ];
 
 export const DEFAULT_MAP_LAYERS: MapLayers = {
-  base: 'light', ofm: false, fir: true, tma: true, zones: true, aerodromes: true, vfrPoints: true, vfrRoutes: true,
-  waypoints: true, prd: true, mil: true, act: true, notams: true,
+  base: 'light',
+  ofm: false,
+  fir: true,
+  tma: true,
+  zones: true,
+  aerodromes: true,
+  vfrPoints: true,
+  vfrRoutes: true,
+  waypoints: true,
+  prd: true,
+  mil: true,
+  act: true,
+  notams: true,
 };
 
 /** A stored layer selection, completed from `base` (unknown keys dropped, wrong types ignored); null when not an object. */

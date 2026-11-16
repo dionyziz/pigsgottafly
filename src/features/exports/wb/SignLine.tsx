@@ -7,7 +7,11 @@ export function SignLine({ signature }: { signature?: ShownSignature | null }) {
     <span className="sign">
       SIGN
       <span className="xp-sigline" data-field="signature">
-        {signature && <span className="xp-pic-signature"><Signature s={signature} size={4.2} /></span>}
+        {signature && (
+          <span className="xp-pic-signature">
+            <Signature s={signature} size={4.2} />
+          </span>
+        )}
       </span>
     </span>
   );

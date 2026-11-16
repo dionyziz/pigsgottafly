@@ -5,28 +5,49 @@ import { isIsoDate, localToday } from '../../shared/date';
 import type { FormIssue } from './formIssues';
 
 export interface PersonForm {
-  fullName: string; phone: string; dateOfBirth: string; weightKg: number | null;
-  idType: '' | 'ID' | 'PASSPORT'; idNumber: string; nationality: string; relation: string; notes: string;
+  fullName: string;
+  phone: string;
+  dateOfBirth: string;
+  weightKg: number | null;
+  idType: '' | 'ID' | 'PASSPORT';
+  idNumber: string;
+  nationality: string;
+  relation: string;
+  notes: string;
   /** Pilot only. */
   licenceNo?: string;
 }
 
-export type PersonField = 'fullName' | 'phone' | 'dateOfBirth' | 'weightKg' | 'nationality' | 'idNumber' | 'licenceNo' | 'notes';
+export type PersonField =
+  'fullName' | 'phone' | 'dateOfBirth' | 'weightKg' | 'nationality' | 'idNumber' | 'licenceNo' | 'notes';
 
 export const WEIGHT_MIN_KG = 1;
 export const WEIGHT_MAX_KG = 300;
 
-export function personForm(p: (PersonDetails & { notes?: string; licenceNo?: string }) | null, initialName = ''): PersonForm {
+export function personForm(
+  p: (PersonDetails & { notes?: string; licenceNo?: string }) | null,
+  initialName = '',
+): PersonForm {
   const b = p ?? EMPTY_PERSON;
   return {
-    fullName: p ? b.fullName : initialName, phone: b.phone, dateOfBirth: b.dateOfBirth ?? '', weightKg: b.weightKg,
-    idType: b.idType, idNumber: b.idNumber, nationality: b.nationality, relation: b.relation, notes: p?.notes ?? '',
+    fullName: p ? b.fullName : initialName,
+    phone: b.phone,
+    dateOfBirth: b.dateOfBirth ?? '',
+    weightKg: b.weightKg,
+    idType: b.idType,
+    idNumber: b.idNumber,
+    nationality: b.nationality,
+    relation: b.relation,
+    notes: p?.notes ?? '',
     ...(p?.licenceNo != null ? { licenceNo: p.licenceNo } : {}),
   };
 }
 
 /** What is wrong with the form, field by field (empty when it can be saved). The pilot needs a phone. */
-export function validatePerson(f: PersonForm, { pilot = false, today = localToday() }: { pilot?: boolean; today?: string } = {}): FormIssue<PersonField>[] {
+export function validatePerson(
+  f: PersonForm,
+  { pilot = false, today = localToday() }: { pilot?: boolean; today?: string } = {},
+): FormIssue<PersonField>[] {
   const out: FormIssue<PersonField>[] = [];
   if (!f.fullName.trim()) out.push({ field: 'fullName', message: 'Enter the full name' });
   if (pilot && !f.phone.trim()) out.push({ field: 'phone', message: 'Enter your phone number' });
@@ -43,8 +64,15 @@ export function validatePerson(f: PersonForm, { pilot = false, today = localToda
 /** Form → API input, normalised (call validatePerson first). */
 export function personInput(f: PersonForm): PassengerInput {
   return {
-    fullName: f.fullName.trim().replace(/\s+/g, ' '), phone: f.phone.trim(), dateOfBirth: f.dateOfBirth || null, weightKg: f.weightKg,
-    idType: f.idType, idNumber: f.idNumber.trim(), nationality: f.nationality.trim().toUpperCase(), relation: f.relation.trim(), notes: f.notes.trim(),
+    fullName: f.fullName.trim().replace(/\s+/g, ' '),
+    phone: f.phone.trim(),
+    dateOfBirth: f.dateOfBirth || null,
+    weightKg: f.weightKg,
+    idType: f.idType,
+    idNumber: f.idNumber.trim(),
+    nationality: f.nationality.trim().toUpperCase(),
+    relation: f.relation.trim(),
+    notes: f.notes.trim(),
   };
 }
 

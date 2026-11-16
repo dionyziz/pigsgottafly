@@ -13,11 +13,18 @@ export function signToken(claims: Record<string, unknown>, key: crypto.KeyObject
   return `${h}.${p}.${crypto.sign('RSA-SHA256', Buffer.from(`${h}.${p}`), key).toString('base64url')}`;
 }
 export const googleClaims = (sub: string, email: string) => ({
-  iss: 'https://accounts.google.com', aud: CID, sub, email, name: email.split('@')[0], email_verified: true,
+  iss: 'https://accounts.google.com',
+  aud: CID,
+  sub,
+  email,
+  name: email.split('@')[0],
+  email_verified: true,
   exp: Math.floor(Date.now() / 1000) + 600,
 });
 
-export async function startApi(opts: { google?: boolean; allowedEmails?: string[]; adminEmails?: string[]; db?: string } = {}) {
+export async function startApi(
+  opts: { google?: boolean; allowedEmails?: string[]; adminEmails?: string[]; db?: string } = {},
+) {
   const google = opts.google ?? true;
   const s = createServer({
     db: opts.db ?? 'memory://',
@@ -25,7 +32,10 @@ export async function startApi(opts: { google?: boolean; allowedEmails?: string[
     googleKeys: async () => [JWK],
     allowedEmails: opts.allowedEmails,
     adminEmails: opts.adminEmails,
-    client: (_req, res) => { res.writeHead(404); res.end(); },
+    client: (_req, res) => {
+      res.writeHead(404);
+      res.end();
+    },
   });
   await s.ready;
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
@@ -40,7 +50,11 @@ export interface Client {
 export function client(base: string): Client {
   let cookie = '';
   const call = async (method: string, p: string, body?: unknown) => {
-    const r = await fetch(base + p, { method, headers: { cookie, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const r = await fetch(base + p, {
+      method,
+      headers: { cookie, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
     const set = r.headers.get('set-cookie');
     if (set) cookie = set.split(';')[0];
     const text = await r.text();

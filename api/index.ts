@@ -30,7 +30,9 @@ export default async function vercelHandler(req: IncomingMessage, res: ServerRes
       req.url = `/api/${sub}${u.search}`;
     }
     handler ||= init();
-    await (await handler)(req, res);
+    await (
+      await handler
+    )(req, res);
   } catch (e) {
     handler = null;
     // the dispatcher answers every error itself: this is a failed start-up (env, database, migration)
@@ -40,6 +42,10 @@ export default async function vercelHandler(req: IncomingMessage, res: ServerRes
     res.statusCode = health ? 503 : 500;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
-    res.end(JSON.stringify(health ? { ok: false, error: 'start-up failed (see the [pgf-startup-failed] log)' } : { error: 'server error' }));
+    res.end(
+      JSON.stringify(
+        health ? { ok: false, error: 'start-up failed (see the [pgf-startup-failed] log)' } : { error: 'server error' },
+      ),
+    );
   }
 }

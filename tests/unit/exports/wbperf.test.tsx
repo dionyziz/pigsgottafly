@@ -20,7 +20,16 @@ import path from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { fleetSeed } from '../../../tools/build_seed';
 import { REF, SUN_TABLES, runwaysOf } from '../../../src/data/ref';
-import { emptyFlightDoc, type Aircraft, type AircraftInput, type FlightCrew, type FlightDoc, type PersonDetails, type Pilot, type RoutePoint } from '../../../src/shared';
+import {
+  emptyFlightDoc,
+  type Aircraft,
+  type AircraftInput,
+  type FlightCrew,
+  type FlightDoc,
+  type PersonDetails,
+  type Pilot,
+  type RoutePoint,
+} from '../../../src/shared';
 import type { RefAerodrome, RefRunway } from '../../../src/shared/ref';
 import { magneticVariation } from '../../../src/calc';
 import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
@@ -40,14 +49,41 @@ const ASV = asAircraft(ASV_IN, 'ac_asv');
 const ASG = asAircraft(ASG_IN, 'ac_asg');
 
 const person = (fullName: string, weightKg: number | null): PersonDetails => ({
-  fullName, phone: '', dateOfBirth: null, weightKg, idNumber: '', idType: '', nationality: '', relation: '',
+  fullName,
+  phone: '',
+  dateOfBirth: null,
+  weightKg,
+  idNumber: '',
+  idType: '',
+  nationality: '',
+  relation: '',
 });
-const crew = (role: 'PIC' | 'PAX', seat: string, name: string, kg: number | null): FlightCrew => ({ role, passengerId: role === 'PIC' ? null : 'p_' + seat, seat, snapshot: person(name, kg) });
+const crew = (role: 'PIC' | 'PAX', seat: string, name: string, kg: number | null): FlightCrew => ({
+  role,
+  passengerId: role === 'PIC' ? null : 'p_' + seat,
+  seat,
+  snapshot: person(name, kg),
+});
 
 const pilot: Pilot = {
-  ...person('Pat Pilot', 80), id: 'pilot1', email: '', name: '', picture: '', licenceNo: '', homeAerodrome: 'LGTT', defaultAircraftId: null,
-  settings: { taxiOutMin: 15, taxiInMin: 15, reserveMin: 60, finalReserveMin: 0, windModel: 'ecmwf_ifs025', enrouteAerodromeRadiusNm: 2 },
-  created: 0, lastLogin: 0,
+  ...person('Pat Pilot', 80),
+  id: 'pilot1',
+  email: '',
+  name: '',
+  picture: '',
+  licenceNo: '',
+  homeAerodrome: 'LGTT',
+  defaultAircraftId: null,
+  settings: {
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    reserveMin: 60,
+    finalReserveMin: 0,
+    windModel: 'ecmwf_ifs025',
+    enrouteAerodromeRadiusNm: 2,
+  },
+  created: 0,
+  lastLogin: 0,
 };
 
 function adPoint(icao: string, uid: string): RoutePoint {
@@ -55,12 +91,21 @@ function adPoint(icao: string, uid: string): RoutePoint {
   return { uid, kind: 'aerodrome', refId: a.id, name: a.icao!, lat: a.lat, lon: a.lon };
 }
 
-const baseRef = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES, runwaysOf };
+const baseRef = {
+  aerodromes: REF.aerodromes,
+  vfrPoints: REF.vfrPoints,
+  vfrRoutes: REF.vfrRoutes,
+  sunTables: SUN_TABLES,
+  runwaysOf,
+};
 
 function flight(over: Partial<FlightDoc> = {}): FlightDoc {
   return {
     ...emptyFlightDoc('2026-11-21'),
-    blockOff: '09:00', taxiOutMin: 15, taxiInMin: 15, aircraftId: ASV.id,
+    blockOff: '09:00',
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    aircraftId: ASV.id,
     route: [adPoint('LGTT', 'a'), adPoint('LGMG', 'b')],
     crew: [crew('PIC', 'front-left', 'Pat Pilot', 80), crew('PAX', 'rear-left', 'Robin Rider', 70)],
     baggageKg: { bag1: 10 },
@@ -70,7 +115,16 @@ function flight(over: Partial<FlightDoc> = {}): FlightDoc {
 }
 
 const calcOf = (doc: FlightDoc, aircraft: Aircraft | null, extra: Partial<ExportCalcInput> = {}) =>
-  computeExportCalc({ doc, aircraft, settings: pilot.settings, weather: null, metar: null, nowMs: Date.parse('2026-11-15T12:00:00Z'), ref: baseRef, ...extra });
+  computeExportCalc({
+    doc,
+    aircraft,
+    settings: pilot.settings,
+    weather: null,
+    metar: null,
+    nowMs: Date.parse('2026-11-15T12:00:00Z'),
+    ref: baseRef,
+    ...extra,
+  });
 
 // ---------------------------------------------------------------------------------------------
 // W&B sheet
@@ -122,7 +176,10 @@ describe('W&B sheet (MD 4.3)', () => {
     expect(m.burn.massKg).toBeCloseTo(-(fuel.taxiL + fuel.tripL) * 0.72, 9);
     expect(m.landing.massKg! - m.takeoff.massKg!).toBeCloseTo(m.burn.massKg!, 9);
     expect(m.landing.momentKgM! - m.takeoff.momentKgM!).toBeCloseTo(m.burn.massKg! * 1.215, 9);
-    expect(m.checks.map((c) => [c.phase, c.ok])).toEqual([['takeoff', true], ['landing', true]]);
+    expect(m.checks.map((c) => [c.phase, c.ok])).toEqual([
+      ['takeoff', true],
+      ['landing', true],
+    ]);
     expect(m.verdict).toBe('pass');
     expect(m.registration).toBe('SX-ASV');
     expect(m.date).toBe('2026-11-21');
@@ -138,7 +195,12 @@ describe('W&B sheet (MD 4.3)', () => {
 
   test('fails outside the envelope and over MTOW; flags an overloaded baggage area', () => {
     const doc = flight({
-      crew: [crew('PIC', 'front-left', 'A', 110), crew('PAX', 'front-right', 'B', 110), crew('PAX', 'rear-left', 'C', 100), crew('PAX', 'rear-right', 'D', 100)],
+      crew: [
+        crew('PIC', 'front-left', 'A', 110),
+        crew('PAX', 'front-right', 'B', 110),
+        crew('PAX', 'rear-left', 'C', 100),
+        crew('PAX', 'rear-right', 'D', 100),
+      ],
       baggageKg: { bag2: 30 },
       fobL: 144,
     });
@@ -162,7 +224,12 @@ describe('W&B sheet (MD 4.3)', () => {
   });
 
   test('utility category is checked against the utility envelope', () => {
-    const doc = flight({ options: { ...flight().options, category: 'utility' }, crew: [crew('PIC', 'front-left', 'A', 80)], baggageKg: {}, fobL: 80 });
+    const doc = flight({
+      options: { ...flight().options, category: 'utility' },
+      crew: [crew('PIC', 'front-left', 'A', 80)],
+      baggageKg: {},
+      fobL: 80,
+    });
     const m = wbSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV), route: '' });
     expect(m.categoryLabel).toBe('Utility');
     // SX-ASV solo with 80 L: CG 1.043 m, inside normal but aft of the utility limit (1.03 m)
@@ -183,19 +250,45 @@ describe('W&B sheet (MD 4.3)', () => {
     const m = wbSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV), route: '' });
     expect(m.verdict).toBe('incomplete');
     expect(m.lines.find((l) => l.key === 'front')!.people[0].massKg).toBeNull();
-    const none = wbSheetModel({ doc, aircraft: null, pilot, calc: calcOf({ ...doc, aircraftId: null }, null), route: '' });
+    const none = wbSheetModel({
+      doc,
+      aircraft: null,
+      pilot,
+      calc: calcOf({ ...doc, aircraftId: null }, null),
+      route: '',
+    });
     expect(none.verdict).toBe('incomplete');
     expect(none.lines).toEqual([]);
   });
 
   test('chart geometry: CG envelope mapped to moments; domain covers envelopes and points', () => {
-    const outline = cgToMomentOutline([[0.89, 600], [0.89, 885], [0.98, 1043], [1.2, 1043], [1.2, 600]], 4);
+    const outline = cgToMomentOutline(
+      [
+        [0.89, 600],
+        [0.89, 885],
+        [0.98, 1043],
+        [1.2, 1043],
+        [1.2, 600],
+      ],
+      4,
+    );
     expect(outline[0]).toEqual([0.89 * 600, 600]);
     // the sloped forward limit is curved in moment space: its midpoint is not the chord's midpoint
     const mid = outline.find(([, m]) => Math.abs(m - (885 + 1043) / 2) < 1e-9)!;
     expect(mid[0]).toBeCloseTo(((0.89 + 0.98) / 2) * ((885 + 1043) / 2), 9);
     expect(mid[0]).not.toBeCloseTo((0.89 * 885 + 0.98 * 1043) / 2, 1);
-    const d = chartDomain([{ category: 'normal', label: '', maxKg: 1043, outline: ASV.massBalance.envelopes.normal.momentPolygon!, cgOutline: null }], [{ massKg: 1100, momentKgM: 1400, armM: 0 }]);
+    const d = chartDomain(
+      [
+        {
+          category: 'normal',
+          label: '',
+          maxKg: 1043,
+          outline: ASV.massBalance.envelopes.normal.momentPolygon!,
+          cgOutline: null,
+        },
+      ],
+      [{ massKg: 1100, momentKgM: 1400, armM: 0 }],
+    );
     expect(d.x0).toBeLessThanOrEqual(600);
     expect(d.x1).toBeGreaterThanOrEqual(1400);
     expect(d.y1).toBeGreaterThanOrEqual(1100);
@@ -257,7 +350,9 @@ describe('performance sheet (MD 4.4)', () => {
   });
 
   test('a person with no weight: performance uses MTOW (not the too-light W&B mass) and says why', () => {
-    const doc = flight({ crew: [crew('PIC', 'front-left', 'Pat Pilot', 80), crew('PAX', 'rear-left', 'Robin Rider', null)] });
+    const doc = flight({
+      crew: [crew('PIC', 'front-left', 'Pat Pilot', 80), crew('PAX', 'rear-left', 'Robin Rider', null)],
+    });
     const calc = calcOf(doc, ASV);
     expect(calc.missingWeights).toEqual(['Robin Rider']);
     expect(calc.wb).not.toBeNull();
@@ -278,7 +373,9 @@ describe('performance sheet (MD 4.4)', () => {
   });
 
   test('a route end that is not an aerodrome is incomplete', () => {
-    const doc = flight({ route: [adPoint('LGTT', 'a'), { uid: 'z', kind: 'custom', refId: null, name: 'ZOFRI', lat: 37.0, lon: 25.0 }] });
+    const doc = flight({
+      route: [adPoint('LGTT', 'a'), { uid: 'z', kind: 'custom', refId: null, name: 'ZOFRI', lat: 37.0, lon: 25.0 }],
+    });
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV) });
     expect(m.arrival.verdict).toBe('incomplete');
     expect(m.arrival.warnings.join(' ')).toMatch(/not an aerodrome/);
@@ -289,7 +386,17 @@ describe('performance sheet (MD 4.4)', () => {
     const doc = flight();
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV) });
     const html = renderToStaticMarkup(<PerfSheet m={m} />);
-    for (const t of ['PERFORMANCE LOG', 'T.O.D.A.', 'T.O.R.R.', 'L.D.A.', 'L.R.R.', 'Vglide', 'Vapr', 'Short dry grass']) expect(html).toContain(t);
+    for (const t of [
+      'PERFORMANCE LOG',
+      'T.O.D.A.',
+      'T.O.R.R.',
+      'L.D.A.',
+      'L.R.R.',
+      'Vglide',
+      'Vapr',
+      'Short dry grass',
+    ])
+      expect(html).toContain(t);
     expect(html).not.toMatch(/MD 4\.\d|club/i);
   });
 
@@ -297,14 +404,22 @@ describe('performance sheet (MD 4.4)', () => {
     const doc = flight();
     const calc = calcOf(doc, ASV);
     const s = { name: 'Pat Pilot', signedAt: Date.UTC(2026, 10, 15, 16, 51) };
-    const perf = renderToStaticMarkup(<PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} signature={s} />);
-    const wb = renderToStaticMarkup(<WbSheet m={wbSheetModel({ doc, aircraft: ASV, pilot, calc, route: 'LGTT – LGMG' })} signature={s} />);
+    const perf = renderToStaticMarkup(
+      <PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} signature={s} />,
+    );
+    const wb = renderToStaticMarkup(
+      <WbSheet m={wbSheetModel({ doc, aircraft: ASV, pilot, calc, route: 'LGTT – LGMG' })} signature={s} />,
+    );
     for (const html of [perf, wb]) {
-      expect(html).toMatch(/class="xp-sigline" data-field="signature"><span class="xp-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/);
+      expect(html).toMatch(
+        /class="xp-sigline" data-field="signature"><span class="xp-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/,
+      );
       expect(html).toContain('>P. Pilot<');
       expect(html).toContain('signed 2026-11-15 16:51Z');
     }
-    expect(renderToStaticMarkup(<PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} />)).not.toContain('data-testid="signature"');
+    expect(renderToStaticMarkup(<PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} />)).not.toContain(
+      'data-testid="signature"',
+    );
   });
 });
 
@@ -313,14 +428,57 @@ describe('performance sheet (MD 4.4)', () => {
 
 interface ClubInput {
   Registration: 'SXASV' | 'SXASG';
-  PIC_FPax: number; RPax: number; Baggage1: number; Baggage2: number; AVGAS: number; MOGAS: number;
-  Elevation: number; QNH: number; Temperature: number; RWY: string; Wind_Dir: number; Wind_Sp: number; RWY_Slope_TO: number; RWYCC: number;
+  PIC_FPax: number;
+  RPax: number;
+  Baggage1: number;
+  Baggage2: number;
+  AVGAS: number;
+  MOGAS: number;
+  Elevation: number;
+  QNH: number;
+  Temperature: number;
+  RWY: string;
+  Wind_Dir: number;
+  Wind_Sp: number;
+  RWY_Slope_TO: number;
+  RWYCC: number;
   BlockFuel: number;
-  Elevation_land: number; QNH_land: number; Temperature_land: number; RWY_land: string; Wind_Dir_land: number; Wind_Sp_land: number; RWY_Slope_LDG: number; RWYCC_land: number;
+  Elevation_land: number;
+  QNH_land: number;
+  Temperature_land: number;
+  RWY_land: string;
+  Wind_Dir_land: number;
+  Wind_Sp_land: number;
+  RWY_Slope_LDG: number;
+  RWYCC_land: number;
 }
-interface ClubPhase { pressureAltFt: number; densityAltFt: number; headwindKt: number; crosswindKt: number; massKg: number; conditionFactor: number; safetyFactor: number; todrM?: number; torrM?: number; ldrM?: number; lrrM?: number }
-interface ClubCase { input: ClubInput; club: { wbRows: Record<string, [number, number, number]>; total: [number, number]; takeoff: ClubPhase; landing: ClubPhase } }
-const CASES = (JSON.parse(fs.readFileSync(path.join(__dirname, '../../fixtures/club-wbp-cases.json'), 'utf8')) as { cases: ClubCase[] }).cases;
+interface ClubPhase {
+  pressureAltFt: number;
+  densityAltFt: number;
+  headwindKt: number;
+  crosswindKt: number;
+  massKg: number;
+  conditionFactor: number;
+  safetyFactor: number;
+  todrM?: number;
+  torrM?: number;
+  ldrM?: number;
+  lrrM?: number;
+}
+interface ClubCase {
+  input: ClubInput;
+  club: {
+    wbRows: Record<string, [number, number, number]>;
+    total: [number, number];
+    takeoff: ClubPhase;
+    landing: ClubPhase;
+  };
+}
+const CASES = (
+  JSON.parse(fs.readFileSync(path.join(__dirname, '../../fixtures/club-wbp-cases.json'), 'utf8')) as {
+    cases: ClubCase[];
+  }
+).cases;
 
 const CLUB_FUEL_ARM = 1.21539;
 const CLUB_EMPTY_KG = { SXASV: 691.0, SXASG: 692.0 };
@@ -339,36 +497,96 @@ function clubSetup(c: ClubCase) {
   ac.massBalance.stations = ac.massBalance.stations.map((s) => (s.kind === 'fuel' ? { ...s, armM: CLUB_FUEL_ARM } : s));
   ac.fuel = { ...ac.fuel, unusableIncludedInEmptyMass: true, usableL: 500, taxiAllowanceL: i.BlockFuel };
   ac.performance = structuredClone(ac.performance);
-  ac.performance.factors.runwayCondition = { ...ac.performance.factors.runwayCondition, 'club dep': i.RWYCC, 'club arr': i.RWYCC_land };
+  ac.performance.factors.runwayCondition = {
+    ...ac.performance.factors.runwayCondition,
+    'club dep': i.RWYCC,
+    'club arr': i.RWYCC_land,
+  };
 
   const ad = (id: string, elev: number, rwy: string): RefAerodrome => ({
-    id, icao: id, name: id, lat: LAT, lon: LON, elevFt: elev, runways: [rwy], freqs: [], zones: [], water: false, source: '', notes: '',
+    id,
+    icao: id,
+    name: id,
+    lat: LAT,
+    lon: LON,
+    elevFt: elev,
+    runways: [rwy],
+    freqs: [],
+    zones: [],
+    water: false,
+    source: '',
+    notes: '',
   });
   const rw = (id: string, des: string, slopePct: number): RefRunway => ({
-    aerodromeId: id, designator: des, reciprocal: '', headingMagDeg: parseInt(des, 10) * 10, headingTrueDeg: null, lengthM: 3000, widthM: 30,
-    surface: 'ASPH', toraM: 3000, todaM: 3000, asdaM: 3000, ldaM: 3000, slopePct, thresholdElevFt: null,
+    aerodromeId: id,
+    designator: des,
+    reciprocal: '',
+    headingMagDeg: parseInt(des, 10) * 10,
+    headingTrueDeg: null,
+    lengthM: 3000,
+    widthM: 30,
+    surface: 'ASPH',
+    toraM: 3000,
+    todaM: 3000,
+    asdaM: 3000,
+    ldaM: 3000,
+    slopePct,
+    thresholdElevFt: null,
   });
   const dep = ad('LGXA', i.Elevation, i.RWY);
   const arr = ad('LGXB', i.Elevation_land, i.RWY_land);
-  const runways: Record<string, RefRunway[]> = { LGXA: [rw('LGXA', i.RWY, i.RWY_Slope_TO)], LGXB: [rw('LGXB', i.RWY_land, -i.RWY_Slope_LDG)] };
+  const runways: Record<string, RefRunway[]> = {
+    LGXA: [rw('LGXA', i.RWY, i.RWY_Slope_TO)],
+    LGXB: [rw('LGXB', i.RWY_land, -i.RWY_Slope_LDG)],
+  };
   const variation = magneticVariation(LAT, LON, DATE);
   const metar = (station: string, qnh: number, oat: number, dirMag: number, kt: number): ParsedMetar => ({
-    raw: `METAR ${station} 151000Z TEST`, type: 'METAR', station, timeMs: T_MS, auto: false, nil: false,
-    wind: { dirDeg: kt > 0 ? dirMag + variation : null, speedKt: kt, gustKt: null, varFrom: null, varTo: null, variable: false, calm: !(kt > 0) },
-    cavok: true, visibilityM: 9999, clouds: [], skyClear: null, weather: [], tempC: oat, dewC: null, qnhHpa: qnh,
+    raw: `METAR ${station} 151000Z TEST`,
+    type: 'METAR',
+    station,
+    timeMs: T_MS,
+    auto: false,
+    nil: false,
+    wind: {
+      dirDeg: kt > 0 ? dirMag + variation : null,
+      speedKt: kt,
+      gustKt: null,
+      varFrom: null,
+      varTo: null,
+      variable: false,
+      calm: !(kt > 0),
+    },
+    cavok: true,
+    visibilityM: 9999,
+    clouds: [],
+    skyClear: null,
+    weather: [],
+    tempC: oat,
+    dewC: null,
+    qnhHpa: qnh,
   });
   const metars: MetarTafResult = {
-    status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: T_MS,
+    status: 'ok',
+    message: '',
+    source: 'aviationweather.gov',
+    fetchedMs: T_MS,
     stations: {
       LGXA: { metar: metar('LGXA', i.QNH, i.Temperature, i.Wind_Dir, i.Wind_Sp), taf: null, observedMs: T_MS },
-      LGXB: { metar: metar('LGXB', i.QNH_land, i.Temperature_land, i.Wind_Dir_land, i.Wind_Sp_land), taf: null, observedMs: T_MS },
+      LGXB: {
+        metar: metar('LGXB', i.QNH_land, i.Temperature_land, i.Wind_Dir_land, i.Wind_Sp_land),
+        taf: null,
+        observedMs: T_MS,
+      },
     },
   };
   const people: FlightCrew[] = [crew('PIC', 'front-left', 'PIC', i.PIC_FPax)];
   if (i.RPax > 0) people.push(crew('PAX', 'rear-left', 'PAX', i.RPax));
   const doc: FlightDoc = {
     ...emptyFlightDoc(DATE),
-    blockOff: '09:50', taxiOutMin: 10, taxiInMin: 10, aircraftId: ac.id,
+    blockOff: '09:50',
+    taxiOutMin: 10,
+    taxiInMin: 10,
+    aircraftId: ac.id,
     // zero-length leg: no trip fuel, so landing fuel = FOB − BlockFuel (the taxi allowance here)
     route: [
       { uid: 'd', kind: 'aerodrome', refId: 'LGXA', name: 'LGXA', lat: LAT, lon: LON },
@@ -377,20 +595,38 @@ function clubSetup(c: ClubCase) {
     crew: people,
     baggageKg: { bag1: i.Baggage1, bag2: i.Baggage2 },
     fobL: litres,
-    options: { ...emptyFlightDoc(DATE).options, departureRunway: i.RWY, arrivalRunway: i.RWY_land, departureSurface: 'club dep', arrivalSurface: 'club arr',
-      fuelL: { AVGAS: i.AVGAS, MOGAS: i.MOGAS } },
+    options: {
+      ...emptyFlightDoc(DATE).options,
+      departureRunway: i.RWY,
+      arrivalRunway: i.RWY_land,
+      departureSurface: 'club dep',
+      arrivalSurface: 'club arr',
+      fuelL: { AVGAS: i.AVGAS, MOGAS: i.MOGAS },
+    },
   };
   const calc = computeExportCalc({
-    doc, aircraft: ac, settings: pilot.settings, weather: null, metar: metars, nowMs: T_MS + 5 * 60000,
+    doc,
+    aircraft: ac,
+    settings: pilot.settings,
+    weather: null,
+    metar: metars,
+    nowMs: T_MS + 5 * 60000,
     ref: { ...baseRef, aerodromes: [dep, arr], runwaysOf: (id) => runways[id] ?? [] },
   });
   return { doc, ac, calc, litres, density: (i.AVGAS * 0.72 + i.MOGAS * 0.75) / litres };
 }
 
-const CLUB_ROW: Record<string, string> = { front: 'PIC and Front Passenger', rear: 'Rear Passengers', bag1: 'Baggage Area 1', bag2: 'Baggage Area 2' };
+const CLUB_ROW: Record<string, string> = {
+  front: 'PIC and Front Passenger',
+  rear: 'Rear Passengers',
+  bag1: 'Baggage Area 1',
+  bag2: 'Baggage Area 2',
+};
 const within = (ours: number, club: number) => Math.abs(ours - club) <= Math.max(2, 0.0075 * club);
 const compared = { takeoff: 0, landing: 0, maxRel: 0 };
-const track = (ours: number, club: number) => { compared.maxRel = Math.max(compared.maxRel, Math.abs(ours - club) / club); };
+const track = (ours: number, club: number) => {
+  compared.maxRel = Math.max(compared.maxRel, Math.abs(ours - club) / club);
+};
 
 describe('exports vs the club calculator (90 cases, export path end to end)', () => {
   test('fixture loaded', () => expect(CASES).toHaveLength(90));
@@ -418,7 +654,10 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
     const { doc, ac, calc, litres } = clubSetup(c);
     const m = perfSheetModel({ doc, aircraft: ac, pilot, calc });
     const val = (b: typeof m.departure, k: string) => parseFloat(b.rows.find((r) => r.key === k)!.value);
-    for (const [b, ph] of [[m.departure, 'takeoff'], [m.arrival, 'landing']] as const) {
+    for (const [b, ph] of [
+      [m.departure, 'takeoff'],
+      [m.arrival, 'landing'],
+    ] as const) {
       const club = c.club[ph];
       const e = ph === 'takeoff' ? calc.departure : calc.arrival;
       expect(e.conditions?.source).toBe('metar');
@@ -426,7 +665,9 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
       expect(val(b, 'safety')).toBe(club.safetyFactor);
       expect(Math.abs(val(b, 'cond') - club.conditionFactor)).toBeLessThanOrEqual(0.005 + 1e-9);
       // PA/DA: ISA barometric PA vs the club's 27 ft/hPa (calc test DIFFERENCES 3/4)
-      expect(Math.abs(val(b, 'pa') - club.pressureAltFt)).toBeLessThanOrEqual(0.035 * Math.abs(27 * (1013 - (ph === 'takeoff' ? c.input.QNH : c.input.QNH_land))) + 8);
+      expect(Math.abs(val(b, 'pa') - club.pressureAltFt)).toBeLessThanOrEqual(
+        0.035 * Math.abs(27 * (1013 - (ph === 'takeoff' ? c.input.QNH : c.input.QNH_land))) + 8,
+      );
       const hw = e.perf!.wind.headwindKt;
       expect(Math.abs(Math.abs(hw) - club.headwindKt)).toBeLessThanOrEqual(0.15);
       expect(Math.abs(e.perf!.wind.crosswindKt - club.crosswindKt)).toBeLessThanOrEqual(0.15);
@@ -440,7 +681,8 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
         const p = e.perf!;
         const clubD = p.distances!.method === 'da' ? p.distances! : p.alternative!;
         expect(clubD.method).toBe('da');
-        const clubTodr = Math.ceil(clubD.requiredTotalM - 1e-9), clubTorr = Math.ceil(clubD.requiredGroundM - 1e-9);
+        const clubTodr = Math.ceil(clubD.requiredTotalM - 1e-9),
+          clubTorr = Math.ceil(clubD.requiredGroundM - 1e-9);
         track(clubTodr, club.todrM!);
         expect(within(clubTodr, club.todrM!), `TODR (club method) ${clubTodr} vs ${club.todrM}`).toBe(true);
         expect(within(clubTorr, club.torrM!), `TORR (club method) ${clubTorr} vs ${club.torrM}`).toBe(true);
@@ -456,7 +698,8 @@ describe('exports vs the club calculator (90 cases, export path end to end)', ()
         const p = e.perf!;
         const clubD = p.distances!.method === 'da' ? p.distances! : p.alternative!;
         expect(clubD.method).toBe('da');
-        const clubLdr = Math.ceil(clubD.requiredTotalM - 1e-9), clubLrr = Math.ceil(clubD.requiredGroundM - 1e-9);
+        const clubLdr = Math.ceil(clubD.requiredTotalM - 1e-9),
+          clubLrr = Math.ceil(clubD.requiredGroundM - 1e-9);
         track(clubLdr, club.ldrM!);
         expect(within(clubLdr, club.ldrM!), `LDR (club method) ${clubLdr} vs ${club.ldrM}`).toBe(true);
         expect(within(clubLrr, club.lrrM!), `LRR (club method) ${clubLrr} vs ${club.lrrM}`).toBe(true);

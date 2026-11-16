@@ -17,24 +17,46 @@ export function AerodromeTip({ x, y, a, info }: { x: number; y: number; a: RefAe
         <span className="pgf-air-tip-name">{title(a)}</span>
         {a.elevFt !== null && <span className="pgf-air-tip-lim">{Math.round(a.elevFt)} ft</span>}
       </div>
-      <span className={'pgf-ad-tip-line' + (closed ? ' is-danger' : '')} data-testid="aerodrome-tip-hours">{adHoursLine(info)}</span>
+      <span className={'pgf-ad-tip-line' + (closed ? ' is-danger' : '')} data-testid="aerodrome-tip-hours">
+        {adHoursLine(info)}
+      </span>
       {info.handling && <span className="pgf-ad-tip-line">{adHandlingLine(info)}</span>}
       <div className="pgf-air-tip-more">Click for details</div>
     </MapTip>
   );
 }
 
-export function AerodromePopover({ x, y, a, info, airac, onClose }: { x: number; y: number; a: RefAerodrome; info: AdDayInfo; airac: string; onClose(): void }) {
+export function AerodromePopover({
+  x,
+  y,
+  a,
+  info,
+  airac,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  a: RefAerodrome;
+  info: AdDayInfo;
+  airac: string;
+  onClose(): void;
+}) {
   return (
     <MapPopover x={x} y={y} label="Aerodrome" testId="aerodrome-pop" onClose={onClose}>
-      <PopItem open head={<>
-        <b className="pgf-air-type t-ad">AD</b>
-        <span className="pgf-air-name">{title(a)}</span>
-        {a.elevFt !== null && <span className="pgf-air-lim">{Math.round(a.elevFt)} ft</span>}
-      </>}>
+      <PopItem
+        open
+        head={
+          <>
+            <b className="pgf-air-type t-ad">AD</b>
+            <span className="pgf-air-name">{title(a)}</span>
+            {a.elevFt !== null && <span className="pgf-air-lim">{Math.round(a.elevFt)} ft</span>}
+          </>
+        }
+      >
         <AdHoursDetail a={a} info={info} />
         <div className="pgf-air-text pgf-ad-src">
-          <AipLink refText={a.source}>AIP Greece {a.source} (PDF)</AipLink> <span className="muted">· AIRAC {airac}</span>
+          <AipLink refText={a.source}>AIP Greece {a.source} (PDF)</AipLink>{' '}
+          <span className="muted">· AIRAC {airac}</span>
         </div>
       </PopItem>
     </MapPopover>

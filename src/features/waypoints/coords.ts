@@ -10,20 +10,26 @@ import type { LatLon } from '../../shared';
  * Returns null when the text is not a position.
  */
 export function parseLatLon(text: string): LatLon | null {
-  const t = text.trim().toUpperCase().replace(/[°º'’′"”″]/g, ' ').replace(/\s+/g, ' ');
+  const t = text
+    .trim()
+    .toUpperCase()
+    .replace(/[°º'’′"”″]/g, ' ')
+    .replace(/\s+/g, ' ');
   if (!t) return null;
 
   // ICAO compact: DDMM[SS[.s]]N DDDMM[SS[.s]]E
   const c = /^(\d{4}(?:\d{2}(?:\.\d+)?)?)\s?([NS])[\s,]*(\d{5}(?:\d{2}(?:\.\d+)?)?)\s?([EW])$/.exec(t);
   if (c) {
-    const lat = compact(c[1], 2), lon = compact(c[3], 3);
+    const lat = compact(c[1], 2),
+      lon = compact(c[3], 3);
     return check(c[2] === 'S' ? -lat : lat, c[4] === 'W' ? -lon : lon);
   }
 
   // split into two halves: by hemisphere letters, else by comma, else by an even split of numbers
   const hemi = /^([NS])?\s?([\d.\s-]+?)\s?([NS])?[\s,]+([EW])?\s?([\d.\s-]+?)\s?([EW])?$/.exec(t);
   if (hemi && (hemi[1] || hemi[3]) && (hemi[4] || hemi[6])) {
-    const lat = dms(hemi[2]), lon = dms(hemi[5]);
+    const lat = dms(hemi[2]),
+      lon = dms(hemi[5]);
     if (lat == null || lon == null) return null;
     return check((hemi[1] || hemi[3]) === 'S' ? -lat : lat, (hemi[4] || hemi[6]) === 'W' ? -lon : lon);
   }
@@ -36,13 +42,16 @@ export function parseLatLon(text: string): LatLon | null {
     parts = [nums.slice(0, nums.length / 2).join(' '), nums.slice(nums.length / 2).join(' ')];
   }
   if (parts.length !== 2) return null;
-  const lat = dms(parts[0]), lon = dms(parts[1]);
+  const lat = dms(parts[0]),
+    lon = dms(parts[1]);
   if (lat == null || lon == null) return null;
   return check(lat, lon);
 }
 
 function compact(s: string, degDigits: number): number {
-  const d = +s.slice(0, degDigits), m = +s.slice(degDigits, degDigits + 2), sec = s.length > degDigits + 2 ? +s.slice(degDigits + 2) : 0;
+  const d = +s.slice(0, degDigits),
+    m = +s.slice(degDigits, degDigits + 2),
+    sec = s.length > degDigits + 2 ? +s.slice(degDigits + 2) : 0;
   return d + m / 60 + sec / 3600;
 }
 
@@ -66,8 +75,10 @@ function check(lat: number, lon: number): LatLon | null {
 export function formatDms({ lat, lon }: LatLon): string {
   const f = (v: number, degDigits: number, pos: string, neg: string) => {
     let total = Math.round(Math.abs(v) * 3600);
-    const d = Math.floor(total / 3600); total -= d * 3600;
-    const m = Math.floor(total / 60), s = total - m * 60;
+    const d = Math.floor(total / 3600);
+    total -= d * 3600;
+    const m = Math.floor(total / 60),
+      s = total - m * 60;
     return `${String(d).padStart(degDigits, '0')}°${String(m).padStart(2, '0')}'${String(s).padStart(2, '0')}"${v < 0 ? neg : pos}`;
   };
   return `${f(lat, 2, 'N', 'S')} ${f(lon, 3, 'E', 'W')}`;
@@ -77,8 +88,10 @@ export function formatDms({ lat, lon }: LatLon): string {
 export function formatIcao({ lat, lon }: LatLon): string {
   const f = (v: number, degDigits: number, pos: string, neg: string) => {
     let total = Math.round(Math.abs(v) * 3600);
-    const d = Math.floor(total / 3600); total -= d * 3600;
-    const m = Math.floor(total / 60), s = total - m * 60;
+    const d = Math.floor(total / 3600);
+    total -= d * 3600;
+    const m = Math.floor(total / 60),
+      s = total - m * 60;
     return `${String(d).padStart(degDigits, '0')}${String(m).padStart(2, '0')}${String(s).padStart(2, '0')}${v < 0 ? neg : pos}`;
   };
   return f(lat, 2, 'N', 'S') + f(lon, 3, 'E', 'W');

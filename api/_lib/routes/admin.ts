@@ -10,22 +10,35 @@ type Row = Record<string, any>;
 
 export const routes: Route[] = [
   {
-    method: 'GET', path: '/admin/mail',
+    method: 'GET',
+    path: '/admin/mail',
     async handler({ db, isAdmin, query }): Promise<AdminMail[]> {
       if (!isAdmin) throw new HttpError(403, 'admins only');
       const pilot = query.get('pilot') || null;
       const kind = query.get('kind') || null;
-      const rows = await db.query(`SELECT m.*, p.email, p.full_name, p.name FROM mail_log m LEFT JOIN pilots p ON p.id = m.pilot_id
-        WHERE ($1::text IS NULL OR m.pilot_id = $1) AND ($2::text IS NULL OR m.form = $2) ORDER BY m.at DESC LIMIT 300`, [pilot, kind]);
+      const rows = await db.query(
+        `SELECT m.*, p.email, p.full_name, p.name FROM mail_log m LEFT JOIN pilots p ON p.id = m.pilot_id
+        WHERE ($1::text IS NULL OR m.pilot_id = $1) AND ($2::text IS NULL OR m.form = $2) ORDER BY m.at DESC LIMIT 300`,
+        [pilot, kind],
+      );
       return rows.map((r: Row) => ({
-        id: r.id, at: Number(r.at), pilotId: r.pilot_id ?? null, pilot: r.pilot_id ? personName(r.full_name, r.name) || r.email || r.pilot_id : '',
-        kind: r.form, flightId: r.flight_id ?? null, recipient: r.recipient ?? '', subject: r.subject ?? '', result: r.result,
-        messageId: r.message_id ?? null, error: r.error ?? null,
+        id: r.id,
+        at: Number(r.at),
+        pilotId: r.pilot_id ?? null,
+        pilot: r.pilot_id ? personName(r.full_name, r.name) || r.email || r.pilot_id : '',
+        kind: r.form,
+        flightId: r.flight_id ?? null,
+        recipient: r.recipient ?? '',
+        subject: r.subject ?? '',
+        result: r.result,
+        messageId: r.message_id ?? null,
+        error: r.error ?? null,
       }));
     },
   },
   {
-    method: 'GET', path: '/admin/pilots',
+    method: 'GET',
+    path: '/admin/pilots',
     async handler({ db, isAdmin }): Promise<AdminPilot[]> {
       if (!isAdmin) throw new HttpError(403, 'admins only');
       const pilots = await db.query(`SELECT p.id, p.email, p.name, p.full_name, p.created, p.last_login,
@@ -41,11 +54,26 @@ export const routes: Route[] = [
         UNION ALL
         SELECT 'operator', o.name, o.pilot_id, s.pilot_id, s.role FROM operator_shares s JOIN operators o ON o.id = s.operator_id
         ORDER BY 2`);
-      const label = new Map<string, string>(pilots.map((p: Row) => [p.id, personName(p.full_name, p.name) || p.email || p.id]));
-      const share = (s: Row, other: string): AdminShare => ({ kind: s.kind, name: s.what, role: s.role, pilot: label.get(other) ?? other });
+      const label = new Map<string, string>(
+        pilots.map((p: Row) => [p.id, personName(p.full_name, p.name) || p.email || p.id]),
+      );
+      const share = (s: Row, other: string): AdminShare => ({
+        kind: s.kind,
+        name: s.what,
+        role: s.role,
+        pilot: label.get(other) ?? other,
+      });
       return pilots.map((p: Row) => ({
-        id: p.id, email: p.email ?? '', name: personName(p.full_name, p.name), created: Number(p.created), lastLogin: Number(p.last_login),
-        flights: p.flights, trashedFlights: p.trashed, aircraft: p.aircraft, passengers: p.passengers, operators: p.operators,
+        id: p.id,
+        email: p.email ?? '',
+        name: personName(p.full_name, p.name),
+        created: Number(p.created),
+        lastLogin: Number(p.last_login),
+        flights: p.flights,
+        trashedFlights: p.trashed,
+        aircraft: p.aircraft,
+        passengers: p.passengers,
+        operators: p.operators,
         sharedByThem: shares.filter((s: Row) => s.owner_id === p.id).map((s: Row) => share(s, s.with_id)),
         sharedWithThem: shares.filter((s: Row) => s.with_id === p.id).map((s: Row) => share(s, s.owner_id)),
       }));

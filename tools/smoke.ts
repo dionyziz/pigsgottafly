@@ -21,7 +21,11 @@ async function check(name: string, fn: () => Promise<string>): Promise<void> {
 }
 
 async function get(path: string): Promise<{ res: Response; text: string }> {
-  const res = await fetch(base + path, { redirect: 'follow', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'pgf-smoke' } });
+  const res = await fetch(base + path, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20000),
+    headers: { 'User-Agent': 'pgf-smoke' },
+  });
   return { res, text: await res.text() };
 }
 function expect(cond: unknown, msg: string): asserts cond {
@@ -33,11 +37,17 @@ let assetPath: string | null = null;
 await check('GET /api/health', async () => {
   const { res, text } = await get('/api/health');
   let body: any = null;
-  try { body = JSON.parse(text); } catch { /* reported below */ }
+  try {
+    body = JSON.parse(text);
+  } catch {
+    /* reported below */
+  }
   expect(res.status === 200, `HTTP ${res.status} ${body?.error ?? text.slice(0, 200)}`);
   expect(body?.ok === true, `ok is not true: ${text.slice(0, 200)}`);
   const c = body.checks;
-  const warn = [!c?.airac?.ok && `AIRAC ${c?.airac?.id} out of date`, !c?.mail?.ok && 'e-mail not configured'].filter(Boolean);
+  const warn = [!c?.airac?.ok && `AIRAC ${c?.airac?.id} out of date`, !c?.mail?.ok && 'e-mail not configured'].filter(
+    Boolean,
+  );
   return `release ${body.release}, migrations ${c?.migrations?.applied}/${c?.migrations?.expected}${warn.length ? `, WARNING: ${warn.join(', ')}` : ''}`;
 });
 

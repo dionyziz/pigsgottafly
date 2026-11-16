@@ -1,8 +1,30 @@
 // Greek → Latin transliteration (ELOT 743) for text that must be Latin: FPL fields, the PDFs of
 // the forms sent to HCAA. Shared by the client and the API.
 const GREEK: Record<string, string> = {
-  Α: 'A', Β: 'V', Γ: 'G', Δ: 'D', Ε: 'E', Ζ: 'Z', Η: 'I', Θ: 'TH', Ι: 'I', Κ: 'K', Λ: 'L', Μ: 'M', Ν: 'N', Ξ: 'X',
-  Ο: 'O', Π: 'P', Ρ: 'R', Σ: 'S', Τ: 'T', Υ: 'Y', Φ: 'F', Χ: 'CH', Ψ: 'PS', Ω: 'O',
+  Α: 'A',
+  Β: 'V',
+  Γ: 'G',
+  Δ: 'D',
+  Ε: 'E',
+  Ζ: 'Z',
+  Η: 'I',
+  Θ: 'TH',
+  Ι: 'I',
+  Κ: 'K',
+  Λ: 'L',
+  Μ: 'M',
+  Ν: 'N',
+  Ξ: 'X',
+  Ο: 'O',
+  Π: 'P',
+  Ρ: 'R',
+  Σ: 'S',
+  Τ: 'T',
+  Υ: 'Y',
+  Φ: 'F',
+  Χ: 'CH',
+  Ψ: 'PS',
+  Ω: 'O',
 };
 const VOWELS = new Set('ΑΕΗΙΟΥΩ');
 /** Voiced consonants: ΑΥ/ΕΥ/ΗΥ before these (or a vowel) are AV/EV/IV, otherwise AF/EF/IF. */
@@ -22,11 +44,14 @@ export function transliterate(s: string, opts: { keepCase?: boolean } = {}): str
   for (const ch of (s || '').normalize('NFD')) {
     if (/[\u0300-\u036f]/.test(ch)) {
       const last = chars[chars.length - 1];
-      if (last) { if (ch === '\u0308') last.dia = true; else last.acc = true; }
+      if (last) {
+        if (ch === '\u0308') last.dia = true;
+        else last.acc = true;
+      }
       continue;
     }
     const up = ch.toUpperCase().replace('ς', 'Σ');
-    chars.push({ c: up, acc: false, dia: false, lower: ch !== up && ch.toLowerCase() === ch || ch === 'ς' });
+    chars.push({ c: up, acc: false, dia: false, lower: (ch !== up && ch.toLowerCase() === ch) || ch === 'ς' });
   }
   const greek = (i: number) => i >= 0 && i < chars.length && /[Α-Ω]/.test(chars[i].c);
   let out = '';
@@ -39,7 +64,10 @@ export function transliterate(s: string, opts: { keepCase?: boolean } = {}): str
   };
   for (let i = 0; i < chars.length; i++) {
     const { c, acc } = chars[i];
-    if (!/[Α-Ω]/.test(c)) { out += opts.keepCase && chars[i].lower ? c.toLowerCase() : c; continue; }
+    if (!/[Α-Ω]/.test(c)) {
+      out += opts.keepCase && chars[i].lower ? c.toLowerCase() : c;
+      continue;
+    }
     const n = chars[i + 1];
     const nc = n && greek(i + 1) ? n.c : '';
     const wordStart = !greek(i - 1);
@@ -51,12 +79,26 @@ export function transliterate(s: string, opts: { keepCase?: boolean } = {}): str
       i++;
       continue;
     }
-    if (c === 'Ο' && nc === 'Υ' && !n.dia && !acc) { out += cased(i, 'OU'); i++; continue; }
-    if (c === 'Γ' && (nc === 'Γ' || nc === 'Ξ' || nc === 'Χ')) { out += cased(i, 'N'); continue; }
-    if (wordStart && c === 'Μ' && nc === 'Π') { out += cased(i, 'B'); i++; continue; }
-    if (wordStart && c === 'Ν' && nc === 'Τ') { out += cased(i, 'D'); i++; continue; }
+    if (c === 'Ο' && nc === 'Υ' && !n.dia && !acc) {
+      out += cased(i, 'OU');
+      i++;
+      continue;
+    }
+    if (c === 'Γ' && (nc === 'Γ' || nc === 'Ξ' || nc === 'Χ')) {
+      out += cased(i, 'N');
+      continue;
+    }
+    if (wordStart && c === 'Μ' && nc === 'Π') {
+      out += cased(i, 'B');
+      i++;
+      continue;
+    }
+    if (wordStart && c === 'Ν' && nc === 'Τ') {
+      out += cased(i, 'D');
+      i++;
+      continue;
+    }
     out += cased(i, GREEK[c] ?? '');
   }
   return out;
 }
-

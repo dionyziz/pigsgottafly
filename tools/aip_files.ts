@@ -27,7 +27,10 @@ export function aipFiles(html: string): Record<string, string> {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const [src, dst] = process.argv.slice(2);
-  if (!src || !dst) { console.error('usage: tsx tools/aip_files.ts <side.htm> <out.json>'); process.exit(2); }
+  if (!src || !dst) {
+    console.error('usage: tsx tools/aip_files.ts <side.htm> <out.json>');
+    process.exit(2);
+  }
   const files = aipFiles(fs.readFileSync(src, 'latin1'));
   fs.writeFileSync(dst, JSON.stringify(files, null, 1) + '\n');
   console.log(`${Object.keys(files).length} AIP sections → ${dst}`);

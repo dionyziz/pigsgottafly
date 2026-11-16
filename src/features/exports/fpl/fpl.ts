@@ -203,7 +203,10 @@ export function cleanPhone(s: string): string {
 }
 
 // Two-digit ITU country codes (the others are 1 digit: 1, 7; or 3 digits).
-const CC2 = new Set([20, 27, 30, 31, 32, 33, 34, 36, 39, 40, 41, 43, 44, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62, 63, 64, 65, 66, 81, 82, 84, 86, 90, 91, 92, 93, 94, 95, 98]);
+const CC2 = new Set([
+  20, 27, 30, 31, 32, 33, 34, 36, 39, 40, 41, 43, 44, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 60, 61, 62,
+  63, 64, 65, 66, 81, 82, 84, 86, 90, 91, 92, 93, 94, 95, 98,
+]);
 
 /**
  * Phone in international form, the country code apart: '+30 694 246 2092' → '+30 6942462092'.
@@ -215,7 +218,10 @@ export function intlPhone(s: string): string {
   let d = t.replace(/\D/g, '');
   if (!d) return '';
   let intl = t.startsWith('+');
-  if (!intl && d.startsWith('00')) { intl = true; d = d.slice(2); }
+  if (!intl && d.startsWith('00')) {
+    intl = true;
+    d = d.slice(2);
+  }
   if (!intl) return /^(2\d{9}|69\d{8})$/.test(d) ? `+30 ${d}` : d;
   const n = d[0] === '1' || d[0] === '7' ? 1 : CC2.has(+d.slice(0, 2)) ? 2 : 3;
   return d.length > n ? `+${d.slice(0, n)} ${d.slice(n)}` : `+${d}`;
@@ -250,7 +256,8 @@ export function hhmm(min: number | null | undefined): string {
 export function eobtField(clock: string): string {
   const m = /^(\d{1,2}):?(\d{2})$/.exec((clock || '').trim());
   if (!m) return MISSING;
-  const h = +m[1], mi = +m[2];
+  const h = +m[1],
+    mi = +m[2];
   if (h > 23 || mi > 59) return MISSING;
   return pad(h, 2) + pad(mi, 2);
 }
@@ -330,12 +337,35 @@ export function routeField(route: FplRoutePoint[]): string {
 
 /** Item 18 indicators in the Doc 4444 order, DOF/ moved last as EuroFPL writes it. */
 export const ITEM18_ORDER = [
-  'STS', 'PBN', 'NAV', 'COM', 'DAT', 'SUR', 'DEP', 'DEST', 'REG', 'EET', 'SEL', 'TYP', 'CODE', 'DLE', 'OPR',
-  'ORGN', 'PER', 'ALTN', 'RALT', 'TALT', 'RIF', 'RMK', 'DOF',
+  'STS',
+  'PBN',
+  'NAV',
+  'COM',
+  'DAT',
+  'SUR',
+  'DEP',
+  'DEST',
+  'REG',
+  'EET',
+  'SEL',
+  'TYP',
+  'CODE',
+  'DLE',
+  'OPR',
+  'ORGN',
+  'PER',
+  'ALTN',
+  'RALT',
+  'TALT',
+  'RIF',
+  'RMK',
+  'DOF',
 ] as const;
 /** Splits item 18 text into indicator/text pairs ('NAV/GNSS COM/8.33' → [[NAV,GNSS],[COM,8.33]]). */
 export function parseItem18(s: string): { indicator: string; text: string }[] {
-  const t = transliterate(s || '').replace(/\s+/g, ' ').trim();
+  const t = transliterate(s || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!t || t === '0') return [];
   const re = /(?:^|\s)([A-Z]{3,4})\//g;
   const marks: { ind: string; start: number; end: number }[] = [];
@@ -347,7 +377,10 @@ export function parseItem18(s: string): { indicator: string; text: string }[] {
   if (lead) out.push({ indicator: 'RMK', text: cleanText(lead) });
   marks.forEach((k, i) => {
     const text = t.slice(k.end, i + 1 < marks.length ? marks[i + 1].start : t.length).trim();
-    out.push({ indicator: k.ind, text: k.ind === 'DOF' || k.ind === 'EET' ? text.replace(/[^A-Z0-9 ]/g, '') : cleanText(text) });
+    out.push({
+      indicator: k.ind,
+      text: k.ind === 'DOF' || k.ind === 'EET' ? text.replace(/[^A-Z0-9 ]/g, '') : cleanText(text),
+    });
   });
   return out.filter((p) => p.text);
 }
@@ -364,21 +397,35 @@ type Warn = (text: string, fix?: Fix) => void;
 export function buildItem19(input: FplInput, warn: Warn): Item19 {
   const eq = input.equipment;
   const endurance = hhmm(input.enduranceMin);
-  if (endurance === MISSING) warn('Endurance unknown (item 19 E/): set the fuel on board and the aircraft burn rate.', { kind: 'flight', focus: 'fob' });
+  if (endurance === MISSING)
+    warn('Endurance unknown (item 19 E/): set the fuel on board and the aircraft burn rate.', {
+      kind: 'flight',
+      focus: 'fob',
+    });
   const pob = input.personsOnBoard;
   const persons = pob && pob > 0 ? pad(Math.min(999, Math.round(pob)), 3) : 'TBN';
-  if (persons === 'TBN') warn('Persons on board unknown (item 19 P/): the manifest is empty.', { kind: 'flight', focus: 'manifest' });
+  if (persons === 'TBN')
+    warn('Persons on board unknown (item 19 P/): the manifest is empty.', { kind: 'flight', focus: 'manifest' });
 
   const radio = { ...{ uhf: false, vhf: false, elt: false }, ...(eq?.emergencyRadio || {}) };
   const sv = { ...{ polar: false, desert: false, maritime: false, jungle: false }, ...(eq?.survival || {}) };
   const survival = { present: sv.polar || sv.desert || sv.maritime || sv.jungle, ...sv };
-  const jackets = { ...{ present: false, light: false, fluorescein: false, uhf: false, vhf: false }, ...(eq?.jackets || {}) };
+  const jackets = {
+    ...{ present: false, light: false, fluorescein: false, uhf: false, vhf: false },
+    ...(eq?.jackets || {}),
+  };
   const d = eq?.dinghies && eq.dinghies.number > 0 ? eq.dinghies : null;
   const dinghies = d
-    ? { number: pad(Math.min(99, Math.round(d.number)), 2), capacity: pad(Math.min(999, Math.round(d.capacity || 0)), 3), covered: !!d.covered, colour: cleanText(d.colour || '') }
+    ? {
+        number: pad(Math.min(99, Math.round(d.number)), 2),
+        capacity: pad(Math.min(999, Math.round(d.capacity || 0)), 3),
+        covered: !!d.covered,
+        colour: cleanText(d.colour || ''),
+      }
     : null;
   const colours = cleanText(input.colours);
-  if (!colours) warn('Aircraft colours and markings not set in the hangar (item 19 A/).', { kind: 'aircraft', focus: 'colours' });
+  if (!colours)
+    warn('Aircraft colours and markings not set in the hangar (item 19 A/).', { kind: 'aircraft', focus: 'colours' });
   const remarkParts = [cleanText(eq?.remarks || '')].filter(Boolean);
   const name = picName(input.pic.fullName);
   if (!name) warn('Pilot in command name not set in the profile (item 19 C/).', { kind: 'profile', focus: 'fullName' });
@@ -392,13 +439,21 @@ export function buildItem19(input: FplInput, warn: Warn): Item19 {
   const s = (sv.polar ? 'P' : '') + (sv.desert ? 'D' : '') + (sv.maritime ? 'M' : '') + (sv.jungle ? 'J' : '');
   if (s) parts.push('S/' + s);
   if (jackets.present) {
-    const j = (jackets.light ? 'L' : '') + (jackets.fluorescein ? 'F' : '') + (jackets.uhf ? 'U' : '') + (jackets.vhf ? 'V' : '');
+    const j =
+      (jackets.light ? 'L' : '') +
+      (jackets.fluorescein ? 'F' : '') +
+      (jackets.uhf ? 'U' : '') +
+      (jackets.vhf ? 'V' : '');
     // Doc 4444: J/ is followed by one or more of L F U V. Jackets without any of these are
     // written in N/ instead of an empty J/.
     if (j) parts.push('J/' + j);
     else remarkParts.unshift('LIFE JACKETS');
   }
-  if (dinghies) parts.push('D/' + [dinghies.number, dinghies.capacity, dinghies.covered ? 'C' : '', dinghies.colour].filter(Boolean).join(' '));
+  if (dinghies)
+    parts.push(
+      'D/' +
+        [dinghies.number, dinghies.capacity, dinghies.covered ? 'C' : '', dinghies.colour].filter(Boolean).join(' '),
+    );
   if (colours) parts.push('A/' + colours);
   const remarks = remarkParts.join(' ');
   if (remarks) parts.push('N/' + remarks);
@@ -417,7 +472,10 @@ export function wrapLine(s: string, width = AFTN_LINE): string[] {
   for (const w of words) {
     if (!cur) cur = w;
     else if (cur.length + 1 + w.length <= width) cur += ' ' + w;
-    else { lines.push(cur); cur = w; }
+    else {
+      lines.push(cur);
+      cur = w;
+    }
   }
   if (cur) lines.push(cur);
   return lines;
@@ -438,8 +496,11 @@ export function buildFpl(input: FplInput): FplResult {
 
   // item 7
   let item7 = aircraftId(input.registration);
-  if (!item7) { item7 = MISSING; warn('Aircraft registration missing (item 7).', { kind: 'flight', focus: 'aircraft' }); }
-  else if (item7.length > 7) warn(`Aircraft identification ${item7} is longer than 7 characters (item 7).`, ac('registration'));
+  if (!item7) {
+    item7 = MISSING;
+    warn('Aircraft registration missing (item 7).', { kind: 'flight', focus: 'aircraft' });
+  } else if (item7.length > 7)
+    warn(`Aircraft identification ${item7} is longer than 7 characters (item 7).`, ac('registration'));
 
   // item 8
   const item8 = { rules: input.flightRules || 'V', type: input.flightType || 'G' };
@@ -448,17 +509,26 @@ export function buildFpl(input: FplInput): FplResult {
   const designator = transliterate(input.icaoType || '').replace(/[^A-Z0-9]/g, '');
   const typeOk = /^[A-Z][A-Z0-9]{1,3}$/.test(designator);
   if (!designator) warn('ICAO type designator not set in the hangar: ZZZZ and TYP/ used (item 9).', ac('icaoType'));
-  else if (!typeOk) warn(`"${input.icaoType}" is not an ICAO type designator: ZZZZ and TYP/ used (item 9).`, ac('icaoType'));
-  const item9 = { number: '', type: typeOk ? designator : 'ZZZZ', wake: ['L', 'M', 'H', 'J'].includes(input.wake) ? input.wake : 'L' };
-  if (!['L', 'M', 'H', 'J'].includes(input.wake)) warn('Wake turbulence category not set: L used (item 9).', ac('wake'));
+  else if (!typeOk)
+    warn(`"${input.icaoType}" is not an ICAO type designator: ZZZZ and TYP/ used (item 9).`, ac('icaoType'));
+  const item9 = {
+    number: '',
+    type: typeOk ? designator : 'ZZZZ',
+    wake: ['L', 'M', 'H', 'J'].includes(input.wake) ? input.wake : 'L',
+  };
+  if (!['L', 'M', 'H', 'J'].includes(input.wake))
+    warn('Wake turbulence category not set: L used (item 9).', ac('wake'));
 
   // item 10
   const eq = input.equipment;
   const a10 = equipField(eq?.item10a || '') || 'N';
   const b10 = equipField(eq?.item10b || '') || 'N';
-  if (!equipField(eq?.item10a || '')) warn('Item 10a equipment not set in the hangar: N (no equipment) used.', ac('item10a'));
-  if (!equipField(eq?.item10b || '')) warn('Item 10b surveillance equipment not set in the hangar: N used.', ac('item10b'));
-  if (a10.includes('N') && a10.length > 1) warn('Item 10a: N (no equipment) cannot be combined with other letters.', ac('item10a'));
+  if (!equipField(eq?.item10a || ''))
+    warn('Item 10a equipment not set in the hangar: N (no equipment) used.', ac('item10a'));
+  if (!equipField(eq?.item10b || ''))
+    warn('Item 10b surveillance equipment not set in the hangar: N used.', ac('item10b'));
+  if (a10.includes('N') && a10.length > 1)
+    warn('Item 10a: N (no equipment) cannot be combined with other letters.', ac('item10a'));
   if (b10.includes('N') && b10.length > 1) warn('Item 10b: N cannot be combined with other letters.', ac('item10b'));
   const pbn = equipField(eq?.pbn || '');
   if (a10.includes('R') && !pbn) warn('Item 10a contains R: PBN/ is required in item 18.', ac('pbn'));
@@ -466,7 +536,8 @@ export function buildFpl(input: FplInput): FplResult {
 
   // item 13
   const adep = locationField(input.departure);
-  if (adep === MISSING) warn('Departure aerodrome unknown (item 13): the route must start at an aerodrome.', { kind: 'flight' });
+  if (adep === MISSING)
+    warn('Departure aerodrome unknown (item 13): the route must start at an aerodrome.', { kind: 'flight' });
   const eobt = eobtField(input.eobt);
   if (eobt === MISSING) warn('Block-off time (EOBT) not set (item 13).', { kind: 'flight', focus: 'blockOff' });
 
@@ -478,16 +549,20 @@ export function buildFpl(input: FplInput): FplResult {
 
   // item 16
   const ades = locationField(input.destination);
-  if (ades === MISSING) warn('Destination aerodrome unknown (item 16): the route must end at an aerodrome.', { kind: 'flight' });
+  if (ades === MISSING)
+    warn('Destination aerodrome unknown (item 16): the route must end at an aerodrome.', { kind: 'flight' });
   const eet = hhmm(input.totalEetMin);
   if (eet === MISSING) warn('Total EET unknown (item 16).', { kind: 'flight' });
   const alts = (input.alternates || []).slice(0, 2);
-  if ((input.alternates || []).length > 2) warn('Only two alternates fit in item 16; the rest are ignored.', { kind: 'flight', focus: 'alternates' });
+  if ((input.alternates || []).length > 2)
+    warn('Only two alternates fit in item 16; the rest are ignored.', { kind: 'flight', focus: 'alternates' });
   const altn = alts.map(locationField);
 
   // item 18
   const gen: Record<string, string[]> = {};
-  const add = (k: string, v: string) => { if (v) (gen[k] ||= []).push(v); };
+  const add = (k: string, v: string) => {
+    if (v) (gen[k] ||= []).push(v);
+  };
   if (pbn) add('PBN', pbn);
   if (adep === 'ZZZZ' && input.departure) add('DEP', zzzzText(input.departure));
   if (ades === 'ZZZZ' && input.destination) add('DEST', zzzzText(input.destination));
@@ -497,7 +572,10 @@ export function buildFpl(input: FplInput): FplResult {
   // Item 7 is always the registration here, so REG/ would only repeat it (App. 2: 'if different').
   if (item7 !== MISSING && opts.regInItem18) add('REG', item7);
   if (input.firEets && input.firEets.length) {
-    add('EET', input.firEets.map((e) => `${transliterate(e.point).replace(/[^A-Z0-9]/g, '')}${hhmm(e.elapsedMin)}`).join(' '));
+    add(
+      'EET',
+      input.firEets.map((e) => `${transliterate(e.point).replace(/[^A-Z0-9]/g, '')}${hhmm(e.elapsedMin)}`).join(' '),
+    );
   }
   if (!typeOk) add('TYP', cleanText(input.makeModel) || MISSING);
   if (cleanText(input.operator)) add('OPR', cleanText(input.operator));
@@ -509,11 +587,17 @@ export function buildFpl(input: FplInput): FplResult {
   const OWN = new Set(['DOF', 'REG', 'DEP', 'DEST', 'ALTN', 'EET']);
   const typed = (src: string, where: string, fix: Fix, rmkOut: string[]) => {
     for (const p of parseItem18(src)) {
-      if (OWN.has(p.indicator)) { warn(`Item 18 ${p.indicator}/ ${where} is ignored: it is generated from the flight.`, fix); continue; }
+      if (OWN.has(p.indicator)) {
+        warn(`Item 18 ${p.indicator}/ ${where} is ignored: it is generated from the flight.`, fix);
+        continue;
+      }
       if (p.indicator === 'PBN' && pbn) continue;
       if (p.indicator === 'TYP' && !typeOk) continue;
       if (p.indicator === 'OPR' && gen.OPR) continue;
-      if (p.indicator === 'RMK') { rmkOut.push(p.text); continue; }
+      if (p.indicator === 'RMK') {
+        rmkOut.push(p.text);
+        continue;
+      }
       if (gen[p.indicator]?.includes(p.text)) continue;
       add(p.indicator, p.text);
     }
@@ -522,11 +606,15 @@ export function buildFpl(input: FplInput): FplResult {
   typed(input.remarks || '', 'in the flight remarks', { kind: 'flight', focus: 'remarks' }, flightRmk);
   const hangarRmk: string[] = [];
   typed(eq?.item18Extras || '', 'from the hangar', ac('item18Extras'), hangarRmk);
-  if (a10.includes('Z') && !gen.NAV && !gen.COM && !gen.DAT) warn('Item 10a contains Z: NAV/, COM/ or DAT/ is required in item 18.', ac('item18Extras'));
+  if (a10.includes('Z') && !gen.NAV && !gen.COM && !gen.DAT)
+    warn('Item 10a contains Z: NAV/, COM/ or DAT/ is required in item 18.', ac('item18Extras'));
 
   // RMK: touch-and-go / stop requests, flight remarks, hangar remarks (the route is in item 15)
   const rmk: string[] = [];
-  for (const r of input.requests ?? []) { const t = cleanText(r); if (t && !rmk.includes(t)) rmk.push(t); }
+  for (const r of input.requests ?? []) {
+    const t = cleanText(r);
+    if (t && !rmk.includes(t)) rmk.push(t);
+  }
   for (const t of [...flightRmk, ...hangarRmk]) if (t && !rmk.includes(t)) rmk.push(t);
   const phone = cleanPhone(input.pic.phone);
   if (!phone) warn('Pilot phone number not set in the profile (item 19 C/).', { kind: 'profile', focus: 'phone' });
@@ -537,8 +625,10 @@ export function buildFpl(input: FplInput): FplResult {
   const order = [...ITEM18_ORDER] as string[];
   const beforeRmk = order.indexOf('RMK') - 0.5; // unknown indicators go just before RMK
   const keys = Object.keys(gen).sort((x, y) => {
-    const ix = order.indexOf(x), iy = order.indexOf(y);
-    const rx = ix < 0 ? beforeRmk : ix, ry = iy < 0 ? beforeRmk : iy;
+    const ix = order.indexOf(x),
+      iy = order.indexOf(y);
+    const rx = ix < 0 ? beforeRmk : ix,
+      ry = iy < 0 ? beforeRmk : iy;
     return rx - ry || x.localeCompare(y);
   });
   const item18Parts = keys.map((k) => ({ indicator: k, text: gen[k].join(' ') }));

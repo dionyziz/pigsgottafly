@@ -37,7 +37,13 @@ export interface WindSample {
  * Open-Meteo responses). legIndex lets the provider use per-leg midpoint data.
  * Returns null when there is no data (the leg is then computed with calm wind and flagged).
  */
-export type WindProvider = (q: { legIndex: number; lat: number; lon: number; altFt: number; timeMs: number }) => WindSample | null;
+export type WindProvider = (q: {
+  legIndex: number;
+  lat: number;
+  lon: number;
+  altFt: number;
+  timeMs: number;
+}) => WindSample | null;
 
 export interface NavlogAircraft {
   cruiseTasKt: number;
@@ -113,14 +119,22 @@ export interface NavlogResult {
 }
 
 /** The card a flight uses: FlightOptions.compassCard by name, else the aircraft's first card. */
-export function pickCompassCard(cards: CompassCard[] | null | undefined, name: string | null | undefined): CompassCard | null {
+export function pickCompassCard(
+  cards: CompassCard[] | null | undefined,
+  name: string | null | undefined,
+): CompassCard | null {
   if (!cards || !cards.length) return null;
   return (name ? cards.find((c) => c.name === name) : undefined) ?? cards[0];
 }
 
 /** NavlogAircraft from the hangar record and the chosen card. */
 export function navlogAircraft(
-  a: { cruiseTasKt: number; patternTasKt: number; fuel: { burnLph: number; taxiAllowanceL: number }; compassCards: CompassCard[] },
+  a: {
+    cruiseTasKt: number;
+    patternTasKt: number;
+    fuel: { burnLph: number; taxiAllowanceL: number };
+    compassCards: CompassCard[];
+  },
   cardName: string | null = null,
 ): NavlogAircraft {
   const card = pickCompassCard(a.compassCards, cardName);
@@ -174,7 +188,8 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
     rows = legs.map((L, i) => {
       const o = input.overrides[i] ?? {};
       const startMin = t;
-      const guess = prev[i] && fin(prev[i].minutesExact) ? prev[i].minutesExact! : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
+      const guess =
+        prev[i] && fin(prev[i].minutesExact) ? prev[i].minutesExact! : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
       const timeMs = dayMs + (startMin + guess / 2) * 60000;
       let w: WindSample | null = null;
       if (input.winds && isFinite(alt[i]) && isFinite(timeMs)) {
@@ -226,7 +241,8 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
     if (!isFinite(r.altFt)) warnings.push(`${name}: altitude unknown (enter one).`);
     if (r.wca === undefined) warnings.push(`${name}: crosswind exceeds TAS; leg cannot be flown as planned.`);
     else if (!(fin(r.gs) && r.gs > 0)) warnings.push(`${name}: ground speed is zero or negative.`);
-    if (input.winds && r.windMissing && isFinite(r.altFt) && isFinite(dayMs)) warnings.push(`${name}: no wind forecast; calm wind assumed.`);
+    if (input.winds && r.windMissing && isFinite(r.altFt) && isFinite(dayMs))
+      warnings.push(`${name}: no wind forecast; calm wind assumed.`);
     if (!(r.tasKt > 0)) warnings.push(`${name}: TAS not set.`);
   });
 
@@ -234,10 +250,14 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   if (n && input.date && isFinite(dayMs)) {
     sunsetMin = sunsetMinutes(input.date, legs[n - 1].to, input.sunTables ?? {});
     if (sunsetMin !== null && blockOffSet && landingMin > sunsetMin)
-      warnings.push(`Landing at ${fmtClock(landingMin)}Z is after sunset (${fmtClock(sunsetMin)}Z) at ${legs[n - 1].to.name}.`);
+      warnings.push(
+        `Landing at ${fmtClock(landingMin)}Z is after sunset (${fmtClock(sunsetMin)}Z) at ${legs[n - 1].to.name}.`,
+      );
   }
   if (n && ac.cardExpires && input.date && ac.cardExpires < input.date)
-    warnings.push(`Compass card${ac.cardName ? ` "${ac.cardName}"` : ''} expired on ${ac.cardExpires}: swing required.`);
+    warnings.push(
+      `Compass card${ac.cardName ? ` "${ac.cardName}"` : ''} expired on ${ac.cardExpires}: swing required.`,
+    );
 
   return {
     legs: rows,

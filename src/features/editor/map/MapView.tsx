@@ -17,7 +17,22 @@ import { useNotams } from '../notams';
 import { visibleNotams } from '../../../data/notams';
 
 export function MapView() {
-  const { doc, update, setMapLayers, undo, redo, canUndo, canRedo, waypoints, ref, legs, altitudeDefaults, altitudesFt, pilot, reloadLists } = useEditor();
+  const {
+    doc,
+    update,
+    setMapLayers,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    waypoints,
+    ref,
+    legs,
+    altitudeDefaults,
+    altitudesFt,
+    pilot,
+    reloadLists,
+  } = useEditor();
 
   const { hazards, aerodromeChecks, adEffects } = useFlightCalc();
   // weather hazards, and the route's aerodromes that are closed at the planned time (a ring like an aerodrome hazard)
@@ -26,7 +41,9 @@ export function MapView() {
     for (const c of aerodromeChecks) {
       if (c.ad.status !== 'closed' || !Number.isFinite(c.fromMs)) continue;
       out.push({
-        level: 'danger', coords: [[c.aerodrome.lon, c.aerodrome.lat]], legIndex: c.pointIndex > 0 ? c.pointIndex - 1 : legs.length ? 0 : null,
+        level: 'danger',
+        coords: [[c.aerodrome.lon, c.aerodrome.lat]],
+        legIndex: c.pointIndex > 0 ? c.pointIndex - 1 : legs.length ? 0 : null,
         label: `${AD_ROLE[c.role]} ${c.aerodrome.icao || c.aerodrome.name} closed at ${clockZ(c.ad.at)}Z: ${c.ad.why} (${c.ad.source})`,
       });
     }
@@ -37,7 +54,10 @@ export function MapView() {
     const cache = new Map<string, ReturnType<typeof adDayInfo>>();
     return (a: RefAerodrome) => {
       let v = cache.get(a.id);
-      if (!v) { v = adDayInfo(a, doc.date, adEffects); cache.set(a.id, v); }
+      if (!v) {
+        v = adDayInfo(a, doc.date, adEffects);
+        cache.set(a.id, v);
+      }
       return v;
     };
   }, [doc.date, adEffects]);
@@ -49,9 +69,15 @@ export function MapView() {
     for (const r of doc.options.aerodromeRequests ?? []) out[r.pointUid] = r;
     return out;
   }, [doc.options.aerodromeRequests]);
-  const onRequest = useCallback((uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) => {
-    update((d) => ({ ...d, options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) } }));
-  }, [update]);
+  const onRequest = useCallback(
+    (uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) => {
+      update((d) => ({
+        ...d,
+        options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) },
+      }));
+    },
+    [update],
+  );
 
   const altitudes = useMemo(() => {
     const out: Record<string, LegAltitude> = {};
@@ -70,27 +96,41 @@ export function MapView() {
     return a ? { lat: a.lat, lon: a.lon } : null;
   }, [pilot.homeAerodrome]);
 
-  const onRouteChange = useCallback((route: RoutePoint[], opts?: { coalesce?: string }) => {
-    update((d) => ({ ...d, route, legOverrides: pruneOverrides(d.legOverrides, route) }), opts);
-  }, [update]);
+  const onRouteChange = useCallback(
+    (route: RoutePoint[], opts?: { coalesce?: string }) => {
+      update((d) => ({ ...d, route, legOverrides: pruneOverrides(d.legOverrides, route) }), opts);
+    },
+    [update],
+  );
 
-  const onAltitudeChange = useCallback((key: string, altFt: number | null) => {
-    update((d) => {
-      const legOverrides = setAltitudeOverride(d.legOverrides, key, altFt);
-      return legOverrides === d.legOverrides ? d : { ...d, legOverrides };
-    });
-  }, [update]);
+  const onAltitudeChange = useCallback(
+    (key: string, altFt: number | null) => {
+      update((d) => {
+        const legOverrides = setAltitudeOverride(d.legOverrides, key, altFt);
+        return legOverrides === d.legOverrides ? d : { ...d, legOverrides };
+      });
+    },
+    [update],
+  );
 
-  const onSaveWaypoint = useCallback(async (p: RoutePoint) => {
-    const w = await api.waypoints.create({ name: p.name, lat: p.lat, lon: p.lon, notes: '' });
-    await reloadLists();
-    update((d) => ({
-      ...d,
-      route: d.route.map((q) => (q.uid === p.uid ? { ...q, kind: 'waypoint' as const, refId: w.id, name: w.name } : q)),
-    }));
-  }, [reloadLists, update]);
+  const onSaveWaypoint = useCallback(
+    async (p: RoutePoint) => {
+      const w = await api.waypoints.create({ name: p.name, lat: p.lat, lon: p.lon, notes: '' });
+      await reloadLists();
+      update((d) => ({
+        ...d,
+        route: d.route.map((q) =>
+          q.uid === p.uid ? { ...q, kind: 'waypoint' as const, refId: w.id, name: w.name } : q,
+        ),
+      }));
+    },
+    [reloadLists, update],
+  );
 
-  const layers = useMemo(() => flightLayers(doc.options.mapLayers, pilot.settings.mapLayers), [doc.options.mapLayers, pilot.settings.mapLayers]);
+  const layers = useMemo(
+    () => flightLayers(doc.options.mapLayers, pilot.settings.mapLayers),
+    [doc.options.mapLayers, pilot.settings.mapLayers],
+  );
 
   return (
     <RouteMap

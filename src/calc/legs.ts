@@ -39,7 +39,8 @@ export interface LegGeometry {
 export function buildLegs(route: RoutePoint[], date: IsoDate): LegGeometry[] {
   const legs: LegGeometry[] = [];
   for (let i = 0; i + 1 < route.length; i++) {
-    const from = route[i], to = route[i + 1];
+    const from = route[i],
+      to = route[i + 1];
     const mid = midpoint(from, to);
     // Course along the great circle at the midpoint = initial course from the midpoint to the end.
     const tcTrue = trueCourse(mid, to);

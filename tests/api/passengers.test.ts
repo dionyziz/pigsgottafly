@@ -19,9 +19,25 @@ afterAll(() => api.close());
 
 describe('deleting a passenger', () => {
   test('flights keep the snapshot; stale saves pass; signatures and links keep working', async () => {
-    const pax = (await a.call('POST', 'passengers', { fullName: 'Bob Pax', phone: '+30 690 000 0002', idNumber: 'AB 2', weightKg: 80 })).body;
-    const f = (await a.call('POST', 'flights', { date: new Date(Date.now() + 86400e3).toISOString().slice(0, 10) })).body as Flight;
-    const crew = [...f.crew, { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'Bob Pax', phone: '+30 690 000 0002', idNumber: 'AB 2', weightKg: 80 } }];
+    const pax = (
+      await a.call('POST', 'passengers', {
+        fullName: 'Bob Pax',
+        phone: '+30 690 000 0002',
+        idNumber: 'AB 2',
+        weightKg: 80,
+      })
+    ).body;
+    const f = (await a.call('POST', 'flights', { date: new Date(Date.now() + 86400e3).toISOString().slice(0, 10) }))
+      .body as Flight;
+    const crew = [
+      ...f.crew,
+      {
+        role: 'PAX',
+        passengerId: pax.id,
+        seat: 'front-right',
+        snapshot: { fullName: 'Bob Pax', phone: '+30 690 000 0002', idNumber: 'AB 2', weightKg: 80 },
+      },
+    ];
     const put = await a.call('PUT', `flights/${f.id}`, { flight: { crew }, version: f.version });
     expect(put.status).toBe(200);
 
@@ -41,9 +57,16 @@ describe('deleting a passenger', () => {
     expect((await a.call('GET', 'passengers')).body).toEqual([]);
 
     const g = (await a.call<Flight>('GET', `flights/${f.id}`)).body;
-    expect(g.crew[1]).toMatchObject({ passengerId: null, seat: 'front-right', snapshot: { fullName: 'Bob Pax', idNumber: 'AB 2', weightKg: 80 } });
+    expect(g.crew[1]).toMatchObject({
+      passengerId: null,
+      seat: 'front-right',
+      snapshot: { fullName: 'Bob Pax', idNumber: 'AB 2', weightKg: 80 },
+    });
     // an editor still holding the deleted id saves without error (the link is dropped)
-    const stale = await a.call('PUT', `flights/${f.id}`, { flight: { crew, title: 'Edited later' }, version: g.version });
+    const stale = await a.call('PUT', `flights/${f.id}`, {
+      flight: { crew, title: 'Edited later' },
+      version: g.version,
+    });
     expect(stale.status).toBe(200);
     expect((await a.call<Flight>('GET', `flights/${f.id}`)).body.crew[1].passengerId).toBeNull();
 

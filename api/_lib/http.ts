@@ -62,7 +62,11 @@ export interface Ctx {
 
 /** A handler returns the JSON body (status 200), a Reply (other status/headers), or undefined (204). */
 export class Reply {
-  constructor(public status: number, public body?: unknown, public headers?: Record<string, string>) {}
+  constructor(
+    public status: number,
+    public body?: unknown,
+    public headers?: Record<string, string>,
+  ) {}
 }
 export type Handler = (ctx: Ctx) => Promise<unknown | Reply | undefined>;
 
@@ -76,7 +80,11 @@ export interface Route {
 }
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string, public body?: unknown) {
+  constructor(
+    public status: number,
+    message: string,
+    public body?: unknown,
+  ) {
     super(message);
   }
 }
@@ -84,10 +92,16 @@ export const badRequest = (msg: string) => new HttpError(400, msg);
 export const notFound = (what = 'not found') => new HttpError(404, what);
 export const conflict = (msg: string, body?: unknown) => new HttpError(409, msg, body);
 
-export const reply = (status: number, body?: unknown, headers?: Record<string, string>): Reply => new Reply(status, body, headers);
+export const reply = (status: number, body?: unknown, headers?: Record<string, string>): Reply =>
+  new Reply(status, body, headers);
 
 export function send(res: Res, status: number, body?: unknown, headers: Record<string, string> = {}): void {
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers });
+  res.writeHead(status, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    ...headers,
+  });
   res.end(body === undefined ? '' : JSON.stringify(body));
 }
 
@@ -144,7 +158,14 @@ export async function readJsonObject(req: Req): Promise<Record<string, any>> {
 export function compilePath(p: string): (path: string) => Record<string, string> | null {
   const names: string[] = [];
   const re = new RegExp(
-    '^' + p.replace(/\/:(\w+)/g, (_, n) => { names.push(n); return '/([^/]+)'; }).replace(/\/$/, '') + '/?$',
+    '^' +
+      p
+        .replace(/\/:(\w+)/g, (_, n) => {
+          names.push(n);
+          return '/([^/]+)';
+        })
+        .replace(/\/$/, '') +
+      '/?$',
   );
   return (path) => {
     const m = re.exec(path);

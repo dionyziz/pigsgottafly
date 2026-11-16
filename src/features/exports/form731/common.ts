@@ -31,7 +31,9 @@ export function routePlaces(route: RoutePoint[]): Place[] {
 
 /** "LGTT – LGMG – LGTT" */
 export function routeText(route: RoutePoint[]): string {
-  return routePlaces(route).map((p) => p.code).join(' – ');
+  return routePlaces(route)
+    .map((p) => p.code)
+    .join(' – ');
 }
 
 /** Form 731 route: origin – destination only ("LGTT – LGMG"). */

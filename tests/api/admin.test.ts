@@ -9,9 +9,15 @@ import { SIGNUP_NOTICE_CAP } from '../../api/_lib/routes/session';
 let api: Awaited<ReturnType<typeof startApi>>;
 const sent: SentMail[] = [];
 afterEach(() => setMailTransport(null));
-const mock = () => setMailTransport(async (m) => { sent.push(m); return { id: `m-${sent.length}` }; });
+const mock = () =>
+  setMailTransport(async (m) => {
+    sent.push(m);
+    return { id: `m-${sent.length}` };
+  });
 
-beforeAll(async () => { api = await startApi({ adminEmails: ['boss@example.com'] }); });
+beforeAll(async () => {
+  api = await startApi({ adminEmails: ['boss@example.com'] });
+});
 afterAll(() => api.close());
 
 describe('signup notice', () => {
@@ -37,16 +43,21 @@ describe('signup notice', () => {
     try {
       mock();
       const n = sent.length;
-      for (let i = 0; i < SIGNUP_NOTICE_CAP + 3; i++) expect((await client(other.base).login(`sub-many-${i}`, `many${i}@example.com`)).status).toBe(200);
+      for (let i = 0; i < SIGNUP_NOTICE_CAP + 3; i++)
+        expect((await client(other.base).login(`sub-many-${i}`, `many${i}@example.com`)).status).toBe(200);
       const got = sent.slice(n).map((m) => m.subject);
       expect(got.filter((s) => s === 'New pilot signed up')).toHaveLength(SIGNUP_NOTICE_CAP);
       expect(got.filter((s) => s === 'More pilots signed up today')).toHaveLength(1);
       expect(got).toHaveLength(SIGNUP_NOTICE_CAP + 1);
-    } finally { await other.close(); }
+    } finally {
+      await other.close();
+    }
   });
 
   test('a failing mail provider does not block the sign-in', async () => {
-    setMailTransport(async () => { throw new Error('provider down'); });
+    setMailTransport(async () => {
+      throw new Error('provider down');
+    });
     expect((await client(api.base).login('sub-unlucky', 'unlucky@example.com')).status).toBe(200);
   });
 
@@ -57,7 +68,9 @@ describe('signup notice', () => {
       const n = sent.length;
       expect((await client(other.base).login('sub-x', 'x@example.com')).status).toBe(200);
       expect(sent.length).toBe(n);
-    } finally { await other.close(); }
+    } finally {
+      await other.close();
+    }
   });
 });
 
@@ -82,14 +95,18 @@ describe('admin page', () => {
     await pilot.call('POST', 'passengers', { fullName: 'A Passenger' });
     await pilot.call('POST', 'flights', {});
     const op = (await pilot.call('POST', 'operators', { name: 'Pat Club' })).body;
-    expect((await pilot.call('POST', `operators/${op.id}/shares`, { email: 'boss@example.com', role: 'view' })).status).toBe(201);
+    expect(
+      (await pilot.call('POST', `operators/${op.id}/shares`, { email: 'boss@example.com', role: 'view' })).status,
+    ).toBe(201);
     const list = (await boss.call<AdminPilot[]>('GET', 'admin/pilots')).body;
     const p = list.find((x) => x.email === 'pilot@example.com')!;
     expect(p).toMatchObject({ name: 'Pat Pilot', flights: 1, passengers: 1, operators: 1, aircraft: 0 });
     expect(p.created).toBeGreaterThan(0);
     expect(p.lastLogin).toBeGreaterThan(0);
     expect(p.sharedByThem).toEqual([{ kind: 'operator', name: 'Pat Club', role: 'view', pilot: 'Boss' }]);
-    expect(list.find((x) => x.email === 'Boss@Example.com')!.sharedWithThem).toEqual([{ kind: 'operator', name: 'Pat Club', role: 'view', pilot: 'Pat Pilot' }]);
+    expect(list.find((x) => x.email === 'Boss@Example.com')!.sharedWithThem).toEqual([
+      { kind: 'operator', name: 'Pat Club', role: 'view', pilot: 'Pat Pilot' },
+    ]);
   });
 
   test('the e-mail action log, filterable by pilot and kind', async () => {
@@ -100,7 +117,8 @@ describe('admin page', () => {
     expect(signup).toMatchObject({ recipient: 'boss@example.com', subject: 'New pilot signed up', flightId: null });
     expect(signup.messageId).toMatch(/^m-/);
     expect(all.some((m) => m.result === 'failed' && m.error === 'provider down')).toBe(true);
-    const byPilot = (await boss.call<AdminMail[]>('GET', `admin/mail?pilot=${encodeURIComponent(signup.pilotId!)}`)).body;
+    const byPilot = (await boss.call<AdminMail[]>('GET', `admin/mail?pilot=${encodeURIComponent(signup.pilotId!)}`))
+      .body;
     expect(byPilot.every((m) => m.pilotId === signup.pilotId)).toBe(true);
     expect((await boss.call<AdminMail[]>('GET', 'admin/mail?kind=731')).body).toEqual([]);
   });

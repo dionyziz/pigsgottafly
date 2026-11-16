@@ -45,14 +45,23 @@ const LABELS: Record<string, keyof RawAdHours | null> = {
   'De-icing': null,
   Remarks: 'remarks',
 };
-const LABEL_RE = new RegExp(`^\\s{0,10}(\\d{1,2})\\s+(${Object.keys(LABELS).map((l) => l.replace(/[()]/g, '\\$&')).join('|')})(?:\\s{2,}(\\S.*))?$`);
+const LABEL_RE = new RegExp(
+  `^\\s{0,10}(\\d{1,2})\\s+(${Object.keys(LABELS)
+    .map((l) => l.replace(/[()]/g, '\\$&'))
+    .join('|')})(?:\\s{2,}(\\S.*))?$`,
+);
 
 /** Page furniture of the eAIP PDFs (running headers and footers). */
 function isFurniture(line: string): boolean {
   const t = line.trim();
-  return /^HELLENIC AVIATION SERVICE PROVIDER\b/.test(t) || /^AIRAC AMDT \d+\/\d+\s+HELLENIC AVIATION SERVICE PROVIDER$/.test(t)
-    || /^(AD 2 LG[A-Z]{2}|AD 1\.6\.\d+)-\d+\s+AIP$/.test(t) || /^AIP\s+(AD 2 LG[A-Z]{2}|AD 1\.6\.\d+)-\d+$/.test(t)
-    || /^\d{2} [A-Z]{3} \d{4}\s+GREECE$/.test(t) || /^GREECE\s+\d{2} [A-Z]{3} \d{4}$/.test(t);
+  return (
+    /^HELLENIC AVIATION SERVICE PROVIDER\b/.test(t) ||
+    /^AIRAC AMDT \d+\/\d+\s+HELLENIC AVIATION SERVICE PROVIDER$/.test(t) ||
+    /^(AD 2 LG[A-Z]{2}|AD 1\.6\.\d+)-\d+\s+AIP$/.test(t) ||
+    /^AIP\s+(AD 2 LG[A-Z]{2}|AD 1\.6\.\d+)-\d+$/.test(t) ||
+    /^\d{2} [A-Z]{3} \d{4}\s+GREECE$/.test(t) ||
+    /^GREECE\s+\d{2} [A-Z]{3} \d{4}$/.test(t)
+  );
 }
 
 /** The lines of a section: from the line matching `start` up to (not including) the line matching `end`. */
@@ -99,9 +108,14 @@ export function extractAd2(icao: string, text: string): RawAdHours | null {
   const items = tableItems(sec);
   const start = lines.findIndex((l) => l.includes(`${icao} AD 2.3 OPERATIONAL HOURS`));
   return {
-    source: `${icao} AD 2.3`, amdt: amdtOf(lines, start),
-    ad: items.get('AD Administration') ?? null, customs: items.get('Customs and immigration') ?? null, ats: items.get('ATS') ?? null,
-    handling: items.get('Handling') ?? null, handlingSource: `${icao} AD 2.3`, handlingFromSection: false,
+    source: `${icao} AD 2.3`,
+    amdt: amdtOf(lines, start),
+    ad: items.get('AD Administration') ?? null,
+    customs: items.get('Customs and immigration') ?? null,
+    ats: items.get('ATS') ?? null,
+    handling: items.get('Handling') ?? null,
+    handlingSource: `${icao} AD 2.3`,
+    handlingFromSection: false,
     remarks: items.get('Remarks') ?? null,
   };
 }
@@ -117,21 +131,38 @@ export function extractAd16(n: number, text: string): RawAdHours | null {
   let handlingSource = `AD 1.6.${n}.3`;
   let fromSection = false;
   if (handling === null) {
-    const h = section(lines, new RegExp(`AD 1\\.6\\.${n}\\.4 HANDLING SERVICES AND FACILITIES`), new RegExp(`AD 1\\.6\\.${n}\\.5 `)) ?? [];
-    handling = h.filter((l) => l.trim() && !isFurniture(l)).map((l) => l.trim().replace(/\s{2,}/g, '  ')).join('\n') || null;
+    const h =
+      section(
+        lines,
+        new RegExp(`AD 1\\.6\\.${n}\\.4 HANDLING SERVICES AND FACILITIES`),
+        new RegExp(`AD 1\\.6\\.${n}\\.5 `),
+      ) ?? [];
+    handling =
+      h
+        .filter((l) => l.trim() && !isFurniture(l))
+        .map((l) => l.trim().replace(/\s{2,}/g, '  '))
+        .join('\n') || null;
     handlingSource = `AD 1.6.${n}.4`;
     fromSection = true;
   }
   return {
-    source: `AD 1.6.${n}.3`, amdt: amdtOf(lines, start),
-    ad: items.get('AD Administration') ?? null, customs: items.get('Customs and immigration') ?? null, ats: items.get('ATS') ?? null,
-    handling, handlingSource, handlingFromSection: fromSection,
+    source: `AD 1.6.${n}.3`,
+    amdt: amdtOf(lines, start),
+    ad: items.get('AD Administration') ?? null,
+    customs: items.get('Customs and immigration') ?? null,
+    ats: items.get('ATS') ?? null,
+    handling,
+    handlingSource,
+    handlingFromSection: fromSection,
     remarks: items.get('Remarks') ?? null,
   };
 }
 
 /** Every aerodrome of the reference data → its raw hours (aerodromes without a section are left out and reported). */
-export function extractAll(txtDir: string, aerodromes: { id: string; icao: string | null; source: string }[]): { out: Record<string, RawAdHours>; missing: string[] } {
+export function extractAll(
+  txtDir: string,
+  aerodromes: { id: string; icao: string | null; source: string }[],
+): { out: Record<string, RawAdHours>; missing: string[] } {
   const files = fs.readdirSync(txtDir);
   const out: Record<string, RawAdHours> = {};
   const missing: string[] = [];
@@ -140,7 +171,9 @@ export function extractAll(txtDir: string, aerodromes: { id: string; icao: strin
     const m16 = /^AD 1\.6\.(\d+)$/.exec(a.source);
     if (m16) {
       const n = +m16[1];
-      const f = files.find((x) => new RegExp(`^LG_AD_1_6_${n}_[^_]+(?:_en)?\\.txt$`).test(x) && !/_(ADC|APDC|IAC|SID|STAR|VFR)/.test(x));
+      const f = files.find(
+        (x) => new RegExp(`^LG_AD_1_6_${n}_[^_]+(?:_en)?\\.txt$`).test(x) && !/_(ADC|APDC|IAC|SID|STAR|VFR)/.test(x),
+      );
       if (f) r = extractAd16(n, fs.readFileSync(path.join(txtDir, f), 'utf8'));
     } else if (a.icao) {
       const f = path.join(txtDir, `LG_AD_2_${a.icao}_en.txt`);
@@ -154,7 +187,10 @@ export function extractAll(txtDir: string, aerodromes: { id: string; icao: strin
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const dir = process.argv[2];
-  if (!dir) { console.error('usage: npx tsx tools/extract_ad_hours.ts TXT_DIR'); process.exit(2); }
+  if (!dir) {
+    console.error('usage: npx tsx tools/extract_ad_hours.ts TXT_DIR');
+    process.exit(2);
+  }
   const ads = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'ref', 'aerodromes.json'), 'utf8'));
   const { out, missing } = extractAll(dir, ads);
   for (const id of missing) console.warn('no operational hours found for', id);

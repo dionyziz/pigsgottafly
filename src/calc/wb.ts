@@ -131,7 +131,14 @@ export function insidePolygon(x: number, y: number, poly: [number, number][]): b
     // on the segment?
     const cross = (x - xi) * (yj - yi) - (y - yi) * (xj - xi);
     const len = Math.hypot(xj - xi, yj - yi) || 1;
-    if (Math.abs(cross) / len < 1e-7 && x >= Math.min(xi, xj) - 1e-9 && x <= Math.max(xi, xj) + 1e-9 && y >= Math.min(yi, yj) - 1e-9 && y <= Math.max(yi, yj) + 1e-9) return true;
+    if (
+      Math.abs(cross) / len < 1e-7 &&
+      x >= Math.min(xi, xj) - 1e-9 &&
+      x <= Math.max(xi, xj) + 1e-9 &&
+      y >= Math.min(yi, yj) - 1e-9 &&
+      y <= Math.max(yi, yj) + 1e-9
+    )
+      return true;
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
@@ -140,7 +147,8 @@ export function insidePolygon(x: number, y: number, poly: [number, number][]): b
 /** Checks a point against one envelope. */
 export function checkEnvelope(env: Envelope, p: WbPoint): WbCheck {
   const inCg = p.massKg > 0 && insidePolygon(p.armM, p.massKg, env.polygon);
-  const inMoment = env.momentPolygon && env.momentPolygon.length >= 3 ? insidePolygon(p.momentKgM, p.massKg, env.momentPolygon) : null;
+  const inMoment =
+    env.momentPolygon && env.momentPolygon.length >= 3 ? insidePolygon(p.momentKgM, p.massKg, env.momentPolygon) : null;
   const massOk = p.massKg <= env.maxKg + EPS;
   return { inEnvelope: inCg && inMoment !== false && massOk, massOk, inCgPolygon: inCg, inMomentPolygon: inMoment };
 }
@@ -160,7 +168,8 @@ export function weightAndBalance(input: WbInput): WbResult {
   const seatToStation = new Map<string, Station>();
   for (const s of stations) if (s.kind === 'seat') for (const seat of s.seats || []) seatToStation.set(seat.id, s);
   const fuelStation = stations.find((s) => s.kind === 'fuel');
-  if (!fuelStation && (input.fuelTakeoffL > 0 || input.unusableFuelL > 0)) warnings.push('The aircraft has no fuel station: fuel is not in the balance.');
+  if (!fuelStation && (input.fuelTakeoffL > 0 || input.unusableFuelL > 0))
+    warnings.push('The aircraft has no fuel station: fuel is not in the balance.');
   const fuelArm = fuelStation?.armM ?? 0;
   const rho = input.fuelDensityKgPerL;
   if (!(rho > 0) && input.fuelTakeoffL > 0) warnings.push('Fuel density is not set: fuel mass is zero.');
@@ -168,12 +177,24 @@ export function weightAndBalance(input: WbInput): WbResult {
   const rows: WbRow[] = [];
   const emptyMoment = mb.emptyMomentKgM > 0 ? mb.emptyMomentKgM : mb.emptyMassKg * mb.emptyArmM;
   if (!(mb.emptyMassKg > 0)) warnings.push('Empty mass is not set (weighing report).');
-  rows.push({ label: 'Empty aircraft', stationId: null, massKg: mb.emptyMassKg, armM: mb.emptyMassKg > 0 ? emptyMoment / mb.emptyMassKg : mb.emptyArmM, momentKgM: emptyMoment });
+  rows.push({
+    label: 'Empty aircraft',
+    stationId: null,
+    massKg: mb.emptyMassKg,
+    armM: mb.emptyMassKg > 0 ? emptyMoment / mb.emptyMassKg : mb.emptyArmM,
+    momentKgM: emptyMoment,
+  });
 
   let unusableRow: WbRow | null = null;
   if (!input.unusableIncludedInEmptyMass && input.unusableFuelL > 0) {
     const m = input.unusableFuelL * (rho > 0 ? rho : 0);
-    unusableRow = { label: `Unusable fuel (${fmt(input.unusableFuelL)} L)`, stationId: fuelStation?.id ?? null, massKg: m, armM: fuelArm, momentKgM: m * fuelArm };
+    unusableRow = {
+      label: `Unusable fuel (${fmt(input.unusableFuelL)} L)`,
+      stationId: fuelStation?.id ?? null,
+      massKg: m,
+      armM: fuelArm,
+      momentKgM: m * fuelArm,
+    };
     rows.push(unusableRow);
   }
 
@@ -200,7 +221,8 @@ export function weightAndBalance(input: WbInput): WbResult {
     let arm = st.armM;
     if (l.armM != null && isFinite(l.armM)) {
       arm = l.armM;
-      if (st.armRangeM && (arm < st.armRangeM[0] - EPS || arm > st.armRangeM[1] + EPS)) warnings.push(`${l.label}: arm ${arm} m is outside ${st.name} (${st.armRangeM[0]}–${st.armRangeM[1]} m).`);
+      if (st.armRangeM && (arm < st.armRangeM[0] - EPS || arm > st.armRangeM[1] + EPS))
+        warnings.push(`${l.label}: arm ${arm} m is outside ${st.name} (${st.armRangeM[0]}–${st.armRangeM[1]} m).`);
     }
     rows.push({ label: l.label, stationId: st.id, massKg: l.massKg, armM: arm, momentKgM: l.massKg * arm });
     const agg = perStation.get(st.id) || { mass: 0, moment: 0 };
@@ -216,7 +238,8 @@ export function weightAndBalance(input: WbInput): WbResult {
       const n = peoplePerStation.get(st.id) || 0;
       if (n > st.seats.length) breach('seats', `${st.name}: ${n} people for ${st.seats.length} seats.`);
     }
-    if (agg && st.maxKg != null && agg.mass > st.maxKg + EPS) breach('station', `${st.name}: ${fmt(agg.mass)} kg exceeds the ${st.maxKg} kg limit.`);
+    if (agg && st.maxKg != null && agg.mass > st.maxKg + EPS)
+      breach('station', `${st.name}: ${fmt(agg.mass)} kg exceeds the ${st.maxKg} kg limit.`);
   }
   for (const lim of mb.combinedLimits || []) {
     const m = lim.stations.reduce((s, id) => s + (perStation.get(id)?.mass || 0), 0);
@@ -237,7 +260,13 @@ export function weightAndBalance(input: WbInput): WbResult {
   if (fuelLdg > fuelTo + EPS) warnings.push('Fuel at landing exceeds fuel at take-off.');
   const fuelToKg = fuelTo * (rho > 0 ? rho : 0);
   const fuelLdgKg = fuelLdg * (rho > 0 ? rho : 0);
-  const fuelRow: WbRow = { label: `Usable fuel (${fmt(fuelTo)} L)`, stationId: fuelStation?.id ?? null, massKg: fuelToKg, armM: fuelArm, momentKgM: fuelToKg * fuelArm };
+  const fuelRow: WbRow = {
+    label: `Usable fuel (${fmt(fuelTo)} L)`,
+    stationId: fuelStation?.id ?? null,
+    massKg: fuelToKg,
+    armM: fuelArm,
+    momentKgM: fuelToKg * fuelArm,
+  };
 
   const zfMass = rows.reduce((s, r) => s + r.massKg, 0);
   const zfMoment = rows.reduce((s, r) => s + r.momentKgM, 0);
@@ -260,14 +289,22 @@ export function weightAndBalance(input: WbInput): WbResult {
   stationRows.push(fuelRow);
 
   // Limits.
-  if (mb.mtowKg > 0 && takeoff.massKg > mb.mtowKg + EPS) breach('mtow', `Take-off mass ${fmt(takeoff.massKg)} kg exceeds MTOW ${mb.mtowKg} kg by ${fmt(takeoff.massKg - mb.mtowKg)} kg.`, 'takeoff');
+  if (mb.mtowKg > 0 && takeoff.massKg > mb.mtowKg + EPS)
+    breach(
+      'mtow',
+      `Take-off mass ${fmt(takeoff.massKg)} kg exceeds MTOW ${mb.mtowKg} kg by ${fmt(takeoff.massKg - mb.mtowKg)} kg.`,
+      'takeoff',
+    );
   const mlw = mb.mlwKg ?? mb.mtowKg;
-  if (mlw > 0 && landing.massKg > mlw + EPS) breach('mlw', `Landing mass ${fmt(landing.massKg)} kg exceeds the maximum landing mass ${mlw} kg.`, 'landing');
+  if (mlw > 0 && landing.massKg > mlw + EPS)
+    breach('mlw', `Landing mass ${fmt(landing.massKg)} kg exceeds the maximum landing mass ${mlw} kg.`, 'landing');
 
   const normalEnv = mb.envelopes.normal;
   const normal = { takeoff: checkEnvelope(normalEnv, takeoff), landing: checkEnvelope(normalEnv, landing) };
   const utilEnv = mb.envelopes.utility;
-  const utility = utilEnv ? { takeoff: checkEnvelope(utilEnv, takeoff), landing: checkEnvelope(utilEnv, landing) } : null;
+  const utility = utilEnv
+    ? { takeoff: checkEnvelope(utilEnv, takeoff), landing: checkEnvelope(utilEnv, landing) }
+    : null;
 
   const chosen = input.category === 'utility' ? utility : normal;
   const catName = input.category === 'utility' ? 'utility' : 'normal';
@@ -276,7 +313,10 @@ export function weightAndBalance(input: WbInput): WbResult {
     breach('category', 'This aircraft has no utility category.');
   }
   if (chosen) {
-    for (const [phase, label, c] of [['takeoff', 'Take-off', chosen.takeoff], ['landing', 'Landing', chosen.landing]] as const) {
+    for (const [phase, label, c] of [
+      ['takeoff', 'Take-off', chosen.takeoff],
+      ['landing', 'Landing', chosen.landing],
+    ] as const) {
       if (!c.massOk) breach('envelope', `${label} mass is above the ${catName} category maximum.`, phase);
       else if (!c.inEnvelope) breach('envelope', `${label} CG is outside the ${catName} envelope.`, phase);
     }
@@ -285,7 +325,9 @@ export function weightAndBalance(input: WbInput): WbResult {
     // AFM / club: utility category with no rear passengers and no baggage.
     const rear = stations.filter((s) => s.kind === 'seat' && s.id !== stations.find((x) => x.kind === 'seat')?.id);
     const rearMass = rear.reduce((s, st) => s + (perStation.get(st.id)?.mass || 0), 0);
-    const bagMass = stations.filter((s) => s.kind === 'baggage').reduce((s, st) => s + (perStation.get(st.id)?.mass || 0), 0);
+    const bagMass = stations
+      .filter((s) => s.kind === 'baggage')
+      .reduce((s, st) => s + (perStation.get(st.id)?.mass || 0), 0);
     if (rearMass > 0) breach('utility', 'Utility category: no rear passengers allowed.');
     if (bagMass > 0) breach('utility', 'Utility category: no baggage allowed.');
   }
@@ -311,14 +353,21 @@ export function wbLoadsFromManifest(
       warnings.push(`Weight of ${name} is not set.`);
       missingWeights.push(name);
     }
-    loads.push({ stationId: st?.id ?? '', seatId: c.seat, label: `${c.role} ${name}`, massKg: c.snapshot.weightKg ?? 0 });
+    loads.push({
+      stationId: st?.id ?? '',
+      seatId: c.seat,
+      label: `${c.role} ${name}`,
+      massKg: c.snapshot.weightKg ?? 0,
+    });
   }
   for (const st of stations) {
     if (st.kind !== 'baggage') continue;
     const m = baggageKg[st.id];
     if (m && m > 0) loads.push({ stationId: st.id, label: st.name, massKg: m });
   }
-  for (const id of Object.keys(baggageKg)) if (baggageKg[id] > 0 && !stations.some((s) => s.id === id && s.kind === 'baggage')) warnings.push(`Baggage at unknown station ${id}.`);
+  for (const id of Object.keys(baggageKg))
+    if (baggageKg[id] > 0 && !stations.some((s) => s.id === id && s.kind === 'baggage'))
+      warnings.push(`Baggage at unknown station ${id}.`);
   return { loads, warnings, missingWeights };
 }
 
@@ -333,7 +382,9 @@ export function performanceMass(
   mtowKg: number | null | undefined,
   missingWeights: number,
 ): { massKg: number | null; massSource: 'wb' | 'mtow' | null; reason: 'weight-missing' | 'no-wb' | null } {
-  if (wb && missingWeights === 0) return { massKg: phase === 'takeoff' ? wb.takeoff.massKg : wb.landing.massKg, massSource: 'wb', reason: null };
-  if (typeof mtowKg === 'number' && mtowKg > 0) return { massKg: mtowKg, massSource: 'mtow', reason: wb ? 'weight-missing' : 'no-wb' };
+  if (wb && missingWeights === 0)
+    return { massKg: phase === 'takeoff' ? wb.takeoff.massKg : wb.landing.massKg, massSource: 'wb', reason: null };
+  if (typeof mtowKg === 'number' && mtowKg > 0)
+    return { massKg: mtowKg, massSource: 'mtow', reason: wb ? 'weight-missing' : 'no-wb' };
   return { massKg: null, massSource: null, reason: null };
 }

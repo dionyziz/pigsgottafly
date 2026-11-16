@@ -14,7 +14,11 @@ import { AdminNav } from './AdminNav';
 import { adminErrorTitle, when } from './AdminPage';
 
 type Filter = 'open' | 'resolved' | 'all';
-const FILTERS = [{ value: 'open', label: 'Open' }, { value: 'resolved', label: 'Resolved' }, { value: 'all', label: 'All' }] as const;
+const FILTERS = [
+  { value: 'open', label: 'Open' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'all', label: 'All' },
+] as const;
 
 function Detail({ fingerprint }: { fingerprint: string }) {
   const { data, error } = useAsync<AppErrorDetail>(() => api.admin.error(fingerprint), [fingerprint]);
@@ -24,7 +28,12 @@ function Detail({ fingerprint }: { fingerprint: string }) {
     <div className="stack admin-error-detail">
       <div className="hint">
         Fingerprint <span className="mono">{data.fingerprint}</span>
-        {data.pilotId && <> · pilot <span className="mono">{data.pilotId}</span></>}
+        {data.pilotId && (
+          <>
+            {' '}
+            · pilot <span className="mono">{data.pilotId}</span>
+          </>
+        )}
         {data.lastAlerted && <> · last e-mailed {when(data.lastAlerted)}</>}
       </div>
       {data.userAgent && <div className="hint">{data.userAgent}</div>}
@@ -38,34 +47,69 @@ function Detail({ fingerprint }: { fingerprint: string }) {
 export function ErrorsPage() {
   const [filter, setFilter] = useState<Filter>('open');
   const [open, setOpen] = useState<string | null>(null);
-  const { data, error, loading, reload } = useAsync<AppErrorGroup[]>(() => api.admin.errors(filter), [filter], { refetchOnFocus: true });
+  const { data, error, loading, reload } = useAsync<AppErrorGroup[]>(() => api.admin.errors(filter), [filter], {
+    refetchOnFocus: true,
+  });
   const [resolveError, setResolveError] = useState<string | null>(null);
   const resolve = async (fp: string) => {
     setResolveError(null);
-    try { await api.admin.resolveError(fp); await reload(); } catch (e) { setResolveError(errorMessage(e)); }
+    try {
+      await api.admin.resolveError(fp);
+      await reload();
+    } catch (e) {
+      setResolveError(errorMessage(e));
+    }
   };
   return (
     <Shell>
       <div className="page-head">
         <h1>Errors</h1>
-        {data && <Chip count sm>{data.length}</Chip>}
+        {data && (
+          <Chip count sm>
+            {data.length}
+          </Chip>
+        )}
         <AdminNav current="errors" />
         <span className="spacer" />
         <SegmentedControl sm label="Show" value={filter} options={FILTERS} onChange={setFilter} />
       </div>
-      {resolveError && <p className="form-error" role="alert">{resolveError}</p>}
-      <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle={error ? adminErrorTitle(error, 'errors') : undefined}
-        isEmpty={(d) => d.length === 0} empty={<EmptyState title={filter === 'open' ? 'No open errors' : 'No errors'} />}>
+      {resolveError && (
+        <p className="form-error" role="alert">
+          {resolveError}
+        </p>
+      )}
+      <AsyncView
+        data={data}
+        error={error}
+        loading={loading}
+        reload={() => void reload()}
+        errorTitle={error ? adminErrorTitle(error, 'errors') : undefined}
+        isEmpty={(d) => d.length === 0}
+        empty={<EmptyState title={filter === 'open' ? 'No open errors' : 'No errors'} />}
+      >
         {(list) => (
           <div className="card list-card">
             <table className="list" data-testid="admin-errors">
-              <thead><tr>
-                <th>Error</th><th className="hide-sm">Kind</th><th className="num">Count</th><th className="hide-sm">First seen</th><th>Last seen</th><th className="hide-sm">Release</th><th />
-              </tr></thead>
+              <thead>
+                <tr>
+                  <th>Error</th>
+                  <th className="hide-sm">Kind</th>
+                  <th className="num">Count</th>
+                  <th className="hide-sm">First seen</th>
+                  <th>Last seen</th>
+                  <th className="hide-sm">Release</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>
                 {list.map((g) => (
-                  <ErrorRow key={g.fingerprint} g={g} expanded={open === g.fingerprint}
-                    onToggle={() => setOpen(open === g.fingerprint ? null : g.fingerprint)} onResolve={() => void resolve(g.fingerprint)} />
+                  <ErrorRow
+                    key={g.fingerprint}
+                    g={g}
+                    expanded={open === g.fingerprint}
+                    onToggle={() => setOpen(open === g.fingerprint ? null : g.fingerprint)}
+                    onResolve={() => void resolve(g.fingerprint)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -76,26 +120,51 @@ export function ErrorsPage() {
   );
 }
 
-function ErrorRow({ g, expanded, onToggle, onResolve }: { g: AppErrorGroup; expanded: boolean; onToggle: () => void; onResolve: () => void }) {
+function ErrorRow({
+  g,
+  expanded,
+  onToggle,
+  onResolve,
+}: {
+  g: AppErrorGroup;
+  expanded: boolean;
+  onToggle: () => void;
+  onResolve: () => void;
+}) {
   const where = [g.method, g.route].filter(Boolean).join(' ');
   return (
     <>
       <tr className="clickable" data-fingerprint={g.fingerprint} onClick={rowClick(onToggle)} aria-expanded={expanded}>
         <td>
           <div className="nm admin-msg">{g.message}</div>
-          <div className="hint">{where || '—'}{g.status ? ` → ${g.status}` : ''}</div>
+          <div className="hint">
+            {where || '—'}
+            {g.status ? ` → ${g.status}` : ''}
+          </div>
         </td>
-        <td className="hide-sm"><Chip sm>{g.kind}</Chip></td>
+        <td className="hide-sm">
+          <Chip sm>{g.kind}</Chip>
+        </td>
         <td className="num">{g.count}</td>
         <td className="tnum hide-sm">{when(g.firstSeen)}</td>
         <td className="tnum">{when(g.lastSeen)}</td>
         <td className="mono hide-sm">{g.release ? g.release.slice(0, 7) : '—'}</td>
         <td>
-          {g.resolvedAt ? <span className="hint">Resolved {when(g.resolvedAt)}</span> : <button type="button" className="sm" onClick={onResolve}>Resolve</button>}
+          {g.resolvedAt ? (
+            <span className="hint">Resolved {when(g.resolvedAt)}</span>
+          ) : (
+            <button type="button" className="sm" onClick={onResolve}>
+              Resolve
+            </button>
+          )}
         </td>
       </tr>
       {expanded && (
-        <tr><td colSpan={7}><Detail fingerprint={g.fingerprint} /></td></tr>
+        <tr>
+          <td colSpan={7}>
+            <Detail fingerprint={g.fingerprint} />
+          </td>
+        </tr>
       )}
     </>
   );

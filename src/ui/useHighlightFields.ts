@@ -11,13 +11,18 @@ export function useHighlightFields(root: RefObject<HTMLElement | null>, keys: re
   useEffect(() => {
     const el = root.current;
     if (!el || !key) return;
-    const targets = key.split(',').map((k) => findFocusTarget(el, k)).filter((x): x is HTMLElement => !!x);
+    const targets = key
+      .split(',')
+      .map((k) => findFocusTarget(el, k))
+      .filter((x): x is HTMLElement => !!x);
     targets.slice(1).forEach((t) => {
-      const input = t.matches(FIELD) ? t : t.querySelector<HTMLElement>(FIELD) ?? t;
+      const input = t.matches(FIELD) ? t : (t.querySelector<HTMLElement>(FIELD) ?? t);
       input.classList.add('attention');
       input.addEventListener('input', () => input.classList.remove('attention'), { once: true });
     });
-    const timer = setTimeout(() => { if (targets[0]) focusAndHighlight(targets[0]); }, delayMs);
+    const timer = setTimeout(() => {
+      if (targets[0]) focusAndHighlight(targets[0]);
+    }, delayMs);
     return () => clearTimeout(timer);
   }, [root, key, delayMs]);
 }

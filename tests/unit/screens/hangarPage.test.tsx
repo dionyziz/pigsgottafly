@@ -17,13 +17,24 @@ afterEach(cleanup);
 
 function Page({ initial, onDraft }: { initial: AircraftInput; onDraft?: (a: AircraftInput) => void }) {
   const [a, setA] = useState(initial);
-  const edit = (fn: (d: AircraftInput) => void) => setA((d) => { const c = structuredClone(d); fn(c); onDraft?.(c); return c; });
+  const edit = (fn: (d: AircraftInput) => void) =>
+    setA((d) => {
+      const c = structuredClone(d);
+      fn(c);
+      onDraft?.(c);
+      return c;
+    });
   const issues = validateAircraft(a, '2026-11-15');
   const p = { a, edit, issues };
   return (
     <div data-testid="aircraft-page">
-      <IdentitySection {...p} /><FplSection {...p} /><SpeedsSection {...p} /><FuelSection {...p} />
-      <MassBalanceSection {...p} /><PerformanceSection {...p} /><CompassSection {...p} today="2026-11-15" aircraftId="ac1" />
+      <IdentitySection {...p} />
+      <FplSection {...p} />
+      <SpeedsSection {...p} />
+      <FuelSection {...p} />
+      <MassBalanceSection {...p} />
+      <PerformanceSection {...p} />
+      <CompassSection {...p} today="2026-11-15" aircraftId="ac1" />
     </div>
   );
 }
@@ -59,14 +70,33 @@ describe('aircraft page', () => {
   test('stations, envelope points and compass cards reorder from the keyboard on their handles', () => {
     const a = structuredClone(fleetSeed()[1]); // SX-ASG: two compass cards
     let last = a;
-    const { container } = render(<Page initial={a} onDraft={(d) => { last = d; }} />);
+    const { container } = render(
+      <Page
+        initial={a}
+        onDraft={(d) => {
+          last = d;
+        }}
+      />,
+    );
     const handles = (sel: string) => [...container.querySelectorAll<HTMLElement>(`${sel} .drag-handle`)];
-    act(() => { fireEvent.keyDown(handles('.ed-table.stations')[0], { key: 'ArrowDown' }); });
-    expect(last.massBalance.stations.map((s) => s.id).slice(0, 2)).toEqual([a.massBalance.stations[1].id, a.massBalance.stations[0].id]);
-    act(() => { fireEvent.keyDown(handles('[data-testid=env-cg]')[0], { key: 'ArrowDown' }); });
-    expect(last.massBalance.envelopes.normal.polygon.slice(0, 2)).toEqual([a.massBalance.envelopes.normal.polygon[1], a.massBalance.envelopes.normal.polygon[0]]);
+    act(() => {
+      fireEvent.keyDown(handles('.ed-table.stations')[0], { key: 'ArrowDown' });
+    });
+    expect(last.massBalance.stations.map((s) => s.id).slice(0, 2)).toEqual([
+      a.massBalance.stations[1].id,
+      a.massBalance.stations[0].id,
+    ]);
+    act(() => {
+      fireEvent.keyDown(handles('[data-testid=env-cg]')[0], { key: 'ArrowDown' });
+    });
+    expect(last.massBalance.envelopes.normal.polygon.slice(0, 2)).toEqual([
+      a.massBalance.envelopes.normal.polygon[1],
+      a.massBalance.envelopes.normal.polygon[0],
+    ]);
     const cards = [...container.querySelectorAll<HTMLElement>('[data-testid=compass-card] > .cc-head .drag-handle')];
-    act(() => { fireEvent.keyDown(cards[1], { key: 'ArrowUp' }); });
+    act(() => {
+      fireEvent.keyDown(cards[1], { key: 'ArrowUp' });
+    });
     expect(last.compassCards.map((c) => c.name)).toEqual([a.compassCards[1].name, a.compassCards[0].name]);
   });
 
@@ -77,7 +107,10 @@ describe('aircraft page', () => {
     expect(input.fuel.types.map((g) => g.densityKgPerL)).toEqual([0.72, 0.75]);
     const { container } = render(<Page initial={a} />);
     expect(container.querySelector('[aria-label$=" density"]')).toBeNull();
-    expect([...container.querySelectorAll('.fuel-tbl tbody td.num')].map((e) => e.textContent)).toEqual(['0.72', '0.75']);
+    expect([...container.querySelectorAll('.fuel-tbl tbody td.num')].map((e) => e.textContent)).toEqual([
+      '0.72',
+      '0.75',
+    ]);
     expect(container.querySelector('[data-testid=endurance] b')?.textContent).toBe('4h48');
   });
 });

@@ -32,7 +32,10 @@ export interface AutorouterSettings {
 }
 
 export class AutorouterError extends Error {
-  constructor(message: string, public status = 502) {
+  constructor(
+    message: string,
+    public status = 502,
+  ) {
     super(message);
   }
 }
@@ -68,7 +71,10 @@ export interface AutorouterNotamRow {
   itemg?: string | null;
 }
 
-export interface FiledPlan { providerId: string; queued: boolean }
+export interface FiledPlan {
+  providerId: string;
+  queued: boolean;
+}
 
 export class AutorouterClient {
   private token: { value: string; expires: number } | null = null;
@@ -94,13 +100,24 @@ export class AutorouterClient {
         const res = await this.doFetch(`${this.base}/oauth2/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-          body: new URLSearchParams({ grant_type: 'client_credentials', client_id: this.s.email, client_secret: this.s.password }).toString(),
+          body: new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: this.s.email,
+            client_secret: this.s.password,
+          }).toString(),
           signal: AbortSignal.timeout(TIMEOUT_MS),
         });
-        const body = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: string; error_description?: string };
+        const body = (await res.json().catch(() => ({}))) as {
+          access_token?: string;
+          expires_in?: number;
+          error?: string;
+          error_description?: string;
+        };
         if (!res.ok || !body.access_token) {
           // never echo the credentials; autorouter's error text is safe to show
-          throw new AutorouterError(`autorouter sign-in failed: ${body.error_description || body.error || `HTTP ${res.status}`}`);
+          throw new AutorouterError(
+            `autorouter sign-in failed: ${body.error_description || body.error || `HTTP ${res.status}`}`,
+          );
         }
         this.token = { value: body.access_token, expires: this.now() + (Number(body.expires_in) || 3600) * 1000 };
         return this.token.value;
@@ -117,7 +134,11 @@ export class AutorouterClient {
       const tok = await this.getToken();
       const res = await this.doFetch(`${this.base}${path}`, {
         method,
-        headers: { Authorization: `Bearer ${tok}`, Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+        headers: {
+          Authorization: `Bearer ${tok}`,
+          Accept: 'application/json',
+          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        },
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
@@ -126,8 +147,10 @@ export class AutorouterClient {
         continue;
       }
       const out = (await res.json().catch(() => null)) as any;
-      if (!res.ok) throw new AutorouterError(`autorouter: ${out?.error || `HTTP ${res.status}`}`, res.status >= 500 ? 502 : 400);
-      if (out && typeof out === 'object' && typeof out.error === 'string' && out.error) throw new AutorouterError(`autorouter: ${out.error}`, 400);
+      if (!res.ok)
+        throw new AutorouterError(`autorouter: ${out?.error || `HTTP ${res.status}`}`, res.status >= 500 ? 502 : 400);
+      if (out && typeof out === 'object' && typeof out.error === 'string' && out.error)
+        throw new AutorouterError(`autorouter: ${out.error}`, 400);
       return out as T;
     }
   }
@@ -137,8 +160,11 @@ export class AutorouterClient {
     const rows: AutorouterNotamRow[] = [];
     for (let offset = 0; offset < maxRows; offset += NOTAM_PAGE_ROWS) {
       const q = new URLSearchParams({
-        itemas: JSON.stringify(itemas), offset: String(offset), limit: String(NOTAM_PAGE_ROWS),
-        startvalidity: String(Math.floor(from / 1000)), endvalidity: String(Math.ceil(to / 1000)),
+        itemas: JSON.stringify(itemas),
+        offset: String(offset),
+        limit: String(NOTAM_PAGE_ROWS),
+        startvalidity: String(Math.floor(from / 1000)),
+        endvalidity: String(Math.ceil(to / 1000)),
       });
       const page = await this.call<{ total?: number; rows?: AutorouterNotamRow[] }>('GET', `/notam?${q}`);
       const got = Array.isArray(page?.rows) ? page.rows : [];
@@ -150,19 +176,30 @@ export class AutorouterClient {
 
   async file(fpl: string, addresses: string[]): Promise<FiledPlan> {
     const r = await this.call<{ flightid?: number | string; queued?: boolean }>('POST', '/flightplan/file', {
-      fpl, addresses, skipdefaultaddresses: false, gfs: false, force: false, briefing: { requested: [] },
+      fpl,
+      addresses,
+      skipdefaultaddresses: false,
+      gfs: false,
+      force: false,
+      briefing: { requested: [] },
     });
-    if (r?.flightid === undefined || r?.flightid === null) throw new AutorouterError('autorouter: no flight plan id in the answer');
+    if (r?.flightid === undefined || r?.flightid === null)
+      throw new AutorouterError('autorouter: no flight plan id in the answer');
     return { providerId: String(r.flightid), queued: !!r.queued };
   }
 
   async status(providerId: string): Promise<{ status: string; eobt: number | null }> {
-    const r = await this.call<{ status?: string; eobt?: number }>('GET', `/flightplan/file/${encodeURIComponent(providerId)}`);
+    const r = await this.call<{ status?: string; eobt?: number }>(
+      'GET',
+      `/flightplan/file/${encodeURIComponent(providerId)}`,
+    );
     return { status: String(r?.status || 'unknown'), eobt: Number.isFinite(r?.eobt) ? Number(r.eobt) * 1000 : null };
   }
 
   async delay(providerId: string, eobt: number): Promise<void> {
-    await this.call('POST', `/flightplan/file/${encodeURIComponent(providerId)}/delay`, { neweobt: Math.floor(eobt / 1000) });
+    await this.call('POST', `/flightplan/file/${encodeURIComponent(providerId)}/delay`, {
+      neweobt: Math.floor(eobt / 1000),
+    });
   }
 
   async cancel(providerId: string, reason: string): Promise<void> {

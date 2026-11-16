@@ -69,12 +69,12 @@ export function scrubText(s: string): string {
 
 /** A path segment that is an id or a token rather than a word of the route. */
 const isIdSegment = (seg: string): boolean =>
-  /^[a-z]{1,4}_[\w-]{5,}$/i.test(seg) // fl_Xk3…, pl_…, ac_…
-  || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(seg) // uuid
-  || seg.length >= 20 // signing tokens and the like
-  || (seg.length >= 8 && /\d/.test(seg) && /[A-Z]/.test(seg) && /[a-z]/.test(seg)) // base64-ish
-  || /^\d+$/.test(seg)
-  || /@/.test(seg);
+  /^[a-z]{1,4}_[\w-]{5,}$/i.test(seg) || // fl_Xk3…, pl_…, ac_…
+  /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(seg) || // uuid
+  seg.length >= 20 || // signing tokens and the like
+  (seg.length >= 8 && /\d/.test(seg) && /[A-Z]/.test(seg) && /[a-z]/.test(seg)) || // base64-ish
+  /^\d+$/.test(seg) ||
+  /@/.test(seg);
 
 /** Path only: no origin, query or hash; ids and tokens become ':id'. */
 export function scrubUrl(u: string | null | undefined): string | null {
@@ -85,7 +85,11 @@ export function scrubUrl(u: string | null | undefined): string | null {
   if (!p.startsWith('/')) p = '/' + p;
   const segs = p.split('/').map((s) => {
     let d = s;
-    try { d = decodeURIComponent(s); } catch { /* keep raw */ }
+    try {
+      d = decodeURIComponent(s);
+    } catch {
+      /* keep raw */
+    }
     return d && isIdSegment(d) ? ':id' : s;
   });
   return segs.join('/').slice(0, 200);

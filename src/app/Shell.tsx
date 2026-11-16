@@ -7,7 +7,10 @@ import { AccountMenu } from './AccountMenu';
 export function TopBar({ children }: { children?: ReactNode }) {
   return (
     <header className="topbar">
-      <Link to="/" className="brand"><img src="/icon.svg" alt="" /><span>Pig's Gotta Fly</span></Link>
+      <Link to="/" className="brand">
+        <img src="/icon.svg" alt="" />
+        <span>Pig's Gotta Fly</span>
+      </Link>
       <div className="topbar-mid">{children}</div>
       <AccountMenu />
     </header>

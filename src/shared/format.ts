@@ -51,15 +51,21 @@ export function fmtEte(min: number | null | undefined, opts: { fallback?: string
 }
 
 /** Local (Greek) clock time of an instant, 'HH:MM'. */
-export function fmtLocalClock(ms: number | null | undefined, opts: { fallback?: string; timeZone?: string } = {}): string {
+export function fmtLocalClock(
+  ms: number | null | undefined,
+  opts: { fallback?: string; timeZone?: string } = {},
+): string {
   const t = finite(ms) ? localDayTime(ms, opts.timeZone ?? LOCAL_TZ) : null;
-  return t ? t.clock : opts.fallback ?? '';
+  return t ? t.clock : (opts.fallback ?? '');
 }
 
 /** Local (Greek) date and time of an instant, 'YYYY-MM-DD HH:MM'. */
-export function fmtLocalDayTime(ms: number | null | undefined, opts: { fallback?: string; timeZone?: string } = {}): string {
+export function fmtLocalDayTime(
+  ms: number | null | undefined,
+  opts: { fallback?: string; timeZone?: string } = {},
+): string {
   const t = finite(ms) ? localDayTime(ms, opts.timeZone ?? LOCAL_TZ) : null;
-  return t ? `${t.day} ${t.clock}` : opts.fallback ?? '';
+  return t ? `${t.day} ${t.clock}` : (opts.fallback ?? '');
 }
 
 /**
@@ -91,7 +97,8 @@ export function fmtSize(bytes: number): string {
  */
 export function errorMessage(e: unknown): string {
   const x = e as { status?: unknown; offline?: unknown; message?: unknown } | null | undefined;
-  if (x && typeof x === 'object' && (x.offline === true || (x.status === 0 && (x as Error).name === 'ApiRequestError'))) return 'You are offline.';
+  if (x && typeof x === 'object' && (x.offline === true || (x.status === 0 && (x as Error).name === 'ApiRequestError')))
+    return 'You are offline.';
   if (x && typeof x === 'object' && typeof x.message === 'string' && x.message) return x.message;
   return String(e ?? 'Unknown error');
 }

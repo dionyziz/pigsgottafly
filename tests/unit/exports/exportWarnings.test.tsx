@@ -8,11 +8,14 @@ import type { ReactNode } from 'react';
 import { ExportWarnings } from '../../../src/features/exports/WarningList';
 
 afterEach(cleanup);
-const at = (node: ReactNode) => render(
-  <MemoryRouter initialEntries={['/flights/f1/export/navlog']}>
-    <Routes><Route path="/flights/:id/export/:kind" element={node} /></Routes>
-  </MemoryRouter>,
-).container.innerHTML;
+const at = (node: ReactNode) =>
+  render(
+    <MemoryRouter initialEntries={['/flights/f1/export/navlog']}>
+      <Routes>
+        <Route path="/flights/:id/export/:kind" element={node} />
+      </Routes>
+    </MemoryRouter>,
+  ).container.innerHTML;
 
 describe('ExportWarnings', () => {
   test('nothing without warnings', () => {
@@ -20,10 +23,18 @@ describe('ExportWarnings', () => {
   });
 
   test('planning warnings link to the editor; given fixes win; classify=false leaves plain text', () => {
-    const html = at(<ExportWarnings
-      warnings={['Block-off time not set.', 'Something about the weather', { text: 'Colours missing', fix: { kind: 'aircraft', focus: 'colours' } }]}
-      aircraftId="ac1" title="Check" testId="w"
-    />);
+    const html = at(
+      <ExportWarnings
+        warnings={[
+          'Block-off time not set.',
+          'Something about the weather',
+          { text: 'Colours missing', fix: { kind: 'aircraft', focus: 'colours' } },
+        ]}
+        aircraftId="ac1"
+        title="Check"
+        testId="w"
+      />,
+    );
     expect(html).toContain('class="export-warnings warn no-print"');
     expect(html).toContain('data-testid="w"');
     expect(html).toContain('<strong class="export-warnings-title">Check</strong>');

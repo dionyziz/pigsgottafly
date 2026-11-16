@@ -11,22 +11,57 @@ import { ROUTES } from '../../api/_lib/routes/index';
 import { setMailTransport, type SentMail } from '../../api/_lib/mail';
 import { migrate, MIGRATIONS } from '../../api/_lib/migrate';
 import {
-  BURST_COUNT, CLIENT_REPORTS_PER_WINDOW, DAILY_ALERT_CAP, migrateReporting, recordError,
+  BURST_COUNT,
+  CLIENT_REPORTS_PER_WINDOW,
+  DAILY_ALERT_CAP,
+  migrateReporting,
+  recordError,
 } from '../../api/_lib/monitor';
 import { CID, client, JWK, type Client } from './helpers';
 import type { AppErrorDetail, AppErrorGroup, HealthResponse } from '../../src/shared/monitoring';
 
 const BOSS = 'boss@example.com';
 const sent: SentMail[] = [];
-const mock = () => setMailTransport(async (m) => { sent.push(m); return { id: `m-${sent.length}` }; });
+const mock = () =>
+  setMailTransport(async (m) => {
+    sent.push(m);
+    return { id: `m-${sent.length}` };
+  });
 afterEach(() => setMailTransport(null));
 
 const boom: Route[] = [
-  { method: 'GET', path: '/boom/:id', auth: false, handler: async ({ params }) => { throw new Error(`kaput for item ${params.id} of pilot@example.com`); } },
-  { method: 'GET', path: '/boom-auth', handler: async () => { throw new TypeError('cannot read properties of undefined'); } },
-  { method: 'GET', path: '/bad-gateway', auth: false, handler: async () => { throw new HttpError(502, 'upstream down'); } },
+  {
+    method: 'GET',
+    path: '/boom/:id',
+    auth: false,
+    handler: async ({ params }) => {
+      throw new Error(`kaput for item ${params.id} of pilot@example.com`);
+    },
+  },
+  {
+    method: 'GET',
+    path: '/boom-auth',
+    handler: async () => {
+      throw new TypeError('cannot read properties of undefined');
+    },
+  },
+  {
+    method: 'GET',
+    path: '/bad-gateway',
+    auth: false,
+    handler: async () => {
+      throw new HttpError(502, 'upstream down');
+    },
+  },
   { method: 'GET', path: '/unavailable', auth: false, handler: async () => reply(503, { error: 'not today' }) },
-  { method: 'GET', path: '/teapot', auth: false, handler: async () => { throw new HttpError(418, 'teapot'); } },
+  {
+    method: 'GET',
+    path: '/teapot',
+    auth: false,
+    handler: async () => {
+      throw new HttpError(418, 'teapot');
+    },
+  },
 ];
 
 let db: Db;
@@ -34,7 +69,10 @@ let server: http.Server;
 let base: string;
 beforeAll(async () => {
   db = await openDb('memory://');
-  const api = createApi({ db, googleClientId: CID, googleKeys: async () => [JWK], adminEmails: [BOSS] }, [...ROUTES, ...boom]);
+  const api = createApi({ db, googleClientId: CID, googleKeys: async () => [JWK], adminEmails: [BOSS] }, [
+    ...ROUTES,
+    ...boom,
+  ]);
   server = http.createServer((req, res) => void api(req, res));
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/`;
@@ -55,7 +93,14 @@ describe('server errors', () => {
     expect((await anon.call('GET', 'boom/fl_AAAAAAAAA')).status).toBe(500);
     expect((await anon.call('GET', 'boom/fl_BBBBBBBBB')).status).toBe(500);
     const g = await group('kaput%');
-    expect(g).toMatchObject({ kind: 'server', route: '/api/boom/:id', method: 'GET', status: 500, count: 2, release: 'dev' });
+    expect(g).toMatchObject({
+      kind: 'server',
+      route: '/api/boom/:id',
+      method: 'GET',
+      status: 500,
+      count: 2,
+      release: 'dev',
+    });
     expect(g.message).not.toMatch(/pilot@example\.com/);
     expect(g.message).toMatch(/<email>/);
     expect(g.stack).toMatch(/kaput/);
@@ -83,7 +128,9 @@ describe('server errors', () => {
   });
 
   test('a failing mail provider never breaks the request', async () => {
-    setMailTransport(async () => { throw new Error('provider down'); });
+    setMailTransport(async () => {
+      throw new Error('provider down');
+    });
     const r = await client(base).call('GET', 'boom/unlucky');
     expect(r).toEqual({ status: 500, body: { error: 'server error' } });
   });
@@ -119,7 +166,10 @@ describe('alert throttling', () => {
     for (let i = 0; i <= BURST_COUNT + 5; i++) out.push((await rec('burst B', t2 + i * 1000))?.alert);
     expect(out.filter(Boolean)).toEqual(['burst']);
     expect(out.indexOf('burst')).toBe(BURST_COUNT);
-    expect(alerts('burst B').map((m) => m.subject)).toEqual([expect.stringMatching(/New error/), expect.stringMatching(/Error burst/)]);
+    expect(alerts('burst B').map((m) => m.subject)).toEqual([
+      expect.stringMatching(/New error/),
+      expect.stringMatching(/Error burst/),
+    ]);
   });
 
   test('a resolved group that recurs alerts again, even within the hour', async () => {
@@ -154,10 +204,22 @@ describe('alert throttling', () => {
 
 describe('client errors', () => {
   const post = (body: unknown, ip: string, headers: Record<string, string> = {}) =>
-    fetch(base + 'client-errors', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip, ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
+    fetch(base + 'client-errors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip, ...headers },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    });
 
   test('recorded as kind client, without query strings, tokens or e-mails; the session pilot attached', async () => {
-    const r = await post({ source: 'error', message: 'x is not a function (cl@example.com)', stack: 'TypeError\n    at f (https://pigsgottafly.com/assets/index-AbCdEf12.js:1:2)', url: 'https://pigsgottafly.com/sign/AbCdEfGhIjKlMnOpQrStUvWxYz123456?x=secret#h' }, '10.0.0.1');
+    const r = await post(
+      {
+        source: 'error',
+        message: 'x is not a function (cl@example.com)',
+        stack: 'TypeError\n    at f (https://pigsgottafly.com/assets/index-AbCdEf12.js:1:2)',
+        url: 'https://pigsgottafly.com/sign/AbCdEfGhIjKlMnOpQrStUvWxYz123456?x=secret#h',
+      },
+      '10.0.0.1',
+    );
     expect(r.status).toBe(204);
     const g = await group('x is not a function%');
     expect(g).toMatchObject({ kind: 'client', route: '/sign/:id', pilot_id: null });
@@ -165,8 +227,20 @@ describe('client errors', () => {
     expect(g.user_agent).toBeTruthy();
     // a failed API call from a signed-in pilot
     const signedIn = await fetch(base + 'client-errors', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.0.0.2', cookie: await sessionCookie('sub-cl2', 'cl2@example.com') },
-      body: JSON.stringify({ source: 'api', message: 'server error', method: 'put', status: 500, apiPath: '/api/flights/fl_XXXXXXXX?v=1', url: '/flights/fl_XXXXXXXX' }),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-forwarded-for': '10.0.0.2',
+        cookie: await sessionCookie('sub-cl2', 'cl2@example.com'),
+      },
+      body: JSON.stringify({
+        source: 'api',
+        message: 'server error',
+        method: 'put',
+        status: 500,
+        apiPath: '/api/flights/fl_XXXXXXXX?v=1',
+        url: '/flights/fl_XXXXXXXX',
+      }),
     });
     expect(signedIn.status).toBe(204);
     const a = await group('API PUT%');
@@ -192,19 +266,26 @@ describe('client errors', () => {
 
   test(`rate-limited to ${CLIENT_REPORTS_PER_WINDOW} reports per IP per window`, async () => {
     const codes: number[] = [];
-    for (let i = 0; i < CLIENT_REPORTS_PER_WINDOW + 3; i++) codes.push((await post({ source: 'rejection', message: `flood ${i}` }, '10.9.9.9')).status);
+    for (let i = 0; i < CLIENT_REPORTS_PER_WINDOW + 3; i++)
+      codes.push((await post({ source: 'rejection', message: `flood ${i}` }, '10.9.9.9')).status);
     expect(codes.slice(0, CLIENT_REPORTS_PER_WINDOW).every((c) => c === 204)).toBe(true);
     expect(codes.slice(CLIENT_REPORTS_PER_WINDOW)).toEqual([429, 429, 429]);
     // another IP is not affected
     expect((await post({ source: 'rejection', message: 'flood other' }, '10.9.9.8')).status).toBe(204);
     // same message with different numbers: one group
-    expect(Number((await db.query("SELECT count FROM app_errors WHERE message ~ '^flood [0-9]+$'"))[0].count)).toBe(CLIENT_REPORTS_PER_WINDOW);
+    expect(Number((await db.query("SELECT count FROM app_errors WHERE message ~ '^flood [0-9]+$'"))[0].count)).toBe(
+      CLIENT_REPORTS_PER_WINDOW,
+    );
   });
 });
 
 async function sessionCookie(sub: string, email: string): Promise<string> {
   const { signToken, googleClaims } = await import('./helpers');
-  const r = await fetch(base + 'login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: signToken(googleClaims(sub, email)) }) });
+  const r = await fetch(base + 'login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential: signToken(googleClaims(sub, email)) }),
+  });
   return (r.headers.get('set-cookie') || '').split(';')[0];
 }
 
@@ -213,7 +294,14 @@ describe('health', () => {
     const r = await fetch(base + 'health');
     expect(r.status).toBe(200);
     const h = (await r.json()) as HealthResponse;
-    expect(h).toMatchObject({ ok: true, release: 'dev', checks: { db: { ok: true }, migrations: { ok: true, pending: [], expected: MIGRATIONS.length, applied: MIGRATIONS.length } } });
+    expect(h).toMatchObject({
+      ok: true,
+      release: 'dev',
+      checks: {
+        db: { ok: true },
+        migrations: { ok: true, pending: [], expected: MIGRATIONS.length, applied: MIGRATIONS.length },
+      },
+    });
     expect(h.checks.airac.id).toBeTruthy();
     expect(typeof h.checks.mail.ok).toBe('boolean');
     expect(JSON.stringify(h)).not.toMatch(/postgres|RESEND|key|secret/i);
@@ -258,8 +346,9 @@ describe('failed migrations', () => {
     const fresh = await connect('memory://');
     try {
       const n = sent.length;
-      await expect(migrateReporting(fresh, [{ name: '001_bad', sql: 'SELECT * FROM no_such_table' }], { adminEmails: [BOSS] }))
-        .rejects.toThrow(/migration 001_bad failed/);
+      await expect(
+        migrateReporting(fresh, [{ name: '001_bad', sql: 'SELECT * FROM no_such_table' }], { adminEmails: [BOSS] }),
+      ).rejects.toThrow(/migration 001_bad failed/);
       const [g] = await fresh.query('SELECT * FROM app_errors');
       expect(g).toMatchObject({ kind: 'migration', count: 1 });
       expect(g.message).toMatch(/001_bad.*no_such_table/);
@@ -267,13 +356,24 @@ describe('failed migrations', () => {
       expect(sent[n].subject).toMatch(/MIGRATION FAILED/);
       expect(sent[n].text).toMatch(/no_such_table/);
       // 040 still applies over the tables the monitor created
-      expect(await migrate(fresh, MIGRATIONS.filter((m) => m.name === '040_app_errors'))).toEqual(['040_app_errors']);
-    } finally { await fresh.close(); }
+      expect(
+        await migrate(
+          fresh,
+          MIGRATIONS.filter((m) => m.name === '040_app_errors'),
+        ),
+      ).toEqual(['040_app_errors']);
+    } finally {
+      await fresh.close();
+    }
   });
 
   test('a failing migration on an up-to-date database is recorded there', async () => {
     mock();
-    await expect(migrateReporting(db, [...MIGRATIONS, { name: '999_broken', sql: 'ALTER TABLE nope ADD COLUMN x INT' }], { adminEmails: [BOSS] })).rejects.toThrow(/999_broken/);
+    await expect(
+      migrateReporting(db, [...MIGRATIONS, { name: '999_broken', sql: 'ALTER TABLE nope ADD COLUMN x INT' }], {
+        adminEmails: [BOSS],
+      }),
+    ).rejects.toThrow(/999_broken/);
     expect(await group('migration 999_broken failed%')).toMatchObject({ kind: 'migration' });
     expect(sent.at(-1)!.subject).toMatch(/MIGRATION FAILED \(migration\): migration 999_broken failed/);
     expect((await db.query(`SELECT 1 FROM schema_migrations WHERE name = '999_broken'`)).length).toBe(0);
@@ -306,13 +406,21 @@ describe('admin errors API', () => {
     expect(d.stack).toMatch(/kaput/);
     expect((await boss.call('GET', 'admin/errors/nope')).status).toBe(404);
     expect((await boss.call('POST', `admin/errors/${g.fingerprint}/resolve`)).status).toBe(200);
-    expect((await boss.call<AppErrorGroup[]>('GET', 'admin/errors')).body.some((x) => x.fingerprint === g.fingerprint)).toBe(false);
-    expect((await boss.call<AppErrorGroup[]>('GET', 'admin/errors?status=resolved')).body.find((x) => x.fingerprint === g.fingerprint)!.resolvedAt).toBeGreaterThan(0);
+    expect(
+      (await boss.call<AppErrorGroup[]>('GET', 'admin/errors')).body.some((x) => x.fingerprint === g.fingerprint),
+    ).toBe(false);
+    expect(
+      (await boss.call<AppErrorGroup[]>('GET', 'admin/errors?status=resolved')).body.find(
+        (x) => x.fingerprint === g.fingerprint,
+      )!.resolvedAt,
+    ).toBeGreaterThan(0);
     // it happens again: open again, and the admins are told
     mock();
     const n = sent.length;
     await client(base).call('GET', 'boom/fl_CCCCCCCCC');
-    expect((await boss.call<AppErrorGroup[]>('GET', 'admin/errors')).body.some((x) => x.fingerprint === g.fingerprint)).toBe(true);
+    expect(
+      (await boss.call<AppErrorGroup[]>('GET', 'admin/errors')).body.some((x) => x.fingerprint === g.fingerprint),
+    ).toBe(true);
     expect(sent.slice(n).map((m) => m.subject)).toEqual([expect.stringMatching(/Resolved error is back/)]);
   });
 });

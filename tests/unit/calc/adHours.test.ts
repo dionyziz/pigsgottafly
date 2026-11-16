@@ -5,17 +5,34 @@ import fs from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { AERODROMES, SUN_TABLES, aerodrome } from '../../../src/data/ref';
 import {
-  adHoursFromAip, greekHolidays, hoursAt, isSummerTime, normalizeAipText, orthodoxEaster, parseHours, parseSchedule, sunTimes, type AipHoursText,
+  adHoursFromAip,
+  greekHolidays,
+  hoursAt,
+  isSummerTime,
+  normalizeAipText,
+  orthodoxEaster,
+  parseHours,
+  parseSchedule,
+  sunTimes,
+  type AipHoursText,
 } from '../../../src/calc/adHours';
 import { extractAd16, extractAd2 } from '../../../tools/extract_ad_hours';
 
-const RAW = JSON.parse(fs.readFileSync('tools/ad_hours.json', 'utf8')) as Record<string, AipHoursText & { amdt: string | null }>;
+const RAW = JSON.parse(fs.readFileSync('tools/ad_hours.json', 'utf8')) as Record<
+  string,
+  AipHoursText & { amdt: string | null }
+>;
 const PAGES = JSON.parse(fs.readFileSync('tests/fixtures/aip-ad-hours-pages.json', 'utf8')) as Record<string, string>;
 const ms = (iso: string) => Date.parse(iso);
 const ad = (id: string) => aerodrome(id)!;
 const at = (id: string, field: 'ad' | 'ats' | 'handling', iso: string) => {
   const a = ad(id);
-  const ctx = { lat: a.lat, lon: a.lon, sunTables: SUN_TABLES, ad: (t: number) => hoursAt(a.hours!.ad.parsed, t, { lat: a.lat, lon: a.lon, sunTables: SUN_TABLES }) };
+  const ctx = {
+    lat: a.lat,
+    lon: a.lon,
+    sunTables: SUN_TABLES,
+    ad: (t: number) => hoursAt(a.hours!.ad.parsed, t, { lat: a.lat, lon: a.lon, sunTables: SUN_TABLES }),
+  };
   const f = field === 'ad' ? a.hours!.ad : field === 'ats' ? a.hours!.ats! : a.hours!.handling;
   return hoursAt(f.parsed, ms(iso), ctx);
 };
@@ -25,86 +42,86 @@ const at = (id: string, field: 'ad' | 'ats' | 'handling', iso: string) => {
  * evaluated as unknown). Reviewed against the AIP text of AIRAC 09/26 (tools/ad_hours.json).
  */
 const EXPECTED: Record<string, [string, string | null, string, string | null]> = {
-  "KALAMATA-TRIODHON": ["HX", "NIL", "NIL", null],
-  "LGTL": ["HJ", "HJ", "NIL", null],
-  "LGKM": ["HO", "NIL", "AD hours", "NIL"],
-  "KILKIS-NEA-KAVALA-POLYKASTRO": ["HX", "NIL", "NIL", null],
-  "LGLR": ["HJ", "HJ", "NIL", null],
-  "LARISSA-TERPSITHEA": ["HX", "NIL", "NIL", null],
-  "LGKN": ["H24", "HJ", "NIL", null],
-  "LGMG": ["HO", null, "NIL", null],
-  "MESSOLOGI": ["HX", "NIL", "NIL", null],
-  "LGSD": ["HX", "HX", "NIL", null],
-  "LGSV": ["HJ", "HJ", "NIL", null],
-  "KOPAIDA-DIMITRA": ["HX", "NIL", "NIL", null],
-  "KOPAIDA-IKAROS": ["HX", "NIL", "NIL", null],
-  "TIMBAKION": ["HX", "HX", "NIL", null],
-  "LGTP": ["DAILY SR-1200", "DAILY SR-1200", "NIL", null],
-  "XANTHI-NEOS-ZYGOS": ["HX", "NIL", "NIL", null],
-  "LGRD": ["HJ", "NIL", "NIL", null],
-  "LGTG": ["HJ", "HJ", "NIL", "NIL"],
-  "AGRINION-AEROCLUB": ["HX", "NIL", "NIL", null],
-  "PTOLEMAIDA-OLYMPIADA": ["HX", "NIL", "NIL", null],
-  "THIVA-PERNERI": ["HX", "NIL", "NIL", null],
-  "LARISSA-FLABOURO": ["SAT SUN HOL HX", "NIL", "NIL", null],
-  "SERRES-HORTERO": ["HX", "NIL", "NIL", null],
-  "KOLCHIKO": ["MON-SAT 1000-1700", "NIL", "NIL", null],
-  "KARDITSA-MYRINI": ["NIL (no published hours)", "NIL", "NIL", null],
-  "MEGARA-DOUNIS": ["NIL (no published hours)", "NIL", "NIL", null],
-  "IGOUMENITSA-MARGARITI": ["NIL (no published hours)", "NIL", "NIL", null],
-  "CHALKIDIKI-NEA-SYLLATA": ["NIL (no published hours)", "NIL", "NIL", null],
-  "SERRES-EMMANOUIL-PAPPAS": ["NIL (no published hours)", "NIL", "NIL", null],
-  "LGAX": ["HS", "HS", "NIL", null],
-  "PIERIA-KONTARIOTISA": ["SAT SUN HOL HX", "NIL", "NIL", null],
-  "ZALOGO-PREVEZA": ["NIL (no published hours)", "NIL", "NIL", null],
-  "KERKIRA-KERKIRA-PORT": ["NIL (no published hours)", "NIL", "NIL", null],
-  "PAXOI-GAIOS-PORT": ["NIL (no published hours)", "NIL", "NIL", null],
-  "CHALKIDIKI-NEA-KALLIKRATEIA": ["HX", "NIL", "NIL", null],
-  "LGTT": ["31 DEC: CLSD, 1 JAN: CLSD, HJ", "HJ", "NIL", null],
-  "EDESSA-ARNISSA": ["HX", "NIL", "NIL", null],
-  "EPITALIO": ["NIL (no published hours)", "NIL", "NIL", null],
-  "FLORINA": ["HX", "NIL", "NIL", null],
-  "LGAD": ["HO", "HJ", "Summer: AD hours", "AD hours"],
-  "LGAL": ["HO", "AD hours", "AD hours", "O/R"],
-  "LGAV": ["H24", "H24", "H24", "H24"],
-  "LGBL": ["HO", "HJ", "AD hours", "AD hours"],
-  "LGEL": ["HJ", "HJ", "HJ", "HJ"],
-  "LGHI": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGIK": ["HO", "AD hours", "NIL", "NIL"],
-  "LGIO": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGIR": ["H24", "H24", "H24", "H24"],
-  "LGKA": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGKC": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGKF": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGKJ": ["HO", "AD hours", "NIL", "NIL"],
-  "LGKL": ["HO", "HJ", "AD hours", "AD hours"],
-  "LGKO": ["H24", "H24", "H24", "H24"],
-  "LGKP": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGKR": ["H24", "H24", "H24", "H24"],
-  "LGKS": ["HO", "AD hours", "NIL", "NIL"],
-  "LGKV": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGKY": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGKZ": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGLE": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGLM": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGMK": ["HO", "AD hours", "AD hours", "!See AIP text"],
-  "LGML": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGMT": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGNX": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGPA": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGPL": ["HO", "AD hours", "AD hours", "NIL"],
-  "LGPZ": ["HO", "Winter: HJ, Summer: AD hours", "AD hours", "AD hours"],
-  "LGRP": ["H24", "H24", "H24", "H24"],
-  "LGRX": ["HO", "HJ", "AD hours", "AD hours"],
-  "LGSA": ["H24", "H24", "H24", "H24"],
-  "LGSK": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGSM": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGSO": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGSR": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGST": ["HO", "AD hours", "AD hours", "AD hours"],
-  "LGSY": ["HO", "HJ", "NIL", "NIL"],
-  "LGTS": ["H24", "H24", "H24", "H24"],
-  "LGZA": ["HO", "AD hours", "AD hours", "AD hours"],
+  'KALAMATA-TRIODHON': ['HX', 'NIL', 'NIL', null],
+  LGTL: ['HJ', 'HJ', 'NIL', null],
+  LGKM: ['HO', 'NIL', 'AD hours', 'NIL'],
+  'KILKIS-NEA-KAVALA-POLYKASTRO': ['HX', 'NIL', 'NIL', null],
+  LGLR: ['HJ', 'HJ', 'NIL', null],
+  'LARISSA-TERPSITHEA': ['HX', 'NIL', 'NIL', null],
+  LGKN: ['H24', 'HJ', 'NIL', null],
+  LGMG: ['HO', null, 'NIL', null],
+  MESSOLOGI: ['HX', 'NIL', 'NIL', null],
+  LGSD: ['HX', 'HX', 'NIL', null],
+  LGSV: ['HJ', 'HJ', 'NIL', null],
+  'KOPAIDA-DIMITRA': ['HX', 'NIL', 'NIL', null],
+  'KOPAIDA-IKAROS': ['HX', 'NIL', 'NIL', null],
+  TIMBAKION: ['HX', 'HX', 'NIL', null],
+  LGTP: ['DAILY SR-1200', 'DAILY SR-1200', 'NIL', null],
+  'XANTHI-NEOS-ZYGOS': ['HX', 'NIL', 'NIL', null],
+  LGRD: ['HJ', 'NIL', 'NIL', null],
+  LGTG: ['HJ', 'HJ', 'NIL', 'NIL'],
+  'AGRINION-AEROCLUB': ['HX', 'NIL', 'NIL', null],
+  'PTOLEMAIDA-OLYMPIADA': ['HX', 'NIL', 'NIL', null],
+  'THIVA-PERNERI': ['HX', 'NIL', 'NIL', null],
+  'LARISSA-FLABOURO': ['SAT SUN HOL HX', 'NIL', 'NIL', null],
+  'SERRES-HORTERO': ['HX', 'NIL', 'NIL', null],
+  KOLCHIKO: ['MON-SAT 1000-1700', 'NIL', 'NIL', null],
+  'KARDITSA-MYRINI': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'MEGARA-DOUNIS': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'IGOUMENITSA-MARGARITI': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'CHALKIDIKI-NEA-SYLLATA': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'SERRES-EMMANOUIL-PAPPAS': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  LGAX: ['HS', 'HS', 'NIL', null],
+  'PIERIA-KONTARIOTISA': ['SAT SUN HOL HX', 'NIL', 'NIL', null],
+  'ZALOGO-PREVEZA': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'KERKIRA-KERKIRA-PORT': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'PAXOI-GAIOS-PORT': ['NIL (no published hours)', 'NIL', 'NIL', null],
+  'CHALKIDIKI-NEA-KALLIKRATEIA': ['HX', 'NIL', 'NIL', null],
+  LGTT: ['31 DEC: CLSD, 1 JAN: CLSD, HJ', 'HJ', 'NIL', null],
+  'EDESSA-ARNISSA': ['HX', 'NIL', 'NIL', null],
+  EPITALIO: ['NIL (no published hours)', 'NIL', 'NIL', null],
+  FLORINA: ['HX', 'NIL', 'NIL', null],
+  LGAD: ['HO', 'HJ', 'Summer: AD hours', 'AD hours'],
+  LGAL: ['HO', 'AD hours', 'AD hours', 'O/R'],
+  LGAV: ['H24', 'H24', 'H24', 'H24'],
+  LGBL: ['HO', 'HJ', 'AD hours', 'AD hours'],
+  LGEL: ['HJ', 'HJ', 'HJ', 'HJ'],
+  LGHI: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGIK: ['HO', 'AD hours', 'NIL', 'NIL'],
+  LGIO: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGIR: ['H24', 'H24', 'H24', 'H24'],
+  LGKA: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGKC: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGKF: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGKJ: ['HO', 'AD hours', 'NIL', 'NIL'],
+  LGKL: ['HO', 'HJ', 'AD hours', 'AD hours'],
+  LGKO: ['H24', 'H24', 'H24', 'H24'],
+  LGKP: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGKR: ['H24', 'H24', 'H24', 'H24'],
+  LGKS: ['HO', 'AD hours', 'NIL', 'NIL'],
+  LGKV: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGKY: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGKZ: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGLE: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGLM: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGMK: ['HO', 'AD hours', 'AD hours', '!See AIP text'],
+  LGML: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGMT: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGNX: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGPA: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGPL: ['HO', 'AD hours', 'AD hours', 'NIL'],
+  LGPZ: ['HO', 'Winter: HJ, Summer: AD hours', 'AD hours', 'AD hours'],
+  LGRP: ['H24', 'H24', 'H24', 'H24'],
+  LGRX: ['HO', 'HJ', 'AD hours', 'AD hours'],
+  LGSA: ['H24', 'H24', 'H24', 'H24'],
+  LGSK: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGSM: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGSO: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGSR: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGST: ['HO', 'AD hours', 'AD hours', 'AD hours'],
+  LGSY: ['HO', 'HJ', 'NIL', 'NIL'],
+  LGTS: ['H24', 'H24', 'H24', 'H24'],
+  LGZA: ['HO', 'AD hours', 'AD hours', 'AD hours'],
 };
 
 describe('extraction from the eAIP text (pdftotext -layout)', () => {
@@ -123,7 +140,15 @@ describe('extraction from the eAIP text (pdftotext -layout)', () => {
   });
   test('AD 1.6: the hours table and, without a handling item, the handling section', () => {
     const r = extractAd16(29, PAGES.LGTG)!;
-    expect(r).toMatchObject({ source: 'AD 1.6.29.3', ad: 'HJ (HAF)', ats: 'HJ (HAF)', customs: 'NIL', remarks: 'During night O/R RWY 28C only.', handlingSource: 'AD 1.6.29.4', handlingFromSection: true });
+    expect(r).toMatchObject({
+      source: 'AD 1.6.29.3',
+      ad: 'HJ (HAF)',
+      ats: 'HJ (HAF)',
+      customs: 'NIL',
+      remarks: 'During night O/R RWY 28C only.',
+      handlingSource: 'AD 1.6.29.4',
+      handlingFromSection: true,
+    });
     expect(r.handling).toMatch(/^1  Cargo-handling facilities  NIL\./);
     expect(r.handling).toContain('For military use only.');
   });
@@ -144,12 +169,18 @@ describe('the parser over every aerodrome', () => {
   });
   test('each aerodrome parses to the reviewed schedule', () => {
     const got: Record<string, unknown> = {};
-    const l = (f: { parsed: { partial: boolean; label: string } } | null) => (f ? (f.parsed.partial ? '!' : '') + f.parsed.label : null);
-    for (const a of AERODROMES) got[a.id] = [l(a.hours!.ad), l(a.hours!.ats), l(a.hours!.handling), l(a.hours!.customs)];
+    const l = (f: { parsed: { partial: boolean; label: string } } | null) =>
+      f ? (f.parsed.partial ? '!' : '') + f.parsed.label : null;
+    for (const a of AERODROMES)
+      got[a.id] = [l(a.hours!.ad), l(a.hours!.ats), l(a.hours!.handling), l(a.hours!.customs)];
     expect(got).toEqual(EXPECTED);
   });
   test('only the texts the parser cannot represent are partial (customs of LGMK); no AD, ATS or handling text is', () => {
-    const partial = AERODROMES.flatMap((a) => (['ad', 'ats', 'handling', 'customs'] as const).filter((k) => a.hours![k]?.parsed.partial).map((k) => `${a.id} ${k}`));
+    const partial = AERODROMES.flatMap((a) =>
+      (['ad', 'ats', 'handling', 'customs'] as const)
+        .filter((k) => a.hours![k]?.parsed.partial)
+        .map((k) => `${a.id} ${k}`),
+    );
     expect(partial).toEqual(['LGMK customs']);
   });
   test('alternatives by provider: the civil one is used, the others kept as notes', () => {
@@ -159,12 +190,18 @@ describe('the parser over every aerodrome', () => {
     expect(ad('LGMG').hours!.ad.parsed.notes).toContain('Hellenic Army: HJ, HO');
   });
   test('footnotes in the remarks: HR* (LGPZ), HX: (LGTP), *= (LGKL); closures (LGTT 31 DEC / 01 JAN)', () => {
-    expect(ad('LGPZ').hours!.ats!.parsed.rules).toEqual([{ season: 'winter', times: [{ t: 'HJ' }] }, { season: 'summer', times: [{ t: 'AD' }] }]);
+    expect(ad('LGPZ').hours!.ats!.parsed.rules).toEqual([
+      { season: 'winter', times: [{ t: 'HJ' }] },
+      { season: 'summer', times: [{ t: 'AD' }] },
+    ]);
     expect(ad('LGPZ').hours!.ats!.parsed.notes).toContain('Rest Hours 30 min prior notice');
-    expect(ad('LGTP').hours!.ad.parsed.rules).toEqual([{ days: [1, 2, 3, 4, 5, 6, 7], times: [{ t: 'window', from: { sun: 'SR', offsetMin: 0 }, to: { utc: 720 } }] }]);
+    expect(ad('LGTP').hours!.ad.parsed.rules).toEqual([
+      { days: [1, 2, 3, 4, 5, 6, 7], times: [{ t: 'window', from: { sun: 'SR', offsetMin: 0 }, to: { utc: 720 } }] },
+    ]);
     expect(ad('LGKL').hours!.customs!.parsed.rules).toEqual([{ times: [{ t: 'AD' }] }]);
     expect(ad('LGTT').hours!.ad.parsed.rules.slice(0, 2)).toEqual([
-      { season: { from: '12-31', to: '12-31' }, times: [{ t: 'CLSD' }] }, { season: { from: '01-01', to: '01-01' }, times: [{ t: 'CLSD' }] },
+      { season: { from: '12-31', to: '12-31' }, times: [{ t: 'CLSD' }] },
+      { season: { from: '01-01', to: '01-01' }, times: [{ t: 'CLSD' }] },
     ]);
   });
   test('Greek capitals are normalised (Η24, ΗΧ, ΜΕΤ)', () => {
@@ -181,13 +218,21 @@ describe('schedules (AIP and NOTAM item D / E)', () => {
       { days: [6, 7], times: [{ t: 'window', from: { utc: 360 }, to: { utc: 840 } }] },
     ]);
     expect(parseSchedule('AD HOURS OF SERVICE: DAILY 0400-1000 1400-2000')).toEqual([
-      { days: [1, 2, 3, 4, 5, 6, 7], times: [{ t: 'window', from: { utc: 240 }, to: { utc: 600 } }, { t: 'window', from: { utc: 840 }, to: { utc: 1200 } }] },
+      {
+        days: [1, 2, 3, 4, 5, 6, 7],
+        times: [
+          { t: 'window', from: { utc: 240 }, to: { utc: 600 } },
+          { t: 'window', from: { utc: 840 }, to: { utc: 1200 } },
+        ],
+      },
     ]);
     expect(parseSchedule('MON-FRI EXC HOL 0500-1500 SAT SUN HOL CLSD')).toEqual([
       { days: [1, 2, 3, 4, 5], exceptHolidays: true, times: [{ t: 'window', from: { utc: 300 }, to: { utc: 900 } }] },
       { days: [6, 7], holidays: true, times: [{ t: 'CLSD' }] },
     ]);
-    expect(parseSchedule('Monday to Saturday 1000 - 1700')).toEqual([{ days: [1, 2, 3, 4, 5, 6], times: [{ t: 'window', from: { utc: 600 }, to: { utc: 1020 } }] }]);
+    expect(parseSchedule('Monday to Saturday 1000 - 1700')).toEqual([
+      { days: [1, 2, 3, 4, 5, 6], times: [{ t: 'window', from: { utc: 600 }, to: { utc: 1020 } }] },
+    ]);
   });
   test('summer and winter: bracketed summer times, "summer period -1 HR", season prefixes, date ranges', () => {
     expect(parseSchedule('0600-2200 (0500-2100)')).toEqual([
@@ -199,15 +244,23 @@ describe('schedules (AIP and NOTAM item D / E)', () => {
       { season: 'winter', days: [1, 2, 3, 4, 5], times: [{ t: 'window', from: { utc: 360 }, to: { utc: 840 } }] },
     ]);
     expect(parseSchedule('SUMMER: H24 WINTER: 0500-1900')).toEqual([
-      { season: 'summer', times: [{ t: 'H24' }] }, { season: 'winter', times: [{ t: 'window', from: { utc: 300 }, to: { utc: 1140 } }] },
+      { season: 'summer', times: [{ t: 'H24' }] },
+      { season: 'winter', times: [{ t: 'window', from: { utc: 300 }, to: { utc: 1140 } }] },
     ]);
     expect(parseSchedule('01 MAY - 31 OCT: DAILY 0400-1900')).toEqual([
-      { season: { from: '05-01', to: '10-31' }, days: [1, 2, 3, 4, 5, 6, 7], times: [{ t: 'window', from: { utc: 240 }, to: { utc: 1140 } }] },
+      {
+        season: { from: '05-01', to: '10-31' },
+        days: [1, 2, 3, 4, 5, 6, 7],
+        times: [{ t: 'window', from: { utc: 240 }, to: { utc: 1140 } }],
+      },
     ]);
-    expect(parseHours('HO from April to October', 'handling').rules).toEqual([{ season: { from: '04-01', to: '10-31' }, times: [{ t: 'AD' }] }]);
+    expect(parseHours('HO from April to October', 'handling').rules).toEqual([
+      { season: { from: '04-01', to: '10-31' }, times: [{ t: 'AD' }] },
+    ]);
   });
   test('anything else is not a schedule (never guessed)', () => {
-    for (const s of ['AD CLSD DUE TO WIP', 'MAR 01 02 03 0600-1400', 'For scheduled flights: HO', '2500-0100', 'MON-']) expect(parseSchedule(s), s).toBeNull();
+    for (const s of ['AD CLSD DUE TO WIP', 'MAR 01 02 03 0600-1400', 'For scheduled flights: HO', '2500-0100', 'MON-'])
+      expect(parseSchedule(s), s).toBeNull();
     expect(parseHours('Available after coordination with the operator', 'ad').partial).toBe(true);
   });
 });
@@ -215,7 +268,10 @@ describe('schedules (AIP and NOTAM item D / E)', () => {
 describe('evaluation', () => {
   test('H24, HO (hours by NOTAM: unknown), HX, NIL', () => {
     expect(at('LGAV', 'ad', '2026-11-15T03:00:00Z').status).toBe('open');
-    expect(at('LGKC', 'ad', '2026-11-15T10:00:00Z')).toEqual({ status: 'unknown', why: 'HO: hours published by NOTAM' });
+    expect(at('LGKC', 'ad', '2026-11-15T10:00:00Z')).toEqual({
+      status: 'unknown',
+      why: 'HO: hours published by NOTAM',
+    });
     expect(at('FLORINA', 'ad', '2026-11-15T10:00:00Z').status).toBe('unknown');
     expect(at('MEGARA-DOUNIS', 'ad', '2026-11-15T10:00:00Z').status).toBe('unknown'); // NIL hours: not "closed"
     expect(at('LGTT', 'handling', '2026-11-15T10:00:00Z')).toEqual({ status: 'closed', why: 'NIL' });
@@ -252,13 +308,19 @@ describe('evaluation', () => {
     expect(isSummerTime(ms('2026-03-29T01:00:00Z'))).toBe(true);
     expect(at('LGAD', 'handling', '2026-11-15T10:00:00Z').status).toBe('closed');
     // a service during the AD hours is available while the aerodrome is not known to be closed (HO: by NOTAM)
-    expect(at('LGAD', 'handling', '2026-07-15T10:00:00Z')).toEqual({ status: 'open', why: 'during the aerodrome hours' });
+    expect(at('LGAD', 'handling', '2026-07-15T10:00:00Z')).toEqual({
+      status: 'open',
+      why: 'during the aerodrome hours',
+    });
     expect(at('LGPZ', 'ats', '2026-11-15T10:00:00Z').status).toBe('open');
     expect(at('LGPZ', 'ats', '2026-11-15T20:00:00Z').status).toBe('closed');
   });
   test('a partial spec is unknown, never guessed', () => {
     const a = ad('LGMK');
-    expect(hoursAt(a.hours!.customs!.parsed, ms('2026-11-15T10:00:00Z'), { lat: a.lat, lon: a.lon })).toEqual({ status: 'unknown', why: 'see the AIP text' });
+    expect(hoursAt(a.hours!.customs!.parsed, ms('2026-11-15T10:00:00Z'), { lat: a.lat, lon: a.lon })).toEqual({
+      status: 'unknown',
+      why: 'see the AIP text',
+    });
   });
   test('windows past midnight', () => {
     const r = parseHours('DAILY 2100-0400', 'ad');
@@ -272,7 +334,21 @@ describe('evaluation', () => {
     expect(new Date(orthodoxEaster(2026)).toISOString().slice(0, 10)).toBe('2026-04-12');
     expect(new Date(orthodoxEaster(2027)).toISOString().slice(0, 10)).toBe('2027-05-02');
     const h = greekHolidays(2026);
-    for (const d of ['2026-01-01', '2026-01-06', '2026-02-23', '2026-03-25', '2026-04-10', '2026-04-13', '2026-05-01', '2026-06-01', '2026-08-15', '2026-10-28', '2026-12-25', '2026-12-26']) expect(h.has(d), d).toBe(true);
+    for (const d of [
+      '2026-01-01',
+      '2026-01-06',
+      '2026-02-23',
+      '2026-03-25',
+      '2026-04-10',
+      '2026-04-13',
+      '2026-05-01',
+      '2026-06-01',
+      '2026-08-15',
+      '2026-10-28',
+      '2026-12-25',
+      '2026-12-26',
+    ])
+      expect(h.has(d), d).toBe(true);
     expect(h.has('2026-11-15')).toBe(false);
   });
 });

@@ -6,28 +6,62 @@ import { useRef, useState } from 'react';
 import { MemoryRouter } from 'react-router';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import {
-  AsyncView, Collapsible, ConfirmDialog, Dialog, DialogFooter, DragHandle, Field, ICON_NAMES, Icon, KebabMenu, Loading,
-  WarningList, dropIndex, rowClick, useHighlightFields, useSortable,
+  AsyncView,
+  Collapsible,
+  ConfirmDialog,
+  Dialog,
+  DialogFooter,
+  DragHandle,
+  Field,
+  ICON_NAMES,
+  Icon,
+  KebabMenu,
+  Loading,
+  WarningList,
+  dropIndex,
+  rowClick,
+  useHighlightFields,
+  useSortable,
 } from '../../../src/ui';
 import { moveAt } from '../../../src/shared';
 
 // Node's own (flag-gated) localStorage shadows jsdom's: use an in-memory one.
 const mem = new Map<string, string>();
 vi.stubGlobal('localStorage', {
-  getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, String(v)); },
-  removeItem: (k: string) => { mem.delete(k); }, clear: () => mem.clear(), key: () => null, get length() { return mem.size; },
+  getItem: (k: string) => mem.get(k) ?? null,
+  setItem: (k: string, v: string) => {
+    mem.set(k, String(v));
+  },
+  removeItem: (k: string) => {
+    mem.delete(k);
+  },
+  clear: () => mem.clear(),
+  key: () => null,
+  get length() {
+    return mem.size;
+  },
 });
 // jsdom has no PointerEvent: a MouseEvent with a pointer id and type.
 if (typeof window.PointerEvent === 'undefined') {
   class PE extends MouseEvent {
-    pointerId: number; pointerType: string;
-    constructor(type: string, init: PointerEventInit = {}) { super(type, init); this.pointerId = init.pointerId ?? 0; this.pointerType = init.pointerType ?? 'mouse'; }
+    pointerId: number;
+    pointerType: string;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+      this.pointerType = init.pointerType ?? 'mouse';
+    }
   }
   vi.stubGlobal('PointerEvent', PE);
 }
 
-afterEach(() => { cleanup(); vi.useRealTimers(); });
-beforeEach(() => { mem.clear(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+beforeEach(() => {
+  mem.clear();
+});
 
 function List({ initial = ['A', 'B', 'C', 'D'] }: { initial?: string[] }) {
   const [rows, setRows] = useState(initial);
@@ -75,7 +109,17 @@ describe('Sortable', () => {
   test('pointer drag on the handle moves the item where it is dropped', () => {
     const r = render(<List />);
     ['A', 'B', 'C', 'D'].forEach((k, i) => {
-      r.getByTestId(`row-${k}`).getBoundingClientRect = () => ({ top: i * 40, bottom: i * 40 + 40, left: 0, right: 100, width: 100, height: 40, x: 0, y: i * 40, toJSON: () => ({}) });
+      r.getByTestId(`row-${k}`).getBoundingClientRect = () => ({
+        top: i * 40,
+        bottom: i * 40 + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: i * 40,
+        toJSON: () => ({}),
+      });
     });
     const h = r.getByLabelText(/^Move A/);
     fireEvent.pointerDown(h, { pointerId: 1, button: 0, clientY: 20 });
@@ -97,7 +141,20 @@ describe('Sortable', () => {
 describe('Collapsible', () => {
   test('a click anywhere on the header toggles; actions do not; remembered', () => {
     const act1 = vi.fn();
-    const r = render(<Collapsible id="fuel" title="Fuel" badge={<span>42 L</span>} actions={<button type="button" onClick={act1}>Reset</button>}><p>body</p></Collapsible>);
+    const r = render(
+      <Collapsible
+        id="fuel"
+        title="Fuel"
+        badge={<span>42 L</span>}
+        actions={
+          <button type="button" onClick={act1}>
+            Reset
+          </button>
+        }
+      >
+        <p>body</p>
+      </Collapsible>,
+    );
     const head = r.container.querySelector('.collapsible-head') as HTMLElement;
     expect(head.getAttribute('aria-expanded')).toBe('true');
     fireEvent.click(r.getByText('Reset'));
@@ -109,7 +166,11 @@ describe('Collapsible', () => {
     expect(r.queryByText('Reset')).toBeNull();
     expect(JSON.parse(localStorage.getItem('pgf.collapsed')!)).toEqual({ fuel: true });
     cleanup();
-    const r2 = render(<Collapsible id="fuel" title="Fuel"><p>body</p></Collapsible>);
+    const r2 = render(
+      <Collapsible id="fuel" title="Fuel">
+        <p>body</p>
+      </Collapsible>,
+    );
     expect(r2.queryByText('body')).toBeNull();
     fireEvent.click(r2.getByText('Fuel'));
     expect(r2.queryByText('body')).not.toBeNull();
@@ -117,7 +178,11 @@ describe('Collapsible', () => {
   });
 
   test('Enter and Space on the focused header toggle; keys in actions do not', () => {
-    const r = render(<Collapsible id="x" title="X" actions={<input aria-label="a" />}><p>body</p></Collapsible>);
+    const r = render(
+      <Collapsible id="x" title="X" actions={<input aria-label="a" />}>
+        <p>body</p>
+      </Collapsible>,
+    );
     const head = r.container.querySelector('.collapsible-head') as HTMLElement;
     fireEvent.keyDown(r.getByLabelText('a'), { key: 'Enter' });
     expect(r.queryByText('body')).not.toBeNull();
@@ -131,7 +196,16 @@ describe('Collapsible', () => {
     localStorage.setItem('pgf.editor.sections', JSON.stringify({ to: true }));
     function H() {
       const [f, setF] = useState(false);
-      return <><button type="button" onClick={() => setF(true)}>go</button><Collapsible id="to" title="Take-off" store="pgf.editor.sections" openWhen={f} summary="OK · 21 · 480/1100 m"><p>body</p></Collapsible></>;
+      return (
+        <>
+          <button type="button" onClick={() => setF(true)}>
+            go
+          </button>
+          <Collapsible id="to" title="Take-off" store="pgf.editor.sections" openWhen={f} summary="OK · 21 · 480/1100 m">
+            <p>body</p>
+          </Collapsible>
+        </>
+      );
     }
     const r = render(<H />);
     expect(r.getByText('OK · 21 · 480/1100 m')).toBeTruthy();
@@ -143,8 +217,25 @@ describe('Collapsible', () => {
 
 describe('Dialog', () => {
   test('DialogFooter: danger on the left, error, Cancel, primary; busy disables', () => {
-    const del = vi.fn(), save = vi.fn(), cancel = vi.fn();
-    const r = render(<Dialog title="Edit" onClose={cancel} footer={<DialogFooter onCancel={cancel} error="Weight must be 1–300 kg" danger={{ label: 'Delete', onClick: del }} primary={{ label: 'Save', onClick: save }} />}><input /></Dialog>);
+    const del = vi.fn(),
+      save = vi.fn(),
+      cancel = vi.fn();
+    const r = render(
+      <Dialog
+        title="Edit"
+        onClose={cancel}
+        footer={
+          <DialogFooter
+            onCancel={cancel}
+            error="Weight must be 1–300 kg"
+            danger={{ label: 'Delete', onClick: del }}
+            primary={{ label: 'Save', onClick: save }}
+          />
+        }
+      >
+        <input />
+      </Dialog>,
+    );
     const buttons = Array.from(r.container.querySelectorAll('.dlg-foot button')).map((b) => b.textContent);
     expect(buttons).toEqual(['Delete', 'Cancel', 'Save']);
     expect(r.getByRole('alert').textContent).toBe('Weight must be 1–300 kg');
@@ -153,19 +244,33 @@ describe('Dialog', () => {
     expect(del).toHaveBeenCalled();
     expect(save).toHaveBeenCalled();
     cleanup();
-    const r2 = render(<Dialog title="Edit" onClose={cancel} footer={<DialogFooter busy onCancel={cancel} primary={{ label: 'Save', onClick: save }} />} />);
+    const r2 = render(
+      <Dialog
+        title="Edit"
+        onClose={cancel}
+        footer={<DialogFooter busy onCancel={cancel} primary={{ label: 'Save', onClick: save }} />}
+      />,
+    );
     expect((r2.getByText('Save') as HTMLButtonElement).disabled).toBe(true);
     expect((r2.getByText('Cancel') as HTMLButtonElement).disabled).toBe(true);
   });
 
   test('Escape and a backdrop click close it, not while busy', () => {
     const close = vi.fn();
-    const r = render(<Dialog title="T" onClose={close}><p>x</p></Dialog>);
+    const r = render(
+      <Dialog title="T" onClose={close}>
+        <p>x</p>
+      </Dialog>,
+    );
     fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.mouseDown(r.container.querySelector('.dlg-backdrop')!);
     expect(close).toHaveBeenCalledTimes(2);
     cleanup();
-    const r2 = render(<Dialog title="T" busy onClose={close}><p>x</p></Dialog>);
+    const r2 = render(
+      <Dialog title="T" busy onClose={close}>
+        <p>x</p>
+      </Dialog>,
+    );
     fireEvent.keyDown(document, { key: 'Escape' });
     fireEvent.mouseDown(r2.container.querySelector('.dlg-backdrop')!);
     expect(close).toHaveBeenCalledTimes(2);
@@ -173,10 +278,21 @@ describe('Dialog', () => {
 
   test('ConfirmDialog: title only; a failing confirm shows the error and stays open', async () => {
     const close = vi.fn();
-    const r = render(<ConfirmDialog title="Delete Maria?" confirmLabel="Delete" onClose={close} onConfirm={() => { throw new Error('Offline'); }} />);
+    const r = render(
+      <ConfirmDialog
+        title="Delete Maria?"
+        confirmLabel="Delete"
+        onClose={close}
+        onConfirm={() => {
+          throw new Error('Offline');
+        }}
+      />,
+    );
     expect(r.container.querySelector('.dlg-body')).toBeNull();
     expect(document.activeElement?.textContent).toBe('Delete');
-    await act(async () => { fireEvent.click(r.getByText('Delete')); });
+    await act(async () => {
+      fireEvent.click(r.getByText('Delete'));
+    });
     expect(r.getByRole('alert').textContent).toBe('Offline');
     expect(close).not.toHaveBeenCalled();
   });
@@ -185,7 +301,14 @@ describe('Dialog', () => {
 describe('Menu', () => {
   test('opens, ↓ moves between items, a choice closes it', () => {
     const del = vi.fn();
-    const r = render(<KebabMenu items={[{ label: 'Edit', onSelect: () => {} }, { label: 'Delete', onSelect: del, danger: true, separator: true }]} />);
+    const r = render(
+      <KebabMenu
+        items={[
+          { label: 'Edit', onSelect: () => {} },
+          { label: 'Delete', onSelect: del, danger: true, separator: true },
+        ]}
+      />,
+    );
     fireEvent.click(r.getByTestId('row-menu'));
     const items = r.getAllByRole('menuitem');
     expect(items.map((i) => i.textContent)).toEqual(['Edit', 'Delete']);
@@ -199,10 +322,19 @@ describe('Menu', () => {
 });
 
 describe('AsyncView', () => {
-  const view = (p: Partial<Parameters<typeof AsyncView<string[]>>[0]>) => render(
-    <AsyncView<string[]> data={undefined} isEmpty={(d) => d.length === 0} empty={<p>none yet</p>} isNoMatch={(d) => d.includes('?')} noMatch={<p>no match</p>} {...p}>
-      {(d) => <p>{d.join(',')}</p>}
-    </AsyncView>);
+  const view = (p: Partial<Parameters<typeof AsyncView<string[]>>[0]>) =>
+    render(
+      <AsyncView<string[]>
+        data={undefined}
+        isEmpty={(d) => d.length === 0}
+        empty={<p>none yet</p>}
+        isNoMatch={(d) => d.includes('?')}
+        noMatch={<p>no match</p>}
+        {...p}
+      >
+        {(d) => <p>{d.join(',')}</p>}
+      </AsyncView>,
+    );
   test('error, loading, empty, no match, data', () => {
     const reload = vi.fn();
     let r = view({ error: new Error('Offline'), reload });
@@ -227,7 +359,19 @@ describe('AsyncView', () => {
 describe('rowClick', () => {
   test('ignores clicks on controls inside the row', () => {
     const fn = vi.fn();
-    const r = render(<table><tbody><tr onClick={rowClick(fn)} data-testid="tr"><td>Maria</td><td><button type="button">⋮</button><a href="#x">l</a></td></tr></tbody></table>);
+    const r = render(
+      <table>
+        <tbody>
+          <tr onClick={rowClick(fn)} data-testid="tr">
+            <td>Maria</td>
+            <td>
+              <button type="button">⋮</button>
+              <a href="#x">l</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>,
+    );
     fireEvent.click(r.getByText('Maria'));
     fireEvent.click(r.getByText('⋮'));
     fireEvent.click(r.getByText('l'));
@@ -237,15 +381,32 @@ describe('rowClick', () => {
 
 describe('Field', () => {
   test('required mark, issues inline, .invalid and aria-invalid on error, data-focus', () => {
-    const r = render(<Field label="Weight" req focus="weightKg" error="Weight must be 1–300 kg" issues={[{ level: 'warning', message: 'Heavy' }]}><input name="w" /></Field>);
+    const r = render(
+      <Field
+        label="Weight"
+        req
+        focus="weightKg"
+        error="Weight must be 1–300 kg"
+        issues={[{ level: 'warning', message: 'Heavy' }]}
+      >
+        <input name="w" />
+      </Field>,
+    );
     const label = r.container.querySelector('label.field')!;
     expect(label.className).toContain('invalid');
     expect(label.getAttribute('data-focus')).toBe('weightKg');
     expect(label.querySelector('.req')).not.toBeNull();
     expect(r.container.querySelector('input')!.getAttribute('aria-invalid')).toBe('true');
-    expect(Array.from(label.querySelectorAll('.issue')).map((e) => e.className)).toEqual(['issue error', 'issue warning']);
+    expect(Array.from(label.querySelectorAll('.issue')).map((e) => e.className)).toEqual([
+      'issue error',
+      'issue warning',
+    ]);
     cleanup();
-    const r2 = render(<Field label="X" issues={[{ level: 'warning', message: 'w' }]}><input /></Field>);
+    const r2 = render(
+      <Field label="X" issues={[{ level: 'warning', message: 'w' }]}>
+        <input />
+      </Field>,
+    );
     expect(r2.container.querySelector('label')!.className).not.toContain('invalid');
   });
 });
@@ -253,8 +414,20 @@ describe('Field', () => {
 describe('WarningList', () => {
   test('levels, link fix and in-place fix', () => {
     const fix = vi.fn();
-    const r = render(<MemoryRouter><WarningList warnings={[{ level: 'danger', text: 'Over MTOW' }, 'Plain', { level: 'info', text: 'FYI' }]}
-      fix={(w) => (typeof w === 'string' ? { label: 'Fix', to: '/profile?focus=x' } : w.level === 'danger' ? { label: 'Fix', onFix: fix } : null)} /></MemoryRouter>);
+    const r = render(
+      <MemoryRouter>
+        <WarningList
+          warnings={[{ level: 'danger', text: 'Over MTOW' }, 'Plain', { level: 'info', text: 'FYI' }]}
+          fix={(w) =>
+            typeof w === 'string'
+              ? { label: 'Fix', to: '/profile?focus=x' }
+              : w.level === 'danger'
+                ? { label: 'Fix', onFix: fix }
+                : null
+          }
+        />
+      </MemoryRouter>,
+    );
     const lis = Array.from(r.container.querySelectorAll('li'));
     expect(lis.map((l) => l.className)).toEqual(['danger', 'warn', 'info']);
     expect(lis[1].querySelector('a')!.getAttribute('href')).toBe('/profile?focus=x');
@@ -271,11 +444,20 @@ describe('useHighlightFields', () => {
     function F() {
       const ref = useRef<HTMLFormElement>(null);
       useHighlightFields(ref, ['idNumber', 'weightKg']);
-      return <form ref={ref}><input name="fullName" /><input name="weightKg" /><input name="idNumber" /></form>;
+      return (
+        <form ref={ref}>
+          <input name="fullName" />
+          <input name="weightKg" />
+          <input name="idNumber" />
+        </form>
+      );
     }
     const r = render(<F />);
-    act(() => { vi.advanceTimersByTime(100); });
-    const id = r.container.querySelector('[name=idNumber]')!, w = r.container.querySelector('[name=weightKg]')!;
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    const id = r.container.querySelector('[name=idNumber]')!,
+      w = r.container.querySelector('[name=weightKg]')!;
     expect(document.activeElement).toBe(id);
     expect(id.classList.contains('attention')).toBe(true);
     expect(w.classList.contains('attention')).toBe(true);

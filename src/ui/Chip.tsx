@@ -3,7 +3,16 @@ import type { ReactNode } from 'react';
 
 export type ChipTone = 'warn' | 'danger' | 'ok' | 'info' | 'accent';
 
-export function Chip({ tone, mono, count, sm, title, testId, className, children }: {
+export function Chip({
+  tone,
+  mono,
+  count,
+  sm,
+  title,
+  testId,
+  className,
+  children,
+}: {
   tone?: ChipTone;
   /** Monospaced content (ICAO, registration). */
   mono?: boolean;
@@ -16,5 +25,9 @@ export function Chip({ tone, mono, count, sm, title, testId, className, children
   children: ReactNode;
 }) {
   const cls = ['chip', tone, mono && 'mono', count && 'count', sm && 'sm', className].filter(Boolean).join(' ');
-  return <span className={cls} title={title} data-testid={testId}>{children}</span>;
+  return (
+    <span className={cls} title={title} data-testid={testId}>
+      {children}
+    </span>
+  );
 }

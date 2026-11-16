@@ -4,25 +4,39 @@
 // pixel space (y down): candidates are scored by how much they overlap what is already drawn and
 // the cheapest wins. Text widths are estimated (Arial: digits 0.556 em, capitals ~0.7 em).
 
-export interface Box { x0: number; y0: number; x1: number; y1: number }
+export interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
 export type Segment = [number, number, number, number];
 
 export const boxArea = (b: Box) => Math.max(0, b.x1 - b.x0) * Math.max(0, b.y1 - b.y0);
 
 export function overlapArea(a: Box, b: Box): number {
-  return Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  return (
+    Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0))
+  );
 }
 
 /** Length of a segment inside a box (Liang–Barsky clipping). */
 export function segmentInBox(s: Segment, b: Box): number {
   const [x0, y0, x1, y1] = s;
-  const dx = x1 - x0, dy = y1 - y0;
-  let t0 = 0, t1 = 1;
+  const dx = x1 - x0,
+    dy = y1 - y0;
+  let t0 = 0,
+    t1 = 1;
   const clip = (p: number, q: number) => {
     if (p === 0) return q >= 0;
     const r = q / p;
-    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
-    else { if (r < t0) return false; if (r < t1) t1 = r; }
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
     return true;
   };
   if (!clip(-dx, x0 - b.x0) || !clip(dx, b.x1 - x0) || !clip(-dy, y0 - b.y0) || !clip(dy, b.y1 - y0)) return 0;
@@ -127,13 +141,19 @@ export function layoutChartLabels(o: {
   points: PointLabelInput[];
   burn: Segment[];
 }): ChartLabelLayout {
-  const markers: Box[] = o.points.map((p) => ({ x0: p.x - p.r - 3, y0: p.y - p.r - 3, x1: p.x + p.r + 3, y1: p.y + p.r + 3 }));
+  const markers: Box[] = o.points.map((p) => ({
+    x0: p.x - p.r - 3,
+    y0: p.y - p.r - 3,
+    x1: p.x + p.r + 3,
+    y1: p.y + p.r + 3,
+  }));
   const scene: Scene = { bounds: o.bounds, boxes: [...markers], segments: [...o.burn], softSegments: [] };
-  for (const e of o.envelopes) for (let i = 0; i < e.outline.length; i++) {
-    const [ax, ay] = e.outline[i];
-    const [bx, by] = e.outline[(i + 1) % e.outline.length];
-    scene.softSegments.push([ax, ay, bx, by]);
-  }
+  for (const e of o.envelopes)
+    for (let i = 0; i < e.outline.length; i++) {
+      const [ax, ay] = e.outline[i];
+      const [bx, by] = e.outline[(i + 1) % e.outline.length];
+      scene.softSegments.push([ax, ay, bx, by]);
+    }
   // Point labels must also stay off the point markers' surroundings, so the captions keep clear of
   // a margin around each point where its label will go.
   const pointHalo: Box[] = o.points.map((p) => ({ x0: p.x - 40, y0: p.y - 34, x1: p.x + 40, y1: p.y + 34 }));
@@ -143,7 +163,8 @@ export function layoutChartLabels(o: {
     const w = textWidth(e.text, e.fontPx, true, e.letterSpacingEm);
     const h = e.fontPx * 1.1;
     const ys = e.outline.map(([, y]) => y);
-    const top = Math.min(...ys), bottom = Math.max(...ys);
+    const top = Math.min(...ys),
+      bottom = Math.max(...ys);
     type Cand = { cx: number; cy: number; anchor: PlacedText['anchor']; pen: number };
     const cands: Cand[] = [];
     const step = Math.max(6, (bottom - top) / 24);
@@ -155,7 +176,8 @@ export function layoutChartLabels(o: {
         const a = spanAt(e.outline, cy - h / 2);
         const b = spanAt(e.outline, cy + h / 2);
         if (!a || !b) continue;
-        const lo = Math.max(a[0], b[0]) + 6, hi = Math.min(a[1], b[1]) - 6;
+        const lo = Math.max(a[0], b[0]) + 6,
+          hi = Math.min(a[1], b[1]) - 6;
         if (hi - lo < w) continue;
         // centred in the envelope, then shifted to either side
         for (const f of [0.5, 0.3, 0.7, 0.15, 0.85]) {
@@ -204,7 +226,20 @@ export function layoutChartLabels(o: {
     let best: { b: Box; cost: number; dx: number } | null = null;
     // Eight directions around the marker (E, W, NE, NW, SE, SW, N, S), at growing distances; the
     // in-between heights (dy ±0.5) give more room next to a crowded fuel-burn line.
-    const dirs: [number, number][] = [[1, 0], [-1, 0], [1, -1], [-1, -1], [1, 1], [-1, 1], [0, -1], [0, 1], [1, -0.5], [-1, -0.5], [1, 0.5], [-1, 0.5]];
+    const dirs: [number, number][] = [
+      [1, 0],
+      [-1, 0],
+      [1, -1],
+      [-1, -1],
+      [1, 1],
+      [-1, 1],
+      [0, -1],
+      [0, 1],
+      [1, -0.5],
+      [-1, -0.5],
+      [1, 0.5],
+      [-1, 0.5],
+    ];
     dirs.forEach(([dx, dy], i) => {
       for (const gap of [p.r + 8, p.r + 26, p.r + 48, p.r + 80, p.r + 120]) {
         const g = dx && dy ? gap * 0.75 : gap;

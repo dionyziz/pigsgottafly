@@ -20,8 +20,14 @@ export interface AircraftTypeTemplate {
 
 /** Seat layout per seat station id for the C172 family (front: pilot + front pax, rear: two). */
 const C172_SEATS: Record<string, SeatPosition[]> = {
-  front: [{ id: 'front-left', label: 'Front left' }, { id: 'front-right', label: 'Front right' }],
-  rear: [{ id: 'rear-left', label: 'Rear left' }, { id: 'rear-right', label: 'Rear right' }],
+  front: [
+    { id: 'front-left', label: 'Front left' },
+    { id: 'front-right', label: 'Front right' },
+  ],
+  rear: [
+    { id: 'rear-left', label: 'Rear left' },
+    { id: 'rear-right', label: 'Rear right' },
+  ],
 };
 
 function stationKind(id: string): StationKind {
@@ -33,10 +39,20 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
   const mb = type.massBalance;
   const stations: Station[] = mb.stations.map((s: any): Station => {
     const kind = stationKind(s.id);
-    const seats: SeatPosition[] | null = kind === 'seat'
-      ? C172_SEATS[s.id] ?? Array.from({ length: s.seats ?? 1 }, (_, i) => ({ id: `${s.id}-${i + 1}`, label: `${s.name} ${i + 1}` }))
-      : null;
-    return { id: s.id, name: s.name, kind, armM: s.armM, armRangeM: s.armRangeM ?? null, maxKg: s.maxKg ?? null, seats };
+    const seats: SeatPosition[] | null =
+      kind === 'seat'
+        ? (C172_SEATS[s.id] ??
+          Array.from({ length: s.seats ?? 1 }, (_, i) => ({ id: `${s.id}-${i + 1}`, label: `${s.name} ${i + 1}` })))
+        : null;
+    return {
+      id: s.id,
+      name: s.name,
+      kind,
+      armM: s.armM,
+      armRangeM: s.armRangeM ?? null,
+      maxKg: s.maxKg ?? null,
+      seats,
+    };
   });
   return {
     registration: '',
@@ -75,22 +91,45 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
       stations,
       combinedLimits: mb.combinedLimits ?? [],
       envelopes: {
-        normal: { category: 'normal', maxKg: mb.envelopes.normal.maxKg, polygon: mb.envelopes.normal.polygon, momentPolygon: null },
+        normal: {
+          category: 'normal',
+          maxKg: mb.envelopes.normal.maxKg,
+          polygon: mb.envelopes.normal.polygon,
+          momentPolygon: null,
+        },
         utility: mb.envelopes.utility
-          ? { category: 'utility', maxKg: mb.envelopes.utility.maxKg, polygon: mb.envelopes.utility.polygon, momentPolygon: null }
+          ? {
+              category: 'utility',
+              maxKg: mb.envelopes.utility.maxKg,
+              polygon: mb.envelopes.utility.polygon,
+              momentPolygon: null,
+            }
           : null,
       },
     },
     performance: {
       takeoff: {
-        source: type.takeoff.source ?? '', flaps: type.takeoff.flaps, altitudesFt: type.takeoff.altitudesFt,
-        standardTempC: type.takeoff.standardTempC, rows: type.takeoff.rows, tempIncreasePer15C: 0.1,
-        grassAddFractionOfTotal: 0.07, notes: type.takeoff.notes ?? [],
+        source: type.takeoff.source ?? '',
+        flaps: type.takeoff.flaps,
+        altitudesFt: type.takeoff.altitudesFt,
+        standardTempC: type.takeoff.standardTempC,
+        rows: type.takeoff.rows,
+        tempIncreasePer15C: 0.1,
+        grassAddFractionOfTotal: 0.07,
+        notes: type.takeoff.notes ?? [],
       },
       landing: {
-        source: type.landing.source ?? '', flaps: type.landing.flaps, massKg: type.landing.massKg, approachIas: type.landing.approachIas,
-        altitudesFt: type.landing.altitudesFt, standardTempC: type.landing.standardTempC, distances: type.landing.distances,
-        headwindDecreasePer5Kt: 0.1, tempIncreasePer15C: 0.1, grassAddFractionOfTotal: 0.2, notes: type.landing.notes ?? [],
+        source: type.landing.source ?? '',
+        flaps: type.landing.flaps,
+        massKg: type.landing.massKg,
+        approachIas: type.landing.approachIas,
+        altitudesFt: type.landing.altitudesFt,
+        standardTempC: type.landing.standardTempC,
+        distances: type.landing.distances,
+        headwindDecreasePer5Kt: 0.1,
+        tempIncreasePer15C: 0.1,
+        grassAddFractionOfTotal: 0.2,
+        notes: type.landing.notes ?? [],
       },
       factors: {
         // Planning factors are the operator's (club) rules, not AFM data: no source caption is carried.
@@ -102,7 +141,9 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
         maxCrosswindKt: type.clubFactors?.maxCrosswindKt ?? { takeoff: 99, landing: 99 },
         notes: type.clubFactors?.notes ?? [],
       },
-      stallIasKt: type.stallIasKt ? { flapsUp: type.stallIasKt.flapsUp, flaps10: type.stallIasKt.flaps10, flaps40: type.stallIasKt.flaps40 } : null,
+      stallIasKt: type.stallIasKt
+        ? { flapsUp: type.stallIasKt.flapsUp, flaps10: type.stallIasKt.flaps10, flaps40: type.stallIasKt.flaps40 }
+        : null,
     },
     equipment: {
       item10a: '',
@@ -123,9 +164,16 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
 /** Empty aircraft (no type template). */
 export function blankAircraft(): AircraftInput {
   const a = aircraftFromTypeJson({
-    type: '', icaoType: '', wake: 'L',
+    type: '',
+    icaoType: '',
+    wake: 'L',
     fuel: { densityKgPerL: { AVGAS: 0.72 }, totalStandardL: 0, usableStandardL: 0, unusableL: 0 },
-    massBalance: { mtowKg: 0, stations: [], combinedLimits: [], envelopes: { normal: { maxKg: 0, polygon: [] }, utility: null } },
+    massBalance: {
+      mtowKg: 0,
+      stations: [],
+      combinedLimits: [],
+      envelopes: { normal: { maxKg: 0, polygon: [] }, utility: null },
+    },
     takeoff: { source: '', flaps: '', altitudesFt: [], standardTempC: [], rows: [] },
     landing: { source: '', flaps: '', massKg: 0, approachIas: '', altitudesFt: [], standardTempC: [], distances: [] },
   });

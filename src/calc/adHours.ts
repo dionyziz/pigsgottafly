@@ -11,7 +11,15 @@
 // the HO hours are promulgated by NOTAM twice a year, AD 1.1.1.4.2.2); HX no specific working hours; HS
 // service available during the hours of scheduled operations; O/R on request; PN/PNR prior notice.
 // A service (handling, customs, ATS) marked HO is available while the aerodrome is open ('AD').
-import type { HoursClock, HoursRule, HoursSeason, HoursSpec, HoursTime, RefAdHours, RefSunTable } from '../shared/ref.js';
+import type {
+  HoursClock,
+  HoursRule,
+  HoursSeason,
+  HoursSpec,
+  HoursTime,
+  RefAdHours,
+  RefSunTable,
+} from '../shared/ref.js';
 import { sunriseUtcMinutes } from './nav.js';
 import { isoDay } from '../shared/date.js';
 import { sunsetMinutes } from './sun.js';
@@ -19,12 +27,29 @@ import { sunsetMinutes } from './sun.js';
 // ---------------------------------------------------------------- text normalisation
 
 const GREEK: Record<string, string> = {
-  'Α': 'A', 'Β': 'B', 'Ε': 'E', 'Ζ': 'Z', 'Η': 'H', 'Ι': 'I', 'Κ': 'K', 'Μ': 'M', 'Ν': 'N', 'Ο': 'O', 'Ρ': 'P', 'Τ': 'T', 'Υ': 'Y', 'Χ': 'X',
+  Α: 'A',
+  Β: 'B',
+  Ε: 'E',
+  Ζ: 'Z',
+  Η: 'H',
+  Ι: 'I',
+  Κ: 'K',
+  Μ: 'M',
+  Ν: 'N',
+  Ο: 'O',
+  Ρ: 'P',
+  Τ: 'T',
+  Υ: 'Y',
+  Χ: 'X',
 };
 
 /** Greek capitals that look like Latin ones (the AIP prints 'Η24', 'ΗΧ', 'ΜΕΤ') → Latin; dashes → '-'; spaces collapsed. */
 export function normalizeAipText(s: string): string {
-  return s.replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ]/g, (c) => GREEK[c]).replace(/[‐-―−]/g, '-').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/[ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ]/g, (c) => GREEK[c])
+    .replace(/[‐-―−]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // ---------------------------------------------------------------- dates, seasons, holidays
@@ -48,7 +73,9 @@ export function isSummerTime(ms: number): boolean {
 
 /** Orthodox Easter Sunday of a year (Meeus' Julian algorithm + 13 days, valid 1900–2099), UTC ms. */
 export function orthodoxEaster(year: number): number {
-  const a = year % 4, b = year % 7, c = year % 19;
+  const a = year % 4,
+    b = year % 7,
+    c = year % 19;
   const d = (19 * c + 15) % 30;
   const e = (2 * a + 4 * b - d + 34) % 7;
   const month = Math.floor((d + e + 114) / 31); // 3 = March, 4 = April (Julian)
@@ -63,7 +90,14 @@ export function greekHolidays(year: number): Set<string> {
   if (s) return s;
   const e = orthodoxEaster(year);
   s = new Set([
-    `${year}-01-01`, `${year}-01-06`, `${year}-03-25`, `${year}-05-01`, `${year}-08-15`, `${year}-10-28`, `${year}-12-25`, `${year}-12-26`,
+    `${year}-01-01`,
+    `${year}-01-06`,
+    `${year}-03-25`,
+    `${year}-05-01`,
+    `${year}-08-15`,
+    `${year}-10-28`,
+    `${year}-12-25`,
+    `${year}-12-26`,
     isoDay(e - 48 * DAY_MS), // Clean Monday
     isoDay(e - 2 * DAY_MS), // Good Friday
     isoDay(e), // Easter Sunday
@@ -89,18 +123,101 @@ function inSeason(season: HoursSeason | undefined, day: string, ms: number): boo
 // ---------------------------------------------------------------- the schedule grammar
 
 const DAYS: Record<string, number> = {
-  MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6, SUN: 7,
-  MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7, TUES: 2, THUR: 4, THURS: 4,
+  MON: 1,
+  TUE: 2,
+  WED: 3,
+  THU: 4,
+  FRI: 5,
+  SAT: 6,
+  SUN: 7,
+  MONDAY: 1,
+  TUESDAY: 2,
+  WEDNESDAY: 3,
+  THURSDAY: 4,
+  FRIDAY: 5,
+  SATURDAY: 6,
+  SUNDAY: 7,
+  TUES: 2,
+  THUR: 4,
+  THURS: 4,
 };
 const MONTHS: Record<string, number> = {
-  JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6, JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12,
-  JANUARY: 1, FEBRUARY: 2, MARCH: 3, APRIL: 4, JUNE: 6, JULY: 7, AUGUST: 8, SEPTEMBER: 9, OCTOBER: 10, NOVEMBER: 11, DECEMBER: 12,
+  JAN: 1,
+  FEB: 2,
+  MAR: 3,
+  APR: 4,
+  MAY: 5,
+  JUN: 6,
+  JUL: 7,
+  AUG: 8,
+  SEP: 9,
+  OCT: 10,
+  NOV: 11,
+  DEC: 12,
+  JANUARY: 1,
+  FEBRUARY: 2,
+  MARCH: 3,
+  APRIL: 4,
+  JUNE: 6,
+  JULY: 7,
+  AUGUST: 8,
+  SEPTEMBER: 9,
+  OCTOBER: 10,
+  NOVEMBER: 11,
+  DECEMBER: 12,
 };
 const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 /** Words that carry no schedule information in an hours text ('AD OPR HR:', 'UTC', 'HOURS OF SERVICE'). */
-const FILLER = new Set(['UTC', 'AD', 'AERODROME', 'AIRPORT', 'OPR', 'OPS', 'OPERATIONAL', 'OPERATING', 'OPERATION', 'HR', 'HRS', 'HOURS', 'HOUR', 'OF', 'SER', 'SERVICE', 'SERVICES',
-  'ARE', 'IS', 'WILL', 'BE', 'AS', 'FLW', 'FLW:', 'FOLLOWS', 'THE', 'ON', 'AT', 'FM', 'FROM', 'TIME', 'TIMES', 'PERIOD', 'ONLY', 'ALL', 'YEAR', 'AVBL', 'AVAILABLE', 'OPEN', 'OPN', 'NEW', 'NOW', 'DURING', 'DAYS', 'DAY', 'BTN', 'BETWEEN']);
+const FILLER = new Set([
+  'UTC',
+  'AD',
+  'AERODROME',
+  'AIRPORT',
+  'OPR',
+  'OPS',
+  'OPERATIONAL',
+  'OPERATING',
+  'OPERATION',
+  'HR',
+  'HRS',
+  'HOURS',
+  'HOUR',
+  'OF',
+  'SER',
+  'SERVICE',
+  'SERVICES',
+  'ARE',
+  'IS',
+  'WILL',
+  'BE',
+  'AS',
+  'FLW',
+  'FLW:',
+  'FOLLOWS',
+  'THE',
+  'ON',
+  'AT',
+  'FM',
+  'FROM',
+  'TIME',
+  'TIMES',
+  'PERIOD',
+  'ONLY',
+  'ALL',
+  'YEAR',
+  'AVBL',
+  'AVAILABLE',
+  'OPEN',
+  'OPN',
+  'NEW',
+  'NOW',
+  'DURING',
+  'DAYS',
+  'DAY',
+  'BTN',
+  'BETWEEN',
+]);
 
 type Tok =
   | { k: 'day'; v: number }
@@ -121,13 +238,24 @@ type Tok =
 const CLOCK = String.raw`(?:(\d{4})|(SR|SS)(?:\s*([+-])\s*(\d+)\s*(MIN|HR|H)?)?)`;
 const WINDOW_RE = new RegExp(String.raw`^${CLOCK}\s*-\s*${CLOCK}`);
 
-function clockOf(hhmm: string | undefined, sun: string | undefined, sign: string | undefined, n: string | undefined, unit: string | undefined): HoursClock | null {
+function clockOf(
+  hhmm: string | undefined,
+  sun: string | undefined,
+  sign: string | undefined,
+  n: string | undefined,
+  unit: string | undefined,
+): HoursClock | null {
   if (hhmm) {
-    const h = +hhmm.slice(0, 2), m = +hhmm.slice(2);
+    const h = +hhmm.slice(0, 2),
+      m = +hhmm.slice(2);
     if (h > 24 || m > 59 || (h === 24 && m > 0)) return null;
     return { utc: h * 60 + m };
   }
-  if (sun) return { sun: sun as 'SR' | 'SS', offsetMin: n ? (sign === '-' ? -1 : 1) * +n * (unit === 'HR' || unit === 'H' ? 60 : 1) : 0 };
+  if (sun)
+    return {
+      sun: sun as 'SR' | 'SS',
+      offsetMin: n ? (sign === '-' ? -1 : 1) * +n * (unit === 'HR' || unit === 'H' ? 60 : 1) : 0,
+    };
   return null;
 }
 
@@ -140,25 +268,43 @@ function tokenize(text: string): Tok[] | null {
     s = s.replace(/^\s+/, '');
     if (!s) break;
     let m: RegExpExecArray | null;
-    if ((m = /^\(\s*(SUMMER|WINTER)(?: TIME| PERIOD)?\s*:?\s*([+-])\s*(\d)\s*(?:HR|HRS|H)\s*\)/.exec(s)) || (m = /^(SUMMER|WINTER)(?: TIME| PERIOD)?\s*:?\s*([+-])\s*(\d)\s*(?:HR|HRS|H)\b/.exec(s))) {
+    if (
+      (m = /^\(\s*(SUMMER|WINTER)(?: TIME| PERIOD)?\s*:?\s*([+-])\s*(\d)\s*(?:HR|HRS|H)\s*\)/.exec(s)) ||
+      (m = /^(SUMMER|WINTER)(?: TIME| PERIOD)?\s*:?\s*([+-])\s*(\d)\s*(?:HR|HRS|H)\b/.exec(s))
+    ) {
       out.push({ k: 'shift', v: (m[2] === '-' ? -1 : 1) * +m[3] * 60 * (m[1] === 'SUMMER' ? 1 : -1) });
       s = s.slice(m[0].length);
       continue;
     }
     if ((m = /^\(\s*(\d{4})\s*-\s*(\d{4})\s*\)/.exec(s))) {
-      const a = clockOf(m[1], undefined, undefined, undefined, undefined), b = clockOf(m[2], undefined, undefined, undefined, undefined);
+      const a = clockOf(m[1], undefined, undefined, undefined, undefined),
+        b = clockOf(m[2], undefined, undefined, undefined, undefined);
       if (!a || !b) return null;
       out.push({ k: 'alt', v: { t: 'window', from: a, to: b } });
       s = s.slice(m[0].length);
       continue;
     }
-    if ((m = /^(\d{1,2}) ([A-Z]{3,9})\s*(?:-|TO|TILL|UNTIL)\s*(\d{1,2}) ([A-Z]{3,9})\b\s*:?/.exec(s)) && MONTHS[m[2]] && MONTHS[m[4]]) {
-      out.push({ k: 'season', v: { from: `${pad2(MONTHS[m[2]])}-${pad2(+m[1])}`, to: `${pad2(MONTHS[m[4]])}-${pad2(+m[3])}` } });
+    if (
+      (m = /^(\d{1,2}) ([A-Z]{3,9})\s*(?:-|TO|TILL|UNTIL)\s*(\d{1,2}) ([A-Z]{3,9})\b\s*:?/.exec(s)) &&
+      MONTHS[m[2]] &&
+      MONTHS[m[4]]
+    ) {
+      out.push({
+        k: 'season',
+        v: { from: `${pad2(MONTHS[m[2]])}-${pad2(+m[1])}`, to: `${pad2(MONTHS[m[4]])}-${pad2(+m[3])}` },
+      });
       s = s.slice(m[0].length);
       continue;
     }
-    if ((m = /^(?:FROM )?([A-Z]{3,9})\s*(?:-|TO|TILL|UNTIL)\s*([A-Z]{3,9})\b\s*:?/.exec(s)) && MONTHS[m[1]] && MONTHS[m[2]]) {
-      out.push({ k: 'season', v: { from: `${pad2(MONTHS[m[1]])}-01`, to: `${pad2(MONTHS[m[2]])}-${MONTH_DAYS[MONTHS[m[2]] - 1]}` } });
+    if (
+      (m = /^(?:FROM )?([A-Z]{3,9})\s*(?:-|TO|TILL|UNTIL)\s*([A-Z]{3,9})\b\s*:?/.exec(s)) &&
+      MONTHS[m[1]] &&
+      MONTHS[m[2]]
+    ) {
+      out.push({
+        k: 'season',
+        v: { from: `${pad2(MONTHS[m[1]])}-01`, to: `${pad2(MONTHS[m[2]])}-${MONTH_DAYS[MONTHS[m[2]] - 1]}` },
+      });
       s = s.slice(m[0].length);
       continue;
     }
@@ -168,7 +314,8 @@ function tokenize(text: string): Tok[] | null {
       continue;
     }
     if ((m = WINDOW_RE.exec(s))) {
-      const a = clockOf(m[1], m[2], m[3], m[4], m[5]), b = clockOf(m[6], m[7], m[8], m[9], m[10]);
+      const a = clockOf(m[1], m[2], m[3], m[4], m[5]),
+        b = clockOf(m[6], m[7], m[8], m[9], m[10]);
       if (!a || !b) return null;
       out.push({ k: 'time', v: { t: 'window', from: a, to: b } });
       s = s.slice(m[0].length);
@@ -179,21 +326,66 @@ function tokenize(text: string): Tok[] | null {
       s = s.slice(m[0].length);
       continue;
     }
-    if ((m = /^(CLSD|CLOSED)\b/.exec(s))) { out.push({ k: 'time', v: { t: 'CLSD' } }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(O\/R|ON REQUEST)\b/.exec(s))) { out.push({ k: 'time', v: { t: 'OR' } }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(ON AD (?:OPR|OPERATING|OPERATIONAL) (?:HR|HRS|HOURS)|WITHIN AD (?:HR|HRS|HOURS)|DURING AD (?:OPR|OPERATING|OPERATIONAL) (?:HR|HRS|HOURS))\b/.exec(s))) {
+    if ((m = /^(CLSD|CLOSED)\b/.exec(s))) {
+      out.push({ k: 'time', v: { t: 'CLSD' } });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^(O\/R|ON REQUEST)\b/.exec(s))) {
+      out.push({ k: 'time', v: { t: 'OR' } });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if (
+      (m =
+        /^(ON AD (?:OPR|OPERATING|OPERATIONAL) (?:HR|HRS|HOURS)|WITHIN AD (?:HR|HRS|HOURS)|DURING AD (?:OPR|OPERATING|OPERATIONAL) (?:HR|HRS|HOURS))\b/.exec(
+          s,
+        ))
+    ) {
       out.push({ k: 'time', v: { t: 'AD' } });
       s = s.slice(m[0].length);
       continue;
     }
-    if ((m = /^(DAILY|EVERY DAY|EVERYDAY)\b/.exec(s))) { out.push({ k: 'daily' }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(WEEKENDS?)\b/.exec(s))) { out.push({ k: 'weekend' }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(HOL|HOLIDAYS?|PUBLIC HOLIDAYS?|PUBLIC HOL)\b/.exec(s))) { out.push({ k: 'hol' }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(EXC|EXCEPT)\b/.exec(s))) { out.push({ k: 'exc' }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(AND|&|\+)/.exec(s))) { out.push({ k: 'and' }); s = s.slice(m[0].length); continue; }
-    if ((m = /^(-|TO\b|TILL\b|UNTIL\b)/.exec(s))) { out.push({ k: 'range' }); s = s.slice(m[0].length); continue; }
-    if ((m = /^[,;.]/.exec(s))) { out.push({ k: 'sep' }); s = s.slice(1); continue; }
-    if ((m = /^:/.exec(s))) { out.push({ k: 'colon' }); s = s.slice(1); continue; }
+    if ((m = /^(DAILY|EVERY DAY|EVERYDAY)\b/.exec(s))) {
+      out.push({ k: 'daily' });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^(WEEKENDS?)\b/.exec(s))) {
+      out.push({ k: 'weekend' });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^(HOL|HOLIDAYS?|PUBLIC HOLIDAYS?|PUBLIC HOL)\b/.exec(s))) {
+      out.push({ k: 'hol' });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^(EXC|EXCEPT)\b/.exec(s))) {
+      out.push({ k: 'exc' });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^(AND|&|\+)/.exec(s))) {
+      out.push({ k: 'and' });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^(-|TO\b|TILL\b|UNTIL\b)/.exec(s))) {
+      out.push({ k: 'range' });
+      s = s.slice(m[0].length);
+      continue;
+    }
+    if ((m = /^[,;.]/.exec(s))) {
+      out.push({ k: 'sep' });
+      s = s.slice(1);
+      continue;
+    }
+    if ((m = /^:/.exec(s))) {
+      out.push({ k: 'colon' });
+      s = s.slice(1);
+      continue;
+    }
     if ((m = /^([A-Z]+)/.exec(s))) {
       const w = m[1];
       if (DAYS[w]) out.push({ k: 'day', v: DAYS[w] });
@@ -208,7 +400,10 @@ function tokenize(text: string): Tok[] | null {
 
 const range = (a: number, b: number) => {
   const out: number[] = [];
-  for (let d = a; ; d = (d % 7) + 1) { out.push(d); if (d === b || out.length > 7) break; }
+  for (let d = a; ; d = (d % 7) + 1) {
+    out.push(d);
+    if (d === b || out.length > 7) break;
+  }
   return out;
 };
 
@@ -222,33 +417,60 @@ export function parseSchedule(text: string): HoursRule[] | null {
   if (!toks || !toks.length) return null;
   const rules: HoursRule[] = [];
   let season: HoursSeason | undefined;
-  const st = { days: null as number[] | null, hol: false, exceptHol: false, pendingRange: false, lastDay: null as number | null };
+  const st = {
+    days: null as number[] | null,
+    hol: false,
+    exceptHol: false,
+    pendingRange: false,
+    lastDay: null as number | null,
+  };
   let cur: HoursRule | null = null; // the rule times are being added to
   let shift: number | null = null;
-  const flushDays = () => { st.days = null; st.hol = false; st.exceptHol = false; st.lastDay = null; st.pendingRange = false; };
+  const flushDays = () => {
+    st.days = null;
+    st.hol = false;
+    st.exceptHol = false;
+    st.lastDay = null;
+    st.pendingRange = false;
+  };
   for (let i = 0; i < toks.length; i++) {
     const t = toks[i];
     switch (t.k) {
       case 'season':
-        season = t.v; cur = null; flushDays();
+        season = t.v;
+        cur = null;
+        flushDays();
         break;
       case 'daily':
-        if (cur) { cur = null; flushDays(); }
+        if (cur) {
+          cur = null;
+          flushDays();
+        }
         st.days = [1, 2, 3, 4, 5, 6, 7];
         break;
       case 'weekend':
-        if (cur) { cur = null; flushDays(); }
+        if (cur) {
+          cur = null;
+          flushDays();
+        }
         st.days = [...(st.days ?? []), 6, 7];
         break;
       case 'hol':
-        if (cur) { cur = null; flushDays(); }
-        if (toks[i - 1]?.k === 'exc') st.exceptHol = true; else st.hol = true;
+        if (cur) {
+          cur = null;
+          flushDays();
+        }
+        if (toks[i - 1]?.k === 'exc') st.exceptHol = true;
+        else st.hol = true;
         break;
       case 'exc':
         if (toks[i + 1]?.k !== 'hol') return null;
         break;
       case 'day': {
-        if (cur) { cur = null; flushDays(); }
+        if (cur) {
+          cur = null;
+          flushDays();
+        }
         if (st.pendingRange && st.lastDay !== null) {
           st.days = [...(st.days ?? []).filter((d) => d !== st.lastDay), ...range(st.lastDay, t.v)];
           st.pendingRange = false;
@@ -266,7 +488,10 @@ export function parseSchedule(text: string): HoursRule[] | null {
         break;
       case 'sep':
         // ',' between days lists them; after times it ends the group
-        if (cur) { cur = null; flushDays(); }
+        if (cur) {
+          cur = null;
+          flushDays();
+        }
         break;
       case 'shift':
         shift = t.v;
@@ -309,8 +534,13 @@ export function parseSchedule(text: string): HoursRule[] | null {
     // '(SUMMER PERIOD -1 HR)': the windows as printed are the winter ones; summer is shifted
     const out: HoursRule[] = [];
     for (const r of rules) {
-      if (r.season) { out.push(r); continue; }
-      const shifted = r.times.map((x) => (x.t === 'window' ? { ...x, from: shiftClock(x.from, shift!), to: shiftClock(x.to, shift!) } : x));
+      if (r.season) {
+        out.push(r);
+        continue;
+      }
+      const shifted = r.times.map((x) =>
+        x.t === 'window' ? { ...x, from: shiftClock(x.from, shift!), to: shiftClock(x.to, shift!) } : x,
+      );
       out.push({ ...r, season: 'summer', times: shifted }, { ...r, season: 'winter' });
     }
     return out;
@@ -318,7 +548,8 @@ export function parseSchedule(text: string): HoursRule[] | null {
   return rules;
 }
 
-const shiftClock = (c: HoursClock, min: number): HoursClock => ('utc' in c ? { utc: (c.utc + min + 1440) % 1440 } : { ...c, offsetMin: c.offsetMin + min });
+const shiftClock = (c: HoursClock, min: number): HoursClock =>
+  'utc' in c ? { utc: (c.utc + min + 1440) % 1440 } : { ...c, offsetMin: c.offsetMin + min };
 
 // ---------------------------------------------------------------- AIP items
 
@@ -348,11 +579,20 @@ function variantOf(line: string): Variant {
     return ' ';
   });
   let civil = false;
-  s = s.replace(/\bfor civil aircraft\b/i, () => { civil = true; return ' '; });
+  s = s.replace(/\bfor civil aircraft\b/i, () => {
+    civil = true;
+    return ' ';
+  });
   s = s.replace(/\ball year\b/i, ' ');
   let footnote = false;
-  s = s.replace(/\*/g, () => { footnote = true; return ' '; });
-  s = s.replace(/[.\s]+$/, '').replace(/\s+/g, ' ').trim();
+  s = s.replace(/\*/g, () => {
+    footnote = true;
+    return ' ';
+  });
+  s = s
+    .replace(/[.\s]+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return { line: normalizeAipText(line), core: s, notes, provider, civil, footnote };
 }
 
@@ -364,8 +604,12 @@ function statements(text: string): string[] {
     const l = raw.trim();
     if (!l) continue;
     cur = cur ? (cur.endsWith('-') ? cur + l : `${cur} ${l}`) : l;
-    const open = (cur.match(/\(/g) ?? []).length, close = (cur.match(/\)/g) ?? []).length;
-    if (open <= close) { out.push(cur); cur = ''; }
+    const open = (cur.match(/\(/g) ?? []).length,
+      close = (cur.match(/\)/g) ?? []).length;
+    if (open <= close) {
+      out.push(cur);
+      cur = '';
+    }
   }
   if (cur) out.push(cur);
   return out;
@@ -378,15 +622,29 @@ function coreRules(core: string, ctx: HoursContext): { rules: HoursRule[]; notes
   if (c === 'HO') return { rules: simple(ho), notes: [] };
   if (c === 'NIL') return { rules: simple('NIL'), notes: [] };
   let m: RegExpExecArray | null;
-  if ((m = /^(\d+) ?H(?:R|RS)? (PNR?|PRIOR NOTICE)$/.exec(c))) return { rules: simple('OR'), notes: [`${m[1]} HR prior notice`] };
+  if ((m = /^(\d+) ?H(?:R|RS)? (PNR?|PRIOR NOTICE)$/.exec(c)))
+    return { rules: simple('OR'), notes: [`${m[1]} HR prior notice`] };
   // 'During summer only, on AD operating hours'
-  if ((m = /^DURING (SUMMER|WINTER)(?: PERIOD| TIME)?(?: ONLY)?,? (?:ON|DURING|WITHIN) AD (?:OPR|OPERATING|OPERATIONAL) (?:HR|HRS|HOURS)$/.exec(c))) {
+  if (
+    (m =
+      /^DURING (SUMMER|WINTER)(?: PERIOD| TIME)?(?: ONLY)?,? (?:ON|DURING|WITHIN) AD (?:OPR|OPERATING|OPERATIONAL) (?:HR|HRS|HOURS)$/.exec(
+        c,
+      ))
+  ) {
     return { rules: [{ season: m[1] === 'SUMMER' ? 'summer' : 'winter', times: [{ t: 'AD' }] }], notes: [] };
   }
   // 'HO from April to October'
   if ((m = /^(H24|HJ|HO|HX) FROM ([A-Z]+) TO ([A-Z]+)$/.exec(c)) && MONTHS[m[2]] && MONTHS[m[3]]) {
     const t = (m[1] === 'HO' ? ho : m[1]) as HoursTime['t'];
-    return { rules: [{ season: { from: `${pad2(MONTHS[m[2]])}-01`, to: `${pad2(MONTHS[m[3]])}-${MONTH_DAYS[MONTHS[m[3]] - 1]}` }, times: [{ t } as HoursTime] }], notes: [] };
+    return {
+      rules: [
+        {
+          season: { from: `${pad2(MONTHS[m[2]])}-01`, to: `${pad2(MONTHS[m[3]])}-${MONTH_DAYS[MONTHS[m[3]] - 1]}` },
+          times: [{ t } as HoursTime],
+        },
+      ],
+      notes: [],
+    };
   }
   const rules = parseSchedule(c);
   if (!rules) return null;
@@ -398,21 +656,36 @@ function coreRules(core: string, ctx: HoursContext): { rules: HoursRule[]; notes
 function footnote(remarks: string | null | undefined, key: 'HR' | 'HX' | '*'): string | null {
   if (!remarks) return null;
   const r = normalizeAipText(remarks);
-  if (key === 'HR') { const m = /\*\s*HR\s*:\s*(.*)$/i.exec(r); return m ? m[1] : null; }
-  if (key === 'HX') { const m = /\bHX\s*:\s*(.*)$/i.exec(r); return m ? m[1] : null; }
+  if (key === 'HR') {
+    const m = /\*\s*HR\s*:\s*(.*)$/i.exec(r);
+    return m ? m[1] : null;
+  }
+  if (key === 'HX') {
+    const m = /\bHX\s*:\s*(.*)$/i.exec(r);
+    return m ? m[1] : null;
+  }
   const m = /\*\s*=\s*(.*)$/.exec(r);
   return m ? m[1] : null;
 }
 
 /** Sentences of a footnote, '- Winter Period: HJ. - Summer Period: HO. - Rest Hours 30 min prior notice.' → parts. */
 function footnoteRules(def: string, ctx: HoursContext): { rules: HoursRule[]; notes: string[] } | null {
-  const parts = def.split(/\.\s+|\.$/).map((x) => x.trim().replace(/^-\s+/, '')).filter(Boolean);
+  const parts = def
+    .split(/\.\s+|\.$/)
+    .map((x) => x.trim().replace(/^-\s+/, ''))
+    .filter(Boolean);
   const rules: HoursRule[] = [];
   const notes: string[] = [];
   for (const p of parts) {
     const u = p.toUpperCase();
-    if (/PRIOR NOTICE|\bPNR?\b|\bPPR\b|REQUIRED|OTHER TIMES|REST HOURS|COORDINATION|NOTAM|O\/R/.test(u)) { notes.push(p); continue; }
-    if (/^AVAILABLE WITHIN AD (HOURS|HR)$/.test(u)) { rules.push({ times: [{ t: 'AD' }] }); continue; }
+    if (/PRIOR NOTICE|\bPNR?\b|\bPPR\b|REQUIRED|OTHER TIMES|REST HOURS|COORDINATION|NOTAM|O\/R/.test(u)) {
+      notes.push(p);
+      continue;
+    }
+    if (/^AVAILABLE WITHIN AD (HOURS|HR)$/.test(u)) {
+      rules.push({ times: [{ t: 'AD' }] });
+      continue;
+    }
     const sub = coreRules(p, ctx);
     if (!sub) return null;
     rules.push(...sub.rules);
@@ -424,7 +697,9 @@ function footnoteRules(def: string, ctx: HoursContext): { rules: HoursRule[]; no
 function remarkClosures(remarks: string | null | undefined): { rules: HoursRule[]; notes: string[] } {
   if (!remarks) return { rules: [], notes: [] };
   const r = normalizeAipText(remarks).toUpperCase();
-  const m = /\bON ((?:\d{1,2} [A-Z]{3})(?: AND ON \d{1,2} [A-Z]{3})*) [^.]*?(SHALL SERVE ONLY STATE|CLOSED|CLSD)/.exec(r);
+  const m = /\bON ((?:\d{1,2} [A-Z]{3})(?: AND ON \d{1,2} [A-Z]{3})*) [^.]*?(SHALL SERVE ONLY STATE|CLOSED|CLSD)/.exec(
+    r,
+  );
   if (!m) return { rules: [], notes: [] };
   const rules: HoursRule[] = [];
   for (const d of m[1].split(/ AND ON /)) {
@@ -433,7 +708,10 @@ function remarkClosures(remarks: string | null | undefined): { rules: HoursRule[
     const md = `${pad2(MONTHS[mon])}-${pad2(+dd)}`;
     rules.push({ season: { from: md, to: md }, times: [{ t: 'CLSD' }] });
   }
-  return { rules, notes: rules.length ? [m[2] === 'SHALL SERVE ONLY STATE' ? `${m[1]}: state aircraft only` : `${m[1]}: closed`] : [] };
+  return {
+    rules,
+    notes: rules.length ? [m[2] === 'SHALL SERVE ONLY STATE' ? `${m[1]}: state aircraft only` : `${m[1]}: closed`] : [],
+  };
 }
 
 /**
@@ -448,9 +726,14 @@ export function parseHours(text: string, ctx: HoursContext, remarks?: string | n
   const vs = lines.map(variantOf);
   // a line without a schedule of its own ('Contact Pieria Aeroclub tel: …') is a note on the one before
   const parsedLines = vs.map((v) => ({ v, r: v.core ? coreRules(v.core, ctx) : null }));
-  const scheduleLines = parsedLines.filter((x, i) => i === 0 || x.r || /^(H24|HJ|HN|HO|HX|HS|HR|NIL)\b/i.test(x.v.core));
+  const scheduleLines = parsedLines.filter(
+    (x, i) => i === 0 || x.r || /^(H24|HJ|HN|HO|HX|HS|HR|NIL)\b/i.test(x.v.core),
+  );
   const noteLines = parsedLines.filter((x) => !scheduleLines.includes(x)).map((x) => x.v.line);
-  const chosen = scheduleLines.find((x) => x.v.civil) ?? scheduleLines.find((x) => x.v.provider?.toUpperCase() === 'HASP') ?? scheduleLines[0];
+  const chosen =
+    scheduleLines.find((x) => x.v.civil) ??
+    scheduleLines.find((x) => x.v.provider?.toUpperCase() === 'HASP') ??
+    scheduleLines[0];
   const notes = [...chosen.v.notes];
   for (const x of scheduleLines) if (x !== chosen) notes.push(`${x.v.provider ?? 'Also'}: ${x.v.core}`);
   notes.push(...noteLines);
@@ -463,7 +746,10 @@ export function parseHours(text: string, ctx: HoursContext, remarks?: string | n
   } else if (chosen.v.footnote) {
     const def = footnote(remarks, '*');
     const f = def ? footnoteRules(def, ctx) : null;
-    if (f) { r = { rules: f.rules, notes: [] }; notes.push(`*= ${def}`); }
+    if (f) {
+      r = { rules: f.rules, notes: [] };
+      notes.push(`*= ${def}`);
+    }
   } else if (core === 'HX' && (ctx === 'ad' || ctx === 'ats')) {
     const def = footnote(remarks, 'HX');
     const f = def ? footnoteRules(def, ctx) : null;
@@ -474,10 +760,20 @@ export function parseHours(text: string, ctx: HoursContext, remarks?: string | n
   let rules = r.rules;
   if (ctx === 'ad') {
     const cl = remarkClosures(remarks);
-    if (cl.rules.length) { rules = [...cl.rules, ...rules]; notes.push(...cl.notes); }
+    if (cl.rules.length) {
+      rules = [...cl.rules, ...rules];
+      notes.push(...cl.notes);
+    }
   }
   // no published aerodrome hours: not 'closed', just unknown
-  if (ctx === 'ad' && rules.length === 1 && rules[0].times.length === 1 && rules[0].times[0].t === 'NIL' && !rules[0].season && !rules[0].days) {
+  if (
+    ctx === 'ad' &&
+    rules.length === 1 &&
+    rules[0].times.length === 1 &&
+    rules[0].times[0].t === 'NIL' &&
+    !rules[0].season &&
+    !rules[0].days
+  ) {
     return { ...finish({ rules: simple('HX'), notes, partial: false }), label: 'NIL (no published hours)' };
   }
   return finish({ rules, notes, partial: false });
@@ -489,7 +785,12 @@ export function parseHours(text: string, ctx: HoursContext, remarks?: string | n
  */
 export function parseHandlingSection(text: string): HoursSpec {
   const t = normalizeAipText(text);
-  return finish({ rules: simple('NIL'), notes: t.toUpperCase() === 'NIL' ? [] : ['No handling service listed (AD 1.6 handling section lists facilities only)'], partial: false });
+  return finish({
+    rules: simple('NIL'),
+    notes:
+      t.toUpperCase() === 'NIL' ? [] : ['No handling service listed (AD 1.6 handling section lists facilities only)'],
+    partial: false,
+  });
 }
 
 function finish(s: Omit<HoursSpec, 'label'>): HoursSpec {
@@ -506,7 +807,18 @@ function fmtClock(c: HoursClock): string {
   const a = Math.abs(c.offsetMin);
   return `${c.sun}${c.offsetMin < 0 ? '-' : '+'}${a % 60 ? `${a} MIN` : `${a / 60} HR`}`;
 }
-const TIME_LABEL: Record<string, string> = { H24: 'H24', HJ: 'HJ', HN: 'HN', HO: 'HO', HX: 'HX', HS: 'HS', OR: 'O/R', AD: 'AD hours', NIL: 'NIL', CLSD: 'CLSD' };
+const TIME_LABEL: Record<string, string> = {
+  H24: 'H24',
+  HJ: 'HJ',
+  HN: 'HN',
+  HO: 'HO',
+  HX: 'HX',
+  HS: 'HS',
+  OR: 'O/R',
+  AD: 'AD hours',
+  NIL: 'NIL',
+  CLSD: 'CLSD',
+};
 export function fmtTime(t: HoursTime): string {
   return t.t === 'window' ? `${fmtClock(t.from)}-${fmtClock(t.to)}` : TIME_LABEL[t.t];
 }
@@ -520,12 +832,17 @@ function fmtDays(days: number[]): string {
 function fmtSeason(s: HoursSeason): string {
   if (s === 'summer') return 'Summer';
   if (s === 'winter') return 'Winter';
-  const f = (md: string) => { const [m, d] = md.split('-').map(Number); return `${d} ${Object.keys(MONTHS)[m - 1]}`; };
+  const f = (md: string) => {
+    const [m, d] = md.split('-').map(Number);
+    return `${d} ${Object.keys(MONTHS)[m - 1]}`;
+  };
   return s.from === s.to ? f(s.from) : `${f(s.from)}–${f(s.to)}`;
 }
 export function fmtRule(r: HoursRule): string {
   const parts: string[] = [];
-  const dayPart = [r.days ? fmtDays(r.days) : '', r.holidays ? 'HOL' : '', r.exceptHolidays ? 'EXC HOL' : ''].filter(Boolean).join(' ');
+  const dayPart = [r.days ? fmtDays(r.days) : '', r.holidays ? 'HOL' : '', r.exceptHolidays ? 'EXC HOL' : '']
+    .filter(Boolean)
+    .join(' ');
   if (dayPart && dayPart !== 'DAILY') parts.push(dayPart);
   else if (dayPart === 'DAILY' && r.times.some((t) => t.t === 'window')) parts.push('DAILY');
   parts.push(r.times.map(fmtTime).join(' '));
@@ -555,7 +872,10 @@ export interface HoursEvalCtx {
 
 const sunCache = new Map<string, { sr: number | null; ss: number | null }>();
 /** Sunrise and sunset at a place on a day, minutes after 00:00 UTC. */
-export function sunTimes(day: string, ctx: Pick<HoursEvalCtx, 'lat' | 'lon' | 'sunTables'>): { sr: number | null; ss: number | null } {
+export function sunTimes(
+  day: string,
+  ctx: Pick<HoursEvalCtx, 'lat' | 'lon' | 'sunTables'>,
+): { sr: number | null; ss: number | null } {
   const k = `${day}|${ctx.lat.toFixed(3)}|${ctx.lon.toFixed(3)}|${ctx.sunTables ? 1 : 0}`;
   let v = sunCache.get(k);
   if (!v) {
@@ -612,8 +932,10 @@ export function hoursAt(spec: HoursSpec, ms: number, ctx: HoursEvalCtx): HoursAt
   if (prev) {
     for (const t of prev.times) {
       if (t.t !== 'window') continue;
-      const a = clockMin(t.from, prevDay, ctx), b = clockMin(t.to, prevDay, ctx);
-      if (a !== null && b !== null && b <= a && min < b) return { status: 'open', why: `${fmtRule(prev)} (${prevDay})` };
+      const a = clockMin(t.from, prevDay, ctx),
+        b = clockMin(t.to, prevDay, ctx);
+      if (a !== null && b !== null && b <= a && min < b)
+        return { status: 'open', why: `${fmtRule(prev)} (${prevDay})` };
     }
   }
   if (!r) return { status: 'closed', why: spec.rules.length ? `outside ${fmtRules(spec.rules)}` : 'no hours' };
@@ -621,22 +943,39 @@ export function hoursAt(spec: HoursSpec, ms: number, ctx: HoursEvalCtx): HoursAt
   let closedWhy = `outside ${fmtRule(r)}`;
   for (const t of r.times) {
     switch (t.t) {
-      case 'H24': return { status: 'open', why: fmtRule(r) };
-      case 'NIL': return { status: 'closed', why: 'NIL' };
-      case 'CLSD': return { status: 'closed', why: `closed ${fmtRule(r).replace(/:? ?CLSD$/, '')}`.trim() };
-      case 'HO': case 'HX': case 'HS': case 'OR':
+      case 'H24':
+        return { status: 'open', why: fmtRule(r) };
+      case 'NIL':
+        return { status: 'closed', why: 'NIL' };
+      case 'CLSD':
+        return { status: 'closed', why: `closed ${fmtRule(r).replace(/:? ?CLSD$/, '')}`.trim() };
+      case 'HO':
+      case 'HX':
+      case 'HS':
+      case 'OR':
         unknown ??= { status: 'unknown', why: WHY[t.t] };
         break;
       case 'AD': {
-        if (!ctx.ad) { unknown ??= { status: 'unknown', why: 'during the aerodrome hours' }; break; }
+        if (!ctx.ad) {
+          unknown ??= { status: 'unknown', why: 'during the aerodrome hours' };
+          break;
+        }
         const a = ctx.ad(ms);
         if (a.status === 'closed') closedWhy = `aerodrome closed (${a.why})`;
-        else return { status: 'open', why: a.status === 'open' ? `during the aerodrome hours (${a.why})` : 'during the aerodrome hours' };
+        else
+          return {
+            status: 'open',
+            why: a.status === 'open' ? `during the aerodrome hours (${a.why})` : 'during the aerodrome hours',
+          };
         break;
       }
-      case 'HJ': case 'HN': {
+      case 'HJ':
+      case 'HN': {
         const s = sunTimes(day, ctx);
-        if (s.sr === null || s.ss === null) { unknown ??= { status: 'unknown', why: 'no sunrise/sunset' }; break; }
+        if (s.sr === null || s.ss === null) {
+          unknown ??= { status: 'unknown', why: 'no sunrise/sunset' };
+          break;
+        }
         const inDay = min >= s.sr && min < s.ss;
         const span = `${hhmm(s.sr)}-${hhmm(s.ss)}Z`;
         if (t.t === 'HJ' && inDay) return { status: 'open', why: `HJ ${span}` };
@@ -645,12 +984,21 @@ export function hoursAt(spec: HoursSpec, ms: number, ctx: HoursEvalCtx): HoursAt
         break;
       }
       case 'window': {
-        const a = clockMin(t.from, day, ctx), b = clockMin(t.to, day, ctx);
-        if (a === null || b === null) { unknown ??= { status: 'unknown', why: 'no sunrise/sunset' }; break; }
+        const a = clockMin(t.from, day, ctx),
+          b = clockMin(t.to, day, ctx);
+        if (a === null || b === null) {
+          unknown ??= { status: 'unknown', why: 'no sunrise/sunset' };
+          break;
+        }
         const open = b > a ? min >= a && min < b : min >= a;
         // 'MON-FRI 0600-1400Z', 'Summer: 0500-2100Z', 'SR-1200 (0452-1200Z)'
-        const qual = [r.season ? fmtRule({ ...r, times: [] }).split(':')[0] + ':' : '', r.days && r.days.length < 7 ? fmtRule({ ...r, season: undefined, times: [] }).trim() : '',
-          !r.days && r.holidays ? 'HOL' : ''].filter(Boolean).join(' ');
+        const qual = [
+          r.season ? fmtRule({ ...r, times: [] }).split(':')[0] + ':' : '',
+          r.days && r.days.length < 7 ? fmtRule({ ...r, season: undefined, times: [] }).trim() : '',
+          !r.days && r.holidays ? 'HOL' : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
         const sun = !('utc' in t.from) || !('utc' in t.to);
         const label = `${qual ? qual + ' ' : ''}${sun ? `${fmtTime(t)} (${hhmm(a)}-${hhmm(b)}Z)` : `${hhmm(a)}-${hhmm(b)}Z`}`;
         if (open) return { status: 'open', why: label };
@@ -710,7 +1058,8 @@ const isNil = (s: string | null) => !s || normalizeAipText(s).toUpperCase() === 
 /** RefAerodrome.hours from the extracted AIP texts (verbatim) and their parse. */
 export function adHoursFromAip(x: AipHoursText): RefAdHours {
   const remarks = isNil(x.remarks) ? '' : x.remarks!;
-  const field = (text: string | null, ctx: HoursContext) => (text === null ? null : { text, parsed: parseHours(text, ctx, remarks) });
+  const field = (text: string | null, ctx: HoursContext) =>
+    text === null ? null : { text, parsed: parseHours(text, ctx, remarks) };
   const handlingText = x.handling ?? 'NIL';
   return {
     source: x.source,
@@ -718,7 +1067,9 @@ export function adHoursFromAip(x: AipHoursText): RefAdHours {
     ats: field(x.ats, 'ats'),
     handling: {
       text: handlingText,
-      parsed: x.handlingFromSection ? parseHandlingSection(handlingText) : parseHours(handlingText, 'handling', remarks),
+      parsed: x.handlingFromSection
+        ? parseHandlingSection(handlingText)
+        : parseHours(handlingText, 'handling', remarks),
       source: x.handlingSource,
     },
     customs: field(x.customs, 'customs'),

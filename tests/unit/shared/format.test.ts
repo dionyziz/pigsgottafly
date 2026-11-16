@@ -1,11 +1,33 @@
 // src/shared/format.ts and src/shared/date.ts: the app's one set of formatters.
 import { describe, expect, it } from 'vitest';
 import {
-  addDays, ageOn, daysBetween, fmtDate, isIsoDate, isoDay, LOCAL_TZ, localDayTime, localOffsetLabel, localToday,
-  parseIsoDate, relativeDay, todayUtc, utcToLocal,
+  addDays,
+  ageOn,
+  daysBetween,
+  fmtDate,
+  isIsoDate,
+  isoDay,
+  LOCAL_TZ,
+  localDayTime,
+  localOffsetLabel,
+  localToday,
+  parseIsoDate,
+  relativeDay,
+  todayUtc,
+  utcToLocal,
 } from '../../../src/shared/date';
 import {
-  errorMessage, fmtAltitude, fmtClock, fmtClockMs, fmtDateTimeMs, fmtDuration, fmtEte, fmtLocalClock, fmtLocalDayTime, fmtSize, pad,
+  errorMessage,
+  fmtAltitude,
+  fmtClock,
+  fmtClockMs,
+  fmtDateTimeMs,
+  fmtDuration,
+  fmtEte,
+  fmtLocalClock,
+  fmtLocalDayTime,
+  fmtSize,
+  pad,
 } from '../../../src/shared/format';
 import { aerodromeName, aerodromePoint } from '../../../src/shared/aerodrome';
 import * as calc from '../../../src/calc';
@@ -133,7 +155,8 @@ describe('aerodrome points', () => {
     expect(aerodromeName(strip)).toBe('Megara Field');
   });
   it('a route point with a fresh uid', () => {
-    const a = aerodromePoint(strip), b = aerodromePoint(strip);
+    const a = aerodromePoint(strip),
+      b = aerodromePoint(strip);
     expect(a).toMatchObject({ kind: 'aerodrome', refId: 'GR-0042', name: 'Megara Field', lat: 37.9, lon: 23.3 });
     expect(a.uid).not.toBe(b.uid);
   });

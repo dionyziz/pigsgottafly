@@ -13,29 +13,80 @@ import { Section, SECTIONS_STORE } from './ui';
 function StatusChip({ c }: { c: AdCheck }) {
   if (!Number.isFinite(c.fromMs)) return <span className="muted">time not set</span>;
   const { status, limits } = c.ad;
-  if (status === 'closed') return <Chip tone="danger" title={`${c.ad.why} (${c.ad.source})`}>Closed {clockZ(c.ad.at)}Z</Chip>;
-  if (limits.length) return <Chip tone="warn" title={limits.map((l) => `NOTAM ${l.key}: ${l.summary}`).join('\n')}>Limited</Chip>;
-  if (status === 'open') return <Chip tone="ok" title={`${c.ad.why} (${c.ad.source})`}>Open</Chip>;
+  if (status === 'closed')
+    return (
+      <Chip tone="danger" title={`${c.ad.why} (${c.ad.source})`}>
+        Closed {clockZ(c.ad.at)}Z
+      </Chip>
+    );
+  if (limits.length)
+    return (
+      <Chip tone="warn" title={limits.map((l) => `NOTAM ${l.key}: ${l.summary}`).join('\n')}>
+        Limited
+      </Chip>
+    );
+  if (status === 'open')
+    return (
+      <Chip tone="ok" title={`${c.ad.why} (${c.ad.source})`}>
+        Open
+      </Chip>
+    );
   return null;
 }
 
 export function AerodromeSection() {
   const { doc } = useEditor();
   const { aerodromeChecks, adEffects } = useFlightCalc();
-  const items = useMemo(() => aerodromeChecks.map((c) => ({ c, info: adDayInfo(c.aerodrome, doc.date, adEffects) })), [aerodromeChecks, adEffects, doc.date]);
+  const items = useMemo(
+    () => aerodromeChecks.map((c) => ({ c, info: adDayInfo(c.aerodrome, doc.date, adEffects) })),
+    [aerodromeChecks, adEffects, doc.date],
+  );
   const closed = aerodromeChecks.filter((c) => c.ad.status === 'closed' && Number.isFinite(c.fromMs)).length;
   return (
-    <Section id="aerodromes" title="Aerodrome hours"
-      badge={closed ? <Chip tone="danger">{closed} closed</Chip> : items.length ? <span className="muted">{items.length}</span> : undefined}>
-      {!items.length ? <p className="ep-note muted">No aerodromes on the route.</p> : (
+    <Section
+      id="aerodromes"
+      title="Aerodrome hours"
+      badge={
+        closed ? (
+          <Chip tone="danger">{closed} closed</Chip>
+        ) : items.length ? (
+          <span className="muted">{items.length}</span>
+        ) : undefined
+      }
+    >
+      {!items.length ? (
+        <p className="ep-note muted">No aerodromes on the route.</p>
+      ) : (
         <ul className="ep-ad-list" data-testid="aerodrome-hours">
           {items.map(({ c, info }) => (
-            <li key={`${c.role}-${c.pointIndex}`} data-testid="aerodrome-hours-item" data-icao={c.aerodrome.icao ?? c.aerodrome.id}>
-              <Collapsible id={`ad-${c.aerodrome.id}`} store={SECTIONS_STORE} testId="aerodrome-hours-box"
+            <li
+              key={`${c.role}-${c.pointIndex}`}
+              data-testid="aerodrome-hours-item"
+              data-icao={c.aerodrome.icao ?? c.aerodrome.id}
+            >
+              <Collapsible
+                id={`ad-${c.aerodrome.id}`}
+                store={SECTIONS_STORE}
+                testId="aerodrome-hours-box"
                 className={'ep-ad' + (c.ad.status === 'closed' && Number.isFinite(c.fromMs) ? ' is-closed' : '')}
-                title={<>{AD_ROLE[c.role]} {c.aerodrome.icao || c.aerodrome.name}</>}
-                badge={<><span className="muted ep-ad-name">{c.aerodrome.name}</span><StatusChip c={c} /></>}>
-                {Number.isFinite(c.fromMs) && <div className="ep-ad-when muted">{c.when}{c.ad.notam ? ` · NOTAM ${c.ad.notam}` : ''}</div>}
+                title={
+                  <>
+                    {AD_ROLE[c.role]} {c.aerodrome.icao || c.aerodrome.name}
+                  </>
+                }
+                badge={
+                  <>
+                    <span className="muted ep-ad-name">{c.aerodrome.name}</span>
+                    <StatusChip c={c} />
+                  </>
+                }
+              >
+                {Number.isFinite(c.fromMs) && (
+                  <div className="ep-ad-when muted">
+                    {c.when}
+                    {c.ad.notam ? ` · NOTAM ${c.ad.notam}` : ''}
+                  </div>
+                )}
                 <AdHoursDetail a={c.aerodrome} info={info} />
               </Collapsible>
             </li>

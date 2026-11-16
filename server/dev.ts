@@ -4,7 +4,14 @@ import { createServer as createVite } from 'vite';
 import { ROOT, listenFromEnv } from './server.js';
 
 const vite = await createVite({ root: ROOT, server: { middlewareMode: true }, appType: 'spa' });
-await listenFromEnv((req, res) => new Promise<void>((resolve) => {
-  vite.middlewares(req, res, () => { res.statusCode = 404; res.end('not found'); resolve(); });
-  res.on('finish', () => resolve());
-}));
+await listenFromEnv(
+  (req, res) =>
+    new Promise<void>((resolve) => {
+      vite.middlewares(req, res, () => {
+        res.statusCode = 404;
+        res.end('not found');
+        resolve();
+      });
+      res.on('finish', () => resolve());
+    }),
+);

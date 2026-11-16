@@ -68,8 +68,19 @@ export interface PerfSpeeds {
  */
 export function perfSpeeds(a: Aircraft | null, takeoffMassKg: number | null, pressureAltFt: number | null): PerfSpeeds {
   const out: PerfSpeeds = {
-    vrKt: null, vrNote: '', vxKt: null, vyKt: null, vyNote: '', glideKt: null, vappKt: null, vappNote: '',
-    flapsTakeoff: '', flapsLanding: '', vsKt: null, vsoKt: null, source: '',
+    vrKt: null,
+    vrNote: '',
+    vxKt: null,
+    vyKt: null,
+    vyNote: '',
+    glideKt: null,
+    vappKt: null,
+    vappNote: '',
+    flapsTakeoff: '',
+    flapsLanding: '',
+    vsKt: null,
+    vsoKt: null,
+    source: '',
   };
   if (!a) return out;
   const p = a.performance;
@@ -92,7 +103,8 @@ export function perfSpeeds(a: Aircraft | null, takeoffMassKg: number | null, pre
     out.vrNote = `AFM lift-off IAS at ${Math.round(m)} kg`;
   }
   out.vappKt = ktOf(p?.landing?.approachIas);
-  if (out.vappKt != null) out.vappNote = `AFM short-field approach${p.landing.flaps ? `, flaps ${p.landing.flaps}` : ''}`;
+  if (out.vappKt != null)
+    out.vappNote = `AFM short-field approach${p.landing.flaps ? `, flaps ${p.landing.flaps}` : ''}`;
   out.flapsTakeoff = p?.takeoff?.flaps || '';
   out.flapsLanding = p?.landing?.flaps || '';
   if (p?.stallIasKt) {

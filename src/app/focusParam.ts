@@ -7,18 +7,25 @@ import { useEffect } from 'react';
 /** The ?focus= value of the current URL ('' when none). */
 export function focusParam(): string {
   if (typeof window === 'undefined') return '';
-  try { return new URLSearchParams(window.location.search).get('focus') ?? ''; } catch { return ''; }
+  try {
+    return new URLSearchParams(window.location.search).get('focus') ?? '';
+  } catch {
+    return '';
+  }
 }
 
 const esc = (s: string) => (typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(s) : s.replace(/["\\]/g, '\\$&'));
 
 export function findFocusTarget(root: ParentNode, key: string): HTMLElement | null {
-  return root.querySelector<HTMLElement>(`[data-focus="${esc(key)}"]`)
-    ?? root.querySelector<HTMLElement>(`[name="${esc(key)}"]`)
-    ?? root.querySelector<HTMLElement>(`#${esc(key)}`);
+  return (
+    root.querySelector<HTMLElement>(`[data-focus="${esc(key)}"]`) ??
+    root.querySelector<HTMLElement>(`[name="${esc(key)}"]`) ??
+    root.querySelector<HTMLElement>(`#${esc(key)}`)
+  );
 }
 
-const FIELD = 'input:not([type=hidden]):not([type=checkbox]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
+const FIELD =
+  'input:not([type=hidden]):not([type=checkbox]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
 
 /** Scrolls to the element, focuses its input and highlights it until it is edited. */
 export function focusAndHighlight(el: HTMLElement): void {
@@ -49,7 +56,10 @@ export function useFocusParam(root: () => ParentNode | null, enabled = true, key
     const attempt = () => {
       const r = root();
       const el = r ? findFocusTarget(r, key) : null;
-      if (el) { focusAndHighlight(el); return; }
+      if (el) {
+        focusAndHighlight(el);
+        return;
+      }
       if (++tries < 40) timer = window.setTimeout(attempt, 100);
     };
     timer = window.setTimeout(attempt, 50);

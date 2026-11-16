@@ -6,7 +6,11 @@ import { seatLayout } from './constants.js';
 import type { GenDecHandling } from '../calc/aerodromeStatus.js';
 
 /** Minimal aerodrome record for the forms. */
-export interface FormAerodrome { id: string; icao: string | null; name: string }
+export interface FormAerodrome {
+  id: string;
+  icao: string | null;
+  name: string;
+}
 export type AerodromeLookup = (idOrIcao: string | null | undefined) => FormAerodrome | undefined;
 
 /** 'YYYY-MM-DD' → ['DD', 'MM', 'YYYY'], or blanks. */
@@ -35,7 +39,7 @@ export function aerodromeCode(a: FormAerodrome): string {
 }
 
 export function placeOfWith(p: RoutePoint, lookup: AerodromeLookup): Place {
-  const a = p.kind === 'aerodrome' ? lookup(p.refId) ?? lookup(p.name) : undefined;
+  const a = p.kind === 'aerodrome' ? (lookup(p.refId) ?? lookup(p.name)) : undefined;
   if (a) return { code: aerodromeCode(a), name: a.name, icao: a.icao, aerodrome: true };
   return { code: p.name, name: p.name, icao: null, aerodrome: false };
 }
@@ -77,7 +81,7 @@ export interface FormPerson {
 
 /** The signing key of a manifest entry (a signature belongs to this person on this flight). */
 export function crewKey(c: Pick<FlightCrew, 'role' | 'passengerId' | 'seat'>): string {
-  return c.role === 'PIC' ? 'PIC' : c.passengerId ?? `seat:${c.seat}`;
+  return c.role === 'PIC' ? 'PIC' : (c.passengerId ?? `seat:${c.seat}`);
 }
 
 const pick = (a: string, b: string | undefined) => (a && a.trim() ? a : b || '');
@@ -87,7 +91,8 @@ const pick = (a: string, b: string | undefined) => (a && a.trim() ? a : b || '')
  * live record: the pilot for the PIC, the passenger list for a PAX.
  */
 function resolveDetails(c: FlightCrew, pilot: Pilot, passengers: Passenger[] | undefined): PersonDetails {
-  const live: Partial<PersonDetails> | undefined = c.role === 'PIC' ? pilot : passengers?.find((p) => p.id === c.passengerId);
+  const live: Partial<PersonDetails> | undefined =
+    c.role === 'PIC' ? pilot : passengers?.find((p) => p.id === c.passengerId);
   const s = c.snapshot;
   if (!live) return { ...s };
   return {
@@ -104,8 +109,14 @@ function resolveDetails(c: FlightCrew, pilot: Pilot, passengers: Passenger[] | u
 
 export function pilotDetails(p: Pilot): PersonDetails {
   return {
-    fullName: p.fullName, phone: p.phone, dateOfBirth: p.dateOfBirth, weightKg: p.weightKg,
-    idNumber: p.idNumber, idType: p.idType, nationality: p.nationality, relation: p.relation,
+    fullName: p.fullName,
+    phone: p.phone,
+    dateOfBirth: p.dateOfBirth,
+    weightKg: p.weightKg,
+    idNumber: p.idNumber,
+    idType: p.idType,
+    nationality: p.nationality,
+    relation: p.relation,
   };
 }
 
@@ -114,7 +125,12 @@ export function pilotDetails(p: Pilot): PersonDetails {
  * layout; manifest order when there is no aircraft). A flight without a PIC row still lists the
  * pilot as PIC, since the pilot is always on board.
  */
-export function formPeopleOf(crewIn: FlightCrew[], stations: Station[] | null, pilot: Pilot, passengers?: Passenger[]): FormPerson[] {
+export function formPeopleOf(
+  crewIn: FlightCrew[],
+  stations: Station[] | null,
+  pilot: Pilot,
+  passengers?: Passenger[],
+): FormPerson[] {
   const layout = stations ? seatLayout(stations) : [];
   const seatIndex = (id: string) => {
     const i = layout.findIndex((s) => s.id === id);
@@ -123,12 +139,25 @@ export function formPeopleOf(crewIn: FlightCrew[], stations: Station[] | null, p
   const seatLabel = (id: string) => layout.find((s) => s.id === id)?.label ?? id;
   const crew = [...crewIn];
   if (!crew.some((c) => c.role === 'PIC')) {
-    crew.unshift({ role: 'PIC', passengerId: null, seat: layout[0]?.id ?? 'front-left', snapshot: { ...pilotDetails(pilot) } });
+    crew.unshift({
+      role: 'PIC',
+      passengerId: null,
+      seat: layout[0]?.id ?? 'front-left',
+      snapshot: { ...pilotDetails(pilot) },
+    });
   }
   return crew
     .map((c, i) => ({ c, i }))
-    .sort((a, b) => (a.c.role === b.c.role ? seatIndex(a.c.seat) - seatIndex(b.c.seat) || a.i - b.i : a.c.role === 'PIC' ? -1 : 1))
-    .map(({ c }) => ({ key: crewKey(c), role: c.role, seat: c.seat, seatLabel: seatLabel(c.seat), details: resolveDetails(c, pilot, passengers) }));
+    .sort((a, b) =>
+      a.c.role === b.c.role ? seatIndex(a.c.seat) - seatIndex(b.c.seat) || a.i - b.i : a.c.role === 'PIC' ? -1 : 1,
+    )
+    .map(({ c }) => ({
+      key: crewKey(c),
+      role: c.role,
+      seat: c.seat,
+      seatLabel: seatLabel(c.seat),
+      details: resolveDetails(c, pilot, passengers),
+    }));
 }
 
 /** The ID card or passport number as written on the forms (no document type). */
@@ -166,7 +195,13 @@ export interface FormFlightInput {
   crew: FlightCrew[];
 }
 
-export function form731Content(flight: FormFlightInput, aircraft: Pick<Aircraft, 'registration' | 'massBalance'> | null, pilot: Pilot, passengers: Passenger[] | undefined, lookup: AerodromeLookup): Form731Content {
+export function form731Content(
+  flight: FormFlightInput,
+  aircraft: Pick<Aircraft, 'registration' | 'massBalance'> | null,
+  pilot: Pilot,
+  passengers: Passenger[] | undefined,
+  lookup: AerodromeLookup,
+): Form731Content {
   const places = routePlacesWith(flight.route, lookup);
   const people = formPeopleOf(flight.crew, aircraft ? aircraft.massBalance.stations : null, pilot, passengers);
   return {
@@ -190,7 +225,13 @@ export function form731Content(flight: FormFlightInput, aircraft: Pick<Aircraft,
  * (date, registration, route, a person, their details) changes it and so clears the signatures.
  */
 export function form731SigningText(c: Form731Content): string {
-  return JSON.stringify([c.airport, c.date, c.registration, c.route, c.people.map((p) => [p.key, p.role, p.name, p.relation, p.idPassport, p.contact])]);
+  return JSON.stringify([
+    c.airport,
+    c.date,
+    c.registration,
+    c.route,
+    c.people.map((p) => [p.key, p.role, p.name, p.relation, p.idPassport, p.contact]),
+  ]);
 }
 
 /** "D. Zindros": the signer's first initial and last name. */
@@ -244,7 +285,13 @@ export interface GenDecContent {
   placeCount: number;
 }
 
-export function genDecContent(flight: FormFlightInput, aircraft: Pick<Aircraft, 'registration' | 'massBalance' | 'operator'> | null, pilot: Pilot, passengers: Passenger[] | undefined, lookup: AerodromeLookup): GenDecContent {
+export function genDecContent(
+  flight: FormFlightInput,
+  aircraft: Pick<Aircraft, 'registration' | 'massBalance' | 'operator'> | null,
+  pilot: Pilot,
+  passengers: Passenger[] | undefined,
+  lookup: AerodromeLookup,
+): GenDecContent {
   const places = routePlacesWith(flight.route, lookup);
   const people = formPeopleOf(flight.crew, aircraft ? aircraft.massBalance.stations : null, pilot, passengers);
   const pax = people.filter((p) => p.role === 'PAX').length;
@@ -334,7 +381,13 @@ export interface SignatureState {
   /** Signed an earlier version of the form: has to sign again. */
   needsResign: boolean;
   /** Link state (PAX only). */
-  link: { created: number; firstOpened: number | null; lastOpened: number | null; revoked: boolean; expires: number } | null;
+  link: {
+    created: number;
+    firstOpened: number | null;
+    lastOpened: number | null;
+    revoked: boolean;
+    expires: number;
+  } | null;
 }
 
 export interface SubmissionState {

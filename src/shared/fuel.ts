@@ -76,13 +76,18 @@ export interface FuelLoad {
 }
 
 /** Litres per type typed by the pilot; null when not given (or all zero). */
-export function fuelByType(byType: Partial<Record<FuelType, number>> | null | undefined): Partial<Record<FuelType, number>> | null {
+export function fuelByType(
+  byType: Partial<Record<FuelType, number>> | null | undefined,
+): Partial<Record<FuelType, number>> | null {
   if (!byType) return null;
   const out: Partial<Record<FuelType, number>> = {};
   let any = false;
   for (const t of FUEL_TYPES) {
     const v = byType[t];
-    if (fin(v) && v > 0) { out[t] = v; any = true; }
+    if (fin(v) && v > 0) {
+      out[t] = v;
+      any = true;
+    }
   }
   return any ? out : null;
 }
@@ -96,22 +101,33 @@ export function fuelByTypeTotal(byType: Partial<Record<FuelType, number>> | null
  * The fuel on board of a flight: `totalL` litres (the planned FOB), split as the pilot gave it per
  * type (scaled to `totalL` if the two disagree), else all of it the aircraft's first fuel.
  */
-export function fuelLoad(spec: Pick<FuelSpec, 'types'>, totalL: number, byType?: Partial<Record<FuelType, number>> | null): FuelLoad {
+export function fuelLoad(
+  spec: Pick<FuelSpec, 'types'>,
+  totalL: number,
+  byType?: Partial<Record<FuelType, number>> | null,
+): FuelLoad {
   const total = fin(totalL) && totalL > 0 ? totalL : 0;
   const split = fuelByType(byType);
-  const order = [...(spec.types ?? []).map((g) => g.type), ...FUEL_TYPES.filter((t) => !(spec.types ?? []).some((g) => g.type === t))];
+  const order = [
+    ...(spec.types ?? []).map((g) => g.type),
+    ...FUEL_TYPES.filter((t) => !(spec.types ?? []).some((g) => g.type === t)),
+  ];
   let parts: FuelPart[];
   if (split) {
     const sum = fuelByTypeTotal(split);
     const k = sum > 0 && total > 0 ? total / sum : 0;
-    parts = order.filter((t) => split[t]).map((t) => {
-      const litres = Math.abs(k - 1) < 1e-9 ? (split[t] as number) : (split[t] as number) * k;
-      const densityKgPerL = fuelDensity(t);
-      return { type: t, litres, densityKgPerL, kg: litres * densityKgPerL };
-    }).filter((p) => p.litres > 0);
+    parts = order
+      .filter((t) => split[t])
+      .map((t) => {
+        const litres = Math.abs(k - 1) < 1e-9 ? (split[t] as number) : (split[t] as number) * k;
+        const densityKgPerL = fuelDensity(t);
+        return { type: t, litres, densityKgPerL, kg: litres * densityKgPerL };
+      })
+      .filter((p) => p.litres > 0);
   } else {
     const g = primaryFuel(spec);
-    parts = total > 0 ? [{ type: g.type, litres: total, densityKgPerL: g.densityKgPerL, kg: total * g.densityKgPerL }] : [];
+    parts =
+      total > 0 ? [{ type: g.type, litres: total, densityKgPerL: g.densityKgPerL, kg: total * g.densityKgPerL }] : [];
   }
   const kg = parts.reduce((s, p) => s + p.kg, 0);
   const litres = parts.reduce((s, p) => s + p.litres, 0);

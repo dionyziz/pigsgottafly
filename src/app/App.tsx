@@ -53,49 +53,74 @@ function LegacyHashRedirect() {
 function Onboarding({ children }: { children: ReactNode }) {
   const { pilot } = useSession();
   const loc = useLocation();
-  if (profileMissing(pilot).length && !loc.pathname.startsWith('/profile')) return <Navigate to="/profile?welcome=1" replace />;
+  if (profileMissing(pilot).length && !loc.pathname.startsWith('/profile'))
+    return <Navigate to="/profile?welcome=1" replace />;
   return <>{children}</>;
 }
 
 export function App() {
   return (
     <ErrorBoundary>
-    <BrowserRouter>
-      <ToastProvider>
-        <Routes>
-        <Route path="/sign/:token" element={<Suspense fallback={<Loading variant="screen" />}><SignPage /></Suspense>} />
-        <Route path="/privacy" element={<Suspense fallback={<Loading variant="screen" />}><PrivacyPage /></Suspense>} />
-        <Route path="/terms" element={<Suspense fallback={<Loading variant="screen" />}><TermsPage /></Suspense>} />
-        <Route path="*" element={
-        <AuthGate>
-          <LegacyHashRedirect />
-          <Onboarding>
-            <Suspense fallback={<Loading variant="screen" />}>
-            <Routes>
-              <Route path="/" element={<LobbyPage />} />
-              <Route path="/flights/new" element={<NewFlightPage />} />
-              <Route path="/flights/:id" element={<EditorPage />} />
-              <Route path="/flights/:id/export/:kind" element={<ExportPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/hangar" element={<HangarPage />} />
-              <Route path="/hangar/:id" element={<AircraftPage />} />
-              <Route path="/operators" element={<OperatorsPage />} />
-              <Route path="/operators/:id" element={<OperatorPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/admin/errors" element={<ErrorsPage />} />
-              <Route path="/admin/mail" element={<MailPage />} />
-              <Route path="/passengers" element={<PassengersPage />} />
-              <Route path="/waypoints" element={<WaypointsPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            </Suspense>
-          </Onboarding>
-        </AuthGate>
-        } />
-        </Routes>
-      </ToastProvider>
-    </BrowserRouter>
+      <BrowserRouter>
+        <ToastProvider>
+          <Routes>
+            <Route
+              path="/sign/:token"
+              element={
+                <Suspense fallback={<Loading variant="screen" />}>
+                  <SignPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/privacy"
+              element={
+                <Suspense fallback={<Loading variant="screen" />}>
+                  <PrivacyPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <Suspense fallback={<Loading variant="screen" />}>
+                  <TermsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <AuthGate>
+                  <LegacyHashRedirect />
+                  <Onboarding>
+                    <Suspense fallback={<Loading variant="screen" />}>
+                      <Routes>
+                        <Route path="/" element={<LobbyPage />} />
+                        <Route path="/flights/new" element={<NewFlightPage />} />
+                        <Route path="/flights/:id" element={<EditorPage />} />
+                        <Route path="/flights/:id/export/:kind" element={<ExportPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
+                        <Route path="/hangar" element={<HangarPage />} />
+                        <Route path="/hangar/:id" element={<AircraftPage />} />
+                        <Route path="/operators" element={<OperatorsPage />} />
+                        <Route path="/operators/:id" element={<OperatorPage />} />
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="/admin/errors" element={<ErrorsPage />} />
+                        <Route path="/admin/mail" element={<MailPage />} />
+                        <Route path="/passengers" element={<PassengersPage />} />
+                        <Route path="/waypoints" element={<WaypointsPage />} />
+                        <Route path="/about" element={<AboutPage />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </Suspense>
+                  </Onboarding>
+                </AuthGate>
+              }
+            />
+          </Routes>
+        </ToastProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

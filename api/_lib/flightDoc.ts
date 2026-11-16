@@ -3,7 +3,18 @@
 // known fields only, so a stale or buggy client cannot store values that later turn the safety
 // numbers (W&B, altitudes, fuel) into NaN or nonsense. Numbers must be JSON numbers: strings,
 // booleans and null are not coerced (null / absent means "not set" where a field is optional).
-import type { AerodromeRequest, AtcEntry, AtcRole, FlightOptions, FuelType, FlightSummary, LegOverride, RoutePoint, WbCategory, WindModel } from '../../src/shared/types.js';
+import type {
+  AerodromeRequest,
+  AtcEntry,
+  AtcRole,
+  FlightOptions,
+  FuelType,
+  FlightSummary,
+  LegOverride,
+  RoutePoint,
+  WbCategory,
+  WindModel,
+} from '../../src/shared/types.js';
 import { mapLayersOf } from '../../src/shared/mapLayers.js';
 import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
 import { MAX_STOP_MIN } from '../../src/shared/requests.js';
@@ -137,7 +148,8 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
   const i = obj<Record<string, unknown>>(v, 'options');
   const o: FlightOptions = { ...DEFAULT_FLIGHT_OPTIONS, ...base };
   if ('windModel' in i) {
-    if (typeof i.windModel !== 'string' || !Object.hasOwn(WIND_MODELS, i.windModel)) throw badRequest('options.windModel is unknown');
+    if (typeof i.windModel !== 'string' || !Object.hasOwn(WIND_MODELS, i.windModel))
+      throw badRequest('options.windModel is unknown');
     o.windModel = i.windModel as WindModel;
   }
   if ('compassCard' in i) o.compassCard = optText(i.compassCard, 'options.compassCard', 100);
@@ -161,10 +173,16 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
       const r = obj<Record<string, unknown>>(v, `options.aerodromeRequests[${j}]`);
       const pointUid = text(r.pointUid, `options.aerodromeRequests[${j}].pointUid`, 64);
       if (!pointUid) throw badRequest(`options.aerodromeRequests[${j}].pointUid is required`);
-      if (r.kind !== 'touch-and-go' && r.kind !== 'stop') throw badRequest(`options.aerodromeRequests[${j}].kind must be touch-and-go or stop`);
-      const req: AerodromeRequest = r.kind === 'stop'
-        ? { pointUid, kind: 'stop', stopMin: optNumber(r.stopMin, `options.aerodromeRequests[${j}].stopMin`, 1, MAX_STOP_MIN) ?? 10 }
-        : { pointUid, kind: 'touch-and-go' };
+      if (r.kind !== 'touch-and-go' && r.kind !== 'stop')
+        throw badRequest(`options.aerodromeRequests[${j}].kind must be touch-and-go or stop`);
+      const req: AerodromeRequest =
+        r.kind === 'stop'
+          ? {
+              pointUid,
+              kind: 'stop',
+              stopMin: optNumber(r.stopMin, `options.aerodromeRequests[${j}].stopMin`, 1, MAX_STOP_MIN) ?? 10,
+            }
+          : { pointUid, kind: 'touch-and-go' };
       // runways and surface chosen for the landing and take-off there (performance)
       for (const k of ['landingRunway', 'takeoffRunway'] as const) {
         const v = optText(r[k], `options.aerodromeRequests[${j}].${k}`, 10);

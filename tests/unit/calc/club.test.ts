@@ -61,16 +61,56 @@ import { fuelLoad } from '../../../src/shared';
 
 interface ClubInput {
   Registration: 'SXASV' | 'SXASG';
-  PIC_FPax: number; RPax: number; Baggage1: number; Baggage2: number;
-  AVGAS: number; MOGAS: number;
-  Elevation: number; QNH: number; Temperature: number; RWY: string; Wind_Dir: number; Wind_Sp: number; RWY_Slope_TO: number; RWYCC: number;
+  PIC_FPax: number;
+  RPax: number;
+  Baggage1: number;
+  Baggage2: number;
+  AVGAS: number;
+  MOGAS: number;
+  Elevation: number;
+  QNH: number;
+  Temperature: number;
+  RWY: string;
+  Wind_Dir: number;
+  Wind_Sp: number;
+  RWY_Slope_TO: number;
+  RWYCC: number;
   BlockFuel: number;
-  Elevation_land: number; QNH_land: number; Temperature_land: number; RWY_land: string; Wind_Dir_land: number; Wind_Sp_land: number; RWY_Slope_LDG: number; RWYCC_land: number;
+  Elevation_land: number;
+  QNH_land: number;
+  Temperature_land: number;
+  RWY_land: string;
+  Wind_Dir_land: number;
+  Wind_Sp_land: number;
+  RWY_Slope_LDG: number;
+  RWYCC_land: number;
 }
-interface ClubPhase { pressureAltFt: number; densityAltFt: number; headwindKt: number; crosswindKt: number; massKg: number; conditionFactor: number; safetyFactor: number; todrM?: number; torrM?: number; ldrM?: number; lrrM?: number }
-interface ClubCase { input: ClubInput; club: { wbRows: Record<string, [number, number, number]>; total: [number, number]; takeoff: ClubPhase; landing: ClubPhase } }
+interface ClubPhase {
+  pressureAltFt: number;
+  densityAltFt: number;
+  headwindKt: number;
+  crosswindKt: number;
+  massKg: number;
+  conditionFactor: number;
+  safetyFactor: number;
+  todrM?: number;
+  torrM?: number;
+  ldrM?: number;
+  lrrM?: number;
+}
+interface ClubCase {
+  input: ClubInput;
+  club: {
+    wbRows: Record<string, [number, number, number]>;
+    total: [number, number];
+    takeoff: ClubPhase;
+    landing: ClubPhase;
+  };
+}
 
-const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, '../../fixtures/club-wbp-cases.json'), 'utf8')) as { cases: ClubCase[] };
+const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, '../../fixtures/club-wbp-cases.json'), 'utf8')) as {
+  cases: ClubCase[];
+};
 const CASES = fixture.cases;
 const [ASV, ASG] = fleetSeed();
 const aircraftOf = (reg: string): AircraftInput => (reg === 'SXASV' ? ASV : ASG);
@@ -131,76 +171,89 @@ describe('club W&B (mesogeion-aeroclub.gr/wbp.php)', () => {
     expect(CASES.filter((c) => c.input.MOGAS > 0 && c.input.AVGAS > 0)).toHaveLength(0); // no mixed answer to compare with
   });
 
-  test.each([[0, 40, 30], [17, 100, 44], [50, 20, 120]])('mixed tanks (case %i with AVGAS %i L + MOGAS %i L): fuel = Σ litres × density, landing from the mix', (n, avgas, mogas) => {
-    const base = CASES[n];
-    const c: ClubCase = { ...base, input: { ...base.input, AVGAS: avgas, MOGAS: mogas } };
-    const r = wbFor(c, true);
-    const fuelKg = avgas * 0.72 + mogas * 0.75;
-    const fuel = r.stationRows![r.stationRows!.length - 1];
-    expect(fuel.massKg).toBeCloseTo(fuelKg, 6);
-    expect(fuel.momentKgM).toBeCloseTo(fuelKg * CLUB_FUEL_ARM, 6);
-    // the same loading with the fuel as one type of the same mass: identical take-off
-    const single = wbFor({ ...c, input: { ...c.input, AVGAS: fuelKg / 0.72, MOGAS: 0 } }, true);
-    expect(r.takeoff.massKg).toBeCloseTo(single.takeoff.massKg, 6);
-    expect(r.takeoff.momentKgM).toBeCloseTo(single.takeoff.momentKgM, 6);
-    // landing: the block fuel is taken from the mix, at its average density
-    const rho = fuelKg / (avgas + mogas);
-    expect(r.landing.massKg).toBeCloseTo(r.takeoff.massKg - Math.min(c.input.BlockFuel, avgas + mogas) * rho, 6);
-  });
+  test.each([
+    [0, 40, 30],
+    [17, 100, 44],
+    [50, 20, 120],
+  ])(
+    'mixed tanks (case %i with AVGAS %i L + MOGAS %i L): fuel = Σ litres × density, landing from the mix',
+    (n, avgas, mogas) => {
+      const base = CASES[n];
+      const c: ClubCase = { ...base, input: { ...base.input, AVGAS: avgas, MOGAS: mogas } };
+      const r = wbFor(c, true);
+      const fuelKg = avgas * 0.72 + mogas * 0.75;
+      const fuel = r.stationRows![r.stationRows!.length - 1];
+      expect(fuel.massKg).toBeCloseTo(fuelKg, 6);
+      expect(fuel.momentKgM).toBeCloseTo(fuelKg * CLUB_FUEL_ARM, 6);
+      // the same loading with the fuel as one type of the same mass: identical take-off
+      const single = wbFor({ ...c, input: { ...c.input, AVGAS: fuelKg / 0.72, MOGAS: 0 } }, true);
+      expect(r.takeoff.massKg).toBeCloseTo(single.takeoff.massKg, 6);
+      expect(r.takeoff.momentKgM).toBeCloseTo(single.takeoff.momentKgM, 6);
+      // landing: the block fuel is taken from the mix, at its average density
+      const rho = fuelKg / (avgas + mogas);
+      expect(r.landing.massKg).toBeCloseTo(r.takeoff.massKg - Math.min(c.input.BlockFuel, avgas + mogas) * rho, 6);
+    },
+  );
 
-  test.each(CASES.map((c, n) => [n, c] as const))('case %i: rows, totals, take-off and landing mass (club conventions: exact to 0.01)', (_n, c) => {
-    const r = wbFor(c, true);
-    const rows = c.club.wbRows;
-    // Empty aircraft: printed mass rounded to the kg, moment exact.
-    const empty = rows['Corrected / Licenced Empty Weight'];
-    expect(r.stationRows![0].massKg).toBeCloseTo(empty[0], 2);
-    expect(r.stationRows![0].momentKgM).toBeCloseTo(empty[2], 2);
-    for (const sr of r.stationRows!) {
-      const name = sr.stationId ? CLUB_ROW[sr.stationId] : undefined;
-      if (!name) continue;
-      const [m, arm, mom] = rows[name];
-      expect(sr.massKg).toBeCloseTo(m, 2);
-      expect(sr.armM).toBeCloseTo(arm, 2);
-      expect(Math.abs(sr.momentKgM - mom)).toBeLessThanOrEqual(0.0051);
-    }
-    const fuel = r.stationRows![r.stationRows!.length - 1];
-    const [fm, , fmom] = rows['Usuable Fuel'];
-    expect(fuel.massKg).toBeCloseTo(fm, 2);
-    expect(Math.abs(fuel.momentKgM - fmom)).toBeLessThanOrEqual(0.0051);
-    // Totals: the club sums the rounded row moments.
-    expect(r.takeoff.massKg).toBeCloseTo(c.club.total[0], 2);
-    expect(Math.abs(r.takeoff.momentKgM - c.club.total[1])).toBeLessThanOrEqual(0.015);
-    expect(r.takeoff.massKg).toBeCloseTo(c.club.takeoff.massKg, 2);
-    const { litres, density } = fuelOf(c.input);
-    if (litres >= c.input.BlockFuel) {
-      expect(r.landing.massKg).toBeCloseTo(c.club.landing.massKg, 2);
-    } else {
-      // The club lands with negative fuel; we land with none and warn.
-      expect(c.club.landing.massKg).toBeCloseTo(c.club.takeoff.massKg - c.input.BlockFuel * density, 2);
-      expect(r.landing.massKg).toBeCloseTo(r.zeroFuel.massKg, 9);
-      expect(r.warnings.join(' ')).toMatch(/negative/);
-    }
-  });
+  test.each(CASES.map((c, n) => [n, c] as const))(
+    'case %i: rows, totals, take-off and landing mass (club conventions: exact to 0.01)',
+    (_n, c) => {
+      const r = wbFor(c, true);
+      const rows = c.club.wbRows;
+      // Empty aircraft: printed mass rounded to the kg, moment exact.
+      const empty = rows['Corrected / Licenced Empty Weight'];
+      expect(r.stationRows![0].massKg).toBeCloseTo(empty[0], 2);
+      expect(r.stationRows![0].momentKgM).toBeCloseTo(empty[2], 2);
+      for (const sr of r.stationRows!) {
+        const name = sr.stationId ? CLUB_ROW[sr.stationId] : undefined;
+        if (!name) continue;
+        const [m, arm, mom] = rows[name];
+        expect(sr.massKg).toBeCloseTo(m, 2);
+        expect(sr.armM).toBeCloseTo(arm, 2);
+        expect(Math.abs(sr.momentKgM - mom)).toBeLessThanOrEqual(0.0051);
+      }
+      const fuel = r.stationRows![r.stationRows!.length - 1];
+      const [fm, , fmom] = rows['Usuable Fuel'];
+      expect(fuel.massKg).toBeCloseTo(fm, 2);
+      expect(Math.abs(fuel.momentKgM - fmom)).toBeLessThanOrEqual(0.0051);
+      // Totals: the club sums the rounded row moments.
+      expect(r.takeoff.massKg).toBeCloseTo(c.club.total[0], 2);
+      expect(Math.abs(r.takeoff.momentKgM - c.club.total[1])).toBeLessThanOrEqual(0.015);
+      expect(r.takeoff.massKg).toBeCloseTo(c.club.takeoff.massKg, 2);
+      const { litres, density } = fuelOf(c.input);
+      if (litres >= c.input.BlockFuel) {
+        expect(r.landing.massKg).toBeCloseTo(c.club.landing.massKg, 2);
+      } else {
+        // The club lands with negative fuel; we land with none and warn.
+        expect(c.club.landing.massKg).toBeCloseTo(c.club.takeoff.massKg - c.input.BlockFuel * density, 2);
+        expect(r.landing.massKg).toBeCloseTo(r.zeroFuel.massKg, 9);
+        expect(r.warnings.join(' ')).toMatch(/negative/);
+      }
+    },
+  );
 
-  test.each(CASES.map((c, n) => [n, c] as const))('case %i: our seeded aircraft differs only by the fuel arm and SX-ASG unusable fuel', (_n, c) => {
-    const ours = wbFor(c, false);
-    const club = wbFor(c, true);
-    const { litres, density } = fuelOf(c.input);
-    const asg = c.input.Registration === 'SXASG';
-    const unusableKg = asg ? UNUSABLE_L * density : 0;
-    // DIFFERENCE 0: SX-ASV empty mass 691.2 (report) vs 691.0 (club); same moment.
-    const emptyKg = asg ? 0 : 0.2;
-    // DIFFERENCE 2: SX-ASG's unusable fuel (weighed with empty tanks).
-    expect(ours.takeoff.massKg - club.takeoff.massKg).toBeCloseTo(unusableKg + emptyKg, 9);
-    expect(ours.landing.massKg - club.landing.massKg).toBeCloseTo(unusableKg + emptyKg, 9);
-    expect(ours.takeoff.massKg - c.club.total[0]).toBeCloseTo(unusableKg + emptyKg, 2);
-    expect(ours.rows.some((row) => row.label.startsWith('Unusable fuel'))).toBe(asg);
-    // DIFFERENCE 1: fuel arm 1.215 (AFM) vs 1.21539 (club).
-    const fuelKg = litres * density;
-    const expected = unusableKg * 1.215 - fuelKg * (CLUB_FUEL_ARM - 1.215);
-    expect(ours.takeoff.momentKgM - club.takeoff.momentKgM).toBeCloseTo(expected, 9);
-    expect(Math.abs(fuelKg * (CLUB_FUEL_ARM - 1.215))).toBeLessThan(0.06);
-  });
+  test.each(CASES.map((c, n) => [n, c] as const))(
+    'case %i: our seeded aircraft differs only by the fuel arm and SX-ASG unusable fuel',
+    (_n, c) => {
+      const ours = wbFor(c, false);
+      const club = wbFor(c, true);
+      const { litres, density } = fuelOf(c.input);
+      const asg = c.input.Registration === 'SXASG';
+      const unusableKg = asg ? UNUSABLE_L * density : 0;
+      // DIFFERENCE 0: SX-ASV empty mass 691.2 (report) vs 691.0 (club); same moment.
+      const emptyKg = asg ? 0 : 0.2;
+      // DIFFERENCE 2: SX-ASG's unusable fuel (weighed with empty tanks).
+      expect(ours.takeoff.massKg - club.takeoff.massKg).toBeCloseTo(unusableKg + emptyKg, 9);
+      expect(ours.landing.massKg - club.landing.massKg).toBeCloseTo(unusableKg + emptyKg, 9);
+      expect(ours.takeoff.massKg - c.club.total[0]).toBeCloseTo(unusableKg + emptyKg, 2);
+      expect(ours.rows.some((row) => row.label.startsWith('Unusable fuel'))).toBe(asg);
+      // DIFFERENCE 1: fuel arm 1.215 (AFM) vs 1.21539 (club).
+      const fuelKg = litres * density;
+      const expected = unusableKg * 1.215 - fuelKg * (CLUB_FUEL_ARM - 1.215);
+      expect(ours.takeoff.momentKgM - club.takeoff.momentKgM).toBeCloseTo(expected, 9);
+      expect(Math.abs(fuelKg * (CLUB_FUEL_ARM - 1.215))).toBeLessThan(0.06);
+    },
+  );
 });
 
 /** Inputs of one phase. Landing slope: the club's input is the DOWNslope (positive). */
@@ -220,7 +273,10 @@ function phaseInput(i: ClubInput, phase: 'takeoff' | 'landing') {
 }
 
 /** The club's surface factor (RWYCC 6 = 1.0, RWYCC 5 = 1.15, grass 1.2/1.3/1.4) as a condition key. */
-const withCondition = (t: PerformanceTables, f: number): PerformanceTables => ({ ...t, factors: { ...t.factors, runwayCondition: { ...t.factors.runwayCondition, club: f } } });
+const withCondition = (t: PerformanceTables, f: number): PerformanceTables => ({
+  ...t,
+  factors: { ...t.factors, runwayCondition: { ...t.factors.runwayCondition, club: f } },
+});
 
 function distances(c: ClubCase, phase: 'takeoff' | 'landing', opts: { method: PerfMethod; clubWindBug: boolean }) {
   const p = phaseInput(c.input, phase);
@@ -241,8 +297,12 @@ function distances(c: ClubCase, phase: 'takeoff' | 'landing', opts: { method: Pe
 
 const PHASES = ['takeoff', 'landing'] as const;
 const PERF_CASES = CASES.flatMap((c, n) => PHASES.map((ph) => [n, ph, c] as const));
-const req = (c: ClubCase, ph: 'takeoff' | 'landing') => (ph === 'takeoff' ? { total: c.club.takeoff.todrM!, ground: c.club.takeoff.torrM! } : { total: c.club.landing.ldrM!, ground: c.club.landing.lrrM! });
-const within = (ours: number, club: number, rel: number, abs: number) => Math.abs(ours - club) <= Math.max(abs, rel * club);
+const req = (c: ClubCase, ph: 'takeoff' | 'landing') =>
+  ph === 'takeoff'
+    ? { total: c.club.takeoff.todrM!, ground: c.club.takeoff.torrM! }
+    : { total: c.club.landing.ldrM!, ground: c.club.landing.lrrM! };
+const within = (ours: number, club: number, rel: number, abs: number) =>
+  Math.abs(ours - club) <= Math.max(abs, rel * club);
 
 describe('club performance (MD 4.4)', () => {
   test.each(PERF_CASES)('case %i %s: PA, DA, wind components, condition factor', (_n, ph, c) => {
@@ -268,12 +328,21 @@ describe('club performance (MD 4.4)', () => {
     expect(d.factors.safety).toBe(club.safetyFactor);
   });
 
-  test.each(PERF_CASES)('case %i %s: TODR/TORR or LDR/LRR, club method with the club wind (≤ 0.75 % or 1 m)', (_n, ph, c) => {
-    const d = distances(c, ph, { method: 'da', clubWindBug: true });
-    const club = req(c, ph);
-    expect(within(d.requiredTotalM, club.total, 0.0075, 1), `total ${d.requiredTotalM.toFixed(1)} vs ${club.total}`).toBe(true);
-    expect(within(d.requiredGroundM, club.ground, 0.0075, 1), `ground ${d.requiredGroundM.toFixed(1)} vs ${club.ground}`).toBe(true);
-  });
+  test.each(PERF_CASES)(
+    'case %i %s: TODR/TORR or LDR/LRR, club method with the club wind (≤ 0.75 % or 1 m)',
+    (_n, ph, c) => {
+      const d = distances(c, ph, { method: 'da', clubWindBug: true });
+      const club = req(c, ph);
+      expect(
+        within(d.requiredTotalM, club.total, 0.0075, 1),
+        `total ${d.requiredTotalM.toFixed(1)} vs ${club.total}`,
+      ).toBe(true);
+      expect(
+        within(d.requiredGroundM, club.ground, 0.0075, 1),
+        `ground ${d.requiredGroundM.toFixed(1)} vs ${club.ground}`,
+      ).toBe(true);
+    },
+  );
 
   test('our real wind handling: same as the club with headwind or calm, longer with tailwind (club bug)', () => {
     let tail = 0;
@@ -290,7 +359,10 @@ describe('club performance (MD 4.4)', () => {
           // Club: tailwind credited as headwind. Ours: +10 % per 2 kt. Always longer.
           expect(ours.requiredTotalM).toBeGreaterThan(club.total);
           expect(ours.requiredGroundM).toBeGreaterThan(club.ground);
-          expect(ours.requiredTotalM / asClub.requiredTotalM).toBeCloseTo((1 - 0.05 * w.headwindKt) / Math.max(0.5, 1 + (0.1 * w.headwindKt) / 5), 9);
+          expect(ours.requiredTotalM / asClub.requiredTotalM).toBeCloseTo(
+            (1 - 0.05 * w.headwindKt) / Math.max(0.5, 1 + (0.1 * w.headwindKt) / 5),
+            9,
+          );
         } else {
           headOrCalm++;
           expect(ours.requiredTotalM).toBeCloseTo(asClub.requiredTotalM, 9);

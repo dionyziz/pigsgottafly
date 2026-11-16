@@ -8,7 +8,19 @@ import { fmtDate } from '../../shared/date';
 export function flightSearchText(r: FlightListItem): string {
   const s = r.summary;
   const date = r.date || s.date;
-  return [s.title, s.from, s.to, ...(r.points ?? []), s.aircraft, s.aircraft.replace('-', ''), date, fmtDate(date), s.blockOff].join(' ').toLowerCase();
+  return [
+    s.title,
+    s.from,
+    s.to,
+    ...(r.points ?? []),
+    s.aircraft,
+    s.aircraft.replace('-', ''),
+    date,
+    fmtDate(date),
+    s.blockOff,
+  ]
+    .join(' ')
+    .toLowerCase();
 }
 
 /** Every whitespace-separated term of `q` must occur in the row's text. */
@@ -21,9 +33,16 @@ export function matchesQuery(text: string, q: string): boolean {
  * Splits rows into upcoming (date ≥ today, soonest first, then by block-off) and past (most
  * recent first). Rows without a date count as upcoming drafts and go last.
  */
-export function splitFlights(rows: FlightListItem[], today: string): { upcoming: FlightListItem[]; past: FlightListItem[] } {
+export function splitFlights(
+  rows: FlightListItem[],
+  today: string,
+): { upcoming: FlightListItem[]; past: FlightListItem[] } {
   const key = (r: FlightListItem) => `${r.date || '9999-99-99'} ${r.summary.blockOff || '99:99'}`;
-  const upcoming = rows.filter((r) => !r.date || r.date >= today).sort((a, b) => key(a).localeCompare(key(b)) || b.updated - a.updated);
-  const past = rows.filter((r) => r.date && r.date < today).sort((a, b) => key(b).localeCompare(key(a)) || b.updated - a.updated);
+  const upcoming = rows
+    .filter((r) => !r.date || r.date >= today)
+    .sort((a, b) => key(a).localeCompare(key(b)) || b.updated - a.updated);
+  const past = rows
+    .filter((r) => r.date && r.date < today)
+    .sort((a, b) => key(b).localeCompare(key(a)) || b.updated - a.updated);
   return { upcoming, past };
 }

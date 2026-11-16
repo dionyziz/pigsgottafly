@@ -9,11 +9,31 @@ import { parseNumber } from '../../../src/shared/number';
 
 afterEach(cleanup);
 
-function Harness({ initial, min, max, log }: { initial: number | null; min?: number; max?: number; log: (number | null)[] }) {
+function Harness({
+  initial,
+  min,
+  max,
+  log,
+}: {
+  initial: number | null;
+  min?: number;
+  max?: number;
+  log: (number | null)[];
+}) {
   const [v, setV] = useState<number | null>(initial);
   return (
     <>
-      <NumberField value={v} min={min} max={max} testId="n" optional onChange={(x) => { log.push(x); setV(x); }} />
+      <NumberField
+        value={v}
+        min={min}
+        max={max}
+        testId="n"
+        optional
+        onChange={(x) => {
+          log.push(x);
+          setV(x);
+        }}
+      />
       <output data-testid="stored">{v == null ? 'null' : String(v)}</output>
     </>
   );
@@ -24,7 +44,10 @@ function typeInto(el: HTMLInputElement, text: string) {
   fireEvent.focus(el);
   fireEvent.change(el, { target: { value: '' } });
   let acc = '';
-  for (const ch of text) { acc += ch; fireEvent.change(el, { target: { value: acc } }); }
+  for (const ch of text) {
+    acc += ch;
+    fireEvent.change(el, { target: { value: acc } });
+  }
 }
 
 describe('parseNumber', () => {

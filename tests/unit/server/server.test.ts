@@ -10,7 +10,13 @@ import { BASE_MAPS, GLYPHS, OFM_TILES } from '../../../src/features/editor/map/s
 
 const headers = productionSecurityHeaders();
 const csp = headers['Content-Security-Policy'] || '';
-const directives = new Map(csp.split(';').map((d) => d.trim().split(/\s+/)).filter((p) => p[0]).map(([k, ...v]) => [k, v]));
+const directives = new Map(
+  csp
+    .split(';')
+    .map((d) => d.trim().split(/\s+/))
+    .filter((p) => p[0])
+    .map(([k, ...v]) => [k, v]),
+);
 
 /** CSP host-source matching, enough for our sources: scheme, host (leading *. wildcard), path prefix. */
 function allows(directive: string, url: string): boolean {
@@ -26,7 +32,8 @@ function allows(directive: string, url: string): boolean {
     return hostOk && pathOk;
   });
 }
-const tile = (t: string) => t.replace('{z}/{x}/{y}', '6/36/24').replace('{fontstack}/{range}', 'Noto%20Sans%20Regular/0-255');
+const tile = (t: string) =>
+  t.replace('{z}/{x}/{y}', '6/36/24').replace('{fontstack}/{range}', 'Noto%20Sans%20Regular/0-255');
 
 describe('production security headers (vercel.json)', () => {
   test('the site cannot be framed (clickjacking)', () => {
@@ -45,15 +52,20 @@ describe('production security headers (vercel.json)', () => {
     // MapLibre fetches tiles, styles, sprites and glyphs (connect-src) from blob: workers and decodes them as images
     const tiles = [
       ...BASE_MAPS.flatMap((b) => (b.kind === 'raster' ? b.tiles : [b.styleUrl])),
-      OFM_TILES, GLYPHS,
-      'https://tiles.openfreemap.org/planet', 'https://tiles.openfreemap.org/sprites/ofm_f384/ofm.png',
+      OFM_TILES,
+      GLYPHS,
+      'https://tiles.openfreemap.org/planet',
+      'https://tiles.openfreemap.org/sprites/ofm_f384/ofm.png',
     ].map(tile);
     for (const u of tiles) {
       expect(allows('connect-src', u), u).toBe(true);
       expect(allows('img-src', u), u).toBe(true);
     }
     // forecasts come through our API (GET /api/weather/grid): the browser never calls Open-Meteo
-    for (const u of ['https://api.open-meteo.com/v1/forecast?latitude=38', 'https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=38']) {
+    for (const u of [
+      'https://api.open-meteo.com/v1/forecast?latitude=38',
+      'https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=38',
+    ]) {
       expect(allows('connect-src', u), u).toBe(false);
     }
     expect(directives.get('worker-src')).toContain('blob:');
@@ -99,6 +111,10 @@ describe('local mode (no GOOGLE_CLIENT_ID) is refused on Postgres', () => {
     expect(() => createServer({ db: PG })).toThrow(/Refusing local mode/);
   });
   test('the error message does not echo the URL (credentials)', () => {
-    try { checkLocalMode(PG, '', false); } catch (e) { expect(String((e as Error).message)).not.toContain('secret'); }
+    try {
+      checkLocalMode(PG, '', false);
+    } catch (e) {
+      expect(String((e as Error).message)).not.toContain('secret');
+    }
   });
 });

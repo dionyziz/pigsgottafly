@@ -168,7 +168,8 @@ const LIMIT_RE = /^(UNL|GND|MSL|SFC|GND ?\/ ?MSL|FL ?\d{2,3}|\d+ ?FT( (ALT|AMSL|
 const ACT_START =
   /^(H24|HJ\b|HN\b|SR\b|SR-|Daily|DLY|MON\b|MON:|TUE\b|WED\b|THU\b|FRI\b|SAT\b|SUN\b|Every\b|Activated\b|AMC [Mm]anageable|Not activated|FL \d+:|This area is used)/;
 
-const DANGLING = /\b(and|or|by|of|to|the|with|from|between|for|as|on|at|in|than|under|when|should|shall|be|may|is|are|which|that|until|till|except|unless|while|a|an|FRI)$/;
+const DANGLING =
+  /\b(and|or|by|of|to|the|with|from|between|for|as|on|at|in|than|under|when|should|shall|be|may|is|are|which|that|until|till|except|unless|while|a|an|FRI)$/;
 
 /** Does `next` continue the sentence on `prev` (a wrapped line), rather than start a new line? */
 function isWrap(prev: string, next: string): boolean {
@@ -220,10 +221,11 @@ const SECTION = /^\s*(5\.\d\.\d)(?!\.\d)\s+\S/;
 
 function headerX(header: string[], words: string[]): number {
   let best = Infinity;
-  for (const l of header) for (const w of words) {
-    const i = l.indexOf(w);
-    if (i >= 0) best = Math.min(best, i);
-  }
+  for (const l of header)
+    for (const w of words) {
+      const i = l.indexOf(w);
+      if (i >= 0) best = Math.min(best, i);
+    }
   return best;
 }
 
@@ -301,7 +303,14 @@ interface RawArea {
   sector?: boolean;
 }
 
-const KIND_OF: Record<string, Kind> = { '5.1.1': 'P', '5.1.2': 'R', '5.1.3': 'D', '5.1.4': 'D', '5.2.1': 'MIL', '5.2.2': 'MIL' };
+const KIND_OF: Record<string, Kind> = {
+  '5.1.1': 'P',
+  '5.1.2': 'R',
+  '5.1.3': 'D',
+  '5.1.4': 'D',
+  '5.2.1': 'MIL',
+  '5.2.2': 'MIL',
+};
 
 /** Hand-checked fixes for entries the column layout cannot express. */
 const OVERRIDES: Record<string, Partial<RefArea>> = {
@@ -375,7 +384,8 @@ function limitsOf(a: RawArea, warn: (m: string) => void): { upper: string; lower
   const vals = a.limits.filter((l) => LIMIT_RE.test(l));
   const junk = a.limits.filter((l) => !LIMIT_RE.test(l));
   if (junk.length) warn(`${a.id}: unexpected text in the limits column: ${junk.join(' | ')}`);
-  if (vals.length !== 2 && !OVERRIDES[a.id]?.upper) warn(`${a.id}: ${vals.length} vertical limits (${vals.join(', ')})`);
+  if (vals.length !== 2 && !OVERRIDES[a.id]?.upper)
+    warn(`${a.id}: ${vals.length} vertical limits (${vals.join(', ')})`);
   return { upper: vals[0] ?? '', lower: vals[1] ?? '' };
 }
 
@@ -411,7 +421,8 @@ function emit(raws: RawArea[], source: string, warn: (m: string) => void): RefAr
         source,
         ...OVERRIDES[p.id],
       };
-      if (!area.circle && !area.polygon && !area.geometryNote) area.geometryNote = 'Lateral limits could not be parsed; not drawn';
+      if (!area.circle && !area.polygon && !area.geometryNote)
+        area.geometryNote = 'Lateral limits could not be parsed; not drawn';
       out.push(area);
     }
   }
@@ -438,13 +449,25 @@ interface Raw53 {
   subs: Raw53[];
 }
 
-const slug = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
+const slug = (s: string) =>
+  s
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 export function parseEnr53(text: string, warn: (m: string) => void = () => {}): RefArea[] {
   const raws: Raw53[] = [];
   let main: Raw53 | null = null;
   let cur: Raw53 | null = null;
-  const blank = (name: string): Raw53 => ({ name, lateral: [], limits: [], activity: [], authority: [], remarks: [], subs: [] });
+  const blank = (name: string): Raw53 => ({
+    name,
+    lateral: [],
+    limits: [],
+    activity: [],
+    authority: [],
+    remarks: [],
+    subs: [],
+  });
   for (const row of readTable(text, 5)) {
     if (row.section !== '5.3.1') continue;
     const [c1, c2, c3, c4, c5] = row.cols;
@@ -515,7 +538,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   for (const a of areas) {
     if (ids.has(a.id)) warn(`duplicate id ${a.id}`);
     ids.add(a.id);
-    if (a.geometryNote) console.error(`${a.circle || a.polygon ? 'approximate' : 'NOT DRAWN'}: ${a.id} ${a.name}: ${a.geometryNote}`);
+    if (a.geometryNote)
+      console.error(`${a.circle || a.polygon ? 'approximate' : 'NOT DRAWN'}: ${a.id} ${a.name}: ${a.geometryNote}`);
     if (!a.upper || !a.lower) console.error(`missing limits: ${a.id}`);
   }
   const counts: Record<string, number> = {};

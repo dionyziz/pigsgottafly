@@ -26,7 +26,20 @@ interface CommonProps {
   invalid?: boolean;
 }
 
-export function AerodromeTextInput({ value, onChange, name, id, required, placeholder = 'ICAO or name, e.g. LGTT', autoFocus, disabled, ariaLabel, testId, status = true, invalid }: CommonProps & {
+export function AerodromeTextInput({
+  value,
+  onChange,
+  name,
+  id,
+  required,
+  placeholder = 'ICAO or name, e.g. LGTT',
+  autoFocus,
+  disabled,
+  ariaLabel,
+  testId,
+  status = true,
+  invalid,
+}: CommonProps & {
   value: string;
   onChange: (text: string, resolved: RefAerodrome | undefined) => void;
 }) {
@@ -43,22 +56,48 @@ export function AerodromeTextInput({ value, onChange, name, id, required, placeh
       onText={(t) => onChange(t, resolveAerodrome(t))}
       options={hits}
       optionKey={(a) => a.id}
-      renderOption={(a) => <><span className="code">{a.icao || '—'}</span><span className="nm">{a.name}</span></>}
+      renderOption={(a) => (
+        <>
+          <span className="code">{a.icao || '—'}</span>
+          <span className="nm">{a.name}</span>
+        </>
+      )}
       onPick={(a) => onChange(code(a), a)}
       suppress={exactOnly}
-      name={name} id={id} required={required} placeholder={placeholder} autoFocus={autoFocus} disabled={disabled} ariaLabel={ariaLabel} testId={testId}
+      name={name}
+      id={id}
+      required={required}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      disabled={disabled}
+      ariaLabel={ariaLabel}
+      testId={testId}
       inputClassName={(unknown && !listShown) || invalid ? 'invalid' : undefined}
       onOpenChange={setOpen}
     >
       {status && value.trim() ? (
-        resolved ? <div className="combo-hint ok" data-testid="aerodrome-status">{resolved.name}{resolved.elevFt != null ? ` · elevation ${resolved.elevFt} ft` : ''}</div>
-          : !listShown && <div className="combo-hint bad" data-testid="aerodrome-status">Not an aerodrome in the current AIP</div>
+        resolved ? (
+          <div className="combo-hint ok" data-testid="aerodrome-status">
+            {resolved.name}
+            {resolved.elevFt != null ? ` · elevation ${resolved.elevFt} ft` : ''}
+          </div>
+        ) : (
+          !listShown && (
+            <div className="combo-hint bad" data-testid="aerodrome-status">
+              Not an aerodrome in the current AIP
+            </div>
+          )
+        )
       ) : null}
     </Combobox>
   );
 }
 
-export function AerodromeInput({ value, onChange, ...rest }: CommonProps & {
+export function AerodromeInput({
+  value,
+  onChange,
+  ...rest
+}: CommonProps & {
   value: RefAerodrome | null;
   onChange: (a: RefAerodrome | null) => void;
 }) {
@@ -68,9 +107,13 @@ export function AerodromeInput({ value, onChange, ...rest }: CommonProps & {
     if ((resolveAerodrome(draft)?.id ?? null) !== (value?.id ?? null)) setDraft(value ? code(value) : '');
   }, [value?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <AerodromeTextInput {...rest} value={draft} onChange={(t, a) => {
-      setDraft(t);
-      if ((a?.id ?? null) !== (value?.id ?? null)) onChange(a ?? null);
-    }} />
+    <AerodromeTextInput
+      {...rest}
+      value={draft}
+      onChange={(t, a) => {
+        setDraft(t);
+        if ((a?.id ?? null) !== (value?.id ?? null)) onChange(a ?? null);
+      }}
+    />
   );
 }

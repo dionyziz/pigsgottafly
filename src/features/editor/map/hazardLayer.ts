@@ -21,7 +21,10 @@ export interface MapHazard {
 const SRC = 'wx-hazards';
 export const HAZARD_LAYER_IDS = ['wx-hazards-band', 'wx-hazards-ring'] as const;
 
-const lerp = (a: LatLon, b: LatLon, f: number): [number, number] => [a.lon + (b.lon - a.lon) * f, a.lat + (b.lat - a.lat) * f];
+const lerp = (a: LatLon, b: LatLon, f: number): [number, number] => [
+  a.lon + (b.lon - a.lon) * f,
+  a.lat + (b.lat - a.lat) * f,
+];
 
 /** Map marks of the flight's hazards: legs[i] gives each leg's end points. */
 export function mapHazards(hazards: Hazard[], legs: { from: LatLon; to: LatLon }[]): MapHazard[] {
@@ -32,13 +35,24 @@ export function mapHazards(hazards: Hazard[], legs: { from: LatLon; to: LatLon }
     if (h.scope.type === 'leg') {
       const l = legs[h.scope.legIndex];
       if (!l) continue;
-      const a = h.fromFrac, b = Math.max(h.toFrac, a + 0.02);
-      out.push({ level: h.level, coords: [lerp(l.from, l.to, a), lerp(l.from, l.to, Math.min(1, b))], label, legIndex: h.scope.legIndex });
+      const a = h.fromFrac,
+        b = Math.max(h.toFrac, a + 0.02);
+      out.push({
+        level: h.level,
+        coords: [lerp(l.from, l.to, a), lerp(l.from, l.to, Math.min(1, b))],
+        label,
+        legIndex: h.scope.legIndex,
+      });
     } else {
       const l = h.scope.type === 'departure' ? legs[0] : legs[legs.length - 1];
       if (!l) continue;
       const p = h.scope.type === 'departure' ? l.from : l.to;
-      out.push({ level: h.level, coords: [[p.lon, p.lat]], label, legIndex: h.scope.type === 'departure' ? 0 : legs.length - 1 });
+      out.push({
+        level: h.level,
+        coords: [[p.lon, p.lat]],
+        label,
+        legIndex: h.scope.type === 'departure' ? 0 : legs.length - 1,
+      });
     }
   }
   return out;
@@ -65,11 +79,21 @@ export function hazardsByLeg(list: MapHazard[]): Map<number, LegHazards> {
 }
 
 /** Texts of the hazard marks under a screen point (deduplicated, danger first), or []. */
-export function hazardLabelsAt(m: MlMap, point: { x: number; y: number }, list: MapHazard[]): { level: 'danger' | 'warn'; label: string }[] {
+export function hazardLabelsAt(
+  m: MlMap,
+  point: { x: number; y: number },
+  list: MapHazard[],
+): { level: 'danger' | 'warn'; label: string }[] {
   if (!list.length || !m.getLayer('wx-hazards-band')) return [];
   let feats: { id?: string | number }[];
   try {
-    feats = m.queryRenderedFeatures([[point.x - 3, point.y - 3], [point.x + 3, point.y + 3]], { layers: [...HAZARD_LAYER_IDS] });
+    feats = m.queryRenderedFeatures(
+      [
+        [point.x - 3, point.y - 3],
+        [point.x + 3, point.y + 3],
+      ],
+      { layers: [...HAZARD_LAYER_IDS] },
+    );
   } catch {
     return [];
   }
@@ -88,9 +112,13 @@ function featureCollection(list: MapHazard[]) {
   return {
     type: 'FeatureCollection',
     features: list.map((h, i) => ({
-      type: 'Feature', id: i,
+      type: 'Feature',
+      id: i,
       properties: { level: h.level, label: h.label },
-      geometry: h.coords.length > 1 ? { type: 'LineString', coordinates: h.coords } : { type: 'Point', coordinates: h.coords[0] },
+      geometry:
+        h.coords.length > 1
+          ? { type: 'LineString', coordinates: h.coords }
+          : { type: 'Point', coordinates: h.coords[0] },
     })),
   };
 }
@@ -100,15 +128,37 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
   m.addSource(SRC, { type: 'geojson', data: featureCollection([]) as never });
   const color = ['match', ['get', 'level'], 'danger', CHART.hazard, CHART.hazardWarn] as never;
   const before = beforeId && m.getLayer(beforeId) ? beforeId : undefined;
-  m.addLayer({
-    id: 'wx-hazards-band', type: 'line', source: SRC, filter: ['==', ['geometry-type'], 'LineString'],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': color, 'line-opacity': 0.32, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 10, 10, 22] as never },
-  }, before);
-  m.addLayer({
-    id: 'wx-hazards-ring', type: 'circle', source: SRC, filter: ['==', ['geometry-type'], 'Point'],
-    paint: { 'circle-radius': 18, 'circle-opacity': 0, 'circle-stroke-color': color, 'circle-stroke-width': 3, 'circle-stroke-opacity': 0.75 },
-  }, before);
+  m.addLayer(
+    {
+      id: 'wx-hazards-band',
+      type: 'line',
+      source: SRC,
+      filter: ['==', ['geometry-type'], 'LineString'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': color,
+        'line-opacity': 0.32,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 10, 10, 22] as never,
+      },
+    },
+    before,
+  );
+  m.addLayer(
+    {
+      id: 'wx-hazards-ring',
+      type: 'circle',
+      source: SRC,
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: {
+        'circle-radius': 18,
+        'circle-opacity': 0,
+        'circle-stroke-color': color,
+        'circle-stroke-width': 3,
+        'circle-stroke-opacity': 0.75,
+      },
+    },
+    before,
+  );
 }
 
 /** Sets the hazard marks (adds the layers the first time). */

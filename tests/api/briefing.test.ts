@@ -18,34 +18,64 @@ import type { RoutePoint } from '../../src/shared/types';
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const SPACES = ((airspaces as any).airspaces ?? airspaces) as RefAirspace[];
 const ad = (id: string) => ADS.find((a) => a.id === id)!;
-const pt = (id: string, uid: string): RoutePoint => ({ uid, kind: 'aerodrome', refId: id, name: id, lat: ad(id).lat, lon: ad(id).lon });
+const pt = (id: string, uid: string): RoutePoint => ({
+  uid,
+  kind: 'aerodrome',
+  refId: id,
+  name: id,
+  lat: ad(id).lat,
+  lon: ad(id).lon,
+});
 
 // ---------------------------------------------------------------- mock autorouter
 
 const G = 2 ** 30 / 90; // degrees → Garmin units
-interface Call { method: string; path: string; body: any; auth: string | null }
+interface Call {
+  method: string;
+  path: string;
+  body: any;
+  auth: string | null;
+}
 function mockAutorouter() {
   const calls: Call[] = [];
-  const state = { notams: [] as any[], tokens: 0, failNotams: false, rejectTokenOnce: false, status: 'filed', fileError: '' };
-  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  const state = {
+    notams: [] as any[],
+    tokens: 0,
+    failNotams: false,
+    rejectTokenOnce: false,
+    status: 'filed',
+    fileError: '',
+  };
+  const json = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
     const path = url.pathname.replace(/^\/v1\.0/, '');
     const auth = new Headers(init?.headers).get('authorization');
-    const body = typeof init?.body === 'string' ? (path === '/oauth2/token' ? Object.fromEntries(new URLSearchParams(init.body)) : JSON.parse(init.body)) : null;
+    const body =
+      typeof init?.body === 'string'
+        ? path === '/oauth2/token'
+          ? Object.fromEntries(new URLSearchParams(init.body))
+          : JSON.parse(init.body)
+        : null;
     calls.push({ method: init?.method || 'GET', path: path + url.search, body, auth });
     if (path === '/oauth2/token') {
-      if (body.client_id !== 'app@example.com' || body.client_secret !== 's3cret') return json(400, { error: 'invalid_client', error_description: 'The client credentials are invalid' });
+      if (body.client_id !== 'app@example.com' || body.client_secret !== 's3cret')
+        return json(400, { error: 'invalid_client', error_description: 'The client credentials are invalid' });
       state.tokens++;
       return json(200, { access_token: `tok${state.tokens}`, expires_in: 3600, token_type: 'Bearer' });
     }
-    if (state.rejectTokenOnce) { state.rejectTokenOnce = false; return json(403, { error: 'invalid token' }); }
+    if (state.rejectTokenOnce) {
+      state.rejectTokenOnce = false;
+      return json(403, { error: 'invalid token' });
+    }
     if (!auth?.startsWith('Bearer tok')) return json(403, { error: 'invalid token' });
     if (path === '/notam') {
       if (state.failNotams) return json(500, { error: 'backend down' });
       const items = JSON.parse(url.searchParams.get('itemas')!) as string[];
       const rows = state.notams.filter((n) => n.itema.some((a: string) => items.includes(a)));
-      const off = +url.searchParams.get('offset')!, lim = +url.searchParams.get('limit')!;
+      const off = +url.searchParams.get('offset')!,
+        lim = +url.searchParams.get('limit')!;
       return json(200, { total: rows.length, rows: rows.slice(off, off + lim) });
     }
     if (path === '/flightplan/file' && init?.method === 'POST') {
@@ -64,16 +94,31 @@ function mockAutorouter() {
 /** The pilots of these tests who may use the autorouter account (AUTOROUTER_PILOTS). */
 const AR_PILOTS = ['na@example.com', 'nb@example.com', 'fa@example.com', 'fb@example.com'];
 async function start(autorouter: AutorouterSettings | null, autorouterPilots: string[] = AR_PILOTS) {
-  const s = createServer({ db: 'memory://', googleClientId: CID, googleKeys: async () => [JWK], autorouter, autorouterPilots, client: (_q, r) => { r.writeHead(404); r.end(); } });
+  const s = createServer({
+    db: 'memory://',
+    googleClientId: CID,
+    googleKeys: async () => [JWK],
+    autorouter,
+    autorouterPilots,
+    client: (_q, r) => {
+      r.writeHead(404);
+      r.end();
+    },
+  });
   await s.ready;
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
-  return { base: `http://127.0.0.1:${(s.address() as AddressInfo).port}/api/`, close: () => new Promise<void>((r) => s.close(() => r())) };
+  return {
+    base: `http://127.0.0.1:${(s.address() as AddressInfo).port}/api/`,
+    close: () => new Promise<void>((r) => s.close(() => r())),
+  };
 }
 
 const tomorrow = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 10);
 const at = (hhmm: string) => Date.parse(`${tomorrow}T${hhmm}:00Z`);
 async function newFlight(c: Client, route = [pt('LGTT', 'a'), pt('LGMG', 'b')]) {
-  const f = (await c.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', taxiOutMin: 10, taxiInMin: 10, route })).body;
+  const f = (
+    await c.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', taxiOutMin: 10, taxiInMin: 10, route })
+  ).body;
   expect(f.id).toBeTruthy();
   return f.id as string;
 }
@@ -82,14 +127,54 @@ async function newFlight(c: Client, route = [pt('LGTT', 'a'), pt('LGMG', 'b')]) 
 
 const mid = { lat: (ad('LGTT').lat + ad('LGMG').lat) / 2, lon: (ad('LGTT').lon + ad('LGMG').lon) / 2 };
 const notam = (o: Record<string, unknown>) => ({
-  id: Math.floor(Math.random() * 1e6), series: 'A', number: 1, year: 26, type: 'N', fir: 'LGGG', code23: 'RT', code45: 'CA', traffic: 'IV', purpose: 'BO', scope: 'W',
-  lower: 0, upper: 50, lat: Math.round(mid.lat * G), lon: Math.round(mid.lon * G), radius: 3, itema: ['LGGG'],
-  startvalidity: Math.floor(at('06:00') / 1000), endvalidity: Math.floor(at('12:00') / 1000), estimation: null, itemd: null, iteme: 'TEST', itemf: 'SFC', itemg: '5000FT AMSL', ...o,
+  id: Math.floor(Math.random() * 1e6),
+  series: 'A',
+  number: 1,
+  year: 26,
+  type: 'N',
+  fir: 'LGGG',
+  code23: 'RT',
+  code45: 'CA',
+  traffic: 'IV',
+  purpose: 'BO',
+  scope: 'W',
+  lower: 0,
+  upper: 50,
+  lat: Math.round(mid.lat * G),
+  lon: Math.round(mid.lon * G),
+  radius: 3,
+  itema: ['LGGG'],
+  startvalidity: Math.floor(at('06:00') / 1000),
+  endvalidity: Math.floor(at('12:00') / 1000),
+  estimation: null,
+  itemd: null,
+  iteme: 'TEST',
+  itemf: 'SFC',
+  itemg: '5000FT AMSL',
+  ...o,
 });
 
 describe('NOTAM decoding', () => {
   test('autorouter row → ICAO format with decoded Q code', () => {
-    const n = normalizeNotam(notam({ number: 825, code23: 'FA', code45: 'LT', itema: ['EDDS'], lat: 580814790, lon: 109959116, radius: 5, lower: 0, upper: 999, scope: 'A', purpose: 'NBO', traffic: 'IV', fir: 'EDGG', series: 'P', year: 17 }))!;
+    const n = normalizeNotam(
+      notam({
+        number: 825,
+        code23: 'FA',
+        code45: 'LT',
+        itema: ['EDDS'],
+        lat: 580814790,
+        lon: 109959116,
+        radius: 5,
+        lower: 0,
+        upper: 999,
+        scope: 'A',
+        purpose: 'NBO',
+        traffic: 'IV',
+        fir: 'EDGG',
+        series: 'P',
+        year: 17,
+      }),
+    )!;
     expect(n.key).toBe('P0825/17');
     expect(n.subject).toBe('Aerodrome');
     expect(n.condition).toBe('Limited to');
@@ -108,12 +193,23 @@ describe('NOTAM briefing route', () => {
   let a: Client, b: Client, fid: string;
   beforeAll(async () => {
     api = await start({ email: 'app@example.com', password: 's3cret', filing: false, fetch: ar.fetch });
-    a = client(api.base); b = client(api.base);
+    a = client(api.base);
+    b = client(api.base);
     await a.login('n-a', 'na@example.com');
     await b.login('n-b', 'nb@example.com');
     fid = await newFlight(a);
     ar.state.notams = [
-      notam({ number: 1, itema: ['LGMG'], code23: 'MR', code45: 'LC', lat: 0, lon: 0, radius: 5, upper: 999, iteme: 'RWY 08/26 CLSD' }),
+      notam({
+        number: 1,
+        itema: ['LGMG'],
+        code23: 'MR',
+        code45: 'LC',
+        lat: 0,
+        lon: 0,
+        radius: 5,
+        upper: 999,
+        iteme: 'RWY 08/26 CLSD',
+      }),
       notam({ number: 2 }), // on the route
       notam({ number: 3, lat: Math.round(35.3 * G), lon: Math.round(25.1 * G) }), // Crete
       notam({ number: 4, endvalidity: Math.floor(at('05:00') / 1000) }), // over before block-off − 1 h
@@ -134,7 +230,12 @@ describe('NOTAM briefing route', () => {
     expect(br.locations).toEqual(expect.arrayContaining(['LGTT', 'LGMG', 'LGGG', 'LGEL']));
     expect(br.locations).not.toContain('LGSR');
     const by = Object.fromEntries(br.notams.map((n: any) => [n.key, n]));
-    expect(br.notams.slice(0, 3).map((n: any) => n.key).sort()).toEqual(['A0001/26', 'A0002/26', 'A0008/26']);
+    expect(
+      br.notams
+        .slice(0, 3)
+        .map((n: any) => n.key)
+        .sort(),
+    ).toEqual(['A0001/26', 'A0002/26', 'A0008/26']);
     expect(by['A0001/26'].reasons).toEqual(['destination LGMG']);
     expect(by['A0002/26'].reasons[0]).toMatch(/on the route \(leg 1\)/);
     expect(by['A0002/26'].legIndex).toBe(0);
@@ -205,8 +306,13 @@ describe('without autorouter', () => {
     expect(s.enabled).toBe(false);
     expect(s.reason).toMatch(/not enabled yet/);
     expect(s.filing).toBeNull();
-    expect(s.addressees.map((x: any) => x.address)).toEqual(expect.arrayContaining(['LGMDZFZX', 'LGMDYXYK', 'LGTTZTZX', 'LGMGZPZX']));
-    const r = await a.call('POST', `flights/${fid}/filing`, { fpl: '(FPL-SXASV-VG -C172/L -S/C -LGTT0800 -N0092VFR DCT -LGMG0030 -0)', addresses: [] });
+    expect(s.addressees.map((x: any) => x.address)).toEqual(
+      expect.arrayContaining(['LGMDZFZX', 'LGMDYXYK', 'LGTTZTZX', 'LGMGZPZX']),
+    );
+    const r = await a.call('POST', `flights/${fid}/filing`, {
+      fpl: '(FPL-SXASV-VG -C172/L -S/C -LGTT0800 -N0092VFR DCT -LGMG0030 -0)',
+      addresses: [],
+    });
     expect(r.status).toBe(503);
     expect(r.body).toMatchObject({ enabled: false });
     const log = (await a.call('GET', 'filing/log')).body;
@@ -218,10 +324,12 @@ describe('filing via autorouter (mocked)', () => {
   const ar = mockAutorouter();
   let api: Awaited<ReturnType<typeof start>>;
   let a: Client, b: Client, fid: string;
-  const FPL = '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030\n-DOF/261116 REG/SXASV\n-E/0400 P/2 A/WHITE C/PILOT +3069000000)';
+  const FPL =
+    '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030\n-DOF/261116 REG/SXASV\n-E/0400 P/2 A/WHITE C/PILOT +3069000000)';
   beforeAll(async () => {
     api = await start({ email: 'app@example.com', password: 's3cret', filing: true, fetch: ar.fetch });
-    a = client(api.base); b = client(api.base);
+    a = client(api.base);
+    b = client(api.base);
     await a.login('f-a', 'fa@example.com');
     await b.login('f-b', 'fb@example.com');
     // the first aircraft becomes the default, so new flights are flown in SX-ASV (item 7 SXASV)
@@ -233,13 +341,24 @@ describe('filing via autorouter (mocked)', () => {
   test('input is validated', async () => {
     expect((await a.call('POST', `flights/${fid}/filing`, { fpl: 'hello', addresses: [] })).status).toBe(400);
     expect((await a.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: ['LGGG'] })).status).toBe(400);
-    expect((await a.call('POST', `flights/${fid}/filing`, { fpl: FPL.replace('PILOT', 'πιλότος'), addresses: [] })).status).toBe(400);
-    expect((await a.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: [], eobt: Date.now() + 30 * 24 * 3600e3 })).status).toBe(400);
+    expect(
+      (await a.call('POST', `flights/${fid}/filing`, { fpl: FPL.replace('PILOT', 'πιλότος'), addresses: [] })).status,
+    ).toBe(400);
+    expect(
+      (await a.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: [], eobt: Date.now() + 30 * 24 * 3600e3 }))
+        .status,
+    ).toBe(400);
   });
   test('file, poll, delay, cancel; every action logged', async () => {
     const s = (await a.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: ['lgggzfzx', 'LGTTZTZX'] })).body;
     expect(s.enabled).toBe(true);
-    expect(s.filing).toMatchObject({ provider: 'autorouter', providerId: '2763', status: 'filed', eobt: at('08:00'), addresses: ['LGGGZFZX', 'LGTTZTZX'] });
+    expect(s.filing).toMatchObject({
+      provider: 'autorouter',
+      providerId: '2763',
+      status: 'filed',
+      eobt: at('08:00'),
+      addresses: ['LGGGZFZX', 'LGTTZTZX'],
+    });
     const sent = ar.calls.find((c) => c.path === '/flightplan/file')!;
     expect(sent.body).toMatchObject({ fpl: FPL, addresses: ['LGGGZFZX', 'LGTTZTZX'], force: false });
     // filing twice is refused while the plan is open
@@ -270,13 +389,24 @@ describe('filing via autorouter (mocked)', () => {
     const f2 = await newFlight(a);
     const sent = () => ar.calls.filter((c) => c.path === '/flightplan/file').length;
     const before = sent();
-    for (const fpl of [FPL.replace('FPL-SXASV', 'FPL-SXABC'), FPL.replace('REG/SXASV', 'REG/SXABC'), FPL.replace('FPL-SXASV', 'FPL-OAL123')]) {
+    for (const fpl of [
+      FPL.replace('FPL-SXASV', 'FPL-SXABC'),
+      FPL.replace('REG/SXASV', 'REG/SXABC'),
+      FPL.replace('FPL-SXASV', 'FPL-OAL123'),
+    ]) {
       const r = await a.call('POST', `flights/${f2}/filing`, { fpl, addresses: [] });
       expect(r.status).toBe(400);
       expect(r.body.error).toMatch(/aircraft/);
     }
     // a flight without an aircraft cannot be filed at all
-    const f3 = (await a.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', aircraftId: null, route: [pt('LGTT', 'a'), pt('LGMG', 'b')] })).body.id;
+    const f3 = (
+      await a.call('POST', 'flights', {
+        date: tomorrow,
+        blockOff: '08:00',
+        aircraftId: null,
+        route: [pt('LGTT', 'a'), pt('LGMG', 'b')],
+      })
+    ).body.id;
     expect((await a.call('POST', `flights/${f3}/filing`, { fpl: FPL, addresses: [] })).status).toBe(400);
     expect(sent()).toBe(before);
   });
@@ -296,20 +426,45 @@ describe('AFTN addressees', () => {
   test('Tatoi → Megara: MAKEDONIA ACC, ATHINAI TMA, both aerodromes and Elefsina CTR crossed', () => {
     const out = generateAddressees({ ...ctx, route: [pt('LGTT', 'a'), pt('LGMG', 'b')], altitudesFt: [2500] });
     const addrs = out.map((x) => x.address);
-    expect(addrs).toEqual(expect.arrayContaining(['LGMDZFZX', 'LGMDYXYK', 'LGATZAZV', 'LGAVZTZX', 'LGAVZPZX', 'LGTTZTZX', 'LGTTZPZX', 'LGMGZTZX', 'LGMGZPZX', 'LGELZTZX', 'LGELZPZX']));
+    expect(addrs).toEqual(
+      expect.arrayContaining([
+        'LGMDZFZX',
+        'LGMDYXYK',
+        'LGATZAZV',
+        'LGAVZTZX',
+        'LGAVZPZX',
+        'LGTTZTZX',
+        'LGTTZPZX',
+        'LGMGZTZX',
+        'LGMGZPZX',
+        'LGELZTZX',
+        'LGELZPZX',
+      ]),
+    );
     expect(addrs).not.toContain('LGGGZFZX');
     expect(out.find((x) => x.address === 'LGTTZTZX')!.reasons).toContain('departure LGTT');
     expect(out.find((x) => x.address === 'LGELZPZX')!.reasons).toContain('LGEL CTR/ATZ');
   });
   test('Santorini → Iraklion: ATHINAI ACC, SANTORINI and IRAKLION TMAs', () => {
-    const addrs = generateAddressees({ ...ctx, route: [pt('LGSR', 'a'), pt('LGIR', 'b')], altitudesFt: [5500] }).map((x) => x.address);
-    expect(addrs).toEqual(expect.arrayContaining(['LGGGZFZX', 'LGGGYXYK', 'LGSRZAZX', 'LGIRZAZX', 'LGSRZTZX', 'LGIRZPZX']));
+    const addrs = generateAddressees({ ...ctx, route: [pt('LGSR', 'a'), pt('LGIR', 'b')], altitudesFt: [5500] }).map(
+      (x) => x.address,
+    );
+    expect(addrs).toEqual(
+      expect.arrayContaining(['LGGGZFZX', 'LGGGYXYK', 'LGSRZAZX', 'LGIRZAZX', 'LGSRZTZX', 'LGIRZPZX']),
+    );
     expect(addrs).not.toContain('LGMDZFZX');
   });
   test('Thessaloniki → Kozani: MAKEDONIA ACC and MAKEDONIA TMA; alternates added', () => {
-    const out = generateAddressees({ ...ctx, alternates: ['LGKV'], route: [pt('LGTS', 'a'), pt('LGKZ', 'b')], altitudesFt: [4500] });
+    const out = generateAddressees({
+      ...ctx,
+      alternates: ['LGKV'],
+      route: [pt('LGTS', 'a'), pt('LGKZ', 'b')],
+      altitudesFt: [4500],
+    });
     const addrs = out.map((x) => x.address);
-    expect(addrs).toEqual(expect.arrayContaining(['LGMDZFZX', 'LGMDYXYK', 'LGTSZAZX', 'LGTSZTZX', 'LGKZZTZX', 'LGKVZTZX', 'LGKVZPZX']));
+    expect(addrs).toEqual(
+      expect.arrayContaining(['LGMDZFZX', 'LGMDYXYK', 'LGTSZAZX', 'LGTSZTZX', 'LGKZZTZX', 'LGKVZTZX', 'LGKVZPZX']),
+    );
     expect(addrs).not.toContain('LGGGZFZX');
   });
   test('FIS boundary side', () => {
@@ -325,7 +480,8 @@ describe('AFTN addressees', () => {
 describe('autorouter account allow-list', () => {
   const ar = mockAutorouter();
   const settings = { email: 'app@example.com', password: 's3cret', filing: true, fetch: ar.fetch };
-  const FPL = '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030\n-DOF/261116 REG/SXASV\n-E/0400 P/2 A/WHITE C/PILOT +3069000000)';
+  const FPL =
+    '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030\n-DOF/261116 REG/SXASV\n-E/0400 P/2 A/WHITE C/PILOT +3069000000)';
   async function attempt(pilots: string[], email: string) {
     const api = await start(settings, pilots);
     try {
@@ -338,7 +494,9 @@ describe('autorouter account allow-list', () => {
         file: await c.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: [] }),
         notams: (await c.call('GET', `flights/${fid}/notams`)).body,
       };
-    } finally { await api.close(); }
+    } finally {
+      await api.close();
+    }
   }
   test('a pilot not on the list: no filing, no NOTAM quota, nothing sent to autorouter', async () => {
     const n = ar.calls.length;
@@ -368,7 +526,9 @@ describe('autorouter account allow-list', () => {
 describe('configFromEnv: AUTOROUTER_PILOTS', () => {
   test('parsed and lower-cased; unset falls back to ALLOWED_EMAILS in createApi', async () => {
     const { configFromEnv } = await import('../../api/_lib/app');
-    expect(configFromEnv({ AUTOROUTER_PILOTS: ' Pilot@Example.com , b@y.gr,', ALLOWED_EMAILS: 'x@y.z' }).autorouterPilots).toEqual(['pilot@example.com', 'b@y.gr']);
+    expect(
+      configFromEnv({ AUTOROUTER_PILOTS: ' Pilot@Example.com , b@y.gr,', ALLOWED_EMAILS: 'x@y.z' }).autorouterPilots,
+    ).toEqual(['pilot@example.com', 'b@y.gr']);
     expect(configFromEnv({ AUTOROUTER_PILOTS: '' }).autorouterPilots).toEqual([]);
     expect('autorouterPilots' in configFromEnv({ ALLOWED_EMAILS: 'x@y.z' })).toBe(false);
   });

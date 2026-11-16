@@ -6,7 +6,10 @@ import type { MapLayers, MapLayerToggle } from '../../../shared/mapLayers';
 import { BASE_MAPS, type BaseMapId } from './style';
 import './map.css';
 
-const GROUPS: { title: string; items: { key: MapLayerToggle; label: string; count?: 'prd' | 'mil' | 'act' | 'notams' }[] }[] = [
+const GROUPS: {
+  title: string;
+  items: { key: MapLayerToggle; label: string; count?: 'prd' | 'mil' | 'act' | 'notams' }[];
+}[] = [
   {
     title: 'Airspace',
     items: [
@@ -40,12 +43,26 @@ const GROUPS: { title: string; items: { key: MapLayerToggle; label: string; coun
 ];
 
 const TEST_ID: Record<MapLayerToggle, string> = {
-  fir: 'map-fir', tma: 'map-tma', zones: 'map-zones', aerodromes: 'map-aerodromes', vfrPoints: 'map-vfr-points',
-  vfrRoutes: 'map-vfr-routes', waypoints: 'map-waypoints', prd: 'map-areas-prd', mil: 'map-areas-mil', act: 'map-areas-act',
-  notams: 'map-notams', ofm: 'map-ofm',
+  fir: 'map-fir',
+  tma: 'map-tma',
+  zones: 'map-zones',
+  aerodromes: 'map-aerodromes',
+  vfrPoints: 'map-vfr-points',
+  vfrRoutes: 'map-vfr-routes',
+  waypoints: 'map-waypoints',
+  prd: 'map-areas-prd',
+  mil: 'map-areas-mil',
+  act: 'map-areas-act',
+  notams: 'map-notams',
+  ofm: 'map-ofm',
 };
 
-export function MapLayerToggles({ value, onChange, counts, extra }: {
+export function MapLayerToggles({
+  value,
+  onChange,
+  counts,
+  extra,
+}: {
   value: MapLayers;
   onChange(v: MapLayers): void;
   /** Counts shown beside the area toggles (the map). */
@@ -56,16 +73,28 @@ export function MapLayerToggles({ value, onChange, counts, extra }: {
   return (
     <div className="pgf-layers" data-testid="map-layer-toggles">
       <div className="pgf-layers-h">Base map</div>
-      <SegmentedControl<BaseMapId> sm label="Base map" value={value.base} onChange={(base) => onChange({ ...value, base })} testId="map-base"
-        options={BASE_MAPS.map((b) => ({ value: b.id, label: b.label }))} />
+      <SegmentedControl<BaseMapId>
+        sm
+        label="Base map"
+        value={value.base}
+        onChange={(base) => onChange({ ...value, base })}
+        testId="map-base"
+        options={BASE_MAPS.map((b) => ({ value: b.id, label: b.label }))}
+      />
       {GROUPS.map((g) => (
         <div key={g.title} className="pgf-layers-group" role="group" aria-label={g.title}>
           <div className="pgf-layers-h">{g.title}</div>
           {g.items.map((it) => {
             const n = it.count ? counts?.[it.count] : undefined;
             return (
-              <Check key={it.key} checked={value[it.key]} onChange={(v) => onChange({ ...value, [it.key]: v })} testId={TEST_ID[it.key]}>
-                {it.label}{n ? <span className="muted">{n}</span> : null}
+              <Check
+                key={it.key}
+                checked={value[it.key]}
+                onChange={(v) => onChange({ ...value, [it.key]: v })}
+                testId={TEST_ID[it.key]}
+              >
+                {it.label}
+                {n ? <span className="muted">{n}</span> : null}
               </Check>
             );
           })}

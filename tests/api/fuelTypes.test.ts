@@ -17,7 +17,8 @@ test('MOGAS and AVGAS litres are kept with the flight; bad values are 400', asyn
   expect(ac.status).toBe(201);
   expect(ac.body.fuel.types.map((g: any) => g.type)).toEqual(['AVGAS', 'MOGAS']);
   const f = (await c.call('POST', 'flights', { aircraftId: ac.body.id })).body;
-  const put = (options: unknown, fobL: number | null, version: number) => c.call('PUT', `flights/${f.id}`, { flight: { fobL, options: { ...f.options, ...(options as object) } }, version });
+  const put = (options: unknown, fobL: number | null, version: number) =>
+    c.call('PUT', `flights/${f.id}`, { flight: { fobL, options: { ...f.options, ...(options as object) } }, version });
 
   let r = await put({ fuelL: { AVGAS: 60, MOGAS: 40 } }, 100, 1);
   expect(r.status).toBe(200);

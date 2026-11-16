@@ -11,7 +11,13 @@ export type WarningFix = { label: string; to: string } | { label: string; onFix:
 const levelOf = (w: WarningEntry): WarningLevel => (typeof w === 'string' ? 'warn' : w.level);
 const textOf = (w: WarningEntry) => (typeof w === 'string' ? w : w.text);
 
-export function WarningList<W extends WarningEntry>({ warnings, fix, className, testId, icons = true }: {
+export function WarningList<W extends WarningEntry>({
+  warnings,
+  fix,
+  className,
+  testId,
+  icons = true,
+}: {
   warnings: readonly W[];
   /** The fix of a warning, if it has one. */
   fix?: (w: W) => WarningFix | null | undefined;
@@ -30,9 +36,16 @@ export function WarningList<W extends WarningEntry>({ warnings, fix, className, 
           <li key={`${i}:${textOf(w)}`} className={level}>
             {icons && <Icon name={level === 'info' ? 'info' : 'warn'} size={14} />}
             <span className="warning-text">{textOf(w)}</span>
-            {f && ('to' in f
-              ? <Link to={f.to} className="warning-fix" data-testid="warning-fix">{f.label} →</Link>
-              : <button type="button" className="linkish warning-fix" data-testid="warning-fix" onClick={f.onFix}>{f.label} →</button>)}
+            {f &&
+              ('to' in f ? (
+                <Link to={f.to} className="warning-fix" data-testid="warning-fix">
+                  {f.label} →
+                </Link>
+              ) : (
+                <button type="button" className="linkish warning-fix" data-testid="warning-fix" onClick={f.onFix}>
+                  {f.label} →
+                </button>
+              ))}
           </li>
         );
       })}

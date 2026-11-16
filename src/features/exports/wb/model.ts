@@ -161,7 +161,11 @@ export function printableSource(src: string): string {
  * station arm, which the loading table shows, so a different arm in the notes would contradict it.
  */
 export function envelopeNote(note: string): string {
-  const clauses = note.replace(/^\s*utility:\s*/i, '').replace(/\.\s*$/, '').split(/\s*;\s*/).filter(Boolean);
+  const clauses = note
+    .replace(/^\s*utility:\s*/i, '')
+    .replace(/\.\s*$/, '')
+    .split(/\s*;\s*/)
+    .filter(Boolean);
   const kept = clauses.filter((c) => !/\b\d+(?:\.\d+)?\s*m\b/.test(c));
   if (kept.length < clauses.length) kept.push('seats at the station arms in the table');
   return kept.join('; ');
@@ -195,16 +199,45 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   const categoryLabel = category === 'utility' ? 'Utility' : 'Normal';
   const pilotName = pilot?.fullName || doc.crew.find((c) => c.role === 'PIC')?.snapshot.fullName || '';
 
-  const emptyLine = (key: string, kind: WbLineKind, label: string): WbLine => ({ key, kind, label, note: '', massKg: null, armM: null, momentKgM: null, people: [], over: false });
+  const emptyLine = (key: string, kind: WbLineKind, label: string): WbLine => ({
+    key,
+    kind,
+    label,
+    note: '',
+    massKg: null,
+    armM: null,
+    momentKgM: null,
+    people: [],
+    over: false,
+  });
 
   if (!aircraft) {
     warnings.push('No aircraft chosen for this flight: the loading sheet cannot be computed.');
     return {
-      registration: '', makeModel: '', operator: '', date: fmtDate(doc.date), pilot: pilotName, route, category, categoryLabel,
-      datum: '', weighing: '', fuelLabel: '', lines: [],
-      takeoff: emptyLine('to', 'total', 'Total at take-off'), burn: emptyLine('burn', 'burn', 'Fuel used (taxi + trip)'),
-      landing: emptyLine('ldg', 'total', 'Total at landing'), totals: [], zeroFuel: null, checks: [],
-      verdict: 'incomplete', verdictText: 'No aircraft', mtowKg: NaN, limits: [], envelopes: [], warnings,
+      registration: '',
+      makeModel: '',
+      operator: '',
+      date: fmtDate(doc.date),
+      pilot: pilotName,
+      route,
+      category,
+      categoryLabel,
+      datum: '',
+      weighing: '',
+      fuelLabel: '',
+      lines: [],
+      takeoff: emptyLine('to', 'total', 'Total at take-off'),
+      burn: emptyLine('burn', 'burn', 'Fuel used (taxi + trip)'),
+      landing: emptyLine('ldg', 'total', 'Total at landing'),
+      totals: [],
+      zeroFuel: null,
+      checks: [],
+      verdict: 'incomplete',
+      verdictText: 'No aircraft',
+      mtowKg: NaN,
+      limits: [],
+      envelopes: [],
+      warnings,
     };
   }
 
@@ -212,8 +245,12 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   const fuelStation = mb.stations.find((s) => s.kind === 'fuel');
   // The fuel on board by type: one type → 'AVGAS 0.72 kg/L'; mixed → each type with its density.
   const load = calc.fuelLoad ?? fuelLoad(aircraft.fuel, calc.fuelTakeoffL, doc.options.fuelL);
-  const grades = load.parts.length ? load.parts.map((p) => ({ type: p.type, rho: p.densityKgPerL })) : [{ type: primaryFuel(aircraft.fuel).type, rho: primaryFuel(aircraft.fuel).densityKgPerL }];
-  const fuelLabel = grades.map((g) => `${g.type} ${g.rho > 0 ? `${trimNum(g.rho)} kg/L` : '(density not set)'}`).join(' + ');
+  const grades = load.parts.length
+    ? load.parts.map((p) => ({ type: p.type, rho: p.densityKgPerL }))
+    : [{ type: primaryFuel(aircraft.fuel).type, rho: primaryFuel(aircraft.fuel).densityKgPerL }];
+  const fuelLabel = grades
+    .map((g) => `${g.type} ${g.rho > 0 ? `${trimNum(g.rho)} kg/L` : '(density not set)'}`)
+    .join(' + ');
   const lines: WbLine[] = [];
 
   // People per seat station, from the manifest (names, seat labels, weights).
@@ -224,7 +261,12 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     const st = seat ? seat.station.id : null;
     if (!st) continue;
     const list = peopleBy.get(st) ?? [];
-    list.push({ role: c.role, name: c.snapshot.fullName || (c.role === 'PIC' ? 'Pilot in command' : 'Passenger'), seat: seat?.label ?? c.seat, massKg: c.snapshot.weightKg });
+    list.push({
+      role: c.role,
+      name: c.snapshot.fullName || (c.role === 'PIC' ? 'Pilot in command' : 'Passenger'),
+      seat: seat?.label ?? c.seat,
+      massKg: c.snapshot.weightKg,
+    });
     peopleBy.set(st, list);
   }
 
@@ -232,20 +274,47 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     const rows = wb.stationRows ?? wb.rows;
     const empty = rows[0];
     lines.push({
-      key: 'empty', kind: 'empty', label: 'Corrected empty weight',
-      note: [mb.weighingDate ? `weighed ${fmtDate(mb.weighingDate)}` : '', mb.includesOil ? 'incl. oil' : '', aircraft.fuel.unusableIncludedInEmptyMass ? 'incl. unusable fuel' : ''].filter(Boolean).join(', '),
-      massKg: empty.massKg, armM: empty.armM, momentKgM: empty.momentKgM, people: [], over: false,
+      key: 'empty',
+      kind: 'empty',
+      label: 'Corrected empty weight',
+      note: [
+        mb.weighingDate ? `weighed ${fmtDate(mb.weighingDate)}` : '',
+        mb.includesOil ? 'incl. oil' : '',
+        aircraft.fuel.unusableIncludedInEmptyMass ? 'incl. unusable fuel' : '',
+      ]
+        .filter(Boolean)
+        .join(', '),
+      massKg: empty.massKg,
+      armM: empty.armM,
+      momentKgM: empty.momentKgM,
+      people: [],
+      over: false,
     });
     const unusable = wb.rows.find((r) => r.label.startsWith('Unusable fuel'));
     if (unusable) {
-      lines.push({ key: 'unusable', kind: 'unusable', label: 'Unusable fuel', note: `${trimNum(aircraft.fuel.unusableL)} L, not in the weighing`, massKg: unusable.massKg, armM: unusable.armM, momentKgM: unusable.momentKgM, people: [], over: false });
+      lines.push({
+        key: 'unusable',
+        kind: 'unusable',
+        label: 'Unusable fuel',
+        note: `${trimNum(aircraft.fuel.unusableL)} L, not in the weighing`,
+        massKg: unusable.massKg,
+        armM: unusable.armM,
+        momentKgM: unusable.momentKgM,
+        people: [],
+        over: false,
+      });
     }
     const fuelRow = rows[rows.length - 1];
     const usable = aircraft.fuel.usableL;
     lines.push({
-      key: 'fuel', kind: 'fuel', label: `Fuel (${fuelLabel})`,
+      key: 'fuel',
+      kind: 'fuel',
+      label: `Fuel (${fuelLabel})`,
       note: `${load.mixed ? `${load.parts.map((p) => `${trimNum(p.litres)} L ${p.type}`).join(' + ')} = ` : ''}${trimNum(calc.fuelTakeoffL)} L on board${usable > 0 ? ` · max ${trimNum(usable)} L usable` : ''}`,
-      massKg: fuelRow.massKg, armM: fuelStation?.armM ?? fuelRow.armM, momentKgM: fuelRow.momentKgM, people: [],
+      massKg: fuelRow.massKg,
+      armM: fuelStation?.armM ?? fuelRow.armM,
+      momentKgM: fuelRow.momentKgM,
+      people: [],
       over: usable > 0 && calc.fuelTakeoffL > usable + 1e-9,
     });
     for (const st of mb.stations) {
@@ -254,16 +323,24 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
       const mass = r?.massKg ?? 0;
       const notes: string[] = [];
       if (st.maxKg != null) notes.push(`max ${trimNum(st.maxKg)} kg`);
-      for (const lim of mb.combinedLimits) if (lim.stations[0] === st.id && lim.stations.length > 1) {
-        notes.push(`${lim.stations.map((id) => mb.stations.find((s) => s.id === id)?.name ?? id).join(' + ')} max ${trimNum(lim.maxKg)} kg`);
-      }
+      for (const lim of mb.combinedLimits)
+        if (lim.stations[0] === st.id && lim.stations.length > 1) {
+          notes.push(
+            `${lim.stations.map((id) => mb.stations.find((s) => s.id === id)?.name ?? id).join(' + ')} max ${trimNum(lim.maxKg)} kg`,
+          );
+        }
       if (st.kind === 'baggage') {
         const bag = doc.baggageKg[st.id];
         if (!(bag > 0)) notes.push('empty');
       }
       lines.push({
-        key: st.id, kind: 'station', label: st.name, note: notes.join(' · '),
-        massKg: mass, armM: r && mass > 0 ? r.armM : st.armM, momentKgM: r?.momentKgM ?? 0,
+        key: st.id,
+        kind: 'station',
+        label: st.name,
+        note: notes.join(' · '),
+        massKg: mass,
+        armM: r && mass > 0 ? r.armM : st.armM,
+        momentKgM: r?.momentKgM ?? 0,
         people: peopleBy.get(st.id) ?? [],
         over: st.maxKg != null && mass > st.maxKg + 1e-9,
       });
@@ -275,39 +352,100 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   const fuelArm = fuelStation?.armM ?? 0;
   const burnL = wb ? calc.fuelTakeoffL - Math.max(0, calc.fuelLandingL) : 0;
   const burnKg = wb ? wb.takeoff.massKg - wb.landing.massKg : NaN;
-  const takeoff: WbLine = { key: 'to', kind: 'total', label: 'Total at take-off', note: mb.mtowKg > 0 ? `MTOW ${trimNum(mb.mtowKg)} kg` : '', ...pt(wb?.takeoff), people: [], over: !!wb && mb.mtowKg > 0 && wb.takeoff.massKg > mb.mtowKg + 1e-9 };
+  const takeoff: WbLine = {
+    key: 'to',
+    kind: 'total',
+    label: 'Total at take-off',
+    note: mb.mtowKg > 0 ? `MTOW ${trimNum(mb.mtowKg)} kg` : '',
+    ...pt(wb?.takeoff),
+    people: [],
+    over: !!wb && mb.mtowKg > 0 && wb.takeoff.massKg > mb.mtowKg + 1e-9,
+  };
   const burn: WbLine = {
-    key: 'burn', kind: 'burn', label: 'Fuel used: taxi + trip',
-    note: wb ? `${trimNum(burnL)} L${calc.fuelLandingL < 0 ? ' (all fuel on board: not enough for the trip)' : ''}` : '',
-    massKg: wb ? -burnKg : null, armM: wb ? fuelArm : null, momentKgM: wb ? -(wb.takeoff.momentKgM - wb.landing.momentKgM) : null, people: [], over: false,
+    key: 'burn',
+    kind: 'burn',
+    label: 'Fuel used: taxi + trip',
+    note: wb
+      ? `${trimNum(burnL)} L${calc.fuelLandingL < 0 ? ' (all fuel on board: not enough for the trip)' : ''}`
+      : '',
+    massKg: wb ? -burnKg : null,
+    armM: wb ? fuelArm : null,
+    momentKgM: wb ? -(wb.takeoff.momentKgM - wb.landing.momentKgM) : null,
+    people: [],
+    over: false,
   };
   const mlw = mb.mlwKg ?? mb.mtowKg;
-  const landing: WbLine = { key: 'ldg', kind: 'total', label: 'Total at landing', note: `${trimNum(Math.max(0, calc.fuelLandingL))} L remaining`, ...pt(wb?.landing), people: [], over: !!wb && mlw > 0 && wb.landing.massKg > mlw + 1e-9 };
+  const landing: WbLine = {
+    key: 'ldg',
+    kind: 'total',
+    label: 'Total at landing',
+    note: `${trimNum(Math.max(0, calc.fuelLandingL))} L remaining`,
+    ...pt(wb?.landing),
+    people: [],
+    over: !!wb && mlw > 0 && wb.landing.massKg > mlw + 1e-9,
+  };
 
   // Intermediate full stops: per sector, the fuel used and the total at its landing.
   const stops = wb ? calc.stops.filter((x) => x.wbBefore && x.wbAfter) : [];
   const stopName = (x: (typeof stops)[number]) => x.landing.aerodrome?.icao || x.point.name;
   const totals: WbLine[] = [takeoff];
   if (wb && stops.length === calc.stops.length && stops.length) {
-    const sectorBurn = (key: string, to: WbPoint, ldg: WbPoint, litres: number, where: string, short: boolean): WbLine => ({
-      key, kind: 'burn', label: `Fuel used to ${where}: taxi + trip`,
+    const sectorBurn = (
+      key: string,
+      to: WbPoint,
+      ldg: WbPoint,
+      litres: number,
+      where: string,
+      short: boolean,
+    ): WbLine => ({
+      key,
+      kind: 'burn',
+      label: `Fuel used to ${where}: taxi + trip`,
       note: `${trimNum(litres)} L${short ? ' (all fuel on board: not enough for the sector)' : ''}`,
-      massKg: -(to.massKg - ldg.massKg), armM: fuelArm, momentKgM: -(to.momentKgM - ldg.momentKgM), people: [], over: false,
+      massKg: -(to.massKg - ldg.massKg),
+      armM: fuelArm,
+      momentKgM: -(to.momentKgM - ldg.momentKgM),
+      people: [],
+      over: false,
     });
     stops.forEach((x, k) => {
       const at = x.wbBefore!.landing;
       const limit = Math.min(mlw > 0 ? mlw : Infinity, mb.mtowKg > 0 ? mb.mtowKg : Infinity);
-      totals.push(sectorBurn(`burn${k}`, k === 0 ? wb.takeoff : stops[k - 1].wbAfter!.takeoff, at, x.before.fuelTakeoffL - Math.max(0, x.before.fuelLandingL), stopName(x), x.before.fuelLandingL < 0));
+      totals.push(
+        sectorBurn(
+          `burn${k}`,
+          k === 0 ? wb.takeoff : stops[k - 1].wbAfter!.takeoff,
+          at,
+          x.before.fuelTakeoffL - Math.max(0, x.before.fuelLandingL),
+          stopName(x),
+          x.before.fuelLandingL < 0,
+        ),
+      );
       totals.push({
-        key: `stop${k}`, kind: 'total', label: `Total at ${stopName(x)} (${x.kind === 'touch-and-go' ? 'touch-and-go' : 'stop'})`,
+        key: `stop${k}`,
+        kind: 'total',
+        label: `Total at ${stopName(x)} (${x.kind === 'touch-and-go' ? 'touch-and-go' : 'stop'})`,
         note: `${trimNum(Math.max(0, x.before.fuelLandingL))} L remaining · landing and take-off`,
-        massKg: at.massKg, armM: at.armM, momentKgM: at.momentKgM, people: [], over: at.massKg > limit + 1e-9,
+        massKg: at.massKg,
+        armM: at.armM,
+        momentKgM: at.momentKgM,
+        people: [],
+        over: at.massKg > limit + 1e-9,
       });
     });
     const lastSector = calc.sectors[calc.sectors.length - 1];
     const fromLast = stops[stops.length - 1].wbAfter!.takeoff;
     const destName = calc.arrival.aerodrome?.icao || calc.arrival.point?.name || 'landing';
-    totals.push(sectorBurn('burnLast', fromLast, wb.landing, lastSector.fuelTakeoffL - Math.max(0, lastSector.fuelLandingL), destName, lastSector.fuelLandingL < 0));
+    totals.push(
+      sectorBurn(
+        'burnLast',
+        fromLast,
+        wb.landing,
+        lastSector.fuelTakeoffL - Math.max(0, lastSector.fuelLandingL),
+        destName,
+        lastSector.fuelLandingL < 0,
+      ),
+    );
   } else totals.push(burn);
   totals.push(landing);
 
@@ -315,22 +453,41 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   // with the same mass: MLW, MTOW and the envelope), landing.
   const checks: WbPhaseCheck[] = [];
   if (wb) {
-    const both = (a: WbCheck, b: WbCheck): WbCheck => ({ inEnvelope: a.inEnvelope && b.inEnvelope, massOk: a.massOk && b.massOk });
+    const both = (a: WbCheck, b: WbCheck): WbCheck => ({
+      inEnvelope: a.inEnvelope && b.inEnvelope,
+      massOk: a.massOk && b.massOk,
+    });
     const phaseCheck = (phase: 'takeoff' | 'landing'): WbPhaseCheck => {
       const normal = wb.normal[phase];
       const utility = wb.utility ? wb.utility[phase] : null;
       const chosen = category === 'utility' ? utility : normal;
       const breached = wb.limitBreaches.some((b) => b.phase === phase);
-      return { phase, label: phase === 'takeoff' ? 'Take-off' : 'Landing', point: wb[phase], normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached };
+      return {
+        phase,
+        label: phase === 'takeoff' ? 'Take-off' : 'Landing',
+        point: wb[phase],
+        normal,
+        utility,
+        ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached,
+      };
     };
     checks.push(phaseCheck('takeoff'));
     for (const x of stops) {
-      const b = x.wbBefore!, a = x.wbAfter!;
+      const b = x.wbBefore!,
+        a = x.wbAfter!;
       const normal = both(b.normal.landing, a.normal.takeoff);
       const utility = b.utility && a.utility ? both(b.utility.landing, a.utility.takeoff) : null;
       const chosen = category === 'utility' ? utility : normal;
-      const breached = b.limitBreaches.some((r) => r.phase === 'landing') || a.limitBreaches.some((r) => r.phase === 'takeoff');
-      checks.push({ phase: 'stop', label: `${x.kind === 'touch-and-go' ? 'Touch-and-go' : 'Stop'} ${stopName(x)}`, point: b.landing, normal, utility, ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached });
+      const breached =
+        b.limitBreaches.some((r) => r.phase === 'landing') || a.limitBreaches.some((r) => r.phase === 'takeoff');
+      checks.push({
+        phase: 'stop',
+        label: `${x.kind === 'touch-and-go' ? 'Touch-and-go' : 'Stop'} ${stopName(x)}`,
+        point: b.landing,
+        normal,
+        utility,
+        ok: !!chosen && chosen.inEnvelope && chosen.massOk && !breached,
+      });
     }
     checks.push(phaseCheck('landing'));
   }
@@ -341,7 +498,10 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   if (wb) for (const t of wb.warnings) if (!warnings.includes(t)) warnings.push(t);
   for (const x of stops) {
     // The stop's own phase breaches (MLW / MTOW / envelope there); loading limits are already listed.
-    const own = [...x.wbBefore!.limitBreaches.filter((r) => r.phase === 'landing'), ...x.wbAfter!.limitBreaches.filter((r) => r.phase === 'takeoff')];
+    const own = [
+      ...x.wbBefore!.limitBreaches.filter((r) => r.phase === 'landing'),
+      ...x.wbAfter!.limitBreaches.filter((r) => r.phase === 'takeoff'),
+    ];
     for (const r of own) {
       const t = `At ${stopName(x)} (${x.kind === 'touch-and-go' ? 'touch-and-go' : 'stop'}): ${r.text}`;
       if (!warnings.includes(t)) warnings.push(t);
@@ -353,14 +513,26 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
 
   let verdict: WbSheetModel['verdict'];
   let verdictText: string;
-  if (!wb || !(mb.emptyMassKg > 0)) { verdict = 'incomplete'; verdictText = 'Cannot be computed'; }
-  else if (wb.limitBreaches.length || checks.some((c) => !c.ok) || totals.some((l) => l.over) || lines.some((l) => l.over)) {
+  if (!wb || !(mb.emptyMassKg > 0)) {
+    verdict = 'incomplete';
+    verdictText = 'Cannot be computed';
+  } else if (
+    wb.limitBreaches.length ||
+    checks.some((c) => !c.ok) ||
+    totals.some((l) => l.over) ||
+    lines.some((l) => l.over)
+  ) {
     // Every published limit counts: envelope and mass, MTOW/MLW, station and combined maxima,
     // seat counts and the utility-category restrictions (wb.limitBreaches).
     verdict = 'fail';
     verdictText = `Outside limits (${categoryLabel.toLowerCase()} category)`;
-  } else if (missingWeights.length) { verdict = 'incomplete'; verdictText = `Weight missing for ${missingWeights.length} ${missingWeights.length > 1 ? 'people' : 'person'}`; }
-  else { verdict = 'pass'; verdictText = `Within limits (${categoryLabel.toLowerCase()} category)`; }
+  } else if (missingWeights.length) {
+    verdict = 'incomplete';
+    verdictText = `Weight missing for ${missingWeights.length} ${missingWeights.length > 1 ? 'people' : 'person'}`;
+  } else {
+    verdict = 'pass';
+    verdictText = `Within limits (${categoryLabel.toLowerCase()} category)`;
+  }
 
   const limits: string[] = [];
   if (mb.mtowKg > 0) limits.push(`MTOW ${trimNum(mb.mtowKg)} kg`);
@@ -369,8 +541,14 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     const note = envelopeNote(mb.envelopes.utility.notes ?? '');
     limits.push(`Utility max ${trimNum(mb.envelopes.utility.maxKg)} kg${note ? ` (${note})` : ''}`);
   }
-  for (const lim of mb.combinedLimits) limits.push(`${lim.stations.map((id) => mb.stations.find((s) => s.id === id)?.name ?? id).join(' + ')} ≤ ${trimNum(lim.maxKg)} kg`);
-  for (const [env, label] of [[mb.envelopes.normal, 'Normal'], [mb.envelopes.utility, 'Utility']] as const) {
+  for (const lim of mb.combinedLimits)
+    limits.push(
+      `${lim.stations.map((id) => mb.stations.find((s) => s.id === id)?.name ?? id).join(' + ')} ≤ ${trimNum(lim.maxKg)} kg`,
+    );
+  for (const [env, label] of [
+    [mb.envelopes.normal, 'Normal'],
+    [mb.envelopes.utility, 'Utility'],
+  ] as const) {
     const t = momentTopNote(env, label);
     if (t) limits.push(t);
   }
@@ -410,25 +588,46 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
 // Chart scale
 
 export interface ChartDomain {
-  x0: number; x1: number; y0: number; y1: number;
-  xTicks: number[]; yTicks: number[];
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  xTicks: number[];
+  yTicks: number[];
 }
 
 /** Axis ranges covering the envelopes and the points, on round numbers (100 kg·m, 50 kg). */
 export function chartDomain(envs: ChartEnvelope[], points: WbPoint[]): ChartDomain {
   const xs: number[] = [];
   const ys: number[] = [];
-  for (const e of envs) for (const [x, y] of e.outline) { xs.push(x); ys.push(y); }
-  for (const p of points) if (fin(p.momentKgM) && fin(p.massKg) && p.massKg > 0) { xs.push(p.momentKgM); ys.push(p.massKg); }
-  if (!xs.length) { xs.push(600, 1300); ys.push(650, 1100); }
+  for (const e of envs)
+    for (const [x, y] of e.outline) {
+      xs.push(x);
+      ys.push(y);
+    }
+  for (const p of points)
+    if (fin(p.momentKgM) && fin(p.massKg) && p.massKg > 0) {
+      xs.push(p.momentKgM);
+      ys.push(p.massKg);
+    }
+  if (!xs.length) {
+    xs.push(600, 1300);
+    ys.push(650, 1100);
+  }
   const xStep = 100;
   const yStep = 50;
   let x0 = Math.floor((Math.min(...xs) - 20) / xStep) * xStep;
   let x1 = Math.ceil((Math.max(...xs) + 20) / xStep) * xStep;
   let y0 = Math.floor((Math.min(...ys) - 10) / yStep) * yStep;
   let y1 = Math.ceil((Math.max(...ys) + 25) / yStep) * yStep;
-  if (x1 - x0 < 2 * xStep) { x0 -= xStep; x1 += xStep; }
-  if (y1 - y0 < 2 * yStep) { y0 -= yStep; y1 += yStep; }
+  if (x1 - x0 < 2 * xStep) {
+    x0 -= xStep;
+    x1 += xStep;
+  }
+  if (y1 - y0 < 2 * yStep) {
+    y0 -= yStep;
+    y1 += yStep;
+  }
   const xTicks: number[] = [];
   for (let x = x0; x <= x1 + 1e-9; x += xStep) xTicks.push(x);
   const yTicks: number[] = [];

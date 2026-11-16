@@ -109,7 +109,10 @@ async function migrateLocked(db: Db, list: Migration[]): Promise<string[]> {
       try {
         await s.query('SELECT pg_advisory_xact_lock($1)', [LOCK_KEY]);
         const [row] = await s.query('SELECT 1 AS x FROM schema_migrations WHERE name = $1', [m.name]);
-        if (row) { await s.exec('COMMIT'); continue; }
+        if (row) {
+          await s.exec('COMMIT');
+          continue;
+        }
         if (m.sql) await s.exec(m.sql);
         if (m.run) await m.run(s);
         await s.query('INSERT INTO schema_migrations (name, applied) VALUES ($1, $2)', [m.name, Date.now()]);

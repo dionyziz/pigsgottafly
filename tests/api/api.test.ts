@@ -23,7 +23,18 @@ const aircraftBody = (reg: string) => {
   ac.registration = reg;
   ac.cruiseTasKt = 92;
   ac.patternTasKt = 80;
-  ac.massBalance.stations = [{ id: 'front', name: 'Front', kind: 'seat', armM: 0.94, seats: [{ id: 'front-left', label: 'Front left' }, { id: 'front-right', label: 'Front right' }] }];
+  ac.massBalance.stations = [
+    {
+      id: 'front',
+      name: 'Front',
+      kind: 'seat',
+      armM: 0.94,
+      seats: [
+        { id: 'front-left', label: 'Front left' },
+        { id: 'front-right', label: 'Front right' },
+      ],
+    },
+  ];
   return ac;
 };
 
@@ -63,9 +74,20 @@ describe('session', () => {
 
 describe('profile', () => {
   test('updates and validates', async () => {
-    const r = await a.call('PUT', 'me', { fullName: 'Alice Pilot', phone: '+30 690 000 0000', homeAerodrome: 'lgtt', weightKg: 70, settings: { taxiOutMin: 15, taxiInMin: 10, reserveMin: 60 } });
+    const r = await a.call('PUT', 'me', {
+      fullName: 'Alice Pilot',
+      phone: '+30 690 000 0000',
+      homeAerodrome: 'lgtt',
+      weightKg: 70,
+      settings: { taxiOutMin: 15, taxiInMin: 10, reserveMin: 60 },
+    });
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ fullName: 'Alice Pilot', homeAerodrome: 'LGTT', weightKg: 70, settings: { taxiOutMin: 15, taxiInMin: 10, reserveMin: 60, windModel: 'ecmwf_ifs025' } });
+    expect(r.body).toMatchObject({
+      fullName: 'Alice Pilot',
+      homeAerodrome: 'LGTT',
+      weightKg: 70,
+      settings: { taxiOutMin: 15, taxiInMin: 10, reserveMin: 60, windModel: 'ecmwf_ifs025' },
+    });
     expect((await a.call('PUT', 'me', { weightKg: -3 })).status).toBe(400);
     expect((await a.call('PUT', 'me', { dateOfBirth: '1990-13-45' })).status).toBe(400);
     expect((await b.call('GET', 'me')).body.fullName).toBe('');
@@ -77,28 +99,38 @@ describe('profile', () => {
     const me = await c.call('PUT', 'me', { homeAerodrome: 'LGTT', settings: { defaultAlternate: 'lgav' } });
     expect(me.body.settings.defaultAlternate).toBe('LGAV');
     expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual(['LGAV']);
-    expect((await c.call('POST', 'flights', { options: { alternates: ['LGMG'] } })).body.options.alternates).toEqual(['LGMG']);
+    expect((await c.call('POST', 'flights', { options: { alternates: ['LGMG'] } })).body.options.alternates).toEqual([
+      'LGMG',
+    ]);
     await c.call('PUT', 'me', { homeAerodrome: 'LGAV' });
     expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
     await c.call('PUT', 'me', { settings: { defaultAlternate: null } });
     await c.call('PUT', 'me', { homeAerodrome: 'LGTT' });
     expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
   });
-  test('map layers: the profile\'s choice goes to new flights; each flight keeps its own', async () => {
+  test("map layers: the profile's choice goes to new flights; each flight keeps its own", async () => {
     const c = client(api.base);
     await c.login('sub-layers', 'layers@example.com');
     const old = (await c.call('POST', 'flights', {})).body;
     expect(old.options.mapLayers).toBeUndefined();
     expect((await c.call('PUT', 'me', { settings: { mapLayers: 'all' } })).status).toBe(400);
-    const me = await c.call('PUT', 'me', { settings: { mapLayers: { base: 'terrain', vfrRoutes: false, junk: true } } });
+    const me = await c.call('PUT', 'me', {
+      settings: { mapLayers: { base: 'terrain', vfrRoutes: false, junk: true } },
+    });
     expect(me.body.settings.mapLayers).toEqual({ ...DEFAULT_MAP_LAYERS, base: 'terrain', vfrRoutes: false });
     const f = (await c.call('POST', 'flights', {})).body;
     expect(f.options.mapLayers).toEqual(me.body.settings.mapLayers);
     const mine = { ...DEFAULT_MAP_LAYERS, tma: false };
-    const put = await c.call('PUT', `flights/${f.id}`, { flight: { options: { ...f.options, mapLayers: mine } }, version: f.version });
+    const put = await c.call('PUT', `flights/${f.id}`, {
+      flight: { options: { ...f.options, mapLayers: mine } },
+      version: f.version,
+    });
     expect(put.status).toBe(200);
     expect((await c.call('GET', `flights/${f.id}`)).body.options.mapLayers).toEqual(mine);
-    expect((await c.call('PUT', `flights/${f.id}`, { flight: { options: { mapLayers: 5 } }, version: put.body.version })).status).toBe(400);
+    expect(
+      (await c.call('PUT', `flights/${f.id}`, { flight: { options: { mapLayers: 5 } }, version: put.body.version }))
+        .status,
+    ).toBe(400);
     // a flight from before keeps working without layers
     expect((await c.call('GET', `flights/${old.id}`)).body.options.mapLayers).toBeUndefined();
   });
@@ -149,7 +181,10 @@ describe('isolation between pilots, per entity', () => {
     const pax = (await b.call('POST', 'passengers', { fullName: 'B Pax' })).body;
     expect((await a.call('POST', 'flights', { aircraftId: ac.id })).status).toBe(400);
     const f = (await a.call('POST', 'flights', {})).body as Flight;
-    const crew = [...f.crew, { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'B Pax' } }];
+    const crew = [
+      ...f.crew,
+      { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'B Pax' } },
+    ];
     // another pilot's passenger is never linked: the reference is dropped, the snapshot stays
     expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew }, version: f.version })).status).toBe(200);
     const saved = (await a.call('GET', `flights/${f.id}`)).body as Flight;
@@ -182,7 +217,15 @@ describe('flights', () => {
     expect(f.taxiOutMin).toBe(15);
     expect(f.taxiInMin).toBe(10);
     expect(f.aircraftId).toBe(ac.id);
-    expect(f.crew).toEqual([{ role: 'PIC', passengerId: null, seat: 'front-left', snapshot: expect.objectContaining({ fullName: 'Alice Pilot', weightKg: 70 }), overrides: [] }]);
+    expect(f.crew).toEqual([
+      {
+        role: 'PIC',
+        passengerId: null,
+        seat: 'front-left',
+        snapshot: expect.objectContaining({ fullName: 'Alice Pilot', weightKg: 70 }),
+        overrides: [],
+      },
+    ]);
     expect(f.version).toBe(1);
     const row = ((await a.call('GET', 'flights')).body as any[]).find((x) => x.id === f.id);
     expect(row.points).toEqual(['LGTT', 'LGTT']);
@@ -190,7 +233,10 @@ describe('flights', () => {
   test('versions, conflicts, manifest, trash, restore, copy', async () => {
     const pax = (await a.call('POST', 'passengers', { fullName: 'Bob Pax', weightKg: 90 })).body;
     const f = (await a.call('POST', 'flights', { title: 'Trip' })).body as Flight;
-    const crew = [...f.crew, { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'Bob Pax', weightKg: 90 } }];
+    const crew = [
+      ...f.crew,
+      { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'Bob Pax', weightKg: 90 } },
+    ];
     const r = await a.call('PUT', `flights/${f.id}`, { flight: { crew, blockOff: '09:30', fobL: 100 }, version: 1 });
     expect(r.status).toBe(200);
     expect(r.body.version).toBe(2);
@@ -202,10 +248,23 @@ describe('flights', () => {
     expect(got.fobL).toBe(100);
     // fields edited on the flight (unknown names dropped) are kept with the row
     expect(got.crew[1].overrides).toEqual([]);
-    const edited = [crew[0], { ...crew[1], snapshot: { fullName: 'Bob Pax', weightKg: 84 }, overrides: ['weightKg', 'bogus'] }];
+    const edited = [
+      crew[0],
+      { ...crew[1], snapshot: { fullName: 'Bob Pax', weightKg: 84 }, overrides: ['weightKg', 'bogus'] },
+    ];
     expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: edited }, version: 2 })).status).toBe(200);
-    expect(((await a.call('GET', `flights/${f.id}`)).body as Flight).crew[1]).toMatchObject({ snapshot: { weightKg: 84 }, overrides: ['weightKg'] });
-    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: [crew[0], { ...crew[1], overrides: 'weightKg' }] }, version: 3 })).status).toBe(400);
+    expect(((await a.call('GET', `flights/${f.id}`)).body as Flight).crew[1]).toMatchObject({
+      snapshot: { weightKg: 84 },
+      overrides: ['weightKg'],
+    });
+    expect(
+      (
+        await a.call('PUT', `flights/${f.id}`, {
+          flight: { crew: [crew[0], { ...crew[1], overrides: 'weightKg' }] },
+          version: 3,
+        })
+      ).status,
+    ).toBe(400);
     // manifest rules
     const twoPics = [...crew, { role: 'PIC', passengerId: null, seat: 'rear-left', snapshot: {} }];
     expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: twoPics }, version: 3 })).status).toBe(400);
@@ -255,15 +314,23 @@ describe('access control', () => {
     try {
       expect((await client(s.base).login('x', 'other@example.com')).status).toBe(403);
       expect((await client(s.base).login('y', 'Pilot@example.com')).status).toBe(200);
-    } finally { await s.close(); }
+    } finally {
+      await s.close();
+    }
   });
   test('local mode: no sign-in, one local pilot', async () => {
     const s = await startApi({ google: false });
     try {
       const c = client(s.base);
-      expect((await c.call('GET', 'session')).body).toMatchObject({ authed: true, mode: 'local', googleClientId: null });
+      expect((await c.call('GET', 'session')).body).toMatchObject({
+        authed: true,
+        mode: 'local',
+        googleClientId: null,
+      });
       expect((await c.call('POST', 'flights', {})).status).toBe(201);
       expect((await c.call('POST', 'login', { credential: 'x' })).status).toBe(404);
-    } finally { await s.close(); }
+    } finally {
+      await s.close();
+    }
   });
 });

@@ -8,7 +8,12 @@ import { PERSON_KEYS, type FlightCrew, type PersonDetails, type PersonKey } from
  * The snapshot after the person's record changed from `before` to `after`: the fields that changed
  * there are copied, except those edited on this flight (`overrides`). Unchanged: the same object.
  */
-export function followPerson(snapshot: PersonDetails, before: PersonDetails, after: PersonDetails, overrides: readonly PersonKey[] = []): PersonDetails {
+export function followPerson(
+  snapshot: PersonDetails,
+  before: PersonDetails,
+  after: PersonDetails,
+  overrides: readonly PersonKey[] = [],
+): PersonDetails {
   let out = snapshot;
   for (const k of PERSON_KEYS) {
     if (overrides.includes(k)) continue;
@@ -41,7 +46,7 @@ export function resetCrew(c: FlightCrew, person: PersonDetails): FlightCrew {
 
 /** The PIC's seat: front left when the aircraft has it, otherwise its first seat. */
 export function picSeat(seatIds: string[]): string {
-  return seatIds.includes('front-left') ? 'front-left' : seatIds[0] ?? 'front-left';
+  return seatIds.includes('front-left') ? 'front-left' : (seatIds[0] ?? 'front-left');
 }
 
 /**
@@ -49,7 +54,11 @@ export function picSeat(seatIds: string[]): string {
  * first free seat. Returns null when every seat is taken (nobody can make room), and the crew
  * unchanged when it already has a PIC.
  */
-export function addPicToCrew(crew: FlightCrew[], seatIds: string[], snapshot: PersonDetails): { crew: FlightCrew[]; moved: FlightCrew | null } | null {
+export function addPicToCrew(
+  crew: FlightCrew[],
+  seatIds: string[],
+  snapshot: PersonDetails,
+): { crew: FlightCrew[]; moved: FlightCrew | null } | null {
   if (crew.some((c) => c.role === 'PIC')) return { crew, moved: null };
   const seat = picSeat(seatIds);
   const taken = new Set(crew.map((c) => c.seat));

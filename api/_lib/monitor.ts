@@ -61,9 +61,13 @@ export function release(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export const adminEmailsFromEnv = (env: NodeJS.ProcessEnv = process.env): string[] =>
-  (env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  (env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 
-const cut = (s: string | null | undefined, n: number): string | null => (s == null || s === '' ? null : String(s).slice(0, n));
+const cut = (s: string | null | undefined, n: number): string | null =>
+  s == null || s === '' ? null : String(s).slice(0, n);
 
 /** At most 30 lines / 4000 characters, scrubbed. */
 export function trimStack(stack: string | null | undefined): string | null {
@@ -85,7 +89,11 @@ export function normalizeMessage(m: string): string {
 
 /** The first stack frame without line/column numbers and build hashes. */
 export function topFrame(stack: string | null | undefined): string {
-  const line = String(stack || '').split('\n').map((l) => l.trim()).find((l) => /^at\s|^[^\s@]*@\S+:\d+(:\d+)?$/.test(l)) || ''; // V8 "at f (…)", Firefox/Safari "f@url:1:2"
+  const line =
+    String(stack || '')
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => /^at\s|^[^\s@]*@\S+:\d+(:\d+)?$/.test(l)) || ''; // V8 "at f (…)", Firefox/Safari "f@url:1:2"
   return line
     .replace(/\?[^:)\s]*/g, '')
     .replace(/:\d+(:\d+)?/g, '')
@@ -94,13 +102,19 @@ export function topFrame(stack: string | null | undefined): string {
 }
 
 export function fingerprint(ev: ErrorEvent): string {
-  const key = [ev.kind, ev.group || '', normalizeMessage(ev.message || ''), scrubUrl(ev.route) || '',
+  const key = [
+    ev.kind,
+    ev.group || '',
+    normalizeMessage(ev.message || ''),
+    scrubUrl(ev.route) || '',
     // minified client function names change with every build: server stacks only
-    ev.kind === 'client' ? '' : topFrame(ev.stack)].join('|');
+    ev.kind === 'client' ? '' : topFrame(ev.stack),
+  ].join('|');
   return crypto.createHash('sha256').update(key).digest('hex').slice(0, 16);
 }
 
-const missingTable = (e: unknown) => /app_error\w* ".*does not exist|relation "app_error/i.test(String((e as Error)?.message || e));
+const missingTable = (e: unknown) =>
+  /app_error\w* ".*does not exist|relation "app_error/i.test(String((e as Error)?.message || e));
 
 /** Runs q; when the monitor's tables are missing (a migration before 040 failed), creates them and retries. */
 async function withSchema<T>(db: Queryable, q: () => Promise<T>): Promise<T> {
@@ -121,7 +135,11 @@ export function alertReason(row: Row, now: number): AlertReason | null {
   if (row.kind === 'migration') return 'migration';
   if (row.regressed === true) return 'regression';
   if (row.prev_seen != null && now - Number(row.prev_seen) > RECUR_QUIET_MS) return 'recurred';
-  if (Number(row.window_count) > BURST_COUNT && (row.last_alerted == null || Number(row.last_alerted) < Number(row.window_start))) return 'burst';
+  if (
+    Number(row.window_count) > BURST_COUNT &&
+    (row.last_alerted == null || Number(row.last_alerted) < Number(row.window_start))
+  )
+    return 'burst';
   return null;
 }
 
@@ -129,13 +147,20 @@ export function alertReason(row: Row, now: number): AlertReason | null {
  * Records one error and alerts the admins if due. Never throws; returns the group's fingerprint and
  * the alert sent (null: none), or null when nothing could be recorded.
  */
-export async function recordError(db: Queryable, ev: ErrorEvent, opts: MonitorOptions = {}): Promise<{ fingerprint: string; alert: AlertReason | null } | null> {
+export async function recordError(
+  db: Queryable,
+  ev: ErrorEvent,
+  opts: MonitorOptions = {},
+): Promise<{ fingerprint: string; alert: AlertReason | null } | null> {
   const now = opts.now ?? Date.now();
   const message = scrubText(String(ev.message || 'unknown error')).slice(0, 1000);
   const stack = trimStack(ev.stack);
   const route = scrubUrl(ev.route);
   const fp = fingerprint(ev);
-  console.error(ev.kind === 'migration' ? '[pgf-migration-failed]' : '[pgf-error]', JSON.stringify({ kind: ev.kind, fingerprint: fp, route, status: ev.status ?? null, message }));
+  console.error(
+    ev.kind === 'migration' ? '[pgf-migration-failed]' : '[pgf-error]',
+    JSON.stringify({ kind: ev.kind, fingerprint: fp, route, status: ev.status ?? null, message }),
+  );
   if (stack) console.error(stack);
   let row: Row;
   try {
@@ -146,8 +171,9 @@ export async function recordError(db: Queryable, ev: ErrorEvent, opts: MonitorOp
         if (n >= MAX_GROUPS) return null;
       }
     }
-    [row] = await withSchema(db, () => db.query(
-      `INSERT INTO app_errors (fingerprint, kind, message, stack, route, method, status, pilot_id, user_agent, release,
+    [row] = await withSchema(db, () =>
+      db.query(
+        `INSERT INTO app_errors (fingerprint, kind, message, stack, route, method, status, pilot_id, user_agent, release,
           count, first_seen, last_seen, window_start, window_count)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1, $11, $11, $11, 1)
        ON CONFLICT (fingerprint) DO UPDATE SET
@@ -162,8 +188,21 @@ export async function recordError(db: Queryable, ev: ErrorEvent, opts: MonitorOp
          regressed = (app_errors.resolved_at IS NOT NULL),
          resolved_at = NULL
        RETURNING *, (xmax = 0) AS inserted`,
-      [fp, ev.kind, message, stack, route, cut(ev.method, 10), ev.status ?? null, cut(ev.pilotId, 64), cut(ev.userAgent, 300), release(), now],
-    ));
+        [
+          fp,
+          ev.kind,
+          message,
+          stack,
+          route,
+          cut(ev.method, 10),
+          ev.status ?? null,
+          cut(ev.pilotId, 64),
+          cut(ev.userAgent, 300),
+          release(),
+          now,
+        ],
+      ),
+    );
   } catch (e) {
     console.error('[pgf-monitor] could not record an error:', String((e as Error)?.message || e));
     return null;
@@ -180,23 +219,36 @@ export async function recordError(db: Queryable, ev: ErrorEvent, opts: MonitorOp
 async function maybeAlert(db: Queryable, row: Row, now: number, admins: string[]): Promise<AlertReason | null> {
   const reason = alertReason(row, now);
   if (!reason || !admins.length || !mailAvailability().enabled) return null;
-  const [{ n }] = await db.query('SELECT count(*)::int AS n FROM app_error_alerts WHERE sent > $1::bigint AND sent <= $2::bigint', [now - 24 * 3600 * 1000, now]);
+  const [{ n }] = await db.query(
+    'SELECT count(*)::int AS n FROM app_error_alerts WHERE sent > $1::bigint AND sent <= $2::bigint',
+    [now - 24 * 3600 * 1000, now],
+  );
   if (n >= DAILY_ALERT_CAP) return null;
   // claim the alert (concurrent occurrences: only one wins); a recurrence after "resolve" is exempt from the gap
   const claimed = await db.query(
     `UPDATE app_errors SET last_alerted = $2::bigint, alerts = alerts + 1
      WHERE fingerprint = $1 AND ($3::boolean OR last_alerted IS NULL OR last_alerted <= $2::bigint - ${ALERT_GAP_MS}) RETURNING fingerprint`,
-    [row.fingerprint, now, reason === 'regression']);
+    [row.fingerprint, now, reason === 'regression'],
+  );
   if (!claimed.length) return null;
-  await db.query('INSERT INTO app_error_alerts (sent, fingerprint, reason) VALUES ($1, $2, $3)', [now, row.fingerprint, reason]);
+  await db.query('INSERT INTO app_error_alerts (sent, fingerprint, reason) VALUES ($1, $2, $3)', [
+    now,
+    row.fingerprint,
+    reason,
+  ]);
   await sendWithin(alertMail(row, reason), admins);
   return reason;
 }
 
 const TITLE: Record<AlertReason, string> = {
-  new: 'New error', migration: 'MIGRATION FAILED', regression: 'Resolved error is back', recurred: 'Error recurred after a quiet day', burst: 'Error burst',
+  new: 'New error',
+  migration: 'MIGRATION FAILED',
+  regression: 'Resolved error is back',
+  recurred: 'Error recurred after a quiet day',
+  burst: 'Error burst',
 };
-const iso = (ms: unknown) => (ms == null ? '—' : new Date(Number(ms)).toISOString().replace('T', ' ').slice(0, 19) + ' UTC');
+const iso = (ms: unknown) =>
+  ms == null ? '—' : new Date(Number(ms)).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
 function alertMail(row: Row, reason: AlertReason): { subject: string; text: string } {
   const where = [row.method, row.route].filter(Boolean).join(' ');
@@ -217,14 +269,26 @@ function alertMail(row: Row, reason: AlertReason): { subject: string; text: stri
       row.stack ? String(row.stack).split('\n').slice(0, 15).join('\n') : null,
       '',
       `All errors: ${ADMIN_URL}`,
-    ].filter((l) => l !== null).join('\n'),
+    ]
+      .filter((l) => l !== null)
+      .join('\n'),
   };
 }
 
 async function sendWithin(m: { subject: string; text: string }, to: string[]): Promise<void> {
-  const send = sendSystemMail({ to, ...m }).then(() => undefined, (e) => { console.error('[pgf-monitor] alert e-mail failed:', String((e as Error)?.message || e)); });
+  const send = sendSystemMail({ to, ...m }).then(
+    () => undefined,
+    (e) => {
+      console.error('[pgf-monitor] alert e-mail failed:', String((e as Error)?.message || e));
+    },
+  );
   let timer: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([send, new Promise<void>((r) => { timer = setTimeout(r, MAIL_WAIT_MS); })]);
+  await Promise.race([
+    send,
+    new Promise<void>((r) => {
+      timer = setTimeout(r, MAIL_WAIT_MS);
+    }),
+  ]);
   clearTimeout(timer);
 }
 
@@ -234,18 +298,32 @@ let unrecordedMigrationMailed = 0;
  * migrate(), and when a migration fails: log it with a clear marker, record it (creating the monitor's
  * tables if 040 has not run yet) and alert the admins, then rethrow, as the app cannot serve.
  */
-export async function migrateReporting(db: Db, list: Migration[] = MIGRATIONS, opts: MonitorOptions = {}): Promise<string[]> {
+export async function migrateReporting(
+  db: Db,
+  list: Migration[] = MIGRATIONS,
+  opts: MonitorOptions = {},
+): Promise<string[]> {
   try {
     return await migrate(db, list);
   } catch (e) {
     const err = e as Error;
     const admins = opts.adminEmails ?? adminEmailsFromEnv();
-    const out = await recordError(db, { kind: 'migration', message: String(err?.message || e), stack: err?.stack }, { ...opts, adminEmails: admins });
+    const out = await recordError(
+      db,
+      { kind: 'migration', message: String(err?.message || e), stack: err?.stack },
+      { ...opts, adminEmails: admins },
+    );
     // the database cannot even record it: still tell the admins (once per instance and hour)
     const now = opts.now ?? Date.now();
     if (!out && admins.length && mailAvailability().enabled && now - unrecordedMigrationMailed > ALERT_GAP_MS) {
       unrecordedMigrationMailed = now;
-      await sendWithin({ subject: `[Pig's Gotta Fly] MIGRATION FAILED (not recorded)`, text: `${String(err?.message || e)}\n\nRelease: ${release()}\nThe error could not be recorded in app_errors either.` }, admins);
+      await sendWithin(
+        {
+          subject: `[Pig's Gotta Fly] MIGRATION FAILED (not recorded)`,
+          text: `${String(err?.message || e)}\n\nRelease: ${release()}\nThe error could not be recorded in app_errors either.`,
+        },
+        admins,
+      );
     }
     throw e;
   }

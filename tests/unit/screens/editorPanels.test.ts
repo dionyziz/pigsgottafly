@@ -8,7 +8,15 @@ import { editorWarningFix, onEditorFocus, sectionOf } from '../../../src/feature
 import type { FlightCrew, PersonDetails } from '../../../src/shared';
 
 const person = (o: Partial<PersonDetails> = {}): PersonDetails => ({
-  fullName: 'Maria P', phone: '+30 690', dateOfBirth: '1990-04-02', weightKg: 62, idNumber: 'AK 1', idType: 'ID', nationality: 'GR', relation: '', ...o,
+  fullName: 'Maria P',
+  phone: '+30 690',
+  dateOfBirth: '1990-04-02',
+  weightKg: 62,
+  idNumber: 'AK 1',
+  idType: 'ID',
+  nationality: 'GR',
+  relation: '',
+  ...o,
 });
 
 describe('followPerson', () => {
@@ -25,13 +33,21 @@ describe('followPerson', () => {
     expect(followPerson(snap, person(), person())).toBe(snap);
   });
   it('a field edited on the flight stays when the list changes it', () => {
-    const out = followPerson(person({ weightKg: 70 }), person(), person({ weightKg: 65, phone: '+30 691' }), ['weightKg']);
+    const out = followPerson(person({ weightKg: 70 }), person(), person({ weightKg: 65, phone: '+30 691' }), [
+      'weightKg',
+    ]);
     expect(out).toEqual(person({ weightKg: 70, phone: '+30 691' }));
   });
 });
 
 describe('manifest overrides', () => {
-  const row = (o: Partial<FlightCrew> = {}): FlightCrew => ({ role: 'PAX', passengerId: 'p1', seat: 'rear-left', snapshot: person(), ...o });
+  const row = (o: Partial<FlightCrew> = {}): FlightCrew => ({
+    role: 'PAX',
+    passengerId: 'p1',
+    seat: 'rear-left',
+    snapshot: person(),
+    ...o,
+  });
   it('editing a field on the flight marks it once', () => {
     const a = editCrewField(row(), 'weightKg', 70);
     expect(a.snapshot.weightKg).toBe(70);
@@ -57,12 +73,16 @@ describe('manifest overrides', () => {
 });
 
 describe('weatherText', () => {
-  const surface = (wind: unknown, tempC: number | null, qnhHpa: number | null) => ({ surface: { wind, tempC, qnhHpa } as never });
+  const surface = (wind: unknown, tempC: number | null, qnhHpa: number | null) => ({
+    surface: { wind, tempC, qnhHpa } as never,
+  });
   it('wind, temperature and QNH in one line', () => {
     expect(weatherText(surface({ dirTrueDeg: 240, speedKt: 12 }, 18.4, 1013.2))).toBe('240°/12 kt · 18°C · Q1013');
   });
   it('gusts, calm, variable, unknown', () => {
-    expect(weatherText(surface({ dirTrueDeg: 5, speedKt: 15, gustKt: 25 }, 10, 1020))).toBe('005°/15G25 kt · 10°C · Q1020');
+    expect(weatherText(surface({ dirTrueDeg: 5, speedKt: 15, gustKt: 25 }, 10, 1020))).toBe(
+      '005°/15G25 kt · 10°C · Q1020',
+    );
     expect(weatherText(surface({ dirTrueDeg: 0, speedKt: 0 }, 10, 1020))).toBe('calm · 10°C · Q1020');
     expect(weatherText(surface({ dirTrueDeg: null, speedKt: 4 }, null, null))).toBe('VRB/4 kt · –°C · Q–');
     expect(weatherText({ surface: null })).toBe('ISA, calm');
@@ -70,14 +90,25 @@ describe('weatherText', () => {
 });
 
 describe('weatherRunText', () => {
-  const ok = (runMs: number | null) => ({ status: 'ok', message: 'ECMWF IFS 0.25°, run 2026-11-16 06Z, fetched 08:00Z', legs: [], departure: null, destination: null,
-    source: { run: runMs == null ? null : { runMs, availableMs: null }, endpoint: 'forecast' } } as never);
+  const ok = (runMs: number | null) =>
+    ({
+      status: 'ok',
+      message: 'ECMWF IFS 0.25°, run 2026-11-16 06Z, fetched 08:00Z',
+      legs: [],
+      departure: null,
+      destination: null,
+      source: { run: runMs == null ? null : { runMs, availableMs: null }, endpoint: 'forecast' },
+    }) as never;
   it('the model run hour', () => {
     expect(weatherRunText(ok(Date.UTC(2026, 10, 16, 6)), false, true)).toMatchObject({ text: '06Z run' });
   });
   it('loading, failed, no run', () => {
     expect(weatherRunText(null, true, true).text).toBe('Fetching winds…');
-    expect(weatherRunText({ status: 'error', message: 'Winds unavailable: x' } as never, false, true)).toEqual({ text: 'No winds', title: 'Winds unavailable: x', tone: 'warn' });
+    expect(weatherRunText({ status: 'error', message: 'Winds unavailable: x' } as never, false, true)).toEqual({
+      text: 'No winds',
+      title: 'Winds unavailable: x',
+      tone: 'warn',
+    });
     expect(weatherRunText(ok(null), false, true).text).toBe('Forecast');
     expect(weatherRunText(null, false, false).text).toBe('');
   });
@@ -96,7 +127,10 @@ describe('editorWarningFix', () => {
     expect(sectionOf('route')).toBe('route');
   });
   it('the aircraft is a link to the hangar; weather has no fix', () => {
-    expect(editorWarningFix('Compass card "A" expired on 2026-01-01.', 'ac1')).toEqual({ label: 'Fix in the hangar', to: '/hangar/ac1?focus=compass' });
+    expect(editorWarningFix('Compass card "A" expired on 2026-01-01.', 'ac1')).toEqual({
+      label: 'Fix in the hangar',
+      to: '/hangar/ac1?focus=compass',
+    });
     expect(editorWarningFix('LGTT: thunderstorm (forecast).', 'ac1')).toBeNull();
   });
 });

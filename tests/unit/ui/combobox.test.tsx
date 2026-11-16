@@ -7,7 +7,10 @@ import { AerodromeInput, Combobox, Dialog, PersonPicker, comboKey, matchPeople }
 import { aerodrome, resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
 import type { RefAerodrome } from '../../../src/shared';
 
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('comboKey', () => {
   const s = (open: boolean, active: number, count = 3) => ({ open, active, count });
@@ -45,8 +48,18 @@ const FRUIT = ['apple', 'apricot', 'banana'];
 function Fruit({ onPick }: { onPick: (s: string) => void }) {
   const [t, setT] = useState('');
   return (
-    <Combobox<string> text={t} onText={setT} options={FRUIT.filter((f) => f.startsWith(t))} optionKey={(f) => f}
-      renderOption={(f) => f} onPick={(f) => { setT(f); onPick(f); }} testId="c" />
+    <Combobox<string>
+      text={t}
+      onText={setT}
+      options={FRUIT.filter((f) => f.startsWith(t))}
+      optionKey={(f) => f}
+      renderOption={(f) => f}
+      onPick={(f) => {
+        setT(f);
+        onPick(f);
+      }}
+      testId="c"
+    />
   );
 }
 
@@ -77,7 +90,11 @@ describe('Combobox', () => {
 
   test('Escape closes the list without closing the dialog around it; a second Escape closes the dialog', () => {
     const close = vi.fn();
-    const r = render(<Dialog title="T" onClose={close}><Fruit onPick={() => {}} /></Dialog>);
+    const r = render(
+      <Dialog title="T" onClose={close}>
+        <Fruit onPick={() => {}} />
+      </Dialog>,
+    );
     const el = r.getByTestId('c');
     fireEvent.focus(el);
     expect(r.queryByRole('listbox')).not.toBeNull();
@@ -95,7 +112,9 @@ describe('Combobox', () => {
     fireEvent.focus(el);
     fireEvent.blur(el);
     expect(r.queryByRole('listbox')).not.toBeNull();
-    act(() => { vi.advanceTimersByTime(200); });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     expect(r.queryByRole('listbox')).toBeNull();
   });
 });
@@ -114,9 +133,18 @@ function AdHarness({ initial, log }: { initial: RefAerodrome | null; log: (strin
   const [v, setV] = useState<RefAerodrome | null>(initial);
   return (
     <>
-      <AerodromeInput value={v} onChange={(a) => { log.push(a?.id ?? null); setV(a); }} testId="ad" />
+      <AerodromeInput
+        value={v}
+        onChange={(a) => {
+          log.push(a?.id ?? null);
+          setV(a);
+        }}
+        testId="ad"
+      />
       <output data-testid="v">{v?.id ?? 'none'}</output>
-      <button type="button" onClick={() => setV(aerodrome('LGMG') ?? null)}>set</button>
+      <button type="button" onClick={() => setV(aerodrome('LGMG') ?? null)}>
+        set
+      </button>
     </>
   );
 }
@@ -160,7 +188,6 @@ describe('AerodromeInput', () => {
     fireEvent.click(r.getByText('set'));
     expect(el.value).toBe('LGMG');
   });
-
 });
 
 describe('PersonPicker', () => {
@@ -175,12 +202,16 @@ describe('PersonPicker', () => {
     expect(matchPeople(people, '', undefined, 2)).toHaveLength(2);
   });
   test('Enter picks a person; the last option creates one from the typed name', () => {
-    const pick = vi.fn(), create = vi.fn();
+    const pick = vi.fn(),
+      create = vi.fn();
     const r = render(<PersonPicker people={people} onPick={pick} onCreate={create} testId="pp" />);
     const el = r.getByTestId('pp');
     fireEvent.focus(el);
     fireEvent.change(el, { target: { value: 'eleni' } });
-    expect(r.getAllByRole('option').map((o) => o.textContent)).toEqual(['Eleni K.no weight', ' Create “eleni”new passenger']);
+    expect(r.getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Eleni K.no weight',
+      ' Create “eleni”new passenger',
+    ]);
     fireEvent.keyDown(el, { key: 'Enter' });
     expect(pick).toHaveBeenCalledWith(people[1]);
     fireEvent.change(el, { target: { value: 'Nikos' } });

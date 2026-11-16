@@ -75,7 +75,14 @@ export interface OperatorFiles {
 }
 
 export const EMPTY_OPERATOR: OperatorInput = {
-  name: '', phone: '', email: '', address: '', aftn: '', notes: '', requiresWbPerf: false, declarationsEmail: '',
+  name: '',
+  phone: '',
+  email: '',
+  address: '',
+  aftn: '',
+  notes: '',
+  requiresWbPerf: false,
+  declarationsEmail: '',
 };
 
 /** A plausible single e-mail address. */

@@ -13,7 +13,8 @@ function settingsPatch(s: unknown): Partial<PilotSettings> {
   const out: Partial<PilotSettings> = {};
   for (const k of ['taxiOutMin', 'taxiInMin', 'reserveMin'] as const) if (k in i) out[k] = optNum(i[k], k, 0, 600);
   if ('finalReserveMin' in i) out.finalReserveMin = optNum(i.finalReserveMin, 'finalReserveMin', 0, 600) ?? 0;
-  if ('enrouteAerodromeRadiusNm' in i) out.enrouteAerodromeRadiusNm = optNum(i.enrouteAerodromeRadiusNm, 'enrouteAerodromeRadiusNm', 0, 50) ?? 2;
+  if ('enrouteAerodromeRadiusNm' in i)
+    out.enrouteAerodromeRadiusNm = optNum(i.enrouteAerodromeRadiusNm, 'enrouteAerodromeRadiusNm', 0, 50) ?? 2;
   if ('handledAerodromes' in i) {
     const v = i.handledAerodromes ?? [];
     if (!Array.isArray(v) || v.length > 100) throw badRequest('handledAerodromes must be a list of ICAO codes');
@@ -45,13 +46,15 @@ function settingsPatch(s: unknown): Partial<PilotSettings> {
 export const routes: Route[] = [
   { method: 'GET', path: '/me', handler: async ({ pilot }) => pilot },
   {
-    method: 'PUT', path: '/me',
+    method: 'PUT',
+    path: '/me',
     async handler({ db, pilot, body }) {
       const input = (await body()) as PilotUpdate;
       const p = personColumns(input, pilot);
       const licenceNo = 'licenceNo' in input ? str(input.licenceNo, 'licenceNo', 60) : pilot.licenceNo;
       let home = pilot.homeAerodrome;
-      if ('homeAerodrome' in input) home = input.homeAerodrome ? str(input.homeAerodrome, 'homeAerodrome', 40).toUpperCase() || null : null;
+      if ('homeAerodrome' in input)
+        home = input.homeAerodrome ? str(input.homeAerodrome, 'homeAerodrome', 40).toUpperCase() || null : null;
       let defaultAircraftId = pilot.defaultAircraftId;
       if ('defaultAircraftId' in input) {
         defaultAircraftId = input.defaultAircraftId || null;
@@ -65,7 +68,21 @@ export const routes: Route[] = [
         `UPDATE pilots SET full_name = $2, phone = $3, date_of_birth = $4, weight_kg = $5, id_number = $6, id_type = $7, nationality = $8,
            relation = $9, licence_no = $10, home_aerodrome = $11, default_aircraft_id = $12, settings = $13::jsonb
          WHERE id = $1 RETURNING *`,
-        [pilot.id, p.fullName, p.phone, p.dateOfBirth, p.weightKg, p.idNumber, p.idType, p.nationality, p.relation, licenceNo, home, defaultAircraftId, JSON.stringify(settings)],
+        [
+          pilot.id,
+          p.fullName,
+          p.phone,
+          p.dateOfBirth,
+          p.weightKg,
+          p.idNumber,
+          p.idType,
+          p.nationality,
+          p.relation,
+          licenceNo,
+          home,
+          defaultAircraftId,
+          JSON.stringify(settings),
+        ],
       );
       return toPilot(row);
     },

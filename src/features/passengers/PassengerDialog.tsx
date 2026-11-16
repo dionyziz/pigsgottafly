@@ -12,7 +12,6 @@ import { useFormIssues } from './formIssues';
 import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from './person';
 import { PersonFields, type SetPerson } from './PersonFields';
 
-
 /** The dialog's form state, its field problems and the fields a link asked to highlight. */
 function usePersonDialog(initial: () => PersonForm, focus: readonly string[]) {
   const ref = useRef<HTMLFormElement>(null);
@@ -21,11 +20,21 @@ function usePersonDialog(initial: () => PersonForm, focus: readonly string[]) {
   const [error, setError] = useState<string | null>(null);
   const issues = useFormIssues<PersonField>(ref);
   useHighlightFields(ref, focus);
-  const set: SetPerson = (k, v) => { setF((x) => ({ ...x, [k]: v })); issues.clear(k as PersonField); };
+  const set: SetPerson = (k, v) => {
+    setF((x) => ({ ...x, [k]: v }));
+    issues.clear(k as PersonField);
+  };
   return { ref, f, set, busy, setBusy, error, setError, issues };
 }
 
-export function PassengerDialog({ passenger, initialName, onClose, onSaved, onDelete, focus = [] }: {
+export function PassengerDialog({
+  passenger,
+  initialName,
+  onClose,
+  onSaved,
+  onDelete,
+  focus = [],
+}: {
   /** Inputs to highlight and focus (names), from a missing-details link. */
   focus?: string[];
   /** Offers "Delete" for an existing passenger (the caller confirms and deletes). */
@@ -53,9 +62,26 @@ export function PassengerDialog({ passenger, initialName, onClose, onSaved, onDe
   };
 
   return (
-    <Dialog title={passenger ? 'Edit passenger' : 'New passenger'} onClose={onClose} busy={d.busy} wide testId="passenger-dialog"
-      footer={<DialogFooter onCancel={onClose} busy={d.busy} error={d.error} primary={{ label: passenger ? 'Save' : 'Add passenger', onClick: () => void submit() }}
-        danger={passenger && onDelete ? { label: 'Delete', onClick: () => onDelete(passenger), testId: 'passenger-delete' } : undefined} />}>
+    <Dialog
+      title={passenger ? 'Edit passenger' : 'New passenger'}
+      onClose={onClose}
+      busy={d.busy}
+      wide
+      testId="passenger-dialog"
+      footer={
+        <DialogFooter
+          onCancel={onClose}
+          busy={d.busy}
+          error={d.error}
+          primary={{ label: passenger ? 'Save' : 'Add passenger', onClick: () => void submit() }}
+          danger={
+            passenger && onDelete
+              ? { label: 'Delete', onClick: () => onDelete(passenger), testId: 'passenger-delete' }
+              : undefined
+          }
+        />
+      }
+    >
       <form className="stack" onSubmit={submit} ref={d.ref} noValidate>
         <PersonFields f={d.f} set={d.set} issues={d.issues.of} autoFocus={!focus.length} />
         <button type="submit" hidden />
@@ -65,7 +91,15 @@ export function PassengerDialog({ passenger, initialName, onClose, onSaved, onDe
 }
 
 /** The pilot's own person details (as on the forms and for W&B), edited like a passenger's. */
-export function PilotDetailsDialog({ onClose, onSaved, focus = [] }: { onClose: () => void; onSaved?: (p: Pilot) => void; focus?: string[] }) {
+export function PilotDetailsDialog({
+  onClose,
+  onSaved,
+  focus = [],
+}: {
+  onClose: () => void;
+  onSaved?: (p: Pilot) => void;
+  focus?: string[];
+}) {
   const { pilot } = useSession();
   const d = usePersonDialog(() => personForm(pilot), focus);
 
@@ -86,8 +120,21 @@ export function PilotDetailsDialog({ onClose, onSaved, focus = [] }: { onClose: 
   };
 
   return (
-    <Dialog title="Your details" onClose={onClose} busy={d.busy} wide testId="pilot-dialog"
-      footer={<DialogFooter onCancel={onClose} busy={d.busy} error={d.error} primary={{ label: 'Save', onClick: () => void submit() }} />}>
+    <Dialog
+      title="Your details"
+      onClose={onClose}
+      busy={d.busy}
+      wide
+      testId="pilot-dialog"
+      footer={
+        <DialogFooter
+          onCancel={onClose}
+          busy={d.busy}
+          error={d.error}
+          primary={{ label: 'Save', onClick: () => void submit() }}
+        />
+      }
+    >
       <form className="stack" onSubmit={submit} ref={d.ref} noValidate>
         <PersonFields f={d.f} set={d.set} issues={d.issues.of} pilot autoFocus={!focus.length} />
         <button type="submit" hidden />

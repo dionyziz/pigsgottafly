@@ -88,7 +88,15 @@ export function toPassenger(r: Row): Passenger {
 }
 
 export function toWaypoint(r: Row): Waypoint {
-  return { id: r.id, name: r.name, lat: Number(r.lat), lon: Number(r.lon), notes: r.notes, created: Number(r.created), updated: Number(r.updated) };
+  return {
+    id: r.id,
+    name: r.name,
+    lat: Number(r.lat),
+    lon: Number(r.lon),
+    notes: r.notes,
+    created: Number(r.created),
+    updated: Number(r.updated),
+  };
 }
 
 export function toFlight(r: Row, crewRows: Row[]): Flight {
@@ -106,7 +114,13 @@ export function toFlight(r: Row, crewRows: Row[]): Flight {
     atc: r.atc ?? null,
     crew: crewRows
       .sort((a, b) => a.position - b.position)
-      .map((c): FlightCrew => ({ role: c.role, passengerId: c.passenger_id ?? null, seat: c.seat, snapshot: c.snapshot, overrides: c.overrides ?? [] })),
+      .map((c): FlightCrew => ({
+        role: c.role,
+        passengerId: c.passenger_id ?? null,
+        seat: c.seat,
+        snapshot: c.snapshot,
+        overrides: c.overrides ?? [],
+      })),
     baggageKg: r.baggage_kg ?? {},
     options: { ...DEFAULT_FLIGHT_OPTIONS, ...(r.options || {}) },
     summary: { ...EMPTY_SUMMARY, ...(r.summary || {}) },
@@ -139,7 +153,8 @@ export function reqNum(v: unknown, field: string, min = -Infinity, max = Infinit
 }
 export function optDate(v: unknown, field: string): string | null {
   if (v === undefined || v === null || v === '') return null;
-  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v + 'T00:00:00Z'))) throw badRequest(`${field} must be YYYY-MM-DD`);
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v + 'T00:00:00Z')))
+    throw badRequest(`${field} must be YYYY-MM-DD`);
   return v;
 }
 export function obj<T>(v: unknown, field: string): T {
@@ -195,7 +210,8 @@ export function aircraftInput(input: Partial<AircraftInput>, base: AircraftInput
     if (k in input) a[k] = str(input[k], k, k === 'notes' ? 5000 : 200);
   }
   if ('operatorId' in input) {
-    if (input.operatorId != null && (typeof input.operatorId !== 'string' || input.operatorId.length > 64)) throw badRequest('operatorId must be an operator id or null');
+    if (input.operatorId != null && (typeof input.operatorId !== 'string' || input.operatorId.length > 64))
+      throw badRequest('operatorId must be an operator id or null');
     a.operatorId = input.operatorId || null;
   }
   if ('icaoType' in input) a.icaoType = a.icaoType.toUpperCase();
@@ -205,7 +221,10 @@ export function aircraftInput(input: Partial<AircraftInput>, base: AircraftInput
     a.wake = input.wake!;
   }
   // speeds: JSON numbers only (no string coercion); 0 = not set yet (see aircraftDoc.ts)
-  const tas = (v: unknown, f: string) => { if (typeof v !== 'number') throw badRequest(`${f} must be a number in [0, 1000]`); return reqNum(v, f, 0, 1000); };
+  const tas = (v: unknown, f: string) => {
+    if (typeof v !== 'number') throw badRequest(`${f} must be a number in [0, 1000]`);
+    return reqNum(v, f, 0, 1000);
+  };
   if ('cruiseTasKt' in input) a.cruiseTasKt = tas(input.cruiseTasKt, 'cruiseTasKt');
   if ('patternTasKt' in input) a.patternTasKt = tas(input.patternTasKt, 'patternTasKt');
   if ('climbTasKt' in input) a.climbTasKt = input.climbTasKt == null ? null : tas(input.climbTasKt, 'climbTasKt');

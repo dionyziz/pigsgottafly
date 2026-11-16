@@ -27,7 +27,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setError(e instanceof ApiRequestError && e.offline ? 'You are offline.' : 'The server is not responding.');
     }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   // any 401 from the API (session expired) brings the sign-in screen back
   useEffect(() => {
@@ -37,32 +39,61 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   // the session pilot follows the 'pilot' entity (refetched when changed here or in another tab)
-  useEffect(() => subscribeEntity('pilot', () => {
-    const p = getEntity<Pilot>('pilot').data;
-    if (p) setSession((s) => (s && s.authed && s.pilot && s.pilot.id === p.id && s.pilot !== p ? { ...s, pilot: p } : s));
-  }), []);
+  useEffect(
+    () =>
+      subscribeEntity('pilot', () => {
+        const p = getEntity<Pilot>('pilot').data;
+        if (p)
+          setSession((s) =>
+            s && s.authed && s.pilot && s.pilot.id === p.id && s.pilot !== p ? { ...s, pilot: p } : s,
+          );
+      }),
+    [],
+  );
 
   const signedIn = !!session?.authed && !!session.pilot;
-  const value = useMemo((): SessionValue | null => (session && signedIn ? {
-    session,
-    pilot: session.pilot!,
-    // functional: never writes back a session captured before another change; every tab follows
-    setPilot: (p: Pilot) => putEntity('pilot', p, { broadcast: true }),
-    signOut: async () => {
-      await api.logout().catch(() => {});
-      try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
-      clearEntities();
-      await load();
-    },
-    signOutEverywhere: async () => {
-      await api.revokeAllSessions().catch(() => {});
-      try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
-      clearEntities();
-      await load();
-    },
-  } : null), [session, signedIn, load]);
+  const value = useMemo(
+    (): SessionValue | null =>
+      session && signedIn
+        ? {
+            session,
+            pilot: session.pilot!,
+            // functional: never writes back a session captured before another change; every tab follows
+            setPilot: (p: Pilot) => putEntity('pilot', p, { broadcast: true }),
+            signOut: async () => {
+              await api.logout().catch(() => {});
+              try {
+                (window as any).google?.accounts?.id?.disableAutoSelect?.();
+              } catch {
+                /* ignore */
+              }
+              clearEntities();
+              await load();
+            },
+            signOutEverywhere: async () => {
+              await api.revokeAllSessions().catch(() => {});
+              try {
+                (window as any).google?.accounts?.id?.disableAutoSelect?.();
+              } catch {
+                /* ignore */
+              }
+              clearEntities();
+              await load();
+            },
+          }
+        : null,
+    [session, signedIn, load],
+  );
 
-  if (error) return <div className="center-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><button onClick={load}>Try again</button></div></div>;
+  if (error)
+    return (
+      <div className="center-screen">
+        <div className="stack" style={{ alignItems: 'center' }}>
+          <p>{error}</p>
+          <button onClick={load}>Try again</button>
+        </div>
+      </div>
+    );
   if (!session) return <Loading variant="screen" />;
   if (!value) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

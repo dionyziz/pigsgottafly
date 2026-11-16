@@ -18,7 +18,14 @@ function List({ onClose }: { onClose(): void }) {
   return (
     <MapPopover x={10} y={10} label="Things" testId="pop" onClose={onClose}>
       {['a', 'b'].map((k) => (
-        <PopItem key={k} open={acc.isOpen(k)} onToggle={() => acc.toggle(k)} testId="item" data={{ id: k }} head={<span>{k.toUpperCase()}</span>}>
+        <PopItem
+          key={k}
+          open={acc.isOpen(k)}
+          onToggle={() => acc.toggle(k)}
+          testId="item"
+          data={{ id: k }}
+          head={<span>{k.toUpperCase()}</span>}
+        >
           <p data-testid={'body-' + k}>body {k}</p>
         </PopItem>
       ))}
@@ -44,7 +51,13 @@ describe('MapPopover + PopItem', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
   it('a single item without a toggle has a plain header', () => {
-    const r = render(<MapPopover x={0} y={0} label="One" testId="pop" onClose={() => {}}><PopItem open head={<b>AD</b>}>x</PopItem></MapPopover>);
+    const r = render(
+      <MapPopover x={0} y={0} label="One" testId="pop" onClose={() => {}}>
+        <PopItem open head={<b>AD</b>}>
+          x
+        </PopItem>
+      </MapPopover>,
+    );
     expect(r.container.querySelector('div.pgf-air-h')).toBeTruthy();
     expect(r.container.querySelector('button.pgf-air-h')).toBeNull();
   });
@@ -53,8 +66,20 @@ describe('MapPopover + PopItem', () => {
 describe('PointMenu', () => {
   it('lists the items, runs a choice, moves with the arrow keys', () => {
     const remove = vi.fn();
-    const r = render(<PointMenu x={0} y={0} title="LGMG" detail="aerodrome" error="Could not save the waypoint."
-      items={[{ label: 'Rename…', onSelect: () => {} }, { label: 'Saving…', onSelect: () => {}, disabled: true }, { label: 'Remove point', onSelect: remove, danger: true }]} />);
+    const r = render(
+      <PointMenu
+        x={0}
+        y={0}
+        title="LGMG"
+        detail="aerodrome"
+        error="Could not save the waypoint."
+        items={[
+          { label: 'Rename…', onSelect: () => {} },
+          { label: 'Saving…', onSelect: () => {}, disabled: true },
+          { label: 'Remove point', onSelect: remove, danger: true },
+        ]}
+      />,
+    );
     const items = r.getAllByRole('menuitem');
     expect(items.map((b) => b.textContent)).toEqual(['Rename…', 'Saving…', 'Remove point']);
     expect(items[2].className).toBe('danger');
@@ -70,9 +95,24 @@ describe('PointMenu', () => {
 describe('layers control', () => {
   it('switches the base map and the layer toggles', () => {
     let layers: MapLayers = { ...DEFAULT_MAP_LAYERS };
-    const onLayers = vi.fn((l: MapLayers) => { layers = l; });
-    const onOpen = vi.fn(), onTips = vi.fn();
-    const r = render(<LayersControl open onOpen={onOpen} layers={layers} onLayers={onLayers} tips onTips={onTips} airac="2609" areaCount={{ prd: 110, mil: 14, act: 11 }} notamCount={0} />);
+    const onLayers = vi.fn((l: MapLayers) => {
+      layers = l;
+    });
+    const onOpen = vi.fn(),
+      onTips = vi.fn();
+    const r = render(
+      <LayersControl
+        open
+        onOpen={onOpen}
+        layers={layers}
+        onLayers={onLayers}
+        tips
+        onTips={onTips}
+        airac="2609"
+        areaCount={{ prd: 110, mil: 14, act: 11 }}
+        notamCount={0}
+      />,
+    );
     fireEvent.click(r.getByRole('button', { name: 'Terrain' }));
     expect(layers.base).toBe('terrain');
     expect(r.getByRole('button', { name: 'Light' }).getAttribute('aria-pressed')).toBe('true');
@@ -82,7 +122,9 @@ describe('layers control', () => {
     expect(onTips).toHaveBeenCalledWith(false);
     expect(r.getByText('AIRAC 2609')).toBeTruthy();
     // a press outside closes it
-    act(() => { document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })); });
+    act(() => {
+      document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    });
     expect(onOpen).toHaveBeenCalledWith(false);
   });
   it('the hint closes with its button', () => {
@@ -97,8 +139,22 @@ describe('layers control', () => {
 describe('MapLayerToggles', () => {
   it('has a separate toggle per layer', () => {
     let layers: MapLayers = { ...DEFAULT_MAP_LAYERS };
-    const r = render(<MapLayerToggles value={layers} onChange={(l) => { layers = l; }} />);
-    for (const [id, key] of [['map-fir', 'fir'], ['map-tma', 'tma'], ['map-zones', 'zones'], ['map-aerodromes', 'aerodromes'], ['map-vfr-points', 'vfrPoints'], ['map-vfr-routes', 'vfrRoutes']] as const) {
+    const r = render(
+      <MapLayerToggles
+        value={layers}
+        onChange={(l) => {
+          layers = l;
+        }}
+      />,
+    );
+    for (const [id, key] of [
+      ['map-fir', 'fir'],
+      ['map-tma', 'tma'],
+      ['map-zones', 'zones'],
+      ['map-aerodromes', 'aerodromes'],
+      ['map-vfr-points', 'vfrPoints'],
+      ['map-vfr-routes', 'vfrRoutes'],
+    ] as const) {
       fireEvent.click(r.getByTestId(id));
       expect(layers[key]).toBe(false);
       layers = { ...DEFAULT_MAP_LAYERS };
@@ -119,7 +175,11 @@ describe('tooltips near the map edges', () => {
     expect(placeBeside(20, 20, 990, 50, 1000, 600, { x: 16, y: 14 })).toEqual({ left: 8, top: 34 });
   });
   it('MapTip renders at its placed position', () => {
-    const r = render(<MapTip x={10} y={20} testId="tip">x</MapTip>);
+    const r = render(
+      <MapTip x={10} y={20} testId="tip">
+        x
+      </MapTip>,
+    );
     const el = r.getByTestId('tip');
     expect(el.style.left).toBe('26px');
     expect(el.style.top).toBe('34px');
@@ -129,7 +189,17 @@ describe('tooltips near the map edges', () => {
 describe('SegmentedControl', () => {
   it('marks the value pressed and moves with ←/→', () => {
     const onChange = vi.fn();
-    const r = render(<SegmentedControl label="Unit" value="kg" onChange={onChange} options={[{ value: 'kg', label: 'kg' }, { value: 'lb', label: 'lb' }]} />);
+    const r = render(
+      <SegmentedControl
+        label="Unit"
+        value="kg"
+        onChange={onChange}
+        options={[
+          { value: 'kg', label: 'kg' },
+          { value: 'lb', label: 'lb' },
+        ]}
+      />,
+    );
     expect(r.getByRole('group', { name: 'Unit' })).toBeTruthy();
     expect(r.getByRole('button', { name: 'kg' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.keyDown(r.getByRole('button', { name: 'kg' }), { key: 'ArrowRight' });

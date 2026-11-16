@@ -12,12 +12,33 @@ const type = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../data/airc
 const T = aircraftFromTypeJson(type).performance;
 
 const rwy = (designator: string, extra: Partial<RefRunway> = {}): RefRunway => ({
-  aerodromeId: 'LGXX', designator, reciprocal: '', headingMagDeg: parseInt(designator, 10) * 10, headingTrueDeg: null,
-  lengthM: 1100, widthM: 30, surface: 'ASPH', toraM: 1000, todaM: 1100, asdaM: 1000, ldaM: 900, slopePct: 0, thresholdElevFt: null, ...extra,
+  aerodromeId: 'LGXX',
+  designator,
+  reciprocal: '',
+  headingMagDeg: parseInt(designator, 10) * 10,
+  headingTrueDeg: null,
+  lengthM: 1100,
+  widthM: 30,
+  surface: 'ASPH',
+  toraM: 1000,
+  todaM: 1100,
+  asdaM: 1000,
+  ldaM: 900,
+  slopePct: 0,
+  thresholdElevFt: null,
+  ...extra,
 });
 const base = {
-  phase: 'takeoff' as const, aerodromeElevFt: 0, runways: [rwy('03'), rwy('21')],
-  qnhHpa: 1013.25, oatC: 15, variationDeg: 0, massKg: 1043, tables: T, runway: null, surface: null,
+  phase: 'takeoff' as const,
+  aerodromeElevFt: 0,
+  runways: [rwy('03'), rwy('21')],
+  qnhHpa: 1013.25,
+  oatC: 15,
+  variationDeg: 0,
+  massKg: 1043,
+  tables: T,
+  runway: null,
+  surface: null,
 };
 
 describe('variable and gusty surface wind', () => {
@@ -51,11 +72,15 @@ describe('variable and gusty surface wind', () => {
     // distances use the mean wind: headwind 7.5 kt → ×(1 − 0.1 × 7.5/5) = 0.85
     expect(p.distances!.factors.wind).toBeCloseTo(0.85, 9);
     // the same wind without the gust is within limits
-    expect(aerodromePerformance({ ...base, wind: { dirTrueDeg: 270, speedKt: 15, gustKt: null } }).crosswindOk).toBe(true);
+    expect(aerodromePerformance({ ...base, wind: { dirTrueDeg: 270, speedKt: 15, gustKt: null } }).crosswindOk).toBe(
+      true,
+    );
   });
 
   test('gust not above the mean is ignored; calm (0 kt) is not "no wind"', () => {
-    expect(aerodromePerformance({ ...base, wind: { dirTrueDeg: 210, speedKt: 10, gustKt: 10 } }).crosswindGustKt).toBeNull();
+    expect(
+      aerodromePerformance({ ...base, wind: { dirTrueDeg: 210, speedKt: 10, gustKt: 10 } }).crosswindGustKt,
+    ).toBeNull();
     const calm = aerodromePerformance({ ...base, wind: { dirTrueDeg: null, speedKt: 0, gustKt: null } });
     expect(calm.variableWind).toBe(false);
     expect(calm.wind.crosswindKt).toBe(0);
@@ -68,7 +93,15 @@ describe('landing: both methods, the longer LDR used', () => {
   // Review case (club calculator case #9): LGTT elevation 861 ft, QNH 1013, 36 °C, calm, paved.
   // AFM method by hand at PA 868 ft: 381 + 19·0.347 = 387.6 m, × (1 + 0.1·(36 − 13.26)/15) = ×1.1516,
   // × 1.43 = 638 m. Club method (table at DA ≈ 3600 ft, no temperature factor): 586 m.
-  const hot = { ...base, phase: 'landing' as const, aerodromeElevFt: 861, qnhHpa: 1013, oatC: 36, wind: null, runways: [rwy('03', { ldaM: 1000 })] };
+  const hot = {
+    ...base,
+    phase: 'landing' as const,
+    aerodromeElevFt: 861,
+    qnhHpa: 1013,
+    oatC: 36,
+    wind: null,
+    runways: [rwy('03', { ldaM: 1000 })],
+  };
 
   test('hot day: the AFM figure (longer) is used, the club one is kept as the alternative', () => {
     const p = aerodromePerformance(hot);
@@ -111,23 +144,50 @@ describe('take-off: both methods, the longer TODR used', () => {
   // credit for cold, so the AFM figure is the longer one. Independent figures (a separate Python
   // trilinear interpolation of data/aircraft/reims-f172m.json, 1043 kg, PA 2165 ft, 0 kt column):
   // TODR 754 m, TORR 412 m after × 1.33.
-  const cold = { ...base, phase: 'takeoff' as const, aerodromeElevFt: 2165, qnhHpa: 1013, wind: null, massKg: 1043, runways: [rwy('03', { toraM: 1000, todaM: 1000, slopePct: 0 })] };
+  const cold = {
+    ...base,
+    phase: 'takeoff' as const,
+    aerodromeElevFt: 2165,
+    qnhHpa: 1013,
+    wind: null,
+    massKg: 1043,
+    runways: [rwy('03', { toraM: 1000, todaM: 1000, slopePct: 0 })],
+  };
 
-  test.each([-10, -5, 0, 5])('OAT %i °C: AFM TODR/TORR (≈ 754/412 m) used, the club figure kept as the alternative', (oatC) => {
-    const p = aerodromePerformance({ ...cold, oatC });
-    const afm = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'afm' });
-    const club = takeoffDistances(T, { massKg: 1043, pressureAltFt: p.pressureAltFt, oatC, headwindKt: 0, surface: null, slopePct: 0, method: 'da' });
-    expect(p.distances!.method).toBe('afm');
-    expect(p.alternative!.method).toBe('da');
-    expect(p.distances!.requiredTotalM).toBeCloseTo(afm.requiredTotalM, 9);
-    expect(p.alternative!.requiredTotalM).toBeCloseTo(club.requiredTotalM, 9);
-    expect(Math.round(p.distances!.requiredTotalM)).toBeGreaterThanOrEqual(753);
-    expect(Math.round(p.distances!.requiredTotalM)).toBeLessThanOrEqual(755);
-    expect(Math.round(p.distances!.requiredGroundM)).toBeGreaterThanOrEqual(411);
-    expect(Math.round(p.distances!.requiredGroundM)).toBeLessThanOrEqual(413);
-    expect(p.distances!.requiredTotalM).toBeGreaterThan(club.requiredTotalM);
-    expect(p.marginM).toBeCloseTo(Math.min(1000 - afm.requiredTotalM, 1000 - afm.requiredGroundM), 9);
-  });
+  test.each([-10, -5, 0, 5])(
+    'OAT %i °C: AFM TODR/TORR (≈ 754/412 m) used, the club figure kept as the alternative',
+    (oatC) => {
+      const p = aerodromePerformance({ ...cold, oatC });
+      const afm = takeoffDistances(T, {
+        massKg: 1043,
+        pressureAltFt: p.pressureAltFt,
+        oatC,
+        headwindKt: 0,
+        surface: null,
+        slopePct: 0,
+        method: 'afm',
+      });
+      const club = takeoffDistances(T, {
+        massKg: 1043,
+        pressureAltFt: p.pressureAltFt,
+        oatC,
+        headwindKt: 0,
+        surface: null,
+        slopePct: 0,
+        method: 'da',
+      });
+      expect(p.distances!.method).toBe('afm');
+      expect(p.alternative!.method).toBe('da');
+      expect(p.distances!.requiredTotalM).toBeCloseTo(afm.requiredTotalM, 9);
+      expect(p.alternative!.requiredTotalM).toBeCloseTo(club.requiredTotalM, 9);
+      expect(Math.round(p.distances!.requiredTotalM)).toBeGreaterThanOrEqual(753);
+      expect(Math.round(p.distances!.requiredTotalM)).toBeLessThanOrEqual(755);
+      expect(Math.round(p.distances!.requiredGroundM)).toBeGreaterThanOrEqual(411);
+      expect(Math.round(p.distances!.requiredGroundM)).toBeLessThanOrEqual(413);
+      expect(p.distances!.requiredTotalM).toBeGreaterThan(club.requiredTotalM);
+      expect(p.marginM).toBeCloseTo(Math.min(1000 - afm.requiredTotalM, 1000 - afm.requiredGroundM), 9);
+    },
+  );
 
   test('-10 °C: the club method alone would be 18–22 % short of the AFM', () => {
     const p = aerodromePerformance({ ...cold, oatC: -10 });
@@ -136,7 +196,13 @@ describe('take-off: both methods, the longer TODR used', () => {
   });
 
   test('headwind: the club figure (no AFM 10/20 kt column credit) is the longer and is used', () => {
-    const p = aerodromePerformance({ ...cold, aerodromeElevFt: 0, qnhHpa: 1013.25, oatC: 15, wind: { dirTrueDeg: 35, speedKt: 15 } });
+    const p = aerodromePerformance({
+      ...cold,
+      aerodromeElevFt: 0,
+      qnhHpa: 1013.25,
+      oatC: 15,
+      wind: { dirTrueDeg: 35, speedKt: 15 },
+    });
     expect(p.distances!.method).toBe('da');
     expect(p.alternative!.method).toBe('afm');
     expect(p.distances!.requiredTotalM).toBeGreaterThanOrEqual(p.alternative!.requiredTotalM);

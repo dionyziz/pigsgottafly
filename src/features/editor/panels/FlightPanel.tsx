@@ -27,15 +27,28 @@ function DocumentsSection() {
   const issues = warnings.filter((w) => w.level === 'danger');
   const [showIssues, setShowIssues] = useState(false);
   const badge = issues.length ? (
-    <button type="button" className="ep-chip-btn" aria-expanded={showIssues} data-testid="documents-issues"
-      onClick={() => setShowIssues((v) => !v)} title={showIssues ? 'Hide the issues' : 'Show the issues'}>
-      <Chip tone="danger">{issues.length} issue{issues.length > 1 ? 's' : ''}</Chip>
+    <button
+      type="button"
+      className="ep-chip-btn"
+      aria-expanded={showIssues}
+      data-testid="documents-issues"
+      onClick={() => setShowIssues((v) => !v)}
+      title={showIssues ? 'Hide the issues' : 'Show the issues'}
+    >
+      <Chip tone="danger">
+        {issues.length} issue{issues.length > 1 ? 's' : ''}
+      </Chip>
     </button>
   ) : undefined;
   return (
     <Section id="documents" title="Documents" badge={badge}>
       {showIssues && issues.length > 0 && (
-        <WarningList warnings={issues} className="ep-issues" testId="documents-issue-list" fix={(w) => editorWarningFix(w.text, doc.aircraftId)} />
+        <WarningList
+          warnings={issues}
+          className="ep-issues"
+          testId="documents-issue-list"
+          fix={(w) => editorWarningFix(w.text, doc.aircraftId)}
+        />
       )}
       <ul className="ep-exports" data-testid="exports">
         {EXPORT_KINDS.map((k) => (
@@ -46,7 +59,9 @@ function DocumentsSection() {
               rel="noopener"
               data-testid={`export-${k}`}
               // send pending edits first so the export page loads them
-              onClick={() => { void flightStore.flushNow(); }}
+              onClick={() => {
+                void flightStore.flushNow();
+              }}
             >
               <Icon name="print" className="ep-icon" />
               <span className="ep-export-label">{EXPORT_LABEL[k]}</span>

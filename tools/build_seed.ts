@@ -24,12 +24,24 @@ export function fleetSeed(): AircraftInput[] {
   const type = readJson('data/aircraft/reims-f172m.json');
   const cards = readJson('data/aircraft/compass-cards.json');
   // Moment envelopes from the club W&B calculator (fleet.json _crosscheck): [moment kg·m, mass kg].
-  const momentNormal: [number, number][] = [[600, 675], [780, 890], [1020, 1043], [1258, 1043], [805, 675]];
+  const momentNormal: [number, number][] = [
+    [600, 675],
+    [780, 890],
+    [1020, 1043],
+    [1258, 1043],
+    [805, 675],
+  ];
   // The club's utility polygon stops at 905 kg, the AFM utility maximum is 2000 lb = 907 kg (the CG
   // envelope's maxKg). Its two upper edges are extended to 907 kg ((780,890)→(807,905) gives 810.6;
   // (700,675)→(927,905) gives 929.0) so that a mass between 905 and 907 kg is judged on its CG, not
   // reported as outside the envelope while within the maximum mass.
-  const momentUtility: [number, number][] = [[600, 675], [780, 890], [810.6, 907], [929, 907], [700, 675]];
+  const momentUtility: [number, number][] = [
+    [600, 675],
+    [780, 890],
+    [810.6, 907],
+    [929, 907],
+    [700, 675],
+  ];
 
   return ['SX-ASV', 'SX-ASG'].map((reg): AircraftInput => {
     const f = fleet[reg];
@@ -41,9 +53,19 @@ export function fleetSeed(): AircraftInput[] {
     a.homeBase = 'LGTT';
     a.cruiseTasKt = f.cruiseTasKt;
     a.patternTasKt = f.patternTasKt;
-    a.fuel = { ...a.fuel, totalL: f.fuel.usableL + type.fuel.unusableL, usableL: f.fuel.usableL,
-      types: (f.fuel.approved as FuelType[]).map((t) => ({ type: t, densityKgPerL: type.fuel.densityKgPerL[t] ?? DEFAULT_FUEL_DENSITY[t] })),
-      unusableIncludedInEmptyMass: !!f.emptyMass.includesUnusableFuel, tanks: longRange ? 'long-range' : 'standard', burnLph: 30, taxiAllowanceL: 4 };
+    a.fuel = {
+      ...a.fuel,
+      totalL: f.fuel.usableL + type.fuel.unusableL,
+      usableL: f.fuel.usableL,
+      types: (f.fuel.approved as FuelType[]).map((t) => ({
+        type: t,
+        densityKgPerL: type.fuel.densityKgPerL[t] ?? DEFAULT_FUEL_DENSITY[t],
+      })),
+      unusableIncludedInEmptyMass: !!f.emptyMass.includesUnusableFuel,
+      tanks: longRange ? 'long-range' : 'standard',
+      burnLph: 30,
+      taxiAllowanceL: 4,
+    };
     const mb = a.massBalance;
     mb.emptyMassKg = f.emptyMass.kg;
     mb.emptyArmM = f.emptyMass.armM;
@@ -64,11 +86,19 @@ export function fleetSeed(): AircraftInput[] {
     // (e.g. SX-ASG's life vests listed in its weighing report → item 19 J/).
     const jackets = f.equipment?.jackets;
     a.equipment = {
-      ...a.equipment, item10a: 'S', item10b: 'C', emergencyRadio: { uhf: false, vhf: false, elt: true },
+      ...a.equipment,
+      item10a: 'S',
+      item10b: 'C',
+      emergencyRadio: { uhf: false, vhf: false, elt: true },
       ...(jackets ? { jackets: { ...a.equipment.jackets, ...jackets } } : {}),
     };
-    a.compassCards = cards[reg].map((c: CompassCard & { _file?: string }): CompassCard =>
-      ({ name: c.name, swung: c.swung, expires: c.expires, source: '', points: c.points }));
+    a.compassCards = cards[reg].map((c: CompassCard & { _file?: string }): CompassCard => ({
+      name: c.name,
+      swung: c.swung,
+      expires: c.expires,
+      source: '',
+      points: c.points,
+    }));
     a.notes = '';
     return a;
   });

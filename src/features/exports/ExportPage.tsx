@@ -48,40 +48,71 @@ function FormExport({ flight, kind }: { flight: Flight; kind: 'form731' | 'gende
   const forms = useFormsState(flight.id);
   if (ac.loading || pax.loading) return <Loading />;
   const props = { flight, aircraft: ac.aircraft, pilot, passengers: pax.passengers };
-  return kind === 'form731'
-    ? <Form731 {...props} signatures={shownSignatures(forms.st)} panel={<SignaturesPanel flightId={flight.id} forms={forms} />} />
-    : <GenDec {...props} signature={forms.st?.gendec.picSignature ?? null} panel={<GenDecSendPanel flightId={flight.id} forms={forms} />} />;
+  return kind === 'form731' ? (
+    <Form731
+      {...props}
+      signatures={shownSignatures(forms.st)}
+      panel={<SignaturesPanel flightId={flight.id} forms={forms} />}
+    />
+  ) : (
+    <GenDec
+      {...props}
+      signature={forms.st?.gendec.picSignature ?? null}
+      panel={<GenDecSendPanel flightId={flight.id} forms={forms} />}
+    />
+  );
 }
 
 function Body({ flight, kind }: { flight: Flight; kind: ExportKind }) {
   switch (kind) {
-    case 'navlog': return <NavlogExport flight={flight} />;
-    case 'form731': return <FormExport flight={flight} kind="form731" />;
-    case 'gendec': return <FormExport flight={flight} kind="gendec" />;
-    case 'fpl': return <FplExport flight={flight} />;
-    case 'wbperf': return <WbPerfExport flight={flight} />;
-    case 'briefing': return <BriefingExport flight={flight} />;
+    case 'navlog':
+      return <NavlogExport flight={flight} />;
+    case 'form731':
+      return <FormExport flight={flight} kind="form731" />;
+    case 'gendec':
+      return <FormExport flight={flight} kind="gendec" />;
+    case 'fpl':
+      return <FplExport flight={flight} />;
+    case 'wbperf':
+      return <WbPerfExport flight={flight} />;
+    case 'briefing':
+      return <BriefingExport flight={flight} />;
   }
 }
 
 export function ExportPage() {
   const { id = '', kind = '' } = useParams();
   const { data: flight, error } = useAsync(
-    async () => { await flushFlightEdits(); return api.flights.get(id); },
+    async () => {
+      await flushFlightEdits();
+      return api.flights.get(id);
+    },
     [id],
     { refetchOnFocus: true, invalidatedBy: 'flights' },
   );
-  if (Object.hasOwn(EXPORT_REDIRECTS, kind)) return <Navigate replace to={`/flights/${id}/export/${EXPORT_REDIRECTS[kind]}`} />;
+  if (Object.hasOwn(EXPORT_REDIRECTS, kind))
+    return <Navigate replace to={`/flights/${id}/export/${EXPORT_REDIRECTS[kind]}`} />;
   if (!(EXPORT_KINDS as readonly string[]).includes(kind)) {
-    return <div className="page"><EmptyState title={`No document “${kind}”`} action={<Link to={`/flights/${id}`}>Back to the flight</Link>} /></div>;
+    return (
+      <div className="page">
+        <EmptyState title={`No document “${kind}”`} action={<Link to={`/flights/${id}`}>Back to the flight</Link>} />
+      </div>
+    );
   }
-  if (error && !flight) return <div className="page"><EmptyState title="Flight not found" action={<Link to="/">Back to flights</Link>} /></div>;
+  if (error && !flight)
+    return (
+      <div className="page">
+        <EmptyState title="Flight not found" action={<Link to="/">Back to flights</Link>} />
+      </div>
+    );
   if (!flight) return <Loading variant="screen" />;
   const k = kind as ExportKind;
   return (
     <div className="page export-page" data-testid="export-page" data-kind={kind}>
       <div className="no-print export-bar">
-        <Link to={`/flights/${flight.id}`} className="export-back">← {flight.summary.title || 'Flight'}</Link>
+        <Link to={`/flights/${flight.id}`} className="export-back">
+          ← {flight.summary.title || 'Flight'}
+        </Link>
         <nav className="export-tabs" aria-label="Exports" role="tablist">
           {EXPORT_KINDS.map((x) => (
             <Link
@@ -96,7 +127,9 @@ export function ExportPage() {
             </Link>
           ))}
         </nav>
-        <button className="primary" onClick={() => window.print()} data-testid="export-print">Print</button>
+        <button className="primary" onClick={() => window.print()} data-testid="export-print">
+          Print
+        </button>
       </div>
       <Body flight={flight} kind={k} />
     </div>

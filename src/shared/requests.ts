@@ -17,7 +17,10 @@ export const MAX_STOP_MIN = 600;
 export const DEFAULT_STOP_MIN = 10;
 
 /** The request on each route point that can carry one, in route order (invalid ones dropped). */
-export function activeRequests(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined): { index: number; point: RoutePoint; request: AerodromeRequest }[] {
+export function activeRequests(
+  route: RoutePoint[],
+  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
+): { index: number; point: RoutePoint; request: AerodromeRequest }[] {
   const reqs = options?.aerodromeRequests ?? [];
   if (!reqs.length) return [];
   const byUid = new Map<string, AerodromeRequest>();
@@ -44,13 +47,20 @@ export type IcaoOf = (p: RoutePoint) => string | null;
 
 /** The remark of one request, in the club's format (before ATS-text cleaning). */
 export function requestRemark(r: AerodromeRequest, where: string, index: number): string {
-  if (r.kind === 'stop') return `REQUEST INTERMEDIATE STOP AT ${where} FOR ${Math.round(r.stopMin ?? DEFAULT_STOP_MIN)} MIN`;
+  if (r.kind === 'stop')
+    return `REQUEST INTERMEDIATE STOP AT ${where} FOR ${Math.round(r.stopMin ?? DEFAULT_STOP_MIN)} MIN`;
   return `${index === 0 ? 'INITIALLY ' : ''}REQUEST TOUCH N GO AT ${where}`;
 }
 
 /** Every request's remark, in route order. */
-export function requestRemarks(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined, icaoOf: IcaoOf): string[] {
-  return activeRequests(route, options).map(({ index, point, request }) => requestRemark(request, (icaoOf(point) || point.name).toUpperCase(), index));
+export function requestRemarks(
+  route: RoutePoint[],
+  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
+  icaoOf: IcaoOf,
+): string[] {
+  return activeRequests(route, options).map(({ index, point, request }) =>
+    requestRemark(request, (icaoOf(point) || point.name).toUpperCase(), index),
+  );
 }
 
 export interface RequestTiming {
@@ -65,7 +75,10 @@ export interface RequestTiming {
 }
 
 /** Timing effects of the requests on a route of route.length − 1 legs. */
-export function requestTiming(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined): RequestTiming {
+export function requestTiming(
+  route: RoutePoint[],
+  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
+): RequestTiming {
   const n = Math.max(0, route.length - 1);
   const patternLegs = new Array<boolean>(n).fill(false);
   const patternPoints = new Array<boolean>(route.length).fill(false);
@@ -76,21 +89,30 @@ export function requestTiming(route: RoutePoint[], options: Pick<FlightOptions, 
     patternPoints[index] = true;
     patternLegs[index - 1] = true;
     if (index < n) patternLegs[index] = true;
-    if (request.kind === 'stop') groundAfterLegMin[index - 1] += Math.max(0, Math.min(MAX_STOP_MIN, request.stopMin ?? DEFAULT_STOP_MIN));
+    if (request.kind === 'stop')
+      groundAfterLegMin[index - 1] += Math.max(0, Math.min(MAX_STOP_MIN, request.stopMin ?? DEFAULT_STOP_MIN));
     else touchAfterLeg[index - 1] = true;
   }
   return { patternLegs, patternPoints, groundAfterLegMin, touchAfterLeg };
 }
 
 /** Sets (or, with kind null, removes) the request on a point; returns the new list. */
-export function setRequest(list: AerodromeRequest[] | undefined, pointUid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number): AerodromeRequest[] {
+export function setRequest(
+  list: AerodromeRequest[] | undefined,
+  pointUid: string,
+  kind: AerodromeRequest['kind'] | null,
+  stopMin?: number,
+): AerodromeRequest[] {
   const prev = (list ?? []).find((r) => r.pointUid === pointUid);
   const rest = (list ?? []).filter((r) => r.pointUid !== pointUid);
   if (!kind) return rest;
   if (kind !== 'stop') return [...rest, { pointUid, kind }];
   // A stop keeps the runway / surface chosen for it when only its minutes change.
   const keep = prev?.kind === 'stop' ? stopChoices(prev) : {};
-  return [...rest, { pointUid, kind, stopMin: Math.max(1, Math.min(MAX_STOP_MIN, Math.round(stopMin ?? DEFAULT_STOP_MIN))), ...keep }];
+  return [
+    ...rest,
+    { pointUid, kind, stopMin: Math.max(1, Math.min(MAX_STOP_MIN, Math.round(stopMin ?? DEFAULT_STOP_MIN))), ...keep },
+  ];
 }
 
 type StopChoices = Pick<AerodromeRequest, 'landingRunway' | 'takeoffRunway' | 'surface'>;
@@ -103,7 +125,12 @@ const stopChoices = (r: AerodromeRequest): StopChoices => {
 };
 
 /** Sets the runway (landing / take-off) or surface chosen at a stop or touch-and-go; null = automatic / paved, dry. */
-export function setStopChoice(list: AerodromeRequest[] | undefined, pointUid: string, key: keyof StopChoices, value: string | null): AerodromeRequest[] {
+export function setStopChoice(
+  list: AerodromeRequest[] | undefined,
+  pointUid: string,
+  key: keyof StopChoices,
+  value: string | null,
+): AerodromeRequest[] {
   return (list ?? []).map((r) => {
     if (r.pointUid !== pointUid) return r;
     const next: AerodromeRequest = { ...r };
@@ -118,7 +145,10 @@ export function setStopChoice(list: AerodromeRequest[] | undefined, pointUid: st
  * route order: the points after which requestTiming() puts ground time. The calculations'
  * sectors (src/calc/sectors.ts) end at exactly these points.
  */
-export function stopPointIndices(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined): number[] {
+export function stopPointIndices(
+  route: RoutePoint[],
+  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
+): number[] {
   const g = requestTiming(route, options).groundAfterLegMin;
   const out: number[] = [];
   for (let i = 0; i < g.length - 1; i++) if (g[i] > 0) out.push(i + 1);
@@ -130,9 +160,13 @@ export function stopPointIndices(route: RoutePoint[], options: Pick<FlightOption
  * destination: intermediate full stops and touch-and-goes, in route order. The calculations'
  * sectors end at these points (each needs its own landing and take-off performance).
  */
-export function landingPointIndices(route: RoutePoint[], options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined): number[] {
+export function landingPointIndices(
+  route: RoutePoint[],
+  options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
+): number[] {
   const t = requestTiming(route, options);
   const out: number[] = [];
-  for (let i = 0; i < t.groundAfterLegMin.length - 1; i++) if (t.groundAfterLegMin[i] > 0 || t.touchAfterLeg[i]) out.push(i + 1);
+  for (let i = 0; i < t.groundAfterLegMin.length - 1; i++)
+    if (t.groundAfterLegMin[i] > 0 || t.touchAfterLeg[i]) out.push(i + 1);
   return out;
 }

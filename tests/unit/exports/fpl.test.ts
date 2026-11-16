@@ -2,8 +2,27 @@
 // wrapping, and the full message for a realistic flight built from the app's records.
 import { describe, expect, test } from 'vitest';
 import {
-  AFTN_LINE, MISSING, aircraftId, buildFpl, cleanPhone, cleanText, coordField, dofField, eobtField, hhmm, locationField,
-  intlPhone, oneLine, parseItem18, picName, routeElement, routeField, speedField, transliterate, wrapLine, type FplInput,
+  AFTN_LINE,
+  MISSING,
+  aircraftId,
+  buildFpl,
+  cleanPhone,
+  cleanText,
+  coordField,
+  dofField,
+  eobtField,
+  hhmm,
+  locationField,
+  intlPhone,
+  oneLine,
+  parseItem18,
+  picName,
+  routeElement,
+  routeField,
+  speedField,
+  transliterate,
+  wrapLine,
+  type FplInput,
 } from '../../../src/features/exports/fpl/fpl';
 import { alternateOf, fplInputFrom, totalEetMin } from '../../../src/features/exports/fpl/input';
 import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, planFuel } from '../../../src/calc';
@@ -22,7 +41,10 @@ const EQ: Equipment = {
   remarks: '',
 };
 
-const ad = (icao: string) => { const a = aerodrome(icao)!; return { icao: a.icao, name: a.name, lat: a.lat, lon: a.lon }; };
+const ad = (icao: string) => {
+  const a = aerodrome(icao)!;
+  return { icao: a.icao, name: a.name, lat: a.lat, lon: a.lon };
+};
 
 function base(over: Partial<FplInput> = {}): FplInput {
   const tt = ad('LGTT');
@@ -70,7 +92,12 @@ describe('field formats', () => {
     expect(coordField(-33.95, -118.4)).toBe('3357S11824W');
     expect(coordField(0, 0)).toBe('0000N00000E');
     expect(coordField(5.5, 7.25)).toBe('0530N00715E');
-    for (const [la, lo] of [[35.1, 19.9], [41.7, 28.3], [36.4, 22.05]]) expect(coordField(la, lo)).toMatch(/^\d{4}[NS]\d{5}[EW]$/);
+    for (const [la, lo] of [
+      [35.1, 19.9],
+      [41.7, 28.3],
+      [36.4, 22.05],
+    ])
+      expect(coordField(la, lo)).toMatch(/^\d{4}[NS]\d{5}[EW]$/);
   });
 
   test('times: HHMM', () => {
@@ -118,7 +145,9 @@ describe('field formats', () => {
     expect(routeElement({ name: 'WP3', lat: 38.0333, lon: 23.7833, kind: 'custom' })).toBe('3802N02347E');
     expect(routeElement({ name: '', lat: 38.0333, lon: 23.7833, kind: 'custom' })).toBe('3802N02347E');
     expect(routeElement({ name: 'Megara', lat: 37.98, lon: 23.37, kind: 'aerodrome', icao: 'LGMG' })).toBe('LGMG');
-    expect(routeElement({ name: 'Farm strip', lat: 37.98, lon: 23.37, kind: 'aerodrome', icao: null })).toBe('3759N02322E');
+    expect(routeElement({ name: 'Farm strip', lat: 37.98, lon: 23.37, kind: 'aerodrome', icao: null })).toBe(
+      '3759N02322E',
+    );
     expect(routeElement({ name: 'AGIOS GEORGIOS', lat: 37.49, lon: 23.9, kind: 'vfr' })).toBe('AGIOSGEORGIOS');
     expect(routeElement({ name: 'ELEFSINA (LGEL)', lat: 38.06, lon: 23.55, kind: 'vfr' })).toBe('ELEFSINA');
     expect(routeElement({ name: 'Χολαργός', lat: 38, lon: 23.8, kind: 'waypoint' })).toBe('CHOLARGOS');
@@ -155,7 +184,9 @@ describe('field formats', () => {
 
   test('item 18 parsing of hangar extras', () => {
     expect(parseItem18('NAV/GNSS COM/8.33 RMK/HELLO')).toEqual([
-      { indicator: 'NAV', text: 'GNSS' }, { indicator: 'COM', text: '8.33' }, { indicator: 'RMK', text: 'HELLO' },
+      { indicator: 'NAV', text: 'GNSS' },
+      { indicator: 'COM', text: '8.33' },
+      { indicator: 'RMK', text: 'HELLO' },
     ]);
     expect(parseItem18('just a note')).toEqual([{ indicator: 'RMK', text: 'JUST A NOTE' }]);
     expect(parseItem18('0')).toEqual([]);
@@ -190,7 +221,21 @@ describe('the message', () => {
   });
 
   test('every line fits AFTN, each field starts with a hyphen, parentheses balanced', () => {
-    const long = buildFpl(base({ remarks: 'A '.repeat(80), route: [...base().route.slice(0, 1), ...Array.from({ length: 12 }, (_, i) => ({ name: `P${i}`, lat: 38 + i / 10, lon: 23 + i / 10, kind: 'custom' as const })), base().route[3]] }));
+    const long = buildFpl(
+      base({
+        remarks: 'A '.repeat(80),
+        route: [
+          ...base().route.slice(0, 1),
+          ...Array.from({ length: 12 }, (_, i) => ({
+            name: `P${i}`,
+            lat: 38 + i / 10,
+            lon: 23 + i / 10,
+            kind: 'custom' as const,
+          })),
+          base().route[3],
+        ],
+      }),
+    );
     for (const l of long.lines) expect(l.length).toBeLessThanOrEqual(AFTN_LINE);
     expect(long.message.startsWith('(FPL-')).toBe(true);
     expect(long.message.endsWith(')')).toBe(true);
@@ -203,10 +248,12 @@ describe('the message', () => {
   });
 
   test('alternates, ZZZZ endpoints and ALTN/', () => {
-    const r = buildFpl(base({
-      destination: ad('LGSR'),
-      alternates: [ad('LGAV'), { icao: null, name: 'Megara', lat: 37.98, lon: 23.37 }],
-    }));
+    const r = buildFpl(
+      base({
+        destination: ad('LGSR'),
+        alternates: [ad('LGAV'), { icao: null, name: 'Megara', lat: 37.98, lon: 23.37 }],
+      }),
+    );
     expect(r.lines[4]).toBe('-LGSR0115 LGAV ZZZZ');
     expect(r.fields.item18).toContain('ALTN/MEGARA 3759N02322E');
     const z = buildFpl(base({ departure: { icao: null, name: 'Kalamata-Triodhon', lat: 37.0667, lon: 22.0167 } }));
@@ -218,11 +265,18 @@ describe('the message', () => {
   });
 
   test('item 18 order and hangar extras merge (Doc 4444 order, DOF/ last as EuroFPL)', () => {
-    const r = buildFpl(base({
-      operator: 'Aeroclub Mesogeion',
-      remarks: 'Training flight',
-      equipment: { ...EQ, item10a: 'SDFGRY', pbn: 'B2', item18Extras: 'COM/8.33 RMK/CLUB AIRCRAFT NAV/GNSS DOF/991231 STS/SAR' },
-    }));
+    const r = buildFpl(
+      base({
+        operator: 'Aeroclub Mesogeion',
+        remarks: 'Training flight',
+        equipment: {
+          ...EQ,
+          item10a: 'SDFGRY',
+          pbn: 'B2',
+          item18Extras: 'COM/8.33 RMK/CLUB AIRCRAFT NAV/GNSS DOF/991231 STS/SAR',
+        },
+      }),
+    );
     const inds = r.fields.item18Parts.map((p) => p.indicator);
     expect(inds).toEqual(['STS', 'PBN', 'NAV', 'COM', 'OPR', 'RMK', 'DOF']);
     expect(r.fields.item18).toContain('DOF/261120');
@@ -230,39 +284,63 @@ describe('the message', () => {
     expect(r.fields.item18).toContain('RMK/TRAINING FLIGHT CLUB AIRCRAFT DOF/');
     expect(r.fields.item18).not.toMatch(/VFR VIA|PIC TEL/);
     expect(r.warnings.some((w) => /DOF\/ from the hangar/.test(w))).toBe(true);
-    expect(r.fixes[r.warnings.find((w) => /DOF\/ from the hangar/.test(w))!]).toEqual({ kind: 'aircraft', focus: 'item18Extras' });
+    expect(r.fixes[r.warnings.find((w) => /DOF\/ from the hangar/.test(w))!]).toEqual({
+      kind: 'aircraft',
+      focus: 'item18Extras',
+    });
   });
 
-  test('the pilot\'s EuroFPL reference plan for SX-ASG', () => {
+  test("the pilot's EuroFPL reference plan for SX-ASG", () => {
     const tt = ad('LGTT');
-    const r = buildFpl(base({
-      registration: 'SX-ASG',
-      operator: 'Aeroclub Mesogeion',
-      colours: 'White with black/red stripes',
-      date: '2026-11-16', eobt: '07:00',
-      alternates: [ad('LGMG')],
-      route: [
-        { name: 'LGTT', lat: tt.lat, lon: tt.lon, kind: 'aerodrome', icao: 'LGTT' },
-        { name: 'HOLARGOS', lat: 38.0, lon: 23.8, kind: 'vfr' },
-        { name: 'HELLINIKON', lat: 37.9, lon: 23.73, kind: 'vfr' },
-        { name: 'LGTT', lat: tt.lat, lon: tt.lon, kind: 'aerodrome', icao: 'LGTT' },
-      ],
-      cruiseTasKt: 100, totalEetMin: 60, enduranceMin: 120,
-      pic: { fullName: 'Dionysis Zindros', phone: '+30 694 246 2092' },
-      equipment: {
-        ...EQ, item10a: 'SBDFGRY', item10b: 'EB1', pbn: 'B2C2D2O2S1', item18Extras: 'NAV/SBAS RMK/GARMIN GNS430W',
-        jackets: { present: true, light: true, fluorescein: true, uhf: false, vhf: false },
-        remarks: 'OPR TEL +302108169910 +306974776230',
-      },
-    }));
-    expect(oneLine(r)).toBe('(FPL-SXASG-VG-C172/L-SBDFGRY/EB1-LGTT0700-N0100VFR HOLARGOS HELLINIKON-LGTT0100 LGMG'
-      + '-PBN/B2C2D2O2S1 NAV/SBAS OPR/AEROCLUB MESOGEION RMK/GARMIN GNS430W DOF/261116'
-      + '-E/0200 P/002 R/E J/LF A/WHITE WITH BLACK RED STRIPES N/OPR TEL +302108169910 +306974776230 C/ZINDROS D +30 6942462092)');
+    const r = buildFpl(
+      base({
+        registration: 'SX-ASG',
+        operator: 'Aeroclub Mesogeion',
+        colours: 'White with black/red stripes',
+        date: '2026-11-16',
+        eobt: '07:00',
+        alternates: [ad('LGMG')],
+        route: [
+          { name: 'LGTT', lat: tt.lat, lon: tt.lon, kind: 'aerodrome', icao: 'LGTT' },
+          { name: 'HOLARGOS', lat: 38.0, lon: 23.8, kind: 'vfr' },
+          { name: 'HELLINIKON', lat: 37.9, lon: 23.73, kind: 'vfr' },
+          { name: 'LGTT', lat: tt.lat, lon: tt.lon, kind: 'aerodrome', icao: 'LGTT' },
+        ],
+        cruiseTasKt: 100,
+        totalEetMin: 60,
+        enduranceMin: 120,
+        pic: { fullName: 'Dionysis Zindros', phone: '+30 694 246 2092' },
+        equipment: {
+          ...EQ,
+          item10a: 'SBDFGRY',
+          item10b: 'EB1',
+          pbn: 'B2C2D2O2S1',
+          item18Extras: 'NAV/SBAS RMK/GARMIN GNS430W',
+          jackets: { present: true, light: true, fluorescein: true, uhf: false, vhf: false },
+          remarks: 'OPR TEL +302108169910 +306974776230',
+        },
+      }),
+    );
+    expect(oneLine(r)).toBe(
+      '(FPL-SXASG-VG-C172/L-SBDFGRY/EB1-LGTT0700-N0100VFR HOLARGOS HELLINIKON-LGTT0100 LGMG' +
+        '-PBN/B2C2D2O2S1 NAV/SBAS OPR/AEROCLUB MESOGEION RMK/GARMIN GNS430W DOF/261116' +
+        '-E/0200 P/002 R/E J/LF A/WHITE WITH BLACK RED STRIPES N/OPR TEL +302108169910 +306974776230 C/ZINDROS D +30 6942462092)',
+    );
     for (const l of r.lines) expect(l.length).toBeLessThanOrEqual(AFTN_LINE);
   });
 
   test('every warning says where it is fixed', () => {
-    const r = buildFpl(base({ eobt: '', icaoType: '', colours: '', pic: { fullName: '', phone: '' }, enduranceMin: null, personsOnBoard: null, date: '' }));
+    const r = buildFpl(
+      base({
+        eobt: '',
+        icaoType: '',
+        colours: '',
+        pic: { fullName: '', phone: '' },
+        enduranceMin: null,
+        personsOnBoard: null,
+        date: '',
+      }),
+    );
     for (const w of r.warnings) expect(r.fixes[w], w).toBeTruthy();
     expect(r.fixes['Block-off time (EOBT) not set (item 13).']).toEqual({ kind: 'flight', focus: 'blockOff' });
   });
@@ -270,8 +348,14 @@ describe('the message', () => {
   test('equipment rules: R needs PBN/, Z needs NAV/COM/DAT, N alone', () => {
     expect(buildFpl(base({ equipment: { ...EQ, item10a: 'SR' } })).warnings.some((w) => /PBN/.test(w))).toBe(true);
     expect(buildFpl(base({ equipment: { ...EQ, item10a: 'SZ' } })).warnings.some((w) => /Z: NAV/.test(w))).toBe(true);
-    expect(buildFpl(base({ equipment: { ...EQ, item10a: 'SZ', item18Extras: 'COM/8.33' } })).warnings.some((w) => /Z: NAV/.test(w))).toBe(false);
-    expect(buildFpl(base({ equipment: { ...EQ, item10a: 'NS' } })).warnings.some((w) => /N \(no equipment\)/.test(w))).toBe(true);
+    expect(
+      buildFpl(base({ equipment: { ...EQ, item10a: 'SZ', item18Extras: 'COM/8.33' } })).warnings.some((w) =>
+        /Z: NAV/.test(w),
+      ),
+    ).toBe(false);
+    expect(
+      buildFpl(base({ equipment: { ...EQ, item10a: 'NS' } })).warnings.some((w) => /N \(no equipment\)/.test(w)),
+    ).toBe(true);
     const none = buildFpl(base({ equipment: { ...EQ, item10a: '', item10b: '' } }));
     expect(none.fields.item10).toEqual({ a: 'N', b: 'N' });
   });
@@ -283,21 +367,29 @@ describe('the message', () => {
   });
 
   test('item 19: survival, jackets, dinghies, remarks', () => {
-    const r = buildFpl(base({
-      personsOnBoard: 4,
-      enduranceMin: 293,
-      equipment: {
-        ...EQ,
-        emergencyRadio: { uhf: false, vhf: true, elt: true },
-        survival: { polar: false, desert: false, maritime: true, jungle: false },
-        jackets: { present: true, light: true, fluorescein: false, uhf: false, vhf: false },
-        dinghies: { number: 1, capacity: 4, covered: true, colour: 'orange' },
-        remarks: 'fire extinguisher',
-      },
-    }));
-    expect(r.fields.item19.text).toBe('E/0453 P/004 R/VE S/M J/L D/01 004 C ORANGE A/WHITE BLUE STRIPES N/FIRE EXTINGUISHER C/ZINDROS D +30 6940000000');
+    const r = buildFpl(
+      base({
+        personsOnBoard: 4,
+        enduranceMin: 293,
+        equipment: {
+          ...EQ,
+          emergencyRadio: { uhf: false, vhf: true, elt: true },
+          survival: { polar: false, desert: false, maritime: true, jungle: false },
+          jackets: { present: true, light: true, fluorescein: false, uhf: false, vhf: false },
+          dinghies: { number: 1, capacity: 4, covered: true, colour: 'orange' },
+          remarks: 'fire extinguisher',
+        },
+      }),
+    );
+    expect(r.fields.item19.text).toBe(
+      'E/0453 P/004 R/VE S/M J/L D/01 004 C ORANGE A/WHITE BLUE STRIPES N/FIRE EXTINGUISHER C/ZINDROS D +30 6940000000',
+    );
     expect(r.fields.item18).not.toContain('TEL');
-    const jk = buildFpl(base({ equipment: { ...EQ, jackets: { present: true, light: false, fluorescein: false, uhf: false, vhf: false } } }));
+    const jk = buildFpl(
+      base({
+        equipment: { ...EQ, jackets: { present: true, light: false, fluorescein: false, uhf: false, vhf: false } },
+      }),
+    );
     expect(jk.fields.item19.text).not.toContain('J/');
     expect(jk.fields.item19.text).toContain('N/LIFE JACKETS');
   });
@@ -316,12 +408,25 @@ describe('the message', () => {
   });
 
   test('missing data is visible as ???? and warned', () => {
-    const r = buildFpl(base({ eobt: '', totalEetMin: null, enduranceMin: null, personsOnBoard: null, colours: '', pic: { fullName: '', phone: '' }, date: '' }));
+    const r = buildFpl(
+      base({
+        eobt: '',
+        totalEetMin: null,
+        enduranceMin: null,
+        personsOnBoard: null,
+        colours: '',
+        pic: { fullName: '', phone: '' },
+        date: '',
+      }),
+    );
     expect(r.complete).toBe(false);
     expect(r.fields.item13.eobt).toBe(MISSING);
     expect(r.fields.item16.eet).toBe(MISSING);
     expect(r.fields.item19.text).toBe('E/???? P/TBN R/E C/????');
-    expect(r.fixes['Pilot phone number not set in the profile (item 19 C/).']).toEqual({ kind: 'profile', focus: 'phone' });
+    expect(r.fixes['Pilot phone number not set in the profile (item 19 C/).']).toEqual({
+      kind: 'profile',
+      focus: 'phone',
+    });
     expect(r.fields.item18).not.toContain('DOF/');
     expect(r.warnings.length).toBeGreaterThanOrEqual(6);
   });
@@ -331,35 +436,108 @@ describe('the message', () => {
 // From the app's records
 
 const rp = (kind: 'aerodrome' | 'vfr', id: string): RoutePoint => {
-  if (kind === 'aerodrome') { const a = aerodrome(id)!; return { uid: 'u' + id, kind, refId: a.id, name: a.icao ?? a.id, lat: a.lat, lon: a.lon }; }
+  if (kind === 'aerodrome') {
+    const a = aerodrome(id)!;
+    return { uid: 'u' + id, kind, refId: a.id, name: a.icao ?? a.id, lat: a.lat, lon: a.lon };
+  }
   const p = vfrPoint(id)!;
   return { uid: 'u' + id, kind, refId: id, name: p.name, lat: p.lat, lon: p.lon };
 };
 
 describe('fplInputFrom (flight + hangar + profile + navlog + fuel)', () => {
-  const route = [rp('aerodrome', 'LGTT'), rp('vfr', 'LGAV/DAPORI'), rp('vfr', 'LGAV/KORINTHOS'), rp('aerodrome', 'LGMG')];
+  const route = [
+    rp('aerodrome', 'LGTT'),
+    rp('vfr', 'LGAV/DAPORI'),
+    rp('vfr', 'LGAV/KORINTHOS'),
+    rp('aerodrome', 'LGMG'),
+  ];
   const doc = emptyFlightDoc('2026-11-20');
   const flight: Flight = {
     ...doc,
-    id: 'f1', version: 1, created: 0, updated: 0, opened: 0, deleted: false,
-    blockOff: '09:00', taxiOutMin: 15, taxiInMin: 15, route,
+    id: 'f1',
+    version: 1,
+    created: 0,
+    updated: 0,
+    opened: 0,
+    deleted: false,
+    blockOff: '09:00',
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    route,
     crew: [
-      { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: { fullName: 'Snap Name', phone: '210', dateOfBirth: null, weightKg: 80, idNumber: '', idType: '', nationality: '', relation: '' } },
-      { role: 'PAX', passengerId: 'p1', seat: 'front-right', snapshot: { fullName: 'Pax', phone: '', dateOfBirth: null, weightKg: 70, idNumber: '', idType: '', nationality: '', relation: '' } },
+      {
+        role: 'PIC',
+        passengerId: null,
+        seat: 'front-left',
+        snapshot: {
+          fullName: 'Snap Name',
+          phone: '210',
+          dateOfBirth: null,
+          weightKg: 80,
+          idNumber: '',
+          idType: '',
+          nationality: '',
+          relation: '',
+        },
+      },
+      {
+        role: 'PAX',
+        passengerId: 'p1',
+        seat: 'front-right',
+        snapshot: {
+          fullName: 'Pax',
+          phone: '',
+          dateOfBirth: null,
+          weightKg: 70,
+          idNumber: '',
+          idType: '',
+          nationality: '',
+          relation: '',
+        },
+      },
     ],
     options: { ...doc.options, alternates: ['LGAV'] },
   };
   const aircraft = {
-    registration: 'SX-ASV', makeModel: 'Reims/Cessna F172M', icaoType: 'C172', wake: 'L', operator: 'Aeroclub Mesogeion', colours: 'WHITE', cruiseTasKt: 92, patternTasKt: 80,
-    equipment: EQ, compassCards: [], fuel: { burnLph: 30, taxiAllowanceL: 4, usableL: 144 },
+    registration: 'SX-ASV',
+    makeModel: 'Reims/Cessna F172M',
+    icaoType: 'C172',
+    wake: 'L',
+    operator: 'Aeroclub Mesogeion',
+    colours: 'WHITE',
+    cruiseTasKt: 92,
+    patternTasKt: 80,
+    equipment: EQ,
+    compassCards: [],
+    fuel: { burnLph: 30, taxiAllowanceL: 4, usableL: 144 },
   } as unknown as Aircraft;
   const legs = buildLegs(route, flight.date);
-  const alts = defaultAltitudes(route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }).map((d) => d.altFt);
+  const alts = defaultAltitudes(route, {
+    aerodromes: REF.aerodromes,
+    vfrPoints: REF.vfrPoints,
+    vfrRoutes: REF.vfrRoutes,
+  }).map((d) => d.altFt);
   const navlog = computeNavlog({
-    date: flight.date, blockOff: flight.blockOff, taxiOutMin: 15, taxiInMin: 15, legs, altitudesFt: alts, overrides: [],
-    aircraft: navlogAircraft(aircraft), winds: () => ({ dirDeg: 360, speedKt: 10, tempC: 10 }),
+    date: flight.date,
+    blockOff: flight.blockOff,
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    legs,
+    altitudesFt: alts,
+    overrides: [],
+    aircraft: navlogAircraft(aircraft),
+    winds: () => ({ dirDeg: 360, speedKt: 10, tempC: 10 }),
   });
-  const fuel = planFuel({ tripFuelL: navlog.totals.tripFuel, taxiAllowanceL: 4, burnLph: 30, finalReserveMin: 0, reserveMin: 60, fobL: null, usableL: 144, tripMin: navlog.flightMin });
+  const fuel = planFuel({
+    tripFuelL: navlog.totals.tripFuel,
+    taxiAllowanceL: 4,
+    burnLph: 30,
+    finalReserveMin: 0,
+    reserveMin: 60,
+    fobL: null,
+    usableL: 144,
+    tripMin: navlog.flightMin,
+  });
 
   test('items from the records', () => {
     const input = fplInputFrom({ flight, aircraft, pilot: { fullName: 'Dionysis Zindros', phone: '' }, navlog, fuel });
@@ -383,7 +561,15 @@ describe('fplInputFrom (flight + hangar + profile + navlog + fuel)', () => {
   });
 
   test('no aircraft: visibly incomplete', () => {
-    const r = buildFpl(fplInputFrom({ flight: { ...flight, aircraftId: null }, aircraft: null, pilot: { fullName: 'X', phone: '1' }, navlog: null, fuel: null }));
+    const r = buildFpl(
+      fplInputFrom({
+        flight: { ...flight, aircraftId: null },
+        aircraft: null,
+        pilot: { fullName: 'X', phone: '1' },
+        navlog: null,
+        fuel: null,
+      }),
+    );
     expect(r.complete).toBe(false);
     expect(r.fields.item7).toBe(MISSING);
     expect(r.fields.item16.eet).toBe(MISSING);

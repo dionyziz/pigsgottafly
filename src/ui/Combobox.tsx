@@ -5,8 +5,17 @@
 //   (so the click lands).
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 
-export interface ComboKeyState { open: boolean; active: number; count: number }
-export interface ComboKeyResult { open: boolean; active: number; pick?: number; handled: boolean }
+export interface ComboKeyState {
+  open: boolean;
+  active: number;
+  count: number;
+}
+export interface ComboKeyResult {
+  open: boolean;
+  active: number;
+  pick?: number;
+  handled: boolean;
+}
 
 /** Key handling of a combobox, without the DOM (unit-tested). */
 export function comboKey(s: ComboKeyState, key: string): ComboKeyResult {
@@ -19,7 +28,8 @@ export function comboKey(s: ComboKeyState, key: string): ComboKeyResult {
     case 'ArrowUp':
       if (!showing) return { open: s.open, active: s.active, handled: false };
       return { open: true, active: s.active <= 0 ? s.count - 1 : s.active - 1, handled: true };
-    case 'Home': case 'End':
+    case 'Home':
+    case 'End':
       if (!showing) return { open: s.open, active: s.active, handled: false };
       return { open: true, active: key === 'Home' ? 0 : s.count - 1, handled: true };
     case 'Enter':
@@ -64,41 +74,119 @@ export interface ComboboxProps<T> {
   children?: ReactNode;
 }
 
-export function Combobox<T>({ text, onText, options, optionKey, renderOption, onPick, suppress, name, id, placeholder, required, autoFocus, disabled, ariaLabel, testId, inputClassName, className, inputRef, onFocus, onBlur, onOpenChange, children }: ComboboxProps<T>) {
+export function Combobox<T>({
+  text,
+  onText,
+  options,
+  optionKey,
+  renderOption,
+  onPick,
+  suppress,
+  name,
+  id,
+  placeholder,
+  required,
+  autoFocus,
+  disabled,
+  ariaLabel,
+  testId,
+  inputClassName,
+  className,
+  inputRef,
+  onFocus,
+  onBlur,
+  onOpenChange,
+  children,
+}: ComboboxProps<T>) {
   const [open, setOpenState] = useState(false);
   const [active, setActive] = useState(0);
   const listId = useId();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelClose = () => { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } };
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
   useEffect(() => cancelClose, []);
-  const setOpen = (o: boolean) => { setOpenState(o); onOpenChange?.(o); };
+  const setOpen = (o: boolean) => {
+    setOpenState(o);
+    onOpenChange?.(o);
+  };
   const showList = open && !suppress && options.length > 0;
   const act = Math.min(active, Math.max(0, options.length - 1));
 
-  const pick = (o: T) => { onPick(o); setOpen(false); setActive(0); };
+  const pick = (o: T) => {
+    onPick(o);
+    setOpen(false);
+    setActive(0);
+  };
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     const r = comboKey({ open: open && !suppress, active: act, count: options.length }, e.key);
-    if (r.handled) { e.preventDefault(); e.stopPropagation(); }
-    if (r.pick != null && options[r.pick]) { pick(options[r.pick]); return; }
+    if (r.handled) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (r.pick != null && options[r.pick]) {
+      pick(options[r.pick]);
+      return;
+    }
     if (r.open !== open) setOpen(r.open);
     setActive(r.active);
   };
 
   return (
     <div className={'combo' + (className ? ' ' + className : '')}>
-      <input ref={inputRef} name={name} id={id} value={text} required={required} placeholder={placeholder} autoComplete="off" autoFocus={autoFocus} disabled={disabled}
-        role="combobox" aria-expanded={showList} aria-controls={listId} aria-autocomplete="list" aria-label={ariaLabel}
+      <input
+        ref={inputRef}
+        name={name}
+        id={id}
+        value={text}
+        required={required}
+        placeholder={placeholder}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        disabled={disabled}
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-label={ariaLabel}
         aria-activedescendant={showList ? `${listId}-${act}` : undefined}
-        className={inputClassName} data-testid={testId}
-        onChange={(e) => { cancelClose(); onText(e.target.value); setOpen(true); setActive(0); }}
-        onFocus={() => { cancelClose(); setOpen(true); onFocus?.(); }}
-        onBlur={() => { cancelClose(); closeTimer.current = setTimeout(() => setOpen(false), 120); onBlur?.(); }}
-        onKeyDown={onKey} />
+        className={inputClassName}
+        data-testid={testId}
+        onChange={(e) => {
+          cancelClose();
+          onText(e.target.value);
+          setOpen(true);
+          setActive(0);
+        }}
+        onFocus={() => {
+          cancelClose();
+          setOpen(true);
+          onFocus?.();
+        }}
+        onBlur={() => {
+          cancelClose();
+          closeTimer.current = setTimeout(() => setOpen(false), 120);
+          onBlur?.();
+        }}
+        onKeyDown={onKey}
+      />
       {showList && (
         <ul className="combo-list" id={listId} role="listbox">
           {options.map((o, i) => (
-            <li key={optionKey(o)} id={`${listId}-${i}`} role="option" aria-selected={i === act}
-              onMouseDown={(e) => { e.preventDefault(); pick(o); }} onMouseEnter={() => setActive(i)}>
+            <li
+              key={optionKey(o)}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === act}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(o);
+              }}
+              onMouseEnter={() => setActive(i)}
+            >
               {renderOption(o)}
             </li>
           ))}

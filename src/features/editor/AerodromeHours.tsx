@@ -34,7 +34,13 @@ export function adDayInfo(a: RefAerodrome, day: string, effects: readonly AdNota
   };
 }
 
-const fmtDay = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const fmtDay = (d: string) =>
+  new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
 
 /** 'Hours Sat 15 Nov: Open 04:52–15:01Z (HJ) · NOTAM A1234/26' — one line for tooltips. */
 export function adHoursLine(info: AdDayInfo): string {
@@ -50,7 +56,12 @@ function DayText({ d, testId }: { d: AdDay; testId?: string }) {
   return (
     <span data-testid={testId}>
       {d.text}
-      {d.notams.length > 0 && <> <b className="pgf-ad-notam">NOTAM {d.notams.join(', ')}</b></>}
+      {d.notams.length > 0 && (
+        <>
+          {' '}
+          <b className="pgf-ad-notam">NOTAM {d.notams.join(', ')}</b>
+        </>
+      )}
     </span>
   );
 }
@@ -62,10 +73,32 @@ export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdD
   const partial = [h.ad, h.ats, h.handling].some((f) => f?.parsed.partial);
   return (
     <dl className="pgf-air-body pgf-ad-body" data-testid="ad-hours">
-      <dt>{compact ? 'Hours' : fmtDay(info.day)}</dt><dd><DayText d={info.ad} testId="ad-hours-day" /></dd>
-      {info.ats && <><dt>ATS</dt><dd><DayText d={info.ats} /></dd></>}
-      {info.handling && <><dt>Handling</dt><dd><DayText d={info.handling} testId="ad-hours-handling" /></dd></>}
-      {h.customs && <><dt>Customs</dt><dd>{h.customs.parsed.partial ? h.customs.text : h.customs.parsed.label}</dd></>}
+      <dt>{compact ? 'Hours' : fmtDay(info.day)}</dt>
+      <dd>
+        <DayText d={info.ad} testId="ad-hours-day" />
+      </dd>
+      {info.ats && (
+        <>
+          <dt>ATS</dt>
+          <dd>
+            <DayText d={info.ats} />
+          </dd>
+        </>
+      )}
+      {info.handling && (
+        <>
+          <dt>Handling</dt>
+          <dd>
+            <DayText d={info.handling} testId="ad-hours-handling" />
+          </dd>
+        </>
+      )}
+      {h.customs && (
+        <>
+          <dt>Customs</dt>
+          <dd>{h.customs.parsed.partial ? h.customs.text : h.customs.parsed.label}</dd>
+        </>
+      )}
       {info.notams.map((n) => (
         <Notam key={n.key + n.target} n={n} />
       ))}
@@ -75,11 +108,27 @@ export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdD
         {partial && (
           // text the parser could not represent exactly: shown as printed
           <div className="pgf-ad-aip" data-testid="ad-hours-aip-text">
-            <div><b>AD</b> {h.ad.text}</div>
-            {h.ats && <div><b>ATS</b> {h.ats.text}</div>}
-            <div><b>Handling</b> {h.handling.text}</div>
-            {h.customs && <div><b>Customs</b> {h.customs.text}</div>}
-            {h.remarks && <div><b>Remarks</b> {h.remarks}</div>}
+            <div>
+              <b>AD</b> {h.ad.text}
+            </div>
+            {h.ats && (
+              <div>
+                <b>ATS</b> {h.ats.text}
+              </div>
+            )}
+            <div>
+              <b>Handling</b> {h.handling.text}
+            </div>
+            {h.customs && (
+              <div>
+                <b>Customs</b> {h.customs.text}
+              </div>
+            )}
+            {h.remarks && (
+              <div>
+                <b>Remarks</b> {h.remarks}
+              </div>
+            )}
             {h.ad.parsed.notes.length > 0 && <div className="muted">{h.ad.parsed.notes.join(' · ')}</div>}
           </div>
         )}
@@ -92,7 +141,10 @@ function Notam({ n }: { n: AdNotamEffect }) {
   return (
     <>
       <dt>NOTAM</dt>
-      <dd data-testid="ad-hours-notam"><b className="pgf-ad-notam">{n.key}</b> {n.summary}{n.partial ? <span className="pgf-air-text"> · {n.text}</span> : null}</dd>
+      <dd data-testid="ad-hours-notam">
+        <b className="pgf-ad-notam">{n.key}</b> {n.summary}
+        {n.partial ? <span className="pgf-air-text"> · {n.text}</span> : null}
+      </dd>
     </>
   );
 }

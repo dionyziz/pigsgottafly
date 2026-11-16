@@ -30,7 +30,12 @@ function access(r: Row): AircraftAccess {
   };
 }
 
-export const toHangarAircraft = (r: Row): HangarAircraft => ({ ...toAircraft(r), access: access(r), photo: r.photo_file ? toFile(r.photo_file) : null, placeholder: Number(r.placeholder) || 1 });
+export const toHangarAircraft = (r: Row): HangarAircraft => ({
+  ...toAircraft(r),
+  access: access(r),
+  photo: r.photo_file ? toFile(r.photo_file) : null,
+  placeholder: Number(r.placeholder) || 1,
+});
 
 /** Every aircraft the pilot owns or that is shared with them, by registration (own first on a tie). */
 export async function listAircraft(db: Queryable, pilotId: string): Promise<HangarAircraft[]> {
@@ -44,11 +49,19 @@ const RANK: Record<AircraftRole, number> = { view: 1, edit: 2, owner: 3 };
  * The aircraft row (with access_role, owner_*) when the pilot has at least `need`.
  * 404 without access, 403 with less than `need`.
  */
-export async function aircraftFor(db: Queryable, pilotId: string, id: string, need: AircraftRole = 'view'): Promise<Row> {
+export async function aircraftFor(
+  db: Queryable,
+  pilotId: string,
+  id: string,
+  need: AircraftRole = 'view',
+): Promise<Row> {
   const [r] = await db.query(`${SELECT} AND a.id = $2`, [pilotId, id]);
   if (!r) throw notFound('no such aircraft');
   if (RANK[r.access_role as AircraftRole] < RANK[need]) {
-    throw new HttpError(403, need === 'owner' ? 'only the owner can do this' : 'you can view this aircraft but not change it');
+    throw new HttpError(
+      403,
+      need === 'owner' ? 'only the owner can do this' : 'you can view this aircraft but not change it',
+    );
   }
   return r;
 }
@@ -58,6 +71,9 @@ export const AIRCRAFT_FROM = `SELECT a.*, op.name AS operator_name FROM aircraft
 
 /** True when the pilot owns the aircraft or it is shared with them. */
 export async function canUseAircraft(db: Queryable, pilotId: string, id: string): Promise<boolean> {
-  const rows = await db.query(`SELECT 1 FROM aircraft a WHERE a.id = $2 AND ${accessibleSql('a', '$1')}`, [pilotId, id]);
+  const rows = await db.query(`SELECT 1 FROM aircraft a WHERE a.id = $2 AND ${accessibleSql('a', '$1')}`, [
+    pilotId,
+    id,
+  ]);
   return rows.length > 0;
 }

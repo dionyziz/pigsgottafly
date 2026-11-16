@@ -54,19 +54,36 @@ export function briefingModel(input: { doc: FlightDoc; title: string; briefing: 
   const { doc, title, briefing: b } = input;
   const route = doc.route.map((p) => p.name).join(' – ');
   const legName = (i: number) => {
-    const a = doc.route[i], z = doc.route[i + 1];
+    const a = doc.route[i],
+      z = doc.route[i + 1];
     return a && z ? `leg ${i + 1} ${a.name} – ${z.name}` : `leg ${i + 1}`;
   };
   const base = { title, date: doc.date, route };
   if (!b) {
-    return { ...base, window: '', filter: '', locations: '', source: '', status: 'loading', message: null, relevant: [], hidden: [] };
+    return {
+      ...base,
+      window: '',
+      filter: '',
+      locations: '',
+      source: '',
+      status: 'loading',
+      message: null,
+      relevant: [],
+      hidden: [],
+    };
   }
   const window = `${fmtNotamTime(b.window.from)} – ${fmtNotamTime(b.window.to)} (block-off − ${b.params.marginMin} min … block-on + ${b.params.marginMin} min)`;
   const filter = `lower limit at or below ${Math.round(b.params.maxAltFt)} ft · within ${b.params.corridorNm} NM of the route`;
-  const source = b.status === 'ok' && b.fetched ? `${b.source === 'autorouter' ? 'autorouter (EAD)' : b.source ?? ''}, fetched ${fmtNotamTime(b.fetched)}` : '';
+  const source =
+    b.status === 'ok' && b.fetched
+      ? `${b.source === 'autorouter' ? 'autorouter (EAD)' : (b.source ?? '')}, fetched ${fmtNotamTime(b.fetched)}`
+      : '';
   const ok = b.status === 'ok';
   return {
-    ...base, window, filter, source,
+    ...base,
+    window,
+    filter,
+    source,
     locations: b.locations.join(' '),
     status: b.status,
     message: b.message,

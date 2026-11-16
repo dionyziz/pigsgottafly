@@ -10,10 +10,29 @@
 // values are refused with 400. The limits are the hangar's own errors (src/features/hangar/model.ts
 // validateAircraft) where it has them, and generous plausibility limits elsewhere.
 import type {
-  CompassCard, Envelope, Equipment, FuelGrade, FuelSpec, FuelType, LandingTable, MassBalance, PerformanceFactors, PerformanceTables,
-  SeatPosition, Station, StationKind, TakeoffTable, TakeoffTableRow, WbCategory,
+  CompassCard,
+  Envelope,
+  Equipment,
+  FuelGrade,
+  FuelSpec,
+  FuelType,
+  LandingTable,
+  MassBalance,
+  PerformanceFactors,
+  PerformanceTables,
+  SeatPosition,
+  Station,
+  StationKind,
+  TakeoffTable,
+  TakeoffTableRow,
+  WbCategory,
 } from '../../src/shared/types.js';
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type AttachmentRef, type AttachmentType } from '../../src/shared/types.js';
+import {
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_TYPES,
+  type AttachmentRef,
+  type AttachmentType,
+} from '../../src/shared/types.js';
 import { FUEL_TYPES, normalizeFuelSpec } from '../../src/shared/fuel.js';
 import { badRequest } from './http.js';
 import { arr, obj } from './rows.js';
@@ -39,7 +58,8 @@ function bool(v: unknown, field: string): boolean {
   return v;
 }
 function isoDate(v: unknown, field: string): string {
-  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v + 'T00:00:00Z'))) throw badRequest(`${field} must be YYYY-MM-DD`);
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v + 'T00:00:00Z')))
+    throw badRequest(`${field} must be YYYY-MM-DD`);
   return v;
 }
 function list<T>(v: unknown, field: string, max: number): T[] {
@@ -159,9 +179,15 @@ function checkEnvelope(v: unknown, category: WbCategory): Envelope {
   const out: Envelope = {
     category,
     maxKg: num(e.maxKg, `${p}.maxKg`, ...L.massKg),
-    polygon: list<unknown>(e.polygon, `${p}.polygon`, MAX_POLYGON_POINTS).map((q, i) => pair(q, `${p}.polygon[${i}]`, L.armM, L.massKg)),
-    momentPolygon: e.momentPolygon === undefined || e.momentPolygon === null ? null
-      : list<unknown>(e.momentPolygon, `${p}.momentPolygon`, MAX_POLYGON_POINTS).map((q, i) => pair(q, `${p}.momentPolygon[${i}]`, L.momentKgM, L.massKg)),
+    polygon: list<unknown>(e.polygon, `${p}.polygon`, MAX_POLYGON_POINTS).map((q, i) =>
+      pair(q, `${p}.polygon[${i}]`, L.armM, L.massKg),
+    ),
+    momentPolygon:
+      e.momentPolygon === undefined || e.momentPolygon === null
+        ? null
+        : list<unknown>(e.momentPolygon, `${p}.momentPolygon`, MAX_POLYGON_POINTS).map((q, i) =>
+            pair(q, `${p}.momentPolygon[${i}]`, L.momentKgM, L.massKg),
+          ),
   };
   if (e.notes !== undefined) out.notes = text(e.notes, `${p}.notes`, 2000);
   return out;
@@ -171,22 +197,30 @@ export function checkMassBalance(v: unknown): MassBalance {
   const m = obj<MassBalance>(v, 'massBalance');
   const stations = checkStations(m.stations);
   const stationIds = new Set(stations.map((s) => s.id));
-  const combinedLimits = (m.combinedLimits === undefined || m.combinedLimits === null ? [] : list<MassBalance['combinedLimits'][number]>(m.combinedLimits, 'massBalance.combinedLimits', 20))
-    .map((c, i) => {
-      const p = `massBalance.combinedLimits[${i}]`;
-      obj(c, p);
-      const ids = list<unknown>(c.stations, `${p}.stations`, MAX_STATIONS).map((x, j) => text(x, `${p}.stations[${j}]`, 40));
-      const unknown = ids.filter((x) => !stationIds.has(x));
-      if (unknown.length) throw badRequest(`${p} refers to unknown station ${unknown.join(', ')}`);
-      return { stations: ids, maxKg: num(c.maxKg, `${p}.maxKg`, ...L.massKg) };
-    });
+  const combinedLimits = (
+    m.combinedLimits === undefined || m.combinedLimits === null
+      ? []
+      : list<MassBalance['combinedLimits'][number]>(m.combinedLimits, 'massBalance.combinedLimits', 20)
+  ).map((c, i) => {
+    const p = `massBalance.combinedLimits[${i}]`;
+    obj(c, p);
+    const ids = list<unknown>(c.stations, `${p}.stations`, MAX_STATIONS).map((x, j) =>
+      text(x, `${p}.stations[${j}]`, 40),
+    );
+    const unknown = ids.filter((x) => !stationIds.has(x));
+    if (unknown.length) throw badRequest(`${p} refers to unknown station ${unknown.join(', ')}`);
+    return { stations: ids, maxKg: num(c.maxKg, `${p}.maxKg`, ...L.massKg) };
+  });
   const env = obj<MassBalance['envelopes']>(m.envelopes, 'massBalance.envelopes');
   return {
     datum: text(m.datum, 'massBalance.datum', 200),
     emptyMassKg: num(m.emptyMassKg, 'massBalance.emptyMassKg', ...L.massKg),
     emptyArmM: num(m.emptyArmM, 'massBalance.emptyArmM', ...L.armM),
     emptyMomentKgM: num(m.emptyMomentKgM, 'massBalance.emptyMomentKgM', ...L.momentKgM),
-    weighingDate: m.weighingDate === null || m.weighingDate === undefined || m.weighingDate === '' ? null : isoDate(m.weighingDate, 'massBalance.weighingDate'),
+    weighingDate:
+      m.weighingDate === null || m.weighingDate === undefined || m.weighingDate === ''
+        ? null
+        : isoDate(m.weighingDate, 'massBalance.weighingDate'),
     weighingSource: text(m.weighingSource, 'massBalance.weighingSource', 500),
     includesOil: bool(m.includesOil, 'massBalance.includesOil'),
     mtowKg: num(m.mtowKg, 'massBalance.mtowKg', ...L.massKg),
@@ -209,16 +243,24 @@ function checkTakeoff(v: unknown): TakeoffTable {
   const t = obj<TakeoffTable>(v, p);
   const altitudesFt = numbers(t.altitudesFt, `${p}.altitudesFt`, ...L.altitudeFt, 20);
   const standardTempC = numbers(t.standardTempC, `${p}.standardTempC`, ...L.tempC, 20);
-  if (standardTempC.length !== altitudesFt.length) throw badRequest(`${p}.standardTempC must have one value per altitude`);
+  if (standardTempC.length !== altitudesFt.length)
+    throw badRequest(`${p}.standardTempC must have one value per altitude`);
   const rows = list<TakeoffTableRow>(t.rows, `${p}.rows`, 20).map((r, i): TakeoffTableRow => {
     const q = `${p}.rows[${i}]`;
     obj(r, q);
     const headwindKt = numbers(r.headwindKt, `${q}.headwindKt`, ...L.windKt, 10);
     const distances = list<unknown>(r.distances, `${q}.distances`, 10).map((byAlt, h) =>
-      list<unknown>(byAlt, `${q}.distances[${h}]`, 20).map((d, a) => distancePair(d, `${q}.distances[${h}][${a}]`)));
+      list<unknown>(byAlt, `${q}.distances[${h}]`, 20).map((d, a) => distancePair(d, `${q}.distances[${h}][${a}]`)),
+    );
     if (distances.length !== headwindKt.length) throw badRequest(`${q}.distances must have one row per headwind`);
-    if (distances.some((d) => d.length !== altitudesFt.length)) throw badRequest(`${q}.distances must have one pair per altitude`);
-    return { massKg: num(r.massKg, `${q}.massKg`, ...L.massKg), liftoffIas: text(r.liftoffIas, `${q}.liftoffIas`, 100), headwindKt, distances };
+    if (distances.some((d) => d.length !== altitudesFt.length))
+      throw badRequest(`${q}.distances must have one pair per altitude`);
+    return {
+      massKg: num(r.massKg, `${q}.massKg`, ...L.massKg),
+      liftoffIas: text(r.liftoffIas, `${q}.liftoffIas`, 100),
+      headwindKt,
+      distances,
+    };
   });
   return {
     source: text(t.source, `${p}.source`, 2000),
@@ -237,8 +279,11 @@ function checkLanding(v: unknown): LandingTable {
   const t = obj<LandingTable>(v, p);
   const altitudesFt = numbers(t.altitudesFt, `${p}.altitudesFt`, ...L.altitudeFt, 20);
   const standardTempC = numbers(t.standardTempC, `${p}.standardTempC`, ...L.tempC, 20);
-  if (standardTempC.length !== altitudesFt.length) throw badRequest(`${p}.standardTempC must have one value per altitude`);
-  const distances = list<unknown>(t.distances, `${p}.distances`, 20).map((d, a) => distancePair(d, `${p}.distances[${a}]`));
+  if (standardTempC.length !== altitudesFt.length)
+    throw badRequest(`${p}.standardTempC must have one value per altitude`);
+  const distances = list<unknown>(t.distances, `${p}.distances`, 20).map((d, a) =>
+    distancePair(d, `${p}.distances[${a}]`),
+  );
   if (distances.length !== altitudesFt.length) throw badRequest(`${p}.distances must have one pair per altitude`);
   return {
     source: text(t.source, `${p}.source`, 2000),
@@ -263,7 +308,8 @@ function checkFactors(v: unknown): PerformanceFactors {
   if (keys.length > 30) throw badRequest(`${p}.runwayCondition has too many entries`);
   const runwayCondition: Record<string, number> = {};
   for (const k of keys) {
-    if (!k.trim() || k.length > 100 || k === '__proto__') throw badRequest(`${p}.runwayCondition has an invalid surface name`);
+    if (!k.trim() || k.length > 100 || k === '__proto__')
+      throw badRequest(`${p}.runwayCondition has an invalid surface name`);
     runwayCondition[k] = num(rc[k], `${p}.runwayCondition.${k}`, ...L.factor);
   }
   const xw = obj<PerformanceFactors['maxCrosswindKt']>(f.maxCrosswindKt, `${p}.maxCrosswindKt`);
@@ -292,7 +338,12 @@ export function checkPerformance(v: unknown): PerformanceTables {
       flaps40: numbers(s.flaps40, 'performance.stallIasKt.flaps40', ...L.iasKt, 10),
     };
   }
-  return { takeoff: checkTakeoff(t.takeoff), landing: checkLanding(t.landing), factors: checkFactors(t.factors), stallIasKt };
+  return {
+    takeoff: checkTakeoff(t.takeoff),
+    landing: checkLanding(t.landing),
+    factors: checkFactors(t.factors),
+    stallIasKt,
+  };
 }
 
 // ---------------------------------------------------------------- equipment (FPL items 10, 18, 19)
@@ -308,7 +359,11 @@ export function checkEquipment(v: unknown): Equipment {
   let dinghies: Equipment['dinghies'] = null;
   if (e.dinghies !== null && e.dinghies !== undefined) {
     const d = obj<NonNullable<Equipment['dinghies']>>(e.dinghies, 'equipment.dinghies');
-    const int = (x: unknown, f: string) => { const n = num(x, f, 1, 99); if (!Number.isInteger(n)) throw badRequest(`${f} must be a whole number`); return n; };
+    const int = (x: unknown, f: string) => {
+      const n = num(x, f, 1, 99);
+      if (!Number.isInteger(n)) throw badRequest(`${f} must be a whole number`);
+      return n;
+    };
     dinghies = {
       number: int(d.number, 'equipment.dinghies.number'),
       capacity: int(d.capacity, 'equipment.dinghies.capacity'),
@@ -358,7 +413,8 @@ function attachmentRef(v: unknown, p: string): AttachmentRef | null {
   if (v === undefined || v === null) return null;
   const r = obj<Record<string, unknown>>(v, p);
   if (typeof r.id !== 'string' || !/^file_[\w-]{1,40}$/.test(r.id)) throw badRequest(`${p}.id is not a file id`);
-  if (!(ATTACHMENT_TYPES as readonly unknown[]).includes(r.mime)) throw badRequest(`${p}.mime must be one of ${ATTACHMENT_TYPES.join(', ')}`);
+  if (!(ATTACHMENT_TYPES as readonly unknown[]).includes(r.mime))
+    throw badRequest(`${p}.mime must be one of ${ATTACHMENT_TYPES.join(', ')}`);
   return {
     id: r.id,
     name: text(r.name, `${p}.name`, 200),

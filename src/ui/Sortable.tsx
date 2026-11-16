@@ -40,11 +40,14 @@ export function useSortable({ count, onMove, disabled }: SortableOptions) {
     focusAfter.current = null;
   });
 
-  const move = useCallback((from: number, to: number, refocus: boolean) => {
-    if (to < 0 || to >= count || to === from) return;
-    if (refocus) focusAfter.current = to;
-    onMoveRef.current(from, to);
-  }, [count]);
+  const move = useCallback(
+    (from: number, to: number, refocus: boolean) => {
+      if (to < 0 || to >= count || to === from) return;
+      if (refocus) focusAfter.current = to;
+      onMoveRef.current(from, to);
+    },
+    [count],
+  );
 
   const keyMove = (i: number, e: KeyboardEvent, needAlt: boolean) => {
     if (disabled || (needAlt && !e.altKey)) return;
@@ -54,27 +57,49 @@ export function useSortable({ count, onMove, disabled }: SortableOptions) {
     move(i, e.key === 'ArrowUp' ? i - 1 : i + 1, true);
   };
 
-  const rects = () => items.current.slice(0, count).map((el) => {
-    const r = el?.getBoundingClientRect();
-    return { top: r?.top ?? 0, bottom: r?.bottom ?? 0 };
-  });
+  const rects = () =>
+    items.current.slice(0, count).map((el) => {
+      const r = el?.getBoundingClientRect();
+      return { top: r?.top ?? 0, bottom: r?.bottom ?? 0 };
+    });
 
   /** Props of item i (merges `className` with the drag state classes). */
   const itemProps = (i: number, className?: string) => ({
-    ref: (el: HTMLElement | null) => { items.current[i] = el; },
+    ref: (el: HTMLElement | null) => {
+      items.current[i] = el;
+    },
     'data-sort-index': i,
-    className: [className, drag && (drag.from === i ? 'sort-dragging' : drag.to === i ? (drag.to < drag.from ? 'sort-over-before' : 'sort-over-after') : '')].filter(Boolean).join(' ') || undefined,
+    className:
+      [
+        className,
+        drag &&
+          (drag.from === i
+            ? 'sort-dragging'
+            : drag.to === i
+              ? drag.to < drag.from
+                ? 'sort-over-before'
+                : 'sort-over-after'
+              : ''),
+      ]
+        .filter(Boolean)
+        .join(' ') || undefined,
     onKeyDown: (e: KeyboardEvent) => keyMove(i, e, true),
   });
 
   const handleProps = (i: number) => ({
-    ref: (el: HTMLElement | null) => { handles.current[i] = el; },
+    ref: (el: HTMLElement | null) => {
+      handles.current[i] = el;
+    },
     disabled: disabled || count < 2,
     onKeyDown: (e: KeyboardEvent) => keyMove(i, e, false),
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       if (disabled || count < 2 || (e.pointerType === 'mouse' && e.button !== 0)) return;
       e.preventDefault();
-      try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* not capturable */ }
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* not capturable */
+      }
       dragRef.current = { from: i, to: i, id: e.pointerId };
       setDrag({ from: i, to: i });
     },
@@ -82,7 +107,10 @@ export function useSortable({ count, onMove, disabled }: SortableOptions) {
       const d = dragRef.current;
       if (!d || d.id !== e.pointerId) return;
       const to = dropIndex(e.clientY, rects(), d.from);
-      if (to !== d.to) { d.to = to; setDrag({ from: d.from, to }); }
+      if (to !== d.to) {
+        d.to = to;
+        setDrag({ from: d.from, to });
+      }
     },
     onPointerUp: (e: PointerEvent<HTMLElement>) => {
       const d = dragRef.current;
@@ -91,7 +119,10 @@ export function useSortable({ count, onMove, disabled }: SortableOptions) {
       setDrag(null);
       move(d.from, d.to, false);
     },
-    onPointerCancel: () => { dragRef.current = null; setDrag(null); },
+    onPointerCancel: () => {
+      dragRef.current = null;
+      setDrag(null);
+    },
   });
 
   return { itemProps, handleProps, dragging: drag?.from ?? null, over: drag?.to ?? null };
@@ -100,9 +131,19 @@ export function useSortable({ count, onMove, disabled }: SortableOptions) {
 type HandleProps = Omit<ReturnType<ReturnType<typeof useSortable>['handleProps']>, 'ref'>;
 
 /** The ⠿ handle on the left of a sortable item. Spread handleProps(i) into it. */
-export const DragHandle = forwardRef<HTMLButtonElement, HandleProps & { label?: string }>(function DragHandle({ label = 'Reorder', ...rest }, ref) {
+export const DragHandle = forwardRef<HTMLButtonElement, HandleProps & { label?: string }>(function DragHandle(
+  { label = 'Reorder', ...rest },
+  ref,
+) {
   return (
-    <button type="button" ref={ref} className="icon sm drag-handle" aria-label={`${label} (Alt+↑/↓)`} title={`${label}: drag, or Alt+↑/↓`} {...rest}>
+    <button
+      type="button"
+      ref={ref}
+      className="icon sm drag-handle"
+      aria-label={`${label} (Alt+↑/↓)`}
+      title={`${label}: drag, or Alt+↑/↓`}
+      {...rest}
+    >
       <Icon name="grip" size={14} />
     </button>
   );

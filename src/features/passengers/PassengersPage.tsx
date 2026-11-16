@@ -18,7 +18,8 @@ import './passengers.css';
 import type { PersonField } from './person';
 import '../lobby/lists.css';
 
-const searchText = (p: PersonDetails & { notes?: string }) => [p.fullName, p.phone, p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
+const searchText = (p: PersonDetails & { notes?: string }) =>
+  [p.fullName, p.phone, p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
 
 /** What a person still lacks for the forms or W&B, with the field that takes it. */
 function missing(p: PersonDetails, pilot?: Pilot): [PersonField, string][] {
@@ -38,7 +39,15 @@ const none = <span className="muted">—</span>;
 const inputOf = ({ id: _i, created: _c, updated: _u, ...rest }: Passenger): PassengerInput => rest;
 
 /** One row of the list: the pilot (PIC) or a passenger. "Missing …" items open the dialog at that field. */
-function PersonRow({ person, pilot, today, onEdit, onDelete, testId, passengerId }: {
+function PersonRow({
+  person,
+  pilot,
+  today,
+  onEdit,
+  onDelete,
+  testId,
+  passengerId,
+}: {
   person: PersonDetails;
   /** Set for the pilot's own row. */
   pilot?: Pilot;
@@ -56,25 +65,53 @@ function PersonRow({ person, pilot, today, onEdit, onDelete, testId, passengerId
       <td>
         <div className="nm">
           {person.fullName || <span className="warn-text">Your name is not set</span>}
-          {pilot && <> <Chip sm>PIC · you</Chip></>}
+          {pilot && (
+            <>
+              {' '}
+              <Chip sm>PIC · you</Chip>
+            </>
+          )}
         </div>
         {miss.length > 0 && (
           <div className="hint">
-            Missing {miss.map(([field, label], i) => (
-              <Fragment key={field}>{i > 0 && ', '}<button type="button" className="linkish" onClick={() => onEdit([field])}>{label}</button></Fragment>
+            Missing{' '}
+            {miss.map(([field, label], i) => (
+              <Fragment key={field}>
+                {i > 0 && ', '}
+                <button type="button" className="linkish" onClick={() => onEdit([field])}>
+                  {label}
+                </button>
+              </Fragment>
             ))}
           </div>
         )}
       </td>
       <td className="hide-sm">{person.phone || none}</td>
-      <td className="hide-sm date">{person.dateOfBirth ? <>{fmtDate(person.dateOfBirth)}{age != null && <span className="muted"> · age {age}</span>}</> : none}</td>
+      <td className="hide-sm date">
+        {person.dateOfBirth ? (
+          <>
+            {fmtDate(person.dateOfBirth)}
+            {age != null && <span className="muted"> · age {age}</span>}
+          </>
+        ) : (
+          none
+        )}
+      </td>
       <td className="num">{person.weightKg != null ? `${person.weightKg} kg` : none}</td>
       <td className="hide-sm">{person.idNumber ? <span className="mono">{person.idNumber}</span> : none}</td>
       <td className="hide-sm">{person.nationality || none}</td>
       <td className="act">
         {onDelete && (
-          <button type="button" className="icon row-delete" title={`Delete ${person.fullName}`} aria-label={`Delete ${person.fullName}`}
-            onClick={onDelete} data-testid="passenger-row-delete"><Icon name="trash" /></button>
+          <button
+            type="button"
+            className="icon row-delete"
+            title={`Delete ${person.fullName}`}
+            aria-label={`Delete ${person.fullName}`}
+            onClick={onDelete}
+            data-testid="passenger-row-delete"
+          >
+            <Icon name="trash" />
+          </button>
         )}
       </td>
     </tr>
@@ -94,10 +131,18 @@ export function PassengersPage() {
   useEffect(() => {
     if (!editParam) return;
     const fields = (params.get('fields') || '').split(',').filter(Boolean);
-    if (editParam === 'me') { setFocusFields(fields); setEditing('me'); setParams({}, { replace: true }); return; }
+    if (editParam === 'me') {
+      setFocusFields(fields);
+      setEditing('me');
+      setParams({}, { replace: true });
+      return;
+    }
     if (!data) return;
     const p = data.find((x) => x.id === editParam);
-    if (p) { setFocusFields(fields); setEditing(p); } else toast('That passenger was deleted');
+    if (p) {
+      setFocusFields(fields);
+      setEditing(p);
+    } else toast('That passenger was deleted');
     setParams({}, { replace: true });
   }, [editParam, data, setParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const [deleting, setDeleting] = useState<Passenger | null>(null);
@@ -107,14 +152,22 @@ export function PassengersPage() {
     setData((d) => (d ?? []).filter((x) => x.id !== p.id));
     toast(`Deleted ${p.fullName}`, {
       label: 'Undo',
-      onClick: () => { void api.passengers.create(inputOf(p)).catch((e) => toast(errorMessage(e))); },
+      onClick: () => {
+        void api.passengers.create(inputOf(p)).catch((e) => toast(errorMessage(e)));
+      },
     });
   };
   const today = localToday();
   const rows = useMemo(() => (data || []).filter((p) => matchesQuery(searchText(p), q)), [data, q]);
   const showMe = matchesQuery(searchText(pilot), q);
-  const edit = (who: Passenger | 'me', fields: string[] = []) => { setFocusFields(fields); setEditing(who); };
-  const close = () => { setEditing(null); setFocusFields([]); };
+  const edit = (who: Passenger | 'me', fields: string[] = []) => {
+    setFocusFields(fields);
+    setEditing(who);
+  };
+  const close = () => {
+    setEditing(null);
+    setFocusFields([]);
+  };
 
   return (
     <Shell>
@@ -122,38 +175,90 @@ export function PassengersPage() {
         <h1>Passengers</h1>
         <span className="spacer" />
         {data && data.length > 0 && <SearchBox sm value={q} onChange={setQ} placeholder="Search passengers" />}
-        <button className="primary" onClick={() => setEditing('new')} data-testid="add-passenger">Add passenger</button>
+        <button className="primary" onClick={() => setEditing('new')} data-testid="add-passenger">
+          Add passenger
+        </button>
       </div>
-      <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle="Could not load your passengers"
-        isNoMatch={() => rows.length === 0 && !showMe} noMatch={<EmptyState title="No matching passengers">Nothing matches “{q}”.</EmptyState>}>
+      <AsyncView
+        data={data}
+        error={error}
+        loading={loading}
+        reload={() => void reload()}
+        errorTitle="Could not load your passengers"
+        isNoMatch={() => rows.length === 0 && !showMe}
+        noMatch={<EmptyState title="No matching passengers">Nothing matches “{q}”.</EmptyState>}
+      >
         {() => (
           <div className="card list-card">
             <table className="list people" data-testid="passenger-list">
-              <thead><tr>
-                <th>Name</th><th className="hide-sm">Phone</th><th className="hide-sm">Born</th><th className="num">Weight</th>
-                <th className="hide-sm">ID</th><th className="hide-sm">Nationality</th><th />
-              </tr></thead>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th className="hide-sm">Phone</th>
+                  <th className="hide-sm">Born</th>
+                  <th className="num">Weight</th>
+                  <th className="hide-sm">ID</th>
+                  <th className="hide-sm">Nationality</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>
                 {showMe && (
-                  <PersonRow person={pilot} pilot={pilot} today={today} testId="pilot-row" onEdit={(fields) => edit('me', fields)} />
+                  <PersonRow
+                    person={pilot}
+                    pilot={pilot}
+                    today={today}
+                    testId="pilot-row"
+                    onEdit={(fields) => edit('me', fields)}
+                  />
                 )}
                 {rows.map((p) => (
-                  <PersonRow key={p.id} person={p} passengerId={p.id} today={today} onEdit={(fields) => edit(p, fields)} onDelete={() => setDeleting(p)} />
+                  <PersonRow
+                    key={p.id}
+                    person={p}
+                    passengerId={p.id}
+                    today={today}
+                    onEdit={(fields) => edit(p, fields)}
+                    onDelete={() => setDeleting(p)}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </AsyncView>
-      {editing === 'me' && <PilotDetailsDialog focus={focusFields} onClose={close} onSaved={(p) => { close(); toast(`Saved ${p.fullName}`); }} />}
+      {editing === 'me' && (
+        <PilotDetailsDialog
+          focus={focusFields}
+          onClose={close}
+          onSaved={(p) => {
+            close();
+            toast(`Saved ${p.fullName}`);
+          }}
+        />
+      )}
       {editing && editing !== 'me' && (
-        <PassengerDialog passenger={editing === 'new' ? null : editing} focus={focusFields} onClose={close}
-          onDelete={(p) => { close(); setDeleting(p); }}
-          onSaved={(p, created) => { close(); toast(created ? `Added ${p.fullName}` : `Saved ${p.fullName}`); }} />
+        <PassengerDialog
+          passenger={editing === 'new' ? null : editing}
+          focus={focusFields}
+          onClose={close}
+          onDelete={(p) => {
+            close();
+            setDeleting(p);
+          }}
+          onSaved={(p, created) => {
+            close();
+            toast(created ? `Added ${p.fullName}` : `Saved ${p.fullName}`);
+          }}
+        />
       )}
       {deleting && (
-        <ConfirmDialog title={`Delete ${deleting.fullName}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
-          onConfirm={() => remove(deleting)} />
+        <ConfirmDialog
+          title={`Delete ${deleting.fullName}?`}
+          confirmLabel="Delete"
+          onClose={() => setDeleting(null)}
+          onConfirm={() => remove(deleting)}
+        />
       )}
     </Shell>
   );

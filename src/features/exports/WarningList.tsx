@@ -9,13 +9,26 @@ import { fixLink, planningFix, type Fix, type FixContext } from './fix';
 /** A warning: its text, or the text with its fix. */
 export type ExportWarning = string | { text: string; fix?: Fix | null };
 
-interface Entry { level: WarningLevel; text: string; fix: Fix | null }
+interface Entry {
+  level: WarningLevel;
+  text: string;
+  fix: Fix | null;
+}
 
 /**
  * Nothing when there are no warnings. `fixes`: by warning text; warnings without one are mapped by
  * planningFix() (planning texts from src/calc) unless `classify` is false.
  */
-export function ExportWarnings({ warnings, fixes = {}, aircraftId, classify = true, title, level = 'warn', className, testId }: {
+export function ExportWarnings({
+  warnings,
+  fixes = {},
+  aircraftId,
+  classify = true,
+  title,
+  level = 'warn',
+  className,
+  testId,
+}: {
   warnings: readonly ExportWarning[];
   fixes?: Record<string, Fix>;
   aircraftId?: string | null;
@@ -36,7 +49,11 @@ export function ExportWarnings({ warnings, fixes = {}, aircraftId, classify = tr
     return { level, text, fix: given ?? fixes[text] ?? (classify ? planningFix(text) : null) };
   });
   return (
-    <div className={`export-warnings ${level} no-print${className ? ' ' + className : ''}`} role="note" data-testid={testId}>
+    <div
+      className={`export-warnings ${level} no-print${className ? ' ' + className : ''}`}
+      role="note"
+      data-testid={testId}
+    >
       {title && <strong className="export-warnings-title">{title}</strong>}
       <WarningList warnings={entries} fix={(e) => (e.fix ? fixLink(e.fix, ctx) : null)} />
     </div>

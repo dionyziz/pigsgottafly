@@ -28,7 +28,9 @@ export function reloadForNewBuild(): boolean {
     const last = Number(sessionStorage.getItem(STALE_RELOAD_KEY) || 0);
     if (now - last < RELOAD_GUARD_MS) return false;
     sessionStorage.setItem(STALE_RELOAD_KEY, String(now));
-  } catch { /* storage unavailable: reload anyway */ }
+  } catch {
+    /* storage unavailable: reload anyway */
+  }
   reloadStartedAt = now;
   nav.reload();
   return true;
@@ -49,12 +51,16 @@ export function staleReloadPendingFor(): number {
 }
 
 /** For tests: forget this page's reload. */
-export function resetStaleBuildState(): void { reloadStartedAt = 0; }
+export function resetStaleBuildState(): void {
+  reloadStartedAt = 0;
+}
 
 export function installStaleBuildReload(): void {
   // Vite fires this when a preload of a lazy chunk fails. Do NOT preventDefault: that makes the lazy
   // import resolve to undefined, React throws a generic error and the ErrorBoundary would flash
   // "Something went wrong" before the reload lands (Firefox). Letting the chunk error propagate
   // shows the loading screen instead.
-  window.addEventListener('vite:preloadError', () => { reloadForNewBuild(); });
+  window.addEventListener('vite:preloadError', () => {
+    reloadForNewBuild();
+  });
 }

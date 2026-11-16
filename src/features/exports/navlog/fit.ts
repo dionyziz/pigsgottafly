@@ -12,7 +12,9 @@ function textWidth(text: string, cs: CSSStyleDeclaration, px: number): number {
   ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${px}px ${cs.fontFamily}`;
   return ctx.measureText(text).width;
 }
-const setU = (el: HTMLElement, u: number) => { el.style.fontSize = `calc(${u.toFixed(2)} * var(--u))`; };
+const setU = (el: HTMLElement, u: number) => {
+  el.style.fontSize = `calc(${u.toFixed(2)} * var(--u))`;
+};
 const unitsOf = (el: HTMLElement) => Number(/calc\(([\d.]+)/.exec(el.style.fontSize)?.[1] ?? NaN);
 
 /** Single-line cell: font from `cap` units (or 82% of the cell height) down until the text fits. */
@@ -44,11 +46,24 @@ function fitCheckpoint(el: HTMLElement, uPx: number, maxPx = Infinity, oneLine =
   const words = text.split(/\s+/);
   let best = { px: 3, lines: 1 };
   for (let px = Math.min(17 * uPx, h * oneLine, maxPx); px > 3; px *= 0.97) {
-    if (textWidth(text, cs, px) <= w) { best = { px, lines: 1 }; break; }
+    if (textWidth(text, cs, px) <= w) {
+      best = { px, lines: 1 };
+      break;
+    }
     if (words.length > 1 && 2 * px * 1.08 <= h * twoLines) {
-      const ok = words.slice(1).some((_, k) =>
-        Math.max(textWidth(words.slice(0, k + 1).join(' '), cs, px), textWidth(words.slice(k + 1).join(' '), cs, px)) <= w);
-      if (ok) { best = { px, lines: 2 }; break; }
+      const ok = words
+        .slice(1)
+        .some(
+          (_, k) =>
+            Math.max(
+              textWidth(words.slice(0, k + 1).join(' '), cs, px),
+              textWidth(words.slice(k + 1).join(' '), cs, px),
+            ) <= w,
+        );
+      if (ok) {
+        best = { px, lines: 2 };
+        break;
+      }
     }
   }
   setU(el, best.px / uPx);
@@ -69,10 +84,18 @@ function fitBox(el: HTMLElement, uPx: number, cap: number) {
   const w = (el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * 0.94;
   const h = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   inner.style.maxWidth = `${w}px`;
-  const fits = (u: number) => { setU(el, u); return inner.scrollWidth <= w + 0.5 && inner.offsetHeight <= h + 0.5; };
-  let lo = 3, hi = Math.min(cap, h / uPx);
+  const fits = (u: number) => {
+    setU(el, u);
+    return inner.scrollWidth <= w + 0.5 && inner.offsetHeight <= h + 0.5;
+  };
+  let lo = 3,
+    hi = Math.min(cap, h / uPx);
   if (!fits(hi)) {
-    for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+    for (let i = 0; i < 14; i++) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid)) lo = mid;
+      else hi = mid;
+    }
     setU(el, lo);
   }
   inner.style.maxWidth = '';
@@ -93,7 +116,10 @@ function shareSize(els: HTMLElement[], outliers = true) {
 
 const groupBy = (els: HTMLElement[], key: (el: HTMLElement) => string | undefined) => {
   const m = new Map<string, HTMLElement[]>();
-  for (const el of els) { const k = key(el); if (k !== undefined) m.set(k, [...(m.get(k) ?? []), el]); }
+  for (const el of els) {
+    const k = key(el);
+    if (k !== undefined) m.set(k, [...(m.get(k) ?? []), el]);
+  }
   return [...m.values()];
 };
 
@@ -109,7 +135,8 @@ export function fitSheets(root: HTMLElement | null) {
     for (const els of groupBy(lines, (el) => {
       const cell = el.closest<HTMLElement>('.tbl > div');
       return cell ? cell.style.gridColumnStart || cell.style.gridColumn.split('/')[0].trim() : undefined;
-    })) shareSize(els, false);
+    }))
+      shareSize(els, false);
     // Header block: one size for every value.
     for (const els of groupBy(lines, (el) => el.dataset.fitGroup)) shareSize(els);
 
@@ -128,7 +155,13 @@ export function fitSheets(root: HTMLElement | null) {
       fitBox(el, uPx, n > 1 ? 16 : Math.min(16, (el.clientHeight / uPx) * 0.72));
     });
     for (const els of groupBy(ti, (el) => String(tiLines.get(el) ?? 1))) shareSize(els);
-    const oneLine = Math.max(...ti.filter((el) => tiLines.get(el) === 1).map(unitsOf).filter(Number.isFinite));
-    if (Number.isFinite(oneLine)) for (const el of ti) if ((tiLines.get(el) ?? 1) > 1 && unitsOf(el) > oneLine) setU(el, oneLine);
+    const oneLine = Math.max(
+      ...ti
+        .filter((el) => tiLines.get(el) === 1)
+        .map(unitsOf)
+        .filter(Number.isFinite),
+    );
+    if (Number.isFinite(oneLine))
+      for (const el of ti) if ((tiLines.get(el) ?? 1) > 1 && unitsOf(el) > oneLine) setU(el, oneLine);
   });
 }

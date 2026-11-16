@@ -38,71 +38,132 @@ function runwayBar(g: CanvasRenderingContext2D, s: number, len: number, width: n
 }
 
 function triangle(g: CanvasRenderingContext2D, s: number, r: number) {
-  const cx = s / 2, cy = s / 2 + r * 0.18;
+  const cx = s / 2,
+    cy = s / 2 + r * 0.18;
   g.beginPath();
   for (let i = 0; i < 3; i++) {
     const a = -Math.PI / 2 + (i * 2 * Math.PI) / 3;
-    const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
-    if (i) g.lineTo(x, y); else g.moveTo(x, y);
+    const x = cx + r * Math.cos(a),
+      y = cy + r * Math.sin(a);
+    if (i) g.lineTo(x, y);
+    else g.moveTo(x, y);
   }
   g.closePath();
 }
 
 export const SYMBOLS: Record<string, () => ImageData | null> = {
-  'pgf-ad-major': () => make(30, (g, s) => { ring(g, s, 8, 2.2, CHART.aerodrome); runwayBar(g, s, 24, 3.6, CHART.aerodrome); }),
-  'pgf-ad-minor': () => make(26, (g, s) => { ring(g, s, 6.5, 1.8, CHART.aerodrome); runwayBar(g, s, 19, 2.8, CHART.aerodrome); }),
-  'pgf-ad-plain': () => make(22, (g, s) => {
-    ring(g, s, 6, 1.8, CHART.aerodrome);
-    g.beginPath(); g.arc(s / 2, s / 2, 2.2, 0, Math.PI * 2); g.fillStyle = CHART.aerodrome; g.fill();
-  }),
-  'pgf-ad-water': () => make(24, (g, s) => {
-    ring(g, s, 7, 1.8, CHART.aerodrome);
-    g.strokeStyle = CHART.aerodrome; g.lineWidth = 1.6;
-    g.beginPath();
-    for (let x = -4.5; x <= 4.5; x += 0.5) {
-      const y = Math.sin((x / 4.5) * Math.PI * 1.5) * 1.6;
-      if (x === -4.5) g.moveTo(s / 2 + x, s / 2 + y); else g.lineTo(s / 2 + x, s / 2 + y);
-    }
-    g.stroke();
-  }),
-  'pgf-vfr': () => make(18, (g, s) => {
-    triangle(g, s, 6.4);
-    g.fillStyle = CHART.vfr; g.fill();
-    g.lineWidth = 1.4; g.strokeStyle = CHART.paper; g.stroke();
-  }),
-  'pgf-vfr-ofm': () => make(18, (g, s) => {
-    triangle(g, s, 5.6);
-    g.fillStyle = CHART.halo; g.fill();
-    g.lineWidth = 1.6; g.strokeStyle = CHART.vfr; g.stroke();
-  }),
-  'pgf-wpt': () => make(20, (g, s) => {
-    const c = s / 2, r = 7, k = 2.2;
-    g.beginPath();
-    g.moveTo(c, c - r); g.lineTo(c + k, c - k); g.lineTo(c + r, c); g.lineTo(c + k, c + k);
-    g.lineTo(c, c + r); g.lineTo(c - k, c + k); g.lineTo(c - r, c); g.lineTo(c - k, c - k); g.closePath();
-    g.fillStyle = CHART.waypoint; g.fill();
-    g.lineWidth = 1.2; g.strokeStyle = CHART.paper; g.stroke();
-  }),
+  'pgf-ad-major': () =>
+    make(30, (g, s) => {
+      ring(g, s, 8, 2.2, CHART.aerodrome);
+      runwayBar(g, s, 24, 3.6, CHART.aerodrome);
+    }),
+  'pgf-ad-minor': () =>
+    make(26, (g, s) => {
+      ring(g, s, 6.5, 1.8, CHART.aerodrome);
+      runwayBar(g, s, 19, 2.8, CHART.aerodrome);
+    }),
+  'pgf-ad-plain': () =>
+    make(22, (g, s) => {
+      ring(g, s, 6, 1.8, CHART.aerodrome);
+      g.beginPath();
+      g.arc(s / 2, s / 2, 2.2, 0, Math.PI * 2);
+      g.fillStyle = CHART.aerodrome;
+      g.fill();
+    }),
+  'pgf-ad-water': () =>
+    make(24, (g, s) => {
+      ring(g, s, 7, 1.8, CHART.aerodrome);
+      g.strokeStyle = CHART.aerodrome;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      for (let x = -4.5; x <= 4.5; x += 0.5) {
+        const y = Math.sin((x / 4.5) * Math.PI * 1.5) * 1.6;
+        if (x === -4.5) g.moveTo(s / 2 + x, s / 2 + y);
+        else g.lineTo(s / 2 + x, s / 2 + y);
+      }
+      g.stroke();
+    }),
+  'pgf-vfr': () =>
+    make(18, (g, s) => {
+      triangle(g, s, 6.4);
+      g.fillStyle = CHART.vfr;
+      g.fill();
+      g.lineWidth = 1.4;
+      g.strokeStyle = CHART.paper;
+      g.stroke();
+    }),
+  'pgf-vfr-ofm': () =>
+    make(18, (g, s) => {
+      triangle(g, s, 5.6);
+      g.fillStyle = CHART.halo;
+      g.fill();
+      g.lineWidth = 1.6;
+      g.strokeStyle = CHART.vfr;
+      g.stroke();
+    }),
+  'pgf-wpt': () =>
+    make(20, (g, s) => {
+      const c = s / 2,
+        r = 7,
+        k = 2.2;
+      g.beginPath();
+      g.moveTo(c, c - r);
+      g.lineTo(c + k, c - k);
+      g.lineTo(c + r, c);
+      g.lineTo(c + k, c + k);
+      g.lineTo(c, c + r);
+      g.lineTo(c - k, c + k);
+      g.lineTo(c - r, c);
+      g.lineTo(c - k, c - k);
+      g.closePath();
+      g.fillStyle = CHART.waypoint;
+      g.fill();
+      g.lineWidth = 1.2;
+      g.strokeStyle = CHART.paper;
+      g.stroke();
+    }),
   // one-way arrow along a VFR route (points along the line direction = image +x)
-  'pgf-arrow': () => make(14, (g, s) => {
-    g.beginPath(); g.moveTo(s / 2 - 3, s / 2 - 4); g.lineTo(s / 2 + 3, s / 2); g.lineTo(s / 2 - 3, s / 2 + 4);
-    g.lineWidth = 2; g.strokeStyle = CHART.vfr; g.stroke();
-  }),
+  'pgf-arrow': () =>
+    make(14, (g, s) => {
+      g.beginPath();
+      g.moveTo(s / 2 - 3, s / 2 - 4);
+      g.lineTo(s / 2 + 3, s / 2);
+      g.lineTo(s / 2 - 3, s / 2 + 4);
+      g.lineWidth = 2;
+      g.strokeStyle = CHART.vfr;
+      g.stroke();
+    }),
   // direction of flight on a route leg (points north; the layer rotates it to the leg): an arrowhead
   // a little wider than the route line, with a white edge
-  'pgf-route-arrow': () => make(22, (g, s) => {
-    const c = s / 2;
-    g.beginPath(); g.moveTo(c, c - 7); g.lineTo(c + 6.5, c + 5.5); g.lineTo(c, c + 2.5); g.lineTo(c - 6.5, c + 5.5); g.closePath();
-    g.lineWidth = 3; g.strokeStyle = CHART.paper; g.stroke();
-    g.fillStyle = CHART.route; g.fill();
-  }),
+  'pgf-route-arrow': () =>
+    make(22, (g, s) => {
+      const c = s / 2;
+      g.beginPath();
+      g.moveTo(c, c - 7);
+      g.lineTo(c + 6.5, c + 5.5);
+      g.lineTo(c, c + 2.5);
+      g.lineTo(c - 6.5, c + 5.5);
+      g.closePath();
+      g.lineWidth = 3;
+      g.strokeStyle = CHART.paper;
+      g.stroke();
+      g.fillStyle = CHART.route;
+      g.fill();
+    }),
   // restricted-area hatching (a fill-pattern tile: diagonal lines that join across tiles)
-  'pgf-hatch-r': () => make(8, (g, s) => {
-    g.strokeStyle = CHART.restricted; g.globalAlpha = 0.45; g.lineWidth = 1; g.lineCap = 'butt';
-    g.beginPath();
-    for (const o of [-s, 0, s]) { g.moveTo(o, s); g.lineTo(o + s, 0); }
-    g.stroke();
-  }),
+  'pgf-hatch-r': () =>
+    make(8, (g, s) => {
+      g.strokeStyle = CHART.restricted;
+      g.globalAlpha = 0.45;
+      g.lineWidth = 1;
+      g.lineCap = 'butt';
+      g.beginPath();
+      for (const o of [-s, 0, s]) {
+        g.moveTo(o, s);
+        g.lineTo(o + s, 0);
+      }
+      g.stroke();
+    }),
 };
 
 /** Register every chart symbol on the map (idempotent). */

@@ -5,14 +5,46 @@ import { fleetSeed } from '../../../tools/build_seed';
 import { blankAircraft } from '../../../src/shared/templates';
 import { buildFromTemplate } from '../../../src/features/hangar/templates';
 import {
-  addFuelType, addHeadwind, addLandingAltitude, addRunwayCondition, addStation, addTakeoffAltitude, addTakeoffMassRow, badPbn, item18Dropped,
-  makePrimaryFuel, otherFuelTypes, removeFuelType, removeStation, runwayConditions, setArmRange, setRunwayConditions, setStationKind, cardStatus, deviationOf, insidePolygon,
-  join10a, join10b, missingEssentials, momentPolygonFromCg, newSeatId, newStationId, polygonArea, removeHeadwind,
-  removeLandingAltitude, removeTakeoffAltitude, sameTypeCopy, selfIntersects, split10a, split10b, validateAircraft,
+  addFuelType,
+  addHeadwind,
+  addLandingAltitude,
+  addRunwayCondition,
+  addStation,
+  addTakeoffAltitude,
+  addTakeoffMassRow,
+  badPbn,
+  item18Dropped,
+  makePrimaryFuel,
+  otherFuelTypes,
+  removeFuelType,
+  removeStation,
+  runwayConditions,
+  setArmRange,
+  setRunwayConditions,
+  setStationKind,
+  cardStatus,
+  deviationOf,
+  insidePolygon,
+  join10a,
+  join10b,
+  missingEssentials,
+  momentPolygonFromCg,
+  newSeatId,
+  newStationId,
+  polygonArea,
+  removeHeadwind,
+  removeLandingAltitude,
+  removeTakeoffAltitude,
+  sameTypeCopy,
+  selfIntersects,
+  split10a,
+  split10b,
+  validateAircraft,
 } from '../../../src/features/hangar/model';
 
 const TODAY = '2026-11-15';
-const errors = (a: Parameters<typeof validateAircraft>[0], today = TODAY) => validateAircraft(a, today).filter((i) => i.level === 'error');
+const errors = (a: Parameters<typeof validateAircraft>[0], today = TODAY) =>
+  validateAircraft(a, today).filter((i) => i.level === 'error');
 
 describe('validateAircraft', () => {
   test('the seeded SX-ASV and SX-ASG have no errors', () => {
@@ -33,7 +65,12 @@ describe('validateAircraft', () => {
   test('inconsistent values are errors', () => {
     const a = structuredClone(fleetSeed()[0]);
     a.fuel.usableL = a.fuel.totalL + 10;
-    a.massBalance.envelopes.normal.polygon = [[0.89, 600], [1.2, 1043], [0.98, 1043], [1.2, 600]]; // bow-tie
+    a.massBalance.envelopes.normal.polygon = [
+      [0.89, 600],
+      [1.2, 1043],
+      [0.98, 1043],
+      [1.2, 600],
+    ]; // bow-tie
     a.massBalance.stations[1].seats = [{ id: 'front-left', label: 'Dup' }];
     a.compassCards[0].expires = '2020-01-01';
     a.equipment.item10a = 'SQ';
@@ -95,11 +132,33 @@ describe('compass cards', () => {
 });
 
 describe('geometry', () => {
-  const normal: [number, number][] = [[0.89, 600], [0.89, 885], [0.98, 1043], [1.2, 1043], [1.2, 600]];
+  const normal: [number, number][] = [
+    [0.89, 600],
+    [0.89, 885],
+    [0.98, 1043],
+    [1.2, 1043],
+    [1.2, 600],
+  ];
   test('self-intersection and area', () => {
     expect(selfIntersects(normal)).toBe(false);
-    expect(selfIntersects([[0, 0], [1, 1], [1, 0], [0, 1]])).toBe(true);
-    expect(Math.abs(polygonArea([[0, 0], [1, 0], [1, 1], [0, 1]]))).toBe(1);
+    expect(
+      selfIntersects([
+        [0, 0],
+        [1, 1],
+        [1, 0],
+        [0, 1],
+      ]),
+    ).toBe(true);
+    expect(
+      Math.abs(
+        polygonArea([
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ]),
+      ),
+    ).toBe(1);
   });
   test('point in polygon', () => {
     expect(insidePolygon([1.0, 900], normal)).toBe(true);
@@ -115,7 +174,7 @@ describe('geometry', () => {
     expect(m[5]).toEqual([1022.1, 1043]);
     // an intermediate point lies on the CG limit line
     const [mom, mass] = m[3];
-    const arm = 0.89 + (0.98 - 0.89) * (mass - 885) / (1043 - 885);
+    const arm = 0.89 + ((0.98 - 0.89) * (mass - 885)) / (1043 - 885);
     expect(mom / mass).toBeCloseTo(arm, 3);
     // at 1030 kg the forward limit is 0.9726 m → 1001.8 kg·m
     expect(insidePolygon([1005, 1030], m)).toBe(true);
@@ -129,7 +188,9 @@ describe('stations', () => {
     expect(newStationId(st, 'bag')).toBe('bag');
     expect(newStationId(st, 'bag1')).toBe('bag12');
     expect(newSeatId(st, 'front')).toBe('front-1');
-    expect(newSeatId([{ id: 'x', name: 'X', kind: 'seat', armM: 1, seats: [{ id: 'x-1', label: 'A' }] }], 'x')).toBe('x-2');
+    expect(newSeatId([{ id: 'x', name: 'X', kind: 'seat', armM: 1, seats: [{ id: 'x-1', label: 'A' }] }], 'x')).toBe(
+      'x-2',
+    );
   });
 });
 
@@ -175,7 +236,9 @@ describe('copies', () => {
     expect(src.serial).not.toBe('');
   });
   test('missing essentials', () => {
-    expect(missingEssentials(buildFromTemplate('reims-f172m'))).toEqual(expect.arrayContaining(['cruise TAS', 'fuel burn', 'empty mass']));
+    expect(missingEssentials(buildFromTemplate('reims-f172m'))).toEqual(
+      expect.arrayContaining(['cruise TAS', 'fuel burn', 'empty mass']),
+    );
     expect(missingEssentials(buildFromTemplate('reims-f172m'))).not.toContain('MTOW');
   });
 });
@@ -185,7 +248,10 @@ describe('approved fuels and the item 18 field', () => {
     const a = structuredClone(fleetSeed()[0]);
     a.fuel.types[1].densityKgPerL = 7.5;
     expect(errors(a)).toEqual([]);
-    a.fuel.types = [{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'AVGAS', densityKgPerL: 0.72 }];
+    a.fuel.types = [
+      { type: 'AVGAS', densityKgPerL: 0.72 },
+      { type: 'AVGAS', densityKgPerL: 0.72 },
+    ];
     expect(errors(a).map((i) => i.path)).toContain('fuel.types');
     a.fuel.types = [];
     expect(errors(a).map((i) => i.path)).toContain('fuel.types');
@@ -197,20 +263,28 @@ describe('approved fuels and the item 18 field', () => {
     removeFuelType(f, 'MOGAS'); // the last one stays
     expect(f.types.map((g) => g.type)).toEqual(['MOGAS']);
     addFuelType(f, 'JET A-1');
-    expect(f.types).toEqual([{ type: 'MOGAS', densityKgPerL: 0.75 }, { type: 'JET A-1', densityKgPerL: 0.8 }]);
+    expect(f.types).toEqual([
+      { type: 'MOGAS', densityKgPerL: 0.75 },
+      { type: 'JET A-1', densityKgPerL: 0.8 },
+    ]);
     makePrimaryFuel(f, 'JET A-1');
     expect(f.types.map((g) => g.type)).toEqual(['JET A-1', 'MOGAS']);
     expect(otherFuelTypes(f)).toEqual(['AVGAS']);
   });
   test('item 18: NAV/ and RMK/ are fine; only what the flight plan leaves out is warned', () => {
     const a = structuredClone(fleetSeed()[0]);
-    const warn18 = () => validateAircraft(a, TODAY).filter((i) => i.path === 'equipment.item18Extras').map((i) => i.message);
+    const warn18 = () =>
+      validateAircraft(a, TODAY)
+        .filter((i) => i.path === 'equipment.item18Extras')
+        .map((i) => i.message);
     a.equipment.item18Extras = 'NAV/SBAS RMK/GARMIN GNS430W';
     expect(item18Dropped(a)).toEqual([]);
     expect(warn18()).toEqual([]);
     a.equipment.item18Extras = 'NAV/SBAS DOF/261120 REG/SXASV RMK/X';
     expect(item18Dropped(a).map((d) => d.indicator)).toEqual(['DOF', 'REG']);
-    expect(warn18()).toEqual(['Left out of the flight plan: DOF/ (comes from the flight), REG/ (comes from the flight).']);
+    expect(warn18()).toEqual([
+      'Left out of the flight plan: DOF/ (comes from the flight), REG/ (comes from the flight).',
+    ]);
     a.equipment.item18Extras = 'OPR/SOMEONE TYP/C172';
     expect(item18Dropped(a).map((d) => d.indicator)).toEqual(['OPR', 'TYP']);
     a.operator = '';
@@ -235,16 +309,33 @@ describe('approved fuels and the item 18 field', () => {
     s.armRangeM = null;
     setArmRange(s, 0, null);
     expect(s.armRangeM).toBeNull();
-    removeStation(mb, mb.stations.findIndex((x) => x.id === 'bag2'));
+    removeStation(
+      mb,
+      mb.stations.findIndex((x) => x.id === 'bag2'),
+    );
     expect(mb.combinedLimits).toEqual([{ stations: ['bag1'], maxKg: 54 }]);
-    removeStation(mb, mb.stations.findIndex((x) => x.id === 'bag1'));
+    removeStation(
+      mb,
+      mb.stations.findIndex((x) => x.id === 'bag1'),
+    );
     expect(mb.combinedLimits).toEqual([]);
   });
   test('runway conditions: add with a free name, rename, remove', () => {
     const f = structuredClone(fleetSeed()[0].performance.factors);
     expect(addRunwayCondition(f)).toBe('new condition');
     expect(addRunwayCondition(f)).toBe('new condition 2');
-    setRunwayConditions(f, runwayConditions(f).filter(([k]) => !k.startsWith('new')).map(([k, v]) => [k.toUpperCase(), v]));
-    expect(Object.keys(f.runwayCondition)).toEqual(['SHORT DRY GRASS', 'SHORT WET GRASS', 'LONG DRY GRASS', 'LONG WET GRASS', 'PAVED RWYCC 5']);
+    setRunwayConditions(
+      f,
+      runwayConditions(f)
+        .filter(([k]) => !k.startsWith('new'))
+        .map(([k, v]) => [k.toUpperCase(), v]),
+    );
+    expect(Object.keys(f.runwayCondition)).toEqual([
+      'SHORT DRY GRASS',
+      'SHORT WET GRASS',
+      'LONG DRY GRASS',
+      'LONG WET GRASS',
+      'PAVED RWYCC 5',
+    ]);
   });
 });

@@ -7,8 +7,14 @@ import { aerodromeName } from './snap';
 import { mercatorMid } from './routeEdit';
 import { airspaceLabel, fmtVertical, isArea, type AirspaceInfo } from './airspace';
 
-export type FC<G extends Point | LineString | Polygon = Point | LineString | Polygon> = FeatureCollection<G, Record<string, unknown>>;
-const fc = <G extends Point | LineString | Polygon>(features: Feature<G, Record<string, unknown>>[]): FC<G> => ({ type: 'FeatureCollection', features });
+export type FC<G extends Point | LineString | Polygon = Point | LineString | Polygon> = FeatureCollection<
+  G,
+  Record<string, unknown>
+>;
+const fc = <G extends Point | LineString | Polygon>(features: Feature<G, Record<string, unknown>>[]): FC<G> => ({
+  type: 'FeatureCollection',
+  features,
+});
 
 export { destination, circleRing } from './airspace';
 
@@ -29,7 +35,12 @@ export function aerodromeFeatures(aerodromes: RefAerodrome[], variationDeg = 5):
         const h = runwayHeading(a);
         const major = !!a.icao && a.freqs.length > 0;
         const elev = a.elevFt !== null && isFinite(a.elevFt) ? `${Math.round(a.elevFt)} ft` : '';
-        const title = a.name.includes('/') ? a.name.split('/').map((s) => s.trim()).join(' / ') : a.name;
+        const title = a.name.includes('/')
+          ? a.name
+              .split('/')
+              .map((s) => s.trim())
+              .join(' / ')
+          : a.name;
         return {
           type: 'Feature',
           id: a.id,
@@ -81,7 +92,12 @@ export function areaFeatures(infos: AirspaceInfo[]): FC<Polygon> {
 
 /** Compact vertical limits as printed on charts: 'FL 155' → 'FL155', '1000 FT AGL' → '1000 AGL'. */
 export function fmtLimit(s: string): string {
-  return s.trim().toUpperCase().replace(/^FL\s+/, 'FL').replace(/\s*FT\b/, '').replace(/\s+/g, ' ');
+  return s
+    .trim()
+    .toUpperCase()
+    .replace(/^FL\s+/, 'FL')
+    .replace(/\s*FT\b/, '')
+    .replace(/\s+/g, ' ');
 }
 
 /** TMA/MTMA polygons with a chart label "ATHINAI TMA · D · 1000 ft AGL – FL155". */
@@ -97,7 +113,11 @@ export function airspaceFeatures(airspaces: RefAirspace[]): FC<Polygon> {
           type: 'Feature',
           id: s.id,
           geometry: { type: 'Polygon', coordinates: [ring] },
-          properties: { id: s.id, kind: s.kind, label: airspaceLabel({ name: s.name, cls: s.class, lower: s.lower, upper: s.upper }) },
+          properties: {
+            id: s.id,
+            kind: s.kind,
+            label: airspaceLabel({ name: s.name, cls: s.class, lower: s.lower, upper: s.upper }),
+          },
         };
       }),
   );
@@ -109,10 +129,18 @@ export function firFeatures(fir: RefFir | undefined): FC<LineString> {
   if (!fir || fir.boundary.length < 3) return fc([]);
   const line = (pts: [number, number][]) => pts.map(([lat, lon]) => [lon, lat]);
   const out: Feature<LineString, Record<string, unknown>>[] = [
-    { type: 'Feature', geometry: { type: 'LineString', coordinates: line(fir.boundary) }, properties: { kind: 'fir', label: `${fir.id} ${fir.name}` } },
+    {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: line(fir.boundary) },
+      properties: { kind: 'fir', label: `${fir.id} ${fir.name}` },
+    },
   ];
   if (fir.divider.line.length >= 2) {
-    out.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line(fir.divider.line) }, properties: { kind: 'divider', label: fir.divider.label } });
+    out.push({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: line(fir.divider.line) },
+      properties: { kind: 'divider', label: fir.divider.label },
+    });
   }
   return fc(out);
 }
@@ -125,7 +153,12 @@ export function vfrPointFeatures(points: RefVfrPoint[]): FC<Point> {
       .map((v) => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-        properties: { id: v.id, label: v.name, icon: v.src === 'ofm' ? 'pgf-vfr-ofm' : 'pgf-vfr', rank: v.src === 'ofm' ? 2 : 1 },
+        properties: {
+          id: v.id,
+          label: v.name,
+          icon: v.src === 'ofm' ? 'pgf-vfr-ofm' : 'pgf-vfr',
+          rank: v.src === 'ofm' ? 2 : 1,
+        },
       })),
   );
 }
@@ -149,15 +182,24 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
   const out: Feature<LineString, Record<string, unknown>>[] = [];
   const seen = new Set<string>();
   for (const r of routes) {
-    const a = byChart.get(`${r.chart}/${r.a}`), b = byChart.get(`${r.chart}/${r.b}`);
+    const a = byChart.get(`${r.chart}/${r.a}`),
+      b = byChart.get(`${r.chart}/${r.b}`);
     if (!a || !b) continue;
     // two-way segments listed in both directions are drawn once
-    const key = r.oneway ? `${r.chart}:${r.a}>${r.b}` : `${r.chart}:${[r.a, r.b].sort().join('|')}:${r.minFt}-${r.maxFt}`;
+    const key = r.oneway
+      ? `${r.chart}:${r.a}>${r.b}`
+      : `${r.chart}:${[r.a, r.b].sort().join('|')}:${r.minFt}-${r.maxFt}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
       type: 'Feature',
-      geometry: { type: 'LineString', coordinates: [[a.lon, a.lat], [b.lon, b.lat]] },
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [a.lon, a.lat],
+          [b.lon, b.lat],
+        ],
+      },
       properties: { id: r.id, alt: fmtRouteAltitude(r), oneway: r.oneway },
     });
   }
@@ -169,14 +211,24 @@ export function waypointFeatures(waypoints: Waypoint[]): FC<Point> {
   return fc(
     waypoints
       .filter((w) => isFinite(w.lat) && isFinite(w.lon))
-      .map((w) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [w.lon, w.lat] }, properties: { id: w.id, label: w.name } })),
+      .map((w) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [w.lon, w.lat] },
+        properties: { id: w.id, label: w.name },
+      })),
   );
 }
 
 /** The route line. */
 export function routeLineFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<LineString> {
   if (route.length < 2) return fc([]);
-  return fc([{ type: 'Feature', geometry: { type: 'LineString', coordinates: route.map((p) => [p.lon, p.lat]) }, properties: {} }]);
+  return fc([
+    {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: route.map((p) => [p.lon, p.lat]) },
+      properties: {},
+    },
+  ]);
 }
 
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
@@ -191,11 +243,14 @@ export const ARROW_AT = [0.3, 0.7] as const;
 export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
   const out: Feature<Point, Record<string, unknown>>[] = [];
   for (let i = 0; i + 1 < route.length; i++) {
-    const a = route[i], b = route[i + 1];
-    const ya = mercY(a.lat), yb = mercY(b.lat);
-    const dx = ((b.lon - a.lon) * Math.PI) / 180, dy = yb - ya;
+    const a = route[i],
+      b = route[i + 1];
+    const ya = mercY(a.lat),
+      yb = mercY(b.lat);
+    const dx = ((b.lon - a.lon) * Math.PI) / 180,
+      dy = yb - ya;
     if (Math.hypot(dx, dy) < 1e-9) continue;
-    const rot = Math.round(((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360 * 10) / 10;
+    const rot = Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) * 10) / 10;
     for (const t of ARROW_AT) {
       out.push({
         type: 'Feature',
@@ -231,7 +286,8 @@ export function routePointFeatures(route: RoutePoint[], selectedUid: string | nu
 export function midpointFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
   const out: Feature<Point, Record<string, unknown>>[] = [];
   for (let i = 0; i + 1 < route.length; i++) {
-    const a = route[i], b = route[i + 1];
+    const a = route[i],
+      b = route[i + 1];
     out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: mercatorMid(a, b) }, properties: { leg: i } });
   }
   return fc(out);

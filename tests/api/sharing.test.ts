@@ -14,7 +14,18 @@ const aircraftBody = (reg: string) => {
   ac.registration = reg;
   ac.cruiseTasKt = 95;
   ac.patternTasKt = 80;
-  ac.massBalance.stations = [{ id: 'front', name: 'Front', kind: 'seat', armM: 0.94, seats: [{ id: 'front-left', label: 'Front left' }, { id: 'front-right', label: 'Front right' }] }];
+  ac.massBalance.stations = [
+    {
+      id: 'front',
+      name: 'Front',
+      kind: 'seat',
+      armM: 0.94,
+      seats: [
+        { id: 'front-left', label: 'Front left' },
+        { id: 'front-right', label: 'Front right' },
+      ],
+    },
+  ];
   return ac;
 };
 const PDF = Buffer.from('%PDF-1.4 swing report').toString('base64');
@@ -25,7 +36,12 @@ beforeAll(async () => {
   editor = client(api.base);
   viewer = client(api.base);
   stranger = client(api.base);
-  for (const [c, sub, email] of [[owner, 'o', 'Owner@Example.com'], [editor, 'e', 'editor@example.com'], [viewer, 'v', 'viewer@example.com'], [stranger, 's', 'stranger@example.com']] as const) {
+  for (const [c, sub, email] of [
+    [owner, 'o', 'Owner@Example.com'],
+    [editor, 'e', 'editor@example.com'],
+    [viewer, 'v', 'viewer@example.com'],
+    [stranger, 's', 'stranger@example.com'],
+  ] as const) {
     expect((await c.login(`sub-${sub}`, email)).status).toBe(200);
     ids[sub] = (await c.call('GET', 'me')).body.id;
   }
@@ -41,27 +57,45 @@ async function newAircraft(reg: string): Promise<HangarAircraft> {
 
 describe('sharing an aircraft', () => {
   let ac: HangarAircraft;
-  beforeAll(async () => { ac = await newAircraft('SX-SHR'); });
+  beforeAll(async () => {
+    ac = await newAircraft('SX-SHR');
+  });
 
   test('the creator owns it', async () => {
-    expect(ac.access).toEqual({ role: 'owner', owner: { pilotId: ids.o, name: 'Olga Owner', email: 'Owner@Example.com' } });
+    expect(ac.access).toEqual({
+      role: 'owner',
+      owner: { pilotId: ids.o, name: 'Olga Owner', email: 'Owner@Example.com' },
+    });
     const s = (await owner.call<AircraftSharing>('GET', `aircraft/${ac.id}/shares`)).body;
     expect(s).toMatchObject({ aircraftId: ac.id, registration: 'SX-SHR', role: 'owner', canManage: true });
-    expect(s.people).toEqual([{ pilotId: ids.o, name: 'Olga Owner', email: 'Owner@Example.com', role: 'owner', added: null }]);
+    expect(s.people).toEqual([
+      { pilotId: ids.o, name: 'Olga Owner', email: 'Owner@Example.com', role: 'owner', added: null },
+    ]);
   });
 
   test('a stranger gets 404 everywhere', async () => {
     expect((await stranger.call('GET', `aircraft/${ac.id}`)).status).toBe(404);
     expect((await stranger.call('GET', 'aircraft')).body).toEqual([]);
     expect((await stranger.call('GET', `aircraft/${ac.id}/shares`)).status).toBe(404);
-    expect((await stranger.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'edit' })).status).toBe(404);
+    expect(
+      (await stranger.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'edit' })).status,
+    ).toBe(404);
     expect((await stranger.call('PUT', `aircraft/${ac.id}`, { colours: 'RED' })).status).toBe(404);
     expect((await stranger.call('DELETE', `aircraft/${ac.id}`)).status).toBe(404);
-    expect((await stranger.call('POST', `aircraft/${ac.id}/attachments`, { name: 'r.pdf', mime: 'application/pdf', data: PDF })).status).toBe(404);
+    expect(
+      (
+        await stranger.call('POST', `aircraft/${ac.id}/attachments`, {
+          name: 'r.pdf',
+          mime: 'application/pdf',
+          data: PDF,
+        })
+      ).status,
+    ).toBe(404);
   });
 
   test('adding people: by e-mail, case-insensitive; unknown, self, owner and duplicates are refused', async () => {
-    const add = (c: Client, email: string, role = 'view') => c.call('POST', `aircraft/${ac.id}/shares`, { email, role });
+    const add = (c: Client, email: string, role = 'view') =>
+      c.call('POST', `aircraft/${ac.id}/shares`, { email, role });
     const unknown = await add(owner, 'nobody@example.com');
     expect(unknown.status).toBe(404);
     expect(unknown.body.error).toMatch(/No Pig’s Gotta Fly account uses nobody@example\.com/);
@@ -70,7 +104,10 @@ describe('sharing an aircraft', () => {
     expect((await add(owner, 'viewer@example.com', 'admin')).status).toBe(400);
     const r = await add(owner, '  VIEWER@example.COM ', 'view');
     expect(r.status).toBe(201);
-    expect(r.body.people.map((p: any) => [p.pilotId, p.role])).toEqual([[ids.o, 'owner'], [ids.v, 'view']]);
+    expect(r.body.people.map((p: any) => [p.pilotId, p.role])).toEqual([
+      [ids.o, 'owner'],
+      [ids.v, 'view'],
+    ]);
     expect((await add(owner, 'viewer@example.com', 'edit')).status).toBe(409);
     expect((await add(owner, 'editor@example.com', 'edit')).status).toBe(201);
   });
@@ -85,10 +122,20 @@ describe('sharing an aircraft', () => {
     expect(s.people.map((p) => p.role)).toEqual(['owner', 'edit', 'view']);
     expect((await viewer.call('PUT', `aircraft/${ac.id}`, { colours: 'RED' })).status).toBe(403);
     expect((await viewer.call('DELETE', `aircraft/${ac.id}`)).status).toBe(403);
-    expect((await viewer.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'view' })).status).toBe(403);
+    expect(
+      (await viewer.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'view' })).status,
+    ).toBe(403);
     expect((await viewer.call('PUT', `aircraft/${ac.id}/shares/${ids.v}`, { role: 'edit' })).status).toBe(403);
     expect((await viewer.call('DELETE', `aircraft/${ac.id}/shares/${ids.e}`)).status).toBe(403);
-    expect((await viewer.call('POST', `aircraft/${ac.id}/attachments`, { name: 'r.pdf', mime: 'application/pdf', data: PDF })).status).toBe(403);
+    expect(
+      (
+        await viewer.call('POST', `aircraft/${ac.id}/attachments`, {
+          name: 'r.pdf',
+          mime: 'application/pdf',
+          data: PDF,
+        })
+      ).status,
+    ).toBe(403);
   });
 
   test('editors change the aircraft and its files, and manage the sharing, but cannot delete it', async () => {
@@ -97,9 +144,23 @@ describe('sharing an aircraft', () => {
     expect(put.body).toMatchObject({ colours: 'WHITE BLUE', access: { role: 'edit' } });
     expect((await owner.call('GET', `aircraft/${ac.id}`)).body.colours).toBe('WHITE BLUE');
     // a swing report uploaded by the editor belongs to the aircraft: everyone with access reads it
-    const file = await editor.call('POST', `aircraft/${ac.id}/attachments`, { name: 'swing.pdf', mime: 'application/pdf', data: PDF });
+    const file = await editor.call('POST', `aircraft/${ac.id}/attachments`, {
+      name: 'swing.pdf',
+      mime: 'application/pdf',
+      data: PDF,
+    });
     expect(file.status).toBe(201);
-    const card = { name: 'Magnetic compass', swung: '2026-01-10', expires: '2028-01-10', source: '', points: [[0, 1], [90, 91]], report: file.body };
+    const card = {
+      name: 'Magnetic compass',
+      swung: '2026-01-10',
+      expires: '2028-01-10',
+      source: '',
+      points: [
+        [0, 1],
+        [90, 91],
+      ],
+      report: file.body,
+    };
     const withCard = await editor.call('PUT', `aircraft/${ac.id}`, { compassCards: [card] });
     expect(withCard.status, JSON.stringify(withCard.body)).toBe(200);
     expect((await viewer.call('GET', `aircraft/${ac.id}/attachments/${file.body.id}`)).body.data).toBe(PDF);
@@ -107,13 +168,17 @@ describe('sharing an aircraft', () => {
     expect((await stranger.call('GET', `aircraft/${ac.id}/attachments/${file.body.id}`)).status).toBe(404);
     expect((await viewer.call('DELETE', `aircraft/${ac.id}/attachments/${file.body.id}`)).status).toBe(403);
     // sharing
-    expect((await editor.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'view' })).status).toBe(201);
+    expect(
+      (await editor.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'view' })).status,
+    ).toBe(201);
     expect((await stranger.call('GET', `aircraft/${ac.id}`)).status).toBe(200);
     expect((await editor.call('DELETE', `aircraft/${ac.id}/shares/${ids.s}`)).status).toBe(204);
     expect((await stranger.call('GET', `aircraft/${ac.id}`)).status).toBe(404);
     expect((await editor.call('PUT', `aircraft/${ac.id}/shares/${ids.o}`, { role: 'view' })).status).toBe(400);
     expect((await editor.call('DELETE', `aircraft/${ac.id}/shares/${ids.o}`)).status).toBe(400);
-    expect((await editor.call('POST', `aircraft/${ac.id}/shares`, { email: 'owner@example.com', role: 'view' })).status).toBe(400);
+    expect(
+      (await editor.call('POST', `aircraft/${ac.id}/shares`, { email: 'owner@example.com', role: 'view' })).status,
+    ).toBe(400);
     expect((await editor.call('DELETE', `aircraft/${ac.id}`)).status).toBe(403);
   });
 
@@ -125,14 +190,21 @@ describe('sharing an aircraft', () => {
     expect((await viewer.call('PUT', `aircraft/${ac.id}`, { notes: 'again' })).status).toBe(403);
     expect((await owner.call('PUT', `aircraft/${ac.id}/shares/${ids.s}`, { role: 'view' })).status).toBe(404);
     const again = (await owner.call<AircraftSharing>('GET', `aircraft/${ac.id}/shares`)).body;
-    expect(again.people.map((p) => [p.pilotId, p.role])).toEqual([[ids.o, 'owner'], [ids.e, 'edit'], [ids.v, 'view']]);
+    expect(again.people.map((p) => [p.pilotId, p.role])).toEqual([
+      [ids.o, 'owner'],
+      [ids.e, 'edit'],
+      [ids.v, 'view'],
+    ]);
   });
 
   test('registrations stay unique per owner: a shared aircraft does not block your own', async () => {
     const mine = await viewer.call('POST', 'aircraft', aircraftBody('SX-SHR'));
     expect(mine.status).toBe(201);
     const list = (await viewer.call<HangarAircraft[]>('GET', 'aircraft')).body;
-    expect(list.map((a) => [a.registration, a.access.role])).toEqual([['SX-SHR', 'owner'], ['SX-SHR', 'view']]);
+    expect(list.map((a) => [a.registration, a.access.role])).toEqual([
+      ['SX-SHR', 'owner'],
+      ['SX-SHR', 'view'],
+    ]);
     expect((await viewer.call('DELETE', `aircraft/${mine.body.id}`)).status).toBe(204);
   });
 });
@@ -149,12 +221,17 @@ describe('flights on a shared aircraft', () => {
     expect(created.body.aircraftId).toBe(ac.id);
     expect(created.body.summary.aircraft).toBe('SX-FLY');
     const f = created.body;
-    const crew = [...f.crew, { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: { fullName: 'Guest', weightKg: 70 } }];
+    const crew = [
+      ...f.crew,
+      { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: { fullName: 'Guest', weightKg: 70 } },
+    ];
     const put = await viewer.call('PUT', `flights/${f.id}`, { flight: { crew }, version: f.version });
     expect(put.status, JSON.stringify(put.body)).toBe(200);
     // seats are those of the shared aircraft
     const bad = [...f.crew, { role: 'PAX', passengerId: null, seat: 'rear-left', snapshot: { fullName: 'Guest' } }];
-    expect((await viewer.call('PUT', `flights/${f.id}`, { flight: { crew: bad }, version: put.body.version })).status).toBe(400);
+    expect(
+      (await viewer.call('PUT', `flights/${f.id}`, { flight: { crew: bad }, version: put.body.version })).status,
+    ).toBe(400);
     // forms and filing see the aircraft
     const forms = await viewer.call('GET', `flights/${f.id}/forms`);
     expect(forms.status).toBe(200);
@@ -170,17 +247,26 @@ describe('flights on a shared aircraft', () => {
     const after = await viewer.call<Flight>('GET', `flights/${f.id}`);
     expect(after.status).toBe(200);
     expect(after.body.aircraftId).toBe(ac.id);
-    const save = await viewer.call('PUT', `flights/${f.id}`, { flight: { ...after.body, title: 'still mine' }, version: after.body.version });
+    const save = await viewer.call('PUT', `flights/${f.id}`, {
+      flight: { ...after.body, title: 'still mine' },
+      version: after.body.version,
+    });
     expect(save.status, JSON.stringify(save.body)).toBe(200);
     // but cannot choose it again on another flight
     expect((await viewer.call('POST', 'flights', { aircraftId: ac.id })).status).toBe(400);
     const other = (await viewer.call<Flight>('POST', 'flights', {})).body;
     expect(other.aircraftId).toBeNull();
-    expect((await viewer.call('PUT', `flights/${other.id}`, { flight: { aircraftId: ac.id }, version: other.version })).status).toBe(400);
+    expect(
+      (await viewer.call('PUT', `flights/${other.id}`, { flight: { aircraftId: ac.id }, version: other.version }))
+        .status,
+    ).toBe(400);
     // the forms no longer show the aircraft
     expect(JSON.stringify((await viewer.call('GET', `flights/${f.id}/forms`)).body)).not.toContain('SX-FLY');
     // choosing no aircraft (or another) works
-    const cleared = await viewer.call('PUT', `flights/${f.id}`, { flight: { aircraftId: null }, version: save.body.version });
+    const cleared = await viewer.call('PUT', `flights/${f.id}`, {
+      flight: { aircraftId: null },
+      version: save.body.version,
+    });
     expect(cleared.status).toBe(200);
   });
 

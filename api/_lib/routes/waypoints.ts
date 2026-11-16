@@ -13,11 +13,14 @@ async function get(db: Queryable, pilotId: string, id: string) {
 
 export const routes: Route[] = [
   {
-    method: 'GET', path: '/waypoints',
-    handler: async ({ db, pilot }) => (await db.query('SELECT * FROM waypoints WHERE pilot_id = $1 ORDER BY name', [pilot.id])).map(toWaypoint),
+    method: 'GET',
+    path: '/waypoints',
+    handler: async ({ db, pilot }) =>
+      (await db.query('SELECT * FROM waypoints WHERE pilot_id = $1 ORDER BY name', [pilot.id])).map(toWaypoint),
   },
   {
-    method: 'POST', path: '/waypoints',
+    method: 'POST',
+    path: '/waypoints',
     async handler({ db, pilot, body }) {
       const w = waypointInput(await body(), { name: '', lat: NaN, lon: NaN, notes: '' });
       await checkCount(db, pilot.id, 'waypoints');
@@ -31,20 +34,27 @@ export const routes: Route[] = [
   },
   { method: 'GET', path: '/waypoints/:id', handler: async ({ db, pilot, params }) => get(db, pilot.id, params.id) },
   {
-    method: 'PUT', path: '/waypoints/:id',
+    method: 'PUT',
+    path: '/waypoints/:id',
     async handler({ db, pilot, params, body }) {
       const { id: _i, created: _c, updated: _u, ...cur } = await get(db, pilot.id, params.id);
       const w = waypointInput(await body(), cur);
-      const [r] = await db.query('UPDATE waypoints SET name=$3, lat=$4, lon=$5, notes=$6, updated=$7 WHERE id=$1 AND pilot_id=$2 RETURNING *',
-        [params.id, pilot.id, w.name, w.lat, w.lon, w.notes, Date.now()]);
+      const [r] = await db.query(
+        'UPDATE waypoints SET name=$3, lat=$4, lon=$5, notes=$6, updated=$7 WHERE id=$1 AND pilot_id=$2 RETURNING *',
+        [params.id, pilot.id, w.name, w.lat, w.lon, w.notes, Date.now()],
+      );
       if (!r) throw notFound('no such waypoint'); // deleted meanwhile
       return toWaypoint(r);
     },
   },
   {
-    method: 'DELETE', path: '/waypoints/:id',
+    method: 'DELETE',
+    path: '/waypoints/:id',
     async handler({ db, pilot, params }) {
-      const r = await db.query('DELETE FROM waypoints WHERE id = $1 AND pilot_id = $2 RETURNING id', [params.id, pilot.id]);
+      const r = await db.query('DELETE FROM waypoints WHERE id = $1 AND pilot_id = $2 RETURNING id', [
+        params.id,
+        pilot.id,
+      ]);
       if (!r.length) throw notFound('no such waypoint');
       return undefined;
     },

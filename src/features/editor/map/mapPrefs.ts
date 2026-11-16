@@ -5,13 +5,17 @@ import { DEFAULT_MAP_LAYERS, mapLayersOf, type MapLayers } from '../../../shared
 const PREFS_KEY = 'pgf:map';
 
 /** `tips` shows the editing hint bubble; closing the bubble turns it off and the layers popover turns it back on. */
-export interface MapPrefs { tips: boolean }
+export interface MapPrefs {
+  tips: boolean;
+}
 
 function stored(): Record<string, unknown> | null {
   try {
     const v = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
     return v && typeof v === 'object' ? v : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function loadPrefs(): MapPrefs {
@@ -19,7 +23,11 @@ export function loadPrefs(): MapPrefs {
 }
 
 export function savePrefs(p: MapPrefs): void {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify({ ...(stored() ?? {}), tips: p.tips })); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...(stored() ?? {}), tips: p.tips }));
+  } catch {
+    /* ignore */
+  }
 }
 
 /** The layers this browser used before they were kept per flight (null: none stored). */
@@ -29,7 +37,20 @@ export function legacyLayers(): MapLayers | null {
   const l = mapLayersOf(v);
   if (!l) return null;
   // the old "Chart layers" switch hid all of our chart layers together
-  if (v.chart === false) for (const k of ['fir', 'tma', 'zones', 'aerodromes', 'vfrPoints', 'vfrRoutes', 'waypoints', 'prd', 'mil', 'act'] as const) l[k] = false;
+  if (v.chart === false)
+    for (const k of [
+      'fir',
+      'tma',
+      'zones',
+      'aerodromes',
+      'vfrPoints',
+      'vfrRoutes',
+      'waypoints',
+      'prd',
+      'mil',
+      'act',
+    ] as const)
+      l[k] = false;
   return l;
 }
 

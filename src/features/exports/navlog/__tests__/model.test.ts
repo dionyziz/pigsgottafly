@@ -11,39 +11,85 @@ import { fmtEte } from '../../../../shared/format';
 import { generateAtcList, atcInput, atcLegRelevance } from '../../../../data/atc';
 import reims from '../../../../../data/aircraft/reims-f172m.json';
 import cards from '../../../../../data/aircraft/compass-cards.json';
-import { buildNavlogDocument, computeFlightNavlog, fmtSurfaceWind, LEGS_PER_SHEET, runwayInUse, terminalRows } from '../model';
+import {
+  buildNavlogDocument,
+  computeFlightNavlog,
+  fmtSurfaceWind,
+  LEGS_PER_SHEET,
+  runwayInUse,
+  terminalRows,
+} from '../model';
 
 const ref = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES };
 let n = 0;
-const ad = (icao: string): RoutePoint => { const a = aerodrome(icao)!; return { uid: `u${n++}`, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
-const vfr = (id: string): RoutePoint => { const p = vfrPoint(id)!; return { uid: `u${n++}`, kind: 'vfr', refId: id, name: p.name, lat: p.lat, lon: p.lon }; };
-const custom = (name: string, lat: number, lon: number): RoutePoint => ({ uid: `u${n++}`, kind: 'custom', refId: null, name, lat, lon });
+const ad = (icao: string): RoutePoint => {
+  const a = aerodrome(icao)!;
+  return { uid: `u${n++}`, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };
+};
+const vfr = (id: string): RoutePoint => {
+  const p = vfrPoint(id)!;
+  return { uid: `u${n++}`, kind: 'vfr', refId: id, name: p.name, lat: p.lat, lon: p.lon };
+};
+const custom = (name: string, lat: number, lon: number): RoutePoint => ({
+  uid: `u${n++}`,
+  kind: 'custom',
+  refId: null,
+  name,
+  lat,
+  lon,
+});
 
 const AC: Aircraft = {
   ...aircraftFromTypeJson(reims),
-  id: 'ac1', registration: 'SX-ASV', cruiseTasKt: 92, patternTasKt: 80,
+  id: 'ac1',
+  registration: 'SX-ASV',
+  cruiseTasKt: 92,
+  patternTasKt: 80,
   compassCards: (cards as unknown as Record<string, CompassCard[]>)['SX-ASV'],
-  created: 0, updated: 0,
+  created: 0,
+  updated: 0,
 };
 AC.fuel = { ...AC.fuel, burnLph: 30, taxiAllowanceL: 4, usableL: 144 };
 const SETTINGS = { ...DEFAULT_SETTINGS, taxiOutMin: 15, taxiInMin: 15, reserveMin: 60 };
 const DATE = '2026-11-20';
 
 function flight(route: RoutePoint[], extra: Partial<FlightDoc> = {}): FlightDoc {
-  return { ...emptyFlightDoc(DATE), blockOff: '09:00', taxiOutMin: 15, taxiInMin: 15, aircraftId: 'ac1', route, ...extra };
+  return {
+    ...emptyFlightDoc(DATE),
+    blockOff: '09:00',
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    aircraftId: 'ac1',
+    route,
+    ...extra,
+  };
 }
 /** Same wind typed on every leg (no network). */
 function windAll(route: RoutePoint[], dir: number, kt: number): FlightDoc['legOverrides'] {
   const o: FlightDoc['legOverrides'] = {};
-  for (let i = 0; i + 1 < route.length; i++) o[legKey(route[i], route[i + 1])] = { windDirDeg: dir, windKt: kt, tempC: 10 };
+  for (let i = 0; i + 1 < route.length; i++)
+    o[legKey(route[i], route[i + 1])] = { windDirDeg: dir, windKt: kt, tempC: 10 };
   return o;
 }
-function build(doc: FlightDoc, o: { weather?: RouteWeather | null; metar?: MetarTafResult | null; nowMs?: number; aircraft?: Aircraft | null } = {}) {
+function build(
+  doc: FlightDoc,
+  o: { weather?: RouteWeather | null; metar?: MetarTafResult | null; nowMs?: number; aircraft?: Aircraft | null } = {},
+) {
   const aircraft = o.aircraft === undefined ? AC : o.aircraft;
   const computed = computeFlightNavlog({ doc, aircraft, settings: SETTINGS, weather: o.weather ?? null, ref });
   const gen = atcInput(doc.route, computed.altitudesFt, REF, 2);
   const atc = doc.atc ?? generateAtcList(gen);
-  const out = buildNavlogDocument({ doc, aircraft, computed, atc, atcRelevance: atcLegRelevance(gen), aerodromes: REF.aerodromes, weather: o.weather ?? null, metar: o.metar ?? null, nowMs: o.nowMs ?? Date.parse('2026-11-15T12:00:00Z') });
+  const out = buildNavlogDocument({
+    doc,
+    aircraft,
+    computed,
+    atc,
+    atcRelevance: atcLegRelevance(gen),
+    aerodromes: REF.aerodromes,
+    weather: o.weather ?? null,
+    metar: o.metar ?? null,
+    nowMs: o.nowMs ?? Date.parse('2026-11-15T12:00:00Z'),
+  });
   return { computed, out, atc };
 }
 
@@ -91,7 +137,12 @@ describe('one sheet', () => {
     // the destination is printed once, after its leg; the line above the totals stays empty
     expect(s.bottomLabel).toBe('');
     expect(s.bottomName).toBe('');
-    expect(s.header).toMatchObject({ date: DATE, aircraft: 'SX-ASV', blockStart: '09:00Z', est: 'EST 30lt/h = 0.5lt/min' });
+    expect(s.header).toMatchObject({
+      date: DATE,
+      aircraft: 'SX-ASV',
+      blockStart: '09:00Z',
+      est: 'EST 30lt/h = 0.5lt/min',
+    });
     const t = computed.navlog.totals;
     expect(s.totals).toMatchObject({ dist: String(t.dist), ete: fmtEte(t.ete), fuel: String(t.tripFuel + 4) });
     expect(s.totals.sunset).toMatch(/^SUNSET \d\d:\d\dZ$/);
@@ -194,7 +245,17 @@ describe('terminal information per sheet', () => {
   pts.push(ad('LGMG'));
   for (let i = 0; i < 3; i++) pts.push(custom(`S${i + 1}`, 37.9 - 0.15 * i, 22.9 - 0.25 * i));
   pts.push(ad('LGKL'));
-  const custom731 = { id: 'x', role: 'custom', group: 'Other', callsign: 'MY UNIT', service: '', primary: '123.450', backups: [], remark: '', sourceKey: null } as unknown as AtcEntry;
+  const custom731 = {
+    id: 'x',
+    role: 'custom',
+    group: 'Other',
+    callsign: 'MY UNIT',
+    service: '',
+    primary: '123.450',
+    backups: [],
+    remark: '',
+    sourceKey: null,
+  } as unknown as AtcEntry;
   const doc = flight(pts, { legOverrides: windAll(pts, 200, 10) });
   const { out, atc } = build({ ...doc, atc: null });
   const { out: withCustom } = build({ ...doc, atc: [...atc, custom731] });
@@ -218,18 +279,38 @@ describe('terminal information per sheet', () => {
 
 describe('surface weather in the header', () => {
   const route = [ad('LGAV'), ad('LGKR')];
-  const hours = Array.from({ length: 48 }, (_, h) => new Date(Date.parse(DATE + 'T00:00:00Z') + h * 3600000).toISOString().slice(0, 16));
+  const hours = Array.from({ length: 48 }, (_, h) =>
+    new Date(Date.parse(DATE + 'T00:00:00Z') + h * 3600000).toISOString().slice(0, 16),
+  );
   const loc = (temp: number, dir: number, spd: number, qnh: number): OpenMeteoLocation => ({
     hourly: {
       time: hours,
-      pressure_msl: hours.map(() => qnh), temperature_2m: hours.map(() => temp), dew_point_2m: hours.map(() => temp - 7),
-      wind_speed_10m: hours.map(() => spd), wind_direction_10m: hours.map(() => dir),
-      cloud_cover_low: hours.map(() => 0), cloud_cover_mid: hours.map(() => 0), cloud_cover_high: hours.map(() => 0),
+      pressure_msl: hours.map(() => qnh),
+      temperature_2m: hours.map(() => temp),
+      dew_point_2m: hours.map(() => temp - 7),
+      wind_speed_10m: hours.map(() => spd),
+      wind_direction_10m: hours.map(() => dir),
+      cloud_cover_low: hours.map(() => 0),
+      cloud_cover_mid: hours.map(() => 0),
+      cloud_cover_high: hours.map(() => 0),
     } as OpenMeteoLocation['hourly'],
   });
   const weather: RouteWeather = {
-    status: 'ok', message: 'ECMWF IFS 0.25°, fetched 08:00Z', legs: [null], departure: loc(14, 33, 12, 1018.4), destination: loc(18, 175, 8, 1015),
-    source: { provider: 'Open-Meteo', model: 'ecmwf_ifs025', modelLabel: 'ECMWF IFS 0.25°', endpoint: 'forecast', run: null, fetchedMs: 0, coverFromMs: null, coverToMs: null },
+    status: 'ok',
+    message: 'ECMWF IFS 0.25°, fetched 08:00Z',
+    legs: [null],
+    departure: loc(14, 33, 12, 1018.4),
+    destination: loc(18, 175, 8, 1015),
+    source: {
+      provider: 'Open-Meteo',
+      model: 'ecmwf_ifs025',
+      modelLabel: 'ECMWF IFS 0.25°',
+      endpoint: 'forecast',
+      run: null,
+      fetchedMs: 0,
+      coverFromMs: null,
+      coverToMs: null,
+    },
   };
 
   test('forecast at the departure (first sheet), sources listed', () => {
@@ -251,7 +332,13 @@ describe('surface weather in the header', () => {
   test('a current METAR wins over the forecast', () => {
     const obs = Date.parse(DATE + 'T08:50:00Z');
     const m = parseMetar('METAR LGAV 200850Z 21015G25KT CAVOK 17/09 Q1011', obs);
-    const metar: MetarTafResult = { status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: obs, stations: { LGAV: { metar: m, taf: null, observedMs: obs } } };
+    const metar: MetarTafResult = {
+      status: 'ok',
+      message: '',
+      source: 'aviationweather.gov',
+      fetchedMs: obs,
+      stations: { LGAV: { metar: m, taf: null, observedMs: obs } },
+    };
     const { out } = build(flight(route), { weather, metar, nowMs: obs + 10 * 60000 });
     const h = out.sheets[0].header;
     expect(h).toMatchObject({ temp: '17/09', wind: '21015G25KT', qnh: '1011', sky: 'CAVOK', runway: '21L/R' });
@@ -260,7 +347,9 @@ describe('surface weather in the header', () => {
   });
 
   test('chosen runway on the flight wins', () => {
-    const { out } = build(flight(route, { options: { ...emptyFlightDoc(DATE).options, departureRunway: '21R' } }), { weather });
+    const { out } = build(flight(route, { options: { ...emptyFlightDoc(DATE).options, departureRunway: '21R' } }), {
+      weather,
+    });
     expect(out.sheets[0].header.runway).toBe('21R');
   });
 });
@@ -268,36 +357,108 @@ describe('surface weather in the header', () => {
 describe('helpers', () => {
   test('surface wind groups', () => {
     expect(fmtSurfaceWind(null)).toBe('');
-    expect(fmtSurfaceWind({ source: 'forecast', label: '', timeMs: 0, tempC: null, dewC: null, qnhHpa: null, wind: { dirTrueDeg: 4, speedKt: 0.4, gustKt: null } })).toBe('00000KT');
-    expect(fmtSurfaceWind({ source: 'forecast', label: '', timeMs: 0, tempC: null, dewC: null, qnhHpa: null, wind: { dirTrueDeg: 356, speedKt: 7.6, gustKt: null } })).toBe('36008KT');
-    expect(fmtSurfaceWind({ source: 'metar', label: '', timeMs: 0, tempC: null, dewC: null, qnhHpa: null, wind: { dirTrueDeg: null, speedKt: 3, gustKt: null } })).toBe('VRB03KT');
+    expect(
+      fmtSurfaceWind({
+        source: 'forecast',
+        label: '',
+        timeMs: 0,
+        tempC: null,
+        dewC: null,
+        qnhHpa: null,
+        wind: { dirTrueDeg: 4, speedKt: 0.4, gustKt: null },
+      }),
+    ).toBe('00000KT');
+    expect(
+      fmtSurfaceWind({
+        source: 'forecast',
+        label: '',
+        timeMs: 0,
+        tempC: null,
+        dewC: null,
+        qnhHpa: null,
+        wind: { dirTrueDeg: 356, speedKt: 7.6, gustKt: null },
+      }),
+    ).toBe('36008KT');
+    expect(
+      fmtSurfaceWind({
+        source: 'metar',
+        label: '',
+        timeMs: 0,
+        tempC: null,
+        dewC: null,
+        qnhHpa: null,
+        wind: { dirTrueDeg: null, speedKt: 3, gustKt: null },
+      }),
+    ).toBe('VRB03KT');
   });
   test('runway in use: calm → first runway', () => {
     expect(runwayInUse(aerodrome('LGTT')!, null, DATE)).toBe(aerodrome('LGTT')!.runways[0].split('/')[0]);
     expect(runwayInUse(null, null, DATE)).toBe('');
   });
   test('terminal rows group an edited ATC list, incl. hand-added rows', () => {
-    const e = (group: string, service: string, primary: string, backups: string[], sourceKey: string | null): AtcEntry =>
-      ({ id: group + service, role: 'custom', group, callsign: '', service, primary, backups, remark: '', sourceKey });
-    const rows = terminalRows([
-      e('LGTT DEKELIA / TATOI', 'TWR', '122.650', ['118.500'], 'ad:LGTT:TATOI TOWER'),
-      e('LGTT DEKELIA / TATOI', 'GND', '121.700', [], 'ad:LGTT:TATOI GROUND'),
-      e('MY NOTES', 'A/A', '123.450', [], null),
-      e('LGMG MEGARA', 'A/A', '122.400', [], null),
-    ], REF.aerodromes);
+    const e = (
+      group: string,
+      service: string,
+      primary: string,
+      backups: string[],
+      sourceKey: string | null,
+    ): AtcEntry => ({
+      id: group + service,
+      role: 'custom',
+      group,
+      callsign: '',
+      service,
+      primary,
+      backups,
+      remark: '',
+      sourceKey,
+    });
+    const rows = terminalRows(
+      [
+        e('LGTT DEKELIA / TATOI', 'TWR', '122.650', ['118.500'], 'ad:LGTT:TATOI TOWER'),
+        e('LGTT DEKELIA / TATOI', 'GND', '121.700', [], 'ad:LGTT:TATOI GROUND'),
+        e('MY NOTES', 'A/A', '123.450', [], null),
+        e('LGMG MEGARA', 'A/A', '122.400', [], null),
+      ],
+      REF.aerodromes,
+    );
     expect(rows).toHaveLength(3);
-    expect(rows[0]).toMatchObject({ field: 'LGTT', units: [{ unit: 'TWR', freqs: ['122.650', '118.500'] }, { unit: 'GND', freqs: ['121.700'] }] });
-    expect(rows[1]).toMatchObject({ field: 'MY NOTES', elev: '', rwy: '', units: [{ unit: 'A/A', freqs: ['123.450'] }] });
+    expect(rows[0]).toMatchObject({
+      field: 'LGTT',
+      units: [
+        { unit: 'TWR', freqs: ['122.650', '118.500'] },
+        { unit: 'GND', freqs: ['121.700'] },
+      ],
+    });
+    expect(rows[1]).toMatchObject({
+      field: 'MY NOTES',
+      elev: '',
+      rwy: '',
+      units: [{ unit: 'A/A', freqs: ['123.450'] }],
+    });
     expect(rows[2].field).toBe('LGMG');
   });
   test('terminal rows print the callsign of a hand-added unit', () => {
-    const e = (callsign: string, service: string, primary: string, sourceKey: string | null): AtcEntry =>
-      ({ id: callsign + service, role: sourceKey ? 'departure' : 'custom', group: sourceKey ? 'LGTT DEKELIA / TATOI' : 'Other', callsign, service, primary, backups: [], remark: '', sourceKey });
-    expect(terminalRows([e('SKYROS APPROACH', 'APP', '123.45', null)], REF.aerodromes)[0])
-      .toMatchObject({ field: 'Other', units: [{ unit: 'SKYROS APPROACH', freqs: ['123.45'] }] });
+    const e = (callsign: string, service: string, primary: string, sourceKey: string | null): AtcEntry => ({
+      id: callsign + service,
+      role: sourceKey ? 'departure' : 'custom',
+      group: sourceKey ? 'LGTT DEKELIA / TATOI' : 'Other',
+      callsign,
+      service,
+      primary,
+      backups: [],
+      remark: '',
+      sourceKey,
+    });
+    expect(terminalRows([e('SKYROS APPROACH', 'APP', '123.45', null)], REF.aerodromes)[0]).toMatchObject({
+      field: 'Other',
+      units: [{ unit: 'SKYROS APPROACH', freqs: ['123.45'] }],
+    });
     expect(terminalRows([e('SKYROS', 'ATIS', '127.0', null)], REF.aerodromes)[0].units[0].unit).toBe('SKYROS ATIS');
     expect(terminalRows([e('MY RADIO', '', '130.0', null)], REF.aerodromes)[0].units[0].unit).toBe('MY RADIO');
     // Generated rows keep the compact v2 form: the field names the aerodrome.
-    expect(terminalRows([e('TATOI TOWER', 'TWR', '122.650', 'ad:LGTT:TATOI TOWER')], REF.aerodromes)[0].units).toEqual([{ unit: 'TWR', freqs: ['122.650'] }]);
+    expect(terminalRows([e('TATOI TOWER', 'TWR', '122.650', 'ad:LGTT:TATOI TOWER')], REF.aerodromes)[0].units).toEqual([
+      { unit: 'TWR', freqs: ['122.650'] },
+    ]);
   });
 });

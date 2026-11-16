@@ -22,8 +22,21 @@ import type { Req } from '../http.js';
 import type { IsoDate, WindModel } from '../../../src/shared/types.js';
 import { isIsoDate, isoDay } from '../../../src/shared/date.js';
 import {
-  forecastAvailability, gridStep, gridVariables, GRID_MAX_DAYS, GRID_MAX_LOCATIONS, GRID_MAX_POINTS, isWindModel, MODEL_META_IDS,
-  parseLocKey, type Hourly, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation, type WeatherGridKind, type WeatherGridResponse,
+  forecastAvailability,
+  gridStep,
+  gridVariables,
+  GRID_MAX_DAYS,
+  GRID_MAX_LOCATIONS,
+  GRID_MAX_POINTS,
+  isWindModel,
+  MODEL_META_IDS,
+  parseLocKey,
+  type Hourly,
+  type ModelRun,
+  type OpenMeteoEndpoint,
+  type OpenMeteoLocation,
+  type WeatherGridKind,
+  type WeatherGridResponse,
 } from '../../../src/shared/weatherGrid.js';
 
 const HOSTS: Record<OpenMeteoEndpoint, string> = {
@@ -35,7 +48,12 @@ const MIN = 60e3;
 const HOUR = 3600e3;
 const DAY = 86400e3;
 /** Hours between runs of each model (when the next one is due after the last). */
-const RUN_EVERY_MS: Record<WindModel, number> = { ecmwf_ifs025: 6 * HOUR, gfs_seamless: 6 * HOUR, icon_seamless: 3 * HOUR, best_match: 3 * HOUR };
+const RUN_EVERY_MS: Record<WindModel, number> = {
+  ecmwf_ifs025: 6 * HOUR,
+  gfs_seamless: 6 * HOUR,
+  icon_seamless: 3 * HOUR,
+  best_match: 3 * HOUR,
+};
 /** A forecast row is useless once a newer run has replaced it; kept a little longer for a slow meta.json. */
 const FORECAST_KEEP_MS = 12 * HOUR;
 const ARCHIVE_KEEP_MS = 7 * DAY;
@@ -89,7 +107,8 @@ export function parseGridQuery(q: URLSearchParams): GridQuery {
   if (kind !== 'wind' && kind !== 'hazard') throw new HttpError(400, 'kind: wind or hazard');
   const model = q.get('model') || '';
   if (!isWindModel(model)) throw new HttpError(400, 'model: unknown');
-  const from = q.get('from') || '', to = q.get('to') || from;
+  const from = q.get('from') || '',
+    to = q.get('to') || from;
   if (!isIsoDate(from) || !isIsoDate(to) || to < from) throw new HttpError(400, 'from/to: YYYY-MM-DD');
   if (daysFrom(from, to).length > GRID_MAX_DAYS) throw new HttpError(400, `at most ${GRID_MAX_DAYS} days`);
   const locs = [...new Set((q.get('locs') || '').split(';').filter(Boolean))];
@@ -99,7 +118,8 @@ export function parseGridQuery(q: URLSearchParams): GridQuery {
   let points = 0;
   for (const k of locs) {
     const p = parseLocKey(k);
-    if (!p || p.lat < BBOX.minLat || p.lat > BBOX.maxLat || p.lon < BBOX.minLon || p.lon > BBOX.maxLon) throw new HttpError(400, `locs: ${k.slice(0, 40)} is not a location here`);
+    if (!p || p.lat < BBOX.minLat || p.lat > BBOX.maxLat || p.lon < BBOX.minLon || p.lon > BBOX.maxLon)
+      throw new HttpError(400, `locs: ${k.slice(0, 40)} is not a location here`);
     if (p.point) {
       if (kind !== 'wind') throw new HttpError(400, 'locs: points only for winds');
       points++;
@@ -124,11 +144,16 @@ export function splitByDay(loc: OpenMeteoLocation): Map<IsoDate, OpenMeteoLocati
     if (!d) {
       const hourly = { time: [] as string[] } as Hourly;
       for (const k of keys) (hourly as Record<string, unknown[]>)[k] = [];
-      d = { hourly, ...(loc.latitude !== undefined ? { latitude: loc.latitude } : {}), ...(loc.longitude !== undefined ? { longitude: loc.longitude } : {}), ...(loc.elevation !== undefined ? { elevation: loc.elevation } : {}) };
+      d = {
+        hourly,
+        ...(loc.latitude !== undefined ? { latitude: loc.latitude } : {}),
+        ...(loc.longitude !== undefined ? { longitude: loc.longitude } : {}),
+        ...(loc.elevation !== undefined ? { elevation: loc.elevation } : {}),
+      };
       out.set(day, d);
     }
     d.hourly.time.push(String(t));
-    for (const k of keys) ((d.hourly as Record<string, unknown[]>)[k]).push((h[k] as unknown[])?.[i] ?? null);
+    for (const k of keys) (d.hourly as Record<string, unknown[]>)[k].push((h[k] as unknown[])?.[i] ?? null);
   });
   return out;
 }
@@ -138,9 +163,17 @@ export function joinDays(parts: OpenMeteoLocation[]): OpenMeteoLocation | null {
   if (!parts.length) return null;
   const keys = Object.keys(parts[0].hourly).filter((k) => k !== 'time');
   const hourly = { time: parts.flatMap((p) => p.hourly.time) } as Hourly;
-  for (const k of keys) (hourly as Record<string, unknown[]>)[k] = parts.flatMap((p) => (p.hourly[k] as unknown[]) ?? p.hourly.time.map(() => null));
+  for (const k of keys)
+    (hourly as Record<string, unknown[]>)[k] = parts.flatMap(
+      (p) => (p.hourly[k] as unknown[]) ?? p.hourly.time.map(() => null),
+    );
   const { latitude, longitude, elevation } = parts[0];
-  return { ...(latitude !== undefined ? { latitude } : {}), ...(longitude !== undefined ? { longitude } : {}), ...(elevation !== undefined ? { elevation } : {}), hourly };
+  return {
+    ...(latitude !== undefined ? { latitude } : {}),
+    ...(longitude !== undefined ? { longitude } : {}),
+    ...(elevation !== undefined ? { elevation } : {}),
+    hourly,
+  };
 }
 
 /** Deletes expired forecast rows and budget days older than a week. */
@@ -149,7 +182,15 @@ export async function cleanupWeatherCache(db: Queryable, t: number): Promise<voi
   await db.query('DELETE FROM weather_budget WHERE day < $1', [isoDay(t - 7 * DAY)]);
 }
 
-export function upstreamUrl(o: { endpoint: OpenMeteoEndpoint; kind: WeatherGridKind; model: WindModel; nodes: boolean; locs: { lat: number; lon: number }[]; from: IsoDate; to: IsoDate }): string {
+export function upstreamUrl(o: {
+  endpoint: OpenMeteoEndpoint;
+  kind: WeatherGridKind;
+  model: WindModel;
+  nodes: boolean;
+  locs: { lat: number; lon: number }[];
+  from: IsoDate;
+  to: IsoDate;
+}): string {
   const p = new URLSearchParams({
     latitude: o.locs.map((x) => String(x.lat)).join(','),
     longitude: o.locs.map((x) => String(x.lon)).join(','),
@@ -164,7 +205,12 @@ export function upstreamUrl(o: { endpoint: OpenMeteoEndpoint; kind: WeatherGridK
 }
 
 class Upstream extends Error {
-  constructor(message: string, readonly status: number) { super(message); }
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
 }
 
 /** Shorter words for Open-Meteo's refusals. */
@@ -183,7 +229,8 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
   /** In-flight upstream fetches of this instance, by cache key: a second request waits for the first. */
   const inflight = new Map<string, Promise<OpenMeteoLocation | null | undefined>>();
 
-  const nextRunDue = (model: WindModel, run: ModelRun) => (run.availableMs ?? run.runMs + 5 * HOUR) + RUN_EVERY_MS[model];
+  const nextRunDue = (model: WindModel, run: ModelRun) =>
+    (run.availableMs ?? run.runMs + 5 * HOUR) + RUN_EVERY_MS[model];
 
   async function fetchMeta(model: WindModel): Promise<ModelRun | null> {
     const id = MODEL_META_IDS[model];
@@ -191,9 +238,12 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
     try {
       const res = await doFetch(META_URL(id), { signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS) });
       if (!res.ok) return null;
-      const m = await res.json() as { last_run_initialisation_time?: unknown; last_run_availability_time?: unknown };
-      const init = Number(m?.last_run_initialisation_time), avail = Number(m?.last_run_availability_time);
-      return isFinite(init) && init > 0 ? { runMs: init * 1000, availableMs: isFinite(avail) && avail > 0 ? avail * 1000 : null } : null;
+      const m = (await res.json()) as { last_run_initialisation_time?: unknown; last_run_availability_time?: unknown };
+      const init = Number(m?.last_run_initialisation_time),
+        avail = Number(m?.last_run_availability_time);
+      return isFinite(init) && init > 0
+        ? { runMs: init * 1000, availableMs: isFinite(avail) && avail > 0 ? avail * 1000 : null }
+        : null;
     } catch {
       return null;
     }
@@ -205,9 +255,10 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
     const t = now();
     const hit = meta.get(model);
     if (hit?.p) return hit.p;
-    const stale = !hit
-      || (fresh && t - hit.at >= META_MIN_MS)
-      || (t - hit.at >= META_RECHECK_MS && (!hit.run || t >= nextRunDue(model, hit.run)));
+    const stale =
+      !hit ||
+      (fresh && t - hit.at >= META_MIN_MS) ||
+      (t - hit.at >= META_RECHECK_MS && (!hit.run || t >= nextRunDue(model, hit.run)));
     if (!stale) return hit.run;
     const p = fetchMeta(model);
     meta.set(model, { at: hit?.at ?? 0, run: hit?.run ?? null, p });
@@ -224,7 +275,9 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
       `INSERT INTO weather_budget (day, calls, requests) VALUES ($1, $2, 1)
        ON CONFLICT (day) DO UPDATE SET calls = weather_budget.calls + $2, requests = weather_budget.requests + 1
        WHERE weather_budget.calls + $2 <= $3
-       RETURNING calls`, [isoDay(now()), weight, budget]);
+       RETURNING calls`,
+      [isoDay(now()), weight, budget],
+    );
     return rows.length > 0;
   }
 
@@ -232,26 +285,41 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
     for (let attempt = 0; ; attempt++) {
       let res: Response;
       try {
-        res = await doFetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS) });
+        res = await doFetch(url, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS),
+        });
       } catch (e) {
         if (attempt < 1) continue;
         throw new Upstream(`Open-Meteo did not answer (${String((e as Error)?.message || e)})`, 0);
       }
-      const body = await res.json().catch(() => null) as { error?: boolean; reason?: string } | OpenMeteoLocation | OpenMeteoLocation[] | null;
+      const body = (await res.json().catch(() => null)) as
+        { error?: boolean; reason?: string } | OpenMeteoLocation | OpenMeteoLocation[] | null;
       if (!res.ok || !body || (body as { error?: boolean }).error) {
         if (res.status >= 500 && attempt < 1) continue;
-        throw new Upstream((body && (body as { reason?: string }).reason) || `Open-Meteo HTTP ${res.status}`, res.status);
+        throw new Upstream(
+          (body && (body as { reason?: string }).reason) || `Open-Meteo HTTP ${res.status}`,
+          res.status,
+        );
       }
       return (Array.isArray(body) ? body : [body]) as OpenMeteoLocation[];
     }
   }
 
-  async function serve(db: Queryable, q: GridQuery, who: { pilotId?: string | null; req?: Req }): Promise<WeatherGridResponse> {
+  async function serve(
+    db: Queryable,
+    q: GridQuery,
+    who: { pilotId?: string | null; req?: Req },
+  ): Promise<WeatherGridResponse> {
     const t = now();
     const av = forecastAvailability(q.from, q.model, t);
     const empty = (message: string): WeatherGridResponse => ({
-      endpoint: av.kind === 'historical' ? 'historical' : 'forecast', run: null, recheckMs: t + 15 * MIN,
-      locations: Object.fromEntries(q.locs.map((k) => [k, null])), message, ...(opts.synthetic ? { synthetic: true } : {}),
+      endpoint: av.kind === 'historical' ? 'historical' : 'forecast',
+      run: null,
+      recheckMs: t + 15 * MIN,
+      locations: Object.fromEntries(q.locs.map((k) => [k, null])),
+      message,
+      ...(opts.synthetic ? { synthetic: true } : {}),
     });
     if (av.kind === 'invalid') throw new HttpError(400, 'from: YYYY-MM-DD');
     if (av.kind === 'too-far') return empty(`forecast reaches ${av.lastDate}`);
@@ -260,9 +328,12 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
     const days = daysFrom(q.from, q.to).filter((d) => d <= av.lastDate);
     const run = endpoint === 'forecast' ? await latestRun(q.model, q.fresh) : null;
     const runKey = endpoint === 'historical' ? 0 : run ? run.runMs : -Math.floor(t / UNKNOWN_RUN_MS) * UNKNOWN_RUN_MS;
-    const recheckMs = endpoint === 'historical' ? t + DAY
-      : run ? Math.max(t + 5 * MIN, nextRunDue(q.model, run) > t ? nextRunDue(q.model, run) : t + META_RECHECK_MS)
-        : t + 15 * MIN;
+    const recheckMs =
+      endpoint === 'historical'
+        ? t + DAY
+        : run
+          ? Math.max(t + 5 * MIN, nextRunDue(q.model, run) > t ? nextRunDue(q.model, run) : t + META_RECHECK_MS)
+          : t + 15 * MIN;
     const expires = t + (endpoint === 'historical' ? ARCHIVE_KEEP_MS : FORECAST_KEEP_MS);
     const ck = (loc: string, day: string) => `${q.model}|${endpoint}|${runKey}|${q.kind}|${loc}|${day}`;
 
@@ -272,7 +343,8 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
       `SELECT loc, day, data FROM weather_cache
        WHERE model = $1 AND endpoint = $2 AND run = $3 AND kind = $4 AND expires > $5
          AND day IN (SELECT jsonb_array_elements_text($6::jsonb)) AND loc IN (SELECT jsonb_array_elements_text($7::jsonb))`,
-      [q.model, endpoint, runKey, q.kind, t, JSON.stringify(days), JSON.stringify(q.locs)]);
+      [q.model, endpoint, runKey, q.kind, t, JSON.stringify(days), JSON.stringify(q.locs)],
+    );
     for (const r of rows) have.set(ck(r.loc, r.day), typeof r.data === 'string' ? JSON.parse(r.data) : r.data);
 
     // ---- missing: wait for the same fetch in flight on this instance, else fetch
@@ -284,7 +356,14 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
         const key = ck(loc, day);
         if (have.has(key)) continue;
         const p = inflight.get(key);
-        if (p) { waits.push(p.then((v) => { if (v !== undefined) have.set(key, v); })); continue; }
+        if (p) {
+          waits.push(
+            p.then((v) => {
+              if (v !== undefined) have.set(key, v);
+            }),
+          );
+          continue;
+        }
         want.set(loc, [...(want.get(loc) ?? []), day]);
       }
     }
@@ -301,28 +380,47 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
       for (let i = 0; i < g.locs.length; i += LOCATIONS_PER_REQUEST) {
         const chunk = g.locs.slice(i, i + LOCATIONS_PER_REQUEST);
         const job = fetchChunk(chunk, g.nodes, g.days);
-        for (const loc of chunk) for (const day of g.days) {
-          const key = ck(loc, day);
-          const p = job.then((m) => m.get(key));
-          inflight.set(key, p);
-          p.finally(() => { if (inflight.get(key) === p) inflight.delete(key); }).catch(() => {});
-        }
-        waits.push(job.then((m) => { for (const [k, v] of m) have.set(k, v); }));
+        for (const loc of chunk)
+          for (const day of g.days) {
+            const key = ck(loc, day);
+            const p = job.then((m) => m.get(key));
+            inflight.set(key, p);
+            p.finally(() => {
+              if (inflight.get(key) === p) inflight.delete(key);
+            }).catch(() => {});
+          }
+        waits.push(
+          job.then((m) => {
+            for (const [k, v] of m) have.set(k, v);
+          }),
+        );
       }
     }
 
     /** Fetches a chunk for its days (all at once; the first day alone when the range is refused). */
-    async function fetchChunk(chunk: string[], nodes: boolean, ds: IsoDate[]): Promise<Map<string, OpenMeteoLocation | null>> {
+    async function fetchChunk(
+      chunk: string[],
+      nodes: boolean,
+      ds: IsoDate[],
+    ): Promise<Map<string, OpenMeteoLocation | null>> {
       const got = new Map<string, OpenMeteoLocation | null>();
       const tryDays = async (dd: IsoDate[]): Promise<boolean> => {
         const weight = weightOf(chunk.length, nVars, dd.length);
         const mine = await takeTokens(db, 'weatherFetch', who, weight);
-        if (!mine.ok) { messages.add('your daily forecast share used up'); return true; }
-        if (!(await takeBudget(db, weight))) { messages.add('daily forecast budget used up (resets 00:00Z)'); return true; }
+        if (!mine.ok) {
+          messages.add('your daily forecast share used up');
+          return true;
+        }
+        if (!(await takeBudget(db, weight))) {
+          messages.add('daily forecast budget used up (resets 00:00Z)');
+          return true;
+        }
         const locs = chunk.map((k) => parseLocKey(k)!);
         let res: OpenMeteoLocation[];
         try {
-          res = await fetchUpstream(upstreamUrl({ endpoint, kind: q.kind, model: q.model, nodes, locs, from: dd[0], to: dd[dd.length - 1] }));
+          res = await fetchUpstream(
+            upstreamUrl({ endpoint, kind: q.kind, model: q.model, nodes, locs, from: dd[0], to: dd[dd.length - 1] }),
+          );
         } catch (e) {
           if (e instanceof Upstream && e.status === 400 && dd.length > 1) return false; // e.g. the last day is out of range
           messages.add(upstreamMessage(e));
@@ -341,7 +439,8 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
           `INSERT INTO weather_cache (model, endpoint, run, kind, loc, day, data, fetched, expires)
            SELECT $1, $2, $3, $4, x->>0, x->>1, NULLIF(x->2, 'null'::jsonb), $5, $6 FROM jsonb_array_elements($7::jsonb) AS x
            ON CONFLICT (model, endpoint, run, kind, loc, day) DO UPDATE SET data = EXCLUDED.data, fetched = EXCLUDED.fetched, expires = EXCLUDED.expires`,
-          [q.model, endpoint, runKey, q.kind, t, expires, JSON.stringify(toStore)]);
+          [q.model, endpoint, runKey, q.kind, t, expires, JSON.stringify(toStore)],
+        );
         return true;
       };
       if (!(await tryDays(ds))) await tryDays(ds.slice(0, 1));
@@ -366,10 +465,24 @@ export function createWeatherGrid(opts: WeatherGridOptions = {}) {
       if (!locations[loc]) missing++;
     }
     const message = missing && messages.size ? [...messages].join('; ') : undefined;
-    return { endpoint, run, recheckMs, locations, ...(message ? { message } : {}), ...(opts.synthetic ? { synthetic: true } : {}) };
+    return {
+      endpoint,
+      run,
+      recheckMs,
+      locations,
+      ...(message ? { message } : {}),
+      ...(opts.synthetic ? { synthetic: true } : {}),
+    };
   }
 
-  return { serve, latestRun, clear: () => { meta.clear(); inflight.clear(); } };
+  return {
+    serve,
+    latestRun,
+    clear: () => {
+      meta.clear();
+      inflight.clear();
+    },
+  };
 }
 
 // one service per API configuration (its meta.json cache and in-flight fetches)
@@ -384,7 +497,8 @@ export function weatherGridFor(o: WeatherGridOptions | undefined): ReturnType<ty
 
 export const routes: Route[] = [
   {
-    method: 'GET', path: '/weather/grid',
+    method: 'GET',
+    path: '/weather/grid',
     async handler(ctx) {
       const q = parseGridQuery(ctx.query);
       const who = { pilotId: ctx.pilot?.id, req: ctx.req };

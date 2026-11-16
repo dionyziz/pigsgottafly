@@ -18,19 +18,33 @@ import type { ShownSignature } from './Form731';
 const hm = (ms: number) => fmtLocalClock(ms);
 const dayHm = (ms: number) => fmtLocalDayTime(ms);
 const firstName = (s: string) => s.trim().split(/\s+/)[0] || s;
-const errText = (e: unknown) => (e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.');
+const errText = (e: unknown) =>
+  e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.';
 
 export function useFormsState(flightId: string) {
   const [st, setSt] = useState<FormsState | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { api.forms.get(flightId).then((s) => { setSt(s); setErr(null); }, (e) => setErr(errText(e))); }, [flightId]);
+  const load = useCallback(() => {
+    api.forms.get(flightId).then(
+      (s) => {
+        setSt(s);
+        setErr(null);
+      },
+      (e) => setErr(errText(e)),
+    );
+  }, [flightId]);
   useEffect(load, [load]);
   // signatures arrive while the page is open: refresh when it regains focus
   useEffect(() => {
-    const on = () => { if (document.visibilityState === 'visible') load(); };
+    const on = () => {
+      if (document.visibilityState === 'visible') load();
+    };
     document.addEventListener('visibilitychange', on);
     window.addEventListener('focus', on);
-    return () => { document.removeEventListener('visibilitychange', on); window.removeEventListener('focus', on); };
+    return () => {
+      document.removeEventListener('visibilitychange', on);
+      window.removeEventListener('focus', on);
+    };
   }, [load]);
   return { st, setSt, err, setErr, load };
 }
@@ -38,7 +52,8 @@ export function useFormsState(flightId: string) {
 /** Current signatures by person key, for the sheet. */
 export function shownSignatures(st: FormsState | null): Record<string, ShownSignature> {
   const out: Record<string, ShownSignature> = {};
-  for (const s of st?.form731.signatures ?? []) if (s.signed && s.signedAt) out[s.key] = { name: s.name, signedAt: s.signedAt };
+  for (const s of st?.form731.signatures ?? [])
+    if (s.signed && s.signedAt) out[s.key] = { name: s.name, signedAt: s.signedAt };
   return out;
 }
 
@@ -79,7 +94,13 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
   if (!st) {
     return (
       <Panel title="Signatures" testId="f731-signatures">
-        {err ? <div className="form-error" role="alert">{err}</div> : <Loading variant="sm" />}
+        {err ? (
+          <div className="form-error" role="alert">
+            {err}
+          </div>
+        ) : (
+          <Loading variant="sm" />
+        )}
       </Panel>
     );
   }
@@ -89,9 +110,20 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
     const u = url(token);
     const text = `Please sign Form 731 (persons boarding) for our flight${st.form731.content.date ? ` on ${st.form731.content.date}` : ''}, ${name}:`;
     if (navigator.share) {
-      try { await navigator.share({ title: 'Form 731', text, url: u }); return; } catch { /* cancelled: fall back to copy */ }
+      try {
+        await navigator.share({ title: 'Form 731', text, url: u });
+        return;
+      } catch {
+        /* cancelled: fall back to copy */
+      }
     }
-    try { await navigator.clipboard.writeText(u); setCopied(token); window.setTimeout(() => setCopied(''), 2000); } catch { /* the link stays visible to copy by hand */ }
+    try {
+      await navigator.clipboard.writeText(u);
+      setCopied(token);
+      window.setTimeout(() => setCopied(''), 2000);
+    } catch {
+      /* the link stays visible to copy by hand */
+    }
   };
   const f = st.form731;
   const sub = f.submission;
@@ -102,52 +134,104 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
     <Panel
       title="Signatures"
       testId="f731-signatures"
-      status={<Chip tone={f.allSigned ? 'ok' : 'warn'} testId="f731-summary">{signatureSummary(st)}</Chip>}
-      actions={<>
-        {pax.length > 0 && (
-          <button onClick={() => run('links', () => api.forms.requestLinks(flightId))} disabled={!!busy || !needLinks} data-testid="f731-request">
-            {busy === 'links' ? 'Creating links…' : 'Request signatures'}
+      status={
+        <Chip tone={f.allSigned ? 'ok' : 'warn'} testId="f731-summary">
+          {signatureSummary(st)}
+        </Chip>
+      }
+      actions={
+        <>
+          {pax.length > 0 && (
+            <button
+              onClick={() => run('links', () => api.forms.requestLinks(flightId))}
+              disabled={!!busy || !needLinks}
+              data-testid="f731-request"
+            >
+              {busy === 'links' ? 'Creating links…' : 'Request signatures'}
+            </button>
+          )}
+          <button
+            className="primary"
+            data-testid="f731-send"
+            disabled={!!busy || !f.allSigned || !st.emailEnabled || (!!sub && !sub.changed)}
+            title={!st.emailEnabled ? (st.emailReason ?? '') : !f.allSigned ? 'Everyone has to sign first' : undefined}
+            onClick={() => run('send', () => api.forms.send731(flightId))}
+          >
+            {busy === 'send' ? 'Sending…' : sub ? 'Re-send to HCAA' : 'Send to HCAA'}
           </button>
-        )}
-        <button className="primary" data-testid="f731-send" disabled={!!busy || !f.allSigned || !st.emailEnabled || (!!sub && !sub.changed)}
-          title={!st.emailEnabled ? st.emailReason ?? '' : !f.allSigned ? 'Everyone has to sign first' : undefined}
-          onClick={() => run('send', () => api.forms.send731(flightId))}>
-          {busy === 'send' ? 'Sending…' : sub ? 'Re-send to HCAA' : 'Send to HCAA'}
-        </button>
-      </>}
+        </>
+      }
     >
       {sub && (
         <div className="pgf-note" data-testid="f731-sent">
-          Sent to {sub.to} on {dayHm(sub.sentAt)}{sub.changed ? ' · changed since' : ''}
+          Sent to {sub.to} on {dayHm(sub.sentAt)}
+          {sub.changed ? ' · changed since' : ''}
         </div>
       )}
       {!st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
-      {err && <div className="form-error" role="alert">{err}</div>}
+      {err && (
+        <div className="form-error" role="alert">
+          {err}
+        </div>
+      )}
       <ul className="pgf-people">
         {f.signatures.map((s) => {
           const token = links[s.key];
           const l = s.link;
-          const status = s.signed ? `signed ${dayHm(s.signedAt!)}`
-            : s.needsResign ? 'the form changed after signing: must sign again'
-            : l && !l.revoked ? (l.lastOpened ? `link opened ${dayHm(l.lastOpened)}, not signed` : `link created ${dayHm(l.created)}, not opened`)
-            : s.role === 'PAX' ? 'no link' : 'not signed (set your full name in the profile)';
+          const status = s.signed
+            ? `signed ${dayHm(s.signedAt!)}`
+            : s.needsResign
+              ? 'the form changed after signing: must sign again'
+              : l && !l.revoked
+                ? l.lastOpened
+                  ? `link opened ${dayHm(l.lastOpened)}, not signed`
+                  : `link created ${dayHm(l.created)}, not opened`
+                : s.role === 'PAX'
+                  ? 'no link'
+                  : 'not signed (set your full name in the profile)';
           return (
             <li key={s.key} className="pgf-person" data-testid={`f731-person-${s.role}`}>
               <span className="pgf-person-name">{s.name || '(no name)'}</span>
               <span className={s.signed ? '' : 'muted'}>{status}</span>
               {s.role === 'PAX' && l && !l.revoked && (
                 <>
-                  <button className="ghost" disabled={!!busy} onClick={() => run(`renew-${s.key}`, () => api.forms.renewLink(flightId, s.key))}>New link</button>
-                  <button className="ghost danger" disabled={!!busy} onClick={() => run(`revoke-${s.key}`, () => api.forms.revokeLink(flightId, s.key))}>Revoke</button>
+                  <button
+                    className="ghost"
+                    disabled={!!busy}
+                    onClick={() => run(`renew-${s.key}`, () => api.forms.renewLink(flightId, s.key))}
+                  >
+                    New link
+                  </button>
+                  <button
+                    className="ghost danger"
+                    disabled={!!busy}
+                    onClick={() => run(`revoke-${s.key}`, () => api.forms.revokeLink(flightId, s.key))}
+                  >
+                    Revoke
+                  </button>
                 </>
               )}
               {s.role === 'PAX' && l?.revoked && !token && (
-                <button className="ghost" disabled={!!busy} onClick={() => run(`renew-${s.key}`, () => api.forms.renewLink(flightId, s.key))}>New link</button>
+                <button
+                  className="ghost"
+                  disabled={!!busy}
+                  onClick={() => run(`renew-${s.key}`, () => api.forms.renewLink(flightId, s.key))}
+                >
+                  New link
+                </button>
               )}
               {token && (
                 <span className="pgf-link">
-                  <input readOnly value={url(token)} onFocus={(e) => e.currentTarget.select()} aria-label={`Signing link for ${s.name}`} data-testid="f731-link" />
-                  <button onClick={() => share(s.name, token)}>{copied === token ? 'Copied' : typeof navigator.share === 'function' ? 'Share…' : 'Copy'}</button>
+                  <input
+                    readOnly
+                    value={url(token)}
+                    onFocus={(e) => e.currentTarget.select()}
+                    aria-label={`Signing link for ${s.name}`}
+                    data-testid="f731-link"
+                  />
+                  <button onClick={() => share(s.name, token)}>
+                    {copied === token ? 'Copied' : typeof navigator.share === 'function' ? 'Share…' : 'Copy'}
+                  </button>
                 </span>
               )}
             </li>

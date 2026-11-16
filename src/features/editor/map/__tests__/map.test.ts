@@ -7,24 +7,80 @@ import { legKey } from '../../../../shared';
 import { distanceNm } from '../../../../calc';
 import { AD_AIRSPACES, AERODROMES, AIRSPACES, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import {
-  aerodromeName, autoWaypointName, buildCandidates, cleanWaypointName, findSnap, pointFromCandidate, routeCandidates,
+  aerodromeName,
+  autoWaypointName,
+  buildCandidates,
+  cleanWaypointName,
+  findSnap,
+  pointFromCandidate,
+  routeCandidates,
   type SnapCandidate,
 } from '../snap';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from '../labels';
 import {
-  addDrawnPoint, drawIndex, insertPoint, isBareRoundTrip, isRoundTrip, mercatorMid, pruneOverrides, removeDrawnPoint, removePoint,
-  movePoint, renamePoint, replacePoint, setAltitudeOverride,
+  addDrawnPoint,
+  drawIndex,
+  insertPoint,
+  isBareRoundTrip,
+  isRoundTrip,
+  mercatorMid,
+  pruneOverrides,
+  removeDrawnPoint,
+  removePoint,
+  movePoint,
+  renamePoint,
+  replacePoint,
+  setAltitudeOverride,
 } from '../routeEdit';
 import { hazardsByLeg, mapHazards, type MapHazard } from '../hazardLayer';
-import { airspaceFeatures, circleRing, destination, fmtLimit, fmtRouteAltitude, midpointFeatures, runwayHeading, vfrRouteFeatures, zoneFeatures } from '../features';
-import { airspaceInfos, airspaceLabel, airspacesAt, fmtVertical, fmtVLimit, fromArea, limitFt, pointInRing, shortClass } from '../airspace';
+import {
+  airspaceFeatures,
+  circleRing,
+  destination,
+  fmtLimit,
+  fmtRouteAltitude,
+  midpointFeatures,
+  runwayHeading,
+  vfrRouteFeatures,
+  zoneFeatures,
+} from '../features';
+import {
+  airspaceInfos,
+  airspaceLabel,
+  airspacesAt,
+  fmtVertical,
+  fmtVLimit,
+  fromArea,
+  limitFt,
+  pointInRing,
+  shortClass,
+} from '../airspace';
 
 // A flat test projection: 100 px per degree, y down.
 const project = (lon: number, lat: number) => ({ x: lon * 100, y: -lat * 100 });
-const cand = (name: string, lat: number, lon: number, penaltyPx = 0, kind: SnapCandidate['kind'] = 'vfr'): SnapCandidate => ({
-  kind, refId: name, name, lat, lon, detail: '', penaltyPx,
+const cand = (
+  name: string,
+  lat: number,
+  lon: number,
+  penaltyPx = 0,
+  kind: SnapCandidate['kind'] = 'vfr',
+): SnapCandidate => ({
+  kind,
+  refId: name,
+  name,
+  lat,
+  lon,
+  detail: '',
+  penaltyPx,
 });
-const pt = (uid: string, lat = 38, lon = 23, name = uid.toUpperCase()): RoutePoint => ({ uid, kind: 'custom', refId: null, name, lat, lon });
+const pt = (uid: string, lat = 38, lon = 23, name = uid.toUpperCase()): RoutePoint => ({
+  uid,
+  kind: 'custom',
+  refId: null,
+  name,
+  lat,
+  lon,
+});
 
 describe('findSnap', () => {
   const cands = [cand('A', 38, 23), cand('B', 38, 23.1)];
@@ -53,15 +109,22 @@ describe('findSnap', () => {
     expect(sks).toBeTruthy();
     // the reviewer's view (whole route on screen): SKS, 0.6 NM north of LGSY, is 4.4 px away
     const pxPerDeg = 434;
-    const proj = (lon: number, lat: number) => ({ x: lon * pxPerDeg * Math.cos((38.97 * Math.PI) / 180), y: -lat * pxPerDeg });
-    const a = proj(lgsy.lon, lgsy.lat), v = proj(sks.lon, sks.lat);
+    const proj = (lon: number, lat: number) => ({
+      x: lon * pxPerDeg * Math.cos((38.97 * Math.PI) / 180),
+      y: -lat * pxPerDeg,
+    });
+    const a = proj(lgsy.lon, lgsy.lat),
+      v = proj(sks.lon, sks.lat);
     expect(Math.hypot(a.x - v.x, a.y - v.y)).toBeLessThan(6);
     // the reviewer's click: 5 px north-east of the aerodrome symbol, nearer to SKS
     const hit = findSnap({ x: a.x + 4, y: a.y - 3 }, all, proj, 12)!;
     expect(hit.cand.refId).toBe('LGSY');
     expect(hit.shadowed?.name).toBe('SKS');
     // zoomed in (8× more px per degree) the two are far apart: a click on SKS picks SKS
-    const proj8 = (lon: number, lat: number) => { const p = proj(lon, lat); return { x: p.x * 8, y: p.y * 8 }; };
+    const proj8 = (lon: number, lat: number) => {
+      const p = proj(lon, lat);
+      return { x: p.x * 8, y: p.y * 8 };
+    };
     const v8 = proj8(sks.lon, sks.lat);
     const hit8 = findSnap({ x: v8.x + 1, y: v8.y }, all, proj8, 12)!;
     expect(hit8.cand.name).toBe('SKS');
@@ -76,7 +139,10 @@ describe('findSnap', () => {
   });
   it('skips candidates outside the geographic box without projecting them', () => {
     let calls = 0;
-    const counting = (lon: number, lat: number) => { calls++; return project(lon, lat); };
+    const counting = (lon: number, lat: number) => {
+      calls++;
+      return project(lon, lat);
+    };
     findSnap({ x: 2300, y: -3800 }, cands, counting, 12, { west: 22.9, east: 23.05, south: 37.9, north: 38.1 });
     expect(calls).toBe(1);
   });
@@ -105,7 +171,14 @@ describe('snap candidates from the reference data', () => {
   });
   it('a snapped route point carries kind, refId, name and position', () => {
     const lgtt = all.find((c) => c.refId === 'LGTT')!;
-    expect(pointFromCandidate(lgtt, 'u1')).toEqual({ uid: 'u1', kind: 'aerodrome', refId: 'LGTT', name: 'LGTT', lat: lgtt.lat, lon: lgtt.lon });
+    expect(pointFromCandidate(lgtt, 'u1')).toEqual({
+      uid: 'u1',
+      kind: 'aerodrome',
+      refId: 'LGTT',
+      name: 'LGTT',
+      lat: lgtt.lat,
+      lon: lgtt.lon,
+    });
   });
   it('route candidates exclude the dragged point', () => {
     expect(routeCandidates([pt('a'), pt('b')], 'a').map((c) => c.name)).toEqual(['B']);
@@ -203,7 +276,8 @@ describe('leg label placement', () => {
     expect(back.side).toBe(-1);
     // left of travel = the screen side reached by rotating the track direction 90° counter-clockwise
     for (let a = 0; a < 360; a += 7) {
-      const r = (a * Math.PI) / 180, dir = { x: Math.cos(r), y: Math.sin(r) };
+      const r = (a * Math.PI) / 180,
+        dir = { x: Math.cos(r), y: Math.sin(r) };
       const p = placeLabel({ x: 0, y: 0 }, { x: dir.x * 100, y: dir.y * 100 });
       const off = { x: p.normal.x * p.side, y: p.normal.y * p.side };
       // east-bound (1, 0) → label up (0, −1), i.e. north, left of the track: off.x·dir.y − off.y·dir.x = +1
@@ -321,7 +395,9 @@ describe('airspace on the map', () => {
     expect(shortClass('E (C above FL 195)')).toBe('E');
   });
   it('labels carry name, class and vertical limits', () => {
-    expect(airspaceLabel({ name: 'DEKELIA TATOI MIL ATZ', cls: 'D', lower: 'SFC', upper: '5000 FT' })).toBe('DEKELIA TATOI MIL ATZ · D · SFC – 5000 ft');
+    expect(airspaceLabel({ name: 'DEKELIA TATOI MIL ATZ', cls: 'D', lower: 'SFC', upper: '5000 FT' })).toBe(
+      'DEKELIA TATOI MIL ATZ · D · SFC – 5000 ft',
+    );
     const tma = airspaceFeatures(AIRSPACES).features.find((f) => f.properties.id === 'ATHINAI-TMA-1')!;
     expect(tma.properties.label).toMatch(/^ATHINAI TMA · [A-G] · \d+ ft AGL – FL\d{3}$/);
   });
@@ -344,16 +420,47 @@ describe('airspace on the map', () => {
     expect(airspacesAt(infos, 20.0, 34.0)).toEqual([]);
   });
   it('point in ring', () => {
-    const sq: [number, number][] = [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]];
+    const sq: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+      [0, 0],
+    ];
     expect(pointInRing(0.5, 0.5, sq)).toBe(true);
     expect(pointInRing(1.5, 0.5, sq)).toBe(false);
   });
   it('ENR 5 areas: circles and polygons with a short lateral description, the activity kept', () => {
-    const base = { kind: 'P' as const, name: 'ACROPOLIS', lower: 'GND', upper: '5000 FT ALT', lateral: 'A circle, 700 M radius centered on 375820N 0234333E.', activity: 'H24', remarks: 'Prohibited to all flights.', source: 'ENR 5.1' };
+    const base = {
+      kind: 'P' as const,
+      name: 'ACROPOLIS',
+      lower: 'GND',
+      upper: '5000 FT ALT',
+      lateral: 'A circle, 700 M radius centered on 375820N 0234333E.',
+      activity: 'H24',
+      remarks: 'Prohibited to all flights.',
+      source: 'ENR 5.1',
+    };
     const p1 = fromArea({ ...base, id: 'LGP1', circle: { lat: 37.97222, lon: 23.72583, radiusNm: 700 / 1852 } })!;
-    expect([p1.type, p1.name, p1.lateral, p1.activity, p1.ring.length]).toEqual(['P', 'LGP1 ACROPOLIS', 'Circle, 0.38 NM radius', 'H24', 65]);
+    expect([p1.type, p1.name, p1.lateral, p1.activity, p1.ring.length]).toEqual([
+      'P',
+      'LGP1 ACROPOLIS',
+      'Circle, 0.38 NM radius',
+      'H24',
+      65,
+    ]);
     expect(airspacesAt([p1, ...infos], 23.72583, 37.97222)[0].id).toBe('LGP1');
-    const sq = fromArea({ ...base, id: 'LGR9', kind: 'R', polygon: [[37, 23], [37, 24], [38, 24], [37, 23]] })!;
+    const sq = fromArea({
+      ...base,
+      id: 'LGR9',
+      kind: 'R',
+      polygon: [
+        [37, 23],
+        [37, 24],
+        [38, 24],
+        [37, 23],
+      ],
+    })!;
     expect(sq.lateral).toBe('Polygon, 3 points');
     expect(fromArea({ ...base, id: 'X' })).toBeNull();
   });
@@ -371,7 +478,14 @@ describe('map style', () => {
 });
 
 describe('drawing on a round trip (home → home)', () => {
-  const ad = (uid: string, icao: string, lat = 37.92, lon = 23.73): RoutePoint => ({ uid, kind: 'aerodrome', refId: icao, name: icao, lat, lon });
+  const ad = (uid: string, icao: string, lat = 37.92, lon = 23.73): RoutePoint => ({
+    uid,
+    kind: 'aerodrome',
+    refId: icao,
+    name: icao,
+    lat,
+    lon,
+  });
   const names = (r: RoutePoint[]) => r.map((p) => p.name).join(' > ');
   it('recognises a route that returns to its start', () => {
     expect(isRoundTrip([ad('a', 'LGTT'), ad('b', 'LGTT')])).toBe(true);
@@ -420,19 +534,37 @@ describe('weather hazards on the map', () => {
   const hz = (scope: unknown, level: 'danger' | 'warn', text: string) =>
     ({ scope, level, text, fromFrac: 0.2, toFrac: 0.6 }) as unknown as Parameters<typeof mapHazards>[0][number];
   it('keeps the leg of each mark (aerodrome hazards: first / last leg) and drops the time range', () => {
-    const marks = mapHazards([
-      hz({ type: 'leg', legIndex: 1 }, 'warn', 'BKN 1400 ft · planned 1900 ft, 09:00–10:00Z'),
-      hz({ type: 'departure' }, 'danger', 'TS at LGTT'),
-      hz({ type: 'destination' }, 'warn', 'Visibility 4 km'),
-      hz({ type: 'leg', legIndex: 5 }, 'warn', 'nowhere'),
-    ], legs);
-    expect(marks.map((m) => [m.legIndex, m.label])).toEqual([[1, 'BKN 1400 ft · planned 1900 ft'], [0, 'TS at LGTT'], [1, 'Visibility 4 km']]);
+    const marks = mapHazards(
+      [
+        hz({ type: 'leg', legIndex: 1 }, 'warn', 'BKN 1400 ft · planned 1900 ft, 09:00–10:00Z'),
+        hz({ type: 'departure' }, 'danger', 'TS at LGTT'),
+        hz({ type: 'destination' }, 'warn', 'Visibility 4 km'),
+        hz({ type: 'leg', legIndex: 5 }, 'warn', 'nowhere'),
+      ],
+      legs,
+    );
+    expect(marks.map((m) => [m.legIndex, m.label])).toEqual([
+      [1, 'BKN 1400 ft · planned 1900 ft'],
+      [0, 'TS at LGTT'],
+      [1, 'Visibility 4 km'],
+    ]);
     expect(marks[0].coords).toHaveLength(2);
     expect(marks[1].coords).toHaveLength(1);
   });
   it('summarises the hazards per leg for the label badges: worst level, danger first, no repeats', () => {
-    const m = (legIndex: number | null, level: 'danger' | 'warn', label: string): MapHazard => ({ level, label, legIndex, coords: [[0, 0]] });
-    const by = hazardsByLeg([m(1, 'warn', 'BKN 1400 ft'), m(1, 'danger', 'TS'), m(1, 'warn', 'BKN 1400 ft'), m(0, 'warn', 'VIS'), m(null, 'danger', 'x')]);
+    const m = (legIndex: number | null, level: 'danger' | 'warn', label: string): MapHazard => ({
+      level,
+      label,
+      legIndex,
+      coords: [[0, 0]],
+    });
+    const by = hazardsByLeg([
+      m(1, 'warn', 'BKN 1400 ft'),
+      m(1, 'danger', 'TS'),
+      m(1, 'warn', 'BKN 1400 ft'),
+      m(0, 'warn', 'VIS'),
+      m(null, 'danger', 'x'),
+    ]);
     expect([...by.keys()].sort()).toEqual([0, 1]);
     expect(by.get(1)).toEqual({ level: 'danger', labels: ['TS', 'BKN 1400 ft'] });
     expect(by.get(0)).toEqual({ level: 'warn', labels: ['VIS'] });

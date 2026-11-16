@@ -6,7 +6,9 @@ import type { Notam } from '../../../shared/briefing';
 import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
 
-const Badge = ({ n }: { n: Notam }) => <b className={'pgf-air-type t-notam' + (n.relevant ? '' : ' is-hidden')}>NOTAM</b>;
+const Badge = ({ n }: { n: Notam }) => (
+  <b className={'pgf-air-type t-notam' + (n.relevant ? '' : ' is-hidden')}>NOTAM</b>
+);
 
 export function NotamTip({ x, y, items }: { x: number; y: number; items: Notam[] }) {
   const shown = items.slice(0, 4);
@@ -15,11 +17,17 @@ export function NotamTip({ x, y, items }: { x: number; y: number; items: Notam[]
       {shown.map((n) => (
         <div key={n.key} className="pgf-air-tip-row">
           <Badge n={n} />
-          <span className="pgf-air-tip-name">{n.key} · {notamSubject(n)}</span>
+          <span className="pgf-air-tip-name">
+            {n.key} · {notamSubject(n)}
+          </span>
           <span className="pgf-air-tip-lim">{notamLimits(n)}</span>
         </div>
       ))}
-      {shown.map((n) => <div key={n.key + 'v'} className="pgf-air-tip-more">{n.key}: {notamValidity(n)}</div>)}
+      {shown.map((n) => (
+        <div key={n.key + 'v'} className="pgf-air-tip-more">
+          {n.key}: {notamValidity(n)}
+        </div>
+      ))}
       {items.length > shown.length && <div className="pgf-air-tip-more">+{items.length - shown.length} more</div>}
       <div className="pgf-air-tip-more">Click for details</div>
     </MapTip>
@@ -48,20 +56,54 @@ export function NotamPopover({ x, y, items, legName, onOpen, onClose }: PopProps
   return (
     <MapPopover x={x} y={y} label="NOTAM" testId="notam-pop" onClose={onClose}>
       {items.map((n) => (
-        <PopItem key={n.key} open={acc.isOpen(n.key)} onToggle={() => toggle(n.key)} testId="notam-item" data={{ key: n.key }} head={<>
-          <Badge n={n} />
-          <span className="pgf-air-name">{n.key} · {notamWhere(n)}</span>
-          <span className="pgf-air-lim">{notamLimits(n)}</span>
-        </>}>
+        <PopItem
+          key={n.key}
+          open={acc.isOpen(n.key)}
+          onToggle={() => toggle(n.key)}
+          testId="notam-item"
+          data={{ key: n.key }}
+          head={
+            <>
+              <Badge n={n} />
+              <span className="pgf-air-name">
+                {n.key} · {notamWhere(n)}
+              </span>
+              <span className="pgf-air-lim">{notamLimits(n)}</span>
+            </>
+          }
+        >
           <dl className="pgf-air-body">
-            <dt>Subject</dt><dd>{notamSubject(n)} <span className="muted">({n.qcode})</span></dd>
-            <dt>Valid</dt><dd>{notamValidity(n)}{n.schedule ? <><br />{n.schedule}</> : null}</dd>
-            <dt>Vertical</dt><dd>{notamLimits(n)}</dd>
-            {n.legIndex !== null && <><dt>Leg</dt><dd>{n.legIndex + 1}: {legName(n.legIndex)}</dd></>}
-            <dt>Text</dt><dd className="pgf-notam-text">{n.text}</dd>
+            <dt>Subject</dt>
+            <dd>
+              {notamSubject(n)} <span className="muted">({n.qcode})</span>
+            </dd>
+            <dt>Valid</dt>
+            <dd>
+              {notamValidity(n)}
+              {n.schedule ? (
+                <>
+                  <br />
+                  {n.schedule}
+                </>
+              ) : null}
+            </dd>
+            <dt>Vertical</dt>
+            <dd>{notamLimits(n)}</dd>
+            {n.legIndex !== null && (
+              <>
+                <dt>Leg</dt>
+                <dd>
+                  {n.legIndex + 1}: {legName(n.legIndex)}
+                </dd>
+              </>
+            )}
+            <dt>Text</dt>
+            <dd className="pgf-notam-text">{n.text}</dd>
             <dt>ICAO</dt>
             <dd>
-              <button type="button" className="linkish" onClick={() => setRaw((v) => !v)} aria-expanded={raw}>{raw ? 'Hide' : 'Show'}</button>
+              <button type="button" className="linkish" onClick={() => setRaw((v) => !v)} aria-expanded={raw}>
+                {raw ? 'Hide' : 'Show'}
+              </button>
               {raw && <pre className="pgf-notam-raw">{n.raw}</pre>}
             </dd>
           </dl>

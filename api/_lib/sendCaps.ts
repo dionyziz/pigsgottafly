@@ -52,8 +52,10 @@ export interface MailEntry {
 /** Writes a 'pending' log row for an e-mail about to be sent, without any cap; returns its id. */
 export async function logMail(db: Queryable, e: MailEntry): Promise<string> {
   const id = await newId('ml');
-  await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at, recipient, subject, result) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')`,
-    [id, e.pilotId, e.flightId, e.form, Date.now(), e.recipient.slice(0, 500), e.subject.slice(0, 300)]);
+  await db.query(
+    `INSERT INTO mail_log (id, pilot_id, flight_id, form, at, recipient, subject, result) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')`,
+    [id, e.pilotId, e.flightId, e.form, Date.now(), e.recipient.slice(0, 500), e.subject.slice(0, 300)],
+  );
   return id;
 }
 
@@ -74,20 +76,40 @@ export async function reserveMail(db: Queryable, e: MailEntry & { pilotId: strin
        min(at) FILTER (WHERE lower(recipient) = lower($5) AND form = $4) AS addr_oldest,
        max(at) FILTER (WHERE flight_id IS NOT DISTINCT FROM $3 AND form = $4 AND result = 'sent') AS last_sent
      FROM mail_log WHERE pilot_id = $1 AND at > $2 AND ${COUNTED}`,
-    [e.pilotId, since, e.flightId, e.form, e.recipient]);
+    [e.pilotId, since, e.flightId, e.form, e.recipient],
+  );
   let err: HttpError | null = null;
   if (e.flightId && c.last_sent != null && Number(c.last_sent) > now - RESEND_MIN_MS) {
-    err = tooMany(`This form was e-mailed for this flight less than ${RESEND_MIN_MS / 60e3} minutes ago.`, Number(c.last_sent) + RESEND_MIN_MS);
+    err = tooMany(
+      `This form was e-mailed for this flight less than ${RESEND_MIN_MS / 60e3} minutes ago.`,
+      Number(c.last_sent) + RESEND_MIN_MS,
+    );
   } else if (e.flightId && c.same > MAIL_FLIGHT_FORM_CAP) {
-    err = tooMany(`This form was already e-mailed ${MAIL_FLIGHT_FORM_CAP} times for this flight in the last 24 hours.`, Number(c.same_oldest) + CAP_WINDOW_MS);
+    err = tooMany(
+      `This form was already e-mailed ${MAIL_FLIGHT_FORM_CAP} times for this flight in the last 24 hours.`,
+      Number(c.same_oldest) + CAP_WINDOW_MS,
+    );
   } else if (e.form === 'wbperf' && c.addr > MAIL_RECIPIENT_CAP) {
-    err = tooMany(`You have sent ${MAIL_RECIPIENT_CAP} declarations to ${e.recipient} in the last 24 hours, the most allowed.`, Number(c.addr_oldest) + CAP_WINDOW_MS);
+    err = tooMany(
+      `You have sent ${MAIL_RECIPIENT_CAP} declarations to ${e.recipient} in the last 24 hours, the most allowed.`,
+      Number(c.addr_oldest) + CAP_WINDOW_MS,
+    );
   } else if (c.total > MAIL_DAILY_CAP) {
-    err = tooMany(`You have sent ${MAIL_DAILY_CAP} e-mails in the last 24 hours, the most allowed.`, Number(c.oldest) + CAP_WINDOW_MS);
+    err = tooMany(
+      `You have sent ${MAIL_DAILY_CAP} e-mails in the last 24 hours, the most allowed.`,
+      Number(c.oldest) + CAP_WINDOW_MS,
+    );
   } else if (HCAA_FORMS.includes(e.form)) {
     const cap = hcaaDailyCap();
-    const [g] = await db.query(`SELECT count(*)::int AS n, min(at) AS oldest FROM mail_log WHERE form = ANY($1::text[]) AND at > $2 AND ${COUNTED}`, [HCAA_FORMS, since]);
-    if (g.n > cap) err = tooMany('The service has reached its daily limit of forms sent to the HCAA.', Number(g.oldest) + CAP_WINDOW_MS);
+    const [g] = await db.query(
+      `SELECT count(*)::int AS n, min(at) AS oldest FROM mail_log WHERE form = ANY($1::text[]) AND at > $2 AND ${COUNTED}`,
+      [HCAA_FORMS, since],
+    );
+    if (g.n > cap)
+      err = tooMany(
+        'The service has reached its daily limit of forms sent to the HCAA.',
+        Number(g.oldest) + CAP_WINDOW_MS,
+      );
   }
   if (err) {
     await db.query(`UPDATE mail_log SET result = 'capped', error = $2 WHERE id = $1`, [id, err.message.slice(0, 500)]);
@@ -109,7 +131,11 @@ export async function mailFailed(db: Queryable, id: string, error: unknown): Pro
 }
 
 /** Runs `send` as a logged e-mail (no caps): the row ends 'sent' with its message id, or 'failed'. */
-export async function sendLogged(db: Queryable, e: MailEntry, send: () => Promise<{ id: string }>): Promise<{ id: string }> {
+export async function sendLogged(
+  db: Queryable,
+  e: MailEntry,
+  send: () => Promise<{ id: string }>,
+): Promise<{ id: string }> {
   const id = await logMail(db, e);
   try {
     const r = await send();
@@ -128,11 +154,18 @@ export async function checkLinkCap(db: Queryable, pilotId: string, flightId: str
     `SELECT count(*)::int AS total, min(created) AS oldest,
        count(*) FILTER (WHERE flight_id = $3)::int AS flight, min(created) FILTER (WHERE flight_id = $3) AS flight_oldest
      FROM form_links WHERE pilot_id = $1 AND created > $2`,
-    [pilotId, Date.now() - CAP_WINDOW_MS, flightId]);
+    [pilotId, Date.now() - CAP_WINDOW_MS, flightId],
+  );
   if (c.flight + n > LINK_FLIGHT_CAP) {
-    throw tooMany(`Too many signing links for this flight: at most ${LINK_FLIGHT_CAP} in 24 hours.`, Number(c.flight_oldest ?? Date.now()) + CAP_WINDOW_MS);
+    throw tooMany(
+      `Too many signing links for this flight: at most ${LINK_FLIGHT_CAP} in 24 hours.`,
+      Number(c.flight_oldest ?? Date.now()) + CAP_WINDOW_MS,
+    );
   }
   if (c.total + n > LINK_DAILY_CAP) {
-    throw tooMany(`Too many signing links: at most ${LINK_DAILY_CAP} in 24 hours.`, Number(c.oldest ?? Date.now()) + CAP_WINDOW_MS);
+    throw tooMany(
+      `Too many signing links: at most ${LINK_DAILY_CAP} in 24 hours.`,
+      Number(c.oldest ?? Date.now()) + CAP_WINDOW_MS,
+    );
   }
 }

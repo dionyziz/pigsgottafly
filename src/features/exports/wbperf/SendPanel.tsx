@@ -14,11 +14,15 @@ import { Chip, Panel } from '../../../ui';
 import { sha256Url } from './declaration';
 import '../form731/forms.css';
 
-const errText = (e: unknown) => (e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.');
+const errText = (e: unknown) =>
+  e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.';
 
 /** The panel, or nothing when the operator does not ask for the sheets. `content`: null while the sheets are loading. */
 export function OperatorSendPanel({ flightId, content }: { flightId: string; content: WbPerfContent | null }) {
-  const q = useAsync(() => api.declarations.get(flightId), [flightId], { refetchOnFocus: true, invalidatedBy: ['operators', 'aircraft', 'flights'] });
+  const q = useAsync(() => api.declarations.get(flightId), [flightId], {
+    refetchOnFocus: true,
+    invalidatedBy: ['operators', 'aircraft', 'flights'],
+  });
   const st = q.data;
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -28,43 +32,81 @@ export function OperatorSendPanel({ flightId, content }: { flightId: string; con
   useEffect(() => {
     let live = true;
     setHash(null);
-    if (text) void sha256Url(text).then((h) => { if (live) setHash(h); }, () => {});
-    return () => { live = false; };
+    if (text)
+      void sha256Url(text).then(
+        (h) => {
+          if (live) setHash(h);
+        },
+        () => {},
+      );
+    return () => {
+      live = false;
+    };
   }, [text]);
 
   const loadErr = q.error ? errText(q.error) : null;
   const op = st?.operator;
   if (!st || !op?.requiresWbPerf) {
-    return loadErr ? <Panel title="Send to the operator" testId="operator-send"><div className="form-error" role="alert">{loadErr}</div></Panel> : null;
+    return loadErr ? (
+      <Panel title="Send to the operator" testId="operator-send">
+        <div className="form-error" role="alert">
+          {loadErr}
+        </div>
+      </Panel>
+    ) : null;
   }
   const sub = st.submission;
-  const changed = !!sub && ((hash != null && hash !== sub.hash) || sub.to.toLowerCase() !== op.declarationsEmail.toLowerCase());
+  const changed =
+    !!sub && ((hash != null && hash !== sub.hash) || sub.to.toLowerCase() !== op.declarationsEmail.toLowerCase());
   const send = async () => {
     if (!content) return;
     setBusy(true);
     setErr(null);
-    try { q.setData(await api.declarations.send(flightId, content, !!sub)); } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+    try {
+      q.setData(await api.declarations.send(flightId, content, !!sub));
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
   };
   const status = !sub ? 'Not sent' : changed ? 'Changed since it was sent' : 'Sent';
   return (
     <Panel
       title={`Send to ${op.name}`}
       testId="operator-send"
-      status={<Chip tone={sub && !changed ? 'ok' : 'warn'} testId="operator-send-status">{status}</Chip>}
-      actions={(
-        <button className="primary" data-testid="operator-send-button" onClick={() => void send()}
+      status={
+        <Chip tone={sub && !changed ? 'ok' : 'warn'} testId="operator-send-status">
+          {status}
+        </Chip>
+      }
+      actions={
+        <button
+          className="primary"
+          data-testid="operator-send-button"
+          onClick={() => void send()}
           disabled={busy || !content || !st.emailEnabled || !op.declarationsEmail || (!!sub && !changed)}
-          title={!st.emailEnabled ? st.emailReason ?? '' : undefined}>
+          title={!st.emailEnabled ? (st.emailReason ?? '') : undefined}
+        >
           {busy ? 'Sending…' : sub ? 'Re-send' : `Send to ${op.name}`}
         </button>
-      )}
+      }
     >
       <div className="pgf-note">
-        W&amp;B and performance sheets to {op.declarationsEmail || <Link to={`/operators/${op.id}?focus=declarationsEmail`}>set the address</Link>}
+        W&amp;B and performance sheets to{' '}
+        {op.declarationsEmail || <Link to={`/operators/${op.id}?focus=declarationsEmail`}>set the address</Link>}
       </div>
-      {sub && <div className="pgf-note" data-testid="operator-send-sent">Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)}</div>}
+      {sub && (
+        <div className="pgf-note" data-testid="operator-send-sent">
+          Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)}
+        </div>
+      )}
       {!st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
-      {err && <div className="form-error" role="alert">{err}</div>}
+      {err && (
+        <div className="form-error" role="alert">
+          {err}
+        </div>
+      )}
     </Panel>
   );
 }

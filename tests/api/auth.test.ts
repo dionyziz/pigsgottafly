@@ -13,10 +13,14 @@ describe('verifyGoogleToken', () => {
   test('rejects forged, foreign, expired and unverified tokens', async () => {
     const other = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
     await expect(verifyGoogleToken(signToken(good(), other), CID, keys)).rejects.toThrow(/bad signature/);
-    await expect(verifyGoogleToken(signToken({ ...good(), aud: 'someone-else' }), CID, keys)).rejects.toThrow(/audience/);
+    await expect(verifyGoogleToken(signToken({ ...good(), aud: 'someone-else' }), CID, keys)).rejects.toThrow(
+      /audience/,
+    );
     await expect(verifyGoogleToken(signToken({ ...good(), iss: 'evil.example' }), CID, keys)).rejects.toThrow(/issuer/);
     await expect(verifyGoogleToken(signToken({ ...good(), exp: 100 }), CID, keys)).rejects.toThrow(/expired/);
-    await expect(verifyGoogleToken(signToken({ ...good(), email_verified: false }), CID, keys)).rejects.toThrow(/not verified/);
+    await expect(verifyGoogleToken(signToken({ ...good(), email_verified: false }), CID, keys)).rejects.toThrow(
+      /not verified/,
+    );
     const fresh = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
     await expect(verifyGoogleToken(signToken(good(), fresh, 'nope'), CID, keys)).rejects.toThrow(/unknown signing key/);
     await expect(verifyGoogleToken('a.b', CID, keys)).rejects.toThrow(/malformed/);

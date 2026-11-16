@@ -22,4 +22,25 @@ import { routes as declarations } from './declarations.js';
 import { routes as admin } from './admin.js';
 import { routes as monitoring } from './monitoring.js';
 
-export const ROUTES: Route[] = [...session, ...me, ...account, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...weatherGrid, ...notams, ...filing, ...forms, ...operators, ...declarations, ...admin, ...monitoring];
+export const ROUTES: Route[] = [
+  ...session,
+  ...me,
+  ...account,
+  ...aircraft,
+  ...attachments,
+  ...files,
+  ...shares,
+  ...passengers,
+  ...waypoints,
+  ...flights,
+  ...ref,
+  ...weather,
+  ...weatherGrid,
+  ...notams,
+  ...filing,
+  ...forms,
+  ...operators,
+  ...declarations,
+  ...admin,
+  ...monitoring,
+];

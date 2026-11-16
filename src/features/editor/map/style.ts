@@ -39,11 +39,27 @@ export type ChartColor = keyof typeof CHART_DEFAULTS;
 
 /** The design token of each chart colour. */
 export const CHART_TOKENS: Record<ChartColor, string> = {
-  aerodrome: '--map-aerodrome', tma: '--map-tma', mtma: '--map-mtma', zone: '--map-zone', zoneG: '--map-zone-g',
-  fis: '--map-fis', prohibited: '--map-prohibited', restricted: '--map-restricted', danger: '--map-danger-area',
-  mil: '--map-mil', act: '--map-activity', vfr: '--map-vfr', waypoint: '--map-waypoint', route: '--map-route',
-  paper: '--map-paper', halo: '--map-halo', notam: '--map-notam', notamOff: '--map-notam-off',
-  notamSelected: '--map-notam-selected', hazard: '--map-hazard', hazardWarn: '--map-hazard-warn',
+  aerodrome: '--map-aerodrome',
+  tma: '--map-tma',
+  mtma: '--map-mtma',
+  zone: '--map-zone',
+  zoneG: '--map-zone-g',
+  fis: '--map-fis',
+  prohibited: '--map-prohibited',
+  restricted: '--map-restricted',
+  danger: '--map-danger-area',
+  mil: '--map-mil',
+  act: '--map-activity',
+  vfr: '--map-vfr',
+  waypoint: '--map-waypoint',
+  route: '--map-route',
+  paper: '--map-paper',
+  halo: '--map-halo',
+  notam: '--map-notam',
+  notamOff: '--map-notam-off',
+  notamSelected: '--map-notam-selected',
+  hazard: '--map-hazard',
+  hazardWarn: '--map-hazard-warn',
 };
 export const CHART_DEFAULT_VALUES: Readonly<Record<ChartColor, string>> = CHART_DEFAULTS;
 
@@ -51,7 +67,9 @@ export const CHART_DEFAULT_VALUES: Readonly<Record<ChartColor, string>> = CHART_
 export const CHART: Record<ChartColor, string> = { ...CHART_DEFAULTS };
 
 /** Takes the chart colours from the page's --map-* tokens (a token that is not set keeps its default). */
-export function loadChartTokens(root: Element | null = typeof document === 'undefined' ? null : document.documentElement): void {
+export function loadChartTokens(
+  root: Element | null = typeof document === 'undefined' ? null : document.documentElement,
+): void {
   if (!root || typeof getComputedStyle === 'undefined') return;
   const cs = getComputedStyle(root);
   for (const k of Object.keys(CHART_TOKENS) as ChartColor[]) {
@@ -62,21 +80,43 @@ export function loadChartTokens(root: Element | null = typeof document === 'unde
 
 export type { BaseMapId };
 
-interface RasterBase { id: BaseMapId; label: string; kind: 'raster'; tiles: string[]; maxzoom: number; attribution: string }
-interface VectorBase { id: BaseMapId; label: string; kind: 'vector'; styleUrl: string }
+interface RasterBase {
+  id: BaseMapId;
+  label: string;
+  kind: 'raster';
+  tiles: string[];
+  maxzoom: number;
+  attribution: string;
+}
+interface VectorBase {
+  id: BaseMapId;
+  label: string;
+  kind: 'vector';
+  styleUrl: string;
+}
 
-const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+const OSM_ATTR =
+  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 
 /** Keyless base maps. "Light" is the OpenFreeMap Positron vector style (no key, no registration). */
 export const BASE_MAPS: (RasterBase | VectorBase)[] = [
   { id: 'light', label: 'Light', kind: 'vector', styleUrl: 'https://tiles.openfreemap.org/styles/positron' },
   {
-    id: 'terrain', label: 'Terrain', kind: 'raster',
+    id: 'terrain',
+    label: 'Terrain',
+    kind: 'raster',
     tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.opentopomap.org/{z}/{x}/{y}.png`),
     maxzoom: 17,
     attribution: `${OSM_ATTR}, SRTM · style © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA)`,
   },
-  { id: 'street', label: 'Street', kind: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], maxzoom: 19, attribution: OSM_ATTR },
+  {
+    id: 'street',
+    label: 'Street',
+    kind: 'raster',
+    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+    maxzoom: 19,
+    attribution: OSM_ATTR,
+  },
 ];
 
 let vectorCache: Promise<StyleSpecification | null> | null = null;
@@ -99,7 +139,9 @@ export function loadVectorBase(timeoutMs = 6000): Promise<StyleSpecification | n
         clearTimeout(t);
       }
     })();
-    void vectorCache.then((v) => { if (!v) vectorCache = null; }); // retry next time
+    void vectorCache.then((v) => {
+      if (!v) vectorCache = null;
+    }); // retry next time
   }
   return vectorCache;
 }
@@ -109,7 +151,8 @@ export function loadVectorBase(timeoutMs = 6000): Promise<StyleSpecification | n
  * The data are the current OFM AIRAC for the LGGG region.
  */
 export const OFM_TILES = 'https://nwy-tiles-api.prod.newaydata.com/tiles/{z}/{x}/{y}.png?path=latest/aero/latest';
-export const OFM_ATTRIBUTION = 'Aero data © <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a>';
+export const OFM_ATTRIBUTION =
+  'Aero data © <a href="https://www.openflightmaps.org" target="_blank" rel="noopener">open flightmaps</a>';
 
 /** Keyless glyphs for the vector labels (OpenFreeMap). */
 export const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
@@ -123,15 +166,31 @@ const EMPTY = { type: 'FeatureCollection', features: [] } as const;
 
 /** Sources that carry our own data (setData later). */
 export const DATA_SOURCES = [
-  'airspaces', 'zones', 'areas', 'fir', 'vfr-routes', 'vfr-points', 'aerodromes', 'waypoints',
-  'route-line', 'route-arrows', 'route-band', 'route-mid', 'route-points', 'snap',
+  'airspaces',
+  'zones',
+  'areas',
+  'fir',
+  'vfr-routes',
+  'vfr-points',
+  'aerodromes',
+  'waypoints',
+  'route-line',
+  'route-arrows',
+  'route-band',
+  'route-mid',
+  'route-points',
+  'snap',
 ] as const;
 export type DataSourceId = (typeof DATA_SOURCES)[number];
 
 /** Layers making up each base map, with the visibility each has when that base is shown. */
 export type BaseLayers = Record<BaseMapId, { id: string; visible: boolean }[]>;
 
-export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecification | null): { style: StyleSpecification; baseLayers: BaseLayers } {
+export function buildStyle(
+  base: BaseMapId,
+  ofm: boolean,
+  vector: StyleSpecification | null,
+): { style: StyleSpecification; baseLayers: BaseLayers } {
   const sources: StyleSpecification['sources'] = {};
   const layers: LayerSpecification[] = [];
   const baseLayers = { light: [], terrain: [], street: [] } as BaseLayers;
@@ -146,26 +205,68 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
           const visible = (l as { layout?: { visibility?: string } }).layout?.visibility !== 'none';
           const id = `vb-${b.id}:${l.id}`;
           baseLayers[b.id].push({ id, visible });
-          layers.push({ ...l, id, layout: { ...((l as { layout?: object }).layout ?? {}), visibility: vis(b.id, visible) } } as LayerSpecification);
+          layers.push({
+            ...l,
+            id,
+            layout: { ...((l as { layout?: object }).layout ?? {}), visibility: vis(b.id, visible) },
+          } as LayerSpecification);
         }
       } else {
         // offline / unreachable: OSM raster tiles stand in
         const osm = BASE_MAPS.find((x): x is RasterBase => x.id === 'street')!;
-        sources[`base-${b.id}`] = { type: 'raster', tiles: osm.tiles, tileSize: 256, maxzoom: osm.maxzoom, attribution: osm.attribution };
-        layers.push({ id: `base-${b.id}`, type: 'raster', source: `base-${b.id}`, layout: { visibility: vis(b.id) }, paint: { 'raster-saturation': -0.6, 'raster-opacity': 0.85 } });
+        sources[`base-${b.id}`] = {
+          type: 'raster',
+          tiles: osm.tiles,
+          tileSize: 256,
+          maxzoom: osm.maxzoom,
+          attribution: osm.attribution,
+        };
+        layers.push({
+          id: `base-${b.id}`,
+          type: 'raster',
+          source: `base-${b.id}`,
+          layout: { visibility: vis(b.id) },
+          paint: { 'raster-saturation': -0.6, 'raster-opacity': 0.85 },
+        });
         baseLayers[b.id].push({ id: `base-${b.id}`, visible: true });
       }
     } else {
-      sources[`base-${b.id}`] = { type: 'raster', tiles: b.tiles, tileSize: 256, maxzoom: b.maxzoom, attribution: b.attribution };
-      layers.push({ id: `base-${b.id}`, type: 'raster', source: `base-${b.id}`, layout: { visibility: vis(b.id) }, paint: { 'raster-fade-duration': 150 } });
+      sources[`base-${b.id}`] = {
+        type: 'raster',
+        tiles: b.tiles,
+        tileSize: 256,
+        maxzoom: b.maxzoom,
+        attribution: b.attribution,
+      };
+      layers.push({
+        id: `base-${b.id}`,
+        type: 'raster',
+        source: `base-${b.id}`,
+        layout: { visibility: vis(b.id) },
+        paint: { 'raster-fade-duration': 150 },
+      });
       baseLayers[b.id].push({ id: `base-${b.id}`, visible: true });
     }
   }
-  sources.ofm = { type: 'raster', tiles: [OFM_TILES], tileSize: 256, minzoom: 6, maxzoom: 12, attribution: OFM_ATTRIBUTION };
-  layers.push({ id: 'ofm', type: 'raster', source: 'ofm', layout: { visibility: ofm ? 'visible' : 'none' }, paint: { 'raster-fade-duration': 150 } });
+  sources.ofm = {
+    type: 'raster',
+    tiles: [OFM_TILES],
+    tileSize: 256,
+    minzoom: 6,
+    maxzoom: 12,
+    attribution: OFM_ATTRIBUTION,
+  };
+  layers.push({
+    id: 'ofm',
+    type: 'raster',
+    source: 'ofm',
+    layout: { visibility: ofm ? 'visible' : 'none' },
+    paint: { 'raster-fade-duration': 150 },
+  });
   for (const id of DATA_SOURCES) {
     sources[id] = {
-      type: 'geojson', data: EMPTY as never,
+      type: 'geojson',
+      data: EMPTY as never,
       // hover feature-state keyed by the feature's index (midpoint handles, route points)
       ...(id === 'route-mid' || id === 'route-points' ? { generateId: true } : {}),
       // airspace hover highlight (feature-state keyed by the airspace id)
@@ -194,26 +295,89 @@ export type LayerGroup = keyof typeof LAYER_GROUPS;
 /** ENR 5 areas in VFR-chart style: P red tint, R red hatching, D amber dashed, MIL violet dash-dot, ACT green dotted. */
 function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
   const kind = (...k: string[]): ExpressionSpecification => ['in', ['get', 'kind'], ['literal', k]];
-  const color: ExpressionSpecification = ['match', ['get', 'kind'], 'P', CHART.prohibited, 'R', CHART.restricted, 'D', CHART.danger, 'MIL', CHART.mil, CHART.act];
-  const width = (base: number): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, base + 1.2, base * 0.7], 10, ['case', hov, base + 1.6, base]];
+  const color: ExpressionSpecification = [
+    'match',
+    ['get', 'kind'],
+    'P',
+    CHART.prohibited,
+    'R',
+    CHART.restricted,
+    'D',
+    CHART.danger,
+    'MIL',
+    CHART.mil,
+    CHART.act,
+  ];
+  const width = (base: number): ExpressionSpecification => [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    6,
+    ['case', hov, base + 1.2, base * 0.7],
+    10,
+    ['case', hov, base + 1.6, base],
+  ];
   return [
     {
-      id: 'area-fill', type: 'fill', source: 'areas', filter: ['!', kind('R')],
+      id: 'area-fill',
+      type: 'fill',
+      source: 'areas',
+      filter: ['!', kind('R')],
       paint: {
         'fill-color': color,
         'fill-opacity': ['+', ['case', hov, 0.08, 0], ['match', ['get', 'kind'], 'P', 0.16, 'D', 0.07, 0.04]],
       },
     },
-    { id: 'area-hatch', type: 'fill', source: 'areas', filter: kind('R'), paint: { 'fill-pattern': 'pgf-hatch-r', 'fill-opacity': ['case', hov, 1, 0.8] } },
-    { id: 'area-line', type: 'line', source: 'areas', filter: kind('P', 'R'), paint: { 'line-color': color, 'line-width': width(2), 'line-opacity': 0.9 } },
-    { id: 'area-line-d', type: 'line', source: 'areas', filter: kind('D'), paint: { 'line-color': color, 'line-width': width(1.8), 'line-dasharray': [3, 1.6], 'line-opacity': 0.9 } },
-    { id: 'area-line-mil', type: 'line', source: 'areas', filter: kind('MIL'), paint: { 'line-color': color, 'line-width': width(1.4), 'line-dasharray': [5, 2, 1, 2], 'line-opacity': 0.75 } },
-    { id: 'area-line-act', type: 'line', source: 'areas', filter: kind('ACT'), paint: { 'line-color': color, 'line-width': width(1.6), 'line-dasharray': [1, 1.6], 'line-opacity': 0.85 } },
     {
-      id: 'area-label', type: 'symbol', source: 'areas', minzoom: 7.5,
+      id: 'area-hatch',
+      type: 'fill',
+      source: 'areas',
+      filter: kind('R'),
+      paint: { 'fill-pattern': 'pgf-hatch-r', 'fill-opacity': ['case', hov, 1, 0.8] },
+    },
+    {
+      id: 'area-line',
+      type: 'line',
+      source: 'areas',
+      filter: kind('P', 'R'),
+      paint: { 'line-color': color, 'line-width': width(2), 'line-opacity': 0.9 },
+    },
+    {
+      id: 'area-line-d',
+      type: 'line',
+      source: 'areas',
+      filter: kind('D'),
+      paint: { 'line-color': color, 'line-width': width(1.8), 'line-dasharray': [3, 1.6], 'line-opacity': 0.9 },
+    },
+    {
+      id: 'area-line-mil',
+      type: 'line',
+      source: 'areas',
+      filter: kind('MIL'),
+      paint: { 'line-color': color, 'line-width': width(1.4), 'line-dasharray': [5, 2, 1, 2], 'line-opacity': 0.75 },
+    },
+    {
+      id: 'area-line-act',
+      type: 'line',
+      source: 'areas',
+      filter: kind('ACT'),
+      paint: { 'line-color': color, 'line-width': width(1.6), 'line-dasharray': [1, 1.6], 'line-opacity': 0.85 },
+    },
+    {
+      id: 'area-label',
+      type: 'symbol',
+      source: 'areas',
+      minzoom: 7.5,
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': 360, 'text-field': ['get', 'label'], 'text-font': BOLD,
-        'text-size': 9.5, 'text-letter-spacing': 0.03, 'text-offset': [0, 0.85], 'text-max-angle': 30, 'text-keep-upright': true,
+        'symbol-placement': 'line',
+        'symbol-spacing': 360,
+        'text-field': ['get', 'label'],
+        'text-font': BOLD,
+        'text-size': 9.5,
+        'text-letter-spacing': 0.03,
+        'text-offset': [0, 0.85],
+        'text-max-angle': 30,
+        'text-keep-upright': true,
       },
       paint: { 'text-color': color, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
@@ -227,131 +391,309 @@ function chartLayers(): LayerSpecification[] {
   const zoneColor: ExpressionSpecification = ['case', ['==', ['get', 'cls'], 'G'], CHART.zoneG, CHART.zone];
   return [
     {
-      id: 'airspace-fill', type: 'fill', source: 'airspaces',
-      paint: { 'fill-color': ['case', isM, CHART.mtma, CHART.tma], 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 0.12, 0.05], 10, ['case', hov, 0.1, 0.025]] },
-    },
-    {
-      id: 'airspace-line', type: 'line', source: 'airspaces', filter: ['!', isM],
-      paint: { 'line-color': CHART.tma, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]], 'line-opacity': 0.75 },
-    },
-    {
-      id: 'airspace-line-m', type: 'line', source: 'airspaces', filter: isM,
-      paint: { 'line-color': CHART.mtma, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]], 'line-opacity': 0.75, 'line-dasharray': [4, 2] },
-    },
-    {
-      id: 'airspace-label', type: 'symbol', source: 'airspaces', minzoom: 7,
-      layout: {
-        'symbol-placement': 'line', 'symbol-spacing': 520, 'text-field': ['get', 'label'], 'text-font': BOLD,
-        'text-size': 10, 'text-letter-spacing': 0.04, 'text-offset': [0, 0.9], 'text-max-angle': 25, 'text-keep-upright': true,
+      id: 'airspace-fill',
+      type: 'fill',
+      source: 'airspaces',
+      paint: {
+        'fill-color': ['case', isM, CHART.mtma, CHART.tma],
+        'fill-opacity': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          6,
+          ['case', hov, 0.12, 0.05],
+          10,
+          ['case', hov, 0.1, 0.025],
+        ],
       },
-      paint: { 'text-color': ['case', isM, CHART.mtma, CHART.tma], 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
     {
-      id: 'zone-fill', type: 'fill', source: 'zones', minzoom: 6.5,
+      id: 'airspace-line',
+      type: 'line',
+      source: 'airspaces',
+      filter: ['!', isM],
+      paint: {
+        'line-color': CHART.tma,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]],
+        'line-opacity': 0.75,
+      },
+    },
+    {
+      id: 'airspace-line-m',
+      type: 'line',
+      source: 'airspaces',
+      filter: isM,
+      paint: {
+        'line-color': CHART.mtma,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]],
+        'line-opacity': 0.75,
+        'line-dasharray': [4, 2],
+      },
+    },
+    {
+      id: 'airspace-label',
+      type: 'symbol',
+      source: 'airspaces',
+      minzoom: 7,
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 520,
+        'text-field': ['get', 'label'],
+        'text-font': BOLD,
+        'text-size': 10,
+        'text-letter-spacing': 0.04,
+        'text-offset': [0, 0.9],
+        'text-max-angle': 25,
+        'text-keep-upright': true,
+      },
+      paint: {
+        'text-color': ['case', isM, CHART.mtma, CHART.tma],
+        'text-halo-color': CHART.halo,
+        'text-halo-width': 1.4,
+      },
+    },
+    {
+      id: 'zone-fill',
+      type: 'fill',
+      source: 'zones',
+      minzoom: 6.5,
       paint: { 'fill-color': zoneColor, 'fill-opacity': ['case', hov, 0.1, isCtr, 0.025, 0.04] },
     },
     {
       // CTR: long dashes
-      id: 'zone-line', type: 'line', source: 'zones', minzoom: 6.5, filter: isCtr,
-      paint: { 'line-color': zoneColor, 'line-width': ['case', hov, 2.6, 1.5], 'line-dasharray': [5, 2], 'line-opacity': 0.85 },
+      id: 'zone-line',
+      type: 'line',
+      source: 'zones',
+      minzoom: 6.5,
+      filter: isCtr,
+      paint: {
+        'line-color': zoneColor,
+        'line-width': ['case', hov, 2.6, 1.5],
+        'line-dasharray': [5, 2],
+        'line-opacity': 0.85,
+      },
     },
     {
       // ATZ: short dashes
-      id: 'zone-line-atz', type: 'line', source: 'zones', minzoom: 7, filter: ['!', isCtr],
-      paint: { 'line-color': zoneColor, 'line-width': ['case', hov, 2.4, 1.2], 'line-dasharray': [2, 1.5], 'line-opacity': 0.85 },
+      id: 'zone-line-atz',
+      type: 'line',
+      source: 'zones',
+      minzoom: 7,
+      filter: ['!', isCtr],
+      paint: {
+        'line-color': zoneColor,
+        'line-width': ['case', hov, 2.4, 1.2],
+        'line-dasharray': [2, 1.5],
+        'line-opacity': 0.85,
+      },
     },
     {
-      id: 'zone-label', type: 'symbol', source: 'zones',
-      minzoom: 8, filter: ['any', isCtr, ['>=', ['zoom'], 9]],
+      id: 'zone-label',
+      type: 'symbol',
+      source: 'zones',
+      minzoom: 8,
+      filter: ['any', isCtr, ['>=', ['zoom'], 9]],
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': ['get', 'label'], 'text-font': BOLD,
-        'text-size': 9.5, 'text-letter-spacing': 0.03, 'text-offset': [0, 0.85], 'text-max-angle': 30, 'text-keep-upright': true,
+        'symbol-placement': 'line',
+        'symbol-spacing': 420,
+        'text-field': ['get', 'label'],
+        'text-font': BOLD,
+        'text-size': 9.5,
+        'text-letter-spacing': 0.03,
+        'text-offset': [0, 0.85],
+        'text-max-angle': 30,
+        'text-keep-upright': true,
       },
       paint: { 'text-color': zoneColor, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
     ...areaLayers(hov),
     {
       // LGGG FIR boundary: dark grey, long dash-dot (ICAO FIR boundary)
-      id: 'fir-line', type: 'line', source: 'fir', filter: ['==', ['get', 'kind'], 'fir'],
-      paint: { 'line-color': CHART.fis, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.4, 9, 2.4], 'line-dasharray': [7, 2, 1.5, 2], 'line-opacity': 0.85 },
+      id: 'fir-line',
+      type: 'line',
+      source: 'fir',
+      filter: ['==', ['get', 'kind'], 'fir'],
+      paint: {
+        'line-color': CHART.fis,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.4, 9, 2.4],
+        'line-dasharray': [7, 2, 1.5, 2],
+        'line-opacity': 0.85,
+      },
     },
     {
       // ATHINAI / MAKEDONIA line
-      id: 'fir-divider', type: 'line', source: 'fir', filter: ['==', ['get', 'kind'], 'divider'],
+      id: 'fir-divider',
+      type: 'line',
+      source: 'fir',
+      filter: ['==', ['get', 'kind'], 'divider'],
       paint: { 'line-color': CHART.fis, 'line-width': 1.2, 'line-dasharray': [6, 3, 1, 3], 'line-opacity': 0.7 },
     },
     {
-      id: 'fir-label', type: 'symbol', source: 'fir', filter: ['==', ['get', 'kind'], 'fir'],
+      id: 'fir-label',
+      type: 'symbol',
+      source: 'fir',
+      filter: ['==', ['get', 'kind'], 'fir'],
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': 600, 'text-field': ['get', 'label'], 'text-font': BOLD,
-        'text-size': 10.5, 'text-letter-spacing': 0.08, 'text-max-angle': 30, 'text-keep-upright': true,
+        'symbol-placement': 'line',
+        'symbol-spacing': 600,
+        'text-field': ['get', 'label'],
+        'text-font': BOLD,
+        'text-size': 10.5,
+        'text-letter-spacing': 0.08,
+        'text-max-angle': 30,
+        'text-keep-upright': true,
       },
       paint: { 'text-color': CHART.fis, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
     },
     {
-      id: 'fir-divider-label', type: 'symbol', source: 'fir', filter: ['==', ['get', 'kind'], 'divider'], minzoom: 5.5,
+      id: 'fir-divider-label',
+      type: 'symbol',
+      source: 'fir',
+      filter: ['==', ['get', 'kind'], 'divider'],
+      minzoom: 5.5,
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': 500, 'text-field': ['get', 'label'], 'text-font': BOLD,
-        'text-size': 10, 'text-letter-spacing': 0.06, 'text-max-angle': 30, 'text-keep-upright': true,
+        'symbol-placement': 'line',
+        'symbol-spacing': 500,
+        'text-field': ['get', 'label'],
+        'text-font': BOLD,
+        'text-size': 10,
+        'text-letter-spacing': 0.06,
+        'text-max-angle': 30,
+        'text-keep-upright': true,
       },
       paint: { 'text-color': CHART.fis, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
     },
     {
-      id: 'vfr-route-line', type: 'line', source: 'vfr-routes', minzoom: 7.5,
-      paint: { 'line-color': CHART.vfr, 'line-width': ['interpolate', ['linear'], ['zoom'], 7.5, 0.8, 11, 1.8], 'line-opacity': 0.7 },
+      id: 'vfr-route-line',
+      type: 'line',
+      source: 'vfr-routes',
+      minzoom: 7.5,
+      paint: {
+        'line-color': CHART.vfr,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 7.5, 0.8, 11, 1.8],
+        'line-opacity': 0.7,
+      },
     },
     {
-      id: 'vfr-route-arrow', type: 'symbol', source: 'vfr-routes', minzoom: 9, filter: ['==', ['get', 'oneway'], true],
-      layout: { 'symbol-placement': 'line', 'symbol-spacing': 90, 'icon-image': 'pgf-arrow', 'icon-allow-overlap': true, 'icon-rotation-alignment': 'map' },
+      id: 'vfr-route-arrow',
+      type: 'symbol',
+      source: 'vfr-routes',
+      minzoom: 9,
+      filter: ['==', ['get', 'oneway'], true],
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 90,
+        'icon-image': 'pgf-arrow',
+        'icon-allow-overlap': true,
+        'icon-rotation-alignment': 'map',
+      },
     },
     {
-      id: 'vfr-route-alt', type: 'symbol', source: 'vfr-routes', minzoom: 8.5,
-      layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'alt'], 'text-font': BOLD, 'text-size': 10, 'text-offset': [0, -0.75], 'text-keep-upright': true },
+      id: 'vfr-route-alt',
+      type: 'symbol',
+      source: 'vfr-routes',
+      minzoom: 8.5,
+      layout: {
+        'symbol-placement': 'line-center',
+        'text-field': ['get', 'alt'],
+        'text-font': BOLD,
+        'text-size': 10,
+        'text-offset': [0, -0.75],
+        'text-keep-upright': true,
+      },
       paint: { 'text-color': CHART.vfr, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
     },
     {
-      id: 'vfr-point-icon', type: 'symbol', source: 'vfr-points', minzoom: 7.5,
+      id: 'vfr-point-icon',
+      type: 'symbol',
+      source: 'vfr-points',
+      minzoom: 7.5,
       filter: ['any', ['==', ['get', 'rank'], 1], ['>=', ['zoom'], 9]],
-      layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 7.5, 0.75, 10, 1] },
+      layout: {
+        'icon-image': ['get', 'icon'],
+        'icon-allow-overlap': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 7.5, 0.75, 10, 1],
+      },
     },
     {
-      id: 'vfr-point-label', type: 'symbol', source: 'vfr-points', minzoom: 8.5,
+      id: 'vfr-point-label',
+      type: 'symbol',
+      source: 'vfr-points',
+      minzoom: 8.5,
       filter: ['any', ['==', ['get', 'rank'], 1], ['>=', ['zoom'], 9.5]],
       layout: {
-        'text-field': ['get', 'label'], 'text-font': REG, 'text-size': 10.5, 'text-letter-spacing': 0.03,
-        'text-variable-anchor': ['left', 'right', 'top', 'bottom'], 'text-radial-offset': 0.75, 'text-justify': 'auto',
+        'text-field': ['get', 'label'],
+        'text-font': REG,
+        'text-size': 10.5,
+        'text-letter-spacing': 0.03,
+        'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
+        'text-radial-offset': 0.75,
+        'text-justify': 'auto',
         'symbol-sort-key': ['get', 'rank'],
       },
       paint: { 'text-color': CHART.vfr, 'text-halo-color': CHART.halo, 'text-halo-width': 1.5 },
     },
     {
-      id: 'waypoint-icon', type: 'symbol', source: 'waypoints',
+      id: 'waypoint-icon',
+      type: 'symbol',
+      source: 'waypoints',
       layout: { 'icon-image': 'pgf-wpt', 'icon-allow-overlap': true },
     },
     {
-      id: 'waypoint-label', type: 'symbol', source: 'waypoints', minzoom: 7,
-      layout: { 'text-field': ['get', 'label'], 'text-font': BOLD, 'text-size': 10.5, 'text-variable-anchor': ['left', 'right', 'top'], 'text-radial-offset': 0.8 },
+      id: 'waypoint-label',
+      type: 'symbol',
+      source: 'waypoints',
+      minzoom: 7,
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': BOLD,
+        'text-size': 10.5,
+        'text-variable-anchor': ['left', 'right', 'top'],
+        'text-radial-offset': 0.8,
+      },
       paint: { 'text-color': CHART.waypoint, 'text-halo-color': CHART.halo, 'text-halo-width': 1.5 },
     },
     {
-      id: 'aerodrome-icon', type: 'symbol', source: 'aerodromes',
+      id: 'aerodrome-icon',
+      type: 'symbol',
+      source: 'aerodromes',
       filter: ['any', ['==', ['get', 'rank'], 1], ['>=', ['zoom'], 6.5]],
       layout: {
-        'icon-image': ['get', 'icon'], 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map',
-        'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.7, 9, 1],
+        'icon-image': ['get', 'icon'],
+        'icon-rotate': ['get', 'rot'],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.7, 9, 1],
         'symbol-sort-key': ['get', 'rank'],
       },
     },
     {
-      id: 'aerodrome-label', type: 'symbol', source: 'aerodromes',
+      id: 'aerodrome-label',
+      type: 'symbol',
+      source: 'aerodromes',
       filter: ['any', ['==', ['get', 'rank'], 1], ['>=', ['zoom'], 7.5]],
       layout: {
-        'text-field': ['step', ['zoom'],
+        'text-field': [
+          'step',
+          ['zoom'],
           ['get', 'label'],
-          8.5, ['format', ['get', 'label'], { 'font-scale': 1 }, '\n', {}, ['get', 'sub'], { 'font-scale': 0.78, 'text-font': ['literal', REG] }],
+          8.5,
+          [
+            'format',
+            ['get', 'label'],
+            { 'font-scale': 1 },
+            '\n',
+            {},
+            ['get', 'sub'],
+            { 'font-scale': 0.78, 'text-font': ['literal', REG] },
+          ],
         ],
-        'text-font': BOLD, 'text-size': 12, 'text-line-height': 1.15,
-        'text-variable-anchor': ['top', 'bottom', 'right', 'left'], 'text-radial-offset': 1.15, 'text-justify': 'auto',
+        'text-font': BOLD,
+        'text-size': 12,
+        'text-line-height': 1.15,
+        'text-variable-anchor': ['top', 'bottom', 'right', 'left'],
+        'text-radial-offset': 1.15,
+        'text-justify': 'auto',
         'symbol-sort-key': ['get', 'rank'],
       },
       paint: { 'text-color': CHART.aerodrome, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
@@ -367,62 +709,108 @@ function routeLayers(): LayerSpecification[] {
   const isMid: ExpressionSpecification = ['==', ['get', 'role'], 'mid'];
   return [
     {
-      id: 'route-casing', type: 'line', source: 'route-line', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      id: 'route-casing',
+      type: 'line',
+      source: 'route-line',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': CHART.paper, 'line-width': 7.5, 'line-opacity': 0.9 },
     },
     {
-      id: 'route-line', type: 'line', source: 'route-line', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      id: 'route-line',
+      type: 'line',
+      source: 'route-line',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': CHART.route, 'line-width': 3.5 },
     },
     {
       // direction of flight: arrowheads on each leg (features.ts routeArrowFeatures)
-      id: 'route-arrows', type: 'symbol', source: 'route-arrows',
+      id: 'route-arrows',
+      type: 'symbol',
+      source: 'route-arrows',
       layout: {
-        'icon-image': 'pgf-route-arrow', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map',
-        'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'icon-image': 'pgf-route-arrow',
+        'icon-rotate': ['get', 'rot'],
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
         'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.75, 9, 1],
       },
     },
     {
-      id: 'route-band', type: 'line', source: 'route-band', layout: { 'line-cap': 'round' },
+      id: 'route-band',
+      type: 'line',
+      source: 'route-band',
+      layout: { 'line-cap': 'round' },
       paint: { 'line-color': CHART.route, 'line-width': 2.5, 'line-dasharray': [2, 1.6], 'line-opacity': 0.85 },
     },
     {
-      id: 'route-mid', type: 'circle', source: 'route-mid',
+      id: 'route-mid',
+      type: 'circle',
+      source: 'route-mid',
       paint: {
         'circle-radius': ['case', HOVER, 6.5, 4.5],
-        'circle-color': CHART.paper, 'circle-stroke-color': CHART.route, 'circle-stroke-width': 1.6,
+        'circle-color': CHART.paper,
+        'circle-stroke-color': CHART.route,
+        'circle-stroke-width': 1.6,
         'circle-opacity': ['case', HOVER, 1, 0.8],
         'circle-stroke-opacity': ['case', HOVER, 1, 0.7],
       },
     },
     {
-      id: 'snap-ring', type: 'circle', source: 'snap',
-      paint: { 'circle-radius': 13, 'circle-color': CHART.route, 'circle-opacity': 0.12, 'circle-stroke-color': CHART.route, 'circle-stroke-width': 2 },
-    },
-    {
-      // the halo around a route point under the cursor (it can be dragged, clicked, right-clicked)
-      id: 'route-point-halo', type: 'circle', source: 'route-points',
+      id: 'snap-ring',
+      type: 'circle',
+      source: 'snap',
       paint: {
-        'circle-radius': ['case', HOVER, 15, 0],
-        'circle-color': CHART.route, 'circle-opacity': 0.16,
-        'circle-stroke-color': CHART.route, 'circle-stroke-width': ['case', HOVER, 1, 0], 'circle-stroke-opacity': 0.35,
+        'circle-radius': 13,
+        'circle-color': CHART.route,
+        'circle-opacity': 0.12,
+        'circle-stroke-color': CHART.route,
+        'circle-stroke-width': 2,
       },
     },
     {
-      id: 'route-points', type: 'circle', source: 'route-points',
+      // the halo around a route point under the cursor (it can be dragged, clicked, right-clicked)
+      id: 'route-point-halo',
+      type: 'circle',
+      source: 'route-points',
       paint: {
-        'circle-radius': ['case', HOVER, ['case', selected, 9.5, isMid, 7.5, 8.5], ['case', selected, 8, isMid, 5.5, 7]],
+        'circle-radius': ['case', HOVER, 15, 0],
+        'circle-color': CHART.route,
+        'circle-opacity': 0.16,
+        'circle-stroke-color': CHART.route,
+        'circle-stroke-width': ['case', HOVER, 1, 0],
+        'circle-stroke-opacity': 0.35,
+      },
+    },
+    {
+      id: 'route-points',
+      type: 'circle',
+      source: 'route-points',
+      paint: {
+        'circle-radius': [
+          'case',
+          HOVER,
+          ['case', selected, 9.5, isMid, 7.5, 8.5],
+          ['case', selected, 8, isMid, 5.5, 7],
+        ],
         'circle-color': ['case', selected, CHART.route, CHART.paper],
         'circle-stroke-color': ['case', selected, CHART.paper, CHART.route],
         'circle-stroke-width': ['case', selected, 3, isMid, 2.5, 3],
       },
     },
     {
-      id: 'route-point-label', type: 'symbol', source: 'route-points', filter: ['==', ['get', 'showName'], true],
+      id: 'route-point-label',
+      type: 'symbol',
+      source: 'route-points',
+      filter: ['==', ['get', 'showName'], true],
       layout: {
-        'text-field': ['get', 'name'], 'text-font': BOLD, 'text-size': 11.5, 'text-letter-spacing': 0.04,
-        'text-variable-anchor': ['left', 'right', 'top', 'bottom'], 'text-radial-offset': 1, 'text-allow-overlap': false,
+        'text-field': ['get', 'name'],
+        'text-font': BOLD,
+        'text-size': 11.5,
+        'text-letter-spacing': 0.04,
+        'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
+        'text-radial-offset': 1,
+        'text-allow-overlap': false,
       },
       paint: { 'text-color': CHART.route, 'text-halo-color': CHART.halo, 'text-halo-width': 1.8 },
     },

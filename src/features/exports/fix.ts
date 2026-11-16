@@ -12,28 +12,57 @@
 
 /** Editor inputs that can be focused (data-focus keys; the panel section of each: EDITOR_FOCUS_SECTION). */
 export type EditorFocus =
-  | 'date' | 'blockOff' | 'taxiOut' | 'taxiIn'
-  | 'aircraft' | 'compassCard'
-  | 'manifest' | 'baggage'
+  | 'date'
+  | 'blockOff'
+  | 'taxiOut'
+  | 'taxiIn'
+  | 'aircraft'
+  | 'compassCard'
+  | 'manifest'
+  | 'baggage'
   | 'fob'
   | 'performance'
-  | 'alternates' | 'remarks' | 'requests';
+  | 'alternates'
+  | 'remarks'
+  | 'requests';
 
 /** The editor panel section (Section id) that holds each focus key. */
 export const EDITOR_FOCUS_SECTION: Record<EditorFocus, string> = {
-  date: 'when', blockOff: 'when', taxiOut: 'when', taxiIn: 'when',
-  aircraft: 'aircraft', compassCard: 'aircraft',
-  manifest: 'manifest', baggage: 'manifest',
+  date: 'when',
+  blockOff: 'when',
+  taxiOut: 'when',
+  taxiIn: 'when',
+  aircraft: 'aircraft',
+  compassCard: 'aircraft',
+  manifest: 'manifest',
+  baggage: 'manifest',
   fob: 'fuel',
   performance: 'performance',
-  alternates: 'fpl', remarks: 'fpl', requests: 'fpl',
+  alternates: 'fpl',
+  remarks: 'fpl',
+  requests: 'fpl',
 };
 
 /** Fields of the hangar aircraft page that can be focused (data-focus on the Field, or a section id). */
 export type AircraftFocus =
-  | 'registration' | 'icaoType' | 'wake' | 'colours' | 'operator'
-  | 'item10a' | 'item10b' | 'pbn' | 'item18Extras' | 'remarks'
-  | 'cruiseTasKt' | 'patternTasKt' | 'burnLph' | 'fuel' | 'emptyMassKg' | 'mb' | 'performance' | 'compass';
+  | 'registration'
+  | 'icaoType'
+  | 'wake'
+  | 'colours'
+  | 'operator'
+  | 'item10a'
+  | 'item10b'
+  | 'pbn'
+  | 'item18Extras'
+  | 'remarks'
+  | 'cruiseTasKt'
+  | 'patternTasKt'
+  | 'burnLph'
+  | 'fuel'
+  | 'emptyMassKg'
+  | 'mb'
+  | 'performance'
+  | 'compass';
 
 export type PersonField = 'fullName' | 'idNumber' | 'phone';
 
@@ -70,7 +99,10 @@ export function fixLink(f: Fix, ctx: FixContext): { to: string; label: string } 
       const fields = f.fields ?? [];
       const what = fields.map((x) => FIELD_LABEL[x]).join(' and ');
       const q = `edit=${encodeURIComponent(me ? 'me' : f.key)}${fields.length ? `&fields=${fields.join(',')}` : ''}`;
-      return { to: `/passengers?${q}`, label: what ? `Add ${me ? 'your' : 'their'} ${what}` : me ? 'Edit your details' : 'Edit passenger' };
+      return {
+        to: `/passengers?${q}`,
+        label: what ? `Add ${me ? 'your' : 'their'} ${what}` : me ? 'Edit your details' : 'Edit passenger',
+      };
     }
   }
 }
@@ -100,8 +132,14 @@ export function planningFix(text: string): Fix | null {
   if (/usable fuel capacity not set/i.test(t)) return aircraft('fuel');
   if (/baggage/i.test(t)) return flight('baggage');
   if (/fuel on board|fuel at landing|not enough fuel|endurance|usable fuel|reserve/i.test(t)) return flight('fob');
-  if (/manifest|weight of|mass of|seat .* does not exist|masses are not from the loading sheet|weight missing/i.test(t)) return flight('manifest');
-  if (/surface|runway .* not chosen|crosswind|tailwind|over (MTOW|the maximum)|exceeds|MTOW|MLW|take-off distance|landing distance|TODA|LDA/i.test(t)) return flight('performance');
+  if (/manifest|weight of|mass of|seat .* does not exist|masses are not from the loading sheet|weight missing/i.test(t))
+    return flight('manifest');
+  if (
+    /surface|runway .* not chosen|crosswind|tailwind|over (MTOW|the maximum)|exceeds|MTOW|MLW|take-off distance|landing distance|TODA|LDA/i.test(
+      t,
+    )
+  )
+    return flight('performance');
   if (/no route|not an aerodrome|no destination|altitude unknown|route/i.test(t)) return flight();
   return null;
 }

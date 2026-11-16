@@ -126,18 +126,25 @@ export function planFuel(input: FuelPlanInput): FuelPlan {
   if (!(input.burnLph > 0)) add('warn', 'Aircraft burn rate not set.');
   if (reserveUnset) add('warn', 'Fuel reserve not set in the profile: no reserve added to the default fuel on board.');
   if (overCapacity) add('danger', `Fuel on board ${fobL} L exceeds usable capacity ${usable} L.`);
-  else if (fobIsDefault && defaultOverCapacity) add('warn', `Required + reserve ${defaultFobL} L exceeds usable capacity ${usable} L.`);
+  else if (fobIsDefault && defaultOverCapacity)
+    add('warn', `Required + reserve ${defaultFobL} L exceeds usable capacity ${usable} L.`);
   if (belowRequired) add('danger', `Fuel on board ${fobL} L is below required ${requiredL} L.`);
   if (input.burnLph > 0 && landingFuelL >= 0) {
     const left = `Fuel at landing ${landingFuelL} L lasts ${fmtDuration(landingEnduranceMin)}`;
     if (short(legalMin)) {
-      add('danger', input.localFlight
-        ? `${left}: below the ${legalMin} min legal final reserve for a local VFR flight (NCO.OP.125).`
-        : `${left}: below the ${legalMin} min legal final reserve for day VFR (NCO.OP.125).`);
+      add(
+        'danger',
+        input.localFlight
+          ? `${left}: below the ${legalMin} min legal final reserve for a local VFR flight (NCO.OP.125).`
+          : `${left}: below the ${legalMin} min legal final reserve for day VFR (NCO.OP.125).`,
+      );
     } else if (finalReserveMin > legalMin && short(finalReserveMin) && !belowRequired) {
       add('danger', `${left}: below your final reserve of ${finalReserveMin} min.`);
     } else if (input.localFlight && short(LEGAL_FINAL_RESERVE_MIN)) {
-      add('warn', `${left}: the 10 min final reserve holds only for a local flight that stays within sight of the aerodrome (30 min otherwise).`);
+      add(
+        'warn',
+        `${left}: the 10 min final reserve holds only for a local flight that stays within sight of the aerodrome (30 min otherwise).`,
+      );
     }
   }
   if (!isFinite(usable)) add('warn', 'Aircraft usable fuel capacity not set.');

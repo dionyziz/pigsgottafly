@@ -54,7 +54,9 @@ export interface AddresseeInput {
 
 /** "1000 FT AGL" → 0 (surface: conservative for "below"), "FL 155" → 15500, "8500 FT" → 8500, "UNL" → ∞. */
 export function levelFt(s: string, kind: 'lower' | 'upper'): number {
-  const t = String(s || '').toUpperCase().trim();
+  const t = String(s || '')
+    .toUpperCase()
+    .trim();
   if (!t) return kind === 'lower' ? 0 : Infinity;
   if (t === 'UNL') return Infinity;
   if (t === 'SFC' || t === 'GND' || /AGL|SFC|GND/.test(t)) return kind === 'lower' ? 0 : Infinity;
@@ -71,7 +73,8 @@ export function northOfBoundary(p: LatLon, boundary: [number, number][]): boolea
   const pts = [...boundary].sort((a, b) => a[1] - b[1]);
   let i = pts.findIndex((q, k) => k + 1 < pts.length && p.lon >= q[1] && p.lon <= pts[k + 1][1]);
   if (i < 0) i = p.lon < pts[0][1] ? 0 : pts.length - 2;
-  const [la, lo] = pts[i], [lb, lob] = pts[i + 1];
+  const [la, lo] = pts[i],
+    [lb, lob] = pts[i + 1];
   const latAt = lob === lo ? (la + lb) / 2 : la + ((lb - la) * (p.lon - lo)) / (lob - lo);
   return p.lat > latAt;
 }
@@ -91,15 +94,19 @@ export function generateAddressees(inp: AddresseeInput): Addressee[] {
 
   // ACCs: sample every leg (end points and every ~2 NM)
   if (route.length) {
-    let athinai = false, makedonia = false;
+    let athinai = false,
+      makedonia = false;
     const sample = (p: LatLon) => {
-      if (inp.fis && northOfBoundary(p, inp.fis.boundary)) makedonia = true; else athinai = true;
+      if (inp.fis && northOfBoundary(p, inp.fis.boundary)) makedonia = true;
+      else athinai = true;
     };
     sample(route[0]);
     for (let i = 0; i + 1 < route.length; i++) {
-      const a = route[i], b = route[i + 1];
+      const a = route[i],
+        b = route[i + 1];
       const n = Math.max(1, Math.ceil(Math.hypot(b.lat - a.lat, b.lon - a.lon) * 30));
-      for (let k = 1; k <= n; k++) sample({ lat: a.lat + ((b.lat - a.lat) * k) / n, lon: a.lon + ((b.lon - a.lon) * k) / n });
+      for (let k = 1; k <= n; k++)
+        sample({ lat: a.lat + ((b.lat - a.lat) * k) / n, lon: a.lon + ((b.lon - a.lon) * k) / n });
     }
     if (athinai) add([high ? 'LGGGZQZX' : 'LGGGZFZX', 'LGGGYXYK'], 'ATHINAI ACC (VFR)');
     if (makedonia) add([high ? 'LGMDZQZX' : 'LGMDZFZX', 'LGMDYXYK'], 'MAKEDONIA ACC (VFR)');
@@ -109,7 +116,8 @@ export function generateAddressees(inp: AddresseeInput): Addressee[] {
   for (const sp of inp.airspaces) {
     const addrs = TMA_ADDRESSES[sp.name];
     if (!addrs || sp.polygon.length < 3) continue;
-    const lower = levelFt(sp.lower, 'lower'), upper = levelFt(sp.upper, 'upper');
+    const lower = levelFt(sp.lower, 'lower'),
+      upper = levelFt(sp.upper, 'upper');
     let hit = false;
     for (let i = 0; i + 1 < route.length && !hit; i++) {
       const alt = inp.altitudesFt[i];
@@ -135,8 +143,13 @@ export function generateAddressees(inp: AddresseeInput): Addressee[] {
   for (const ad of inp.aerodromes) {
     if (!ad.icao || !ad.zones.length) continue;
     const crossed = ad.zones.some((z) => {
-      if (route.length === 1) return Math.hypot((route[0].lat - z.lat) * 60, (route[0].lon - z.lon) * 60 * Math.cos((z.lat * Math.PI) / 180)) <= z.radiusNm;
-      for (let i = 0; i + 1 < route.length; i++) if (pointSegDistNm({ lat: z.lat, lon: z.lon }, route[i], route[i + 1]).dist <= z.radiusNm) return true;
+      if (route.length === 1)
+        return (
+          Math.hypot((route[0].lat - z.lat) * 60, (route[0].lon - z.lon) * 60 * Math.cos((z.lat * Math.PI) / 180)) <=
+          z.radiusNm
+        );
+      for (let i = 0; i + 1 < route.length; i++)
+        if (pointSegDistNm({ lat: z.lat, lon: z.lon }, route[i], route[i + 1]).dist <= z.radiusNm) return true;
       return false;
     });
     if (crossed) add(adAddrs(ad.icao), `${ad.icao} CTR/ATZ`);

@@ -7,7 +7,15 @@ import { describe, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { fleetSeed } from '../../../tools/build_seed';
 import { REF, SUN_TABLES, runwaysOf } from '../../../src/data/ref';
-import { emptyFlightDoc, type Aircraft, type FlightCrew, type FlightDoc, type PersonDetails, type Pilot, type RoutePoint } from '../../../src/shared';
+import {
+  emptyFlightDoc,
+  type Aircraft,
+  type FlightCrew,
+  type FlightDoc,
+  type PersonDetails,
+  type Pilot,
+  type RoutePoint,
+} from '../../../src/shared';
 import { magneticVariation, pressureAltitudeFt } from '../../../src/calc';
 import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
 import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
@@ -19,29 +27,77 @@ import { PerfSheet } from '../../../src/features/exports/performance/Performance
 const [ASV_IN] = fleetSeed();
 const ASV: Aircraft = { ...structuredClone(ASV_IN), id: 'ac_asv', created: 0, updated: 0 };
 const person = (fullName: string, weightKg: number | null): PersonDetails => ({
-  fullName, phone: '', dateOfBirth: null, weightKg, idNumber: '', idType: '', nationality: '', relation: '',
+  fullName,
+  phone: '',
+  dateOfBirth: null,
+  weightKg,
+  idNumber: '',
+  idType: '',
+  nationality: '',
+  relation: '',
 });
-const crew = (role: 'PIC' | 'PAX', seat: string, name: string, kg: number): FlightCrew => ({ role, passengerId: role === 'PIC' ? null : 'p_' + seat, seat, snapshot: person(name, kg) });
+const crew = (role: 'PIC' | 'PAX', seat: string, name: string, kg: number): FlightCrew => ({
+  role,
+  passengerId: role === 'PIC' ? null : 'p_' + seat,
+  seat,
+  snapshot: person(name, kg),
+});
 const pilot: Pilot = {
-  ...person('Pat Pilot', 80), id: 'pilot1', email: '', name: '', picture: '', licenceNo: '', homeAerodrome: 'LGTT', defaultAircraftId: null,
-  settings: { taxiOutMin: 15, taxiInMin: 15, reserveMin: 60, finalReserveMin: 0, windModel: 'ecmwf_ifs025', enrouteAerodromeRadiusNm: 2 },
-  created: 0, lastLogin: 0,
+  ...person('Pat Pilot', 80),
+  id: 'pilot1',
+  email: '',
+  name: '',
+  picture: '',
+  licenceNo: '',
+  homeAerodrome: 'LGTT',
+  defaultAircraftId: null,
+  settings: {
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    reserveMin: 60,
+    finalReserveMin: 0,
+    windModel: 'ecmwf_ifs025',
+    enrouteAerodromeRadiusNm: 2,
+  },
+  created: 0,
+  lastLogin: 0,
 };
 const ad = (icao: string, uid: string): RoutePoint => {
   const a = REF.aerodromes.find((x) => x.icao === icao)!;
   return { uid, kind: 'aerodrome', refId: a.id, name: a.icao!, lat: a.lat, lon: a.lon };
 };
-const ref = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES, runwaysOf };
+const ref = {
+  aerodromes: REF.aerodromes,
+  vfrPoints: REF.vfrPoints,
+  vfrRoutes: REF.vfrRoutes,
+  sunTables: SUN_TABLES,
+  runwaysOf,
+};
 
 const DATE = '2026-11-21';
 const T_MS = Date.parse(`${DATE}T10:00:00Z`);
 const metar = (station: string, qnh: number, oat: number, dirTrue: number, kt: number): ParsedMetar => ({
-  raw: `METAR ${station} 211000Z TEST`, type: 'METAR', station, timeMs: T_MS, auto: false, nil: false,
+  raw: `METAR ${station} 211000Z TEST`,
+  type: 'METAR',
+  station,
+  timeMs: T_MS,
+  auto: false,
+  nil: false,
   wind: { dirDeg: dirTrue, speedKt: kt, gustKt: null, varFrom: null, varTo: null, variable: false, calm: false },
-  cavok: true, visibilityM: 9999, clouds: [], skyClear: null, weather: [], tempC: oat, dewC: null, qnhHpa: qnh,
+  cavok: true,
+  visibilityM: 9999,
+  clouds: [],
+  skyClear: null,
+  weather: [],
+  tempC: oat,
+  dewC: null,
+  qnhHpa: qnh,
 });
 const METARS: MetarTafResult = {
-  status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: T_MS,
+  status: 'ok',
+  message: '',
+  source: 'aviationweather.gov',
+  fetchedMs: T_MS,
   stations: {
     LGTT: { metar: metar('LGTT', 1015, 15, 30, 8), taf: null, observedMs: T_MS },
     // Skyros: northerly, warm, low QNH: runway 35 into the wind
@@ -54,16 +110,32 @@ function flight(over: Partial<FlightDoc> = {}): FlightDoc {
   const base = emptyFlightDoc(DATE);
   return {
     ...base,
-    blockOff: '09:00', taxiOutMin: 15, taxiInMin: 15, aircraftId: ASV.id,
+    blockOff: '09:00',
+    taxiOutMin: 15,
+    taxiInMin: 15,
+    aircraftId: ASV.id,
     route,
-    crew: [crew('PIC', 'front-left', 'Pat Pilot', 80), crew('PAX', 'front-right', 'Robin Rider', 75), crew('PAX', 'rear-left', 'Sam Sitter', 70)],
+    crew: [
+      crew('PIC', 'front-left', 'Pat Pilot', 80),
+      crew('PAX', 'front-right', 'Robin Rider', 75),
+      crew('PAX', 'rear-left', 'Sam Sitter', 70),
+    ],
     baggageKg: { bag1: 10 },
     fobL: 120,
     options: { ...base.options, aerodromeRequests: [{ pointUid: 'sky', kind: 'stop', stopMin: 10 }] },
     ...over,
   };
 }
-const calcOf = (doc: FlightDoc) => computeExportCalc({ doc, aircraft: ASV, settings: pilot.settings, weather: null, metar: METARS, nowMs: T_MS + 5 * 60000, ref });
+const calcOf = (doc: FlightDoc) =>
+  computeExportCalc({
+    doc,
+    aircraft: ASV,
+    settings: pilot.settings,
+    weather: null,
+    metar: METARS,
+    nowMs: T_MS + 5 * 60000,
+    ref,
+  });
 
 describe('intermediate stop at LGSY', () => {
   test('the export calculation has the landing at and the take-off from Skyros, with the sector masses and Skyros weather', () => {
@@ -84,8 +156,14 @@ describe('intermediate stop at LGSY', () => {
     expect(st.landing.conditions?.source).toBe('metar');
     expect(st.landing.qnhHpa).toBe(1003);
     expect(st.landing.oatC).toBe(24);
-    expect(st.landing.perf!.pressureAltFt).toBeCloseTo(pressureAltitudeFt(REF.aerodromes.find((a) => a.icao === 'LGSY')!.elevFt!, 1003), 6);
-    expect(st.landing.variationDeg).toBeCloseTo(magneticVariation(st.landing.aerodrome!.lat, st.landing.aerodrome!.lon, DATE), 9);
+    expect(st.landing.perf!.pressureAltFt).toBeCloseTo(
+      pressureAltitudeFt(REF.aerodromes.find((a) => a.icao === 'LGSY')!.elevFt!, 1003),
+      6,
+    );
+    expect(st.landing.variationDeg).toBeCloseTo(
+      magneticVariation(st.landing.aerodrome!.lat, st.landing.aerodrome!.lon, DATE),
+      9,
+    );
     // runway into the northerly wind
     expect(st.landing.perf!.runway!.designator).toBe('35');
     expect(st.takeoff.perf!.runway!.designator).toBe('35');
@@ -105,7 +183,14 @@ describe('intermediate stop at LGSY', () => {
 
   test('runway and surface chosen for the stop are used there only', () => {
     const base = flight();
-    const doc = flight({ options: { ...base.options, aerodromeRequests: [{ pointUid: 'sky', kind: 'stop', stopMin: 10, takeoffRunway: '17', surface: 'short dry grass' }] } });
+    const doc = flight({
+      options: {
+        ...base.options,
+        aerodromeRequests: [
+          { pointUid: 'sky', kind: 'stop', stopMin: 10, takeoffRunway: '17', surface: 'short dry grass' },
+        ],
+      },
+    });
     const st = calcOf(doc).stops[0];
     expect(st.landing.perf!.runway!.designator).toBe('35');
     expect(st.takeoff.perf!.runway!.designator).toBe('17');
@@ -142,8 +227,19 @@ describe('intermediate stop at LGSY', () => {
 
   test('a stop failure fails the performance log (crosswind at Skyros above the limit)', () => {
     const doc = flight();
-    const windy: MetarTafResult = { ...METARS, stations: { ...METARS.stations, LGSY: { metar: metar('LGSY', 1003, 24, 265, 30), taf: null, observedMs: T_MS } } };
-    const c = computeExportCalc({ doc, aircraft: ASV, settings: pilot.settings, weather: null, metar: windy, nowMs: T_MS + 5 * 60000, ref });
+    const windy: MetarTafResult = {
+      ...METARS,
+      stations: { ...METARS.stations, LGSY: { metar: metar('LGSY', 1003, 24, 265, 30), taf: null, observedMs: T_MS } },
+    };
+    const c = computeExportCalc({
+      doc,
+      aircraft: ASV,
+      settings: pilot.settings,
+      weather: null,
+      metar: windy,
+      nowMs: T_MS + 5 * 60000,
+      ref,
+    });
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: c });
     expect(m.departure.verdict).toBe('pass');
     expect(m.arrival.verdict).toBe('pass');
@@ -156,7 +252,11 @@ describe('intermediate stop at LGSY', () => {
     const doc = flight();
     const c = calcOf(doc);
     const m = wbSheetModel({ doc, aircraft: ASV, pilot, calc: c, route: 'LGTT – LGSY – LGTT' });
-    expect(m.checks.map((x) => [x.phase, x.label])).toEqual([['takeoff', 'Take-off'], ['stop', 'Stop LGSY'], ['landing', 'Landing']]);
+    expect(m.checks.map((x) => [x.phase, x.label])).toEqual([
+      ['takeoff', 'Take-off'],
+      ['stop', 'Stop LGSY'],
+      ['landing', 'Landing'],
+    ]);
     expect(m.totals.map((l) => l.key)).toEqual(['to', 'burn0', 'stop0', 'burnLast', 'ldg']);
     const by = Object.fromEntries(m.totals.map((l) => [l.key, l]));
     const fuelAtStop = c.stops[0].before.fuelLandingL;
@@ -177,7 +277,15 @@ describe('intermediate stop at LGSY', () => {
     const c0 = calcOf(doc);
     // an MLW between the stop mass and the final landing mass: only the stop is above it
     ac.massBalance.mlwKg = Math.floor((c0.stops[0].landing.massKg! + c0.arrival.massKg!) / 2);
-    const c = computeExportCalc({ doc, aircraft: ac, settings: pilot.settings, weather: null, metar: METARS, nowMs: T_MS + 5 * 60000, ref });
+    const c = computeExportCalc({
+      doc,
+      aircraft: ac,
+      settings: pilot.settings,
+      weather: null,
+      metar: METARS,
+      nowMs: T_MS + 5 * 60000,
+      ref,
+    });
     const m = wbSheetModel({ doc, aircraft: ac, pilot, calc: c, route: '' });
     expect(m.checks.find((x) => x.phase === 'landing')!.ok).toBe(true);
     expect(m.checks.find((x) => x.phase === 'stop')!.ok).toBe(false);

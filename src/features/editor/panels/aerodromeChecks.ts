@@ -23,7 +23,12 @@ export interface AdCheck {
   handling: AdStatus;
 }
 
-export const AD_ROLE: Record<AdCheck['role'], string> = { departure: 'Departure', destination: 'Destination', stop: 'Stop', 'touch-and-go': 'Touch-and-go' };
+export const AD_ROLE: Record<AdCheck['role'], string> = {
+  departure: 'Departure',
+  destination: 'Destination',
+  stop: 'Stop',
+  'touch-and-go': 'Touch-and-go',
+};
 
 export interface AdChecksInput {
   route: RoutePoint[];
@@ -51,10 +56,22 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
   const opts = { effects: i.effects, sunTables: i.sunTables };
   const ms = (min: number | undefined) => (fin(i.dayMs) && i.times && fin(min) ? i.dayMs + min * 60000 : NaN);
   const z = (x: number) => (fin(x) ? `${clockZ(x)}Z` : '');
-  const add = (role: AdCheck['role'], pointIndex: number, ad: RefAerodrome | null, fromMs: number, toMs: number, when: string) => {
+  const add = (
+    role: AdCheck['role'],
+    pointIndex: number,
+    ad: RefAerodrome | null,
+    fromMs: number,
+    toMs: number,
+    when: string,
+  ) => {
     if (!ad) return;
     out.push({
-      role, pointIndex, aerodrome: ad, fromMs, toMs, when,
+      role,
+      pointIndex,
+      aerodrome: ad,
+      fromMs,
+      toMs,
+      when,
       ad: aerodromeStatus(ad, 'ad', fromMs, toMs, opts),
       ats: ad.hours?.ats ? aerodromeStatus(ad, 'ats', fromMs, toMs, opts) : null,
       handling: aerodromeStatus(ad, 'handling', fromMs, toMs, opts),
@@ -62,26 +79,52 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
   };
   const r = i.route;
   if (!r.length) return out;
-  const bo = ms(i.times?.blockOffMin), to = ms(i.times?.takeoffMin);
+  const bo = ms(i.times?.blockOffMin),
+    to = ms(i.times?.takeoffMin);
   add('departure', 0, i.departure, bo, to, fin(bo) ? `block-off ${z(bo)} – take-off ${z(to)}` : 'departure');
-  const tng = new Set(activeRequests(r, i.options).filter((x) => x.request.kind === 'touch-and-go').map((x) => x.index));
+  const tng = new Set(
+    activeRequests(r, i.options)
+      .filter((x) => x.request.kind === 'touch-and-go')
+      .map((x) => x.index),
+  );
   const stopAt = new Map(i.stops.map((x) => [x.pointIndex, x]));
   for (let k = 1; k < r.length - 1; k++) {
     const st = stopAt.get(k);
-    if (st) { add('stop', k, st.aerodrome, st.landingMs, st.takeoffMs, fin(st.landingMs) ? `landing ${z(st.landingMs)} – take-off ${z(st.takeoffMs)}` : 'stop'); continue; }
+    if (st) {
+      add(
+        'stop',
+        k,
+        st.aerodrome,
+        st.landingMs,
+        st.takeoffMs,
+        fin(st.landingMs) ? `landing ${z(st.landingMs)} – take-off ${z(st.takeoffMs)}` : 'stop',
+      );
+      continue;
+    }
     if (tng.has(k)) {
       const at = ms(i.legEndMin[k - 1]);
       add('touch-and-go', k, i.aerodromeOf(r[k]), at, at, fin(at) ? `touch-and-go ${z(at)}` : 'touch-and-go');
     }
   }
   if (r.length > 1) {
-    const ldg = ms(i.times?.landingMin), bon = ms(i.times?.blockOnMin);
-    add('destination', r.length - 1, i.destination, ldg, bon, fin(ldg) ? `landing ${z(ldg)} – block-on ${z(bon)}` : 'arrival');
+    const ldg = ms(i.times?.landingMin),
+      bon = ms(i.times?.blockOnMin);
+    add(
+      'destination',
+      r.length - 1,
+      i.destination,
+      ldg,
+      bon,
+      fin(ldg) ? `landing ${z(ldg)} – block-on ${z(bon)}` : 'arrival',
+    );
   }
   return out;
 }
 
-export interface AdWarning { level: 'danger' | 'warn' | 'info'; text: string }
+export interface AdWarning {
+  level: 'danger' | 'warn' | 'info';
+  text: string;
+}
 
 /** Editor warnings: closed (danger), NOTAM limits (warn), hours not known and ATS off (info). */
 export function aerodromeWarnings(checks: AdCheck[], routeLength: number): AdWarning[] {
@@ -89,11 +132,18 @@ export function aerodromeWarnings(checks: AdCheck[], routeLength: number): AdWar
   const timed = checks.filter((c) => fin(c.fromMs));
   for (const c of timed) {
     const name = `${AD_ROLE[c.role]} ${c.aerodrome.icao || c.aerodrome.name}`;
-    if (c.ad.status === 'closed') w.push({ level: 'danger', text: `${name} closed at ${clockZ(c.ad.at)}Z (${c.when}): ${c.ad.why} (${c.ad.source}).` });
+    if (c.ad.status === 'closed')
+      w.push({
+        level: 'danger',
+        text: `${name} closed at ${clockZ(c.ad.at)}Z (${c.when}): ${c.ad.why} (${c.ad.source}).`,
+      });
     for (const l of c.ad.limits) w.push({ level: 'warn', text: `${name}: NOTAM ${l.key}: ${l.summary}.` });
     // ATS NIL (uncontrolled aerodromes) is not news
     if (c.ad.status === 'open' && c.ats?.status === 'closed' && c.aerodrome.hours?.ats?.parsed.label !== 'NIL') {
-      w.push({ level: 'info', text: `${name}: ATS not in service at ${clockZ(c.ats.at)}Z: ${c.ats.why} (${c.ats.source}).` });
+      w.push({
+        level: 'info',
+        text: `${name}: ATS not in service at ${clockZ(c.ats.at)}Z: ${c.ats.why} (${c.ats.source}).`,
+      });
     }
   }
   return w;

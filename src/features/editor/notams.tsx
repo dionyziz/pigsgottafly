@@ -27,8 +27,15 @@ export interface NotamState {
 const Ctx = createContext<NotamState | null>(null);
 
 const EMPTY: NotamState = {
-  briefing: null, loading: false, error: null, refresh: () => {}, showAll: false, setShowAll: () => {},
-  selected: null, select: () => {}, selectedNotam: null,
+  briefing: null,
+  loading: false,
+  error: null,
+  refresh: () => {},
+  showAll: false,
+  setShowAll: () => {},
+  selected: null,
+  select: () => {},
+  selectedNotam: null,
 };
 
 /** The editor's NOTAM state; outside a <NotamProvider> an empty, inert state. */
@@ -50,26 +57,48 @@ export function NotamProvider({ children }: { children: ReactNode }) {
   const seq = useRef(0);
 
   // What the server's assessment depends on.
-  const key = useMemo(() => JSON.stringify([
-    doc.date, doc.blockOff, doc.taxiOutMin, doc.taxiInMin, doc.aircraftId,
-    doc.route.map((p) => [p.lat.toFixed(4), p.lon.toFixed(4), p.refId]),
-    Object.entries(doc.legOverrides).map(([k, o]) => [k, o?.altFt ?? null]),
-  ]), [doc.date, doc.blockOff, doc.taxiOutMin, doc.taxiInMin, doc.aircraftId, doc.route, doc.legOverrides]);
+  const key = useMemo(
+    () =>
+      JSON.stringify([
+        doc.date,
+        doc.blockOff,
+        doc.taxiOutMin,
+        doc.taxiInMin,
+        doc.aircraftId,
+        doc.route.map((p) => [p.lat.toFixed(4), p.lon.toFixed(4), p.refId]),
+        Object.entries(doc.legOverrides).map(([k, o]) => [k, o?.altFt ?? null]),
+      ]),
+    [doc.date, doc.blockOff, doc.taxiOutMin, doc.taxiInMin, doc.aircraftId, doc.route, doc.legOverrides],
+  );
   const settled = saveStatus === 'saved';
   const routeLen = doc.route.length;
 
   useEffect(() => {
     if (!settled) return;
-    if (routeLen === 0) { setBriefing(null); setLoading(false); setError(null); return; }
+    if (routeLen === 0) {
+      setBriefing(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     const my = ++seq.current;
     setLoading(true);
     const t = setTimeout(() => {
       fetchNotams(flight.id, { refresh: force > 0 }).then(
-        (b) => { if (my !== seq.current) return; setBriefing(b); setError(null); setLoading(false); },
+        (b) => {
+          if (my !== seq.current) return;
+          setBriefing(b);
+          setError(null);
+          setLoading(false);
+        },
         (e) => {
           if (my !== seq.current) return;
           setLoading(false);
-          setError(e instanceof ApiRequestError && e.offline ? 'Offline: NOTAMs not loaded.' : `NOTAMs could not be loaded (${(e as Error).message}).`);
+          setError(
+            e instanceof ApiRequestError && e.offline
+              ? 'Offline: NOTAMs not loaded.'
+              : `NOTAMs could not be loaded (${(e as Error).message}).`,
+          );
         },
       );
     }, DEBOUNCE_MS);
@@ -78,12 +107,28 @@ export function NotamProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => setForce((x) => x + 1), []);
   const select = useCallback((k: string | null) => setSelected(k), []);
-  const selectedNotam = useMemo(() => (selected && briefing ? briefing.notams.find((n) => n.key === selected) ?? null : null), [selected, briefing]);
+  const selectedNotam = useMemo(
+    () => (selected && briefing ? (briefing.notams.find((n) => n.key === selected) ?? null) : null),
+    [selected, briefing],
+  );
   // a NOTAM that left the briefing is no longer selected
-  useEffect(() => { if (selected && briefing && !briefing.notams.some((n) => n.key === selected)) setSelected(null); }, [selected, briefing]);
+  useEffect(() => {
+    if (selected && briefing && !briefing.notams.some((n) => n.key === selected)) setSelected(null);
+  }, [selected, briefing]);
 
-  const value = useMemo<NotamState>(() => ({
-    briefing, loading, error, refresh, showAll, setShowAll, selected, select, selectedNotam,
-  }), [briefing, loading, error, refresh, showAll, selected, select, selectedNotam]);
+  const value = useMemo<NotamState>(
+    () => ({
+      briefing,
+      loading,
+      error,
+      refresh,
+      showAll,
+      setShowAll,
+      selected,
+      select,
+      selectedNotam,
+    }),
+    [briefing, loading, error, refresh, showAll, selected, select, selectedNotam],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -56,26 +56,50 @@ export { aerodromeName };
  * Everything the cursor may snap to. Open-flightmaps duplicates of a charted point (same name
  * within 0.5 NM) are dropped so the charted one is used.
  */
-export function buildCandidates(aerodromes: RefAerodrome[], vfrPoints: RefVfrPoint[], waypoints: Waypoint[]): SnapCandidate[] {
+export function buildCandidates(
+  aerodromes: RefAerodrome[],
+  vfrPoints: RefVfrPoint[],
+  waypoints: Waypoint[],
+): SnapCandidate[] {
   const out: SnapCandidate[] = [];
   for (const a of aerodromes) {
     if (!isFinite(a.lat) || !isFinite(a.lon)) continue;
     const full = a.name.trim();
-    out.push({ kind: 'aerodrome', refId: a.id, name: aerodromeName(a), lat: a.lat, lon: a.lon, detail: a.icao ? full : a.source, penaltyPx: 0 });
+    out.push({
+      kind: 'aerodrome',
+      refId: a.id,
+      name: aerodromeName(a),
+      lat: a.lat,
+      lon: a.lon,
+      detail: a.icao ? full : a.source,
+      penaltyPx: 0,
+    });
   }
   const charted = vfrPoints.filter((v) => v.src !== 'ofm');
   for (const v of vfrPoints) {
     if (!isFinite(v.lat) || !isFinite(v.lon)) continue;
     if (v.src === 'ofm' && charted.some((c) => c.name === v.name && distanceNm(c, v) <= 0.5)) continue;
     out.push({
-      kind: 'vfr', refId: v.id, name: v.name, lat: v.lat, lon: v.lon,
+      kind: 'vfr',
+      refId: v.id,
+      name: v.name,
+      lat: v.lat,
+      lon: v.lon,
       detail: v.src === 'ofm' ? 'VFR point (open flightmaps)' : `VFR reporting point · ${v.chart} chart`,
       penaltyPx: v.src === 'ofm' ? 3 : 1,
     });
   }
   for (const w of waypoints) {
     if (!isFinite(w.lat) || !isFinite(w.lon)) continue;
-    out.push({ kind: 'waypoint', refId: w.id, name: w.name, lat: w.lat, lon: w.lon, detail: 'My waypoint', penaltyPx: 0 });
+    out.push({
+      kind: 'waypoint',
+      refId: w.id,
+      name: w.name,
+      lat: w.lat,
+      lon: w.lon,
+      detail: 'My waypoint',
+      penaltyPx: 0,
+    });
   }
   return out;
 }
@@ -84,7 +108,15 @@ export function buildCandidates(aerodromes: RefAerodrome[], vfrPoints: RefVfrPoi
 export function routeCandidates(route: RoutePoint[], exceptUid?: string): SnapCandidate[] {
   return route
     .filter((p) => p.uid !== exceptUid)
-    .map((p) => ({ kind: p.kind, refId: p.refId, name: p.name, lat: p.lat, lon: p.lon, detail: 'On this route', penaltyPx: 0 }));
+    .map((p) => ({
+      kind: p.kind,
+      refId: p.refId,
+      name: p.name,
+      lat: p.lat,
+      lon: p.lon,
+      detail: 'On this route',
+      penaltyPx: 0,
+    }));
 }
 
 /**
@@ -109,7 +141,11 @@ export function findSnap(
     if (d > radiusPx) continue;
     if (c.kind === 'aerodrome') aerodromes.push({ c, p, d });
     const score = d + c.penaltyPx;
-    if (score < bestScore) { bestScore = score; best = { cand: c, distPx: d }; bestPx = p; }
+    if (score < bestScore) {
+      bestScore = score;
+      best = { cand: c, distPx: d };
+      bestPx = p;
+    }
   }
   if (best && bestPx && best.cand.kind !== 'aerodrome') {
     // aerodrome priority: the nearest aerodrome in reach that the winner sits next to

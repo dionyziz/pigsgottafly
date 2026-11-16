@@ -17,7 +17,13 @@ export interface Autosave {
   retry: () => void;
 }
 
-export function useAutosave<T>({ value, enabled, save, keepalive, delay = 800 }: {
+export function useAutosave<T>({
+  value,
+  enabled,
+  save,
+  keepalive,
+  delay = 800,
+}: {
   value: T;
   /** False while the value must not be saved (validation errors, read-only). */
   enabled: boolean;
@@ -76,7 +82,9 @@ export function useAutosave<T>({ value, enabled, save, keepalive, delay = 800 }:
 
   // back online: try again
   useEffect(() => {
-    const online = () => { if (latest.current.json !== savedJson.current) void run(); };
+    const online = () => {
+      if (latest.current.json !== savedJson.current) void run();
+    };
     window.addEventListener('online', online);
     return () => window.removeEventListener('online', online);
   }, [run]);
@@ -103,14 +111,19 @@ export function useAutosave<T>({ value, enabled, save, keepalive, delay = 800 }:
   }, []);
 
   // leaving the page inside the app: save what is pending
-  useEffect(() => () => {
-    window.clearTimeout(timer.current);
-    const cur = latest.current;
-    if (!cur.enabled || cur.json === savedJson.current) return;
-    // after the save in flight, if any, so that the newer copy lands last
-    void (inFlight.current ?? Promise.resolve()).then(() => cur.save(cur.value)).catch(() => undefined);
-  }, []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      const cur = latest.current;
+      if (!cur.enabled || cur.json === savedJson.current) return;
+      // after the save in flight, if any, so that the newer copy lands last
+      void (inFlight.current ?? Promise.resolve()).then(() => cur.save(cur.value)).catch(() => undefined);
+    },
+    [],
+  );
 
-  const flush = useCallback(() => { void run(); }, [run]);
+  const flush = useCallback(() => {
+    void run();
+  }, [run]);
   return { status, error, dirty: json !== savedJson.current, flush, retry: flush };
 }

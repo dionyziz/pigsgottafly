@@ -55,7 +55,8 @@ export function fplInputFrom(o: {
   const dep = first ? endpointAerodrome(first, REF.aerodromes) : null;
   const dest = last ? endpointAerodrome(last, REF.aerodromes) : null;
   // an endpoint that is not an aerodrome still goes out (ZZZZ + DEP/ DEST/ with its position)
-  const asPoint = (p: typeof first | undefined): FplAerodrome | null => (p ? { icao: null, name: p.name, lat: p.lat, lon: p.lon } : null);
+  const asPoint = (p: typeof first | undefined): FplAerodrome | null =>
+    p ? { icao: null, name: p.name, lat: p.lat, lon: p.lon } : null;
   return {
     registration: ac?.registration ?? '',
     icaoType: ac?.icaoType ?? '',
@@ -69,7 +70,13 @@ export function fplInputFrom(o: {
     departure: dep ? toFpl(dep) : asPoint(first),
     destination: dest ? toFpl(dest) : asPoint(last),
     alternates: (flight.options.alternates || []).map(alternateOf).filter((x): x is FplAerodrome => !!x),
-    route: route.map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, kind: p.kind, icao: p.kind === 'aerodrome' ? endpointAerodrome(p, REF.aerodromes)?.icao ?? null : null })),
+    route: route.map((p) => ({
+      name: p.name,
+      lat: p.lat,
+      lon: p.lon,
+      kind: p.kind,
+      icao: p.kind === 'aerodrome' ? (endpointAerodrome(p, REF.aerodromes)?.icao ?? null) : null,
+    })),
     cruiseTasKt: ac?.cruiseTasKt ?? NaN,
     totalEetMin: totalEetMin(navlog),
     enduranceMin: fuel && isFinite(fuel.enduranceMin) ? fuel.enduranceMin : null,

@@ -7,7 +7,14 @@ import { WEIGHT_MAX_KG, WEIGHT_MIN_KG, type PersonField, type PersonForm } from 
 
 export type SetPerson = <K extends keyof PersonForm>(k: K, v: PersonForm[K]) => void;
 
-export function PersonFields({ f, set, issues, pilot = false, minimal = false, autoFocus = false }: {
+export function PersonFields({
+  f,
+  set,
+  issues,
+  pilot = false,
+  minimal = false,
+  autoFocus = false,
+}: {
   f: PersonForm;
   set: SetPerson;
   /** The messages of a field. */
@@ -19,47 +26,68 @@ export function PersonFields({ f, set, issues, pilot = false, minimal = false, a
   autoFocus?: boolean;
 }) {
   const text = (k: 'fullName' | 'phone' | 'nationality' | 'idNumber' | 'licenceNo') => ({
-    name: k, value: f[k] ?? '', onChange: (e: { target: { value: string } }) => set(k, e.target.value),
+    name: k,
+    value: f[k] ?? '',
+    onChange: (e: { target: { value: string } }) => set(k, e.target.value),
   });
   return (
     <>
       <div className="grid2">
         <Field label="Full name" req issues={issues('fullName')}>
-          <input {...text('fullName')} required autoComplete={pilot ? 'name' : 'off'} data-autofocus={autoFocus || undefined} autoFocus={autoFocus}
-            placeholder={pilot ? 'As on your licence' : 'As on their ID'} />
+          <input
+            {...text('fullName')}
+            required
+            autoComplete={pilot ? 'name' : 'off'}
+            data-autofocus={autoFocus || undefined}
+            autoFocus={autoFocus}
+            placeholder={pilot ? 'As on your licence' : 'As on their ID'}
+          />
         </Field>
         <Field label="Phone" req={pilot} issues={issues('phone')}>
           <input {...text('phone')} type="tel" autoComplete={pilot ? 'tel' : 'off'} placeholder="+30 …" />
         </Field>
       </div>
-      {!minimal && (<>
-        <div className="grid3">
-          <Field label="Date of birth" issues={issues('dateOfBirth')}>
-            <DateInput name="dateOfBirth" value={f.dateOfBirth} onChange={(e) => set('dateOfBirth', e.target.value)} />
-          </Field>
-          <Field label="Weight" issues={issues('weightKg')}>
-            <NumberField name="weightKg" value={f.weightKg} onChange={(v) => set('weightKg', v)} min={WEIGHT_MIN_KG} max={WEIGHT_MAX_KG} unit="kg" />
-          </Field>
-          <Field label="Nationality" issues={issues('nationality')}>
-            <input {...text('nationality')} placeholder="e.g. GREEK" />
-          </Field>
-        </div>
-        <div className="grid2">
-          <Field label="ID / passport number" issues={issues('idNumber')}>
-            <input {...text('idNumber')} placeholder="e.g. AK 123456" />
-          </Field>
-          {pilot && (
-            <Field label="Licence number" issues={issues('licenceNo')}>
-              <input {...text('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" />
+      {!minimal && (
+        <>
+          <div className="grid3">
+            <Field label="Date of birth" issues={issues('dateOfBirth')}>
+              <DateInput
+                name="dateOfBirth"
+                value={f.dateOfBirth}
+                onChange={(e) => set('dateOfBirth', e.target.value)}
+              />
+            </Field>
+            <Field label="Weight" issues={issues('weightKg')}>
+              <NumberField
+                name="weightKg"
+                value={f.weightKg}
+                onChange={(v) => set('weightKg', v)}
+                min={WEIGHT_MIN_KG}
+                max={WEIGHT_MAX_KG}
+                unit="kg"
+              />
+            </Field>
+            <Field label="Nationality" issues={issues('nationality')}>
+              <input {...text('nationality')} placeholder="e.g. GREEK" />
+            </Field>
+          </div>
+          <div className="grid2">
+            <Field label="ID / passport number" issues={issues('idNumber')}>
+              <input {...text('idNumber')} placeholder="e.g. AK 123456" />
+            </Field>
+            {pilot && (
+              <Field label="Licence number" issues={issues('licenceNo')}>
+                <input {...text('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" />
+              </Field>
+            )}
+          </div>
+          {!pilot && (
+            <Field label="Notes" issues={issues('notes')}>
+              <textarea name="notes" rows={2} value={f.notes} onChange={(e) => set('notes', e.target.value)} />
             </Field>
           )}
-        </div>
-        {!pilot && (
-          <Field label="Notes" issues={issues('notes')}>
-            <textarea name="notes" rows={2} value={f.notes} onChange={(e) => set('notes', e.target.value)} />
-          </Field>
-        )}
-      </>)}
+        </>
+      )}
     </>
   );
 }

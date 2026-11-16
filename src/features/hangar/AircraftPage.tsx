@@ -59,8 +59,9 @@ export function issueTarget(root: ParentNode, issue: Pick<Issue, 'path' | 'secti
   const parts = issue.path ? issue.path.split('.') : [];
   for (let n = parts.length; n > 0; n--) {
     const p = parts.slice(0, n).join('.').replace(/["\\]/g, '');
-    const el = root.querySelector<HTMLElement>(`[name="${p}"], [data-path="${p}"]`)
-      ?? root.querySelector<HTMLElement>(`[name^="${p}."], [data-path^="${p}."]`);
+    const el =
+      root.querySelector<HTMLElement>(`[name="${p}"], [data-path="${p}"]`) ??
+      root.querySelector<HTMLElement>(`[name^="${p}."], [data-path^="${p}."]`);
     if (el) return el;
   }
   return root.querySelector<HTMLElement>(`#${issue.section}`);
@@ -72,30 +73,64 @@ export function AircraftPage() {
   return (
     <Shell>
       {error && !data ? (
-        <EmptyState title={error instanceof ApiRequestError && error.status === 404 ? 'Aircraft not found' : 'Could not load the aircraft'} action={<Link to="/hangar" className="btn">Back to the hangar</Link>}>
+        <EmptyState
+          title={
+            error instanceof ApiRequestError && error.status === 404
+              ? 'Aircraft not found'
+              : 'Could not load the aircraft'
+          }
+          action={
+            <Link to="/hangar" className="btn">
+              Back to the hangar
+            </Link>
+          }
+        >
           {error instanceof ApiRequestError && error.status === 404 ? 'It may have been deleted.' : error.message}
         </EmptyState>
-      ) : !data ? <Loading /> : <AircraftEditor key={data.id} aircraft={data} onSaved={setData} />}
+      ) : !data ? (
+        <Loading />
+      ) : (
+        <AircraftEditor key={data.id} aircraft={data} onSaved={setData} />
+      )}
     </Shell>
   );
 }
 
 /** Header status of the autosave: "Saving…", "Saved", or "Not saved" (the problem bar says why). */
 function SaveStatus({ status, blocked }: { status: AutosaveStatus; blocked: boolean }) {
-  const [text, cls] = blocked || status === 'failed' ? ['Not saved', 'danger-text']
-    : status === 'pending' || status === 'saving' ? ['Saving…', 'muted']
-    : status === 'saved' ? ['Saved', 'muted'] : ['', ''];
-  return <span className={'ac-save-status ' + cls} data-testid="save-status" data-status={blocked ? 'blocked' : status} aria-live="polite">{text}</span>;
+  const [text, cls] =
+    blocked || status === 'failed'
+      ? ['Not saved', 'danger-text']
+      : status === 'pending' || status === 'saving'
+        ? ['Saving…', 'muted']
+        : status === 'saved'
+          ? ['Saved', 'muted']
+          : ['', ''];
+  return (
+    <span
+      className={'ac-save-status ' + cls}
+      data-testid="save-status"
+      data-status={blocked ? 'blocked' : status}
+      aria-live="polite"
+    >
+      {text}
+    </span>
+  );
 }
 
 /** The edits as they will be sent on unload (fetch keepalive survives the page). */
 function keepaliveSave(id: string, input: AircraftInput) {
   try {
     void fetch(`/api/aircraft/${encodeURIComponent(id)}`, {
-      method: 'PUT', keepalive: true, credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+      method: 'PUT',
+      keepalive: true,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
     }).catch(() => undefined);
-  } catch { /* the body is over the keepalive limit: the page is going anyway */ }
+  } catch {
+    /* the body is over the keepalive limit: the page is going anyway */
+  }
 }
 
 function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSaved: (a: HangarAircraft) => void }) {
@@ -119,22 +154,39 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
   const spy = useScrollSpy(SECTION_IDS);
 
   const edit = useCallback((fn: (d: AircraftInput) => void) => {
-    setDraft((d) => { const c: AircraftInput = structuredClone(d); fn(c); return c; });
+    setDraft((d) => {
+      const c: AircraftInput = structuredClone(d);
+      fn(c);
+      return c;
+    });
   }, []);
 
   // autosave: errors hold it back (the bar lists them); the server's copy keeps photo and access current
   const latestAircraft = useRef(aircraft);
   latestAircraft.current = aircraft;
-  const save = useCallback(async (input: AircraftInput) => {
-    const saved = await api.aircraft.update(aircraft.id, input);
-    // the photo may have changed meanwhile (it is not part of the save)
-    onSaved({ ...saved, photo: latestAircraft.current.photo });
-  }, [aircraft.id, onSaved]);
-  const autosave = useAutosave({ value: draft, enabled: !readOnly && errors.length === 0, save, keepalive: (v) => keepaliveSave(aircraft.id, v) });
+  const save = useCallback(
+    async (input: AircraftInput) => {
+      const saved = await api.aircraft.update(aircraft.id, input);
+      // the photo may have changed meanwhile (it is not part of the save)
+      onSaved({ ...saved, photo: latestAircraft.current.photo });
+    },
+    [aircraft.id, onSaved],
+  );
+  const autosave = useAutosave({
+    value: draft,
+    enabled: !readOnly && errors.length === 0,
+    save,
+    keepalive: (v) => keepaliveSave(aircraft.id, v),
+  });
   const blocked = autosave.dirty && errors.length > 0;
 
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); autosave.flush(); } };
+    const key = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        autosave.flush();
+      }
+    };
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
   }, [autosave.flush]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -142,16 +194,27 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
   // the warnings list closes on a click elsewhere or Escape
   useEffect(() => {
     if (!showWarnings) return;
-    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.ac-warn')) setShowWarnings(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowWarnings(false); };
+    const down = (e: PointerEvent) => {
+      if (!(e.target as Element).closest?.('.ac-warn')) setShowWarnings(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowWarnings(false);
+    };
     document.addEventListener('pointerdown', down);
     document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', esc); };
+    return () => {
+      document.removeEventListener('pointerdown', down);
+      document.removeEventListener('keydown', esc);
+    };
   }, [showWarnings]);
 
   const makeDefault = async () => {
-    try { setPilot(await api.me.update({ defaultAircraftId: aircraft.id })); toast(`${aircraft.registration} is now your default aircraft`); }
-    catch (e) { toast(errorMessage(e)); }
+    try {
+      setPilot(await api.me.update({ defaultAircraftId: aircraft.id }));
+      toast(`${aircraft.registration} is now your default aircraft`);
+    } catch (e) {
+      toast(errorMessage(e));
+    }
   };
 
   const counts = (s: SectionId) => {
@@ -179,17 +242,35 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           </Link>
         </div>
         <div className="ac-head-main">
-          <PhotoControl aircraftId={aircraft.id} registration={aircraft.registration} photo={aircraft.photo} placeholder={aircraft.placeholder}
-            canEdit={!readOnly} onChange={(p) => onSaved({ ...latestAircraft.current, photo: p })} />
+          <PhotoControl
+            aircraftId={aircraft.id}
+            registration={aircraft.registration}
+            photo={aircraft.photo}
+            placeholder={aircraft.placeholder}
+            canEdit={!readOnly}
+            onChange={(p) => onSaved({ ...latestAircraft.current, photo: p })}
+          />
           <div className="ac-title">
             <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
-            <span className="ac-sub">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</span>
+            <span className="ac-sub">
+              {[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator]
+                .filter(Boolean)
+                .join(' · ') || 'Type not set'}
+            </span>
             {isDefault && <Chip tone="ok">Default</Chip>}
             <SharedChip access={aircraft.access} />
             {warnings.length > 0 && (
               <span className="ac-warn">
-                <button type="button" className="ac-warn-btn" onClick={() => setShowWarnings((v) => !v)} aria-expanded={showWarnings} data-testid="warnings-toggle">
-                  <Chip tone="warn">{warnings.length} warning{warnings.length > 1 ? 's' : ''}</Chip>
+                <button
+                  type="button"
+                  className="ac-warn-btn"
+                  onClick={() => setShowWarnings((v) => !v)}
+                  aria-expanded={showWarnings}
+                  data-testid="warnings-toggle"
+                >
+                  <Chip tone="warn">
+                    {warnings.length} warning{warnings.length > 1 ? 's' : ''}
+                  </Chip>
                 </button>
                 {showWarnings && (
                   <ul className="issue-pop below" data-testid="issue-pop">
@@ -208,13 +289,23 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             {!readOnly && <SaveStatus status={autosave.status} blocked={blocked} />}
           </div>
           <span className="spacer" />
-          <button type="button" onClick={() => setSharing(true)} data-testid="share-aircraft">Share</button>
-          <KebabMenu label="Aircraft actions" items={[
-            ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault() }]),
-            role === 'owner'
-              ? { label: 'Delete aircraft', onSelect: () => setDeleting(true), danger: true, separator: !isDefault }
-              : { label: 'Remove from my hangar', onSelect: () => setLeaving(true), danger: true, separator: !isDefault },
-          ]} />
+          <button type="button" onClick={() => setSharing(true)} data-testid="share-aircraft">
+            Share
+          </button>
+          <KebabMenu
+            label="Aircraft actions"
+            items={[
+              ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault() }]),
+              role === 'owner'
+                ? { label: 'Delete aircraft', onSelect: () => setDeleting(true), danger: true, separator: !isDefault }
+                : {
+                    label: 'Remove from my hangar',
+                    onSelect: () => setLeaving(true),
+                    danger: true,
+                    separator: !isDefault,
+                  },
+            ]}
+          />
         </div>
       </div>
 
@@ -224,23 +315,47 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             const c = counts(s.id);
             const on = spy.active === s.id;
             return (
-              <a key={s.id} href={`#${s.id}`} className={on ? 'active' : undefined} aria-current={on ? 'location' : undefined}
-                onClick={(e) => { e.preventDefault(); spy.go(s.id); }}>
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className={on ? 'active' : undefined}
+                aria-current={on ? 'location' : undefined}
+                onClick={(e) => {
+                  e.preventDefault();
+                  spy.go(s.id);
+                }}
+              >
                 <span>{s.label}</span>
-                {c.e > 0 ? <Chip tone="danger" count sm title={`${c.e} error${c.e > 1 ? 's' : ''}`}>{c.e}</Chip> : c.w > 0 ? <Chip tone="warn" count sm title={`${c.w} warning${c.w > 1 ? 's' : ''}`}>{c.w}</Chip> : null}
+                {c.e > 0 ? (
+                  <Chip tone="danger" count sm title={`${c.e} error${c.e > 1 ? 's' : ''}`}>
+                    {c.e}
+                  </Chip>
+                ) : c.w > 0 ? (
+                  <Chip tone="warn" count sm title={`${c.w} warning${c.w > 1 ? 's' : ''}`}>
+                    {c.w}
+                  </Chip>
+                ) : null}
               </a>
             );
           })}
         </nav>
-        <form className="ac-main" onSubmit={(e) => { e.preventDefault(); autosave.flush(); }} onBlur={() => autosave.flush()} noValidate>
+        <form
+          className="ac-main"
+          onSubmit={(e) => {
+            e.preventDefault();
+            autosave.flush();
+          }}
+          onBlur={() => autosave.flush()}
+          noValidate
+        >
           <fieldset className="ac-fieldset" disabled={readOnly}>
-          <IdentitySection {...props} />
-          <FplSection {...props} />
-          <SpeedsSection {...props} />
-          <FuelSection {...props} />
-          <MassBalanceSection {...props} />
-          <PerformanceSection {...props} />
-          <CompassSection {...props} today={today} aircraftId={aircraft.id} />
+            <IdentitySection {...props} />
+            <FplSection {...props} />
+            <SpeedsSection {...props} />
+            <FuelSection {...props} />
+            <MassBalanceSection {...props} />
+            <PerformanceSection {...props} />
+            <CompassSection {...props} today={today} aircraftId={aircraft.id} />
           </fieldset>
           <DocumentsSection scope={aircraftScope(aircraft.id)} canEdit={!readOnly} />
 
@@ -252,7 +367,9 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           ) : errors.length > 0 ? (
             <div className="ac-problem card" role="region" aria-label="Not saved" data-testid="problem-bar">
               <span className="ac-problem-head">
-                <Chip tone="danger">{errors.length} error{errors.length > 1 ? 's' : ''}</Chip>
+                <Chip tone="danger">
+                  {errors.length} error{errors.length > 1 ? 's' : ''}
+                </Chip>
                 {autosave.dirty && <span className="danger-text">Changes not saved</span>}
               </span>
               <ul className="ac-problem-list">
@@ -270,38 +387,66 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             <div className="ac-problem card" role="alert" data-testid="problem-bar">
               <span className="ac-problem-head">
                 <span className="danger-text">
-                  {saveError instanceof ApiRequestError && saveError.offline ? 'Offline: changes not saved yet' : `Not saved: ${errorMessage(saveError)}`}
+                  {saveError instanceof ApiRequestError && saveError.offline
+                    ? 'Offline: changes not saved yet'
+                    : `Not saved: ${errorMessage(saveError)}`}
                 </span>
               </span>
               <span className="spacer" />
-              {duplicate && <button type="button" className="ghost sm" onClick={() => goTo({ path: 'registration', section: 'identity' })}>Registration</button>}
-              <button type="button" className="sm" onClick={autosave.retry} data-testid="save-retry">Retry</button>
+              {duplicate && (
+                <button
+                  type="button"
+                  className="ghost sm"
+                  onClick={() => goTo({ path: 'registration', section: 'identity' })}
+                >
+                  Registration
+                </button>
+              )}
+              <button type="button" className="sm" onClick={autosave.retry} data-testid="save-retry">
+                Retry
+              </button>
             </div>
           ) : null}
         </form>
       </div>
 
       {sharing && (
-        <ShareDialog id={aircraft.id} name={aircraft.registration} onClose={() => setSharing(false)}
-          onLeft={() => { if (isDefault) setPilot({ ...pilot, defaultAircraftId: null }); toast(`Removed ${aircraft.registration} from your hangar`); navigate('/hangar'); }} />
+        <ShareDialog
+          id={aircraft.id}
+          name={aircraft.registration}
+          onClose={() => setSharing(false)}
+          onLeft={() => {
+            if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
+            toast(`Removed ${aircraft.registration} from your hangar`);
+            navigate('/hangar');
+          }}
+        />
       )}
       {leaving && (
-        <ConfirmDialog title={`Remove ${aircraft.registration} from your hangar?`} confirmLabel="Remove" onClose={() => setLeaving(false)}
+        <ConfirmDialog
+          title={`Remove ${aircraft.registration} from your hangar?`}
+          confirmLabel="Remove"
+          onClose={() => setLeaving(false)}
           onConfirm={async () => {
             await api.shares.remove(aircraft.id, pilot.id);
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Removed ${aircraft.registration} from your hangar`);
             navigate('/hangar');
-          }} />
+          }}
+        />
       )}
       {deleting && (
-        <ConfirmDialog title={`Delete ${aircraft.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(false)}
+        <ConfirmDialog
+          title={`Delete ${aircraft.registration}?`}
+          confirmLabel="Delete"
+          onClose={() => setDeleting(false)}
           onConfirm={async () => {
             await api.aircraft.remove(aircraft.id);
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Deleted ${aircraft.registration}`);
             navigate('/hangar');
-          }} />
+          }}
+        />
       )}
     </div>
   );

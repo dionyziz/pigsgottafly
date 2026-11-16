@@ -29,7 +29,10 @@ export function useExportCalc(flight: Flight): ExportCalcState {
   const ac = useFlightAircraft(flight.aircraftId);
   const aircraft = ac.aircraft;
   const wx = useFlightWeather({
-    date: flight.date, route: flight.route, options: flight.options, model: flight.options.windModel || pilot.settings.windModel,
+    date: flight.date,
+    route: flight.route,
+    options: flight.options,
+    model: flight.options.windModel || pilot.settings.windModel,
   });
   const { weather, metar } = wx;
 
@@ -38,10 +41,31 @@ export function useExportCalc(flight: Flight): ExportCalcState {
   const calc = useMemo(() => {
     if (loading) return null;
     return computeExportCalc({
-      doc: flight, aircraft, settings: pilot.settings, weather, metar, nowMs: Date.now(),
-      ref: { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES, runwaysOf },
+      doc: flight,
+      aircraft,
+      settings: pilot.settings,
+      weather,
+      metar,
+      nowMs: Date.now(),
+      ref: {
+        aerodromes: REF.aerodromes,
+        vfrPoints: REF.vfrPoints,
+        vfrRoutes: REF.vfrRoutes,
+        sunTables: SUN_TABLES,
+        runwaysOf,
+      },
     });
   }, [loading, flight, aircraft, pilot, weather, metar]);
 
-  return { loading, pilot, aircraft, weather, metar, weatherPending: wx.weatherLoading, refresh: wx.refresh, calc, nowMs };
+  return {
+    loading,
+    pilot,
+    aircraft,
+    weather,
+    metar,
+    weatherPending: wx.weatherLoading,
+    refresh: wx.refresh,
+    calc,
+    nowMs,
+  };
 }

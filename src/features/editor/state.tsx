@@ -60,7 +60,12 @@ export function useEditor(): EditorValue {
 }
 
 /** Summary fields the lobby shows; distance/time/fuel come from the navlog when available. */
-export function summaryOf(doc: FlightDoc, aircraft: Aircraft | null, legs: LegGeometry[], navlog?: { eteMin: number; fuelL: number } | null) {
+export function summaryOf(
+  doc: FlightDoc,
+  aircraft: Aircraft | null,
+  legs: LegGeometry[],
+  navlog?: { eteMin: number; fuelL: number } | null,
+) {
   return {
     ...EMPTY_SUMMARY,
     title: doc.title.trim() || autoTitle(doc.route),
@@ -88,7 +93,17 @@ interface Props {
   children: ReactNode;
 }
 
-export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, waypoints, passengersLoaded = true, reloadLists, children }: Props) {
+export function EditorProvider({
+  flight,
+  initialDoc,
+  pilot,
+  hangar,
+  passengers,
+  waypoints,
+  passengersLoaded = true,
+  reloadLists,
+  children,
+}: Props) {
   const [doc, setDoc] = useState<FlightDoc>(initialDoc);
   const hist = useRef({ past: [] as FlightDoc[], future: [] as FlightDoc[], key: '', t: 0 });
   const [, bump] = useState(0);
@@ -100,59 +115,80 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]?.altFt), [legs, doc.legOverrides]);
   const requestTimes = useMemo(() => requestTiming(doc.route, doc.options), [doc.route, doc.options]);
   const altitudeDefaults = useMemo(
-    () => defaultAltitudes(doc.route, { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes }, overrides, requestTimes.patternPoints),
+    () =>
+      defaultAltitudes(
+        doc.route,
+        { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes },
+        overrides,
+        requestTimes.patternPoints,
+      ),
     [doc.route, overrides, requestTimes],
   );
-  const altitudesFt = useMemo(() => altitudeDefaults.map((d, i) => overrides[i] ?? d.altFt), [altitudeDefaults, overrides]);
+  const altitudesFt = useMemo(
+    () => altitudeDefaults.map((d, i) => overrides[i] ?? d.altFt),
+    [altitudeDefaults, overrides],
+  );
 
   // The current doc mirrored in a ref so updates compose synchronously and side effects (history,
   // saving) stay out of React state updaters (which StrictMode runs twice).
   const docRef = useRef(doc);
-  const commit = useCallback((next: FlightDoc) => {
-    docRef.current = next;
-    setDoc(next);
-    flightStore.save(flight.id, next);
-    bump((x) => x + 1);
-  }, [flight.id]);
+  const commit = useCallback(
+    (next: FlightDoc) => {
+      docRef.current = next;
+      setDoc(next);
+      flightStore.save(flight.id, next);
+      bump((x) => x + 1);
+    },
+    [flight.id],
+  );
 
-  const update = useCallback<EditorValue['update']>((fn, opts) => {
-    const cur = docRef.current;
-    const raw = fn(cur);
-    if (raw === cur) return;
-    const h = hist.current;
-    const now = Date.now();
-    if (!(opts?.coalesce && opts.coalesce === h.key && now - h.t < 1500)) {
-      h.past.push(cur);
-      if (h.past.length > 300) h.past.shift();
-    }
-    h.future = [];
-    h.key = opts?.coalesce ?? '';
-    h.t = now;
-    const ac = hangar.find((a) => a.id === raw.aircraftId) ?? null;
-    const sum = summaryOf(raw, ac, buildLegs(raw.route, raw.date));
-    commit({ ...raw, summary: { ...sum, eteMin: raw.summary.eteMin, fuelL: raw.summary.fuelL } });
-  }, [commit, hangar]);
+  const update = useCallback<EditorValue['update']>(
+    (fn, opts) => {
+      const cur = docRef.current;
+      const raw = fn(cur);
+      if (raw === cur) return;
+      const h = hist.current;
+      const now = Date.now();
+      if (!(opts?.coalesce && opts.coalesce === h.key && now - h.t < 1500)) {
+        h.past.push(cur);
+        if (h.past.length > 300) h.past.shift();
+      }
+      h.future = [];
+      h.key = opts?.coalesce ?? '';
+      h.t = now;
+      const ac = hangar.find((a) => a.id === raw.aircraftId) ?? null;
+      const sum = summaryOf(raw, ac, buildLegs(raw.route, raw.date));
+      commit({ ...raw, summary: { ...sum, eteMin: raw.summary.eteMin, fuelL: raw.summary.fuelL } });
+    },
+    [commit, hangar],
+  );
 
-  const setDerived = useCallback<EditorValue['setDerived']>(({ eteMin, fuelL }) => {
-    const cur = docRef.current;
-    // recompute the whole summary from the current document, so it can never lag behind the route
-    const ac = hangar.find((a) => a.id === cur.aircraftId) ?? null;
-    const summary = { ...summaryOf(cur, ac, buildLegs(cur.route, cur.date)), eteMin, fuelL };
-    if (JSON.stringify(summary) === JSON.stringify(cur.summary)) return;
-    const next = { ...cur, summary };
-    // history entries keep their own summaries; the next recompute fixes them up after undo/redo
-    docRef.current = next;
-    setDoc(next);
-    flightStore.save(flight.id, next);
-  }, [flight.id, hangar]);
+  const setDerived = useCallback<EditorValue['setDerived']>(
+    ({ eteMin, fuelL }) => {
+      const cur = docRef.current;
+      // recompute the whole summary from the current document, so it can never lag behind the route
+      const ac = hangar.find((a) => a.id === cur.aircraftId) ?? null;
+      const summary = { ...summaryOf(cur, ac, buildLegs(cur.route, cur.date)), eteMin, fuelL };
+      if (JSON.stringify(summary) === JSON.stringify(cur.summary)) return;
+      const next = { ...cur, summary };
+      // history entries keep their own summaries; the next recompute fixes them up after undo/redo
+      docRef.current = next;
+      setDoc(next);
+      flightStore.save(flight.id, next);
+    },
+    [flight.id, hangar],
+  );
 
-  const setMapLayers = useCallback((mapLayers: MapLayers) => {
-    const cur = docRef.current;
-    const next = { ...cur, options: { ...cur.options, mapLayers } };
-    docRef.current = next;
-    setDoc(next);
-    flightStore.save(flight.id, next);
-  }, [flight.id]);
+  const setMapLayers = useCallback(
+    (mapLayers: MapLayers) => {
+      const cur = docRef.current;
+      const next = { ...cur, options: { ...cur.options, mapLayers } };
+      docRef.current = next;
+      setDoc(next);
+      flightStore.save(flight.id, next);
+    },
+    [flight.id],
+  );
   /** A history entry with the current map layers (they are not part of undo). */
   const withView = (d: FlightDoc): FlightDoc => {
     const l = docRef.current.options.mapLayers;
@@ -177,10 +213,27 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
   }, [commit]);
 
   const value: EditorValue = {
-    flight, doc, update, setDerived, setMapLayers, undo, redo,
-    canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0, saveStatus,
-    pilot, hangar, passengers, waypoints, passengersLoaded, reloadLists, aircraft, ref: REF,
-    legs, altitudeDefaults, altitudesFt,
+    flight,
+    doc,
+    update,
+    setDerived,
+    setMapLayers,
+    undo,
+    redo,
+    canUndo: hist.current.past.length > 0,
+    canRedo: hist.current.future.length > 0,
+    saveStatus,
+    pilot,
+    hangar,
+    passengers,
+    waypoints,
+    passengersLoaded,
+    reloadLists,
+    aircraft,
+    ref: REF,
+    legs,
+    altitudeDefaults,
+    altitudesFt,
   };
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
 }

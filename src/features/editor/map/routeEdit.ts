@@ -14,7 +14,8 @@ export function appendPoint(route: RoutePoint[], p: RoutePoint): RoutePoint[] {
  */
 export function isRoundTrip(route: RoutePoint[]): boolean {
   if (route.length < 2) return false;
-  const a = route[0], b = route[route.length - 1];
+  const a = route[0],
+    b = route[route.length - 1];
   if (a.kind !== 'custom' && a.refId && a.kind === b.kind && a.refId === b.refId) return true;
   return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
 }
@@ -70,7 +71,12 @@ export function sameIdentity(a: Pick<RoutePoint, 'kind' | 'refId'>, b: Pick<Rout
  * different aerodrome / VFR point / waypoint, or a known point dropped as a custom one) it gets a new
  * uid, so its legs are new legs: their overrides and the old point's requests are dropped.
  */
-export function movePoint(route: RoutePoint[], uid: string, p: Omit<RoutePoint, 'uid'>, newUid: () => string): RoutePoint[] {
+export function movePoint(
+  route: RoutePoint[],
+  uid: string,
+  p: Omit<RoutePoint, 'uid'>,
+  newUid: () => string,
+): RoutePoint[] {
   const old = route.find((q) => q.uid === uid);
   const id = old && !sameIdentity(old, p) ? newUid() : uid;
   return route.map((q) => (q.uid === uid ? { ...p, uid: id } : q));
@@ -85,7 +91,10 @@ export function renamePoint(route: RoutePoint[], uid: string, name: string): Rou
 }
 
 /** Leg overrides restricted to the legs of this route (drops legs that no longer exist). */
-export function pruneOverrides(overrides: Record<string, LegOverride>, route: RoutePoint[]): Record<string, LegOverride> {
+export function pruneOverrides(
+  overrides: Record<string, LegOverride>,
+  route: RoutePoint[],
+): Record<string, LegOverride> {
   const keep = new Set<string>();
   for (let i = 0; i + 1 < route.length; i++) keep.add(legKey(route[i], route[i + 1]));
   const out: Record<string, LegOverride> = {};
@@ -98,7 +107,11 @@ export function pruneOverrides(overrides: Record<string, LegOverride>, route: Ro
 }
 
 /** Set (or with null, remove) the altitude override of one leg; empty overrides are dropped. */
-export function setAltitudeOverride(overrides: Record<string, LegOverride>, key: string, altFt: number | null): Record<string, LegOverride> {
+export function setAltitudeOverride(
+  overrides: Record<string, LegOverride>,
+  key: string,
+  altFt: number | null,
+): Record<string, LegOverride> {
   const cur = overrides[key] ?? {};
   if (altFt === null) {
     if (cur.altFt === undefined) return overrides;

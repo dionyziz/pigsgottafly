@@ -18,22 +18,41 @@ export function useScrollSpy(ids: readonly string[], ready = true): { active: st
     const atBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
     const pick = () => {
       const pin = pinned.current;
-      if (pin && Date.now() < pin.until) { setActive(pin.id); return; }
+      if (pin && Date.now() < pin.until) {
+        setActive(pin.id);
+        return;
+      }
       pinned.current = null;
-      if (atBottom()) { setActive(els[els.length - 1].id); return; }
-      if (window.scrollY < 4) { setActive(els[0].id); return; }
+      if (atBottom()) {
+        setActive(els[els.length - 1].id);
+        return;
+      }
+      if (window.scrollY < 4) {
+        setActive(els[0].id);
+        return;
+      }
       const first = els.find((e) => inBand.has(e.id));
       if (first) setActive(first.id);
     };
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) (e.isIntersecting ? inBand.add(e.target.id) : inBand.delete(e.target.id));
-      pick();
-    }, { rootMargin: '-25% 0px -74% 0px', threshold: 0 });
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) e.isIntersecting ? inBand.add(e.target.id) : inBand.delete(e.target.id);
+        pick();
+      },
+      { rootMargin: '-25% 0px -74% 0px', threshold: 0 },
+    );
     els.forEach((e) => io.observe(e));
     let frame = 0;
-    const scroll = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(pick); };
+    const scroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(pick);
+    };
     window.addEventListener('scroll', scroll, { passive: true });
-    return () => { io.disconnect(); window.removeEventListener('scroll', scroll); cancelAnimationFrame(frame); };
+    return () => {
+      io.disconnect();
+      window.removeEventListener('scroll', scroll);
+      cancelAnimationFrame(frame);
+    };
   }, [key, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #section in the URL on arrival
@@ -41,7 +60,10 @@ export function useScrollSpy(ids: readonly string[], ready = true): { active: st
     if (!ready) return;
     const id = decodeURIComponent(window.location.hash.slice(1));
     if (!ids.includes(id)) return;
-    const t = window.setTimeout(() => { document.getElementById(id)?.scrollIntoView({ block: 'start' }); setActive(id); }, 50);
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ block: 'start' });
+      setActive(id);
+    }, 50);
     return () => window.clearTimeout(t);
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -51,7 +73,11 @@ export function useScrollSpy(ids: readonly string[], ready = true): { active: st
     pinned.current = { id, until: Date.now() + 900 };
     setActive(id);
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    try { history.replaceState(history.state, '', `${location.pathname}${location.search}#${id}`); } catch { /* ignore */ }
+    try {
+      history.replaceState(history.state, '', `${location.pathname}${location.search}#${id}`);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   return { active, go };

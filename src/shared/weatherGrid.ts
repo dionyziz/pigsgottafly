@@ -13,9 +13,26 @@ import { isoDay } from './date.js';
 /** Pressure levels of the winds aloft and of the cloud layers (hPa). */
 export const LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600] as const;
 /** Surface variables of the wind set. */
-export const SURFACE = ['pressure_msl', 'surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high'] as const;
+export const SURFACE = [
+  'pressure_msl',
+  'surface_pressure',
+  'temperature_2m',
+  'dew_point_2m',
+  'wind_speed_10m',
+  'wind_direction_10m',
+  'cloud_cover_low',
+  'cloud_cover_mid',
+  'cloud_cover_high',
+] as const;
 /** Surface variables of the hazard set. */
-export const HAZARD_SURFACE = ['weather_code', 'cape', 'visibility', 'cloud_cover_low', 'temperature_2m', 'dew_point_2m'] as const;
+export const HAZARD_SURFACE = [
+  'weather_code',
+  'cape',
+  'visibility',
+  'cloud_cover_low',
+  'temperature_2m',
+  'dew_point_2m',
+] as const;
 
 export type WeatherGridKind = 'wind' | 'hazard';
 
@@ -23,7 +40,8 @@ export type WeatherGridKind = 'wind' | 'hazard';
 export function gridVariables(kind: WeatherGridKind): string[] {
   const vars: string[] = [];
   if (kind === 'wind') {
-    for (const l of LEVELS) vars.push(`wind_speed_${l}hPa`, `wind_direction_${l}hPa`, `temperature_${l}hPa`, `geopotential_height_${l}hPa`);
+    for (const l of LEVELS)
+      vars.push(`wind_speed_${l}hPa`, `wind_direction_${l}hPa`, `temperature_${l}hPa`, `geopotential_height_${l}hPa`);
     vars.push(...SURFACE);
   } else {
     vars.push(...HAZARD_SURFACE);
@@ -38,10 +56,16 @@ export const DEFAULT_MODEL: WindModel = 'ecmwf_ifs025';
  * Grid spacing of each model over Greece, degrees: ECMWF IFS 0.25° and GFS 0.25° (regular grids
  * through 0°), ICON-EU 0.0625°. Open-Meteo's best match mixes models: the finest of them.
  */
-export const GRID_STEP_DEG: Record<WindModel, number> = { ecmwf_ifs025: 0.25, gfs_seamless: 0.25, icon_seamless: 0.0625, best_match: 0.0625 };
+export const GRID_STEP_DEG: Record<WindModel, number> = {
+  ecmwf_ifs025: 0.25,
+  gfs_seamless: 0.25,
+  icon_seamless: 0.0625,
+  best_match: 0.0625,
+};
 /** Hazard corridor samples use the 0.25° grid whatever the model (a node of every model's grid). */
 export const HAZARD_STEP_DEG = 0.25;
-export const gridStep = (kind: WeatherGridKind, model: WindModel): number => (kind === 'hazard' ? HAZARD_STEP_DEG : GRID_STEP_DEG[model] ?? 0.0625);
+export const gridStep = (kind: WeatherGridKind, model: WindModel): number =>
+  kind === 'hazard' ? HAZARD_STEP_DEG : (GRID_STEP_DEG[model] ?? 0.0625);
 
 /** Nearest grid node of a point. */
 export function snapToGrid(p: { lat: number; lon: number }, step: number): { lat: number; lon: number } {
@@ -57,17 +81,27 @@ export const pointKey = (p: { lat: number; lon: number }): string => `p:${coord(
 export function parseLocKey(key: string): { point: boolean; lat: number; lon: number } | null {
   const m = /^(p:)?(-?\d{1,2}(?:\.\d{1,4})?),(-?\d{1,3}(?:\.\d{1,4})?)$/.exec(key);
   if (!m) return null;
-  const lat = +m[2], lon = +m[3];
+  const lat = +m[2],
+    lon = +m[3];
   if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return null;
   return { point: !!m[1], lat, lon };
 }
 
 /** Forecast length of each model on Open-Meteo, days after today (ICON global/EU ~7.5 days). */
-export const MODEL_HORIZON_DAYS: Record<WindModel, number> = { ecmwf_ifs025: 15, gfs_seamless: 16, icon_seamless: 7, best_match: 16 };
+export const MODEL_HORIZON_DAYS: Record<WindModel, number> = {
+  ecmwf_ifs025: 15,
+  gfs_seamless: 16,
+  icon_seamless: 7,
+  best_match: 16,
+};
 /** The forecast endpoint serves this many past days; older dates go to the historical-forecast API. */
 export const FORECAST_PAST_DAYS = 92;
 /** Open-Meteo metadata ids of the model actually used over Greece (seamless → the regional run). */
-export const MODEL_META_IDS: Partial<Record<WindModel, string>> = { ecmwf_ifs025: 'ecmwf_ifs025', gfs_seamless: 'ncep_gfs025', icon_seamless: 'dwd_icon_eu' };
+export const MODEL_META_IDS: Partial<Record<WindModel, string>> = {
+  ecmwf_ifs025: 'ecmwf_ifs025',
+  gfs_seamless: 'ncep_gfs025',
+  icon_seamless: 'dwd_icon_eu',
+};
 export const isWindModel = (m: string): m is WindModel => m in MODEL_HORIZON_DAYS;
 
 export type OpenMeteoEndpoint = 'forecast' | 'historical';
@@ -81,14 +115,19 @@ export type ForecastAvailability =
   | { kind: 'invalid' };
 
 /** Whether forecast data can be had for a date with this model, and from which endpoint. */
-export function forecastAvailability(date: IsoDate, model: WindModel, nowMs: number = Date.now()): ForecastAvailability {
+export function forecastAvailability(
+  date: IsoDate,
+  model: WindModel,
+  nowMs: number = Date.now(),
+): ForecastAvailability {
   const d = dayMs(date);
   if (!isFinite(d)) return { kind: 'invalid' };
   const today = dayMs(isoDay(nowMs));
   const horizon = MODEL_HORIZON_DAYS[model] ?? 15;
   const last = today + horizon * DAY;
   if (d > last) return { kind: 'too-far', availableFrom: isoDay(d - horizon * DAY), lastDate: isoDay(last) };
-  if (d < today - FORECAST_PAST_DAYS * DAY) return { kind: 'historical', endpoint: 'historical', lastDate: isoDay(last) };
+  if (d < today - FORECAST_PAST_DAYS * DAY)
+    return { kind: 'historical', endpoint: 'historical', lastDate: isoDay(last) };
   return { kind: 'forecast', endpoint: 'forecast', lastDate: isoDay(last) };
 }
 

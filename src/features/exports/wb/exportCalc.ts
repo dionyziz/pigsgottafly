@@ -5,18 +5,33 @@
 // each intermediate full stop (its landing and its take-off, with the sector masses: sectors.ts).
 // Pure: no I/O, no DOM (the hook in useExportCalc.ts fetches the inputs).
 import type { Aircraft, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { activeRequests, fuelLoad, landingPointIndices, requestTiming, type FuelLoad, type RequestTiming } from '../../../shared';
+import {
+  activeRequests,
+  fuelLoad,
+  landingPointIndices,
+  requestTiming,
+  type FuelLoad,
+  type RequestTiming,
+} from '../../../shared';
 import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
-  aerodromePerformance, flightSectors, isaTempC, magneticVariation, performanceMass, sectorBalances, stopsOf,
-  wbLoadsFromManifest, weightAndBalance,
-  type AerodromePerf, type FlightSector, type WbResult,
+  aerodromePerformance,
+  flightSectors,
+  isaTempC,
+  magneticVariation,
+  performanceMass,
+  sectorBalances,
+  stopsOf,
+  wbLoadsFromManifest,
+  weightAndBalance,
+  type AerodromePerf,
+  type FlightSector,
+  type WbResult,
 } from '../../../calc';
 import type { OpenMeteoLocation, RouteWeather, SurfaceConditions } from '../../../data/weather';
 import { toPerfWind } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
 import { computeFlightNavlog, endpointWeather, type EndpointWeather, type NavlogComputed } from '../navlog/model';
-
 
 const sectorTiming = (t: RequestTiming) => ({ groundAfterLegMin: t.groundAfterLegMin, touchAfterLeg: t.touchAfterLeg });
 
@@ -140,20 +155,29 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
   }
 
   // ---- sectors (intermediate full stops): W&B of each sector with its own take-off / landing fuel
-  const sectors = aircraft && navlog.legs.length
-    ? flightSectors({ legs: navlog.legs, ...sectorTiming(requestTiming(doc.route, doc.options)), taxiAllowanceL: aircraft.fuel.taxiAllowanceL, fobL: fuelTakeoffL })
-    : [];
+  const sectors =
+    aircraft && navlog.legs.length
+      ? flightSectors({
+          legs: navlog.legs,
+          ...sectorTiming(requestTiming(doc.route, doc.options)),
+          taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+          fobL: fuelTakeoffL,
+        })
+      : [];
   let sectorWb: (WbResult | null)[] = sectors.map(() => null);
   if (aircraft && wb && sectors.length > 1) {
     try {
-      sectorWb = sectorBalances({
-        massBalance: aircraft.massBalance,
-        loads: wbLoadsFromManifest(doc.crew, doc.baggageKg, aircraft.massBalance.stations).loads,
-        fuelDensityKgPerL: load!.densityKgPerL,
-        unusableFuelL: aircraft.fuel.unusableL,
-        unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
-        category: doc.options.category,
-      }, sectors);
+      sectorWb = sectorBalances(
+        {
+          massBalance: aircraft.massBalance,
+          loads: wbLoadsFromManifest(doc.crew, doc.baggageKg, aircraft.massBalance.stations).loads,
+          fuelDensityKgPerL: load!.densityKgPerL,
+          unusableFuelL: aircraft.fuel.unusableL,
+          unusableIncludedInEmptyMass: aircraft.fuel.unusableIncludedInEmptyMass,
+          category: doc.options.category,
+        },
+        sectors,
+      );
     } catch {
       sectorWb = sectors.map(() => null);
     }
@@ -167,8 +191,13 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
   const wxOpts = { date: doc.date, aerodromes: ref.aerodromes, weather, metar, nowMs };
 
   const endpoint = (
-    phase: 'takeoff' | 'landing', point: RoutePoint | null, loc: OpenMeteoLocation | null, timeMin: number,
-    massWb: WbResult | null, forcedRunway: string | null, surface: string | null,
+    phase: 'takeoff' | 'landing',
+    point: RoutePoint | null,
+    loc: OpenMeteoLocation | null,
+    timeMin: number,
+    massWb: WbResult | null,
+    forcedRunway: string | null,
+    surface: string | null,
   ): EndpointPerf => {
     const ew = point ? endpointWeather(point, loc, timeMin, wxOpts) : null;
     const ad = ew?.aerodrome ?? null;
@@ -181,7 +210,11 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     const wind = toPerfWind(conditions);
     const date = doc.date || new Date(nowMs).toISOString().slice(0, 10);
     const variationDeg = ad ? magneticVariation(ad.lat, ad.lon, date) : 0;
-    const { massKg, massSource, reason: massReason } = performanceMass(massWb, phase, aircraft?.massBalance.mtowKg, missingWeights.length);
+    const {
+      massKg,
+      massSource,
+      reason: massReason,
+    } = performanceMass(massWb, phase, aircraft?.massBalance.mtowKg, missingWeights.length);
     let perf: AerodromePerf | null = null;
     if (ad && aircraft && massKg != null) {
       try {
@@ -203,15 +236,47 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
       }
     }
     return {
-      phase, point, aerodrome: ad, timeMin, weather: ew, conditions,
-      qnhHpa, qnhAssumed, oatC, oatAssumed, wind, variationDeg, massKg, massSource, massReason, surface, forcedRunway, perf,
+      phase,
+      point,
+      aerodrome: ad,
+      timeMin,
+      weather: ew,
+      conditions,
+      qnhHpa,
+      qnhAssumed,
+      oatC,
+      oatAssumed,
+      wind,
+      variationDeg,
+      massKg,
+      massSource,
+      massReason,
+      surface,
+      forcedRunway,
+      perf,
     };
   };
 
   const blockOffSet = navlog.blockOffSet;
   const o = doc.options;
-  const departure = endpoint('takeoff', depPoint, weather?.departure ?? null, blockOffSet ? times.takeoffMin : NaN, wb, o.departureRunway, o.departureSurface);
-  const arrival = endpoint('landing', arrPoint, weather?.destination ?? null, blockOffSet ? times.landingMin : NaN, wb, o.arrivalRunway, o.arrivalSurface);
+  const departure = endpoint(
+    'takeoff',
+    depPoint,
+    weather?.departure ?? null,
+    blockOffSet ? times.takeoffMin : NaN,
+    wb,
+    o.departureRunway,
+    o.departureSurface,
+  );
+  const arrival = endpoint(
+    'landing',
+    arrPoint,
+    weather?.destination ?? null,
+    blockOffSet ? times.landingMin : NaN,
+    wb,
+    o.arrivalRunway,
+    o.arrivalSurface,
+  );
   const reqs = new Map(activeRequests(route, o).map((r) => [r.index, r.request]));
   // weather.stops is fetched for landingPointIndices() (useExportCalc), the same points the sectors end at.
   const wxStops = landingPointIndices(route, o);
@@ -219,14 +284,49 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     const point = route[s.pointIndex];
     const req = reqs.get(s.pointIndex);
     const k = wxStops.indexOf(s.pointIndex);
-    const loc = k >= 0 ? weather?.stops?.[k] ?? null : null;
+    const loc = k >= 0 ? (weather?.stops?.[k] ?? null) : null;
     const wbBefore = sectorWb[s.before.index] ?? null;
     const wbAfter = sectorWb[s.after.index] ?? null;
     return {
-      point, pointIndex: s.pointIndex, kind: s.kind, before: s.before, after: s.after, wbBefore, wbAfter,
-      landing: endpoint('landing', point, loc, blockOffSet ? s.before.landingMin : NaN, wbBefore, req?.landingRunway ?? null, req?.surface ?? null),
-      takeoff: endpoint('takeoff', point, loc, blockOffSet ? s.after.takeoffMin : NaN, wbAfter, req?.takeoffRunway ?? null, req?.surface ?? null),
+      point,
+      pointIndex: s.pointIndex,
+      kind: s.kind,
+      before: s.before,
+      after: s.after,
+      wbBefore,
+      wbAfter,
+      landing: endpoint(
+        'landing',
+        point,
+        loc,
+        blockOffSet ? s.before.landingMin : NaN,
+        wbBefore,
+        req?.landingRunway ?? null,
+        req?.surface ?? null,
+      ),
+      takeoff: endpoint(
+        'takeoff',
+        point,
+        loc,
+        blockOffSet ? s.after.takeoffMin : NaN,
+        wbAfter,
+        req?.takeoffRunway ?? null,
+        req?.surface ?? null,
+      ),
     };
   });
-  return { computed, wb, wbLoadWarnings, missingWeights, fuelTakeoffL, fuelLoad: load, fuelLandingL, fuelBurnL, departure, arrival, sectors, stops };
+  return {
+    computed,
+    wb,
+    wbLoadWarnings,
+    missingWeights,
+    fuelTakeoffL,
+    fuelLoad: load,
+    fuelLandingL,
+    fuelBurnL,
+    departure,
+    arrival,
+    sectors,
+    stops,
+  };
 }

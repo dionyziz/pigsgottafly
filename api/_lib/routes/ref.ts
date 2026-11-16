@@ -36,20 +36,28 @@ async function docs(db: Queryable, kind: keyof typeof TABLES | string, airac: st
 export async function findAerodrome(db: Queryable, idOrIcao: string): Promise<RefAerodrome | null> {
   const [r] = await db.query(
     `SELECT a.doc FROM ref_aerodromes a JOIN ref_airac c ON c.id = a.airac AND c.current WHERE a.id = $1 OR a.icao = $1 LIMIT 1`,
-    [idOrIcao.toUpperCase()]);
+    [idOrIcao.toUpperCase()],
+  );
   return r ? (r.doc as RefAerodrome) : null;
 }
 
 export const routes: Route[] = [
   { method: 'GET', path: '/ref/airac', handler: async ({ db }) => current(db) },
   {
-    method: 'GET', path: '/ref/bundle',
+    method: 'GET',
+    path: '/ref/bundle',
     async handler({ db, pilot, req }) {
       const airac = await current(db);
       // the bundle changes only with the AIRAC: the browser keeps it a day and revalidates by ETag
       const etag = `"ref-${airac.id}-${BUNDLE_FORMAT}"`;
       const cache = { ETag: etag, 'Cache-Control': 'private, max-age=86400' };
-      if (String(req.headers['if-none-match'] || '').split(',').map((s) => s.trim().replace(/^W\//, '')).includes(etag)) return reply(304, undefined, cache);
+      if (
+        String(req.headers['if-none-match'] || '')
+          .split(',')
+          .map((s) => s.trim().replace(/^W\//, ''))
+          .includes(etag)
+      )
+        return reply(304, undefined, cache);
       await rateLimit(db, 'ref', { pilotId: pilot?.id, req });
       const [fis] = await db.query('SELECT doc FROM ref_fis WHERE airac = $1', [airac.id]);
       const bundle: RefBundle = {
@@ -67,7 +75,8 @@ export const routes: Route[] = [
     },
   },
   {
-    method: 'GET', path: '/ref/fis',
+    method: 'GET',
+    path: '/ref/fis',
     async handler({ db }) {
       const airac = await current(db);
       const [fis] = await db.query('SELECT doc FROM ref_fis WHERE airac = $1', [airac.id]);
@@ -76,7 +85,8 @@ export const routes: Route[] = [
     },
   },
   {
-    method: 'GET', path: '/ref/:kind',
+    method: 'GET',
+    path: '/ref/:kind',
     async handler({ db, params, pilot, req }) {
       if (!Object.hasOwn(TABLES, params.kind)) throw notFound();
       await rateLimit(db, 'ref', { pilotId: pilot?.id, req });

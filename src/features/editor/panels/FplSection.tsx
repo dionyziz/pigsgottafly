@@ -7,7 +7,15 @@ import { AerodromeTextInput, Check, NumberField } from '../../../ui';
 import { useEditor } from '../state';
 import { alternatesFrom, MAX_ALTERNATES } from './fplOptions';
 import { Section } from './ui';
-import { activeRequests, DEFAULT_STOP_MIN, MAX_STOP_MIN, requestAllowed, requestRemark, setRequest, type AerodromeRequest } from '../../../shared';
+import {
+  activeRequests,
+  DEFAULT_STOP_MIN,
+  MAX_STOP_MIN,
+  requestAllowed,
+  requestRemark,
+  setRequest,
+  type AerodromeRequest,
+} from '../../../shared';
 import { endpointAerodrome } from '../../../data/atc';
 import { REF } from '../../../data/ref';
 
@@ -29,7 +37,8 @@ export function FplSection() {
     const next = fields.map((f, j) => (j === i ? v : f));
     setFields(next);
     const codes = alternatesFrom(next);
-    if (codes.join(' ') !== key) update((d) => ({ ...d, options: { ...d.options, alternates: codes } }), { coalesce: `fpl-altn-${i}` });
+    if (codes.join(' ') !== key)
+      update((d) => ({ ...d, options: { ...d.options, alternates: codes } }), { coalesce: `fpl-altn-${i}` });
   };
 
   const badge = <span className="muted">{alts.length ? `ALTN ${alts.join(' ')}` : 'No alternate'}</span>;
@@ -38,16 +47,35 @@ export function FplSection() {
       <div className="ep-fpl" data-testid="fpl-options">
         <div className="ep-grid2">
           {fields.map((f, i) => (
-            <label className="field" key={i} data-testid={`fpl-alternate-${i + 1}`} data-focus={i === 0 ? 'alternates' : undefined}>
+            <label
+              className="field"
+              key={i}
+              data-testid={`fpl-alternate-${i + 1}`}
+              data-focus={i === 0 ? 'alternates' : undefined}
+            >
               Alternate {i + 1}
-              <AerodromeTextInput name={`alternate-${i + 1}`} value={f} onChange={(v) => setField(i, v)} placeholder="ICAO or name" />
+              <AerodromeTextInput
+                name={`alternate-${i + 1}`}
+                value={f}
+                onChange={(v) => setField(i, v)}
+                placeholder="ICAO or name"
+              />
             </label>
           ))}
         </div>
         <RequestsList />
-        <label className="field">Remarks (item 18)
-          <textarea rows={2} value={remarks} data-testid="fpl-remarks" data-focus="remarks" placeholder="e.g. PHOTO FLIGHT"
-            onChange={(e) => update((d) => ({ ...d, options: { ...d.options, remarks: e.target.value } }), { coalesce: 'fpl-rmk' })} />
+        <label className="field">
+          Remarks (item 18)
+          <textarea
+            rows={2}
+            value={remarks}
+            data-testid="fpl-remarks"
+            data-focus="remarks"
+            placeholder="e.g. PHOTO FLIGHT"
+            onChange={(e) =>
+              update((d) => ({ ...d, options: { ...d.options, remarks: e.target.value } }), { coalesce: 'fpl-rmk' })
+            }
+          />
         </label>
       </div>
     </Section>
@@ -66,7 +94,13 @@ function RequestsList() {
   const active = activeRequests(route, doc.options);
   const byUid = new Map(active.map((a) => [a.point.uid, a.request]));
   const set = (uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) =>
-    update((d) => ({ ...d, options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) } }), kind === 'stop' ? { coalesce: `fpl-stop-${uid}` } : undefined);
+    update(
+      (d) => ({
+        ...d,
+        options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) },
+      }),
+      kind === 'stop' ? { coalesce: `fpl-stop-${uid}` } : undefined,
+    );
   const icao = (i: number) => (endpointAerodrome(route[i], REF.aerodromes)?.icao || route[i].name).toUpperCase();
   return (
     <div className="field ep-requests" data-testid="fpl-requests" data-focus="requests">
@@ -84,15 +118,36 @@ function RequestsList() {
               )}
               {requestAllowed(route, index, 'stop') && (
                 <span className="ep-req-stop">
-                  <Check checked={r?.kind === 'stop'} onChange={(on) => set(p.uid, on ? 'stop' : null, r?.stopMin ?? DEFAULT_STOP_MIN)}>Stop</Check>
+                  <Check
+                    checked={r?.kind === 'stop'}
+                    onChange={(on) => set(p.uid, on ? 'stop' : null, r?.stopMin ?? DEFAULT_STOP_MIN)}
+                  >
+                    Stop
+                  </Check>
                   {r?.kind === 'stop' && (
-                    <NumberField value={r.stopMin ?? DEFAULT_STOP_MIN} min={1} max={MAX_STOP_MIN} integer optional={false} width={72} unit="min"
-                      ariaLabel={`Stop at ${p.name}, minutes`} className="ep-num" testId={`fpl-stop-min-${index}`}
-                      onChange={(n) => { if (n != null && n > 0) set(p.uid, 'stop', n); }} />
+                    <NumberField
+                      value={r.stopMin ?? DEFAULT_STOP_MIN}
+                      min={1}
+                      max={MAX_STOP_MIN}
+                      integer
+                      optional={false}
+                      width={72}
+                      unit="min"
+                      ariaLabel={`Stop at ${p.name}, minutes`}
+                      className="ep-num"
+                      testId={`fpl-stop-min-${index}`}
+                      onChange={(n) => {
+                        if (n != null && n > 0) set(p.uid, 'stop', n);
+                      }}
+                    />
                   )}
                 </span>
               )}
-              {r && <span className="ep-req-rmk mono" data-testid="fpl-request-rmk">RMK/{requestRemark(r, icao(index), index)}</span>}
+              {r && (
+                <span className="ep-req-rmk mono" data-testid="fpl-request-rmk">
+                  RMK/{requestRemark(r, icao(index), index)}
+                </span>
+              )}
             </li>
           );
         })}

@@ -18,7 +18,11 @@ export function SharedChip({ access }: { access: Pick<AircraftAccess, 'role' | '
   if (!access || access.role === 'owner') return null;
   const by = access.owner.name || access.owner.email;
   return (
-    <Chip className="share-chip" title={`Shared with you by ${by}${access.owner.email && access.owner.name ? ` (${access.owner.email})` : ''}`} testId="shared-chip">
+    <Chip
+      className="share-chip"
+      title={`Shared with you by ${by}${access.owner.email && access.owner.name ? ` (${access.owner.email})` : ''}`}
+      testId="shared-chip"
+    >
       Shared by {by} · {ROLE_LABEL[access.role]}
     </Chip>
   );
@@ -35,7 +39,13 @@ interface SharingState {
 
 const API = { aircraft: api.shares, operator: api.operatorShares } as const;
 
-export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
+export function ShareDialog({
+  kind = 'aircraft',
+  id,
+  name,
+  onClose,
+  onLeft,
+}: {
   kind?: 'aircraft' | 'operator';
   id: string;
   /** Registration or operator name, for the title. */
@@ -55,8 +65,17 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
 
   useEffect(() => {
     let live = true;
-    shares.get(id).then((s) => { if (live) setSharing(s); }, (e) => { if (live) setLoadError(message(e)); });
-    return () => { live = false; };
+    shares.get(id).then(
+      (s) => {
+        if (live) setSharing(s);
+      },
+      (e) => {
+        if (live) setLoadError(message(e));
+      },
+    );
+    return () => {
+      live = false;
+    };
   }, [shares, id]);
 
   const run = async (fn: () => Promise<SharingState | null>) => {
@@ -77,7 +96,10 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = email.trim();
-    if (!addr) { setError('Enter an e-mail address.'); return; }
+    if (!addr) {
+      setError('Enter an e-mail address.');
+      return;
+    }
     if (await run(() => shares.add(id, addr, role))) setEmail('');
   };
 
@@ -92,23 +114,60 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
 
   const canManage = !!sharing?.canManage;
   return (
-    <Dialog title={`Share ${name}`} onClose={onClose} busy={busy} testId="share-dialog" footer={
-      <button type="button" className="primary" onClick={onClose} disabled={busy}>Done</button>
-    }>
-      {loadError ? <p className="form-error" role="alert">{loadError}</p> : !sharing ? <Loading variant="sm" /> : (
+    <Dialog
+      title={`Share ${name}`}
+      onClose={onClose}
+      busy={busy}
+      testId="share-dialog"
+      footer={
+        <button type="button" className="primary" onClick={onClose} disabled={busy}>
+          Done
+        </button>
+      }
+    >
+      {loadError ? (
+        <p className="form-error" role="alert">
+          {loadError}
+        </p>
+      ) : !sharing ? (
+        <Loading variant="sm" />
+      ) : (
         <div className="stack share">
           {canManage ? (
             <form className="share-add" onSubmit={add} noValidate>
-              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} placeholder="Add people by e-mail"
-                aria-label="E-mail address" autoComplete="off" spellCheck={false} data-autofocus data-testid="share-email" />
-              <select value={role} onChange={(e) => setRole(e.target.value as ShareRole)} aria-label="Role" data-testid="share-role">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Add people by e-mail"
+                aria-label="E-mail address"
+                autoComplete="off"
+                spellCheck={false}
+                data-autofocus
+                data-testid="share-email"
+              />
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as ShareRole)}
+                aria-label="Role"
+                data-testid="share-role"
+              >
                 <option value="view">Viewer</option>
                 <option value="edit">Editor</option>
               </select>
-              <button type="submit" className="primary" disabled={busy} data-testid="share-add">Share</button>
+              <button type="submit" className="primary" disabled={busy} data-testid="share-add">
+                Share
+              </button>
             </form>
           ) : null}
-          {error && <p className="form-error" role="alert" data-testid="share-error">{error}</p>}
+          {error && (
+            <p className="form-error" role="alert" data-testid="share-error">
+              {error}
+            </p>
+          )}
           <div>
             <h3 className="share-h">People with access</h3>
             <ul className="share-people" data-testid="share-people">
@@ -117,11 +176,20 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
                 const via = p.via?.length ? `through ${p.via.join(', ')}` : '';
                 return (
                   <li key={p.pilotId} data-pilot-id={p.pilotId} data-role={p.role}>
-                    <span className="share-avatar" aria-hidden="true">{(p.name || p.email || '?').trim().charAt(0).toUpperCase()}</span>
+                    <span className="share-avatar" aria-hidden="true">
+                      {(p.name || p.email || '?').trim().charAt(0).toUpperCase()}
+                    </span>
                     <span className="share-who">
-                      <b>{p.name || p.email}{self && <span className="muted"> (you)</span>}</b>
+                      <b>
+                        {p.name || p.email}
+                        {self && <span className="muted"> (you)</span>}
+                      </b>
                       {p.name && <span className="hint">{p.email}</span>}
-                      {kind === 'operator' && via && <span className="hint" data-testid="share-via">Aircraft: {p.via!.join(', ')}</span>}
+                      {kind === 'operator' && via && (
+                        <span className="hint" data-testid="share-via">
+                          Aircraft: {p.via!.join(', ')}
+                        </span>
+                      )}
                     </span>
                     {p.role === 'owner' ? (
                       <span className="muted share-role">Owner</span>
@@ -129,17 +197,34 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
                       <span className="muted share-role">Viewer (aircraft)</span>
                     ) : canManage ? (
                       <span className="row share-role">
-                        <select value={p.role} disabled={busy} aria-label={`Role of ${p.name || p.email}`}
-                          onChange={(e) => void run(() => shares.setRole(id, p.pilotId, e.target.value as ShareRole))}>
+                        <select
+                          value={p.role}
+                          disabled={busy}
+                          aria-label={`Role of ${p.name || p.email}`}
+                          onChange={(e) => void run(() => shares.setRole(id, p.pilotId, e.target.value as ShareRole))}
+                        >
                           <option value="view">Viewer</option>
                           <option value="edit">Editor</option>
                         </select>
-                        <RowRemove disabled={busy} onClick={() => void remove(p.pilotId)} label={self ? 'Remove my access' : `Remove ${p.name || p.email}`} />
+                        <RowRemove
+                          disabled={busy}
+                          onClick={() => void remove(p.pilotId)}
+                          label={self ? 'Remove my access' : `Remove ${p.name || p.email}`}
+                        />
                       </span>
                     ) : (
                       <span className="row share-role">
                         <span className="muted">{ROLE_LABEL[p.role]}</span>
-                        {self && <button type="button" className="ghost sm" disabled={busy} onClick={() => void remove(p.pilotId)}>Remove my access</button>}
+                        {self && (
+                          <button
+                            type="button"
+                            className="ghost sm"
+                            disabled={busy}
+                            onClick={() => void remove(p.pilotId)}
+                          >
+                            Remove my access
+                          </button>
+                        )}
                       </span>
                     )}
                   </li>

@@ -2,7 +2,17 @@
 import type { ReactNode } from 'react';
 import { Loading } from './Loading';
 
-export function EmptyState({ title, children, action, testId }: { title: string; children?: ReactNode; action?: ReactNode; testId?: string }) {
+export function EmptyState({
+  title,
+  children,
+  action,
+  testId,
+}: {
+  title: string;
+  children?: ReactNode;
+  action?: ReactNode;
+  testId?: string;
+}) {
   return (
     <div className="empty card" data-testid={testId}>
       <h3>{title}</h3>
@@ -17,7 +27,18 @@ export function EmptyState({ title, children, action, testId }: { title: string;
  * loading animation. With data: `empty` when `isEmpty(data)`, `noMatch` when `isNoMatch(data)`
  * (a search that finds nothing). Data that is already there stays on screen during a reload.
  */
-export function AsyncView<T>({ data, error, loading, reload, errorTitle = 'Could not load', isEmpty, empty, isNoMatch, noMatch, children }: {
+export function AsyncView<T>({
+  data,
+  error,
+  loading,
+  reload,
+  errorTitle = 'Could not load',
+  isEmpty,
+  empty,
+  isNoMatch,
+  noMatch,
+  children,
+}: {
   data: T | undefined;
   error?: Error | null;
   loading?: boolean;
@@ -32,7 +53,17 @@ export function AsyncView<T>({ data, error, loading, reload, errorTitle = 'Could
   if (data === undefined) {
     if (error) {
       return (
-        <EmptyState title={errorTitle} testId="async-error" action={reload ? <button type="button" onClick={() => reload()}>Try again</button> : undefined}>
+        <EmptyState
+          title={errorTitle}
+          testId="async-error"
+          action={
+            reload ? (
+              <button type="button" onClick={() => reload()}>
+                Try again
+              </button>
+            ) : undefined
+          }
+        >
           {error.message}
         </EmptyState>
       );

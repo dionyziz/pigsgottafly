@@ -6,7 +6,16 @@ import type { ReactNode } from 'react';
  * A titled section with an anchor id. A card by itself, or `plain` for sections that share one card
  * (separated by a line).
  */
-export function CardSection({ id, title, intro, actions, children, plain, className, testId }: {
+export function CardSection({
+  id,
+  title,
+  intro,
+  actions,
+  children,
+  plain,
+  className,
+  testId,
+}: {
   id: string;
   title: ReactNode;
   intro?: ReactNode;
@@ -32,7 +41,14 @@ export function CardSection({ id, title, intro, actions, children, plain, classN
 }
 
 /** Screen-only panel with a title, a status (chip) and actions on the right. */
-export function Panel({ title, status, actions, children, className, testId }: {
+export function Panel({
+  title,
+  status,
+  actions,
+  children,
+  className,
+  testId,
+}: {
   title: ReactNode;
   status?: ReactNode;
   actions?: ReactNode;

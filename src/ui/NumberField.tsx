@@ -43,24 +43,61 @@ export interface NumberFieldProps {
 }
 
 const shown = (v: number | null | undefined, decimals?: number, zeroAsEmpty?: boolean) =>
-  v == null || !isFinite(v) || (zeroAsEmpty && v === 0) ? '' : decimals != null ? String(+v.toFixed(decimals)) : String(v);
+  v == null || !isFinite(v) || (zeroAsEmpty && v === 0)
+    ? ''
+    : decimals != null
+      ? String(+v.toFixed(decimals))
+      : String(v);
 
 /** The draft classified, with the empty field mapped to `emptyValue` when there is one. */
-function classify(draft: string, p: Pick<NumberFieldProps, 'min' | 'max' | 'integer' | 'optional' | 'emptyValue'>): NumberDraft {
+function classify(
+  draft: string,
+  p: Pick<NumberFieldProps, 'min' | 'max' | 'integer' | 'optional' | 'emptyValue'>,
+): NumberDraft {
   const allowEmpty = p.optional !== false;
-  const r = parseNumber(draft, { min: p.min, max: p.max, integer: p.integer, allowEmpty: allowEmpty || p.emptyValue != null });
-  if (r.kind === 'ok' && r.value === null && !allowEmpty && p.emptyValue != null) return { kind: 'ok', value: p.emptyValue };
+  const r = parseNumber(draft, {
+    min: p.min,
+    max: p.max,
+    integer: p.integer,
+    allowEmpty: allowEmpty || p.emptyValue != null,
+  });
+  if (r.kind === 'ok' && r.value === null && !allowEmpty && p.emptyValue != null)
+    return { kind: 'ok', value: p.emptyValue };
   return r;
 }
 
 export function NumberField(props: NumberFieldProps) {
-  const { value, onChange, decimals, zeroAsEmpty, unit, placeholder, width, invalid, showLimit = true, name, id, ariaLabel, testId, disabled, autoFocus, className, step, style, min, integer } = props;
+  const {
+    value,
+    onChange,
+    decimals,
+    zeroAsEmpty,
+    unit,
+    placeholder,
+    width,
+    invalid,
+    showLimit = true,
+    name,
+    id,
+    ariaLabel,
+    testId,
+    disabled,
+    autoFocus,
+    className,
+    step,
+    style,
+    min,
+    integer,
+  } = props;
   const [draft, setDraft] = useState(() => shown(value, decimals, zeroAsEmpty));
   const [focused, setFocused] = useState(false);
   // Edited since focus: only then does blur commit (focus and blur alone never change the value).
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
-    if (!focused) { setDraft(shown(value, decimals, zeroAsEmpty)); return; }
+    if (!focused) {
+      setDraft(shown(value, decimals, zeroAsEmpty));
+      return;
+    }
     // Changed from outside while typing (undo, another input): show the new value unless it is what the draft says.
     const p = classify(draft, props);
     if (!(p.kind === 'ok' && p.value === value)) setDraft(shown(value, decimals, zeroAsEmpty));
@@ -76,7 +113,10 @@ export function NumberField(props: NumberFieldProps) {
   const bad = p.kind !== 'ok';
   const msg = p.kind === 'ok' ? undefined : p.message;
   return (
-    <span className={'numfield' + (unit != null ? ' unit-input' : '')} style={width != null ? { width, ...style } : style}>
+    <span
+      className={'numfield' + (unit != null ? ' unit-input' : '')}
+      style={width != null ? { width, ...style } : style}
+    >
       <input
         className={['tnum', className, bad || invalid ? 'invalid' : ''].filter(Boolean).join(' ')}
         inputMode={integer && (min ?? 0) >= 0 ? 'numeric' : 'decimal'}
@@ -92,8 +132,13 @@ export function NumberField(props: NumberFieldProps) {
         disabled={disabled}
         autoFocus={autoFocus}
         onFocus={() => setFocused(true)}
-        onBlur={() => { settle(); setFocused(false); }}
-        onKeyDown={(e) => { if (e.key === 'Enter') settle(); }}
+        onBlur={() => {
+          settle();
+          setFocused(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') settle();
+        }}
         onChange={(e) => {
           setDraft(e.target.value);
           setDirty(true);
@@ -102,7 +147,11 @@ export function NumberField(props: NumberFieldProps) {
         }}
       />
       {unit != null && <span>{unit}</span>}
-      {showLimit && msg &&<small className="numfield-msg" role="status">{msg}</small>}
+      {showLimit && msg && (
+        <small className="numfield-msg" role="status">
+          {msg}
+        </small>
+      )}
     </span>
   );
 }

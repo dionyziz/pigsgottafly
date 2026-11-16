@@ -4,11 +4,26 @@ import { describe, expect, it } from 'vitest';
 import type { RoutePoint } from '../../../../shared';
 import { ARROW_AT, firFeatures, routeArrowFeatures } from '../features';
 import { FIR } from '../../../../data/ref';
-import { buildStyle, LAYER_GROUPS, CHART, CHART_DEFAULT_VALUES, CHART_TOKENS, loadChartTokens, type ChartColor } from '../style';
+import {
+  buildStyle,
+  LAYER_GROUPS,
+  CHART,
+  CHART_DEFAULT_VALUES,
+  CHART_TOKENS,
+  loadChartTokens,
+  type ChartColor,
+} from '../style';
 import { airspaceShown, areaShown, areaToggle, flightLayers, legacyLayers } from '../mapPrefs';
 import { DEFAULT_MAP_LAYERS, mapLayersOf } from '../../../../shared/mapLayers';
 
-const p = (lat: number, lon: number): RoutePoint => ({ uid: `${lat},${lon}`, kind: 'custom', refId: null, name: 'P', lat, lon });
+const p = (lat: number, lon: number): RoutePoint => ({
+  uid: `${lat},${lon}`,
+  kind: 'custom',
+  refId: null,
+  name: 'P',
+  lat,
+  lon,
+});
 
 describe('route arrows', () => {
   it('puts two arrowheads on each leg, pointing along it (degrees clockwise from north)', () => {
@@ -57,7 +72,8 @@ describe('layer toggles and the FIR', () => {
     expect(div.properties.label).toBe('ATHINAI | MAKEDONIA');
     const ring = fir.geometry.coordinates;
     expect(ring[0]).toEqual(ring[ring.length - 1]);
-    const has = (lon: number, lat: number) => ring.some(([x, y]) => Math.abs(x - lon) < 1e-4 && Math.abs(y - lat) < 1e-4);
+    const has = (lon: number, lat: number) =>
+      ring.some(([x, y]) => Math.abs(x - lon) < 1e-4 && Math.abs(y - lat) < 1e-4);
     expect(has(30, 36 + 5 / 60) && has(30, 33.5) && has(19, 36.5) && has(19, 40 + 25 / 60)).toBe(true);
     // the dividing line ends on the boundary at 381449N 0261010E
     const end = div.geometry.coordinates[div.geometry.coordinates.length - 1];
@@ -107,28 +123,54 @@ describe('map prefs', () => {
   });
   it('TMA/MTMA and CTR/ATZ details follow their own toggles', () => {
     const l = { ...DEFAULT_MAP_LAYERS, tma: false };
-    expect(['TMA', 'MTMA', 'CTR', 'ATZ', 'D'].map((t) => airspaceShown(l, t))).toEqual([false, false, true, true, true]);
+    expect(['TMA', 'MTMA', 'CTR', 'ATZ', 'D'].map((t) => airspaceShown(l, t))).toEqual([
+      false,
+      false,
+      true,
+      true,
+      true,
+    ]);
     expect(airspaceShown({ ...DEFAULT_MAP_LAYERS, zones: false }, 'ATZ')).toBe(false);
   });
-  it('a flight keeps its own layers; else the pilot\'s setting; else what the browser used; else all', () => {
+  it("a flight keeps its own layers; else the pilot's setting; else what the browser used; else all", () => {
     const store = new Map<string, string>();
     const g = globalThis as { localStorage?: unknown };
     const prev = g.localStorage;
-    g.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
+    g.localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+    };
     try {
       expect(flightLayers(undefined, null)).toEqual(DEFAULT_MAP_LAYERS);
-      store.set('pgf:map', JSON.stringify({ base: 'terrain', ofm: false, chart: false, tips: true, notams: true, prd: true, mil: true, act: true }));
+      store.set(
+        'pgf:map',
+        JSON.stringify({
+          base: 'terrain',
+          ofm: false,
+          chart: false,
+          tips: true,
+          notams: true,
+          prd: true,
+          mil: true,
+          act: true,
+        }),
+      );
       const legacy = legacyLayers()!;
       expect([legacy.base, legacy.tma, legacy.aerodromes, legacy.notams]).toEqual(['terrain', false, false, true]);
       expect(flightLayers(undefined, undefined)).toEqual(legacy);
       expect(flightLayers(null, { ...DEFAULT_MAP_LAYERS, vfrRoutes: false }).vfrRoutes).toBe(false);
-      expect(flightLayers({ ...DEFAULT_MAP_LAYERS, base: 'street' }, { ...DEFAULT_MAP_LAYERS, vfrRoutes: false })).toEqual({ ...DEFAULT_MAP_LAYERS, base: 'street' });
+      expect(
+        flightLayers({ ...DEFAULT_MAP_LAYERS, base: 'street' }, { ...DEFAULT_MAP_LAYERS, vfrRoutes: false }),
+      ).toEqual({ ...DEFAULT_MAP_LAYERS, base: 'street' });
     } finally {
       g.localStorage = prev;
     }
   });
   it('a stored selection is completed and checked', () => {
     expect(mapLayersOf('x')).toBeNull();
-    expect(mapLayersOf({ base: 'moon', tma: 'no', zones: false, junk: 1 })).toEqual({ ...DEFAULT_MAP_LAYERS, zones: false });
+    expect(mapLayersOf({ base: 'moon', tma: 'no', zones: false, junk: 1 })).toEqual({
+      ...DEFAULT_MAP_LAYERS,
+      zones: false,
+    });
   });
 });

@@ -82,8 +82,20 @@ export interface NotamBriefing {
 // GET  /api/filing/log                            → FilingLogEntry[] (the pilot's actions, newest first)
 
 /** autorouter flight plan status codes (+ 'not-filed'). */
-export type FilingStatus = 'not-filed' | 'created' | 'filed' | 'manual_correction' | 'suspended' | 'departed' | 'terminated'
-  | 'arriving' | 'arrived' | 'closed' | 'cancelled' | 'rejected' | 'unknown';
+export type FilingStatus =
+  | 'not-filed'
+  | 'created'
+  | 'filed'
+  | 'manual_correction'
+  | 'suspended'
+  | 'departed'
+  | 'terminated'
+  | 'arriving'
+  | 'arrived'
+  | 'closed'
+  | 'cancelled'
+  | 'rejected'
+  | 'unknown';
 
 /** One AFTN addressee proposed for the plan (AIP Greece ENR 1.11), for the pilot to review. */
 export interface Addressee {

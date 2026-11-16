@@ -10,13 +10,34 @@ import { formOf, toUpdate, validateProfile, type ProfileForm } from '../../../sr
 import { passengerInputOf, passengerForm } from '../../../src/features/passengers/person';
 import { personForm, validatePerson } from '../../../src/features/passengers/person';
 import { validateWaypoint } from '../../../src/features/waypoints/WaypointsPage';
-import { EMPTY_PERSON, EMPTY_SUMMARY, type FlightCrew, type FlightListItem, type Pilot, type Waypoint } from '../../../src/shared';
+import {
+  EMPTY_PERSON,
+  EMPTY_SUMMARY,
+  type FlightCrew,
+  type FlightListItem,
+  type Pilot,
+  type Waypoint,
+} from '../../../src/shared';
 import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
 import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
 
-const item = (id: string, date: string, extra: Partial<FlightListItem['summary']> = {}, updated = 0, points: string[] = []): FlightListItem => ({
-  id, date, aircraftId: null, version: 1, created: 0, updated, opened: 0, deleted: false,
-  summary: { ...EMPTY_SUMMARY, date, ...extra }, points,
+const item = (
+  id: string,
+  date: string,
+  extra: Partial<FlightListItem['summary']> = {},
+  updated = 0,
+  points: string[] = [],
+): FlightListItem => ({
+  id,
+  date,
+  aircraftId: null,
+  version: 1,
+  created: 0,
+  updated,
+  opened: 0,
+  deleted: false,
+  summary: { ...EMPTY_SUMMARY, date, ...extra },
+  points,
 });
 
 describe('lobby format', () => {
@@ -40,8 +61,12 @@ describe('lobby format', () => {
   });
   it('puts upcoming flights first (soonest first) and past ones most recent first', () => {
     const rows = [
-      item('a', '2026-11-10'), item('b', '2026-11-20', { blockOff: '10:00' }), item('c', '2026-11-15'),
-      item('d', '2026-11-01'), item('e', '2026-11-20', { blockOff: '08:00' }), item('f', ''),
+      item('a', '2026-11-10'),
+      item('b', '2026-11-20', { blockOff: '10:00' }),
+      item('c', '2026-11-15'),
+      item('d', '2026-11-01'),
+      item('e', '2026-11-20', { blockOff: '08:00' }),
+      item('f', ''),
     ];
     const { upcoming, past } = splitFlights(rows, '2026-11-15');
     expect(upcoming.map((r) => r.id)).toEqual(['c', 'e', 'b', 'f']);
@@ -58,7 +83,13 @@ describe('lobby format', () => {
     expect(matchesQuery(t, '')).toBe(true);
   });
   it('searches every point along the route, not only the title and the ends', () => {
-    const r = item('a', '2026-11-15', { title: 'Skyros day trip', from: 'LGTT', to: 'LGTT', aircraft: 'SX-ASV' }, 0, ['LGTT', 'KEA', 'LGSY', 'ZOFRI', 'LGTT']);
+    const r = item('a', '2026-11-15', { title: 'Skyros day trip', from: 'LGTT', to: 'LGTT', aircraft: 'SX-ASV' }, 0, [
+      'LGTT',
+      'KEA',
+      'LGSY',
+      'ZOFRI',
+      'LGTT',
+    ]);
     const t = flightSearchText(r);
     expect(matchesQuery(t, 'LGSY')).toBe(true);
     expect(matchesQuery(t, 'zofri skyros')).toBe(true);
@@ -97,7 +128,8 @@ describe('waypoint coordinates', () => {
     near(parseLatLon('3754N 02343E'), 37 + 54 / 60, 23 + 43 / 60);
   });
   it('rejects nonsense', () => {
-    for (const s of ['', 'ZOFRI', '95, 20', '37 61 00 N 23 00 00 E', '37.5', '1 2 3', 'abc def']) expect(parseLatLon(s), s).toBeNull();
+    for (const s of ['', 'ZOFRI', '95, 20', '37 61 00 N 23 00 00 E', '37.5', '1 2 3', 'abc def'])
+      expect(parseLatLon(s), s).toBeNull();
   });
   it('formats and round-trips', () => {
     const p = { lat: 37.908333, lon: 23.726111 };
@@ -123,13 +155,34 @@ describe('aerodrome picker', () => {
 
 describe('profile form', () => {
   const base: ProfileForm = {
-    fullName: ' Test Pilot ', phone: '+30 690', licenceNo: '', nationality: 'greek', relation: 'M123', dateOfBirth: '', weightKg: 80,
-    idType: '', idNumber: '', notes: '', homeAerodrome: 'lgtt', defaultAircraftId: '', defaultAlternate: '', taxiOutMin: null, taxiInMin: 12, reserveMin: null,
-    finalReserveMin: null, enrouteAerodromeRadiusNm: null, mapLayers: null,
+    fullName: ' Test Pilot ',
+    phone: '+30 690',
+    licenceNo: '',
+    nationality: 'greek',
+    relation: 'M123',
+    dateOfBirth: '',
+    weightKg: 80,
+    idType: '',
+    idNumber: '',
+    notes: '',
+    homeAerodrome: 'lgtt',
+    defaultAircraftId: '',
+    defaultAlternate: '',
+    taxiOutMin: null,
+    taxiInMin: 12,
+    reserveMin: null,
+    finalReserveMin: null,
+    enrouteAerodromeRadiusNm: null,
+    mapLayers: null,
   };
   it('never fills pilot-specific values the pilot left empty', () => {
     const u = toUpdate(base, true);
-    expect(u).toEqual({ fullName: 'Test Pilot', phone: '+30 690', homeAerodrome: 'LGTT', settings: { taxiOutMin: null, taxiInMin: 12, reserveMin: null } });
+    expect(u).toEqual({
+      fullName: 'Test Pilot',
+      phone: '+30 690',
+      homeAerodrome: 'LGTT',
+      settings: { taxiOutMin: null, taxiInMin: 12, reserveMin: null },
+    });
   });
   it('sends the full profile outside onboarding, without the wind model', () => {
     const u = toUpdate(base, false);
@@ -155,22 +208,61 @@ describe('profile form', () => {
     expect(() => toUpdate({ ...base, weightKg: 400 }, false)).toThrow(/Weight/);
   });
   it('names every bad field, the person fields first', () => {
-    const issues = validateProfile({ ...base, fullName: '', phone: '', homeAerodrome: 'ZZZZ', defaultAlternate: 'nowhere', reserveMin: 9999 }, false);
-    expect(issues.map((i) => i.field)).toEqual(['fullName', 'phone', 'homeAerodrome', 'reserveMin', 'defaultAlternate']);
+    const issues = validateProfile(
+      { ...base, fullName: '', phone: '', homeAerodrome: 'ZZZZ', defaultAlternate: 'nowhere', reserveMin: 9999 },
+      false,
+    );
+    expect(issues.map((i) => i.field)).toEqual([
+      'fullName',
+      'phone',
+      'homeAerodrome',
+      'reserveMin',
+      'defaultAlternate',
+    ]);
     // first use asks only name, phone, home and the three planning numbers
     expect(validateProfile({ ...base, weightKg: 400, defaultAlternate: 'nowhere' }, true)).toEqual([]);
   });
   it('fills the form from the pilot', () => {
-    const f = formOf({ ...EMPTY_PERSON, id: 'p', email: '', fullName: 'A B', licenceNo: 'L1', homeAerodrome: 'LGTT', defaultAircraftId: null,
-      settings: { taxiOutMin: 10, taxiInMin: null, reserveMin: 45, finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, defaultAlternate: 'LGAV' } } as unknown as Pilot);
-    expect(f).toMatchObject({ fullName: 'A B', licenceNo: 'L1', homeAerodrome: 'LGTT', taxiOutMin: 10, taxiInMin: null, reserveMin: 45, defaultAlternate: 'LGAV', weightKg: null });
+    const f = formOf({
+      ...EMPTY_PERSON,
+      id: 'p',
+      email: '',
+      fullName: 'A B',
+      licenceNo: 'L1',
+      homeAerodrome: 'LGTT',
+      defaultAircraftId: null,
+      settings: {
+        taxiOutMin: 10,
+        taxiInMin: null,
+        reserveMin: 45,
+        finalReserveMin: 0,
+        enrouteAerodromeRadiusNm: 2,
+        defaultAlternate: 'LGAV',
+      },
+    } as unknown as Pilot);
+    expect(f).toMatchObject({
+      fullName: 'A B',
+      licenceNo: 'L1',
+      homeAerodrome: 'LGTT',
+      taxiOutMin: 10,
+      taxiInMin: null,
+      reserveMin: 45,
+      defaultAlternate: 'LGAV',
+      weightKg: null,
+    });
   });
 });
 
 describe('passenger form', () => {
   it('normalises input and validates', () => {
     const f = { ...passengerForm(null, 'Jane  Doe'), weightKg: 62.5, nationality: 'greek', dateOfBirth: '1990-01-02' };
-    expect(passengerInputOf(f)).toMatchObject({ fullName: 'Jane Doe', weightKg: 62.5, nationality: 'GREEK', dateOfBirth: '1990-01-02', phone: '' });
+    expect(passengerInputOf(f)).toMatchObject({
+      fullName: 'Jane Doe',
+      weightKg: 62.5,
+      nationality: 'GREEK',
+      dateOfBirth: '1990-01-02',
+      phone: '',
+    });
     expect(passengerInputOf({ ...f, weightKg: null }).weightKg).toBeNull();
     expect(() => passengerInputOf({ ...f, fullName: '' })).toThrow(/name/);
     expect(() => passengerInputOf({ ...f, weightKg: 400 })).toThrow(/Weight/);
@@ -193,7 +285,9 @@ describe('waypoint form', () => {
   const existing = [{ id: 'w1', name: 'ZOFRI', lat: 37.9, lon: 23.7, notes: '', created: 0, updated: 0 }] as Waypoint[];
   it('names the bad field', () => {
     expect(validateWaypoint('', 'x', existing).map((i) => i.field)).toEqual(['name', 'position']);
-    expect(validateWaypoint('zofri', '375430N 0234334E', existing)).toEqual([{ field: 'name', message: 'You already have ZOFRI' }]);
+    expect(validateWaypoint('zofri', '375430N 0234334E', existing)).toEqual([
+      { field: 'name', message: 'You already have ZOFRI' },
+    ]);
     expect(validateWaypoint('zofri', '375430N 0234334E', existing, 'w1')).toEqual([]);
     expect(validateWaypoint('kavos', '', existing)).toEqual([{ field: 'position', message: 'Enter a position' }]);
   });
@@ -201,7 +295,12 @@ describe('waypoint form', () => {
 
 describe('manifest: putting the PIC back', () => {
   const C172 = ['front-left', 'front-right', 'rear-left', 'rear-right'];
-  const pax = (name: string, seat: string): FlightCrew => ({ role: 'PAX', passengerId: name, seat, snapshot: { fullName: name } as FlightCrew['snapshot'] });
+  const pax = (name: string, seat: string): FlightCrew => ({
+    role: 'PAX',
+    passengerId: name,
+    seat,
+    snapshot: { fullName: name } as FlightCrew['snapshot'],
+  });
   const me = { fullName: 'Me' } as FlightCrew['snapshot'];
   it('seats the PIC front left when it is free', () => {
     const r = addPicToCrew([pax('A', 'rear-left')], C172, me)!;
@@ -210,12 +309,22 @@ describe('manifest: putting the PIC back', () => {
   });
   it('moves whoever sits front left to the first free seat', () => {
     const r = addPicToCrew([pax('A', 'front-left'), pax('B', 'front-right')], C172, me)!;
-    expect(r.crew.map((c) => [c.role, c.seat])).toEqual([['PIC', 'front-left'], ['PAX', 'rear-left'], ['PAX', 'front-right']]);
+    expect(r.crew.map((c) => [c.role, c.seat])).toEqual([
+      ['PIC', 'front-left'],
+      ['PAX', 'rear-left'],
+      ['PAX', 'front-right'],
+    ]);
     expect(r.moved).toMatchObject({ passengerId: 'A', seat: 'rear-left' });
     expect(new Set(r.crew.map((c) => c.seat)).size).toBe(r.crew.length);
   });
   it('refuses when every seat is taken, and keeps an existing PIC', () => {
-    expect(addPicToCrew(C172.map((s, i) => pax(String(i), s)), C172, me)).toBeNull();
+    expect(
+      addPicToCrew(
+        C172.map((s, i) => pax(String(i), s)),
+        C172,
+        me,
+      ),
+    ).toBeNull();
     const withPic: FlightCrew[] = [{ role: 'PIC', passengerId: null, seat: 'front-right', snapshot: me }];
     expect(addPicToCrew(withPic, C172, me)!.crew).toBe(withPic);
   });

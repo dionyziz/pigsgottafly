@@ -30,28 +30,60 @@ export function BriefingExport({ flight }: { flight: Flight }) {
     let live = true;
     setBusy(true);
     fetchNotams(flight.id, { refresh: refresh > 0 }).then(
-      (b) => { if (live) { setBriefing(b); setError(null); setBusy(false); } },
-      (e) => { if (live) { setError(e instanceof ApiRequestError && e.offline ? 'Offline: the NOTAMs could not be loaded.' : `The NOTAMs could not be loaded (${(e as Error).message}).`); setBusy(false); } },
+      (b) => {
+        if (live) {
+          setBriefing(b);
+          setError(null);
+          setBusy(false);
+        }
+      },
+      (e) => {
+        if (live) {
+          setError(
+            e instanceof ApiRequestError && e.offline
+              ? 'Offline: the NOTAMs could not be loaded.'
+              : `The NOTAMs could not be loaded (${(e as Error).message}).`,
+          );
+          setBusy(false);
+        }
+      },
     );
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, [flight.id, refresh]);
 
   const m = briefingModel({ doc: flight, title: flight.summary.title || flight.title, briefing });
   return (
-    <div className="xp-doc print-sheet-page" data-testid="briefing-export" data-ready={busy ? 'false' : 'true'} data-status={m.status}>
+    <div
+      className="xp-doc print-sheet-page"
+      data-testid="briefing-export"
+      data-ready={busy ? 'false' : 'true'}
+      data-status={m.status}
+    >
       <Panel
         title="NOTAMs"
         className="xp-status"
-        status={(
+        status={
           <Chip tone={busy ? undefined : m.status === 'ok' ? (m.relevant.length ? 'warn' : 'ok') : 'warn'}>
-            {busy ? 'Loading…' : m.status === 'ok' ? `${m.relevant.length} relevant, ${m.hidden.length} hidden` : 'Not loaded'}
+            {busy
+              ? 'Loading…'
+              : m.status === 'ok'
+                ? `${m.relevant.length} relevant, ${m.hidden.length} hidden`
+                : 'Not loaded'}
           </Chip>
-        )}
-        actions={<button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={busy}>Reload NOTAMs</button>}
+        }
+        actions={
+          <button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={busy}>
+            Reload NOTAMs
+          </button>
+        }
       >
         <ExportWarnings warnings={error ? [error] : []} classify={false} testId="briefing-warnings" />
       </Panel>
-      <div className="xp-stage"><BriefingSheet m={m} signature={signature} /></div>
+      <div className="xp-stage">
+        <BriefingSheet m={m} signature={signature} />
+      </div>
     </div>
   );
 }
@@ -61,19 +93,48 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
     <section className="xp-sheet brief-sheet" aria-label="NOTAM briefing">
       <header className="xp-head">
         <h1>NOTAM briefing</h1>
-        <span className="brief-count">{m.status === 'ok' ? `${m.relevant.length} relevant · ${m.hidden.length} not relevant` : ''}</span>
+        <span className="brief-count">
+          {m.status === 'ok' ? `${m.relevant.length} relevant · ${m.hidden.length} not relevant` : ''}
+        </span>
       </header>
       <dl className="xp-fields">
-        <div><dt>Date</dt><dd className="xp-fill">{m.date}</dd></div>
-        <div className="wide"><dt>Flight</dt><dd className="xp-fill">{m.title}</dd></div>
-        <div className="full"><dt>Route</dt><dd className="xp-fill">{m.route || '—'}</dd></div>
-        <div className="full"><dt>Time window</dt><dd className="xp-fill">{m.window || '—'}</dd></div>
-        <div className="full"><dt>Filter</dt><dd className="xp-fill">{m.filter || '—'}</dd></div>
-        <div className="full"><dt>Locations queried</dt><dd className="xp-fill brief-wrap">{m.locations || '—'}</dd></div>
-        {m.source && <div className="full"><dt>Source</dt><dd className="xp-fill">{m.source}</dd></div>}
+        <div>
+          <dt>Date</dt>
+          <dd className="xp-fill">{m.date}</dd>
+        </div>
+        <div className="wide">
+          <dt>Flight</dt>
+          <dd className="xp-fill">{m.title}</dd>
+        </div>
+        <div className="full">
+          <dt>Route</dt>
+          <dd className="xp-fill">{m.route || '—'}</dd>
+        </div>
+        <div className="full">
+          <dt>Time window</dt>
+          <dd className="xp-fill">{m.window || '—'}</dd>
+        </div>
+        <div className="full">
+          <dt>Filter</dt>
+          <dd className="xp-fill">{m.filter || '—'}</dd>
+        </div>
+        <div className="full">
+          <dt>Locations queried</dt>
+          <dd className="xp-fill brief-wrap">{m.locations || '—'}</dd>
+        </div>
+        {m.source && (
+          <div className="full">
+            <dt>Source</dt>
+            <dd className="xp-fill">{m.source}</dd>
+          </div>
+        )}
       </dl>
 
-      {m.status !== 'ok' && <p className="brief-msg" data-testid="briefing-message">{m.status === 'loading' ? 'Loading…' : m.message}</p>}
+      {m.status !== 'ok' && (
+        <p className="brief-msg" data-testid="briefing-message">
+          {m.status === 'loading' ? 'Loading…' : m.message}
+        </p>
+      )}
       {m.status === 'ok' && m.message && <p className="brief-msg">{m.message}</p>}
 
       {m.status === 'ok' && (
@@ -89,7 +150,12 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
                 <span className="spacer" />
                 {r.leg && <span className="brief-leg">{r.leg}</span>}
               </header>
-              <div className="brief-meta"><span>{r.validity}</span><span>{r.limits}</span>{r.schedule && <span>{r.schedule}</span>}{r.reasons && <span>{r.reasons}</span>}</div>
+              <div className="brief-meta">
+                <span>{r.validity}</span>
+                <span>{r.limits}</span>
+                {r.schedule && <span>{r.schedule}</span>}
+                {r.reasons && <span>{r.reasons}</span>}
+              </div>
               <pre className="brief-raw">{r.raw}</pre>
             </article>
           ))}
@@ -100,7 +166,12 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
               <table className="brief-hidden">
                 <tbody>
                   {m.hidden.map((r) => (
-                    <tr key={r.key}><td className="brief-key">{r.key}</td><td>{r.where}</td><td>{r.subject}</td><td>{r.reasons}</td></tr>
+                    <tr key={r.key}>
+                      <td className="brief-key">{r.key}</td>
+                      <td>{r.where}</td>
+                      <td>{r.subject}</td>
+                      <td>{r.reasons}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -109,7 +180,9 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
         </>
       )}
       <footer className="xp-sign brief-sign" data-testid="briefing-ack">
-        <span>ACKNOWLEDGED BY PIC <b className="xp-fill">{signature?.name ?? ''}</b></span>
+        <span>
+          ACKNOWLEDGED BY PIC <b className="xp-fill">{signature?.name ?? ''}</b>
+        </span>
         <SignLine signature={signature} />
       </footer>
     </section>

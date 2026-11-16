@@ -22,36 +22,91 @@ export function AccountSection() {
     setError(null);
     try {
       await api.me.remove(typed.trim());
-      try { localStorage.clear(); sessionStorage.clear(); } catch { /* blocked storage */ }
-      try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {
+        /* blocked storage */
+      }
+      try {
+        (window as any).google?.accounts?.id?.disableAutoSelect?.();
+      } catch {
+        /* ignore */
+      }
       window.location.assign('/');
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
     }
   };
-  const cancel = () => { setOpen(false); setTyped(''); setError(null); };
+  const cancel = () => {
+    setOpen(false);
+    setTyped('');
+    setError(null);
+  };
 
   return (
     <div className="card account-card" data-testid="account-section">
-      <CardSection id="your-data" title="Your data" plain
-        intro="Everything your account holds, as a JSON file.">
-        <div><a className="btn" href="/api/me/export" download data-testid="export-data">Download my data</a></div>
+      <CardSection id="your-data" title="Your data" plain intro="Everything your account holds, as a JSON file.">
+        <div>
+          <a className="btn" href="/api/me/export" download data-testid="export-data">
+            Download my data
+          </a>
+        </div>
       </CardSection>
-      <CardSection id="delete-account" title="Delete account" plain className="danger-zone" testId="danger-zone"
-        intro="Deletes your account and everything in it, including the aircraft you own (also for the pilots you shared them with). This cannot be undone.">
+      <CardSection
+        id="delete-account"
+        title="Delete account"
+        plain
+        className="danger-zone"
+        testId="danger-zone"
+        intro="Deletes your account and everything in it, including the aircraft you own (also for the pilots you shared them with). This cannot be undone."
+      >
         {!open ? (
-          <div><button type="button" className="ghost danger" onClick={() => setOpen(true)} data-testid="delete-account">Delete account…</button></div>
+          <div>
+            <button type="button" className="ghost danger" onClick={() => setOpen(true)} data-testid="delete-account">
+              Delete account…
+            </button>
+          </div>
         ) : (
-          <form className="stack delete-form" onSubmit={(e) => { e.preventDefault(); if (matches && !busy) void remove(); }} noValidate>
-            <Field label={<>Type <b>{expected}</b> to confirm</>} error={error}>
-              <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus autoComplete="off" spellCheck={false} data-testid="delete-confirm" aria-label="Confirmation" />
+          <form
+            className="stack delete-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (matches && !busy) void remove();
+            }}
+            noValidate
+          >
+            <Field
+              label={
+                <>
+                  Type <b>{expected}</b> to confirm
+                </>
+              }
+              error={error}
+            >
+              <input
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+                data-testid="delete-confirm"
+                aria-label="Confirmation"
+              />
             </Field>
             <div className="row">
-              <button type="submit" className="primary danger-fill" disabled={!matches || busy} data-testid="delete-account-confirm">
+              <button
+                type="submit"
+                className="primary danger-fill"
+                disabled={!matches || busy}
+                data-testid="delete-account-confirm"
+              >
                 {busy ? 'Deleting…' : 'Delete my account'}
               </button>
-              <button type="button" className="ghost" onClick={cancel} disabled={busy}>Cancel</button>
+              <button type="button" className="ghost" onClick={cancel} disabled={busy}>
+                Cancel
+              </button>
             </div>
           </form>
         )}

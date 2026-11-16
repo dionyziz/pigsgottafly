@@ -16,7 +16,10 @@ import { stampZ } from '../../api/_lib/formPdf';
 import type { RoutePoint } from '../../src/shared/types';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
-const pt = (icao: string, uid: string): RoutePoint => { const a = ADS.find((x) => x.icao === icao)!; return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
+const pt = (icao: string, uid: string): RoutePoint => {
+  const a = ADS.find((x) => x.icao === icao)!;
+  return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };
+};
 const tomorrow = new Date(Date.now() + 24 * 3600e3).toISOString().slice(0, 10);
 
 let api: Awaited<ReturnType<typeof startApi>>;
@@ -26,23 +29,71 @@ const sent: SentMail[] = [];
 beforeAll(async () => {
   // who may send forms by e-mail: see formsMail.test.ts
   api = await startApi({ allowedEmails: ['pilot.a@example.com', 'pilot.b@example.com'] });
-  A = client(api.base); B = client(api.base); anon = client(api.base);
+  A = client(api.base);
+  B = client(api.base);
+  anon = client(api.base);
   expect((await A.login('sa', 'pilot.a@example.com')).status).toBe(200);
   expect((await B.login('sb', 'pilot.b@example.com')).status).toBe(200);
-  await A.call('PUT', 'me', { fullName: 'Dionysis Zindros', phone: '+30 690 000 0001', idNumber: 'AK123456', idType: 'ID', relation: 'MEMBER 42' });
+  await A.call('PUT', 'me', {
+    fullName: 'Dionysis Zindros',
+    phone: '+30 690 000 0001',
+    idNumber: 'AK123456',
+    idType: 'ID',
+    relation: 'MEMBER 42',
+  });
 });
 afterAll(() => api.close());
 afterEach(() => setMailTransport(null));
 
 async function setup(date = tomorrow) {
-  const pax = (await A.call('POST', 'passengers', { fullName: 'Maria Papadopoulou', phone: '+30 690 111 2233', idNumber: 'AB987654', idType: 'ID', relation: 'FRIEND' })).body;
-  const f = (await A.call('POST', 'flights', {
-    date, blockOff: '08:00', route: [pt('LGTT', 'a'), pt('LGMG', 'b')],
-    crew: [
-      { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: { fullName: '', phone: '', dateOfBirth: null, weightKg: 80, idNumber: '', idType: '', nationality: '', relation: '' } },
-      { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'Maria Papadopoulou', phone: '+30 690 111 2233', dateOfBirth: null, weightKg: 60, idNumber: 'AB987654', idType: 'ID', nationality: '', relation: 'FRIEND' } },
-    ],
-  })).body;
+  const pax = (
+    await A.call('POST', 'passengers', {
+      fullName: 'Maria Papadopoulou',
+      phone: '+30 690 111 2233',
+      idNumber: 'AB987654',
+      idType: 'ID',
+      relation: 'FRIEND',
+    })
+  ).body;
+  const f = (
+    await A.call('POST', 'flights', {
+      date,
+      blockOff: '08:00',
+      route: [pt('LGTT', 'a'), pt('LGMG', 'b')],
+      crew: [
+        {
+          role: 'PIC',
+          passengerId: null,
+          seat: 'front-left',
+          snapshot: {
+            fullName: '',
+            phone: '',
+            dateOfBirth: null,
+            weightKg: 80,
+            idNumber: '',
+            idType: '',
+            nationality: '',
+            relation: '',
+          },
+        },
+        {
+          role: 'PAX',
+          passengerId: pax.id,
+          seat: 'front-right',
+          snapshot: {
+            fullName: 'Maria Papadopoulou',
+            phone: '+30 690 111 2233',
+            dateOfBirth: null,
+            weightKg: 60,
+            idNumber: 'AB987654',
+            idType: 'ID',
+            nationality: '',
+            relation: 'FRIEND',
+          },
+        },
+      ],
+    })
+  ).body;
   expect(f.id).toBeTruthy();
   return { flightId: f.id as string, paxKey: pax.id as string };
 }
@@ -94,7 +145,14 @@ describe('Form 731 signatures', () => {
 
     const f = (await A.call('GET', `flights/${flightId}`)).body;
     const { id, version, created, updated, opened, trashed, pilotId, ...doc } = f;
-    expect((await A.call('PUT', `flights/${flightId}`, { flight: { ...doc, route: [pt('LGTT', 'a'), pt('LGMG', 'b'), pt('LGTT', 'c')] }, version })).status).toBe(200);
+    expect(
+      (
+        await A.call('PUT', `flights/${flightId}`, {
+          flight: { ...doc, route: [pt('LGTT', 'a'), pt('LGMG', 'b'), pt('LGTT', 'c')] },
+          version,
+        })
+      ).status,
+    ).toBe(200);
     const st = (await forms(A, flightId)).body;
     const pax = st.form731.signatures.find((s) => s.key === paxKey)!;
     expect(pax.signed).toBe(false);
@@ -108,7 +166,9 @@ describe('Form 731 signatures', () => {
   test('revoke and renew; links of one flight reach nothing else; other pilots get 404', async () => {
     const { flightId, paxKey } = await setup();
     const t1 = (await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links`)).body.links![paxKey];
-    const t2 = (await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links/${encodeURIComponent(paxKey)}/renew`)).body.links![paxKey];
+    const t2 = (
+      await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links/${encodeURIComponent(paxKey)}/renew`)
+    ).body.links![paxKey];
     expect(t2).not.toBe(t1);
     expect((await anon.call('GET', `sign/${t1}`)).status).toBe(404);
     expect((await anon.call('GET', `sign/${t2}`)).status).toBe(200);
@@ -124,22 +184,53 @@ describe('Form 731 signatures', () => {
   });
 
   test('a link given to a passenger without a saved record does not reach the next person put in that seat', async () => {
-    const snap = (fullName: string, idNumber: string, phone: string) => ({ fullName, phone, dateOfBirth: null, weightKg: 70, idNumber, idType: 'ID', nationality: '', relation: '' });
+    const snap = (fullName: string, idNumber: string, phone: string) => ({
+      fullName,
+      phone,
+      dateOfBirth: null,
+      weightKg: 70,
+      idNumber,
+      idType: 'ID',
+      nationality: '',
+      relation: '',
+    });
     const pic = { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: snap('', '', '') };
-    const f = (await A.call('POST', 'flights', {
-      date: tomorrow, blockOff: '08:00', route: [pt('LGTT', 'a'), pt('LGMG', 'b')],
-      crew: [pic, { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: snap('Xavier X', 'XX111111', '+30 690 XX111111') }],
-    })).body;
+    const f = (
+      await A.call('POST', 'flights', {
+        date: tomorrow,
+        blockOff: '08:00',
+        route: [pt('LGTT', 'a'), pt('LGMG', 'b')],
+        crew: [
+          pic,
+          {
+            role: 'PAX',
+            passengerId: null,
+            seat: 'front-right',
+            snapshot: snap('Xavier X', 'XX111111', '+30 690 XX111111'),
+          },
+        ],
+      })
+    ).body;
     const key = 'seat:front-right';
     const tx = (await A.call<FormsState>('POST', `flights/${f.id}/forms/731/links`)).body.links![key];
     expect(tx).toBeTruthy();
-    expect((await anon.call<SigningView>('GET', `sign/${tx}`)).body.content.people.find((p) => p.key === key)!.name).toBe('Xavier X');
+    expect(
+      (await anon.call<SigningView>('GET', `sign/${tx}`)).body.content.people.find((p) => p.key === key)!.name,
+    ).toBe('Xavier X');
     await anon.call('POST', `sign/${tx}`);
 
     // the pilot puts Yvonne in that seat instead
     const cur = (await A.call('GET', `flights/${f.id}`)).body;
     const { id, version, created, updated, opened, trashed, pilotId, ...doc } = cur;
-    const crew = [pic, { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: snap('Yvonne Y', 'YY999999', '+30 690 YY999999') }];
+    const crew = [
+      pic,
+      {
+        role: 'PAX',
+        passengerId: null,
+        seat: 'front-right',
+        snapshot: snap('Yvonne Y', 'YY999999', '+30 690 YY999999'),
+      },
+    ];
     expect((await A.call('PUT', `flights/${f.id}`, { flight: { ...doc, crew }, version })).status).toBe(200);
 
     // Xavier's link neither shows Yvonne's details nor signs for her
@@ -172,7 +263,13 @@ describe('Form 731 signatures', () => {
     // a saved passenger keeps their link when the pilot corrects their details
     const { flightId, paxKey } = await setup();
     const tm = (await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links`)).body.links![paxKey];
-    await A.call('PUT', `passengers/${paxKey}`, { fullName: 'Maria Papadopoulou', phone: '+30 690 111 2299', idNumber: 'AB987654', idType: 'ID', relation: 'FRIEND' });
+    await A.call('PUT', `passengers/${paxKey}`, {
+      fullName: 'Maria Papadopoulou',
+      phone: '+30 690 111 2299',
+      idNumber: 'AB987654',
+      idType: 'ID',
+      relation: 'FRIEND',
+    });
     expect((await anon.call('GET', `sign/${tm}`)).status).toBe(200);
   });
 
@@ -196,7 +293,10 @@ describe('sending the forms to HCAA', () => {
     await anon.call('POST', `sign/${token}`);
     expect((await A.call('POST', `flights/${flightId}/forms/731/send`)).status).toBe(503);
 
-    setMailTransport(async (m) => { sent.push(m); return { id: `msg-${sent.length}` }; });
+    setMailTransport(async (m) => {
+      sent.push(m);
+      return { id: `msg-${sent.length}` };
+    });
     const r = await A.call<FormsState>('POST', `flights/${flightId}/forms/731/send`);
     expect(r.status).toBe(200);
     const m = sent[sent.length - 1];
@@ -213,12 +313,19 @@ describe('sending the forms to HCAA', () => {
     expect(text).toContain('D. Zindros'); // the PIC's handwriting signature
     expect(text).toContain('M. Papadopoulou');
     expect(pdf.toString('latin1')).toContain('/FontFile2');
-    expect(r.body.form731.submission).toMatchObject({ messageId: `msg-${sent.length}`, to: '731@hcaa.gov.gr', changed: false });
+    expect(r.body.form731.submission).toMatchObject({
+      messageId: `msg-${sent.length}`,
+      to: '731@hcaa.gov.gr',
+      changed: false,
+    });
 
     // a change: the submission is marked changed (re-send offered once everyone signed again)
     const f = (await A.call('GET', `flights/${flightId}`)).body;
     const { id, version, created, updated, opened, trashed, pilotId, ...doc } = f;
-    await A.call('PUT', `flights/${flightId}`, { flight: { ...doc, date: new Date(Date.now() + 2 * 24 * 3600e3).toISOString().slice(0, 10) }, version });
+    await A.call('PUT', `flights/${flightId}`, {
+      flight: { ...doc, date: new Date(Date.now() + 2 * 24 * 3600e3).toISOString().slice(0, 10) },
+      version,
+    });
     st = (await forms(A, flightId)).body;
     expect(st.form731.submission!.changed).toBe(true);
     expect(st.form731.allSigned).toBe(false);
@@ -230,7 +337,10 @@ describe('sending the forms to HCAA', () => {
     expect(st.gendec.pilotSends).toBe(true);
     // signed once per version: the time stays while the declaration is unchanged
     expect((await forms(A, flightId)).body.gendec.picSignature).toEqual(st.gendec.picSignature);
-    setMailTransport(async (m) => { sent.push(m); return { id: 'gd-1' }; });
+    setMailTransport(async (m) => {
+      sent.push(m);
+      return { id: 'gd-1' };
+    });
     const r = await A.call<FormsState>('POST', `flights/${flightId}/forms/gendec/send`);
     expect(r.status).toBe(200);
     const m = sent[sent.length - 1];
@@ -244,7 +354,8 @@ describe('sending the forms to HCAA', () => {
     expect(text).toContain(`signed ${stampZ(st.gendec.picSignature!.signedAt)}`);
     expect(m.attachments![0].content.toString('latin1')).toContain('/FontFile2');
     // the official Annex 9 text, the same lines as the print sheet
-    for (const l of [...GENDEC_HEALTH_LINES, ...GENDEC_DISINSECT_LINES]) expect(text).toContain(winAnsi(l).toString('latin1'));
+    for (const l of [...GENDEC_HEALTH_LINES, ...GENDEC_DISINSECT_LINES])
+      expect(text).toContain(winAnsi(l).toString('latin1'));
     expect(text).toContain('stop');
     expect(text).toContain('details of most recent disinsecting');
     expect(text).toContain('Signed, if required, with time and date');
@@ -260,7 +371,10 @@ describe('sending the forms to HCAA', () => {
     expect(r.body.gendec.submission).toMatchObject({ messageId: 'gd-1', changed: false });
 
     // LGTT and LGMG have no handler (AIP AD 1.6.5.4 / AD 1.6.18.4: NIL): the PIC sends it
-    expect(st.gendec.handling.ends.map((e) => [e.role, e.handled])).toEqual([['departure', false], ['destination', false]]);
+    expect(st.gendec.handling.ends.map((e) => [e.role, e.handled])).toEqual([
+      ['departure', false],
+      ['destination', false],
+    ]);
     expect(st.gendec.handling.ends[0].reason).toBe('LGTT: no handling (AIP AD 1.6.5.4)');
     // the old profile setting is ignored
     await A.call('PUT', 'me', { settings: { handledAerodromes: ['LGMG', 'LGTT'] } });
@@ -270,26 +384,58 @@ describe('sending the forms to HCAA', () => {
 
   test('General Declaration: handled ends from the AIP and the NOTAMs; the per-flight override', async () => {
     // LGAV (handling H24) → LGIR (handling H24): a handler submits it at both ends
-    const f = (await A.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', route: [pt('LGAV', 'a'), pt('LGIR', 'b')] })).body;
+    const f = (
+      await A.call('POST', 'flights', { date: tomorrow, blockOff: '08:00', route: [pt('LGAV', 'a'), pt('LGIR', 'b')] })
+    ).body;
     let st = (await forms(A, f.id)).body;
     expect(st.gendec.pilotSends).toBe(false);
     expect(st.gendec.handling.autoPilotSends).toBe(false);
-    expect(st.gendec.handling.ends.map((e) => e.reason)).toEqual(['LGAV: handling H24 (AIP AD 2.3)', 'LGIR: handling H24 (AIP AD 2.3)']);
+    expect(st.gendec.handling.ends.map((e) => e.reason)).toEqual([
+      'LGAV: handling H24 (AIP AD 2.3)',
+      'LGIR: handling H24 (AIP AD 2.3)',
+    ]);
 
     // a NOTAM in the flight's briefing: no handling at LGIR → the PIC sends it, citing the NOTAM
     const day = Date.parse(`${tomorrow}T00:00:00Z`);
     const notam = {
-      key: 'A1234/26', type: 'N', refers: null, itemA: ['LGIR'], fir: 'LGGG', qcode: 'QFAXX', subject: 'Aerodrome', condition: null,
-      traffic: 'IV', purpose: 'NBO', scope: 'A', lowerFt: 0, upperFt: 99900, center: null, radiusNm: null,
-      from: day, to: day + 2 * 86400e3, estimated: false, schedule: null, text: 'HANDLING SERVICES NOT AVBL.', lowerText: null, upperText: null,
-      raw: '', relevant: true, reasons: [], legIndex: null,
+      key: 'A1234/26',
+      type: 'N',
+      refers: null,
+      itemA: ['LGIR'],
+      fir: 'LGGG',
+      qcode: 'QFAXX',
+      subject: 'Aerodrome',
+      condition: null,
+      traffic: 'IV',
+      purpose: 'NBO',
+      scope: 'A',
+      lowerFt: 0,
+      upperFt: 99900,
+      center: null,
+      radiusNm: null,
+      from: day,
+      to: day + 2 * 86400e3,
+      estimated: false,
+      schedule: null,
+      text: 'HANDLING SERVICES NOT AVBL.',
+      lowerText: null,
+      upperText: null,
+      raw: '',
+      relevant: true,
+      reasons: [],
+      legIndex: null,
     };
     const { db } = await (api.server as any).ready;
-    await db.query(`INSERT INTO flight_notams (flight_id, pilot_id, fetched, params, doc) SELECT id, pilot_id, $2, '{}'::jsonb, $3::jsonb FROM flights WHERE id = $1`,
-      [f.id, Date.now(), JSON.stringify({ notams: [notam] })]);
+    await db.query(
+      `INSERT INTO flight_notams (flight_id, pilot_id, fetched, params, doc) SELECT id, pilot_id, $2, '{}'::jsonb, $3::jsonb FROM flights WHERE id = $1`,
+      [f.id, Date.now(), JSON.stringify({ notams: [notam] })],
+    );
     st = (await forms(A, f.id)).body;
     expect(st.gendec.pilotSends).toBe(true);
-    expect(st.gendec.handling.ends[1]).toMatchObject({ handled: false, reason: expect.stringMatching(/^LGIR: NOTAM A1234\/26: handling not available/) });
+    expect(st.gendec.handling.ends[1]).toMatchObject({
+      handled: false,
+      reason: expect.stringMatching(/^LGIR: NOTAM A1234\/26: handling not available/),
+    });
 
     // the override is per flight: a handler submits it after all
     let r = await A.call<FormsState>('POST', `flights/${f.id}/forms/gendec/handled`, { handled: true });
@@ -300,7 +446,14 @@ describe('sending the forms to HCAA', () => {
     const got = (await A.call('GET', `flights/${f.id}`)).body;
     expect(got.options.genDecHandled).toBe(true);
     const { id, version, created, updated, opened, trashed, pilotId, ...doc } = got;
-    expect((await A.call('PUT', `flights/${f.id}`, { flight: { ...doc, options: { ...doc.options, genDecHandled: undefined } }, version })).status).toBe(200);
+    expect(
+      (
+        await A.call('PUT', `flights/${f.id}`, {
+          flight: { ...doc, options: { ...doc.options, genDecHandled: undefined } },
+          version,
+        })
+      ).status,
+    ).toBe(200);
     expect((await forms(A, f.id)).body.gendec.pilotSends).toBe(false);
     // back to automatic
     r = await A.call<FormsState>('POST', `flights/${f.id}/forms/gendec/handled`, { handled: null });
@@ -344,8 +497,15 @@ function pdfText(pdf: Buffer): string {
     const end = s.indexOf('\nendstream', begin);
     try {
       const raw = zlib.inflateSync(pdf.subarray(begin, end)).toString('latin1');
-      for (const t of raw.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)) out.push(t[1].replace(/\\([0-7]{3}|[()\\])/g, (_, e: string) => (e.length === 3 ? String.fromCharCode(parseInt(e, 8)) : e)));
-    } catch { /* the font stream */ }
+      for (const t of raw.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g))
+        out.push(
+          t[1].replace(/\\([0-7]{3}|[()\\])/g, (_, e: string) =>
+            e.length === 3 ? String.fromCharCode(parseInt(e, 8)) : e,
+          ),
+        );
+    } catch {
+      /* the font stream */
+    }
   }
   return out.join('\n');
 }

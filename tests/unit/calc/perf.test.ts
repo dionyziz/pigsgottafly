@@ -5,7 +5,13 @@ import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { aircraftFromTypeJson } from '../../../src/shared/templates';
-import { takeoffDistances, landingDistances, aerodromePerformance, densityAltitudeFt, type PerfConditions } from '../../../src/calc';
+import {
+  takeoffDistances,
+  landingDistances,
+  aerodromePerformance,
+  densityAltitudeFt,
+  type PerfConditions,
+} from '../../../src/calc';
 import type { RefRunway } from '../../../src/shared';
 
 const type = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../data/aircraft/reims-f172m.json'), 'utf8'));
@@ -123,12 +129,34 @@ describe('take-off and landing, club method (default)', () => {
 
 describe('aerodromePerformance (one MD 4.4 block)', () => {
   const rwy = (designator: string, extra: Partial<RefRunway> = {}): RefRunway => ({
-    aerodromeId: 'LGXX', designator, reciprocal: '', headingMagDeg: parseInt(designator, 10) * 10, headingTrueDeg: null,
-    lengthM: 1100, widthM: 30, surface: 'ASPH', toraM: 1000, todaM: 1100, asdaM: 1000, ldaM: 900, slopePct: 0, thresholdElevFt: null, ...extra,
+    aerodromeId: 'LGXX',
+    designator,
+    reciprocal: '',
+    headingMagDeg: parseInt(designator, 10) * 10,
+    headingTrueDeg: null,
+    lengthM: 1100,
+    widthM: 30,
+    surface: 'ASPH',
+    toraM: 1000,
+    todaM: 1100,
+    asdaM: 1000,
+    ldaM: 900,
+    slopePct: 0,
+    thresholdElevFt: null,
+    ...extra,
   });
   const input = {
-    phase: 'takeoff' as const, aerodromeElevFt: 0, runways: [rwy('03'), rwy('21', { slopePct: 2 })], wind: { dirTrueDeg: 215, speedKt: 10 },
-    qnhHpa: 1013.25, oatC: 15, variationDeg: 5, massKg: 1043, tables: T, runway: null, surface: null,
+    phase: 'takeoff' as const,
+    aerodromeElevFt: 0,
+    runways: [rwy('03'), rwy('21', { slopePct: 2 })],
+    wind: { dirTrueDeg: 215, speedKt: 10 },
+    qnhHpa: 1013.25,
+    oatC: 15,
+    variationDeg: 5,
+    massKg: 1043,
+    tables: T,
+    runway: null,
+    surface: null,
   };
 
   test('picks the runway from the wind, applies its slope, compares with TODA/TORA', () => {
@@ -148,7 +176,12 @@ describe('aerodromePerformance (one MD 4.4 block)', () => {
   });
 
   test('forced runway with tailwind and crosswind over the limit', () => {
-    const p = aerodromePerformance({ ...input, runway: '03', wind: { dirTrueDeg: 155, speedKt: 30 }, phase: 'landing' });
+    const p = aerodromePerformance({
+      ...input,
+      runway: '03',
+      wind: { dirTrueDeg: 155, speedKt: 30 },
+      phase: 'landing',
+    });
     // 150 magnetic on RWY 03: 120° off → head −15, cross 26.
     expect(p.runway!.designator).toBe('03');
     expect(p.wind.headwindKt).toBeCloseTo(-15, 9);
@@ -163,7 +196,10 @@ describe('aerodromePerformance (one MD 4.4 block)', () => {
     const p = aerodromePerformance({ ...input, runways: [rwy('21', { toraM: 300, todaM: 300 })] });
     expect(p.marginM!).toBeLessThan(0);
     expect(p.warnings.join(' ')).toMatch(/does not fit/);
-    const q = aerodromePerformance({ ...input, runways: [rwy('21', { toraM: null, todaM: null, ldaM: null, slopePct: null })] });
+    const q = aerodromePerformance({
+      ...input,
+      runways: [rwy('21', { toraM: null, todaM: null, ldaM: null, slopePct: null })],
+    });
     expect(q.availableTotalM).toBe(1100);
     expect(q.warnings.join(' ')).toMatch(/runway length 1100 m used/);
     expect(q.warnings.join(' ')).toMatch(/Slope of runway 21 unknown/);
@@ -173,7 +209,9 @@ describe('aerodromePerformance (one MD 4.4 block)', () => {
     const r = rwy('21', { slopePct: null, slopeUnsignedPct: 2 });
     const to = aerodromePerformance({ ...input, runways: [r] });
     expect(to.distances!.factors.slope).toBeCloseTo(1.1, 9); // 2 % upslope for take-off
-    expect(to.warnings.join(' ')).toMatch(/Slope of runway 21 published as 2 % without direction: upslope \(adverse\) assumed/);
+    expect(to.warnings.join(' ')).toMatch(
+      /Slope of runway 21 published as 2 % without direction: upslope \(adverse\) assumed/,
+    );
     const ld = aerodromePerformance({ ...input, runways: [r], phase: 'landing' });
     expect(ld.distances!.factors.slope).toBeCloseTo(1.1, 9); // 2 % downslope for landing
     expect(ld.warnings.join(' ')).toMatch(/downslope \(adverse\) assumed/);

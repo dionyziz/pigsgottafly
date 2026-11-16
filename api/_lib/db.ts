@@ -50,7 +50,9 @@ async function connectNeon(url: string): Promise<Db> {
     const client = await pool.connect();
     const q: Queryable = {
       query: async (text, params = []) => (await client.query(text, params as any[])).rows as any[],
-      exec: async (s) => { await client.query(s); },
+      exec: async (s) => {
+        await client.query(s);
+      },
     };
     try {
       if (tx) await client.query('BEGIN');
@@ -80,15 +82,22 @@ async function connectPglite(where: string): Promise<Db> {
   const pg = await PGlite.create(where);
   const base: Queryable = {
     query: async (text, params = []) => (await pg.query(text, params as any[])).rows as any[],
-    exec: async (s) => { await pg.exec(s); },
+    exec: async (s) => {
+      await pg.exec(s);
+    },
   };
   return {
     kind: 'pglite',
     ...base,
-    transaction: (fn) => pg.transaction((tx) => fn({
-      query: async (text, params = []) => (await tx.query(text, params as any[])).rows as any[],
-      exec: async (s) => { await tx.exec(s); },
-    })) as Promise<any>,
+    transaction: (fn) =>
+      pg.transaction((tx) =>
+        fn({
+          query: async (text, params = []) => (await tx.query(text, params as any[])).rows as any[],
+          exec: async (s) => {
+            await tx.exec(s);
+          },
+        }),
+      ) as Promise<any>,
     // PGlite is a single connection: every call already runs on "the" session.
     session: (fn) => fn(base),
     close: () => pg.close(),

@@ -32,7 +32,11 @@ export const DEFAULT_SETTINGS: PilotSettings = {
 export const SETTING_SUGGESTIONS = { taxiOutMin: 10, taxiInMin: 10, reserveMin: 45 } as const;
 
 /** Profile fields the app asks for on first use (onboarding) before anything else. */
-export function profileMissing(p: { fullName: string; phone: string; homeAerodrome: string | null }): ('fullName' | 'phone' | 'homeAerodrome')[] {
+export function profileMissing(p: {
+  fullName: string;
+  phone: string;
+  homeAerodrome: string | null;
+}): ('fullName' | 'phone' | 'homeAerodrome')[] {
   const out: ('fullName' | 'phone' | 'homeAerodrome')[] = [];
   if (!p.fullName.trim()) out.push('fullName');
   if (!p.phone.trim()) out.push('phone');
@@ -49,7 +53,9 @@ export const WIND_MODELS: Record<WindModel, string> = {
 
 /** Seat layout of an aircraft, in station order: [{ seat, station }] (first = PIC default). */
 export function seatLayout(stations: Station[]): { id: string; label: string; station: Station }[] {
-  return stations.filter((s) => s.kind === 'seat').flatMap((st) => (st.seats || []).map((p) => ({ id: p.id, label: p.label, station: st })));
+  return stations
+    .filter((s) => s.kind === 'seat')
+    .flatMap((st) => (st.seats || []).map((p) => ({ id: p.id, label: p.label, station: st })));
 }
 /** The station a seat belongs to, or undefined. */
 export function seatStation(stations: Station[], seatId: string): Station | undefined {
@@ -59,7 +65,7 @@ export function seatStation(stations: Station[], seatId: string): Station | unde
 export const FALLBACK_SEATS = ['front-left', 'front-right', 'rear-left', 'rear-right'];
 /** The PIC's default seat: front left if the aircraft has it, else its first seat (API and client). */
 export function picSeat(seatIds: string[]): string {
-  return seatIds.includes('front-left') ? 'front-left' : seatIds[0] ?? 'front-left';
+  return seatIds.includes('front-left') ? 'front-left' : (seatIds[0] ?? 'front-left');
 }
 
 /**
@@ -102,7 +108,16 @@ export const LEGS_PER_SHEET = 9;
 export const CARD_EXPIRY_WARN_DAYS = 90;
 
 /** Every PersonDetails field (the manifest's follow / override unit). */
-export const PERSON_KEYS: readonly PersonKey[] = ['fullName', 'phone', 'dateOfBirth', 'weightKg', 'idNumber', 'idType', 'nationality', 'relation'];
+export const PERSON_KEYS: readonly PersonKey[] = [
+  'fullName',
+  'phone',
+  'dateOfBirth',
+  'weightKg',
+  'idNumber',
+  'idType',
+  'nationality',
+  'relation',
+];
 
 export const EMPTY_PERSON: PersonDetails = {
   fullName: '',
@@ -181,6 +196,7 @@ export function autoTitle(route: Pick<RoutePoint, 'name'>[]): string {
   const names = route.map((p) => p.name).filter((n, i, a) => n && n !== a[i - 1]);
   if (names.length > 1) return names.join(' → ');
   // a local flight from and to the same field: 'LGTT → LGTT'
-  if (names.length === 1 && route.length > 1 && route[0].name === route[route.length - 1].name) return `${names[0]} → ${names[0]}`;
+  if (names.length === 1 && route.length > 1 && route[0].name === route[route.length - 1].name)
+    return `${names[0]} → ${names[0]}`;
   return 'Untitled flight';
 }

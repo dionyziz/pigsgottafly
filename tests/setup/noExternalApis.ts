@@ -14,7 +14,11 @@ if (!g.__pgfNoExternal) {
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     let host = '';
-    try { host = new URL(url).hostname; } catch { /* relative: not external */ }
+    try {
+      host = new URL(url).hostname;
+    } catch {
+      /* relative: not external */
+    }
     if (FORBIDDEN_HOSTS.test(host)) {
       externalCalls.push(url);
       throw new Error(`test called a real external API: ${url.slice(0, 120)}`);

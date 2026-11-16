@@ -23,7 +23,12 @@ describe('general declaration model', () => {
       { place: 'LGTT', crew: 'PAT PILOT' },
       { place: 'LGTT', crew: '' },
     ]);
-    const route = [ad('LGTT', 'a'), ...['LGMG', 'LGSY', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG'].map((id, i) => ad(id, 'x' + i)), vfr('KEA', 'k'), ad('LGAV', 'z')];
+    const route = [
+      ad('LGTT', 'a'),
+      ...['LGMG', 'LGSY', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG', 'LGTT', 'LGMG'].map((id, i) => ad(id, 'x' + i)),
+      vfr('KEA', 'k'),
+      ad('LGAV', 'z'),
+    ];
     const long = genDecModel({ flight: flight({ route }), aircraft, pilot });
     expect(long.routing.map((r) => r.place)).toEqual(['LGTT', 'LGAV']);
     expect(long.warnings.join(' ')).not.toMatch(/room for/);
@@ -80,8 +85,12 @@ describe('general declaration sheet', () => {
     const unsigned = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     expect(unsigned).not.toContain('data-testid="signature"');
     const signedAt = Date.UTC(2026, 10, 15, 16, 51);
-    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} signature={{ name: 'Pat Pilot', signedAt }} />);
-    expect(html).toMatch(/class="gd-sigline"><span class="gd-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/);
+    const html = renderToStaticMarkup(
+      <GenDec flight={flight()} aircraft={aircraft} pilot={pilot} signature={{ name: 'Pat Pilot', signedAt }} />,
+    );
+    expect(html).toMatch(
+      /class="gd-sigline"><span class="gd-pic-signature"><span class="pgf-signature-wrap" data-testid="signature">/,
+    );
     expect(html).toContain('>P. Pilot<');
     expect(html).toContain('signed 2026-11-15 16:51Z');
     expect(html).toContain('Authorized Agent or Pilot-in-Command');

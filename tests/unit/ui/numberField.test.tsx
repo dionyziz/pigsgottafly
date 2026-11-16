@@ -9,11 +9,23 @@ import { NumInput } from '../../../src/features/hangar/fields';
 
 afterEach(cleanup);
 
-function Harness({ initial, log, ...p }: Omit<NumberFieldProps, 'value' | 'onChange'> & { initial: number | null; log: (number | null)[] }) {
+function Harness({
+  initial,
+  log,
+  ...p
+}: Omit<NumberFieldProps, 'value' | 'onChange'> & { initial: number | null; log: (number | null)[] }) {
   const [v, setV] = useState<number | null>(initial);
   return (
     <>
-      <NumberField {...p} value={v} testId="n" onChange={(x) => { log.push(x); setV(x); }} />
+      <NumberField
+        {...p}
+        value={v}
+        testId="n"
+        onChange={(x) => {
+          log.push(x);
+          setV(x);
+        }}
+      />
       <output data-testid="stored">{v == null ? 'null' : String(v)}</output>
     </>
   );
@@ -23,7 +35,10 @@ function typeInto(el: HTMLInputElement, text: string) {
   fireEvent.focus(el);
   fireEvent.change(el, { target: { value: '' } });
   let acc = '';
-  for (const ch of text) { acc += ch; fireEvent.change(el, { target: { value: acc } }); }
+  for (const ch of text) {
+    acc += ch;
+    fireEvent.change(el, { target: { value: acc } });
+  }
 }
 
 const setup = (p: Omit<NumberFieldProps, 'value' | 'onChange'> & { initial: number | null }) => {
@@ -90,7 +105,13 @@ describe('NumberField', () => {
   });
 
   test('zeroAsEmpty shows 0 as an empty field', () => {
-    const { el, stored } = setup({ initial: 0, optional: false, emptyValue: 0, zeroAsEmpty: true, placeholder: 'none' });
+    const { el, stored } = setup({
+      initial: 0,
+      optional: false,
+      emptyValue: 0,
+      zeroAsEmpty: true,
+      placeholder: 'none',
+    });
     expect(el.value).toBe('');
     typeInto(el, '');
     fireEvent.blur(el);
@@ -123,7 +144,20 @@ describe('NumberField', () => {
 describe('hangar NumInput', () => {
   function H({ log, ...p }: { log: (number | null)[]; optional?: boolean; max?: number }) {
     const [v, setV] = useState<number | null>(5);
-    return <><NumInput {...p} value={v} ariaLabel="x" onChange={(x) => { log.push(x); setV(x); }} /><output data-testid="s">{String(v)}</output></>;
+    return (
+      <>
+        <NumInput
+          {...p}
+          value={v}
+          ariaLabel="x"
+          onChange={(x) => {
+            log.push(x);
+            setV(x);
+          }}
+        />
+        <output data-testid="s">{String(v)}</output>
+      </>
+    );
   }
   test('empty commits 0 unless optional; over the max clamps', () => {
     const log: (number | null)[] = [];

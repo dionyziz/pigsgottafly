@@ -79,12 +79,18 @@ export interface LabelPlacement {
  * which of the two sides to use.
  */
 export function placeLabel(a: ScreenPoint, b: ScreenPoint): LabelPlacement {
-  const dx = b.x - a.x, dy = b.y - a.y;
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
   const len = Math.hypot(dx, dy);
   let ang = (Math.atan2(dy, dx) * 180) / Math.PI; // screen y grows downward → clockwise
   let side: 1 | -1 = 1;
-  if (ang > 90) { ang -= 180; side = -1; }
-  else if (ang <= -90) { ang += 180; side = -1; }
+  if (ang > 90) {
+    ang -= 180;
+    side = -1;
+  } else if (ang <= -90) {
+    ang += 180;
+    side = -1;
+  }
   const r = (ang * Math.PI) / 180;
   // Direction along the text (left → right) is (cos r, sin r); the normal "above" the text is
   // (sin r, −cos r) (rotate the direction 90° counter-clockwise on screen).

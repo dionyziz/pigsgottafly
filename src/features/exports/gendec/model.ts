@@ -21,9 +21,18 @@ export function genDecModel(props: FormExportProps): GenDecModel {
   const places = routePlaces(flight.route);
   const warnings: string[] = [];
   const fixes: Record<string, FormFix> = {};
-  const warn = (text: string, fix: FormFix | null) => { warnings.push(text); if (fix) fixes[text] = fix; };
-  if (!aircraft) warn('No aircraft is selected: operator and registration are blank.', { kind: 'flight', focus: 'aircraft' });
-  else if (!aircraft.operator.trim()) warn(`${aircraft.registration} has no operator in the hangar: the PIC is printed as operator.`, { kind: 'aircraft', id: aircraft.id, focus: 'operator' });
+  const warn = (text: string, fix: FormFix | null) => {
+    warnings.push(text);
+    if (fix) fixes[text] = fix;
+  };
+  if (!aircraft)
+    warn('No aircraft is selected: operator and registration are blank.', { kind: 'flight', focus: 'aircraft' });
+  else if (!aircraft.operator.trim())
+    warn(`${aircraft.registration} has no operator in the hangar: the PIC is printed as operator.`, {
+      kind: 'aircraft',
+      id: aircraft.id,
+      focus: 'operator',
+    });
   if (!flight.date) warn('The flight has no date.', { kind: 'flight', focus: 'date' });
   if (places.length < 2) warn('The route needs a departure and a destination.', { kind: 'flight' });
   if (!c.picName) warn('Your full name is not set.', { kind: 'person', key: 'PIC', fields: ['fullName'] });

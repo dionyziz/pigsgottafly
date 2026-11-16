@@ -109,11 +109,22 @@ const COF = `
 
 const N = 12;
 /** g[n][m], h[n][m] and their secular variation, nT and nT/year. */
-const G: number[][] = [], H: number[][] = [], GD: number[][] = [], HD: number[][] = [];
-for (let n = 0; n <= N; n++) { G.push(new Array(N + 1).fill(0)); H.push(new Array(N + 1).fill(0)); GD.push(new Array(N + 1).fill(0)); HD.push(new Array(N + 1).fill(0)); }
+const G: number[][] = [],
+  H: number[][] = [],
+  GD: number[][] = [],
+  HD: number[][] = [];
+for (let n = 0; n <= N; n++) {
+  G.push(new Array(N + 1).fill(0));
+  H.push(new Array(N + 1).fill(0));
+  GD.push(new Array(N + 1).fill(0));
+  HD.push(new Array(N + 1).fill(0));
+}
 for (const line of COF.trim().split('\n')) {
   const [n, m, g, h, gd, hd] = line.trim().split(/\s+/).map(Number);
-  G[n][m] = g; H[n][m] = h; GD[n][m] = gd; HD[n][m] = hd;
+  G[n][m] = g;
+  H[n][m] = h;
+  GD[n][m] = gd;
+  HD[n][m] = hd;
 }
 
 /** Schmidt semi-normalisation factors S[n][m] (Gauss-normalised P -> Schmidt P). */
@@ -152,18 +163,25 @@ export interface MagneticField {
  */
 export function wmmField(lat: number, lon: number, heightKm: number, year: number): MagneticField {
   const dt = year - WMM_EPOCH;
-  const phi = (lat * Math.PI) / 180, lam = (lon * Math.PI) / 180;
+  const phi = (lat * Math.PI) / 180,
+    lam = (lon * Math.PI) / 180;
   // geodetic -> geocentric spherical
-  const sinPhi = Math.sin(phi), cosPhi = Math.cos(phi);
+  const sinPhi = Math.sin(phi),
+    cosPhi = Math.cos(phi);
   const rc = WGS84_A / Math.sqrt(1 - WGS84_E2 * sinPhi * sinPhi);
   const p = (rc + heightKm) * cosPhi;
   const zc = (rc * (1 - WGS84_E2) + heightKm) * sinPhi;
   const r = Math.hypot(p, zc);
   const phiC = Math.asin(zc / r);
   // Legendre functions of cos(theta) = sin(phiC), theta = geocentric colatitude; derivatives d/dtheta.
-  const ct = Math.sin(phiC), st = Math.cos(phiC);
-  const P: number[][] = [], dP: number[][] = [];
-  for (let n = 0; n <= N; n++) { P.push(new Array(N + 1).fill(0)); dP.push(new Array(N + 1).fill(0)); }
+  const ct = Math.sin(phiC),
+    st = Math.cos(phiC);
+  const P: number[][] = [],
+    dP: number[][] = [];
+  for (let n = 0; n <= N; n++) {
+    P.push(new Array(N + 1).fill(0));
+    dP.push(new Array(N + 1).fill(0));
+  }
   P[0][0] = 1;
   for (let n = 1; n <= N; n++) {
     for (let m = 0; m <= n; m++) {
@@ -177,15 +195,20 @@ export function wmmField(lat: number, lon: number, heightKm: number, year: numbe
       }
     }
   }
-  let bx = 0, by = 0, bz = 0; // geocentric north, east, down
+  let bx = 0,
+    by = 0,
+    bz = 0; // geocentric north, east, down
   const ar = RE / r;
   let arn = ar * ar; // (a/r)^(n+2) starts at n = 0
   for (let n = 1; n <= N; n++) {
     arn *= ar;
     for (let m = 0; m <= n; m++) {
-      const g = G[n][m] + dt * GD[n][m], h = H[n][m] + dt * HD[n][m];
-      const cm = Math.cos(m * lam), sm = Math.sin(m * lam);
-      const pnm = S[n][m] * P[n][m], dpnm = S[n][m] * dP[n][m];
+      const g = G[n][m] + dt * GD[n][m],
+        h = H[n][m] + dt * HD[n][m];
+      const cm = Math.cos(m * lam),
+        sm = Math.sin(m * lam);
+      const pnm = S[n][m] * P[n][m],
+        dpnm = S[n][m] * dP[n][m];
       const gh = g * cm + h * sm;
       bx += arn * gh * dpnm;
       by += st > 1e-12 ? (arn * m * (g * sm - h * cm) * pnm) / st : 0;
@@ -198,7 +221,15 @@ export function wmmField(lat: number, lon: number, heightKm: number, year: numbe
   const z = bx * Math.sin(psi) + bz * Math.cos(psi);
   const y = by;
   const h = Math.hypot(x, y);
-  return { x, y, z, h, f: Math.hypot(h, z), decl: (Math.atan2(y, x) * 180) / Math.PI, incl: (Math.atan2(z, h) * 180) / Math.PI };
+  return {
+    x,
+    y,
+    z,
+    h,
+    f: Math.hypot(h, z),
+    decl: (Math.atan2(y, x) * 180) / Math.PI,
+    incl: (Math.atan2(z, h) * 180) / Math.PI,
+  };
 }
 
 /**
@@ -226,6 +257,7 @@ export function wmmValid(date: IsoDate | Date): boolean {
 export function decimalYear(date: IsoDate | Date): number {
   const d = typeof date === 'string' ? new Date(date + 'T00:00:00Z') : date;
   const y = d.getUTCFullYear();
-  const start = Date.UTC(y, 0, 1), end = Date.UTC(y + 1, 0, 1);
+  const start = Date.UTC(y, 0, 1),
+    end = Date.UTC(y + 1, 0, 1);
   return y + (d.getTime() - start) / (end - start);
 }

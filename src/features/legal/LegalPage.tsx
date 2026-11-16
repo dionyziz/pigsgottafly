@@ -7,24 +7,47 @@ import './legal.css';
 export const LEGAL_UPDATED = '16 November 2026';
 export const CONTACT_EMAIL = 'dionyziz@gmail.com';
 
-export interface LegalSection { id: string; title: string; body: ReactNode }
+export interface LegalSection {
+  id: string;
+  title: string;
+  body: ReactNode;
+}
 
-export function LegalPage({ title, lead, sections, current }: { title: string; lead: ReactNode; sections: LegalSection[]; current: 'privacy' | 'terms' }) {
+export function LegalPage({
+  title,
+  lead,
+  sections,
+  current,
+}: {
+  title: string;
+  lead: ReactNode;
+  sections: LegalSection[];
+  current: 'privacy' | 'terms';
+}) {
   useEffect(() => {
     const prev = document.title;
     document.title = `${title} · Pig's Gotta Fly`;
     // a #section link opens at that section once it is rendered
     if (window.location.hash) document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
-    return () => { document.title = prev; };
+    return () => {
+      document.title = prev;
+    };
   }, [title]);
   return (
     <div className="legal-page" data-testid={`legal-${current}`}>
       <header className="legal-top">
-        <Link to="/" className="legal-home"><img src="/icon.svg" alt="" />Pig's Gotta Fly</Link>
+        <Link to="/" className="legal-home">
+          <img src="/icon.svg" alt="" />
+          Pig's Gotta Fly
+        </Link>
         <span className="spacer" />
         <nav>
-          <Link to="/terms" aria-current={current === 'terms' ? 'page' : undefined}>Terms of Service</Link>
-          <Link to="/privacy" aria-current={current === 'privacy' ? 'page' : undefined}>Privacy Policy</Link>
+          <Link to="/terms" aria-current={current === 'terms' ? 'page' : undefined}>
+            Terms of Service
+          </Link>
+          <Link to="/privacy" aria-current={current === 'privacy' ? 'page' : undefined}>
+            Privacy Policy
+          </Link>
         </nav>
       </header>
       <main className="legal-doc card">
@@ -33,11 +56,19 @@ export function LegalPage({ title, lead, sections, current }: { title: string; l
         <div className="legal-lead">{lead}</div>
         <nav className="legal-toc" aria-label="Contents">
           <b>Contents</b>
-          <ol>{sections.map((s) => <li key={s.id}><a href={`#${s.id}`}>{s.title}</a></li>)}</ol>
+          <ol>
+            {sections.map((s) => (
+              <li key={s.id}>
+                <a href={`#${s.id}`}>{s.title}</a>
+              </li>
+            ))}
+          </ol>
         </nav>
         {sections.map((s, i) => (
           <section key={s.id} aria-labelledby={s.id}>
-            <h2 id={s.id}>{i + 1}. {s.title}</h2>
+            <h2 id={s.id}>
+              {i + 1}. {s.title}
+            </h2>
             {s.body}
           </section>
         ))}

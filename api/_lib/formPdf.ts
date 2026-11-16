@@ -4,13 +4,23 @@
 import { PdfDoc, winAnsi, type PdfPage } from './pdf.js';
 import handTtf from './fonts/homemadeApple.js';
 import {
-  GENDEC_DISINSECT_CONT, GENDEC_DISINSECT_LINES, GENDEC_HEALTH_CONT, GENDEC_HEALTH_LINES, signatureName, type Form731Content, type GenDecContent,
+  GENDEC_DISINSECT_CONT,
+  GENDEC_DISINSECT_LINES,
+  GENDEC_HEALTH_CONT,
+  GENDEC_HEALTH_LINES,
+  signatureName,
+  type Form731Content,
+  type GenDecContent,
 } from '../../src/shared/forms.js';
 
 /** Rows printed on one Form 731 sheet. */
 const ROWS_731 = 6;
 
-export interface PdfSignature { key: string; name: string; signedAt: number }
+export interface PdfSignature {
+  key: string;
+  name: string;
+  signedAt: number;
+}
 
 const pad2 = (x: number) => String(x).padStart(2, '0');
 /** 'YYYY-MM-DD HH:MMZ' */
@@ -39,34 +49,57 @@ export function form731Pdf(c: Form731Content, sigs: PdfSignature[]): Buffer {
   const pic = c.people.find((x) => x.role === 'PIC');
   sheets.forEach((rows, si) => {
     const p = doc.page(true);
-    p.text(148.5, 22, 'OFFICIAL STATEMENT OF PERSONS BOARDING PRIVATE AIRCRAFTS', { font: 'bold', size: 13, align: 'center' });
+    p.text(148.5, 22, 'OFFICIAL STATEMENT OF PERSONS BOARDING PRIVATE AIRCRAFTS', {
+      font: 'bold',
+      size: 13,
+      align: 'center',
+    });
     p.text(20, 34, 'TO: HELLENIC CIVIL AVIATION AUTHORITY/AIRPORT', { size: 9.5 });
     p.text(110, 33.4, c.airport, { size: 10, maxW: 103 });
     p.line(109, 34.6, 214, 34.6, 0.15);
     p.text(218, 34, 'DATE', { size: 9.5 });
     p.text(229, 33.4, c.date, { size: 10 });
     p.line(228, 34.6, 278, 34.6, 0.15);
-    p.text(20, 43, 'We, the undersigned on our own responsibility and being fully aware of the sanctions stipulated by Law 1599/1986, declare solemly that we are fully aware', { size: 8.6, maxW: 258 });
+    p.text(
+      20,
+      43,
+      'We, the undersigned on our own responsibility and being fully aware of the sanctions stipulated by Law 1599/1986, declare solemly that we are fully aware',
+      { size: 8.6, maxW: 258 },
+    );
     p.text(20, 49, 'that the flight on which we are boarding, operated by aircraft with registration', { size: 8.6 });
     p.text(132, 48.4, c.registration, { size: 10 });
     p.line(131, 49.6, 170, 49.6, 0.15);
     p.text(172, 49, 'and operating the route', { size: 8.6 });
     p.text(207, 48.4, c.route, { size: 10, maxW: 70 });
     p.line(206, 49.6, 278, 49.6, 0.15);
-    p.text(20, 55, 'is not a commercial flight and no fare (fee) has been paid for the afore mentioned transport.', { size: 8.6 });
+    p.text(20, 55, 'is not a commercial flight and no fare (fee) has been paid for the afore mentioned transport.', {
+      size: 8.6,
+    });
 
     // table: No, name, relation, ID, contact, signature (mm widths as the print sheet)
     const cols = [8.6, 62.1, 65.1, 35, 65, 32.5];
     const x0 = 10.5;
     const xs = cols.reduce<number[]>((a, w) => [...a, a[a.length - 1] + w], [x0]);
-    const top = 60, headH = 11, rowH = 12.5;
+    const top = 60,
+      headH = 11,
+      rowH = 12.5;
     const bottom = top + headH + ROWS_731 * rowH;
     p.rect(x0, top, xs[xs.length - 1] - x0, bottom - top, 0.3);
     for (const x of xs.slice(1, -1)) p.line(x, top, x, bottom, 0.2);
     p.line(x0, top + headH, xs[xs.length - 1], top + headH, 0.3);
-    for (let r = 1; r < ROWS_731; r++) p.line(x0, top + headH + r * rowH, xs[xs.length - 1], top + headH + r * rowH, 0.15);
-    const heads = ['No', 'NAME AND SURNAME', 'Relation to the person/entity operating the aircraft *', 'ID/Passport', 'Contact details', 'Signature'];
-    heads.forEach((h, i) => p.text((xs[i] + xs[i + 1]) / 2, top + 6.8, h, { font: 'bold', size: 8, align: 'center', maxW: cols[i] - 2 }));
+    for (let r = 1; r < ROWS_731; r++)
+      p.line(x0, top + headH + r * rowH, xs[xs.length - 1], top + headH + r * rowH, 0.15);
+    const heads = [
+      'No',
+      'NAME AND SURNAME',
+      'Relation to the person/entity operating the aircraft *',
+      'ID/Passport',
+      'Contact details',
+      'Signature',
+    ];
+    heads.forEach((h, i) =>
+      p.text((xs[i] + xs[i + 1]) / 2, top + 6.8, h, { font: 'bold', size: 8, align: 'center', maxW: cols[i] - 2 }),
+    );
     for (let r = 0; r < ROWS_731; r++) {
       const y = top + headH + r * rowH + 7.8;
       const no = si * ROWS_731 + r + 1;
@@ -81,9 +114,21 @@ export function form731Pdf(c: Form731Content, sigs: PdfSignature[]): Buffer {
       if (s) signature(p, xs[5] + 1.5, y - 1.2, cols[5] - 3, s);
     }
     p.text(20, bottom + 9, 'Official Statement Guidelines', { font: 'bold', size: 8.5 });
-    p.text(20, bottom + 14, 'a.  This form must be submitted by the Pilot in Command to the HCAA/Airport Office (wherever applicable)', { size: 8 });
-    p.text(25, bottom + 18, 'otherwise to the Airport Manager Office for validation before flight departure', { size: 8 });
-    p.text(20, bottom + 23, 'b.(*) In field "Relation to the person/entity" Aeroclub members must additionally state their Aeroclub Code Number', { size: 8 });
+    p.text(
+      20,
+      bottom + 14,
+      'a.  This form must be submitted by the Pilot in Command to the HCAA/Airport Office (wherever applicable)',
+      { size: 8 },
+    );
+    p.text(25, bottom + 18, 'otherwise to the Airport Manager Office for validation before flight departure', {
+      size: 8,
+    });
+    p.text(
+      20,
+      bottom + 23,
+      'b.(*) In field "Relation to the person/entity" Aeroclub members must additionally state their Aeroclub Code Number',
+      { size: 8 },
+    );
     // The PIC's box, bottom right as on the form; "It is verified by" is for HCAA.
     p.text(198, bottom + 16, 'The Pilot in Command', { font: 'bold', size: 11 });
     p.text(248.4, bottom + 16, 'It is verified by', { font: 'bold', size: 11 });
@@ -120,7 +165,8 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
     p.text(vx, y, value, { font: 'bold', size: 9.5, maxW: room });
     return vx + Math.min(w(value, 'bold', 9.5), room);
   };
-  const L = 15, R = 195;
+  const L = 15,
+    R = 195;
 
   p.text(105, 19.5, 'GENERAL DECLARATION', { font: 'bold', size: 17, align: 'center' });
   p.text(105, 24.3, '(OUTWARD/INWARD)', { size: 7, align: 'center' });
@@ -136,18 +182,27 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   p.text((L + 100 + arrEnd) / 2, 53.6, '(Place)', { size: 6.5, align: 'center' });
 
   // the routing box
-  const top = 59, headH = 14, tableH = 70, healthH = 74;
-  const bodyTop = top + headH, healthTop = bodyTop + tableH, bottom = healthTop + healthH;
+  const top = 59,
+    headH = 14,
+    tableH = 70,
+    healthH = 74;
+  const bodyTop = top + headH,
+    healthTop = bodyTop + tableH,
+    bottom = healthTop + healthH;
   const split = L + 110;
   p.rect(L, top, R - L, bottom - top, 0.45);
   p.text(105, top + 7, 'FLIGHT ROUTING', { font: 'bold', size: 13, align: 'center' });
-  p.text(105, top + 11.2, '("Place" Column always to list origin every en-route stop and destination)', { size: 7.5, align: 'center' });
+  p.text(105, top + 11.2, '("Place" Column always to list origin every en-route stop and destination)', {
+    size: 7.5,
+    align: 'center',
+  });
   p.line(L, bodyTop, R, bodyTop, 0.35);
   p.line(split, bodyTop, split, bottom, 0.35);
   p.line(L, healthTop, R, healthTop, 0.35);
 
   // PLACE | NAMES OF CREW*: origin, ⇩, destination, blank rows
-  const rowH = tableH / (GD_ROWS + 1), placeR = L + 26;
+  const rowH = tableH / (GD_ROWS + 1),
+    placeR = L + 26;
   p.line(placeR, bodyTop, placeR, healthTop, 0.35);
   p.text((L + placeR) / 2, bodyTop + 4.6, 'PLACE', { font: 'bold', size: 8, align: 'center' });
   p.text((placeR + split) / 2, bodyTop + 4.6, 'NAMES OF CREW*', { font: 'bold', size: 8, align: 'center' });
@@ -168,8 +223,12 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   p.text(pcx, bodyTop + 4.3, 'NUMBER OF PASSENGERS', { font: 'bold', size: 8, align: 'center' });
   p.text(pcx, bodyTop + 7.8, 'ON THIS STAGE**', { font: 'bold', size: 8, align: 'center' });
   p.line(split, bodyTop + 10, R, bodyTop + 10, 0.35);
-  const px = split + 4, pr = R - 4;
-  const under = (x: number, y: number, s: string) => { p.text(x, y, s, { font: 'italic', size: 8 }); p.line(x, y + 0.7, x + w(s, 'regular', 8), y + 0.7, 0.15); };
+  const px = split + 4,
+    pr = R - 4;
+  const under = (x: number, y: number, s: string) => {
+    p.text(x, y, s, { font: 'italic', size: 8 });
+    p.line(x, y + 0.7, x + w(s, 'regular', 8), y + 0.7, 0.15);
+  };
   const pax = (y: number, label: string, v: number) => {
     p.text(px, y, label, { size: 8 });
     const x0 = px + w(label, 'regular', 8) + 2;
@@ -177,35 +236,55 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
     p.text((x0 + pr) / 2, y, String(v), { font: 'bold', size: 9.5, align: 'center' });
   };
   let y = bodyTop + 18;
-  under(px, y, 'Departure place:'); y += 6;
-  pax(y, 'Embarking', c.embarking); y += 6;
-  pax(y, 'Through on same flight', c.throughDeparture); y += 10;
-  under(px, y, 'Arrival place:'); y += 6;
-  pax(y, 'Disembarking', c.disembarking); y += 6;
+  under(px, y, 'Departure place:');
+  y += 6;
+  pax(y, 'Embarking', c.embarking);
+  y += 6;
+  pax(y, 'Through on same flight', c.throughDeparture);
+  y += 10;
+  under(px, y, 'Arrival place:');
+  y += 6;
+  pax(y, 'Disembarking', c.disembarking);
+  y += 6;
   pax(y, 'Through on same flight', c.throughArrival);
   p.text(pcx, healthTop + 6, 'FOR OFFICIAL USE ONLY', { font: 'bold', size: 8, align: 'center' });
 
   // Declaration of Health: the full Annex 9 text, struck through NIL (nothing to declare)
   p.text((L + split) / 2, healthTop + 4.4, 'DECLARATION OF HEALTH', { font: 'bold', size: 8, align: 'center' });
-  const lh = 3, x0 = L + 2, tw = 106, fs = 7.1;
+  const lh = 3,
+    x0 = L + 2,
+    tw = 106,
+    fs = 7.1;
   const dotted = (yy: number, lead: string) => {
     if (lead) p.text(x0, yy, lead, { size: fs });
     const from = lead ? x0 + w(lead + ' ', 'regular', fs) : x0;
     for (let x = from; x < x0 + tw; x += 1.2) p.line(x, yy, x + 0.25, yy, 0.2);
   };
   let hy = healthTop + 9.6;
-  for (const l of GENDEC_HEALTH_LINES) { p.text(x0, hy, l, { size: fs, maxW: tw }); hy += lh; }
-  dotted(hy, GENDEC_HEALTH_CONT); hy += lh;
-  dotted(hy, ''); hy += lh + 1.6;
-  for (const l of GENDEC_DISINSECT_LINES) { p.text(x0, hy, l, { size: fs, maxW: tw }); hy += lh; }
-  dotted(hy, GENDEC_DISINSECT_CONT); hy += lh;
+  for (const l of GENDEC_HEALTH_LINES) {
+    p.text(x0, hy, l, { size: fs, maxW: tw });
+    hy += lh;
+  }
+  dotted(hy, GENDEC_HEALTH_CONT);
+  hy += lh;
+  dotted(hy, '');
+  hy += lh + 1.6;
+  for (const l of GENDEC_DISINSECT_LINES) {
+    p.text(x0, hy, l, { size: fs, maxW: tw });
+    hy += lh;
+  }
+  dotted(hy, GENDEC_DISINSECT_CONT);
+  hy += lh;
   dotted(hy, '');
   const sy = bottom - 7.2;
   const signed = 'Signed, if required, with time and date';
   p.text(x0, sy, signed, { size: fs });
   p.line(x0 + w(signed, 'regular', fs) + 1.5, sy + 0.4, split - 2, sy + 0.4, 0.2);
   p.text(split - 12, bottom - 3.2, 'Crew member concerned', { size: fs, align: 'right' });
-  const hx0 = L + 2, hy0 = bottom - 2, hx1 = split - 2, hy1 = healthTop + 2;
+  const hx0 = L + 2,
+    hy0 = bottom - 2,
+    hx1 = split - 2,
+    hy1 = healthTop + 2;
   p.color(0.29, 0.56, 0.85);
   p.line(hx0, hy0, hx1, hy1, 0.9);
   // NIL written level on the middle of the stroke
@@ -227,13 +306,29 @@ export function genDecPdf(c: GenDecContent, sig?: PdfSignature | null): Buffer {
   p.text(lx + 45, sl + 4.4, 'Authorized Agent or Pilot-in-Command', { size: 8, align: 'center' });
 
   p.text(L, 271, '* To be completed when required by the State.', { size: 7 });
-  p.text(L, 274.6, '** Not to be completed when passenger manifests are presented and to be completed only when required by the State.', { size: 7, maxW: R - L });
+  p.text(
+    L,
+    274.6,
+    '** Not to be completed when passenger manifests are presented and to be completed only when required by the State.',
+    { size: 7, maxW: R - L },
+  );
   return doc.bytes({ title: `General Declaration ${c.registration} ${c.date}` });
 }
 
 /** An outlined down arrow (⇩) centred on x, from y (top) over h mm. */
 function downArrow(p: PdfPage, x: number, y: number, h: number) {
-  const sw = 1.1, hw = 2.6, sh = h * 0.5;
-  const pts: [number, number][] = [[x - sw, y], [x + sw, y], [x + sw, y + sh], [x + hw, y + sh], [x, y + h], [x - hw, y + sh], [x - sw, y + sh], [x - sw, y]];
+  const sw = 1.1,
+    hw = 2.6,
+    sh = h * 0.5;
+  const pts: [number, number][] = [
+    [x - sw, y],
+    [x + sw, y],
+    [x + sw, y + sh],
+    [x + hw, y + sh],
+    [x, y + h],
+    [x - hw, y + sh],
+    [x - sw, y + sh],
+    [x - sw, y],
+  ];
   for (let i = 0; i < pts.length - 1; i++) p.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1], 0.25);
 }

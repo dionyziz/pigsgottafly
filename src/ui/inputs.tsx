@@ -3,7 +3,15 @@ import type { MouseEvent, ReactNode } from 'react';
 import { Icon } from './Icon';
 
 /** Rounded search field with the magnifier. `sm` is the narrower list-page variant. */
-export function SearchBox({ value, onChange, placeholder, label, sm, testId, autoFocus }: {
+export function SearchBox({
+  value,
+  onChange,
+  placeholder,
+  label,
+  sm,
+  testId,
+  autoFocus,
+}: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
@@ -16,15 +24,35 @@ export function SearchBox({ value, onChange, placeholder, label, sm, testId, aut
   return (
     <div className={'searchbox' + (sm ? ' sm' : '')}>
       <Icon name="search" />
-      <input type="search" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
-        aria-label={label ?? placeholder} data-testid={testId} autoFocus={autoFocus} />
+      <input
+        type="search"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label ?? placeholder}
+        data-testid={testId}
+        autoFocus={autoFocus}
+      />
     </div>
   );
 }
 
 /** An input with its unit drawn inside on the right: <UnitInput unit="kg"><input …/></UnitInput>. */
-export function UnitInput({ unit, children, width }: { unit: ReactNode; children: ReactNode; width?: number | string }) {
-  return <div className="unit-input" style={width != null ? { width } : undefined}>{children}<span>{unit}</span></div>;
+export function UnitInput({
+  unit,
+  children,
+  width,
+}: {
+  unit: ReactNode;
+  children: ReactNode;
+  width?: number | string;
+}) {
+  return (
+    <div className="unit-input" style={width != null ? { width } : undefined}>
+      {children}
+      <span>{unit}</span>
+    </div>
+  );
 }
 
 const INTERACTIVE = 'button, a, input, select, textarea, label, .menu, .menu-wrap, [data-row-ignore]';

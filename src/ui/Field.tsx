@@ -6,10 +6,22 @@ export type IssueLevel = 'error' | 'warning';
 /** A message about a field: a plain string is an error. */
 export type FieldIssue = string | { level: IssueLevel | 'danger' | 'warn'; message: string };
 
-const levelOf = (i: FieldIssue): IssueLevel => (typeof i === 'string' || i.level === 'error' || i.level === 'danger' ? 'error' : 'warning');
+const levelOf = (i: FieldIssue): IssueLevel =>
+  typeof i === 'string' || i.level === 'error' || i.level === 'danger' ? 'error' : 'warning';
 const textOf = (i: FieldIssue) => (typeof i === 'string' ? i : i.message);
 
-export function Field({ label, req, hint, issues, error, focus, wide, className, children, testId }: {
+export function Field({
+  label,
+  req,
+  hint,
+  issues,
+  error,
+  focus,
+  wide,
+  className,
+  children,
+  testId,
+}: {
   label: ReactNode;
   /** Required: a red asterisk after the label. */
   req?: boolean;
@@ -28,15 +40,31 @@ export function Field({ label, req, hint, issues, error, focus, wide, className,
   const all: FieldIssue[] = [...(error ? [error] : []), ...(issues ?? [])];
   const invalid = all.some((i) => levelOf(i) === 'error');
   // A plain input/select/textarea child is marked aria-invalid too.
-  const child = invalid && isValidElement(children) && typeof children.type === 'string'
-    ? cloneElement(children as ReactElement<{ 'aria-invalid'?: boolean }>, { 'aria-invalid': true })
-    : children;
+  const child =
+    invalid && isValidElement(children) && typeof children.type === 'string'
+      ? cloneElement(children as ReactElement<{ 'aria-invalid'?: boolean }>, { 'aria-invalid': true })
+      : children;
   return (
-    <label className={['field', wide && 'span2', invalid && 'invalid', className].filter(Boolean).join(' ')} data-focus={focus} data-testid={testId}>
-      <span>{label}{req && <span className="req" aria-hidden>*</span>}</span>
+    <label
+      className={['field', wide && 'span2', invalid && 'invalid', className].filter(Boolean).join(' ')}
+      data-focus={focus}
+      data-testid={testId}
+    >
+      <span>
+        {label}
+        {req && (
+          <span className="req" aria-hidden>
+            *
+          </span>
+        )}
+      </span>
       {child}
       {hint && <span className="hint">{hint}</span>}
-      {all.map((i, k) => <span key={k} className={'issue ' + levelOf(i)} role={levelOf(i) === 'error' ? 'alert' : undefined}>{textOf(i)}</span>)}
+      {all.map((i, k) => (
+        <span key={k} className={'issue ' + levelOf(i)} role={levelOf(i) === 'error' ? 'alert' : undefined}>
+          {textOf(i)}
+        </span>
+      ))}
     </label>
   );
 }
@@ -46,12 +74,24 @@ export function IssueList({ issues }: { issues: FieldIssue[] }) {
   if (!issues.length) return null;
   return (
     <ul className="issue-list">
-      {issues.map((i, k) => <li key={k} className={levelOf(i)}>{textOf(i)}</li>)}
+      {issues.map((i, k) => (
+        <li key={k} className={levelOf(i)}>
+          {textOf(i)}
+        </li>
+      ))}
     </ul>
   );
 }
 
-export function Check({ checked, onChange, children, title, disabled, name, testId }: {
+export function Check({
+  checked,
+  onChange,
+  children,
+  title,
+  disabled,
+  name,
+  testId,
+}: {
   checked: boolean;
   onChange: (v: boolean) => void;
   children: ReactNode;
@@ -62,7 +102,14 @@ export function Check({ checked, onChange, children, title, disabled, name, test
 }) {
   return (
     <label className="check" title={title}>
-      <input type="checkbox" checked={checked} disabled={disabled} name={name} data-testid={testId} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        name={name}
+        data-testid={testId}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       <span>{children}</span>
     </label>
   );

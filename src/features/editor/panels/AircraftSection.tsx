@@ -2,7 +2,14 @@
 import { Link } from 'react-router';
 import { todayUtc } from '../../../shared/date';
 import { pickCompassCard } from '../../../calc';
-import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';
+import {
+  fuelTypesLabel,
+  seatLayout,
+  type Aircraft,
+  type FlightCrew,
+  type FlightDoc,
+  type HangarAircraft,
+} from '../../../shared';
 import { useEditor } from '../state';
 import { Chip } from '../../../ui';
 import { KV, Section } from './ui';
@@ -18,7 +25,9 @@ export function reseatCrew(crew: FlightCrew[], aircraft: Aircraft | null): Fligh
   if (!seats.length) return crew;
   const taken = new Set<string>();
   const keep = crew.map((c) => (seats.includes(c.seat) && !taken.has(c.seat) ? (taken.add(c.seat), true) : false));
-  const order = crew.map((c, i) => ({ c, i })).sort((a, b) => (a.c.role === 'PIC' ? -1 : 0) - (b.c.role === 'PIC' ? -1 : 0));
+  const order = crew
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => (a.c.role === 'PIC' ? -1 : 0) - (b.c.role === 'PIC' ? -1 : 0));
   const out = [...crew];
   for (const { c, i } of order) {
     if (keep[i]) continue;
@@ -33,8 +42,13 @@ export function reseatCrew(crew: FlightCrew[], aircraft: Aircraft | null): Fligh
 export function setAircraft(d: FlightDoc, aircraft: Aircraft | null): FlightDoc {
   const crew = reseatCrew(d.crew, aircraft);
   const bagIds = new Set((aircraft?.massBalance.stations ?? []).filter((s) => s.kind === 'baggage').map((s) => s.id));
-  const baggageKg = aircraft ? Object.fromEntries(Object.entries(d.baggageKg).filter(([k]) => bagIds.has(k))) : d.baggageKg;
-  const compassCard = aircraft && d.options.compassCard && aircraft.compassCards.some((c) => c.name === d.options.compassCard) ? d.options.compassCard : null;
+  const baggageKg = aircraft
+    ? Object.fromEntries(Object.entries(d.baggageKg).filter(([k]) => bagIds.has(k)))
+    : d.baggageKg;
+  const compassCard =
+    aircraft && d.options.compassCard && aircraft.compassCards.some((c) => c.name === d.options.compassCard)
+      ? d.options.compassCard
+      : null;
   const category = aircraft?.massBalance.envelopes.utility ? d.options.category : 'normal';
   return { ...d, aircraftId: aircraft?.id ?? null, crew, baggageKg, options: { ...d.options, compassCard, category } };
 }
@@ -53,9 +67,15 @@ export function AircraftSection() {
   const missing = doc.aircraftId && !aircraft;
 
   return (
-    <Section id="aircraft" title="Aircraft" badge={aircraft ? <b className="mono">{aircraft.registration}</b> : <Chip tone="warn">None</Chip>}>
+    <Section
+      id="aircraft"
+      title="Aircraft"
+      badge={aircraft ? <b className="mono">{aircraft.registration}</b> : <Chip tone="warn">None</Chip>}
+    >
       {hangar.length === 0 ? (
-        <p className="ep-note" data-focus="aircraft">Hangar empty. <Link to="/hangar">Add an aircraft</Link></p>
+        <p className="ep-note" data-focus="aircraft">
+          Hangar empty. <Link to="/hangar">Add an aircraft</Link>
+        </p>
       ) : (
         <select
           value={aircraft?.id ?? ''}
@@ -68,28 +88,73 @@ export function AircraftSection() {
           }}
         >
           <option value="">Choose an aircraft…</option>
-          {hangar.map((a) => <option key={a.id} value={a.id}>{a.registration} · {a.makeModel || a.icaoType}{sharedBy(a)}</option>)}
+          {hangar.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.registration} · {a.makeModel || a.icaoType}
+              {sharedBy(a)}
+            </option>
+          ))}
         </select>
       )}
-      {missing && <p className="ep-note warn-text" data-testid="aircraft-unavailable">Aircraft unavailable: deleted or no longer shared.</p>}
+      {missing && (
+        <p className="ep-note warn-text" data-testid="aircraft-unavailable">
+          Aircraft unavailable: deleted or no longer shared.
+        </p>
+      )}
       {aircraft && (
         <>
           <div className="ep-kvs">
-            <KV k="Type" v={<>{aircraft.icaoType}/{aircraft.wake}</>} sub={aircraft.colours || undefined} />
-            <KV k="TAS cruise / pattern" v={<span className="tnum">{aircraft.cruiseTasKt} / {aircraft.patternTasKt} kt</span>} />
-            <KV k="Planning burn" v={<span className="tnum">{aircraft.fuel.burnLph} L/h</span>} sub={`+${aircraft.fuel.taxiAllowanceL} L taxi`} />
-            <KV k="Fuel capacity" v={<span className="tnum">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
+            <KV
+              k="Type"
+              v={
+                <>
+                  {aircraft.icaoType}/{aircraft.wake}
+                </>
+              }
+              sub={aircraft.colours || undefined}
+            />
+            <KV
+              k="TAS cruise / pattern"
+              v={
+                <span className="tnum">
+                  {aircraft.cruiseTasKt} / {aircraft.patternTasKt} kt
+                </span>
+              }
+            />
+            <KV
+              k="Planning burn"
+              v={<span className="tnum">{aircraft.fuel.burnLph} L/h</span>}
+              sub={`+${aircraft.fuel.taxiAllowanceL} L taxi`}
+            />
+            <KV
+              k="Fuel capacity"
+              v={<span className="tnum">{aircraft.fuel.usableL} L</span>}
+              sub={fuelTypesLabel(aircraft.fuel)}
+            />
           </div>
           {aircraft.compassCards.length > 1 ? (
-            <label className="field" data-focus="compassCard">Compass card
-              <select value={card?.name ?? ''} onChange={(e) => update((d) => ({ ...d, options: { ...d.options, compassCard: e.target.value || null } }))}>
-                {aircraft.compassCards.map((c) => <option key={c.name} value={c.name}>{c.name}{expiredOn(c.expires) ? ` (expired ${c.expires})` : ''}</option>)}
+            <label className="field" data-focus="compassCard">
+              Compass card
+              <select
+                value={card?.name ?? ''}
+                onChange={(e) =>
+                  update((d) => ({ ...d, options: { ...d.options, compassCard: e.target.value || null } }))
+                }
+              >
+                {aircraft.compassCards.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                    {expiredOn(c.expires) ? ` (expired ${c.expires})` : ''}
+                  </option>
+                ))}
               </select>
             </label>
           ) : card && expiredOn(card.expires) ? (
             <KV k="Compass card" tone="danger" v={card.name} sub={`expired ${card.expires}`} />
           ) : null}
-          <Link to={`/hangar/${aircraft.id}`} className="ep-link">{aircraft.registration} in the hangar</Link>
+          <Link to={`/hangar/${aircraft.id}`} className="ep-link">
+            {aircraft.registration} in the hangar
+          </Link>
         </>
       )}
     </Section>

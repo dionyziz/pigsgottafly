@@ -22,26 +22,66 @@ export function OperatorsPage() {
       <div className="page-head">
         <h1>Operators</h1>
         <span className="spacer" />
-        <button className="primary" onClick={() => setCreating(true)} data-testid="add-operator">New operator</button>
+        <button className="primary" onClick={() => setCreating(true)} data-testid="add-operator">
+          New operator
+        </button>
       </div>
-      <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle="Could not load the operators"
-        isEmpty={(d) => d.length === 0} empty={(
-          <EmptyState title="No operators yet" action={<button className="primary" onClick={() => setCreating(true)}>New operator</button>} />
-        )}>
+      <AsyncView
+        data={data}
+        error={error}
+        loading={loading}
+        reload={() => void reload()}
+        errorTitle="Could not load the operators"
+        isEmpty={(d) => d.length === 0}
+        empty={
+          <EmptyState
+            title="No operators yet"
+            action={
+              <button className="primary" onClick={() => setCreating(true)}>
+                New operator
+              </button>
+            }
+          />
+        }
+      >
         {(list) => (
           <div className="card list-card">
             <table className="list" data-testid="operator-list">
-              <thead><tr><th>Name</th><th className="hide-sm">Aircraft</th><th className="hide-sm">Contact</th><th>Declarations</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th className="hide-sm">Aircraft</th>
+                  <th className="hide-sm">Contact</th>
+                  <th>Declarations</th>
+                </tr>
+              </thead>
               <tbody>
                 {list.map((o) => (
-                  <tr key={o.id} className="clickable" data-operator-id={o.id} onClick={rowClick(() => navigate(`/operators/${o.id}`))}>
+                  <tr
+                    key={o.id}
+                    className="clickable"
+                    data-operator-id={o.id}
+                    onClick={rowClick(() => navigate(`/operators/${o.id}`))}
+                  >
                     <td>
-                      <div className="nm"><Link to={`/operators/${o.id}`}>{o.name}</Link> <SharedChip access={o.access} /></div>
-                      {o.access.role === 'view' && o.access.viaAircraft.length > 0 && <div className="hint">Through {o.access.viaAircraft.join(', ')}</div>}
+                      <div className="nm">
+                        <Link to={`/operators/${o.id}`}>{o.name}</Link> <SharedChip access={o.access} />
+                      </div>
+                      {o.access.role === 'view' && o.access.viaAircraft.length > 0 && (
+                        <div className="hint">Through {o.access.viaAircraft.join(', ')}</div>
+                      )}
                     </td>
                     <td className="hide-sm mono">{o.aircraft.map((a) => a.registration).join(', ') || none}</td>
                     <td className="hide-sm">{[o.phone, o.email].filter(Boolean).join(' · ') || none}</td>
-                    <td>{o.requiresWbPerf ? <Chip tone="warn" title={`W&B and performance to ${o.declarationsEmail} before each flight`}>W&amp;B + performance</Chip> : none}</td>
+                    <td>
+                      {o.requiresWbPerf ? (
+                        <Chip tone="warn" title={`W&B and performance to ${o.declarationsEmail} before each flight`}>
+                          W&amp;B + performance
+                        </Chip>
+                      ) : (
+                        none
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -49,7 +89,9 @@ export function OperatorsPage() {
           </div>
         )}
       </AsyncView>
-      {creating && <NewOperatorDialog onClose={() => setCreating(false)} onCreated={(o) => navigate(`/operators/${o.id}`)} />}
+      {creating && (
+        <NewOperatorDialog onClose={() => setCreating(false)} onCreated={(o) => navigate(`/operators/${o.id}`)} />
+      )}
     </Shell>
   );
 }

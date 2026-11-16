@@ -62,7 +62,11 @@ export function windComponents(runwayHdgDeg: number, windDirDeg: number, windKt:
   if (!(windKt > 0)) return { headwindKt: 0, crosswindKt: 0, crossFrom: '' };
   const a = rad(norm180(windDirDeg - runwayHdgDeg));
   const cross = windKt * Math.sin(a);
-  return { headwindKt: windKt * Math.cos(a), crosswindKt: Math.abs(cross), crossFrom: cross > 1e-9 ? 'R' : cross < -1e-9 ? 'L' : '' };
+  return {
+    headwindKt: windKt * Math.cos(a),
+    crosswindKt: Math.abs(cross),
+    crossFrom: cross > 1e-9 ? 'R' : cross < -1e-9 ? 'L' : '',
+  };
 }
 
 /**
@@ -108,7 +112,11 @@ const runwayHeadingMag = (r: RefRunway): number => {
 };
 
 /** Wind (true) → components on a runway (magnetic heading), with variation E positive. */
-export function runwayWind(runway: RefRunway, wind: { dirTrueDeg: number; speedKt: number } | null, variationDeg: number): WindComponents {
+export function runwayWind(
+  runway: RefRunway,
+  wind: { dirTrueDeg: number; speedKt: number } | null,
+  variationDeg: number,
+): WindComponents {
   if (!wind || !(wind.speedKt > 0)) return { headwindKt: 0, crosswindKt: 0, crossFrom: '' };
   return windComponents(runwayHeadingMag(runway), wind.dirTrueDeg - variationDeg, wind.speedKt);
 }
@@ -135,9 +143,17 @@ export function selectRunway(
   let best: RunwayChoice | null = null;
   for (const r of runways) {
     const w = runwayWind(r, wind, variationDeg);
-    if (!best) { best = { runway: r, wind: w }; continue; }
+    if (!best) {
+      best = { runway: r, wind: w };
+      continue;
+    }
     const d = w.headwindKt - best.wind.headwindKt;
-    if (d > 0.05 || (Math.abs(d) <= 0.05 && (len(r) > len(best.runway) || (len(r) === len(best.runway) && (r.lengthM ?? 0) > (best.runway.lengthM ?? 0))))) best = { runway: r, wind: w };
+    if (
+      d > 0.05 ||
+      (Math.abs(d) <= 0.05 &&
+        (len(r) > len(best.runway) || (len(r) === len(best.runway) && (r.lengthM ?? 0) > (best.runway.lengthM ?? 0))))
+    )
+      best = { runway: r, wind: w };
   }
   return best;
 }
@@ -184,7 +200,13 @@ export interface PerfDistances {
 }
 
 /** Linear interpolation of y over sorted xs; clamps below xs[0] when clampLow, extrapolates above. */
-function interp1(xs: number[], ys: number[], x: number, clampLow: boolean, clampHigh: boolean): { y: number; extrapolated: boolean } {
+function interp1(
+  xs: number[],
+  ys: number[],
+  x: number,
+  clampLow: boolean,
+  clampHigh: boolean,
+): { y: number; extrapolated: boolean } {
   const n = xs.length;
   if (n === 0) return { y: NaN, extrapolated: true };
   if (n === 1) return { y: ys[0], extrapolated: x !== xs[0] };
@@ -205,8 +227,20 @@ function interp1(xs: number[], ys: number[], x: number, clampLow: boolean, clamp
 }
 
 function interpPair(xs: number[], pairs: DistancePair[], x: number): { v: DistancePair; extrapolated: boolean } {
-  const g = interp1(xs, pairs.map((p) => p[0]), x, true, false);
-  const t = interp1(xs, pairs.map((p) => p[1]), x, true, false);
+  const g = interp1(
+    xs,
+    pairs.map((p) => p[0]),
+    x,
+    true,
+    false,
+  );
+  const t = interp1(
+    xs,
+    pairs.map((p) => p[1]),
+    x,
+    true,
+    false,
+  );
   return { v: [g.y, t.y], extrapolated: g.extrapolated || t.extrapolated };
 }
 
@@ -230,18 +264,32 @@ function conditionFactors(tables: PerformanceTables, surface: string | null, adv
 function windFactor(headwindKt: number, per5: number, notes: string[]): number {
   if (headwindKt < 0) {
     const tail = -headwindKt;
-    if (tail > 10) notes.push(`Tailwind ${tail.toFixed(1)} kt: above 10 kt, no data (distance +10 % per 2 kt extrapolated).`);
+    if (tail > 10)
+      notes.push(`Tailwind ${tail.toFixed(1)} kt: above 10 kt, no data (distance +10 % per 2 kt extrapolated).`);
     return 1 + 0.05 * tail;
   }
   return Math.max(0.5, 1 - (per5 * headwindKt) / 5);
 }
 
 function tempFactor(tableAlts: number[], stdTemps: number[], pa: number, oat: number, per15: number): number {
-  const std = stdTemps.length === tableAlts.length && stdTemps.length ? interp1(tableAlts, stdTemps, pa, false, false).y : isaTempC(pa);
-  return 1 + per15 * Math.max(0, oat - std) / 15;
+  const std =
+    stdTemps.length === tableAlts.length && stdTemps.length
+      ? interp1(tableAlts, stdTemps, pa, false, false).y
+      : isaTempC(pa);
+  return 1 + (per15 * Math.max(0, oat - std)) / 15;
 }
 
-function finish(tableGroundM: number, tableTotalM: number, f: { temperature: number; wind: number }, cond: { surface: number; slope: number; condition: number }, safety: number, extrapolated: boolean, method: PerfMethod, tableAltFt: number, notes: string[]): PerfDistances {
+function finish(
+  tableGroundM: number,
+  tableTotalM: number,
+  f: { temperature: number; wind: number },
+  cond: { surface: number; slope: number; condition: number },
+  safety: number,
+  extrapolated: boolean,
+  method: PerfMethod,
+  tableAltFt: number,
+  notes: string[],
+): PerfDistances {
   const groundM = tableGroundM * (f.temperature * f.wind);
   const totalM = tableTotalM * (f.temperature * f.wind);
   return {
@@ -249,7 +297,14 @@ function finish(tableGroundM: number, tableTotalM: number, f: { temperature: num
     totalM,
     tableGroundM,
     tableTotalM,
-    factors: { temperature: f.temperature, surface: cond.surface, slope: cond.slope, safety, wind: f.wind, condition: cond.condition },
+    factors: {
+      temperature: f.temperature,
+      surface: cond.surface,
+      slope: cond.slope,
+      safety,
+      wind: f.wind,
+      condition: cond.condition,
+    },
     requiredGroundM: groundM * cond.condition * safety,
     requiredTotalM: totalM * cond.condition * safety,
     extrapolated,
@@ -273,12 +328,27 @@ export function takeoffDistances(tables: PerformanceTables, c: PerfConditions): 
   /** Distances for headwind column index hi, at (mass, alt). */
   const atColumn = (hi: number): DistancePair => {
     const perMass = rows.map((r) => interpPair(t.altitudesFt, r.distances[hi], alt).v);
-    const g = interp1(masses, perMass.map((p) => p[0]), c.massKg, true, false).y;
-    const tt = interp1(masses, perMass.map((p) => p[1]), c.massKg, true, false).y;
+    const g = interp1(
+      masses,
+      perMass.map((p) => p[0]),
+      c.massKg,
+      true,
+      false,
+    ).y;
+    const tt = interp1(
+      masses,
+      perMass.map((p) => p[1]),
+      c.massKg,
+      true,
+      false,
+    ).y;
     return [g, tt];
   };
 
-  let ground: number, total: number, temperature = 1, wind = 1;
+  let ground: number,
+    total: number,
+    temperature = 1,
+    wind = 1;
   if (method === 'da') {
     [ground, total] = atColumn(0);
     wind = windFactor(c.headwindKt, tables.landing.headwindDecreasePer5Kt || 0.1, notes);
@@ -287,8 +357,20 @@ export function takeoffDistances(tables: PerformanceTables, c: PerfConditions): 
     if (c.headwindKt > 0) {
       const hw = Math.min(c.headwindKt, cols[cols.length - 1]);
       const pairs = cols.map((_, i) => atColumn(i));
-      ground = interp1(cols, pairs.map((p) => p[0]), hw, true, true).y;
-      total = interp1(cols, pairs.map((p) => p[1]), hw, true, true).y;
+      ground = interp1(
+        cols,
+        pairs.map((p) => p[0]),
+        hw,
+        true,
+        true,
+      ).y;
+      total = interp1(
+        cols,
+        pairs.map((p) => p[1]),
+        hw,
+        true,
+        true,
+      ).y;
     } else {
       [ground, total] = atColumn(0);
       wind = windFactor(c.headwindKt, 0.1, notes);
@@ -297,7 +379,17 @@ export function takeoffDistances(tables: PerformanceTables, c: PerfConditions): 
   }
   if (c.headwindKt < -10) extrapolated = true;
   const cond = conditionFactors(tables, c.surface, c.slopePct, notes);
-  return finish(ground, total, { temperature, wind }, cond, tables.factors.safetyFactorTakeoff || 1, extrapolated, method, alt, notes);
+  return finish(
+    ground,
+    total,
+    { temperature, wind },
+    cond,
+    tables.factors.safetyFactorTakeoff || 1,
+    extrapolated,
+    method,
+    alt,
+    notes,
+  );
 }
 
 /** LRR (requiredGroundM) and LDR (requiredTotalM). The AFM table is for the maximum mass only. */
@@ -309,14 +401,28 @@ export function landingDistances(tables: PerformanceTables, c: PerfConditions): 
   const alt = method === 'da' ? densityAltitudeFt(c.pressureAltFt, c.oatC) : c.pressureAltFt;
   const p = interpPair(l.altitudesFt, l.distances, alt);
   let extrapolated = p.extrapolated || c.headwindKt < -10;
-  if (l.massKg > 0 && c.massKg > l.massKg + 1e-9) { extrapolated = true; notes.push(`Landing mass above the table mass ${l.massKg} kg.`); }
+  if (l.massKg > 0 && c.massKg > l.massKg + 1e-9) {
+    extrapolated = true;
+    notes.push(`Landing mass above the table mass ${l.massKg} kg.`);
+  }
   const wind = windFactor(c.headwindKt, l.headwindDecreasePer5Kt || 0.1, notes);
-  const temperature = method === 'da' ? 1 : tempFactor(l.altitudesFt, l.standardTempC, c.pressureAltFt, c.oatC, l.tempIncreasePer15C);
+  const temperature =
+    method === 'da' ? 1 : tempFactor(l.altitudesFt, l.standardTempC, c.pressureAltFt, c.oatC, l.tempIncreasePer15C);
   const ground = p.v[0];
   const total = p.v[1];
   // Downhill is adverse for landing.
   const cond = conditionFactors(tables, c.surface, -c.slopePct, notes);
-  return finish(ground, total, { temperature, wind }, cond, tables.factors.safetyFactorLanding || 1, extrapolated, method, alt, notes);
+  return finish(
+    ground,
+    total,
+    { temperature, wind },
+    cond,
+    tables.factors.safetyFactorLanding || 1,
+    extrapolated,
+    method,
+    alt,
+    notes,
+  );
 }
 
 export interface AerodromePerfInput {
@@ -415,7 +521,10 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   }
   if (!runway) {
     const ch = selectRunway(input.runways, meanWind, input.variationDeg, null);
-    if (ch) { runway = ch.runway; wind = ch.wind; }
+    if (ch) {
+      runway = ch.runway;
+      wind = ch.wind;
+    }
   }
   if (!runway) {
     warnings.push('No runway data for this aerodrome.');
@@ -425,12 +534,19 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   // Variable wind: may come from any side. Whole speed as crosswind, no headwind credit.
   if (variableWind && w) {
     wind = { headwindKt: 0, crosswindKt: w.speedKt, crossFrom: '' };
-    warnings.push(`Variable wind ${Math.round(w.speedKt)} kt${gustKt ? ` gusting ${Math.round(gustKt)} kt` : ''}: runway not chosen from the wind, full crosswind and no headwind assumed.`);
+    warnings.push(
+      `Variable wind ${Math.round(w.speedKt)} kt${gustKt ? ` gusting ${Math.round(gustKt)} kt` : ''}: runway not chosen from the wind, full crosswind and no headwind assumed.`,
+    );
   }
   let crosswindGustKt: number | null = null;
   if (gustKt != null) {
     if (variableWind || !runway) crosswindGustKt = gustKt;
-    else if (meanWind) crosswindGustKt = runwayWind(runway, { dirTrueDeg: meanWind.dirTrueDeg, speedKt: gustKt }, input.variationDeg).crosswindKt;
+    else if (meanWind)
+      crosswindGustKt = runwayWind(
+        runway,
+        { dirTrueDeg: meanWind.dirTrueDeg, speedKt: gustKt },
+        input.variationDeg,
+      ).crosswindKt;
   }
 
   const tailwind = wind.headwindKt < -0.05;
@@ -438,16 +554,24 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   const xMax = Math.max(wind.crosswindKt, crosswindGustKt ?? 0);
   const crosswindOk = !(xLimit != null && xMax > xLimit + 1e-9);
   if (!crosswindOk) {
-    const gustPart = crosswindGustKt != null && crosswindGustKt > wind.crosswindKt ? `, ${crosswindGustKt.toFixed(1)} kt in gusts,` : '';
-    warnings.push(`Crosswind ${wind.crosswindKt.toFixed(1)} kt${gustPart} exceeds the ${takeoff ? 'take-off' : 'landing'} limit of ${xLimit} kt.`);
+    const gustPart =
+      crosswindGustKt != null && crosswindGustKt > wind.crosswindKt
+        ? `, ${crosswindGustKt.toFixed(1)} kt in gusts,`
+        : '';
+    warnings.push(
+      `Crosswind ${wind.crosswindKt.toFixed(1)} kt${gustPart} exceeds the ${takeoff ? 'take-off' : 'landing'} limit of ${xLimit} kt.`,
+    );
   }
-  if (tailwind) warnings.push(`Tailwind ${(-wind.headwindKt).toFixed(1)} kt${runway ? ` on runway ${runway.designator}` : ''}.`);
+  if (tailwind)
+    warnings.push(`Tailwind ${(-wind.headwindKt).toFixed(1)} kt${runway ? ` on runway ${runway.designator}` : ''}.`);
 
   let surface = input.surface;
   if (!surface && runway && isGrass(runway.surface)) {
     const fallback = Object.keys(input.tables.factors.runwayCondition).find((k) => /short dry grass/i.test(k)) ?? null;
     surface = fallback;
-    warnings.push(`Runway ${runway.designator} is ${runway.surface}: choose the surface condition${fallback ? ` (${fallback} assumed)` : ''}.`);
+    warnings.push(
+      `Runway ${runway.designator} is ${runway.surface}: choose the surface condition${fallback ? ` (${fallback} assumed)` : ''}.`,
+    );
   }
 
   let distances: PerfDistances | null = null;
@@ -480,7 +604,10 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   }
   if (runway && runway.slopePct == null) {
     const u = runway.slopeUnsignedPct;
-    if (u != null && u > 0) warnings.push(`Slope of runway ${runway.designator} published as ${u} % without direction: ${takeoff ? 'upslope' : 'downslope'} (adverse) assumed.`);
+    if (u != null && u > 0)
+      warnings.push(
+        `Slope of runway ${runway.designator} published as ${u} % without direction: ${takeoff ? 'upslope' : 'downslope'} (adverse) assumed.`,
+      );
     else warnings.push(`Slope of runway ${runway.designator} unknown: none assumed.`);
   }
 
@@ -496,7 +623,9 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
     }
     if (availableTotalM == null && runway.lengthM != null) {
       availableGroundM = availableTotalM = runway.lengthM;
-      warnings.push(`Declared distances of runway ${runway.designator} not published: runway length ${runway.lengthM} m used.`);
+      warnings.push(
+        `Declared distances of runway ${runway.designator} not published: runway length ${runway.lengthM} m used.`,
+      );
     } else if (availableTotalM == null) warnings.push(`Declared distances of runway ${runway.designator} unknown.`);
   }
   let marginM: number | null = null;
@@ -506,11 +635,29 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
     if (takeoff && availableGroundM != null) m.push(availableGroundM - distances.requiredGroundM);
     if (m.length) marginM = Math.min(...m);
     if (marginM != null && marginM < 0) {
-      warnings.push(takeoff
-        ? `Take-off does not fit: TODR ${Math.round(distances.requiredTotalM)} m / TORR ${Math.round(distances.requiredGroundM)} m vs TODA ${availableTotalM} m / TORA ${availableGroundM} m.`
-        : `Landing does not fit: LDR ${Math.round(distances.requiredTotalM)} m vs LDA ${availableTotalM} m.`);
+      warnings.push(
+        takeoff
+          ? `Take-off does not fit: TODR ${Math.round(distances.requiredTotalM)} m / TORR ${Math.round(distances.requiredGroundM)} m vs TODA ${availableTotalM} m / TORA ${availableGroundM} m.`
+          : `Landing does not fit: LDR ${Math.round(distances.requiredTotalM)} m vs LDA ${availableTotalM} m.`,
+      );
     }
   }
 
-  return { runway, wind, pressureAltFt: pa, densityAltFt: da, isaDevC, distances, availableGroundM, availableTotalM, marginM, crosswindOk, crosswindGustKt, variableWind, tailwind, alternative, warnings };
+  return {
+    runway,
+    wind,
+    pressureAltFt: pa,
+    densityAltFt: da,
+    isaDevC,
+    distances,
+    availableGroundM,
+    availableTotalM,
+    marginM,
+    crosswindOk,
+    crosswindGustKt,
+    variableWind,
+    tailwind,
+    alternative,
+    warnings,
+  };
 }

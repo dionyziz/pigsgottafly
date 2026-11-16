@@ -37,7 +37,19 @@ describe('form 731 model', () => {
 
   it('fills a passenger gap from the passenger list when given', () => {
     const f = flight({ crew: [pax('Front Person', 'front-right', {}, 'px1')] });
-    const passengers = [{ ...f.crew[0].snapshot, id: 'px1', fullName: 'Front Person', phone: '+30 699', idNumber: 'Z9', idType: 'ID' as const, notes: '', created: 0, updated: 0 }];
+    const passengers = [
+      {
+        ...f.crew[0].snapshot,
+        id: 'px1',
+        fullName: 'Front Person',
+        phone: '+30 699',
+        idNumber: 'Z9',
+        idType: 'ID' as const,
+        notes: '',
+        created: 0,
+        updated: 0,
+      },
+    ];
     const m = form731Model({ flight: f, aircraft, pilot, passengers });
     expect(m.sheets[0][1]).toMatchObject({ contact: '+30 699', idPassport: 'Z9' });
   });
@@ -58,7 +70,11 @@ describe('form 731 model', () => {
   });
 
   it('warns about missing data instead of inventing it', () => {
-    const m = form731Model({ flight: flight({ route: [], date: '' }), aircraft: null, pilot: { ...pilot, idNumber: '' } });
+    const m = form731Model({
+      flight: flight({ route: [], date: '' }),
+      aircraft: null,
+      pilot: { ...pilot, idNumber: '' },
+    });
     expect(m.airport).toBe('');
     expect(m.registration).toBe('');
     expect(m.warnings.join(' ')).toMatch(/route is empty/);

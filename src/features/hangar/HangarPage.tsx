@@ -32,12 +32,18 @@ export function HangarPage() {
   const [deleting, setDeleting] = useState<Aircraft | null>(null);
   const [sharing, setSharing] = useState<HangarAircraft | null>(null);
   const [leaving, setLeaving] = useState<HangarAircraft | null>(null);
-  const dropDefault = (a: Aircraft) => { if (pilot.defaultAircraftId === a.id) setPilot({ ...pilot, defaultAircraftId: null }); };
+  const dropDefault = (a: Aircraft) => {
+    if (pilot.defaultAircraftId === a.id) setPilot({ ...pilot, defaultAircraftId: null });
+  };
   const today = localToday();
 
   const makeDefault = async (a: Aircraft) => {
-    try { setPilot(await api.me.update({ defaultAircraftId: a.id })); toast(`${a.registration} is now your default aircraft`); }
-    catch (e) { toast(errorMessage(e)); }
+    try {
+      setPilot(await api.me.update({ defaultAircraftId: a.id }));
+      toast(`${a.registration} is now your default aircraft`);
+    } catch (e) {
+      toast(errorMessage(e));
+    }
   };
 
   // The server makes a new aircraft the default when the pilot has none; refresh the profile to show it.
@@ -49,7 +55,9 @@ export function HangarPage() {
         const me = await api.me.get();
         setPilot(me);
         becameDefault = me.defaultAircraftId === a.id;
-      } catch { /* the profile refreshes on the next load */ }
+      } catch {
+        /* the profile refreshes on the next load */
+      }
     }
     toast(becameDefault ? `Added ${a.registration} as your default aircraft` : `Added ${a.registration}`);
     navigate(`/hangar/${a.id}`);
@@ -60,14 +68,28 @@ export function HangarPage() {
       <div className="page-head">
         <h1>Hangar</h1>
         <span className="spacer" />
-        <button className="primary" onClick={() => setAdding({})} data-testid="add-aircraft">Add aircraft</button>
+        <button className="primary" onClick={() => setAdding({})} data-testid="add-aircraft">
+          Add aircraft
+        </button>
       </div>
       {error && !data ? (
-        <EmptyState title="Could not load your hangar" action={<button onClick={() => void reload()}>Try again</button>}>{errorMessage(error)}</EmptyState>
+        <EmptyState
+          title="Could not load your hangar"
+          action={<button onClick={() => void reload()}>Try again</button>}
+        >
+          {errorMessage(error)}
+        </EmptyState>
       ) : loading && !data ? (
         <Loading />
       ) : !data || data.length === 0 ? (
-        <EmptyState title="No aircraft" action={<button className="primary" onClick={() => setAdding({})}>Add aircraft</button>} />
+        <EmptyState
+          title="No aircraft"
+          action={
+            <button className="primary" onClick={() => setAdding({})}>
+              Add aircraft
+            </button>
+          }
+        />
       ) : (
         <div className="ac-grid" data-testid="hangar-list">
           {data.map((a) => {
@@ -77,34 +99,93 @@ export function HangarPage() {
             return (
               <div key={a.id} className="ac-card card" data-aircraft-id={a.id}>
                 <Link to={`/hangar/${a.id}`} className="ac-card-photo" tabIndex={-1} aria-hidden="true">
-                  <AircraftPhoto aircraftId={a.id} photo={a.photo} placeholder={a.placeholder} className="card-top" alt="" />
+                  <AircraftPhoto
+                    aircraftId={a.id}
+                    photo={a.photo}
+                    placeholder={a.placeholder}
+                    className="card-top"
+                    alt=""
+                  />
                 </Link>
                 <div className="ac-card-head">
-                  <Link to={`/hangar/${a.id}`} className="reg mono">{a.registration}</Link>
+                  <Link to={`/hangar/${a.id}`} className="reg mono">
+                    {a.registration}
+                  </Link>
                   {isDefault && <Chip tone="ok">Default</Chip>}
                   <span className="spacer" />
-                  <KebabMenu items={[
-                    { label: 'Open', onSelect: () => navigate(`/hangar/${a.id}`) },
-                    { label: 'Share…', onSelect: () => setSharing(a) },
-                    ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault(a) }]),
-                    { label: 'Add another of this type', onSelect: () => setAdding({ copyOf: a }) },
-                    a.access?.role === 'owner'
-                      ? { label: 'Delete', onSelect: () => setDeleting(a), danger: true, separator: true }
-                      : { label: 'Remove from my hangar', onSelect: () => setLeaving(a), danger: true, separator: true },
-                  ]} />
+                  <KebabMenu
+                    items={[
+                      { label: 'Open', onSelect: () => navigate(`/hangar/${a.id}`) },
+                      { label: 'Share…', onSelect: () => setSharing(a) },
+                      ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault(a) }]),
+                      { label: 'Add another of this type', onSelect: () => setAdding({ copyOf: a }) },
+                      a.access?.role === 'owner'
+                        ? { label: 'Delete', onSelect: () => setDeleting(a), danger: true, separator: true }
+                        : {
+                            label: 'Remove from my hangar',
+                            onSelect: () => setLeaving(a),
+                            danger: true,
+                            separator: true,
+                          },
+                    ]}
+                  />
                 </div>
-                {a.access?.role !== 'owner' && <div className="ac-card-share"><SharedChip access={a.access} /></div>}
+                {a.access?.role !== 'owner' && (
+                  <div className="ac-card-share">
+                    <SharedChip access={a.access} />
+                  </div>
+                )}
                 <Link to={`/hangar/${a.id}`} className="ac-card-body">
-                  <div className="type">{a.makeModel || <span className="muted">Type not set</span>}{a.icaoType && <span className="muted"> · {a.icaoType}/{a.wake}</span>}</div>
+                  <div className="type">
+                    {a.makeModel || <span className="muted">Type not set</span>}
+                    {a.icaoType && (
+                      <span className="muted">
+                        {' '}
+                        · {a.icaoType}/{a.wake}
+                      </span>
+                    )}
+                  </div>
                   <dl className="figs">
-                    <div><dt>Cruise / pattern</dt><dd>{a.cruiseTasKt > 0 ? a.cruiseTasKt : '—'} / {a.patternTasKt > 0 ? a.patternTasKt : '—'} <small>kt</small></dd></div>
-                    <div><dt>Usable fuel</dt><dd>{a.fuel.usableL > 0 ? a.fuel.usableL : '—'} <small>L</small>{a.fuel.burnLph > 0 && <span className="muted"> · {a.fuel.burnLph} L/h</span>}</dd></div>
-                    <div><dt>Empty / MTOW</dt><dd>{a.massBalance.emptyMassKg > 0 ? a.massBalance.emptyMassKg : '—'} / {a.massBalance.mtowKg > 0 ? a.massBalance.mtowKg : '—'} <small>kg</small></dd></div>
-                    <div><dt>Seats</dt><dd>{seats || '—'}{a.massBalance.envelopes.utility && <span className="muted"> · utility</span>}</dd></div>
+                    <div>
+                      <dt>Cruise / pattern</dt>
+                      <dd>
+                        {a.cruiseTasKt > 0 ? a.cruiseTasKt : '—'} / {a.patternTasKt > 0 ? a.patternTasKt : '—'}{' '}
+                        <small>kt</small>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Usable fuel</dt>
+                      <dd>
+                        {a.fuel.usableL > 0 ? a.fuel.usableL : '—'} <small>L</small>
+                        {a.fuel.burnLph > 0 && <span className="muted"> · {a.fuel.burnLph} L/h</span>}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Empty / MTOW</dt>
+                      <dd>
+                        {a.massBalance.emptyMassKg > 0 ? a.massBalance.emptyMassKg : '—'} /{' '}
+                        {a.massBalance.mtowKg > 0 ? a.massBalance.mtowKg : '—'} <small>kg</small>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Seats</dt>
+                      <dd>
+                        {seats || '—'}
+                        {a.massBalance.envelopes.utility && <span className="muted"> · utility</span>}
+                      </dd>
+                    </div>
                   </dl>
                   <div className="row wrap foot">
-                    {a.compassCards.length ? <StatusChip card={a.compassCards[0]} today={today} /> : <Chip>No compass card</Chip>}
-                    {a.equipment.item10a && <Chip mono title="FPL item 10">{a.equipment.item10a}/{a.equipment.item10b || '?'}</Chip>}
+                    {a.compassCards.length ? (
+                      <StatusChip card={a.compassCards[0]} today={today} />
+                    ) : (
+                      <Chip>No compass card</Chip>
+                    )}
+                    {a.equipment.item10a && (
+                      <Chip mono title="FPL item 10">
+                        {a.equipment.item10a}/{a.equipment.item10b || '?'}
+                      </Chip>
+                    )}
                   </div>
                   {miss.length > 0 && <div className="hint missing">Not set: {miss.join(', ')}</div>}
                 </Link>
@@ -114,30 +195,53 @@ export function HangarPage() {
         </div>
       )}
       {adding && (
-        <AddAircraftDialog hangar={data || []} copyOf={adding.copyOf} onClose={() => setAdding(null)}
-          onCreated={(a) => { void onCreated(a); }} />
+        <AddAircraftDialog
+          hangar={data || []}
+          copyOf={adding.copyOf}
+          onClose={() => setAdding(null)}
+          onCreated={(a) => {
+            void onCreated(a);
+          }}
+        />
       )}
       {sharing && (
-        <ShareDialog id={sharing.id} name={sharing.registration} onClose={() => setSharing(null)}
-          onLeft={() => { dropDefault(sharing); setSharing(null); void reload(); toast(`Removed ${sharing.registration} from your hangar`); }} />
+        <ShareDialog
+          id={sharing.id}
+          name={sharing.registration}
+          onClose={() => setSharing(null)}
+          onLeft={() => {
+            dropDefault(sharing);
+            setSharing(null);
+            void reload();
+            toast(`Removed ${sharing.registration} from your hangar`);
+          }}
+        />
       )}
       {leaving && (
-        <ConfirmDialog title={`Remove ${leaving.registration} from your hangar?`} confirmLabel="Remove" onClose={() => setLeaving(null)}
+        <ConfirmDialog
+          title={`Remove ${leaving.registration} from your hangar?`}
+          confirmLabel="Remove"
+          onClose={() => setLeaving(null)}
           onConfirm={async () => {
             await api.shares.remove(leaving.id, pilot.id);
             dropDefault(leaving);
             await reload();
             toast(`Removed ${leaving.registration} from your hangar`);
-          }} />
+          }}
+        />
       )}
       {deleting && (
-        <ConfirmDialog title={`Delete ${deleting.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
+        <ConfirmDialog
+          title={`Delete ${deleting.registration}?`}
+          confirmLabel="Delete"
+          onClose={() => setDeleting(null)}
           onConfirm={async () => {
             await api.aircraft.remove(deleting.id);
             dropDefault(deleting);
             await reload();
             toast(`Deleted ${deleting.registration}`);
-          }} />
+          }}
+        />
       )}
     </Shell>
   );
@@ -145,22 +249,47 @@ export function HangarPage() {
 
 type Source = { kind: 'template'; id: string } | { kind: 'copy'; id: string } | { kind: 'blank' };
 
-function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Aircraft[]; copyOf?: Aircraft; onClose: () => void; onCreated: (a: Aircraft) => void }) {
+function AddAircraftDialog({
+  hangar,
+  copyOf,
+  onClose,
+  onCreated,
+}: {
+  hangar: Aircraft[];
+  copyOf?: Aircraft;
+  onClose: () => void;
+  onCreated: (a: Aircraft) => void;
+}) {
   const [reg, setReg] = useState('');
-  const [src, setSrc] = useState<Source>(copyOf ? { kind: 'copy', id: copyOf.id } : TYPE_TEMPLATES.length ? { kind: 'template', id: TYPE_TEMPLATES[0].id } : { kind: 'blank' });
+  const [src, setSrc] = useState<Source>(
+    copyOf
+      ? { kind: 'copy', id: copyOf.id }
+      : TYPE_TEMPLATES.length
+        ? { kind: 'template', id: TYPE_TEMPLATES[0].id }
+        : { kind: 'blank' },
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const regNorm = reg.trim().toUpperCase();
   // registrations are unique among the pilot's own aircraft (a shared one may have the same)
-  const dup = hangar.some((a) => a.registration === regNorm && ((a as HangarAircraft).access?.role ?? 'owner') === 'owner');
+  const dup = hangar.some(
+    (a) => a.registration === regNorm && ((a as HangarAircraft).access?.role ?? 'owner') === 'owner',
+  );
 
   const create = async () => {
     if (busy) return;
-    if (!regNorm) { setError('Enter the registration.'); return; }
-    if (dup) { setError(`${regNorm} is already in your hangar.`); return; }
-    const base = src.kind === 'copy'
-      ? sameTypeCopy(toInput(hangar.find((a) => a.id === src.id)!), regNorm)
-      : { ...buildFromTemplate(src.kind === 'template' ? src.id : null), registration: regNorm };
+    if (!regNorm) {
+      setError('Enter the registration.');
+      return;
+    }
+    if (dup) {
+      setError(`${regNorm} is already in your hangar.`);
+      return;
+    }
+    const base =
+      src.kind === 'copy'
+        ? sameTypeCopy(toInput(hangar.find((a) => a.id === src.id)!), regNorm)
+        : { ...buildFromTemplate(src.kind === 'template' ? src.id : null), registration: regNorm };
     setBusy(true);
     try {
       // a copy keeps the operator only when the pilot may assign it (owner or editor); else its name as text
@@ -170,7 +299,11 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
       }
       onCreated(await api.aircraft.create(base));
     } catch (err) {
-      setError(err instanceof ApiRequestError && err.status === 409 ? `${regNorm} is already in your hangar.` : errorMessage(err));
+      setError(
+        err instanceof ApiRequestError && err.status === 409
+          ? `${regNorm} is already in your hangar.`
+          : errorMessage(err),
+      );
       setBusy(false);
     }
   };
@@ -179,23 +312,68 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
     return (
       <label className={'src-opt' + (on ? ' on' : '')} key={s.kind + ('id' in s ? s.id : '')}>
         <input type="radio" name="src" checked={on} onChange={() => setSrc(s)} />
-        <span><b>{title}</b>{desc && <span className="hint">{desc}</span>}</span>
+        <span>
+          <b>{title}</b>
+          {desc && <span className="hint">{desc}</span>}
+        </span>
       </label>
     );
   };
   return (
-    <Dialog title="Add aircraft" onClose={onClose} busy={busy} wide testId="add-aircraft-dialog" footer={
-      <DialogFooter onCancel={onClose} busy={busy} error={error}
-        primary={{ label: busy ? 'Adding…' : 'Add aircraft', onClick: () => void create(), disabled: busy, testId: 'add-aircraft-submit' }} />
-    }>
-      <form id="add-ac" onSubmit={(e) => { e.preventDefault(); void create(); }} className="stack" noValidate>
-        <label className="field"><span>Registration<span className="req" aria-hidden>*</span></span>
-          <input className={'mono upper' + (dup ? ' invalid' : '')} value={reg} onChange={(e) => { setReg(e.target.value.toUpperCase()); setError(null); }} placeholder="e.g. SX-ABC" maxLength={20} data-autofocus />
+    <Dialog
+      title="Add aircraft"
+      onClose={onClose}
+      busy={busy}
+      wide
+      testId="add-aircraft-dialog"
+      footer={
+        <DialogFooter
+          onCancel={onClose}
+          busy={busy}
+          error={error}
+          primary={{
+            label: busy ? 'Adding…' : 'Add aircraft',
+            onClick: () => void create(),
+            disabled: busy,
+            testId: 'add-aircraft-submit',
+          }}
+        />
+      }
+    >
+      <form
+        id="add-ac"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void create();
+        }}
+        className="stack"
+        noValidate
+      >
+        <label className="field">
+          <span>
+            Registration
+            <span className="req" aria-hidden>
+              *
+            </span>
+          </span>
+          <input
+            className={'mono upper' + (dup ? ' invalid' : '')}
+            value={reg}
+            onChange={(e) => {
+              setReg(e.target.value.toUpperCase());
+              setError(null);
+            }}
+            placeholder="e.g. SX-ABC"
+            maxLength={20}
+            data-autofocus
+          />
         </label>
         <div className="field">
           <span>Start from</span>
           <div className="src-opts">
-            {TYPE_TEMPLATES.map((t) => radio({ kind: 'template', id: t.id }, `${t.label} type template`, t.description))}
+            {TYPE_TEMPLATES.map((t) =>
+              radio({ kind: 'template', id: t.id }, `${t.label} type template`, t.description),
+            )}
             {hangar.map((a) => radio({ kind: 'copy', id: a.id }, `Same type as ${a.registration}`, a.makeModel))}
             {radio({ kind: 'blank' }, 'Blank', '')}
           </div>

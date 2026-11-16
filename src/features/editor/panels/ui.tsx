@@ -17,7 +17,13 @@ export function useFocusRequest(matches: (key: string) => boolean) {
     const k = focusParam();
     return k && matches(k) ? { key: k, n: 0 } : null;
   });
-  useEffect(() => onEditorFocus((key) => { if (matches(key)) setReq((r) => ({ key, n: (r?.n ?? 0) + 1 })); }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(
+    () =>
+      onEditorFocus((key) => {
+        if (matches(key)) setReq((r) => ({ key, n: (r?.n ?? 0) + 1 }));
+      }),
+    [],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!req) return;
@@ -26,8 +32,13 @@ export function useFocusRequest(matches: (key: string) => boolean) {
     // the box opens on this render; its body (and data still loading) may take a moment
     const attempt = () => {
       const el = ref.current ? findFocusTarget(ref.current, req.key) : null;
-      if (el) { focusAndHighlight(el); setReq(null); return; }
-      if (++tries < 40) timer = window.setTimeout(attempt, 100); else setReq(null);
+      if (el) {
+        focusAndHighlight(el);
+        setReq(null);
+        return;
+      }
+      if (++tries < 40) timer = window.setTimeout(attempt, 100);
+      else setReq(null);
     };
     timer = window.setTimeout(attempt, 50);
     return () => window.clearTimeout(timer);
@@ -36,7 +47,14 @@ export function useFocusRequest(matches: (key: string) => boolean) {
 }
 
 /** A panel section with a header that collapses it (a click anywhere on the header; remembered on this device). */
-export function Section({ id, title, badge, actions, summary, children }: {
+export function Section({
+  id,
+  title,
+  badge,
+  actions,
+  summary,
+  children,
+}: {
   id: string;
   title: string;
   /** Shown next to the title (also when collapsed): a short summary or a status chip. */
@@ -49,19 +67,43 @@ export function Section({ id, title, badge, actions, summary, children }: {
 }) {
   const { ref, open } = useFocusRequest((key) => sectionOf(key) === id);
   return (
-    <Collapsible id={id} title={title} badge={badge} actions={actions} summary={summary} store={SECTIONS_STORE}
-      openWhen={open} sectionRef={ref} className="ep-section">
+    <Collapsible
+      id={id}
+      title={title}
+      badge={badge}
+      actions={actions}
+      summary={summary}
+      store={SECTIONS_STORE}
+      openWhen={open}
+      sectionRef={ref}
+      className="ep-section"
+    >
       {children}
     </Collapsible>
   );
 }
 
 /** A label/value line of computed figures. */
-export function KV({ k, v, sub, tone, testId }: { k: ReactNode; v: ReactNode; sub?: ReactNode; tone?: 'warn' | 'danger' | 'ok' | 'muted'; testId?: string }) {
+export function KV({
+  k,
+  v,
+  sub,
+  tone,
+  testId,
+}: {
+  k: ReactNode;
+  v: ReactNode;
+  sub?: ReactNode;
+  tone?: 'warn' | 'danger' | 'ok' | 'muted';
+  testId?: string;
+}) {
   return (
     <div className={'ep-kv' + (tone ? ' ' + tone : '')} data-testid={testId}>
       <span className="k">{k}</span>
-      <span className="v">{v}{sub && <span className="sub">{sub}</span>}</span>
+      <span className="v">
+        {v}
+        {sub && <span className="sub">{sub}</span>}
+      </span>
     </div>
   );
 }

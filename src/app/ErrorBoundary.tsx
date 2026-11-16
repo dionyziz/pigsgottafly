@@ -4,14 +4,24 @@ import { isChunkLoadError, reloadForNewBuild, staleReloadPending, staleReloadPen
 import { Loading } from '../ui/Loading';
 import { reportError } from './errorReporter';
 
-export class ErrorBoundary extends Component<{ children: ReactNode; label?: string }, { error: Error | null; reloading: boolean }> {
-  static getDerivedStateFromError(error: Error) { return { error }; }
+export class ErrorBoundary extends Component<
+  { children: ReactNode; label?: string },
+  { error: Error | null; reloading: boolean }
+> {
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
   override state = { error: null as Error | null, reloading: false };
   private timer: ReturnType<typeof setTimeout> | undefined;
-  override componentWillUnmount() { clearTimeout(this.timer); }
+  override componentWillUnmount() {
+    clearTimeout(this.timer);
+  }
   override componentDidCatch(error: Error, info?: ErrorInfo) {
     // A new version was deployed while this page was open: load it instead of showing an error.
-    if (isChunkLoadError(error) && reloadForNewBuild()) { this.setState({ reloading: true }); return; }
+    if (isChunkLoadError(error) && reloadForNewBuild()) {
+      this.setState({ reloading: true });
+      return;
+    }
     // A stale-build reload is on its way (any error now is most likely its fallout): keep showing the
     // loading screen; should the reload not land, show the error once the window has passed.
     if (staleReloadPending()) {
@@ -24,7 +34,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode; label?: stri
   }
   override render() {
     // a stale chunk: the page is reloading onto the new build; never flash an error meanwhile
-    if (this.state.error && (this.state.reloading || isChunkLoadError(this.state.error) || staleReloadPending())) return <Loading variant="screen" />;
+    if (this.state.error && (this.state.reloading || isChunkLoadError(this.state.error) || staleReloadPending()))
+      return <Loading variant="screen" />;
     if (this.state.error) {
       return (
         <div className="center-screen" role="alert">

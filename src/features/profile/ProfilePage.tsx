@@ -13,7 +13,15 @@ import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { resolveAerodrome } from '../../data/ref';
-import { DEFAULT_MAP_LAYERS, mapLayersOf, profileMissing, SETTING_SUGGESTIONS, type MapLayers, type Pilot, type PilotUpdate } from '../../shared';
+import {
+  DEFAULT_MAP_LAYERS,
+  mapLayersOf,
+  profileMissing,
+  SETTING_SUGGESTIONS,
+  type MapLayers,
+  type Pilot,
+  type PilotUpdate,
+} from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, CardSection, Field, NumberField } from '../../ui';
 import { useFormIssues, type FormIssue } from '../passengers/formIssues';
@@ -25,30 +33,53 @@ import '../lobby/lists.css';
 
 export interface ProfileForm extends PersonForm {
   licenceNo: string;
-  homeAerodrome: string; defaultAircraftId: string; defaultAlternate: string;
-  taxiOutMin: number | null; taxiInMin: number | null; reserveMin: number | null;
-  finalReserveMin: number | null; enrouteAerodromeRadiusNm: number | null;
+  homeAerodrome: string;
+  defaultAircraftId: string;
+  defaultAlternate: string;
+  taxiOutMin: number | null;
+  taxiInMin: number | null;
+  reserveMin: number | null;
+  finalReserveMin: number | null;
+  enrouteAerodromeRadiusNm: number | null;
   /** Map layers for new flights; null = not chosen (all shown). */
   mapLayers: MapLayers | null;
 }
 
-type ProfileField = PersonField | 'homeAerodrome' | 'defaultAlternate' | 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin' | 'enrouteAerodromeRadiusNm';
+type ProfileField =
+  | PersonField
+  | 'homeAerodrome'
+  | 'defaultAlternate'
+  | 'taxiOutMin'
+  | 'taxiInMin'
+  | 'reserveMin'
+  | 'finalReserveMin'
+  | 'enrouteAerodromeRadiusNm';
 
 const MINUTES_MAX = 600;
 const RADIUS_MAX_NM = 50;
 
 export function formOf(p: Pilot): ProfileForm {
   return {
-    ...personForm(p), licenceNo: p.licenceNo,
-    homeAerodrome: p.homeAerodrome ?? '', defaultAircraftId: p.defaultAircraftId ?? '', defaultAlternate: p.settings.defaultAlternate ?? '',
-    taxiOutMin: p.settings.taxiOutMin, taxiInMin: p.settings.taxiInMin, reserveMin: p.settings.reserveMin,
-    finalReserveMin: p.settings.finalReserveMin, enrouteAerodromeRadiusNm: p.settings.enrouteAerodromeRadiusNm,
+    ...personForm(p),
+    licenceNo: p.licenceNo,
+    homeAerodrome: p.homeAerodrome ?? '',
+    defaultAircraftId: p.defaultAircraftId ?? '',
+    defaultAlternate: p.settings.defaultAlternate ?? '',
+    taxiOutMin: p.settings.taxiOutMin,
+    taxiInMin: p.settings.taxiInMin,
+    reserveMin: p.settings.reserveMin,
+    finalReserveMin: p.settings.finalReserveMin,
+    enrouteAerodromeRadiusNm: p.settings.enrouteAerodromeRadiusNm,
     mapLayers: mapLayersOf(p.settings.mapLayers),
   };
 }
 
 const LABEL: Partial<Record<ProfileField, string>> = {
-  taxiOutMin: 'Taxi out', taxiInMin: 'Taxi in', reserveMin: 'Fuel reserve', finalReserveMin: 'Final reserve', enrouteAerodromeRadiusNm: 'Radius',
+  taxiOutMin: 'Taxi out',
+  taxiInMin: 'Taxi in',
+  reserveMin: 'Fuel reserve',
+  finalReserveMin: 'Final reserve',
+  enrouteAerodromeRadiusNm: 'Radius',
 };
 
 /** What is wrong with the profile, field by field (empty when it can be saved). */
@@ -58,13 +89,15 @@ export function validateProfile(f: ProfileForm, welcome: boolean): FormIssue<Pro
   if (!f.homeAerodrome.trim()) out.push({ field: 'homeAerodrome', message: 'Choose your home aerodrome' });
   else if (!resolveAerodrome(f.homeAerodrome)) out.push({ field: 'homeAerodrome', message: unknown(f.homeAerodrome) });
   const range = (k: ProfileField, v: number | null, max: number) => {
-    if (v != null && (!isFinite(v) || v < 0 || v > max)) out.push({ field: k, message: `${LABEL[k]} must be 0–${max}` });
+    if (v != null && (!isFinite(v) || v < 0 || v > max))
+      out.push({ field: k, message: `${LABEL[k]} must be 0–${max}` });
   };
   range('taxiOutMin', f.taxiOutMin, MINUTES_MAX);
   range('taxiInMin', f.taxiInMin, MINUTES_MAX);
   range('reserveMin', f.reserveMin, MINUTES_MAX);
   if (welcome) return out.filter((i) => !['dateOfBirth', 'weightKg'].includes(i.field));
-  if (f.defaultAlternate.trim() && !resolveAerodrome(f.defaultAlternate)) out.push({ field: 'defaultAlternate', message: unknown(f.defaultAlternate) });
+  if (f.defaultAlternate.trim() && !resolveAerodrome(f.defaultAlternate))
+    out.push({ field: 'defaultAlternate', message: unknown(f.defaultAlternate) });
   range('finalReserveMin', f.finalReserveMin, MINUTES_MAX);
   range('enrouteAerodromeRadiusNm', f.enrouteAerodromeRadiusNm, RADIUS_MAX_NM);
   return out;
@@ -75,15 +108,22 @@ export function profileUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
   const home = resolveAerodrome(f.homeAerodrome);
   const person = personInput(f);
   const base: PilotUpdate = {
-    fullName: person.fullName, phone: person.phone, homeAerodrome: home ? home.icao || home.id : null,
+    fullName: person.fullName,
+    phone: person.phone,
+    homeAerodrome: home ? home.icao || home.id : null,
     settings: { taxiOutMin: f.taxiOutMin, taxiInMin: f.taxiInMin, reserveMin: f.reserveMin },
   };
   if (welcome) return base;
   const altn = resolveAerodrome(f.defaultAlternate);
   return {
     ...base,
-    licenceNo: f.licenceNo.trim(), nationality: person.nationality, relation: person.relation,
-    dateOfBirth: person.dateOfBirth, weightKg: person.weightKg, idType: person.idType, idNumber: person.idNumber,
+    licenceNo: f.licenceNo.trim(),
+    nationality: person.nationality,
+    relation: person.relation,
+    dateOfBirth: person.dateOfBirth,
+    weightKg: person.weightKg,
+    idType: person.idType,
+    idNumber: person.idNumber,
     defaultAircraftId: f.defaultAircraftId || null,
     settings: {
       ...base.settings,
@@ -131,18 +171,26 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  const put = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => { setF((x) => ({ ...x, [k]: v })); issues.clear(k as ProfileField); };
+  const put = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => {
+    setF((x) => ({ ...x, [k]: v }));
+    issues.clear(k as ProfileField);
+  };
   const setPerson: SetPerson = (k, v) => put(k, v as ProfileForm[typeof k]);
   const text = (k: 'defaultAircraftId') => (e: { target: { value: string } }) => put(k, e.target.value);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!issues.check(validateProfile(f, welcome))) { setError(null); return; }
+    if (!issues.check(validateProfile(f, welcome))) {
+      setError(null);
+      return;
+    }
     setBusy(true);
     try {
       // api.me.update stores the pilot for every page and tab.
@@ -152,7 +200,11 @@ export function ProfilePage() {
       setError(null);
       if (welcome && !profileMissing(p).length) {
         navigate('/', { replace: true });
-        if (hangar && hangar.length === 0) toast('Welcome aboard. Add your aircraft next.', { label: 'Open hangar', onClick: () => navigate('/hangar') });
+        if (hangar && hangar.length === 0)
+          toast('Welcome aboard. Add your aircraft next.', {
+            label: 'Open hangar',
+            onClick: () => navigate('/hangar'),
+          });
         else toast('Welcome aboard.');
       } else {
         toast('Profile saved');
@@ -166,37 +218,81 @@ export function ProfilePage() {
 
   const notSet = (v: number | null) => (v == null ? <span className="notset">Not set</span> : null);
   const minutes = (k: 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin', placeholder?: string) => (
-    <NumberField name={k} value={f[k]} onChange={(v) => put(k, v)} min={0} max={MINUTES_MAX} integer unit="min" placeholder={placeholder} />
+    <NumberField
+      name={k}
+      value={f[k]}
+      onChange={(v) => put(k, v)}
+      min={0}
+      max={MINUTES_MAX}
+      integer
+      unit="min"
+      placeholder={placeholder}
+    />
   );
 
   return (
     <Shell>
-      <div className="page-head"><h1>Profile</h1></div>
-      <form className="card" style={{ maxWidth: 760 }} onSubmit={save} data-testid="profile-form" noValidate ref={formRef}>
+      <div className="page-head">
+        <h1>Profile</h1>
+      </div>
+      <form
+        className="card"
+        style={{ maxWidth: 760 }}
+        onSubmit={save}
+        data-testid="profile-form"
+        noValidate
+        ref={formRef}
+      >
         <CardSection id="about" title="About you" plain>
-          <PersonFields f={f} set={setPerson} issues={issues.of} pilot minimal={welcome} autoFocus={welcome && !f.fullName} />
+          <PersonFields
+            f={f}
+            set={setPerson}
+            issues={issues.of}
+            pilot
+            minimal={welcome}
+            autoFocus={welcome && !f.fullName}
+          />
         </CardSection>
 
         <CardSection id="home" title="Home aerodrome" plain>
           <div className="grid2">
             <Field label="Aerodrome" req issues={f.homeAerodrome.trim() ? [] : issues.of('homeAerodrome')}>
-              <AerodromeTextInput name="homeAerodrome" value={f.homeAerodrome} onChange={(t) => put('homeAerodrome', t)} required invalid={issues.of('homeAerodrome').length > 0} />
+              <AerodromeTextInput
+                name="homeAerodrome"
+                value={f.homeAerodrome}
+                onChange={(t) => put('homeAerodrome', t)}
+                required
+                invalid={issues.of('homeAerodrome').length > 0}
+              />
             </Field>
             {!welcome && (
               <Field label="Default aircraft">
                 {hangar && hangar.length === 0 ? (
-                  <div className="muted" style={{ padding: '7px 0' }}>Hangar empty. <Link to="/hangar">Add an aircraft</Link></div>
+                  <div className="muted" style={{ padding: '7px 0' }}>
+                    Hangar empty. <Link to="/hangar">Add an aircraft</Link>
+                  </div>
                 ) : (
                   <select name="defaultAircraftId" value={f.defaultAircraftId} onChange={text('defaultAircraftId')}>
                     <option value="">None</option>
-                    {(hangar || []).map((a) => <option key={a.id} value={a.id}>{a.registration}{a.makeModel ? ` · ${a.makeModel}` : ''}</option>)}
+                    {(hangar || []).map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.registration}
+                        {a.makeModel ? ` · ${a.makeModel}` : ''}
+                      </option>
+                    ))}
                   </select>
                 )}
               </Field>
             )}
             {!welcome && (
               <Field label="Default alternate" testId="profile-default-alternate">
-                <AerodromeTextInput name="defaultAlternate" value={f.defaultAlternate} onChange={(t) => put('defaultAlternate', t)} placeholder="Optional" invalid={issues.of('defaultAlternate').length > 0} />
+                <AerodromeTextInput
+                  name="defaultAlternate"
+                  value={f.defaultAlternate}
+                  onChange={(t) => put('defaultAlternate', t)}
+                  placeholder="Optional"
+                  invalid={issues.of('defaultAlternate').length > 0}
+                />
               </Field>
             )}
           </div>
@@ -204,15 +300,31 @@ export function ProfilePage() {
 
         <CardSection id="planning" title="Planning defaults" plain>
           <div className="grid3">
-            <Field label={<>Taxi out {notSet(f.taxiOutMin)}</>} issues={issues.of('taxiOutMin')}>{minutes('taxiOutMin', `e.g. ${SETTING_SUGGESTIONS.taxiOutMin}`)}</Field>
-            <Field label={<>Taxi in {notSet(f.taxiInMin)}</>} issues={issues.of('taxiInMin')}>{minutes('taxiInMin', `e.g. ${SETTING_SUGGESTIONS.taxiInMin}`)}</Field>
-            <Field label={<>Fuel reserve {notSet(f.reserveMin)}</>} issues={issues.of('reserveMin')}>{minutes('reserveMin', `e.g. ${SETTING_SUGGESTIONS.reserveMin}`)}</Field>
+            <Field label={<>Taxi out {notSet(f.taxiOutMin)}</>} issues={issues.of('taxiOutMin')}>
+              {minutes('taxiOutMin', `e.g. ${SETTING_SUGGESTIONS.taxiOutMin}`)}
+            </Field>
+            <Field label={<>Taxi in {notSet(f.taxiInMin)}</>} issues={issues.of('taxiInMin')}>
+              {minutes('taxiInMin', `e.g. ${SETTING_SUGGESTIONS.taxiInMin}`)}
+            </Field>
+            <Field label={<>Fuel reserve {notSet(f.reserveMin)}</>} issues={issues.of('reserveMin')}>
+              {minutes('reserveMin', `e.g. ${SETTING_SUGGESTIONS.reserveMin}`)}
+            </Field>
           </div>
           {!welcome && (
             <div className="grid3">
-              <Field label="Final reserve in required fuel" issues={issues.of('finalReserveMin')}>{minutes('finalReserveMin', '0')}</Field>
+              <Field label="Final reserve in required fuel" issues={issues.of('finalReserveMin')}>
+                {minutes('finalReserveMin', '0')}
+              </Field>
               <Field label="ATC list: aerodromes within" issues={issues.of('enrouteAerodromeRadiusNm')}>
-                <NumberField name="enrouteAerodromeRadiusNm" value={f.enrouteAerodromeRadiusNm} onChange={(v) => put('enrouteAerodromeRadiusNm', v)} min={0} max={RADIUS_MAX_NM} unit="NM" placeholder="2" />
+                <NumberField
+                  name="enrouteAerodromeRadiusNm"
+                  value={f.enrouteAerodromeRadiusNm}
+                  onChange={(v) => put('enrouteAerodromeRadiusNm', v)}
+                  min={0}
+                  max={RADIUS_MAX_NM}
+                  unit="NM"
+                  placeholder="2"
+                />
               </Field>
             </div>
           )}
@@ -227,11 +339,35 @@ export function ProfilePage() {
         )}
 
         <div className="form-actions">
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {issues.issues.length > 0 && !error && <p className="form-error" role="alert">{issues.issues.length === 1 ? '1 field to fix' : `${issues.issues.length} fields to fix`}</p>}
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          {issues.issues.length > 0 && !error && (
+            <p className="form-error" role="alert">
+              {issues.issues.length === 1 ? '1 field to fix' : `${issues.issues.length} fields to fix`}
+            </p>
+          )}
           <span className="spacer" />
-          {!welcome && dirty && <button type="button" className="ghost" onClick={() => { setBase(pilot); setF(formOf(pilot)); issues.check([]); setError(null); }} disabled={busy}>Discard</button>}
-          <button className="primary" type="submit" disabled={busy || (!welcome && !dirty)}>{welcome ? 'Continue' : busy ? 'Saving…' : 'Save'}</button>
+          {!welcome && dirty && (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setBase(pilot);
+                setF(formOf(pilot));
+                issues.check([]);
+                setError(null);
+              }}
+              disabled={busy}
+            >
+              Discard
+            </button>
+          )}
+          <button className="primary" type="submit" disabled={busy || (!welcome && !dirty)}>
+            {welcome ? 'Continue' : busy ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </form>
       {!welcome && <AccountSection />}

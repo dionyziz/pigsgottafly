@@ -5,7 +5,11 @@
 // Every message is sent on behalf of a pilot, who is always cc'd and is the reply-to address, except
 // the app's own notices to its admins (sendSystemMail).
 // Tests replace the transport with setMailTransport(); nothing is sent for real in tests.
-export interface MailAttachment { filename: string; content: Buffer; contentType: string }
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
 export interface Mail {
   to: string[];
   /** The pilot the message is sent for: always cc'd, and the reply-to address. */
@@ -21,7 +25,9 @@ export type MailTransport = (m: SentMail) => Promise<{ id: string }>;
 
 let override: MailTransport | null = null;
 /** Tests: route every message to fn (null restores the environment's transport). */
-export function setMailTransport(fn: MailTransport | null): void { override = fn; }
+export function setMailTransport(fn: MailTransport | null): void {
+  override = fn;
+}
 
 export const DEFAULT_FROM = "Pig's Gotta Fly <noreply@pigsgottafly.com>";
 
@@ -39,8 +45,17 @@ const resend: MailTransport = async (m) => {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: m.from, to: m.to, cc: m.cc?.length ? m.cc : undefined, reply_to: m.replyTo || undefined, subject: m.subject, text: m.text,
-      attachments: (m.attachments ?? []).map((a) => ({ filename: a.filename, content: a.content.toString('base64'), content_type: a.contentType })),
+      from: m.from,
+      to: m.to,
+      cc: m.cc?.length ? m.cc : undefined,
+      reply_to: m.replyTo || undefined,
+      subject: m.subject,
+      text: m.text,
+      attachments: (m.attachments ?? []).map((a) => ({
+        filename: a.filename,
+        content: a.content.toString('base64'),
+        content_type: a.contentType,
+      })),
     }),
     signal: AbortSignal.timeout(20000),
   });
@@ -65,5 +80,10 @@ export async function sendMail(m: Mail): Promise<{ id: string }> {
  */
 export async function sendSystemMail(m: { to: string[]; subject: string; text: string }): Promise<{ id: string }> {
   if (!m.to.length) throw new MailError('no recipient');
-  return (override ?? resend)({ to: m.to, subject: m.subject, text: m.text, from: process.env.FORMS_FROM || DEFAULT_FROM });
+  return (override ?? resend)({
+    to: m.to,
+    subject: m.subject,
+    text: m.text,
+    from: process.env.FORMS_FROM || DEFAULT_FROM,
+  });
 }

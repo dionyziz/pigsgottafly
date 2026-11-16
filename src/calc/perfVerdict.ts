@@ -49,20 +49,26 @@ export function perfVerdict(i: PerfVerdictInput): PerfVerdictResult {
   const p = i.perf;
   const d = p?.distances ?? null;
   const mb = i.massBalance;
-  const limitKg = mb ? (takeoff ? mb.mtowKg : mb.mlwKg ?? mb.mtowKg) : null;
+  const limitKg = mb ? (takeoff ? mb.mtowKg : (mb.mlwKg ?? mb.mtowKg)) : null;
   const limitName = takeoff ? 'MTOW' : mb?.mlwKg != null ? 'MLW' : 'MTOW';
   const phaseName = takeoff ? 'Take-off' : 'Landing';
   let overMass: PerfOverMass | null = null;
   if (fin(i.massKg) && fin(limitKg) && limitKg > 0 && i.massKg > limitKg + 1e-9) {
     const excessKg = i.massKg - limitKg;
-    overMass = { limitName, limitKg, excessKg, text: `${phaseName} mass ${i.massKg.toFixed(1)} kg is ${excessKg.toFixed(1)} kg above the ${limitName} of ${limitKg} kg.` };
+    overMass = {
+      limitName,
+      limitKg,
+      excessKg,
+      text: `${phaseName} mass ${i.massKg.toFixed(1)} kg is ${excessKg.toFixed(1)} kg above the ${limitName} of ${limitKg} kg.`,
+    };
   }
   const extrapolated = !!d?.extrapolated;
   const out = (verdict: PerfVerdict, text: string): PerfVerdictResult => ({ verdict, text, overMass, extrapolated });
   if (overMass) return out('fail', `${phaseName} mass above ${limitName}`);
   if (!p || !d) return out('incomplete', i.hasAerodrome ? 'Cannot be computed' : 'Not an aerodrome');
   if (!p.crosswindOk) return out('fail', 'Crosswind above the limit');
-  if (fin(p.marginM) && p.marginM < 0) return out('fail', takeoff ? 'Take-off distance not available' : 'Landing distance not available');
+  if (fin(p.marginM) && p.marginM < 0)
+    return out('fail', takeoff ? 'Take-off distance not available' : 'Landing distance not available');
   if (extrapolated) return out('fail', 'Outside the AFM table');
   if (!fin(p.marginM)) return out('incomplete', 'Declared distances unknown');
   return out('pass', takeoff ? 'Take-off distances available' : 'Landing distance available');

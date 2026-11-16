@@ -16,18 +16,29 @@ const viaSql = (alias: string, param: string) =>
   `ARRAY(SELECT a_.registration FROM aircraft a_ WHERE a_.operator_id = ${alias}.id AND ${accessibleSql('a_', param)} ORDER BY a_.registration)`;
 
 // functions, not constants: access.ts and this module import each other indirectly (routes/files.ts)
-const SELECT = () => `SELECT o.*, ow.email AS owner_email, ow.full_name AS owner_full_name, ow.name AS owner_name, s.role AS share_role,
+const SELECT =
+  () => `SELECT o.*, ow.email AS owner_email, ow.full_name AS owner_full_name, ow.name AS owner_name, s.role AS share_role,
     ${viaSql('o', '$1')} AS via_aircraft,
     COALESCE((SELECT json_agg(json_build_object('id', a2.id, 'registration', a2.registration) ORDER BY a2.registration)
       FROM aircraft a2 WHERE a2.operator_id = o.id AND ${accessibleSql('a2', '$1')}), '[]'::json) AS aircraft_json
   FROM operators o JOIN pilots ow ON ow.id = o.pilot_id
   LEFT JOIN operator_shares s ON s.operator_id = o.id AND s.pilot_id = $1`;
-const VISIBLE = () => `(o.pilot_id = $1 OR s.pilot_id IS NOT NULL OR EXISTS (SELECT 1 FROM aircraft a3 WHERE a3.operator_id = o.id AND ${accessibleSql('a3', '$1')}))`;
+const VISIBLE = () =>
+  `(o.pilot_id = $1 OR s.pilot_id IS NOT NULL OR EXISTS (SELECT 1 FROM aircraft a3 WHERE a3.operator_id = o.id AND ${accessibleSql('a3', '$1')}))`;
 
 export function toOperator(r: Row): Operator {
   return {
-    id: r.id, name: r.name, phone: r.phone ?? '', email: r.email ?? '', address: r.address ?? '', aftn: r.aftn ?? '', notes: r.notes ?? '',
-    requiresWbPerf: !!r.requires_wb_perf, declarationsEmail: r.declarations_email ?? '', created: Number(r.created), updated: Number(r.updated),
+    id: r.id,
+    name: r.name,
+    phone: r.phone ?? '',
+    email: r.email ?? '',
+    address: r.address ?? '',
+    aftn: r.aftn ?? '',
+    notes: r.notes ?? '',
+    requiresWbPerf: !!r.requires_wb_perf,
+    declarationsEmail: r.declarations_email ?? '',
+    created: Number(r.created),
+    updated: Number(r.updated),
   };
 }
 
@@ -37,7 +48,7 @@ function roleOf(r: Row, pilotId: string): AircraftRole {
 }
 
 function toItem(r: Row, pilotId: string): OperatorItem & { _owner: string } {
-  const aircraft = typeof r.aircraft_json === 'string' ? JSON.parse(r.aircraft_json) : r.aircraft_json ?? [];
+  const aircraft = typeof r.aircraft_json === 'string' ? JSON.parse(r.aircraft_json) : (r.aircraft_json ?? []);
   return {
     ...toOperator(r),
     access: {
@@ -60,12 +71,20 @@ export async function listOperators(db: Queryable, pilotId: string): Promise<Ope
 const RANK: Record<AircraftRole, number> = { view: 1, edit: 2, owner: 3 };
 
 /** The operator (with the pilot's access) when the pilot has at least `need`; 404 without access, 403 with less. */
-export async function operatorFor(db: Queryable, pilotId: string, id: string, need: AircraftRole = 'view'): Promise<OperatorItem & { _owner: string }> {
+export async function operatorFor(
+  db: Queryable,
+  pilotId: string,
+  id: string,
+  need: AircraftRole = 'view',
+): Promise<OperatorItem & { _owner: string }> {
   const [r] = await db.query(`${SELECT()} WHERE o.id = $2 AND ${VISIBLE()}`, [pilotId, id]);
   if (!r) throw notFound('no such operator');
   const item = toItem(r, pilotId);
   if (RANK[item.access.role] < RANK[need]) {
-    throw new HttpError(403, need === 'owner' ? 'only the owner can do this' : 'you can view this operator but not change it');
+    throw new HttpError(
+      403,
+      need === 'owner' ? 'only the owner can do this' : 'you can view this operator but not change it',
+    );
   }
   return item;
 }

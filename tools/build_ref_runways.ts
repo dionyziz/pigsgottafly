@@ -26,14 +26,30 @@ import type { RefRunwayDetail, RefRunwayIntersection } from '../src/shared/ref.j
 export type RefRunwayFull = RefRunway & RefRunwayDetail;
 
 interface Parsed {
-  trueBrg: number | null; lengthM: number | null; widthM: number | null; thr: [number, number] | null;
-  thrElevFt: number | null; surface: string | null; surfaceText: string | null; strength: string | null;
-  slopeText: string | null; slopePct: number | null; toraM: number | null; todaM: number | null; asdaM: number | null;
-  ldaM: number | null; declaredRemark: string | null; intersections?: RefRunwayIntersection[];
+  trueBrg: number | null;
+  lengthM: number | null;
+  widthM: number | null;
+  thr: [number, number] | null;
+  thrElevFt: number | null;
+  surface: string | null;
+  surfaceText: string | null;
+  strength: string | null;
+  slopeText: string | null;
+  slopePct: number | null;
+  toraM: number | null;
+  todaM: number | null;
+  asdaM: number | null;
+  ldaM: number | null;
+  declaredRemark: string | null;
+  intersections?: RefRunwayIntersection[];
 }
 interface ParsedAd {
-  file: string; magVar: { deg: number; year: number | null; annualDeg: number | null } | null; magVarText: string | null;
-  ref12: string; ref13: string; runways: Record<string, Parsed>;
+  file: string;
+  magVar: { deg: number; year: number | null; annualDeg: number | null } | null;
+  magVarText: string | null;
+  ref12: string;
+  ref13: string;
+  runways: Record<string, Parsed>;
 }
 interface ParsedDoc {
   corrections: { source: string; designator: string; field: string; printed: unknown; used: unknown; why: string }[];
@@ -46,7 +62,8 @@ const M_PER_NM = 1852;
 const FT = 0.3048;
 
 function decimalYear(iso: string): number {
-  const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear();
+  const d = new Date(iso + 'T00:00:00Z'),
+    y = d.getUTCFullYear();
   return y + (d.getTime() - Date.UTC(y, 0, 1)) / (Date.UTC(y + 1, 0, 1) - Date.UTC(y, 0, 1));
 }
 
@@ -63,7 +80,11 @@ export function loadParsedRunways(root: string): ParsedDoc {
 }
 
 /** One record per runway direction of each aerodrome's `runways` pairs, in the same order as before. */
-export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effective: string): { runways: RefRunwayFull[]; warnings: string[] } {
+export function buildRunways(
+  aerodromes: RefAerodrome[],
+  parsed: ParsedDoc,
+  effective: string,
+): { runways: RefRunwayFull[]; warnings: string[] } {
   const year = decimalYear(effective);
   const warnings: string[] = [];
   const usableVar = aerodromes
@@ -75,7 +96,9 @@ export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effe
     const pad = parsed.aerodromes[a.source];
     const listed = new Set(a.runways.flatMap((p) => p.split('/').map((s) => s.trim())));
     // water aerodromes (seaplane lanes) have no runways in data/aip.js and none here
-    if (pad && !a.water) for (const d of Object.keys(pad.runways)) if (!listed.has(d)) warnings.push(`${a.id}: ${a.source} has RWY ${d}, not in data/aip.js runways`);
+    if (pad && !a.water)
+      for (const d of Object.keys(pad.runways))
+        if (!listed.has(d)) warnings.push(`${a.id}: ${a.source} has RWY ${d}, not in data/aip.js runways`);
     if (!pad && a.runways.length) warnings.push(`${a.id}: no AIP runway text for ${a.source}`);
 
     let varHere = projectedVar(pad, year);
@@ -112,7 +135,10 @@ export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effe
         if (headingTrueSource === 'aip' && p?.thr && q?.thr) {
           const c = trueCourse({ lat: p.thr[0], lon: p.thr[1] }, { lat: q.thr[0], lon: q.thr[1] });
           const diff = Math.abs(((c - headingTrueDeg! + 540) % 360) - 180);
-          if (diff > 1) notes.push(`TRUE BRG ${p.trueBrg}° differs by ${r1(diff)}° from the course between the published thresholds (${r1(c)}°)`);
+          if (diff > 1)
+            notes.push(
+              `TRUE BRG ${p.trueBrg}° differs by ${r1(diff)}° from the course between the published thresholds (${r1(c)}°)`,
+            );
         }
         // magnetic heading
         let headingMagDeg = n * 10;
@@ -129,48 +155,90 @@ export function buildRunways(aerodromes: RefAerodrome[], parsed: ParsedDoc, effe
         let slopePct: number | null = null;
         let slopeSource: RefRunwayDetail['slopeSource'] = null;
         let slopeUnsignedPct: number | null = null;
-        const thrSlope = p?.thr && q?.thr && thrElev !== null && q.thrElevFt !== null
-          ? ((q.thrElevFt - thrElev) * FT) / (distanceNm({ lat: p.thr[0], lon: p.thr[1] }, { lat: q.thr[0], lon: q.thr[1] }) * M_PER_NM) * 100
-          : null;
-        const pub = p?.slopePct ?? null, pubRec = q?.slopePct ?? null;
+        const thrSlope =
+          p?.thr && q?.thr && thrElev !== null && q.thrElevFt !== null
+            ? (((q.thrElevFt - thrElev) * FT) /
+                (distanceNm({ lat: p.thr[0], lon: p.thr[1] }, { lat: q.thr[0], lon: q.thr[1] }) * M_PER_NM)) *
+              100
+            : null;
+        const pub = p?.slopePct ?? null,
+          pubRec = q?.slopePct ?? null;
         if (pub !== null) {
           const ambiguous = pub !== 0 && pubRec !== null && Math.sign(pub) === Math.sign(pubRec);
-          if (!ambiguous) { slopePct = pub; slopeSource = 'aip'; }
-          else if (thrSlope !== null) { slopePct = Math.abs(pub) * Math.sign(thrSlope); slopeSource = 'aip-magnitude-thr-sign'; }
+          if (!ambiguous) {
+            slopePct = pub;
+            slopeSource = 'aip';
+          } else if (thrSlope !== null) {
+            slopePct = Math.abs(pub) * Math.sign(thrSlope);
+            slopeSource = 'aip-magnitude-thr-sign';
+          }
         }
         if (slopeSource === null) {
           gaps.push('slope');
-          if (thrSlope !== null) { slopePct = r2(thrSlope); slopeSource = 'thr-elevations'; }
-          else if (pub !== null && pub !== 0) {
+          if (thrSlope !== null) {
+            slopePct = r2(thrSlope);
+            slopeSource = 'thr-elevations';
+          } else if (pub !== null && pub !== 0) {
             // same value (or sign) printed both ways, no threshold elevations: the direction is unknown
             slopeUnsignedPct = Math.abs(pub);
             slopeSource = 'aip-unsigned';
-            notes.push(`Slope ${p!.slopeText} printed for both directions without threshold elevations: direction unknown, applied as adverse both ways`);
+            notes.push(
+              `Slope ${p!.slopeText} printed for both directions without threshold elevations: direction unknown, applied as adverse both ways`,
+            );
           }
         }
         // physical + declared
         if (p?.lengthM == null) gaps.push('length');
         if (p?.widthM == null) gaps.push('width');
         if (p?.surface == null) gaps.push('surface');
-        for (const [k, label] of [['toraM', 'TORA'], ['todaM', 'TODA'], ['asdaM', 'ASDA'], ['ldaM', 'LDA']] as const) if (p?.[k] == null) gaps.push(label);
+        for (const [k, label] of [
+          ['toraM', 'TORA'],
+          ['todaM', 'TODA'],
+          ['asdaM', 'ASDA'],
+          ['ldaM', 'LDA'],
+        ] as const)
+          if (p?.[k] == null) gaps.push(label);
 
         const corrections = parsed.corrections
           .filter((c) => c.source === a.source && c.designator === d)
           .map((c) => `${c.field}: printed ${c.printed}, used ${c.used} (${c.why})`);
 
         runways.push({
-          aerodromeId: a.id, designator: d, reciprocal: rec, headingMagDeg, headingTrueDeg,
-          lengthM: p?.lengthM ?? null, widthM: p?.widthM ?? null, surface: p?.surface ?? null,
-          toraM: p?.toraM ?? null, todaM: p?.todaM ?? null, asdaM: p?.asdaM ?? null, ldaM: p?.ldaM ?? null,
-          slopePct, slopeUnsignedPct, thresholdElevFt: thrElev ?? a.elevFt,
-          thrLat: p?.thr?.[0] ?? null, thrLon: p?.thr?.[1] ?? null, headingTrueSource,
-          magVarDeg: headingMagSource === 'designator' || varHere === null ? null : r2(varHere), headingMagSource,
-          slopeText: p?.slopeText ?? null, slopeSource,
+          aerodromeId: a.id,
+          designator: d,
+          reciprocal: rec,
+          headingMagDeg,
+          headingTrueDeg,
+          lengthM: p?.lengthM ?? null,
+          widthM: p?.widthM ?? null,
+          surface: p?.surface ?? null,
+          toraM: p?.toraM ?? null,
+          todaM: p?.todaM ?? null,
+          asdaM: p?.asdaM ?? null,
+          ldaM: p?.ldaM ?? null,
+          slopePct,
+          slopeUnsignedPct,
+          thresholdElevFt: thrElev ?? a.elevFt,
+          thrLat: p?.thr?.[0] ?? null,
+          thrLon: p?.thr?.[1] ?? null,
+          headingTrueSource,
+          magVarDeg: headingMagSource === 'designator' || varHere === null ? null : r2(varHere),
+          headingMagSource,
+          slopeText: p?.slopeText ?? null,
+          slopeSource,
           thresholdElevSource: thrElev !== null ? 'aip' : a.elevFt !== null ? 'aerodrome-elevation' : null,
-          surfaceText: p?.surfaceText ?? null, strength: p?.strength ?? null, declaredRemark: p?.declaredRemark ?? null,
+          surfaceText: p?.surfaceText ?? null,
+          strength: p?.strength ?? null,
+          declaredRemark: p?.declaredRemark ?? null,
           intersections: p?.intersections ?? [],
-          source: { physical: pad?.ref12 ?? null, declared: pad?.ref13 ?? null, magVar: headingMagSource === 'designator' ? null : varRef },
-          gaps, notes, corrections,
+          source: {
+            physical: pad?.ref12 ?? null,
+            declared: pad?.ref13 ?? null,
+            magVar: headingMagSource === 'designator' ? null : varRef,
+          },
+          gaps,
+          notes,
+          corrections,
         });
       });
     }

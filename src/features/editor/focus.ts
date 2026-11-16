@@ -21,7 +21,9 @@ export function focusInEditor(key: EditorFocusKey): void {
 
 export function onEditorFocus(fn: (key: EditorFocusKey) => void): () => void {
   listeners.add(fn);
-  return () => { listeners.delete(fn); };
+  return () => {
+    listeners.delete(fn);
+  };
 }
 
 /**

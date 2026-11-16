@@ -20,16 +20,29 @@ export interface ResizableOpts {
 }
 
 const read = (key: string): number | null => {
-  try { const v = Number(localStorage.getItem(key)); return Number.isFinite(v) && v > 0 ? v : null; } catch { return null; }
+  try {
+    const v = Number(localStorage.getItem(key));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
 };
 const write = (key: string, v: number | null) => {
-  try { if (v == null) localStorage.removeItem(key); else localStorage.setItem(key, String(Math.round(v))); } catch { /* ignore */ }
+  try {
+    if (v == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, String(Math.round(v)));
+  } catch {
+    /* ignore */
+  }
 };
 
 export function useResizable(o: ResizableOpts) {
   const maxOf = useCallback(() => (typeof o.max === 'function' ? o.max() : o.max), [o.max]);
   const clamp = useCallback((v: number) => Math.max(o.min, Math.min(maxOf(), v)), [o.min, maxOf]);
-  const [size, setSize] = useState<number | null>(() => { const v = read(o.key) ?? o.initial; return v == null ? null : v; });
+  const [size, setSize] = useState<number | null>(() => {
+    const v = read(o.key) ?? o.initial;
+    return v == null ? null : v;
+  });
   const [dragging, setDragging] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
 
@@ -41,14 +54,21 @@ export function useResizable(o: ResizableOpts) {
     return () => window.removeEventListener('resize', onResize);
   }, [clamp]);
 
-  const commit = useCallback((v: number | null) => { setSize(v); write(o.key, v); }, [o.key]);
+  const commit = useCallback(
+    (v: number | null) => {
+      setSize(v);
+      write(o.key, v);
+    },
+    [o.key],
+  );
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
     const el = panelRef.current;
     const start = o.axis === 'x' ? e.clientX : e.clientY;
-    const startSize = size ?? (el ? (o.axis === 'x' ? el.getBoundingClientRect().width : el.getBoundingClientRect().height) : o.min);
+    const startSize =
+      size ?? (el ? (o.axis === 'x' ? el.getBoundingClientRect().width : el.getBoundingClientRect().height) : o.min);
     const handle = e.currentTarget;
     handle.setPointerCapture(e.pointerId);
     setDragging(true);
@@ -69,7 +89,8 @@ export function useResizable(o: ResizableOpts) {
       const d = ((o.axis === 'x' ? ev.clientX : ev.clientY) - start) * o.dir;
       raw = startSize + d;
       last = clamp(raw);
-      if (o.onCollapse && o.collapseBelow != null) panelRef.current?.classList.toggle('will-collapse', raw < o.collapseBelow);
+      if (o.onCollapse && o.collapseBelow != null)
+        panelRef.current?.classList.toggle('will-collapse', raw < o.collapseBelow);
       if (!raf) raf = requestAnimationFrame(apply);
     };
     const up = () => {
@@ -96,12 +117,13 @@ export function useResizable(o: ResizableOpts) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    const grow = o.axis === 'x' ? (o.dir === 1 ? 'ArrowRight' : 'ArrowLeft') : (o.dir === 1 ? 'ArrowDown' : 'ArrowUp');
-    const shrink = o.axis === 'x' ? (o.dir === 1 ? 'ArrowLeft' : 'ArrowRight') : (o.dir === 1 ? 'ArrowUp' : 'ArrowDown');
+    const grow = o.axis === 'x' ? (o.dir === 1 ? 'ArrowRight' : 'ArrowLeft') : o.dir === 1 ? 'ArrowDown' : 'ArrowUp';
+    const shrink = o.axis === 'x' ? (o.dir === 1 ? 'ArrowLeft' : 'ArrowRight') : o.dir === 1 ? 'ArrowUp' : 'ArrowDown';
     if (e.key !== grow && e.key !== shrink) return;
     e.preventDefault();
     const el = panelRef.current;
-    const cur = size ?? (el ? (o.axis === 'x' ? el.getBoundingClientRect().width : el.getBoundingClientRect().height) : o.min);
+    const cur =
+      size ?? (el ? (o.axis === 'x' ? el.getBoundingClientRect().width : el.getBoundingClientRect().height) : o.min);
     commit(clamp(cur + (e.key === grow ? 1 : -1) * (e.shiftKey ? 80 : 20)));
   };
 

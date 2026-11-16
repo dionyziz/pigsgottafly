@@ -25,39 +25,81 @@ async function get(db: Queryable, pilotId: string, id: string) {
  */
 async function deleteKeepingForms(q: Queryable, pilot: Pilot, passengerId: string) {
   const pilotId = pilot.id;
-  const rows = await q.query('SELECT flight_id, seat, snapshot FROM flight_crew WHERE pilot_id = $1 AND passenger_id = $2', [pilotId, passengerId]);
+  const rows = await q.query(
+    'SELECT flight_id, seat, snapshot FROM flight_crew WHERE pilot_id = $1 AND passenger_id = $2',
+    [pilotId, passengerId],
+  );
   const before = new Map<string, string>();
   for (const r of rows) before.set(r.flight_id, await form731Hash(q, pilot, r.flight_id));
   for (const r of rows) {
     const key = `seat:${r.seat}`;
     const s = r.snapshot ?? {};
-    const hash = personHash({ key, name: String(s.fullName ?? '').trim(), idPassport: String(s.idNumber ?? '').trim() });
+    const hash = personHash({
+      key,
+      name: String(s.fullName ?? '').trim(),
+      idPassport: String(s.idNumber ?? '').trim(),
+    });
     // a seat-keyed row left by whoever sat there before is not this person's
-    await q.query('DELETE FROM form_signatures WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [r.flight_id, pilotId, key]);
-    await q.query('UPDATE form_signatures SET person_key = $4 WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [r.flight_id, pilotId, passengerId, key]);
-    await q.query('UPDATE form_links SET revoked = TRUE WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [r.flight_id, pilotId, key]);
-    await q.query('UPDATE form_links SET person_key = $4, person_hash = $5 WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3',
-      [r.flight_id, pilotId, passengerId, key, hash]);
+    await q.query('DELETE FROM form_signatures WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [
+      r.flight_id,
+      pilotId,
+      key,
+    ]);
+    await q.query(
+      'UPDATE form_signatures SET person_key = $4 WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3',
+      [r.flight_id, pilotId, passengerId, key],
+    );
+    await q.query('UPDATE form_links SET revoked = TRUE WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [
+      r.flight_id,
+      pilotId,
+      key,
+    ]);
+    await q.query(
+      'UPDATE form_links SET person_key = $4, person_hash = $5 WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3',
+      [r.flight_id, pilotId, passengerId, key, hash],
+    );
   }
-  const del = await q.query('DELETE FROM passengers WHERE id = $1 AND pilot_id = $2 RETURNING id', [passengerId, pilotId]);
+  const del = await q.query('DELETE FROM passengers WHERE id = $1 AND pilot_id = $2 RETURNING id', [
+    passengerId,
+    pilotId,
+  ]);
   if (!del.length) throw notFound('no such passenger');
   // The form's text names each person by key, so re-keying alone makes a new version: signatures of
   // the version before the deletion still count when nothing else on the form changed.
   for (const [flightId, old] of before) {
     const now = await form731Hash(q, pilot, flightId);
-    if (now !== old) await q.query('UPDATE form_signatures SET text_hash = $4 WHERE flight_id = $1 AND pilot_id = $2 AND text_hash = $3', [flightId, pilotId, old, now]);
+    if (now !== old)
+      await q.query(
+        'UPDATE form_signatures SET text_hash = $4 WHERE flight_id = $1 AND pilot_id = $2 AND text_hash = $3',
+        [flightId, pilotId, old, now],
+      );
   }
 }
 
-const cols = (p: PassengerInput) => [p.fullName, p.phone, p.dateOfBirth, p.weightKg, p.idNumber, p.idType, p.nationality, p.relation, p.notes];
+const cols = (p: PassengerInput) => [
+  p.fullName,
+  p.phone,
+  p.dateOfBirth,
+  p.weightKg,
+  p.idNumber,
+  p.idType,
+  p.nationality,
+  p.relation,
+  p.notes,
+];
 
 export const routes: Route[] = [
   {
-    method: 'GET', path: '/passengers',
-    handler: async ({ db, pilot }) => (await db.query('SELECT * FROM passengers WHERE pilot_id = $1 ORDER BY lower(full_name)', [pilot.id])).map(toPassenger),
+    method: 'GET',
+    path: '/passengers',
+    handler: async ({ db, pilot }) =>
+      (await db.query('SELECT * FROM passengers WHERE pilot_id = $1 ORDER BY lower(full_name)', [pilot.id])).map(
+        toPassenger,
+      ),
   },
   {
-    method: 'POST', path: '/passengers',
+    method: 'POST',
+    path: '/passengers',
     async handler({ db, pilot, body }) {
       const p = passengerInput(await body(), { ...EMPTY_PERSON, notes: '' });
       await checkCount(db, pilot.id, 'passengers');
@@ -72,7 +114,8 @@ export const routes: Route[] = [
   },
   { method: 'GET', path: '/passengers/:id', handler: async ({ db, pilot, params }) => get(db, pilot.id, params.id) },
   {
-    method: 'PUT', path: '/passengers/:id',
+    method: 'PUT',
+    path: '/passengers/:id',
     async handler({ db, pilot, params, body }) {
       const { id: _i, created: _c, updated: _u, ...cur } = await get(db, pilot.id, params.id);
       const p = passengerInput(await body(), cur);
@@ -86,7 +129,8 @@ export const routes: Route[] = [
     },
   },
   {
-    method: 'DELETE', path: '/passengers/:id',
+    method: 'DELETE',
+    path: '/passengers/:id',
     async handler({ db, pilot, params }) {
       await db.transaction((tx) => deleteKeepingForms(tx, pilot, params.id));
       return undefined;
