@@ -80,7 +80,6 @@ import {
   pointFromCandidate,
   routeCandidates,
   SNAP_RADIUS_PX,
-  type SnapCandidate,
   type SnapHit,
 } from './snap';
 import {
@@ -1607,5 +1606,3 @@ const KIND_LABEL: Record<RoutePoint['kind'], string> = {
   waypoint: 'my waypoint',
   custom: 'custom point',
 };
-
-export type { SnapCandidate };

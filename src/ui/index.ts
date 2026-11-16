@@ -8,7 +8,7 @@ export { ConfirmDialog, Dialog, type DialogAction, DialogFooter } from './Dialog
 export { Check, Field, type FieldIssue, type IssueLevel, IssueList } from './Field';
 export { FilePicker, PdfViewer, useObjectUrl } from './Files';
 export { CloseButton, Icon, ICON_NAMES, type IconName, RowRemove } from './Icon';
-export { rowClick, SearchBox, UnitInput } from './inputs';
+export { rowClick, SearchBox } from './inputs';
 export { Loading, LoadingMark, type LoadingVariant } from './Loading';
 export { KebabMenu, Menu, type MenuItem } from './Menu';
 export { NumberField, type NumberFieldProps } from './NumberField';

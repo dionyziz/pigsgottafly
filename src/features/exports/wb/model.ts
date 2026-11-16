@@ -108,8 +108,6 @@ export const fmtCg = (x: number | null | undefined) => (fin(x) ? x.toFixed(3) : 
 const trimNum = (x: number) => String(Math.round(x * 1000) / 1000);
 
 /** 'YYYY-MM-DD' (validated; '' otherwise). */
-export { fmtDate } from '../../../shared/date';
-
 /** CG polygon [arm, mass] → moment outline [moment, mass], each edge split into `steps` pieces. */
 export function cgToMomentOutline(polygon: [number, number][], steps = 16): [number, number][] {
   const out: [number, number][] = [];

@@ -98,8 +98,3 @@ export function visibleNotams(b: NotamBriefing | null, showAll: boolean): Notam[
   if (!b) return [];
   return showAll ? b.notams : b.notams.filter((n) => n.relevant);
 }
-
-/** One-line hover text for a NOTAM: 'A1234/26 · Restricted area: activated · 15 Nov 06:00Z – … · SFC – 2500 ft'. */
-export function notamTip(n: Notam): string {
-  return `${n.key} · ${notamSubject(n)} · ${notamValidity(n)} · ${notamLimits(n)}`;
-}

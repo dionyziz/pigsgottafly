@@ -3,7 +3,6 @@ export * from './adHours.js';
 export * from './aerodromeStatus.js';
 export * from './altitudes.js';
 export * from './atc.js';
-export * from './errors.js';
 export * from './fuel.js';
 export * from './hazards.js';
 export * from './legs.js';

@@ -84,8 +84,6 @@ export const hdg = (d) => {
 };
 export const signed = (d) => (d > 0 ? '+' + d : d < 0 ? '\u2212' + -d : '0');
 export const hmm = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-/** Durations as the app shows them: '1h44', '0h10'. */
-export const dur = (m) => `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`;
 /** Navlog leg times (ETE/ATE columns): '00:10', '01:44'. */
 export const legTime = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
@@ -158,21 +156,6 @@ export function sunsetMinutes(dateIso, lat, lon) {
 // windFn({level, z, hourIndex, dayIndex, lat, lon}) -> {dir, spd, temp}
 export const LEVELS = { 1000: 110, 925: 760, 850: 1460, 700: 3010, 600: 4200 };
 export const SURFACE_DEFAULT = { qnh: 1013.4, temp: 15, dew: 8, dir: 200, spd: 7, low: 0, mid: 0, high: 0 };
-// METAR-style expectations, written independently of the app
-export function metar({ temp, dew, dir, spd, low, mid, high }) {
-  const t2 = (x) => (Math.round(x) < 0 ? 'M' : '') + String(Math.abs(Math.round(x))).padStart(2, '0');
-  const okta = Math.round(low / 12.5);
-  let sky;
-  const base = Math.max(100, Math.min(6500, Math.round(((temp - dew) * 400) / 100) * 100));
-  if (okta >= 1 && base < 5000)
-    sky = (okta <= 2 ? 'FEW' : okta <= 4 ? 'SCT' : okta <= 7 ? 'BKN' : 'OVC') + String(base / 100).padStart(3, '0');
-  else sky = low + mid + high > 0 ? 'NSC' : 'SKC';
-  const wind =
-    Math.round(spd) < 1
-      ? '00000KT'
-      : `${String((Math.round(dir / 10) * 10) % 360 || 360).padStart(3, '0')}${String(Math.round(spd)).padStart(2, '0')}KT`;
-  return { temp: `${t2(temp)}/${t2(dew)}`, wind, sky };
-}
 export function openMeteoResponder(windFn, { nullAll = false, status = 200, reason = '', surfaceFn = null } = {}) {
   return (url) => {
     if (status !== 200) return { status, body: { error: true, reason } };

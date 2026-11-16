@@ -41,8 +41,6 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 // ---------------------------------------------------------------------------------------------
 // Dates and compass cards
 
-export { isIsoDate } from '../../shared/date';
-
 /** Whole days from a to b ('YYYY-MM-DD'); null if either is invalid. */
 export function daysFromTo(a: string, b: string): number | null {
   const x = parseIsoDate(a),

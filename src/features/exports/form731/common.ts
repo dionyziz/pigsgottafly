@@ -1,7 +1,7 @@
 // Helpers shared by the filled forms (Form 731 and the General Declaration). Pure: no DOM, no I/O.
 import { aerodrome } from '../../../data/ref';
 import type { Aircraft, FlightDoc, Passenger, Pilot, RoutePoint } from '../../../shared';
-import { formPeopleOf, type FormPerson, type Place, placeOfWith, routePlacesWith } from '../../../shared/forms';
+import { formPeopleOf, type FormPerson, type Place, routePlacesWith } from '../../../shared/forms';
 
 /** What every filled-form component needs. The export page loads these and passes them in. */
 export interface FormExportProps {
@@ -16,13 +16,9 @@ export interface FormExportProps {
 
 // The form content rules live in src/shared/forms.ts (shared with the API: signing page, PDF);
 // here they are bound to the client's reference data.
-export { dateParts, formatDate, type FormPerson, idText, type Place, placeLong } from '../../../shared/forms';
+export { formatDate, type FormPerson, idText, type Place, placeLong } from '../../../shared/forms';
 
 const lookup = (k: string | null | undefined) => aerodrome(k);
-
-export function placeOf(p: RoutePoint): Place {
-  return placeOfWith(p, lookup);
-}
 
 /** Origin, aerodromes on the way, destination (see routePlacesWith). */
 export function routePlaces(route: RoutePoint[]): Place[] {

@@ -25,7 +25,7 @@ src/
                            (copied to new flights by POST /flights)
     api.ts                 request/response bodies of every /api route
     constants.ts           DEFAULT_SETTINGS (unset values), SETTING_SUGGESTIONS, profileMissing(), seatLayout(),
-                           seatStation(), validateCrew(), EXPORT_KINDS, legKey(), uid(), autoTitle(), emptyFlightDoc()
+                           validateCrew(), EXPORT_KINDS, legKey(), uid(), autoTitle(), emptyFlightDoc()
     templates.ts           aircraft TYPE templates (AFM data, blank airframe): aircraftFromTypeJson(), blankAircraft()
     format.ts              THE formatters: pad, fmtClock(min,{z,fallback}) 'HH:MM', fmtClockMs, fmtDateTimeMs
                            'YYYY-MM-DD HH:MMZ', fmtDuration(min,{fallback}) '1h44', fmtEte '00:10'
@@ -104,7 +104,7 @@ src/
                            eAIP start page when a section has no PDF), from ref/aip-files.json
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
                            AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, FIR (fir.json), VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
-                           REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a),
+                           REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id),
                            resolveAerodrome(text), searchAerodromes(q)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context,
                            AboutPage (/about: the one place the weather model and the data sources are named)
@@ -120,7 +120,7 @@ src/
                            field/check; dialogs, menus, empty, searchbox, tabs, combo; component styles). Mono only for codes; tnum for measurements
                            index.ts: the component library (import from '../../ui'): Dialog + DialogFooter (danger left), ConfirmDialog,
                            Menu/KebabMenu, EmptyState, AsyncView, Loading (screen/inline/sm, a div), Icon (one name → path map) +
-                           CloseButton + RowRemove, Chip (tones; mono/count/sm), SearchBox, UnitInput, rowClick, Field/IssueList/Check,
+                           CloseButton + RowRemove, Chip (tones; mono/count/sm), SearchBox, rowClick, Field/IssueList/Check,
                            NumberField (live commit, clamp on blur, limit shown; parsing in shared/number.ts), Combobox (comboKey),
                            AerodromeInput (RefAerodrome|null) / AerodromeTextInput, PersonPicker, Collapsible (whole header toggles,
                            remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
@@ -266,7 +266,7 @@ tests/api/                 vitest: API, auth, migrations (PGlite in memory)
 tests/setup/               noExternalApis.ts: the test process's fetch refuses Open-Meteo, aviationweather.gov and autorouter
                            (vitest setupFiles and the e2e harness; startServer's close() fails the test if anything tried)
 tests/helpers/             openMeteoGrid.ts: fake Open-Meteo from recorded ECMWF responses + gridApi (the real route on PGlite)
-tests/e2e/                 harness.mjs (CDP; API server with mocked Open-Meteo/METAR upstreams, pages refuse external APIs), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs, sharing.e2e.test.mjs,
+tests/e2e/                 harness.mjs (CDP; API server with mocked Open-Meteo/METAR upstreams, pages refuse external APIs), oracle.mjs (independent navlog reference), sharing.e2e.test.mjs,
                            smoke.e2e.test.mjs, lists.e2e.test.mjs (lobby and account lists), freshness.e2e.test.mjs
                            (two tabs: a profile edit / flight rename in one shows in the other),
                            flight.e2e.test.mjs (whole workflow: map drawing/snapping, panels, navlog vs oracle,

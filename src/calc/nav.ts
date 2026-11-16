@@ -216,7 +216,7 @@ export const fmtHmm = (min: number): string => {
   return `${Math.floor(m / 60)}:${pad(m % 60)}`;
 };
 // fmtDuration ('1h44'), fmtAltitude ('3000' / 'FL065'), fmtClock ('HH:MM') live in src/shared/format.ts.
-export { fmtAltitude, fmtClock, fmtDuration, TRANSITION_ALTITUDE_FT } from '../shared/format.js';
+export { fmtAltitude, fmtClock, fmtDuration } from '../shared/format.js';
 /** '0930', '09:30', '09:30Z' → minutes after midnight; NaN if invalid. */
 export function parseClock(s: string | null | undefined): number {
   const m = String(s || '')
@@ -225,15 +225,6 @@ export function parseClock(s: string | null | undefined): number {
     .match(/^(\d{1,2}):?(\d{2})\s*Z?$/);
   if (!m || +m[1] > 23 || +m[2] > 59) return NaN;
   return +m[1] * 60 + +m[2];
-}
-/** 'h:mm' or plain minutes → minutes; NaN if invalid. */
-export function parseHmm(s: string | null | undefined): number {
-  s = String(s || '').trim();
-  let m = s.match(/^(\d+):(\d{1,2})$/);
-  if (m) return +m[1] * 60 + +m[2];
-  m = s.match(/^\d+$/);
-  if (m) return +s;
-  return NaN;
 }
 
 // ---------- the nav log computation (paper-sheet rounding) ----------

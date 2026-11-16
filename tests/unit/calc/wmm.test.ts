@@ -4,7 +4,7 @@
 import { expect, test } from 'vitest';
 
 import { buildLegs } from '../../../src/calc/legs';
-import { decimalYear, magneticVariation, WMM_IS_STUB, wmmField, wmmValid } from '../../../src/calc/wmm';
+import { decimalYear, magneticVariation, wmmField, wmmValid } from '../../../src/calc/wmm';
 import { midpoint } from './navlog.oracle';
 
 // year, height km, geodetic lat, lon, D deg, I deg, X nT, Y nT, Z nT, F nT
@@ -111,8 +111,7 @@ const OFFICIAL: number[][] = [
   [2029.5, 77, -18, 138, 4.45, -47.55, 31751.49758, 2472.257962, -34817.395113, 47186.021876],
 ];
 
-test('the official coefficients are in use (not the stub)', () => {
-  expect(WMM_IS_STUB).toBe(false);
+test('the official test values are all checked', () => {
   expect(OFFICIAL).toHaveLength(100);
 });
 

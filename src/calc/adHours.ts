@@ -57,8 +57,6 @@ export function normalizeAipText(s: string): string {
 const DAY_MS = 86400e3;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 /** 'YYYY-MM-DD' of an instant (UTC). */
-export { isoDay } from '../shared/date.js';
-
 /** Last Sunday of a month (0-based month), as a UTC day number (ms at 00:00). */
 function lastSunday(year: number, month: number): number {
   const last = Date.UTC(year, month + 1, 0);

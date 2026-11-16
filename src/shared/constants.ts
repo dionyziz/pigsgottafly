@@ -12,8 +12,6 @@ import type {
   WindModel,
 } from './types.js';
 
-export const APP_NAME = "Pig's Gotta Fly";
-
 /**
  * Settings of a NEW pilot. Pilot-specific values (taxi times, reserve, home aerodrome) start
  * unset: the app asks for them. Only neutral computational defaults are filled.
@@ -57,10 +55,6 @@ export function seatLayout(stations: Station[]): { id: string; label: string; st
     .filter((s) => s.kind === 'seat')
     .flatMap((st) => (st.seats || []).map((p) => ({ id: p.id, label: p.label, station: st })));
 }
-/** The station a seat belongs to, or undefined. */
-export function seatStation(stations: Station[], seatId: string): Station | undefined {
-  return seatLayout(stations).find((x) => x.id === seatId)?.station;
-}
 /** Seat ids used when a flight has no aircraft yet (the four-seat single layout). */
 export const FALLBACK_SEATS = ['front-left', 'front-right', 'rear-left', 'rear-right'];
 /** The PIC's default seat: front left if the aircraft has it, else its first seat (API and client). */
@@ -102,8 +96,6 @@ export const EXPORT_LABEL: Record<ExportKind, string> = {
   briefing: 'NOTAM briefing',
 };
 
-/** Legs per MD4.2 navlog sheet. */
-export const LEGS_PER_SHEET = 9;
 /** Compass cards expiring within this many days of the flight date are warned. */
 export const CARD_EXPIRY_WARN_DAYS = 90;
 

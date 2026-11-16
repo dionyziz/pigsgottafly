@@ -1,14 +1,23 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "src/main.tsx",
     "api/index.ts",
-    "server/dev.ts",
-    "server/server.ts",
     "tools/*.ts",
     "tests/e2e/*.e2e.test.mjs",
-    "tests/e2e/shots-*.mjs"
+    "tests/e2e/shots-*.mjs",
+    "tests/unit/**/*.test.{ts,tsx}",
+    "tests/api/**/*.test.ts",
+    "src/**/__tests__/**/*.test.{ts,tsx}",
+    "tests/setup/*.ts"
   ],
   "project": ["src/**/*.{ts,tsx}", "api/**/*.ts", "server/**/*.ts", "tools/*.ts", "tests/**/*.{ts,tsx,mjs}"],
-  "ignore": ["tests/e2e/artifacts/**"]
+  "ignore": ["api/_lib/migrations/**"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/shared/api.ts": ["types"],
+    "src/shared/operators.ts": ["types"],
+    "src/shared/sharing.ts": ["types"],
+    "src/ui/index.ts": ["exports", "types"],
+    "tests/unit/data/legacy/**": ["exports"]
+  }
 }

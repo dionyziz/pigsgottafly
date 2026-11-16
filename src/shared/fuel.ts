@@ -13,8 +13,6 @@ export const FUEL_TYPES: FuelType[] = ['AVGAS', 'MOGAS', 'JET A-1'];
 
 /** Standard densities, kg/L (MD 4.3: AVGAS 0.72, MOGAS 0.75; Jet A-1 0.80): the only ones the W&B uses. */
 export const FUEL_DENSITY: Record<FuelType, number> = { AVGAS: 0.72, MOGAS: 0.75, 'JET A-1': 0.8 };
-/** Old name of FUEL_DENSITY. */
-export const DEFAULT_FUEL_DENSITY = FUEL_DENSITY;
 
 const isFuelType = (t: unknown): t is FuelType => typeof t === 'string' && (FUEL_TYPES as string[]).includes(t);
 const fin = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -29,7 +27,7 @@ export function normalizeFuelSpec(f: unknown): FuelSpec {
   const { type, densityKgPerL, ...rest } = f as { type?: string; densityKgPerL?: number };
   // an unknown type is passed through as it is, for the API's validation to refuse
   const t = (type ?? 'AVGAS') as FuelType;
-  const rho = densityKgPerL !== undefined ? densityKgPerL : isFuelType(t) ? DEFAULT_FUEL_DENSITY[t] : undefined;
+  const rho = densityKgPerL !== undefined ? densityKgPerL : isFuelType(t) ? FUEL_DENSITY[t] : undefined;
   return { types: [{ type: t, densityKgPerL: rho }], ...rest } as FuelSpec;
 }
 

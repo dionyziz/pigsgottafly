@@ -1,5 +1,5 @@
-// Small input pieces: the search box, an input with a unit, and the row-click helper of list tables.
-import type { MouseEvent, ReactNode } from 'react';
+// Small input pieces: the search box and the row-click helper of list tables.
+import type { MouseEvent } from 'react';
 
 import { Icon } from './Icon';
 
@@ -34,24 +34,6 @@ export function SearchBox({
         data-testid={testId}
         autoFocus={autoFocus}
       />
-    </div>
-  );
-}
-
-/** An input with its unit drawn inside on the right: <UnitInput unit="kg"><input …/></UnitInput>. */
-export function UnitInput({
-  unit,
-  children,
-  width,
-}: {
-  unit: ReactNode;
-  children: ReactNode;
-  width?: number | string;
-}) {
-  return (
-    <div className="unit-input" style={width != null ? { width } : undefined}>
-      {children}
-      <span>{unit}</span>
     </div>
   );
 }

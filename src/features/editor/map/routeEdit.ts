@@ -3,10 +3,6 @@
 import type { LegOverride, RoutePoint } from '../../../shared';
 import { legKey } from '../../../shared';
 
-export function appendPoint(route: RoutePoint[], p: RoutePoint): RoutePoint[] {
-  return [...route, p];
-}
-
 /**
  * True when the route comes back to where it started (A … A), as a new flight home → home does.
  * Points are the same when they reference the same aerodrome / VFR point / waypoint, or sit at the

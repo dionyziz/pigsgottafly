@@ -19,18 +19,7 @@ import type { HangarAircraft } from '../shared/sharing';
 import { api } from './api';
 import { getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity } from './entityStore';
 
-export {
-  clearEntities,
-  type EntityKey,
-  type EntitySnapshot,
-  getEntity,
-  invalidate,
-  loadEntity,
-  onInvalidate,
-  onRevalidate,
-  putEntity,
-  subscribeEntity,
-} from './entityStore';
+export { clearEntities, getEntity, invalidate, onInvalidate, putEntity, subscribeEntity } from './entityStore';
 
 export interface Entities {
   pilot: Pilot;

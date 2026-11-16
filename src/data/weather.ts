@@ -34,12 +34,9 @@ import type { MetarWind, ParsedMetar } from './weatherMetar';
 
 export {
   DEFAULT_MODEL,
-  FORECAST_PAST_DAYS,
-  type ForecastAvailability,
   forecastAvailability,
   type Hourly,
   LEVELS,
-  MODEL_HORIZON_DAYS,
   type ModelRun,
   type OpenMeteoEndpoint,
   type OpenMeteoLocation,

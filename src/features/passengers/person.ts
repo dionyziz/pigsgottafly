@@ -82,6 +82,3 @@ export function passengerInputOf(f: PersonForm, opts?: { pilot?: boolean }): Pas
   if (first) throw new Error(first.message);
   return personInput(f);
 }
-
-/** Old name of personForm(). */
-export const passengerForm = personForm;

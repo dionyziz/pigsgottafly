@@ -7,9 +7,6 @@
 // 100 official test values (WMM2025_TestValues.txt) in tests/unit/calc/wmm.test.ts.
 import type { IsoDate } from '../shared/types.js';
 
-/** False: magneticVariation() is the real WMM2025 (kept for the UI that used to show a hint). */
-export const WMM_IS_STUB = false;
-
 /** Model epoch and validity. */
 export const WMM_EPOCH = 2025.0;
 export const WMM_VALID_UNTIL = 2030.0;

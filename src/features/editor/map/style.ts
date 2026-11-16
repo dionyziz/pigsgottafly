@@ -291,7 +291,6 @@ export const LAYER_GROUPS = {
   vfrRoutes: ['vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt'],
   waypoints: ['waypoint-icon', 'waypoint-label'],
 } as const satisfies Record<string, readonly string[]>;
-export type LayerGroup = keyof typeof LAYER_GROUPS;
 
 /** ENR 5 areas in VFR-chart style: P red tint, R red hatching, D amber dashed, MIL violet dash-dot, ACT green dotted. */
 function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {

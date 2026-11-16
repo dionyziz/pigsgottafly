@@ -25,7 +25,6 @@ import {
 import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
 import type { StationReports } from './weatherMetar';
 
-export { HAZARD_SURFACE } from '../shared/weatherGrid';
 export const CORRIDOR_STEP_NM = 10;
 export const CORRIDOR_HALF_WIDTH_NM = 5;
 export const GRID_DEG = HAZARD_STEP_DEG;

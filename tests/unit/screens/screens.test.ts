@@ -5,8 +5,7 @@ import { resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
 import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
 import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
 import { flightSearchText, matchesQuery, splitFlights } from '../../../src/features/lobby/format';
-import { passengerForm, passengerInputOf } from '../../../src/features/passengers/person';
-import { personForm, validatePerson } from '../../../src/features/passengers/person';
+import { passengerInputOf, personForm, validatePerson } from '../../../src/features/passengers/person';
 import { formOf, type ProfileForm, toUpdate, validateProfile } from '../../../src/features/profile/ProfilePage';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
 import { validateWaypoint } from '../../../src/features/waypoints/WaypointsPage';
@@ -256,7 +255,7 @@ describe('profile form', () => {
 
 describe('passenger form', () => {
   it('normalises input and validates', () => {
-    const f = { ...passengerForm(null, 'Jane  Doe'), weightKg: 62.5, nationality: 'greek', dateOfBirth: '1990-01-02' };
+    const f = { ...personForm(null, 'Jane  Doe'), weightKg: 62.5, nationality: 'greek', dateOfBirth: '1990-01-02' };
     expect(passengerInputOf(f)).toMatchObject({
       fullName: 'Jane Doe',
       weightKg: 62.5,

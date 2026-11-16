@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { DEFAULT_FUEL_DENSITY } from '../src/shared/fuel.js';
+import { FUEL_DENSITY } from '../src/shared/fuel.js';
 import { aircraftFromTypeJson } from '../src/shared/templates.js';
 import type { AircraftInput, CompassCard, FuelType } from '../src/shared/types.js';
 
@@ -60,7 +60,7 @@ export function fleetSeed(): AircraftInput[] {
       usableL: f.fuel.usableL,
       types: (f.fuel.approved as FuelType[]).map((t) => ({
         type: t,
-        densityKgPerL: type.fuel.densityKgPerL[t] ?? DEFAULT_FUEL_DENSITY[t],
+        densityKgPerL: type.fuel.densityKgPerL[t] ?? FUEL_DENSITY[t],
       })),
       unusableIncludedInEmptyMass: !!f.emptyMass.includesUnusableFuel,
       tanks: longRange ? 'long-range' : 'standard',
