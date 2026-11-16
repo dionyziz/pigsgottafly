@@ -3,7 +3,6 @@
 // warning. The first card is the flights' default.
 import { useState } from 'react';
 
-import { DateInput } from '../../app/DateInput';
 import { saveBlob } from '../../data/aircraftFiles';
 import { api } from '../../data/api';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
@@ -16,7 +15,17 @@ import {
   type AttachmentType,
   type CompassCard,
 } from '../../shared/types';
-import { Chip, DragHandle, Field, FilePicker, IssueList, PdfViewer, useObjectUrl, useSortable } from '../../ui';
+import {
+  Chip,
+  DateField,
+  DragHandle,
+  Field,
+  FilePicker,
+  IssueList,
+  PdfViewer,
+  useObjectUrl,
+  useSortable,
+} from '../../ui';
 import { PointTable, Section } from './fields';
 import { addCompassCard, addYears, cardStatus, deviationOf, issuesAt } from './model';
 import type { SectionProps } from './sections';
@@ -341,11 +350,10 @@ export function CompassSection({
             </div>
             <div className="grid3">
               <Field label="Swung" issues={issuesAt(issues, `${p}.swung`, true)}>
-                <DateInput
+                <DateField
                   name={`${p}.swung`}
                   value={c.swung}
-                  onChange={(e) => {
-                    const v = e.target.value;
+                  onChange={(v) => {
                     cc(i, (x) => {
                       x.swung = v;
                     });
@@ -371,11 +379,10 @@ export function CompassSection({
                   ) : undefined
                 }
               >
-                <DateInput
+                <DateField
                   name={`${p}.expires`}
                   value={c.expires}
-                  onChange={(e) => {
-                    const v = e.target.value;
+                  onChange={(v) => {
                     cc(i, (x) => {
                       x.expires = v;
                     });

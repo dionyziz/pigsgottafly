@@ -127,6 +127,10 @@ src/
                            remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
                            WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL),
                            SegmentedControl (one of a few options; one outer border, even dividers; ←/→).
+                           TimeField ('HH:MM' typed with or without the colon, or picked from a 15-minute listbox that
+                           opens on focus; optionNote, e.g. the local time) and DateField ('YYYY-MM-DD', dashes put in as
+                           digits are typed, paste, min/max, a month calendar popover); parsing in shared/typedInput.ts.
+                           Every time and date input in the app is one of these.
                            Pages import these from src/ui directly (no re-export shims left).
   features/
     lobby/                 LobbyPage (fixed header: h1 Flights, fixed-width tabs, New flight kept hidden in Trash),

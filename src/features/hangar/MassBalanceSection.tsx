@@ -2,10 +2,9 @@
 // their seat layout, combined limits, and the normal/utility CG and moment envelopes.
 import { useState } from 'react';
 
-import { DateInput } from '../../app/DateInput';
 import { moveAt } from '../../shared/list';
 import type { AircraftInput, Envelope, MassBalance, Station, StationKind, WbCategory } from '../../shared/types';
-import { Check, DragHandle, Field, IssueList, RowRemove, useSortable } from '../../ui';
+import { Check, DateField, DragHandle, Field, IssueList, RowRemove, useSortable } from '../../ui';
 import { type ChartSeries, EnvelopeChart } from './EnvelopeChart';
 import { NumInput, PointTable, Section } from './fields';
 import {
@@ -112,13 +111,12 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
       </div>
       <div className="grid3">
         <Field label="Weighing date" issues={at('massBalance.weighingDate')}>
-          <DateInput
+          <DateField
             name="massBalance.weighingDate"
             value={mb.weighingDate ?? ''}
-            onChange={(e) => {
-              const v = e.target.value || null;
+            onChange={(v) => {
               m((q) => {
-                q.weighingDate = v;
+                q.weighingDate = v || null;
               });
             }}
           />

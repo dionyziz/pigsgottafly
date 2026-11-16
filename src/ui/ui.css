@@ -149,6 +149,30 @@ label.field.invalid input, label.field.invalid select, label.field.invalid texta
 label.field > .numfield, .grid2 > .numfield, .grid3 > .numfield { display: flex; width: 100%; }
 .numfield-msg { position: absolute; left: 0; top: calc(100% + 2px); z-index: 20; padding: 1px 6px; border-radius: var(--r-sm); background: var(--danger); color: var(--on-accent); font-size: var(--fs-2xs); font-style: normal; white-space: nowrap; pointer-events: none; }
 
+/* ---- TimeField: a time input with the day's times listed under it (Combobox list styles) */
+.timefield { position: relative; display: inline-flex; vertical-align: middle; max-width: 100%; }
+.timefield > input { width: 100%; min-width: 0; }
+label.field > .timefield { display: flex; width: 100%; }
+.timefield-list { max-height: 240px; min-width: 9em; right: auto; width: 100%; }
+.timefield-list li { padding: 6px 12px; justify-content: space-between; }
+.timefield-list li.current { font-weight: 600; color: var(--accent); }
+.timefield-note { color: var(--muted); font-size: var(--fs-sm); }
+
+/* ---- DateField: YYYY-MM-DD text with a calendar button and a month popover */
+.datefield { position: relative; display: flex; align-items: center; width: 100%; }
+.datefield > input { flex: 1; min-width: 0; padding-right: 30px; }
+.datefield-cal { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.datefield-cal:hover { color: var(--ink); }
+.datefield-pop { position: absolute; left: 0; top: calc(100% + 4px); z-index: 60; width: 248px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); color: var(--ink); font-size: var(--fs-sm); }
+.datefield-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-weight: 600; }
+.datefield-head button { min-width: 28px; font-size: var(--fs); }
+.datefield-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.datefield-wd { text-align: center; color: var(--muted); font-size: var(--fs-2xs); padding: 2px 0; }
+.datefield-grid button { padding: 0; height: 30px; font-variant-numeric: tabular-nums; border-radius: var(--r-sm); justify-content: center; }
+.datefield-grid button.today { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.datefield-grid button.sel { background: var(--accent); color: var(--on-accent); }
+.datefield-grid button:disabled { opacity: 0.35; }
+
 /* ---- PersonPicker (Combobox options with a right-hand detail) */
 .person-picker .combo-list li { justify-content: space-between; }
 .person-picker .combo-list li .nm-main { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
