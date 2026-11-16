@@ -358,7 +358,43 @@ test('ENR 5 areas: drawn, hover and click details with the AIP PDF link; popover
   assert.doesNotMatch(atz.text, /Route|enters|Leg \d|compared with altitude/);
   assert.doesNotMatch(atz.vertical, /\(/);
   assert.match(atz.href, /LG_AD_1_6_5_LGTT_en\.pdf$/);
+  // the open item is outlined on the map with dashes walking around it; hovering another outlines that one
+  const focus = () =>
+    page.eval(() => {
+      const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+      const f = m.getSource('air-focus').serialize().data.features;
+      return {
+        ids: f.map((x) => x.properties.id),
+        dash: JSON.stringify(m.getPaintProperty('air-focus-line', 'line-dasharray')),
+      };
+    });
+  await page.waitFor(() => {
+    const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+    return m.getSource('air-focus').serialize().data.features[0]?.properties.id === 'LGTT-ATZ';
+  });
+  const d0 = (await focus()).dash;
+  await sleep(250);
+  assert.notEqual((await focus()).dash, d0, 'the dashes move');
+  const other = await page.eval(() => {
+    const s = [...document.querySelectorAll('[data-testid=airspace-pop] [data-testid=airspace-item]')].find(
+      (x) => x.dataset.id !== 'LGTT-ATZ',
+    );
+    const r = s.querySelector('.pgf-air-h').getBoundingClientRect();
+    return { id: s.dataset.id, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: other.x, y: other.y });
+  await page.waitFor(
+    (id) =>
+      document.querySelector('.pgf-map-canvas').__pgfMap.getSource('air-focus').serialize().data.features[0]?.properties
+        .id === id,
+    { args: [other.id] },
+  );
+  await shot('4c-airspace-focus');
   await page.key('Escape');
+  await page.waitFor(
+    () =>
+      document.querySelector('.pgf-map-canvas').__pgfMap.getSource('air-focus').serialize().data.features.length === 0,
+  );
 
   // the Athens aerodrome box links its full AIP AD 2
   await jump(LGAV.lat, LGAV.lon, 10);

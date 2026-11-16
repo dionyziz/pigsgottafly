@@ -175,6 +175,7 @@ export const DATA_SOURCES = [
   'vfr-points',
   'aerodromes',
   'waypoints',
+  'air-focus',
   'route-line',
   'route-arrows',
   'route-band',
@@ -704,10 +705,35 @@ function chartLayers(): LayerSpecification[] {
 /** Feature-state `hover` (route points and midpoint handles under the cursor). */
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false];
 
+/** Dash phases of the focused airspace's outline: stepping through them walks the dashes around it. */
+export const FOCUS_DASHES: number[][] = (() => {
+  // dash ON, gap OFF (line widths), shifted forward by STEP each phase; one cycle is ON + OFF
+  const [on, off, step] = [3, 2, 0.5];
+  const out: number[][] = [];
+  for (let t = 0; t < off; t += step) out.push([0, t, on, off - t]);
+  for (let t = 0; t < on; t += step) out.push([t, off, on - t]);
+  return out;
+})();
+
 function routeLayers(): LayerSpecification[] {
   const selected: ExpressionSpecification = ['get', 'selected'];
   const isMid: ExpressionSpecification = ['==', ['get', 'role'], 'mid'];
   return [
+    // the airspace focused in the popover: a halo and marching dashes in its own colour
+    {
+      id: 'air-focus-casing',
+      type: 'line',
+      source: 'air-focus',
+      layout: { 'line-join': 'round' },
+      paint: { 'line-color': CHART.paper, 'line-width': 6, 'line-opacity': 0.85 },
+    },
+    {
+      id: 'air-focus-line',
+      type: 'line',
+      source: 'air-focus',
+      layout: { 'line-join': 'round' },
+      paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': ['literal', FOCUS_DASHES[0]] },
+    },
     {
       id: 'route-casing',
       type: 'line',

@@ -45,6 +45,7 @@ import {
   airspaceFeatures,
   areaFeatures,
   firFeatures,
+  focusFeatures,
   midpointFeatures,
   routeArrowFeatures,
   routeLineFeatures,
@@ -87,6 +88,7 @@ import {
   type BaseLayers,
   buildStyle,
   type DataSourceId,
+  FOCUS_DASHES,
   LAYER_GROUPS,
   LGGG_BOUNDS,
   loadChartTokens,
@@ -233,6 +235,8 @@ export function RouteMap(props: RouteMapProps) {
   } | null>(null);
   /** Airspace details opened by a click. */
   const [airPop, setAirPop] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
+  /** The airspace outlined with marching dashes (hovered or open in the airspace popover). */
+  const [airFocus, setAirFocus] = useState<string | null>(null);
   /** NOTAM areas under the cursor (keys, smallest first) and the NOTAM details opened by a click. */
   const [notamTip, setNotamTip] = useState<{ x: number; y: number; keys: string[] } | null>(null);
   const [notamPop, setNotamPop] = useState<{ x: number; y: number; keys: string[] } | null>(null);
@@ -421,6 +425,27 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (m && loaded) setData(m, 'areas', areaFeatures(airInfos));
   }, [airInfos, loaded]);
+
+  // The focused airspace: its outline with dashes walking around it (still when motion is reduced).
+  const focusInfo = airPop && airFocus ? (allInfos.find((a) => a.id === airFocus) ?? null) : null;
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !loaded) return;
+    setData(m, 'air-focus', focusFeatures(focusInfo));
+    if (!focusInfo || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0,
+      last = -1;
+    const tick = (now: number) => {
+      const phase = Math.floor(now / 60) % FOCUS_DASHES.length;
+      if (phase !== last && m.getLayer('air-focus-line')) {
+        m.setPaintProperty('air-focus-line', 'line-dasharray', ['literal', FOCUS_DASHES[phase]]);
+        last = phase;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [focusInfo, loaded]);
 
   // Panels resized (dragging the flight panel's edge or the navlog's top, collapsing the panel): resize
   // the canvas and redraw in the same frame, before it is painted. MapLibre's own observer is throttled
@@ -1581,6 +1606,7 @@ export function RouteMap(props: RouteMapProps) {
           items={airPop.items}
           airac={refData.airac.id}
           onClose={() => setAirPop(null)}
+          onFocus={setAirFocus}
         />
       )}
 

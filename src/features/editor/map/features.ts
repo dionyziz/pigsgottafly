@@ -4,9 +4,10 @@ import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geo
 
 import type { RoutePoint, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefFir, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
-import { type AirspaceInfo, airspaceLabel, fmtVertical, isArea } from './airspace';
+import { type AirspaceInfo, airspaceLabel, type AirspaceType, fmtVertical, isArea } from './airspace';
 import { mercatorMid } from './routeEdit';
 import { aerodromeName } from './snap';
+import { CHART, type ChartColor } from './style';
 
 export type FC<G extends Point | LineString | Polygon = Point | LineString | Polygon> = FeatureCollection<
   G,
@@ -283,4 +284,29 @@ export function midpointFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<P
     out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: mercatorMid(a, b) }, properties: { leg: i } });
   }
   return fc(out);
+}
+
+/** Outline colour of an airspace, as drawn on the chart. */
+const FOCUS_COLOR: Record<AirspaceType, ChartColor> = {
+  TMA: 'tma',
+  MTMA: 'mtma',
+  CTR: 'zone',
+  ATZ: 'zone',
+  P: 'prohibited',
+  R: 'restricted',
+  D: 'danger',
+  MIL: 'mil',
+  ACT: 'act',
+};
+
+/** The focused airspace's outline (empty when none). */
+export function focusFeatures(a: AirspaceInfo | null): FC<LineString> {
+  if (!a) return fc([]);
+  return fc([
+    {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: a.ring },
+      properties: { id: a.id, color: CHART[FOCUS_COLOR[a.type]] },
+    },
+  ]);
 }

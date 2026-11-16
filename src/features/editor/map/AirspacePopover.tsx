@@ -2,7 +2,7 @@
 // airspace or area is, independent of the route: name, class and vertical limits on hover; on click its
 // type, limits, lateral limits in short, activity, units and frequencies, remarks and the AIP section
 // (a link to the AIP PDF).
-import { Fragment } from 'react';
+import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { AipLink } from '../../../app/AipLink';
 import { type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
@@ -56,14 +56,21 @@ export function AirspacePopover({
   items,
   airac,
   onClose,
+  onFocus,
 }: {
   x: number;
   y: number;
   items: AirspaceInfo[];
   airac: string;
   onClose: () => void;
+  /** The airspace to outline on the map: the one under the pointer, else the open one. */
+  onFocus?: (id: string | null) => void;
 }) {
   const acc = useAccordion(items[0]?.id);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const focused = hovered ?? (acc.open || null);
+  const focus = useEffectEvent((id: string | null) => onFocus?.(id));
+  useEffect(() => focus(focused), [focused]);
   return (
     <MapPopover x={x} y={y} label="Airspace" testId="airspace-pop" onClose={onClose}>
       {items.map((a) => {
@@ -76,6 +83,7 @@ export function AirspacePopover({
             onToggle={() => acc.toggle(a.id)}
             testId="airspace-item"
             data={{ id: a.id }}
+            onHover={(on) => setHovered((h) => (on ? a.id : h === a.id ? null : h))}
             head={
               <>
                 <b className={'pgf-air-type t-' + a.type.toLowerCase()}>{a.type}</b>

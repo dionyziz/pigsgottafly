@@ -132,6 +132,7 @@ export function PopItem({
   children,
   testId,
   data,
+  onHover,
 }: {
   open: boolean;
   onToggle?: () => void;
@@ -140,10 +141,18 @@ export function PopItem({
   testId?: string;
   /** data-* attributes of the section (data-id, data-key). */
   data?: Record<string, string>;
+  /** The pointer entered (true) or left (false) the item. */
+  onHover?: (on: boolean) => void;
 }) {
   const attrs = Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => ['data-' + k, v]));
   return (
-    <section className={'pgf-air-sec' + (open ? ' is-open' : '')} data-testid={testId} {...attrs}>
+    <section
+      className={'pgf-air-sec' + (open ? ' is-open' : '')}
+      data-testid={testId}
+      {...attrs}
+      onMouseEnter={onHover && (() => onHover(true))}
+      onMouseLeave={onHover && (() => onHover(false))}
+    >
       {onToggle ? (
         <button type="button" className="pgf-air-h" onClick={onToggle} aria-expanded={open}>
           {head}
