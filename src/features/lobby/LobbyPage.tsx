@@ -14,7 +14,8 @@ import { fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date'
 import { errorMessage, fmtDuration } from '../../shared/format';
 import { AsyncView, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, SearchBox, rowClick } from '../../ui';
 import { flightSearchText, matchesQuery, splitFlights } from './format';
-import { RouteThumb } from './ui';
+import { RouteThumb } from './RouteThumb';
+import './lists.css';
 
 const titleOf = (r: FlightListItem) => r.summary.title || 'Untitled flight';
 

@@ -4,7 +4,8 @@ import { todayUtc } from '../../../shared/date';
 import { pickCompassCard } from '../../../calc';
 import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';
 import { useEditor } from '../state';
-import { Chip, KV, Section } from './ui';
+import { Chip } from '../../../ui';
+import { KV, Section } from './ui';
 
 /**
  * The manifest moved onto another aircraft: people keep their seat when it exists there, the rest

@@ -7,8 +7,8 @@ import { clockZ } from '../../../calc';
 import { useEditor } from '../state';
 import { AdHoursDetail, adDayInfo } from '../AerodromeHours';
 import { AD_ROLE, useFlightCalc, type AdCheck } from './calc';
-import { Collapsible } from '../../../ui';
-import { Chip, Section, SECTIONS_STORE } from './ui';
+import { Chip, Collapsible } from '../../../ui';
+import { Section, SECTIONS_STORE } from './ui';
 
 function StatusChip({ c }: { c: AdCheck }) {
   if (!Number.isFinite(c.fromMs)) return <span className="muted">time not set</span>;

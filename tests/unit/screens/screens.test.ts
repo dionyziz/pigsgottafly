@@ -1,10 +1,12 @@
 // Pure helpers of the lobby and the account list pages.
 import { describe, expect, it } from 'vitest';
-import { ageOn, daysBetween, flightSearchText, fmtDate, fmtHm, matchesQuery, relativeDay, splitFlights, utcToLocal } from '../../../src/features/lobby/format';
+import { flightSearchText, matchesQuery, splitFlights } from '../../../src/features/lobby/format';
+import { ageOn, daysBetween, fmtDate, relativeDay, utcToLocal } from '../../../src/shared/date';
+import { fmtDuration } from '../../../src/shared/format';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
-import { resolveAerodrome, searchAerodromes } from '../../../src/features/profile/AerodromePicker';
+import { resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
 import { formOf, toUpdate, validateProfile, type ProfileForm } from '../../../src/features/profile/ProfilePage';
-import { passengerInputOf, passengerForm } from '../../../src/features/passengers/PassengerDialog';
+import { passengerInputOf, passengerForm } from '../../../src/features/passengers/person';
 import { personForm, validatePerson } from '../../../src/features/passengers/person';
 import { validateWaypoint } from '../../../src/features/waypoints/WaypointsPage';
 import { EMPTY_PERSON, EMPTY_SUMMARY, type FlightCrew, type FlightListItem, type Pilot, type Waypoint } from '../../../src/shared';
@@ -26,9 +28,9 @@ describe('lobby format', () => {
     expect(relativeDay('2026-11-20', '2026-11-15')).toBe('In 5 days');
     expect(relativeDay('2026-11-12', '2026-11-15')).toBe('3 days ago');
     expect(relativeDay('2027-03-01', '2026-11-15')).toBe('');
-    expect(fmtHm(95)).toBe('1h35');
-    expect(fmtHm(10)).toBe('0h10');
-    expect(fmtHm(null)).toBe('');
+    expect(fmtDuration(95)).toBe('1h35');
+    expect(fmtDuration(10)).toBe('0h10');
+    expect(fmtDuration(null)).toBe('');
   });
   it('converts UTC block-off to a local clock time', () => {
     expect(utcToLocal('2026-07-01', '09:30', 'Europe/Athens')).toBe('12:30'); // EEST, UTC+3

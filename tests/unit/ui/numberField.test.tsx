@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { useState } from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { NumberField, type NumberFieldProps } from '../../../src/ui';
-import { NumInput, parseNum } from '../../../src/features/hangar/fields';
+import { NumInput } from '../../../src/features/hangar/fields';
 
 afterEach(cleanup);
 
@@ -120,7 +120,7 @@ describe('NumberField', () => {
   });
 });
 
-describe('hangar NumInput shim', () => {
+describe('hangar NumInput', () => {
   function H({ log, ...p }: { log: (number | null)[]; optional?: boolean; max?: number }) {
     const [v, setV] = useState<number | null>(5);
     return <><NumInput {...p} value={v} ariaLabel="x" onChange={(x) => { log.push(x); setV(x); }} /><output data-testid="s">{String(v)}</output></>;
@@ -140,10 +140,5 @@ describe('hangar NumInput shim', () => {
     expect(el2.placeholder).toBe('—');
     typeInto(el2, '');
     expect(r2.getByTestId('s').textContent).toBe('null');
-  });
-  test('parseNum is parseDecimal', () => {
-    expect(parseNum('1,5')).toBe(1.5);
-    expect(parseNum('')).toBeNull();
-    expect(parseNum('x')).toBeNaN();
   });
 });

@@ -32,15 +32,10 @@
   .flight-row, .lobby-head-cols { grid-template-columns: 44px minmax(0, 1fr) 36px; }
 }
 
-/* forms (profile, passenger dialog) */
+/* forms (new flight, profile) */
 .form-section { padding: var(--card-pad); display: flex; flex-direction: column; gap: var(--s4); }
 .form-section + .form-section { border-top: 1px solid var(--line); }
-.form-section > header h2 { font-size: var(--fs-lg); }
-.form-section > header p { margin: 4px 0 0; font-size: var(--fs-sm); color: var(--muted); }
 .form-actions { position: sticky; bottom: 0; display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--card-pad); background: var(--surface); border-top: 1px solid var(--line); border-bottom-left-radius: var(--r-lg); border-bottom-right-radius: var(--r-lg); }
-.welcome { padding: var(--s5); display: flex; gap: var(--s4); align-items: center; background: var(--accent-soft); border-color: var(--accent-line); margin-bottom: var(--s4); }
-.welcome img { width: 56px; height: 56px; }
-.welcome p { margin: 4px 0 0; color: var(--ink-2); }
 
 /* list tables (passengers, waypoints) */
 .list-card { overflow: visible; }

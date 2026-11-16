@@ -12,7 +12,6 @@ import { useFormIssues } from './formIssues';
 import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from './person';
 import { PersonFields, type SetPerson } from './PersonFields';
 
-export { passengerForm, passengerInputOf, personForm, type PersonForm, type PersonForm as PassengerForm } from './person';
 
 /** The dialog's form state, its field problems and the fields a link asked to highlight. */
 function usePersonDialog(initial: () => PersonForm, focus: readonly string[]) {

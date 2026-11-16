@@ -4,10 +4,10 @@
 import { Link } from 'react-router-dom';
 import { fuelByType, fuelLoad, fuelTypesLabel, primaryFuel, type FlightDoc, type FuelType } from '../../../shared';
 import { fmtDuration } from '../../../shared/format';
-import { NumberField } from '../../../ui';
+import { Chip, NumberField } from '../../../ui';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
-import { Chip, KV, Section } from './ui';
+import { KV, Section } from './ui';
 
 const fmtDur = (min: number | null | undefined) => fmtDuration(min, { fallback: '–' });
 

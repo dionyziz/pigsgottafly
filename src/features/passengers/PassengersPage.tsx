@@ -15,6 +15,7 @@ import { matchesQuery } from '../lobby/format';
 import { PassengerDialog, PilotDetailsDialog } from './PassengerDialog';
 import './passengers.css';
 import type { PersonField } from './person';
+import '../lobby/lists.css';
 
 const searchText = (p: PersonDetails & { notes?: string }) => [p.fullName, p.phone, p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
 

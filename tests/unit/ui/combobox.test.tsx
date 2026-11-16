@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { AerodromeInput, Combobox, Dialog, PersonPicker, comboKey, matchPeople } from '../../../src/ui';
 import { aerodrome, resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
-import { AerodromePicker } from '../../../src/features/profile/AerodromePicker';
 import type { RefAerodrome } from '../../../src/shared';
 
 afterEach(() => { cleanup(); vi.useRealTimers(); });
@@ -162,14 +161,6 @@ describe('AerodromeInput', () => {
     expect(el.value).toBe('LGMG');
   });
 
-  test('the old AerodromePicker (text-controlled) still works', () => {
-    function P() { const [t, setT] = useState('LGA'); return <><AerodromePicker name="home" value={t} onChange={setT} /><output data-testid="t">{t}</output></>; }
-    const r = render(<P />);
-    const el = r.container.querySelector('input[name=home]') as HTMLInputElement;
-    fireEvent.focus(el);
-    fireEvent.keyDown(el, { key: 'Enter' });
-    expect(r.getByTestId('t').textContent).toMatch(/^LGA/);
-  });
 });
 
 describe('PersonPicker', () => {

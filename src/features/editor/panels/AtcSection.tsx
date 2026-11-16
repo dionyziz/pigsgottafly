@@ -5,10 +5,10 @@
 import { useMemo, useState } from 'react';
 import { uid, type AtcEntry } from '../../../shared';
 import { moveAt } from '../../../shared/list';
-import { DragHandle, Icon, useSortable } from '../../../ui';
+import { Chip, DragHandle, Icon, useSortable } from '../../../ui';
 import { atcFreqText, atcInput, generateAtcList, regenerateAtcList } from '../../../data/atc';
 import { useEditor } from '../state';
-import { Chip, Section } from './ui';
+import { Section } from './ui';
 
 const FREQ_RE = /^\d{3}\.\d{1,3}$/;
 

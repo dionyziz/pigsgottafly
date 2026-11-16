@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { notamLimits, notamSubject, notamValidity, notamWhere, visibleNotams, type Notam } from '../../../data/notams';
 import { useNotams } from '../notams';
 import { fmtClockMs } from '../../../shared/format';
-import { Chip, Icon, Section } from './ui';
+import { Chip, Icon } from '../../../ui';
+import { Section } from './ui';
 
 const fmtFetched = (ms: number | null): string => (ms ? fmtClockMs(ms, { z: true }) : '');
 

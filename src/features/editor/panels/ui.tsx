@@ -1,9 +1,7 @@
-// Small building blocks of the editor panel: collapsible sections and key/value rows. NumberInput,
-// Chip and Icon moved to src/ui (NumberField, Chip, Icon) and are re-exported here for the old
-// imports.
+// Small building blocks of the editor panel: collapsible sections (Collapsible that opens on a focus
+// request) and key/value rows.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { parseNumber } from '../../../shared/number';
-import { Chip as UiChip, Collapsible, Icon as UiIcon, NumberField, type ChipTone, type IconName } from '../../../ui';
+import { Collapsible } from '../../../ui';
 import { findFocusTarget, focusAndHighlight, focusParam } from '../../../app/focusParam';
 import { onEditorFocus, sectionOf } from '../focus';
 
@@ -66,44 +64,4 @@ export function KV({ k, v, sub, tone, testId }: { k: ReactNode; v: ReactNode; su
       <span className="v">{v}{sub && <span className="sub">{sub}</span>}</span>
     </div>
   );
-}
-
-/** The editor's number input: src/ui/NumberField with the editor's prop names. */
-export function NumberInput({ value, onCommit, min, max, step, placeholder, width, testId, ariaLabel, allowEmpty = true, decimals }: {
-  value: number | null;
-  onCommit(v: number | null): void;
-  min?: number;
-  max?: number;
-  step?: number;
-  placeholder?: string;
-  width?: number;
-  testId?: string;
-  ariaLabel?: string;
-  allowEmpty?: boolean;
-  decimals?: number;
-}) {
-  return (
-    <NumberField value={value} onChange={onCommit} min={min} max={max} step={step} placeholder={placeholder} width={width}
-      testId={testId} ariaLabel={ariaLabel} optional={allowEmpty} decimals={decimals} className="ep-num" />
-  );
-}
-
-export type NumberDraft =
-  | { kind: 'ok'; value: number | null }
-  /** A number outside [min, max]; `clamped` is the nearest allowed value. */
-  | { kind: 'range'; value: number; clamped: number }
-  | { kind: 'bad' };
-
-/** Parses what is typed in a NumberInput (src/shared/number parseNumber without the messages). */
-export function parseNumberDraft(s: string, { min, max, allowEmpty = true }: { min?: number; max?: number; allowEmpty?: boolean }): NumberDraft {
-  const r = parseNumber(s, { min, max, allowEmpty });
-  return r.kind === 'bad' ? { kind: 'bad' } : r.kind === 'range' ? { kind: 'range', value: r.value, clamped: r.clamped } : r;
-}
-
-export function Chip({ tone, children, title }: { tone?: Extract<ChipTone, 'warn' | 'danger' | 'ok'>; children: ReactNode; title?: string }) {
-  return <UiChip tone={tone} title={title}>{children}</UiChip>;
-}
-
-export function Icon({ name, size = 16 }: { name: Extract<IconName, 'up' | 'down' | 'x' | 'plus' | 'refresh' | 'undo' | 'redo' | 'edit' | 'external' | 'warn' | 'print'>; size?: number }) {
-  return <UiIcon name={name} size={size} className="ep-icon" />;
 }

@@ -9,8 +9,8 @@ import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
 import { addPicToCrew } from './manifest';
-import { NumberField, PersonPicker } from '../../../ui';
-import { Chip, Icon, KV, Section } from './ui';
+import { Chip, Icon, NumberField, PersonPicker } from '../../../ui';
+import { KV, Section } from './ui';
 
 export function personOf(p: Pilot | Passenger): PersonDetails {
   return {

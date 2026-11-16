@@ -8,9 +8,9 @@ import type { Aircraft } from '../../../shared';
 import { setStopChoice, type FlightOptions } from '../../../shared';
 import { useEditor } from '../state';
 import { fmtClock } from '../../../shared/format';
-import { Collapsible } from '../../../ui';
+import { Chip, Collapsible } from '../../../ui';
 import { useFlightCalc, type EndpointCalc } from './calc';
-import { Chip, KV, Section, SECTIONS_STORE } from './ui';
+import { KV, Section, SECTIONS_STORE } from './ui';
 
 const m = (x: number | null | undefined) => (x == null || !isFinite(x) ? '–' : `${Math.round(x)} m`);
 

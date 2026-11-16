@@ -2,15 +2,6 @@
 // tests/unit/screens/format.test.ts). No DOM, no React.
 import type { FlightListItem } from '../../shared';
 import { fmtDate } from '../../shared/date';
-import { fmtDuration } from '../../shared/format';
-
-// Date helpers live in src/shared/date.ts (Greek local time); re-exported for the old import path.
-export { ageOn, daysBetween, fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
-
-/** Minutes → '1h35' ('' for null). */
-export function fmtHm(m: number | null | undefined): string {
-  return fmtDuration(m);
-}
 
 /** Lower-cased text a flight row is searched by: title, every route point (aerodromes, VFR points,
  *  custom points), aircraft, date in several forms. */

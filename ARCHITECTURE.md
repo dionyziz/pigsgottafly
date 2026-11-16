@@ -104,11 +104,11 @@ src/
                            remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
                            WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL),
                            Segmented (one of a few options; ←/→).
-                           Shims until W6: lobby/ui, profile/AerodromePicker, editor/panels/ui (Icon/Chip/NumberInput),
-                           hangar/fields (Field/Check/NumInput/Section/parseNum), app/Loading, app/XIcon
+                           Pages import these from src/ui directly (no re-export shims left).
   features/
     lobby/                 LobbyPage (fixed header: h1 Flights, fixed-width tabs, New flight kept hidden in Trash),
-                           NewFlightPage (AerodromeTextInput status lines say why Create is disabled; aerodromePoint)
+                           NewFlightPage (AerodromeTextInput status lines say why Create is disabled; aerodromePoint),
+                           RouteThumb, format.ts (flight search and split), lists.css (lobby rows, list tables, form cards)
     profile/               ProfilePage (?welcome=1 = first-use onboarding; embeds PersonFields; follows the pilot until edited)
     hangar/                HangarPage, AircraftPage (inputs named by their issue path: a save-bar issue focuses its input,
                            issueTarget); stations, envelope points, compass cards and their points reorder by drag handle

@@ -1,15 +1,8 @@
 // Form controls of the aircraft page: an editable point table, NumInput (NumberField where an empty
-// field commits 0 unless optional) and Section (CardSection with the page's class). The hangar
-// imports Field, IssueList and Check from src/ui; the re-exports below are shims for old imports.
+// field commits 0 unless optional) and Section (CardSection with the page's class).
 import { useId, type ReactNode } from 'react';
 import { moveAt } from '../../shared/list';
-import { parseDecimal } from '../../shared/number';
 import { CardSection, DragHandle, NumberField, RowRemove, useSortable } from '../../ui';
-
-export { Check, Field, IssueList } from '../../ui';
-
-/** Parses a number typed with '.' or ','; '' -> null; NaN for garbage. */
-export const parseNum = parseDecimal;
 
 export interface NumInputProps {
   value: number | null;

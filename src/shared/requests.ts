@@ -53,12 +53,6 @@ export function requestRemarks(route: RoutePoint[], options: Pick<FlightOptions,
   return activeRequests(route, options).map(({ index, point, request }) => requestRemark(request, (icaoOf(point) || point.name).toUpperCase(), index));
 }
 
-/** Human label for the editor list: 'Touch-and-go', 'Initial touch-and-go', 'Stop 10 min'. */
-export function requestLabel(r: AerodromeRequest, index: number): string {
-  if (r.kind === 'stop') return `Intermediate stop ${Math.round(r.stopMin ?? DEFAULT_STOP_MIN)} min`;
-  return index === 0 ? 'Touch-and-go before leaving' : 'Touch-and-go';
-}
-
 export interface RequestTiming {
   /** Per leg: flown at pattern TAS because it starts or ends at an intermediate request aerodrome. */
   patternLegs: boolean[];

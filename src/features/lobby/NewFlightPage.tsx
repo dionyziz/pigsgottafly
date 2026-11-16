@@ -12,6 +12,7 @@ import { resolveAerodrome } from '../../data/ref';
 import { aerodromeName, aerodromePoint, type FlightCreateRequest } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, EmptyState, Field, Loading } from '../../ui';
+import './lists.css';
 
 export function NewFlightPage() {
   const navigate = useNavigate();

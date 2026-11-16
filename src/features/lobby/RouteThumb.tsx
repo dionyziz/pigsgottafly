@@ -1,8 +1,5 @@
-// Lobby pieces: the route thumbnail. Dialog, ConfirmDialog, KebabMenu and EmptyState moved to
-// src/ui; they are re-exported here until every page imports them from there. Styles in lists.css.
+// The lobby's route thumbnail. Styles in lists.css.
 import './lists.css';
-
-export { ConfirmDialog, Dialog, EmptyState, KebabMenu, type MenuItem } from '../../ui';
 
 /** Route sketch from summary.route ([lat, lon] pairs), equirectangular with cos(lat) scaling. */
 export function RouteThumb({ route, size = 44 }: { route: [number, number][]; size?: number }) {

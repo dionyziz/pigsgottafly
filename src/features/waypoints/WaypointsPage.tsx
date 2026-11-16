@@ -13,6 +13,7 @@ import { matchesQuery } from '../lobby/format';
 import { useFormIssues, type FormIssue } from '../passengers/formIssues';
 import { formatDms, normaliseWaypointName, parseLatLon } from './coords';
 import { WaypointMap } from './WaypointMap';
+import '../lobby/lists.css';
 
 export function WaypointsPage() {
   const { data, error, loading, reload, setData } = useEntity('waypoints');
