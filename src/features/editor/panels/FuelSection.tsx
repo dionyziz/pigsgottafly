@@ -3,11 +3,13 @@
 // fuel gets one input per type (mixed tanks allowed): FOB is their sum, the W&B weighs each type.
 import { Link } from 'react-router-dom';
 import { fuelByType, fuelLoad, fuelTypesLabel, primaryFuel, type FlightDoc, type FuelType } from '../../../shared';
-
-const trimNum = (n: number) => String(Math.round(n * 100) / 100);
+import { fmtDuration } from '../../../shared/format';
+import { NumberField } from '../../../ui';
 import { useEditor } from '../state';
-import { fmtDur, useFlightCalc } from './calc';
-import { Chip, KV, NumberInput, Section } from './ui';
+import { useFlightCalc } from './calc';
+import { Chip, KV, Section } from './ui';
+
+const fmtDur = (min: number | null | undefined) => fmtDuration(min, { fallback: '–' });
 
 export function FuelSection() {
   const { doc, update, aircraft } = useEditor();
@@ -16,7 +18,7 @@ export function FuelSection() {
   if (!aircraft || !fuel) {
     return (
       <Section id="fuel" title="Fuel" badge={<span className="muted">–</span>}>
-        <p className="muted ep-note">Choose an aircraft to plan the fuel.</p>
+        <p className="muted ep-note">No aircraft.</p>
       </Section>
     );
   }
@@ -69,31 +71,30 @@ export function FuelSection() {
               {types.map((t) => (
                 <label key={t} className="ep-fob-type">
                   <span className="muted">{t}</span>
-                  <NumberInput value={typed(t)} min={0} max={2000} width={80} ariaLabel={`${t} on board, litres`}
+                  <NumberField value={typed(t)} min={0} max={2000} width={80} ariaLabel={`${t} on board, litres`} className="ep-num"
                     placeholder={t === primary && doc.fobL == null && !split ? String(fuel.defaultFobL) : '0'}
-                    testId={t === primary ? 'fob' : `fob-${t}`} onCommit={(v) => setType(t, v)} />
+                    testId={t === primary ? 'fob' : `fob-${t}`} onChange={(v) => setType(t, v)} />
                 </label>
               ))}
-              <span className="tnum ep-fob-total" data-testid="fob-total">= {fuel.fobL} L</span>
+              <span className="tnum ep-fob-total" data-testid="fob-total">= {fuel.fobL} L · <span data-testid="fob-kg">{Math.round(load.kg * 10) / 10} kg</span></span>
             </span>
             <span className="row">
               {doc.fobL != null
                 ? <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, null, null))}>Use required + reserve</button>
-                : <span className="hint">Default: required + reserve, as {primary}</span>}
+                : null}
               {doc.fobL == null && aircraft.fuel.usableL > 0 && fuel.defaultOverCapacity && (
                 <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, aircraft.fuel.usableL, null))}>Full tanks</button>
               )}
             </span>
-            {load.mixed && <span className="hint" data-testid="fob-mix">Mixed: {load.parts.map((p) => `${trimNum(p.litres)} L × ${p.densityKgPerL}`).join(' + ')} = {trimNum(Math.round(load.kg * 10) / 10)} kg</span>}
           </div>
         ) : (
           <label className="field">Fuel on board at block-off (L)
             <span className="row">
-              <NumberInput value={doc.fobL} min={0} max={2000} width={90} placeholder={String(fuel.defaultFobL)} testId="fob"
-                onCommit={(v) => update((d) => withFuel(d, v, null), { coalesce: 'fob' })} />
+              <NumberField value={doc.fobL} min={0} max={2000} width={90} placeholder={String(fuel.defaultFobL)} testId="fob" className="ep-num"
+                onChange={(v) => update((d) => withFuel(d, v, null), { coalesce: 'fob' })} />
               {doc.fobL != null
                 ? <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, null, null))}>Use required + reserve</button>
-                : <span className="hint">Default: required + reserve</span>}
+                : null}
               {doc.fobL == null && aircraft.fuel.usableL > 0 && fuel.defaultOverCapacity && (
                 <button type="button" className="ghost" onClick={() => update((d) => withFuel(d, aircraft.fuel.usableL, null))}>Full tanks</button>
               )}
@@ -112,7 +113,7 @@ export function FuelSection() {
         </div>
       </div>
       <div className="ep-kvs">
-        <KV k="Endurance at block-off" v={<span className="tnum">{fmtDur(fuel.enduranceMin)}</span>} sub="FPL item 19 E/" />
+        <KV k="Endurance at block-off" v={<span className="tnum">{fmtDur(fuel.enduranceMin)}</span>} />
         <KV k="Fuel at landing" tone={fuel.landingReserveShort ? 'danger' : undefined}
           v={<span className="tnum">{fuel.landingFuelL} L</span>}
           sub={<span className="tnum" data-testid="fuel-landing-endurance">{fmtDur(fuel.landingEnduranceMin)} left</span>} />

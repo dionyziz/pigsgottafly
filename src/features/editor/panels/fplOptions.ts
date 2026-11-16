@@ -1,6 +1,6 @@
 // Pure helpers for the flight-plan options the pilot types in the editor (FPL item 16 alternates,
 // item 18 RMK/). Unit-tested in tests/unit/screens/screens.test.ts.
-import { resolveAerodrome } from '../../profile/AerodromePicker';
+import { resolveAerodrome } from '../../../data/ref';
 
 /** Item 16 holds at most two alternates. */
 export const MAX_ALTERNATES = 2;

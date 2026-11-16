@@ -3,18 +3,15 @@
 
 .ep { display: flex; flex-direction: column; padding-bottom: var(--s6); }
 .ep-icon { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.ep-caret { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s; }
 
-/* sections */
-.ep-section { border-bottom: 1px solid var(--line); }
-.ep-section-head { display: flex; align-items: center; gap: var(--s2); padding: 6px var(--s3) 6px 6px; min-height: 44px; position: sticky; top: 0; background: var(--surface); z-index: 2; }
-.ep-section-toggle { border: 0; background: transparent; padding: 6px 8px; gap: 8px; font-weight: 600; font-size: var(--fs); color: var(--ink); }
-.ep-section-toggle:hover { background: var(--hover); }
-.ep-section.collapsed .ep-caret { transform: rotate(-90deg); }
-.ep-section-badge { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); min-width: 0; overflow: hidden; white-space: nowrap; }
-.ep-section-head button.icon { padding: 5px; }
-.ep-section-body { padding: 2px var(--s4) var(--s4); display: flex; flex-direction: column; gap: var(--s3); }
-.ep-section-body > select { width: 100%; }
+/* sections (src/ui Collapsible): the header stays in view while the panel scrolls */
+.ep-section > .collapsible-head { position: sticky; top: 0; background: var(--surface); z-index: 2; border-radius: 0; }
+.ep-section > .collapsible-head:hover { background: var(--hover); }
+.ep-section > .collapsible-head button.icon { padding: 5px; }
+.ep-section > .collapsible-body > select { width: 100%; }
+.ep-chip-btn { border: 0; background: none; padding: 0; min-height: 0; cursor: pointer; }
+.ep-chip-btn:hover .chip { filter: brightness(0.96); }
+.ep-issues { padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--danger-soft); }
 .ep-note { margin: 0; font-size: var(--fs-sm); }
 .ep-link { font-size: var(--fs-sm); align-self: flex-start; }
 
@@ -44,18 +41,13 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-crew-sub { display: flex; gap: 6px; align-items: center; }
 .ep-crew-sub select { padding: 3px 6px; font-size: var(--fs-sm); flex: 1; min-width: 0; }
 .ep-weight { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); }
-.ep-weight input { padding: 3px 6px; font-size: var(--fs-sm); text-align: right; }
+.ep-weight input, .ep-crew-sub .numfield input { padding: 3px 6px; font-size: var(--fs-sm); text-align: right; }
+.ep-crew-sub .unit-input input { padding-right: 28px; }
+.ep-crew-sub .unit-input span { right: 7px; font-size: var(--fs-xs); }
 .ep-row-actions { display: flex; align-items: center; gap: 0; flex: none; }
 .ep-row-actions button.icon { padding: 4px; border-radius: var(--r-sm); }
 
-.ep-typeahead { position: relative; }
-.ep-typeahead input { width: 100%; box-sizing: border-box; }
-.ep-suggest { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; margin: 0; padding: 4px 0; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); max-height: 280px; overflow: auto; }
-.ep-suggest li { display: flex; justify-content: space-between; gap: var(--s2); padding: 7px 12px; cursor: pointer; font-size: var(--fs); }
-.ep-suggest li span:first-child { display: inline-flex; align-items: center; gap: 4px; }
-.ep-suggest li .muted { font-size: var(--fs-xs); }
-.ep-suggest li.hi { background: var(--accent-soft); }
-.ep-suggest.empty { padding: 10px 12px; font-size: var(--fs-sm); }
+.ep .person-picker input { width: 100%; box-sizing: border-box; }
 
 .ep-bags { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) var(--s3); }
 .ep-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; align-self: flex-start; }
@@ -90,9 +82,16 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 /* performance */
 /* a stop's landing and take-off cards sit in the section like the others */
 .ep-stop { display: contents; }
-.ep-perf { display: flex; flex-direction: column; gap: var(--s2); padding: 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
-.ep-perf-head { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs); min-width: 0; }
-.ep-perf-head .muted { font-size: var(--fs-sm); }
+.ep-perf { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
+.ep [data-focus=performance] { display: flex; flex-direction: column; gap: var(--s2); }
+.ep-perf > .collapsible-head { min-height: 40px; padding: 4px 10px 4px 8px; }
+.ep-perf > .collapsible-head .collapsible-title { white-space: nowrap; }
+.ep-perf > .collapsible-head .collapsible-badge { flex: 1; }
+.ep-perf > .collapsible-head .collapsible-badge .ellipsis { flex: 1; min-width: 0; }
+.ep-perf-verdict { margin-left: auto; }
+.ep-perf > .collapsible-body { padding: 0 10px 10px; gap: var(--s2); }
+.ep-perf > .collapsible-summary { padding: 0 10px 8px 30px; }
+.ep-perf-none { padding: 10px; }
 .ep-perf select { font-size: var(--fs-sm); padding: 4px 6px; }
 .ep-metar { font-size: var(--fs-2xs); color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 4px 6px; word-break: break-word; }
 
@@ -100,7 +99,14 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-atc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .ep-atc-group { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 0 4px; }
 .ep-atc-item:first-child .ep-atc-group { padding-top: 0; }
-.ep-atc-row { display: flex; align-items: center; gap: var(--s2); padding: 4px 0 4px 8px; border-left: 2px solid var(--line); }
+.ep-atc-row { display: flex; align-items: center; gap: var(--s2); padding: 4px 0 4px 2px; border-left: 2px solid var(--line); }
+.ep-atc-row .drag-handle { opacity: 0.4; }
+.ep-atc-row:hover .drag-handle, .ep-atc-row .drag-handle:focus-visible { opacity: 1; }
+.ep-atc-main { cursor: pointer; border-radius: var(--r-sm); }
+.ep-atc-main:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.ep-atc-item.sort-dragging { opacity: 0.5; }
+.ep-atc-item.sort-over-before { box-shadow: inset 0 2px 0 var(--accent); }
+.ep-atc-item.sort-over-after { box-shadow: inset 0 -2px 0 var(--accent); }
 .ep-atc-row:hover { background: var(--surface-2); }
 .ep-atc-row .ep-row-actions { opacity: 0; transition: opacity 0.1s; }
 .ep-atc-row:hover .ep-row-actions, .ep-atc-row:focus-within .ep-row-actions { opacity: 1; }
@@ -121,15 +127,18 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-exports a:hover { background: var(--hover); text-decoration: none; }
 .ep-exports a > .ep-icon:first-child { color: var(--accent); }
 .ep-exports a > .ep-icon:last-child { color: var(--muted); }
-.ep-export-label { flex: 1; display: flex; flex-direction: column; font-size: var(--fs); }
-.ep-export-label .muted { font-size: var(--fs-xs); }
+.ep-export-label { flex: 1; font-size: var(--fs); }
 
 /* navlog strip */
 .ns { flex: none; display: flex; flex-direction: column; background: var(--surface); border-top: 1px solid var(--line); max-height: 40vh; min-height: 0; }
-.ns-head { display: flex; align-items: center; gap: var(--s3); padding: 4px var(--s3) 4px 6px; min-height: 40px; border-bottom: 1px solid var(--line); flex: none; }
+.ns-head { display: flex; align-items: center; gap: var(--s3); padding: 4px var(--s3) 4px 12px; min-height: 40px; border-bottom: 1px solid var(--line); flex: none; cursor: pointer; user-select: none; }
+.ns-head:hover { background: var(--hover); }
+.ns-head:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .ns.closed .ns-head { border-bottom: 0; }
-.ns.closed .ep-caret { transform: rotate(180deg); }
-.ns-toggle { border: 0; background: transparent; padding: 5px 8px; gap: 8px; }
+.ns-title { display: inline-flex; align-items: center; gap: 8px; }
+.ns-caret { color: var(--ink-2); transition: transform 0.15s; }
+.ns.closed .ns-caret { transform: rotate(180deg); }
+.ns-head button { cursor: pointer; }
 .ns-totals { flex: none; display: inline-flex; gap: var(--s3); font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; overflow: hidden; }
 .ns-totals span + span::before { content: '·'; margin-right: var(--s3); color: var(--muted); }
 .ns-warn-btn { border: 0; padding: 4px 10px; font-size: var(--fs-sm); border-radius: var(--r-pill); background: var(--ok-soft); color: var(--ok); white-space: nowrap; }
@@ -137,7 +146,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-warn-btn.danger { background: var(--danger-soft); color: var(--danger); }
 .ns-wx { flex: 0 1 auto; min-width: 0; font-size: var(--fs-xs); color: var(--muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ns-wx.warn { color: var(--warn); }
-.ns-model { font-size: var(--fs-xs); padding: 3px 6px; }
 .ns-body { overflow: auto; min-height: 0; }
 .ns-empty { margin: 0; padding: var(--s3) var(--s4); font-size: var(--fs-sm); }
 .ns-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
@@ -148,15 +156,13 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-table tbody tr:hover { background: var(--surface-2); }
 .ns-table tfoot td { font-weight: 600; border-bottom: 0; background: var(--surface-2); }
 .ns-leg { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
-.ns-warnings { list-style: none; margin: 0; padding: var(--s2) var(--s3); display: flex; flex-direction: column; gap: 4px; }
-.ns-warnings li { display: flex; gap: 8px; align-items: flex-start; font-size: var(--fs-sm); padding: 5px 8px; border-radius: var(--r-sm); }
-.ns-warnings li .ep-icon { margin-top: 2px; }
-.ns-warnings li.danger { background: var(--danger-soft); color: var(--danger); }
-.ns-warnings li.warn { background: var(--warn-soft); color: var(--warn); }
-.ns-warnings li.info { color: var(--ink-2); }
+.ns-warnings { padding: var(--s2) var(--s3); }
+.ns-warnings li { gap: 8px; padding: 5px 8px; border-radius: var(--r-sm); }
+.ns-warnings li.danger { background: var(--danger-soft); }
+.ns-warnings li.warn { background: var(--warn-soft); }
 
 @media (max-width: 900px) {
-  .ns-wx, .ns-model { display: none; }
+  .ns-wx { display: none; }
 }
 
 /* flight plan options */
@@ -188,14 +194,21 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-requests li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: var(--fs-sm); }
 .ep-requests .ep-req-name { font-weight: 600; min-width: 4.5em; }
 .ep-requests label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
-.ep-requests .ep-req-min { width: 4.2em; margin-left: 4px; }
-.ep-requests li .hint { flex-basis: 100%; }
+.ep-req-stop { display: inline-flex; align-items: center; gap: 6px; }
+.ep-req-stop .numfield input { padding-top: 3px; padding-bottom: 3px; text-align: right; }
+.ep-req-rmk { flex-basis: 100%; font-size: var(--fs-xs); color: var(--ink-2); }
 
 /* aerodrome hours (AerodromeSection) */
 .ep-ad-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
-.ep-ad { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-size: var(--fs-sm); }
+.ep-ad { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-size: var(--fs-sm); }
 .ep-ad.is-closed { border-left: 3px solid var(--danger); }
-.ep-ad-head { display: flex; align-items: baseline; gap: var(--s2); }
+.ep-ad > .collapsible-head { min-height: 36px; padding: 4px 10px 4px 8px; }
+.ep-ad > .collapsible-head .collapsible-title { font-size: var(--fs-sm); white-space: nowrap; }
+.ep-ad > .collapsible-head .collapsible-badge { flex: 1; }
+.ep-ad > .collapsible-head .collapsible-badge .chip { margin-left: auto; }
+.ep-ad > .collapsible-body { padding: 0 10px 8px; gap: 3px; }
+.ep-ad > .collapsible-head > .spacer, .ep-perf > .collapsible-head > .spacer { display: none; }
+.ep-ad .ep-ad-name, .ep-perf > .collapsible-head .ellipsis { flex: 1; }
 .ep-ad-name { font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ep-ad-when { font-size: var(--fs-xs); }
 .ep-ad .pgf-ad-body { margin: 2px 0 0; }

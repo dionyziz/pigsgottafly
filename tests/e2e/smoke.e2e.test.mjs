@@ -59,6 +59,52 @@ test('origin and destination are fields in the editor, kept in sync with the rou
   if (process.env.SHOTS) await page.screenshot('smoke-route-ends', { fullPage: false });
 });
 
+test('editor boxes: header toggles, ATC reorder by keyboard on the drag handle, a warning fixed in place', async () => {
+  const ads = await (await fetch(`${server.url}/api/ref/aerodromes`)).json();
+  const at = (icao) => { const a = ads.find((x) => x.icao === icao); return { uid: `w3-${icao}`, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };
+  const f0 = await postFlight({ route: [at('LGTT'), at('LGMG')] });
+  await page.goto(`${server.url}/flights/${f0.id}`);
+  await page.waitFor(() => document.querySelectorAll('[data-testid=atc-row]').length >= 2);
+  const saved = () => page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', { timeout: 10000 });
+
+  // a click anywhere on a box's header closes and opens it
+  await page.click('[data-testid=section-when] .collapsible-title');
+  await page.waitFor(() => document.querySelector('[data-testid=section-when]').classList.contains('collapsed'));
+  await page.click('[data-testid=section-when] .collapsible-badge');
+  await page.waitFor(() => !document.querySelector('[data-testid=section-when]').classList.contains('collapsed'));
+  // the navlog strip's header too
+  await page.click('.ns-title');
+  await page.waitFor(() => document.querySelector('[data-testid=navlog-strip]').classList.contains('closed'));
+  await page.click('.ns-title');
+  await page.waitFor(() => !document.querySelector('[data-testid=navlog-strip]').classList.contains('closed'));
+
+  // ATC: ↓ on the first row's handle moves it down; the list is saved on the flight
+  const names = () => page.eval(() => [...document.querySelectorAll('[data-testid=atc-row] .ep-atc-cs')].map((e) => e.firstChild.textContent));
+  const before = await names();
+  await page.eval(() => document.querySelector('[data-testid=atc-row] .drag-handle').focus());
+  await page.key('ArrowDown');
+  await page.waitFor((b) => { const n = [...document.querySelectorAll('[data-testid=atc-row] .ep-atc-cs')].map((e) => e.firstChild.textContent); return n[0] === b[1] && n[1] === b[0]; }, { args: [before] });
+  await saved();
+  const f = await (await fetch(`${server.url}/api/flights/${f0.id}`)).json();
+  assert.deepEqual(f.atc.slice(0, 2).map((e) => e.callsign), [before[1], before[0]]);
+  // a click on a row edits it; a bad frequency says the format
+  await page.click('[data-testid=atc-row-edit]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=atc-primary]'));
+  await page.type('[data-testid=atc-primary]', '1234');
+  await page.waitFor(() => /Format 123\.450/.test(document.querySelector('[data-testid=atc-freq-format]')?.textContent || ''));
+  await page.key('Escape');
+
+  // "No aircraft chosen" → Fix: the Aircraft box opens (it was collapsed) and its field is highlighted (the hangar is empty here)
+  await page.click('[data-testid=section-aircraft] .collapsible-title');
+  await page.waitFor(() => document.querySelector('[data-testid=section-aircraft]').classList.contains('collapsed'));
+  await page.click('[data-testid=navlog-warn-toggle]');
+  await page.waitFor(() => [...document.querySelectorAll('[data-testid=navlog-warnings] li')].some((li) => /No aircraft chosen/.test(li.textContent)));
+  await page.eval(() => [...document.querySelectorAll('[data-testid=navlog-warnings] li')].find((li) => /No aircraft chosen/.test(li.textContent)).querySelector('[data-testid=warning-fix]').click());
+  await page.waitFor(() => !!document.querySelector('[data-testid=section-aircraft] [data-focus=aircraft].attention'));
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=section-aircraft]').classList.contains('collapsed')), false);
+  await page.click('[data-testid=navlog-warn-toggle]');
+});
+
 test('navlog over two sheets: checkpoints evenly spaced, each sheet with its own terminal information', async () => {
   const ads = await (await fetch(`${server.url}/api/ref/aerodromes`)).json();
   const at = (icao) => { const a = ads.find((x) => x.icao === icao); return { uid: `u-${icao}`, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };

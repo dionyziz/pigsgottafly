@@ -5,8 +5,11 @@ import { useEffect, useState } from 'react';
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
 import { useEditor } from '../state';
-import { fmtDur, fmtMin, localClock, localOffsetLabel, useFlightCalc } from './calc';
-import { KV, NumberInput, Section } from './ui';
+import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
+import { localOffsetLabel } from '../../../shared/date';
+import { NumberField } from '../../../ui';
+import { useFlightCalc } from './calc';
+import { KV, Section } from './ui';
 
 /** 'HHMM', 'HH:MM', 'H:MM', 'HH.MM' → 'HH:MM', or null if invalid; '' stays ''. */
 export function normalizeClock(s: string): string | null {
@@ -19,16 +22,14 @@ export function normalizeClock(s: string): string | null {
   return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
 }
 
-function TimeRow({ label, min, dayMs, testId, tone }: { label: string; min: number; dayMs: number; testId: string; tone?: 'warn' | 'danger' }) {
-  const ms = isFinite(dayMs) && isFinite(min) ? dayMs + min * 60000 : NaN;
+function TimeRow({ label, min, testId, tone }: { label: string; min: number; testId: string; tone?: 'warn' | 'danger' }) {
   const nextDay = isFinite(min) && min >= 1440;
   return (
     <KV
       k={label}
       tone={tone}
       testId={testId}
-      v={<><span className="tnum">{fmtMin(min)}Z</span>{nextDay && <sup className="muted">+1</sup>}</>}
-      sub={isFinite(ms) ? <span className="tnum">{localClock(ms)}LT</span> : undefined}
+      v={<><span className="tnum">{fmtClock(min, { fallback: '--:--' })}Z</span>{nextDay && <sup className="muted">+1</sup>}</>}
     />
   );
 }
@@ -75,32 +76,28 @@ export function WhenSection() {
               if (v !== null && v !== doc.blockOff && (v === '' || /^(\d{1,2}[:.h]\d{2}|\d{4})$/.test(e.target.value.trim()))) update((d) => ({ ...d, blockOff: v }), { coalesce: 'blockOff' });
             }}
           />
-          <span className="hint">{isFinite(boMs) ? `${localClock(boMs)} local (${localOffsetLabel(boMs)})` : 'Engine start, UTC'}</span>
+          {isFinite(boMs) && <span className="hint tnum" data-testid="block-off-local">{fmtLocalClock(boMs)} local ({localOffsetLabel(boMs)})</span>}
         </label>
         <label className="field" data-focus="taxiOut">Taxi out (min)
-          <NumberInput value={doc.taxiOutMin} min={0} max={180} testId="taxi-out" placeholder={String(SETTING_SUGGESTIONS.taxiOutMin)}
-            onCommit={(v) => update((d) => ({ ...d, taxiOutMin: v }), { coalesce: 'taxiOut' })} />
-          {doc.taxiOutMin == null && <span className="hint warn-text">Not set</span>}
+          <NumberField value={doc.taxiOutMin} min={0} max={180} testId="taxi-out" placeholder={String(SETTING_SUGGESTIONS.taxiOutMin)} className="ep-num"
+            invalid={doc.taxiOutMin == null} onChange={(v) => update((d) => ({ ...d, taxiOutMin: v }), { coalesce: 'taxiOut' })} />
         </label>
         <label className="field" data-focus="taxiIn">Taxi in (min)
-          <NumberInput value={doc.taxiInMin} min={0} max={180} testId="taxi-in" placeholder={String(SETTING_SUGGESTIONS.taxiInMin)}
-            onCommit={(v) => update((d) => ({ ...d, taxiInMin: v }), { coalesce: 'taxiIn' })} />
-          {doc.taxiInMin == null && <span className="hint warn-text">Not set</span>}
+          <NumberField value={doc.taxiInMin} min={0} max={180} testId="taxi-in" placeholder={String(SETTING_SUGGESTIONS.taxiInMin)} className="ep-num"
+            invalid={doc.taxiInMin == null} onChange={(v) => update((d) => ({ ...d, taxiInMin: v }), { coalesce: 'taxiIn' })} />
         </label>
       </div>
-      {t ? (
+      {t && (
         <div className="ep-times">
-          <TimeRow label="Block-off" min={t.blockOffMin} dayMs={dayMs} testId="time-blockoff" />
-          <TimeRow label="Take-off" min={t.takeoffMin} dayMs={dayMs} testId="time-takeoff" />
-          <TimeRow label="Landing" min={t.landingMin} dayMs={dayMs} testId="time-landing" tone={late(t.landingMin)} />
-          <TimeRow label="Block-on" min={t.blockOnMin} dayMs={dayMs} testId="time-blockon" tone={late(t.blockOnMin)} />
+          <TimeRow label="Block-off" min={t.blockOffMin} testId="time-blockoff" />
+          <TimeRow label="Take-off" min={t.takeoffMin} testId="time-takeoff" />
+          <TimeRow label="Landing" min={t.landingMin} testId="time-landing" tone={late(t.landingMin)} />
+          <TimeRow label="Block-on" min={t.blockOnMin} testId="time-blockon" tone={late(t.blockOnMin)} />
           {navlog && navlog.legs.length > 0 && (
-            <KV k="Flight / block time" v={<span className="tnum">{fmtDur(navlog.flightMin)} / {fmtDur(t.blockOnMin - t.blockOffMin)}</span>} />
+            <KV k="Flight / block time" v={<span className="tnum">{fmtDuration(navlog.flightMin, { fallback: '–' })} / {fmtDuration(t.blockOnMin - t.blockOffMin, { fallback: '–' })}</span>} />
           )}
-          {sunset != null && <TimeRow label="Sunset at destination" min={sunset} dayMs={dayMs} testId="time-sunset" />}
+          {sunset != null && <TimeRow label="Sunset at destination" min={sunset} testId="time-sunset" />}
         </div>
-      ) : (
-        <p className="muted ep-note">Set the block-off time to compute take-off, landing and block-on.</p>
       )}
     </Section>
   );

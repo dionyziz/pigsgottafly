@@ -1,7 +1,7 @@
 // Manifest and loading: PIC (me, from the profile) and PAX from the passenger list (type-ahead,
 // or created on the spot), each in a seat of the aircraft; body weights for this flight; baggage per
 // baggage area; W&B category; take-off/landing mass and CG against the envelope.
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FALLBACK_SEATS, seatLayout, type FlightCrew, type Passenger, type PersonDetails, type Pilot } from '../../../shared';
 import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
@@ -9,7 +9,8 @@ import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
 import { addPicToCrew } from './manifest';
-import { Chip, Icon, KV, NumberInput, Section } from './ui';
+import { NumberField, PersonPicker } from '../../../ui';
+import { Chip, Icon, KV, Section } from './ui';
 
 export function personOf(p: Pilot | Passenger): PersonDetails {
   return {
@@ -20,17 +21,61 @@ export function personOf(p: Pilot | Passenger): PersonDetails {
 
 const FALLBACK_LABELS: Record<string, string> = { 'front-left': 'Front left', 'front-right': 'Front right', 'rear-left': 'Rear left', 'rear-right': 'Rear right' };
 
+const PERSON_KEYS = ['fullName', 'phone', 'dateOfBirth', 'weightKg', 'idNumber', 'idType', 'nationality', 'relation'] as const;
+
+/**
+ * The snapshot after the person's record changed from `before` to `after`: the fields that changed
+ * there are copied; the rest (e.g. a weight typed for this flight) are kept.
+ */
+export function followPerson(snapshot: PersonDetails, before: PersonDetails, after: PersonDetails): PersonDetails {
+  let out = snapshot;
+  for (const k of PERSON_KEYS) {
+    if (before[k] !== after[k] && out[k] !== after[k]) out = { ...out, [k]: after[k] };
+  }
+  return out;
+}
+
+/**
+ * Keeps the manifest's linked people in step with the passenger list and the profile: an edit there
+ * (here, on another page or in another tab) updates the snapshot; a passenger deleted from the list
+ * is unlinked (the snapshot stays on the manifest).
+ */
+function useCrewSync() {
+  const { doc, update, passengers, passengersLoaded, pilot } = useEditor();
+  const seen = useRef<Map<string, PersonDetails> | null>(null);
+  const crewRef = useRef(doc.crew);
+  crewRef.current = doc.crew;
+  useEffect(() => {
+    if (!passengersLoaded) return;
+    const now = new Map<string, PersonDetails>(passengers.map((p) => [p.id, personOf(p)]));
+    now.set('PIC', personOf(pilot));
+    const before = seen.current;
+    seen.current = now;
+    const crew = crewRef.current;
+    const keyOf = (c: FlightCrew) => (c.role === 'PIC' ? 'PIC' : c.passengerId);
+    const next = crew.map((c) => {
+      const k = keyOf(c);
+      if (!k) return c;
+      const after = now.get(k);
+      if (!after) return c.role === 'PAX' ? { ...c, passengerId: null } : c;
+      const was = before?.get(k);
+      if (!was) return c;
+      const snapshot = followPerson(c.snapshot, was, after);
+      return snapshot === c.snapshot ? c : { ...c, snapshot };
+    });
+    if (next.some((c, i) => c !== crew[i])) update((d) => ({ ...d, crew: d.crew.map((c, i) => (crew[i] === c ? next[i] : c)) }), { coalesce: 'crew-sync' });
+  }, [passengers, pilot, passengersLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 export function ManifestSection() {
   const { doc, update, aircraft, passengers, pilot, reloadLists } = useEditor();
   const { wb, wbOk, wbMissingWeights, crewErrors, fuel, stops } = useFlightCalc();
   const stopsOut = stops.some((x) => x.wbOk === false);
   const stopName = (x: (typeof stops)[number]) => x.aerodrome?.icao || x.point.name;
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-  const [hi, setHi] = useState(0);
   const [creating, setCreating] = useState<string | null>(null);
   const [editingMe, setEditingMe] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [editingPax, setEditingPax] = useState<Passenger | null>(null);
+  useCrewSync();
 
   const seats = useMemo(() => {
     if (aircraft) return seatLayout(aircraft.massBalance.stations).map((s) => ({ id: s.id, label: s.label }));
@@ -38,20 +83,10 @@ export function ManifestSection() {
   }, [aircraft]);
   const seatLabel = (id: string) => seats.find((s) => s.id === id)?.label ?? id;
   const used = new Set(doc.crew.map((c) => c.seat));
-  const freeSeat = seats.find((s) => !used.has(s.id))?.id ?? null;
   const full = doc.crew.length >= seats.length;
   const hasPic = doc.crew.some((c) => c.role === 'PIC');
 
-  const onBoard = new Set(doc.crew.map((c) => c.passengerId).filter(Boolean));
-  const q = query.trim().toLowerCase();
-  const matches = passengers
-    .filter((p) => !onBoard.has(p.id))
-    .filter((p) => !q || p.fullName.toLowerCase().includes(q))
-    .slice(0, 8);
-  const options: ({ kind: 'pax'; p: Passenger } | { kind: 'new'; name: string })[] = [
-    ...matches.map((p) => ({ kind: 'pax' as const, p })),
-    ...(q ? [{ kind: 'new' as const, name: query.trim() }] : []),
-  ];
+  const onBoard = useMemo(() => new Set(doc.crew.map((c) => c.passengerId).filter((x): x is string => !!x)), [doc.crew]);
 
   const addPassenger = (p: Passenger) => {
     update((d) => {
@@ -61,15 +96,6 @@ export function ManifestSection() {
       if (!seat) return d;
       return { ...d, crew: [...d.crew, { role: 'PAX', passengerId: p.id, seat, snapshot: personOf(p) }] };
     });
-    setQuery('');
-    setOpen(false);
-    setHi(0);
-  };
-  const choose = (i: number) => {
-    const o = options[i];
-    if (!o) return;
-    if (o.kind === 'pax') addPassenger(o.p);
-    else { setCreating(o.name); setOpen(false); }
   };
 
   const setCrew = (i: number, fn: (c: FlightCrew) => FlightCrew, coalesce?: string) =>
@@ -116,7 +142,8 @@ export function ManifestSection() {
     <Section id="manifest" title="Manifest & loading" badge={badge}>
       <ul className="ep-crew" data-testid="manifest" data-focus="manifest">
         {doc.crew.map((c, i) => {
-          const linked = c.role === 'PIC' || passengers.some((p) => p.id === c.passengerId);
+          const pax = c.role === 'PAX' ? passengers.find((p) => p.id === c.passengerId) ?? null : null;
+          const linked = c.role === 'PIC' || !!pax;
           return (
             <li key={`${c.role}-${c.passengerId ?? i}`} className="ep-crew-row" data-testid={`crew-${c.role.toLowerCase()}`}>
               <span className={'ep-role ' + c.role.toLowerCase()}>{c.role}</span>
@@ -129,17 +156,15 @@ export function ManifestSection() {
                     {!seats.some((s) => s.id === c.seat) && <option value={c.seat}>{c.seat} (not on this aircraft)</option>}
                     {seats.map((s) => <option key={s.id} value={s.id}>{s.label}{used.has(s.id) && s.id !== c.seat ? ' (swap)' : ''}</option>)}
                   </select>
-                  <span className="ep-weight">
-                    <NumberInput value={c.snapshot.weightKg} min={1} max={300} width={58} ariaLabel={`Weight of ${c.snapshot.fullName}`} placeholder="kg"
-                      testId="crew-weight"
-                      onCommit={(v) => setCrew(i, (x) => ({ ...x, snapshot: { ...x.snapshot, weightKg: v } }), `w-${i}`)} />
-                    <span className="muted">kg</span>
-                  </span>
+                  <NumberField value={c.snapshot.weightKg} min={1} max={300} width={84} unit="kg" ariaLabel={`Weight of ${c.snapshot.fullName}`}
+                    testId="crew-weight" className="ep-num" invalid={c.snapshot.weightKg == null}
+                    onChange={(v) => setCrew(i, (x) => ({ ...x, snapshot: { ...x.snapshot, weightKg: v } }), `w-${i}`)} />
                 </div>
               </div>
               <div className="ep-row-actions">
                 {c.role === 'PIC' && <button type="button" className="icon" title="Edit my details" aria-label="Edit my details" data-testid="pic-edit" onClick={() => setEditingMe(true)}><Icon name="edit" size={14} /></button>}
-                {linked && <button type="button" className="icon" title={c.role === 'PIC' ? 'Refresh from my profile' : 'Refresh from the passenger list'} onClick={() => refresh(i)}><Icon name="refresh" /></button>}
+                {pax && <button type="button" className="icon" title={`Edit ${pax.fullName}`} aria-label={`Edit ${pax.fullName}`} data-testid="pax-edit" onClick={() => setEditingPax(pax)}><Icon name="edit" size={14} /></button>}
+                {linked && <button type="button" className="icon" title={c.role === 'PIC' ? 'Reset from my profile' : 'Reset from the passenger list'} aria-label="Reset from the saved details" onClick={() => refresh(i)}><Icon name="refresh" /></button>}
                 {c.role === 'PAX' && (
                   <button type="button" className="icon" title="Remove from the manifest" aria-label={`Remove ${c.snapshot.fullName}`} data-testid="crew-remove"
                     onClick={() => update((d) => ({ ...d, crew: d.crew.filter((_, j) => j !== i) }))}><Icon name="x" /></button>
@@ -151,54 +176,15 @@ export function ManifestSection() {
       </ul>
       {!hasPic && (
         <button type="button" onClick={addPic} disabled={!picFits} data-testid="add-pic"
-          title={picFits ? 'Seats you in front left' : 'Every seat is taken: remove a passenger first'}>
+          title={picFits ? 'Front left' : 'Every seat is taken'}>
           <Icon name="plus" /> Add me as PIC
         </button>
       )}
-      {!hasPic && !picFits && <p className="ep-note">Every seat is taken: remove a passenger to make room for the PIC.</p>}
+      {!hasPic && !picFits && <p className="ep-note">Every seat is taken.</p>}
       {hasPic && picNote && <p className="ep-note" data-testid="pic-note">{picNote}</p>}
 
-      <div className="ep-typeahead">
-        <input
-          ref={inputRef}
-          value={query}
-          disabled={full}
-          placeholder={full ? `All ${seats.length} seats taken` : 'Add passenger…'}
-          data-testid="pax-search"
-          role="combobox"
-          aria-expanded={open && options.length > 0}
-          aria-autocomplete="list"
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); setHi(0); }}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(h + 1, options.length - 1)); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
-            else if (e.key === 'Enter') { e.preventDefault(); choose(hi); }
-            else if (e.key === 'Escape') { setOpen(false); }
-          }}
-        />
-        {open && !full && options.length > 0 && (
-          <ul className="ep-suggest" role="listbox">
-            {options.map((o, i) => (
-              <li key={o.kind === 'pax' ? o.p.id : 'new'} role="option" aria-selected={i === hi}
-                className={i === hi ? 'hi' : ''}
-                onMouseDown={(e) => { e.preventDefault(); choose(i); }}
-                onMouseEnter={() => setHi(i)}>
-                {o.kind === 'pax' ? (
-                  <><span>{o.p.fullName}</span><span className="muted">{o.p.weightKg != null ? `${o.p.weightKg} kg` : 'no weight'}</span></>
-                ) : (
-                  <><span><Icon name="plus" size={14} /> Create “{o.name}”</span><span className="muted">new passenger</span></>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {open && !full && options.length === 0 && passengers.length === 0 && (
-          <div className="ep-suggest empty muted">No passengers yet: type a name to create one.</div>
-        )}
-      </div>
-      {freeSeat === null && !full && <p className="hint">No free seat.</p>}
+      <PersonPicker people={passengers} exclude={onBoard} onPick={addPassenger} onCreate={(name) => setCreating(name)}
+        disabled={full} placeholder={full ? `All ${seats.length} seats taken` : 'Add passenger…'} testId="pax-search" />
       {crewErrors.map((e) => <p key={e} className="ep-note danger-text">{e}</p>)}
 
       {aircraft && (
@@ -210,8 +196,8 @@ export function ManifestSection() {
                   <span className="ep-weight">
                     {/* The placard limit is not the input's max: an over-limit load is kept as typed and
                         flagged by the W&B (station breach), never cut to fit. 500 kg is a typo guard. */}
-                    <NumberInput value={doc.baggageKg[s.id] ?? null} min={0} max={500} width={70} placeholder="0" testId={`bag-${s.id}`}
-                      onCommit={(v) => update((d) => {
+                    <NumberField value={doc.baggageKg[s.id] ?? null} min={0} max={500} width={70} placeholder="0" testId={`bag-${s.id}`} className="ep-num"
+                      onChange={(v) => update((d) => {
                         const baggageKg = { ...d.baggageKg };
                         if (v == null || v === 0) delete baggageKg[s.id]; else baggageKg[s.id] = v;
                         return { ...d, baggageKg };
@@ -275,10 +261,20 @@ export function ManifestSection() {
           onClose={() => setCreating(null)}
           onSaved={async (p) => {
             setCreating(null);
-            setQuery('');
             await reloadLists().catch(() => {});
             addPassenger(p);
-            inputRef.current?.focus();
+          }}
+        />
+      )}
+      {editingPax && (
+        <PassengerDialog
+          passenger={editingPax}
+          onClose={() => setEditingPax(null)}
+          onSaved={async (p) => {
+            setEditingPax(null);
+            // the snapshot takes the saved details (the list refetch then finds nothing to change)
+            update((d) => ({ ...d, crew: d.crew.map((c) => (c.passengerId === p.id ? { ...c, snapshot: personOf(p) } : c)) }));
+            await reloadLists().catch(() => {});
           }}
         />
       )}

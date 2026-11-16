@@ -4,21 +4,21 @@
 // Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job,
 // driven by EditorProvider.update().
 import { useResizable } from './resizable';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useSession } from '../../app/session';
 import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
-import { api, ApiRequestError } from '../../data/api';
+import { ApiRequestError } from '../../data/api';
 import { flightStore } from '../../data/flightStore';
-import { onInvalidate } from '../../data/entities';
-import { useSequencer } from '../../data/sequence';
+import { useEntity } from '../../data/entities';
 import { autoTitle, type Aircraft, type Flight, type FlightDoc, type Passenger, type Waypoint } from '../../shared';
+import { Icon, Loading } from '../../ui';
+import { onEditorFocus } from './focus';
 import { EditorProvider, useEditor } from './state';
 import { MapView } from './map';
 import { NotamProvider } from './notams';
 import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
-import { Icon } from './panels/ui';
 import './editor.css';
 import './panels/panels.css';
 
@@ -110,15 +110,13 @@ export function EditorPage() {
   const { id = '' } = useParams();
   const { pilot } = useSession();
   const [state, setState] = useState<{ flight: Flight; doc: FlightDoc } | null | 'missing'>(null);
-  const [lists, setLists] = useState<{ hangar: Aircraft[]; passengers: Passenger[]; waypoints: Waypoint[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const listsSeq = useSequencer();
-  const reloadLists = async () => {
-    const current = listsSeq.next();
-    const [hangar, passengers, waypoints] = await Promise.all([api.aircraft.list(), api.passengers.list(), api.waypoints.list()]);
-    if (current()) setLists({ hangar, passengers, waypoints });
-  };
+  // hangar, passengers and waypoints: cached, and refetched when they change elsewhere (another page or tab)
+  const hangar = useEntity('aircraft');
+  const passengers = useEntity('passengers');
+  const waypoints = useEntity('waypoints');
+  const { reload: reloadHangar } = hangar, { reload: reloadPassengers } = passengers, { reload: reloadWaypoints } = waypoints;
+  const reloadLists = useCallback(async () => { await Promise.all([reloadHangar(), reloadPassengers(), reloadWaypoints()]); }, [reloadHangar, reloadPassengers, reloadWaypoints]);
   useEffect(() => {
     setState(null);
     setError(null);
@@ -126,17 +124,18 @@ export function EditorPage() {
       (r) => setState(r ?? 'missing'),
       (e) => setError(e instanceof ApiRequestError && e.offline ? 'Offline, and this flight is not on this device.' : String(e.message)),
     );
-    reloadLists().catch(() => setLists((l) => l ?? { hangar: [], passengers: [], waypoints: [] }));
   }, [id]);
-  // hangar, passengers and waypoints changed elsewhere (another page or tab): the pickers follow
-  useEffect(() => onInvalidate(['aircraft', 'passengers', 'waypoints'], () => { void reloadLists().catch(() => {}); }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // a list that failed to load counts as empty (the editor still opens)
+  const listsReady = !hangar.loading && !passengers.loading && !waypoints.loading;
 
   if (error) return <div className="loading-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><Link to="/">All flights</Link></div></div>;
-  if (state === 'missing') return <div className="loading-screen"><div className="stack" style={{ alignItems: 'center' }}><p>That flight was not found.</p><Link to="/">All flights</Link></div></div>;
-  if (!state || !lists) return <div className="loading-screen">Loading flight…</div>;
+  if (state === 'missing') return <div className="loading-screen"><div className="stack" style={{ alignItems: 'center' }}><p>Flight not found.</p><Link to="/">All flights</Link></div></div>;
+  if (!state || !listsReady) return <Loading variant="screen" label="Loading flight…" />;
 
   return (
-    <EditorProvider key={state.flight.id} flight={state.flight} initialDoc={state.doc} pilot={pilot} {...lists} reloadLists={reloadLists}>
+    <EditorProvider key={state.flight.id} flight={state.flight} initialDoc={state.doc} pilot={pilot}
+      hangar={(hangar.data ?? NONE) as Aircraft[]} passengers={passengers.data ?? (NONE as Passenger[])} waypoints={waypoints.data ?? (NONE as Waypoint[])}
+      passengersLoaded={passengers.data !== undefined} reloadLists={reloadLists}>
       <NotamProvider>
       <FlightCalcProvider>
         <Keys />
@@ -163,6 +162,8 @@ export function EditorPage() {
   );
 }
 
+const NONE: never[] = [];
+
 const COLLAPSED_KEY = 'pgf.editor.panelCollapsed';
 const readCollapsed = () => { try { return localStorage.getItem(COLLAPSED_KEY) === '1'; } catch { return false; } };
 
@@ -181,6 +182,8 @@ function ResizablePanel() {
     key: 'pgf.editor.panelWidth', axis: 'x', dir: 1, min: 280, max: () => Math.max(320, Math.round(window.innerWidth * 0.6)), initial: null,
     collapseBelow: 180, onCollapse: () => setCollapsed(true),
   });
+  // a warning's fix focuses a field of the panel: show the panel first
+  useEffect(() => onEditorFocus(() => setCollapsed(false)), []); // eslint-disable-line react-hooks/exhaustive-deps
   const label = collapsed ? 'Show the flight panel' : 'Hide the flight panel';
   return (
     <>
