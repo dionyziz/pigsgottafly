@@ -7,89 +7,48 @@
 // Usage (ExportPage): <NavlogExport flight={flight} />. On screen the sheets are scaled to the
 // container width; in print each sheet fills one A4 landscape page (named page "md42").
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Aircraft, Flight, Pilot } from '../../../shared';
-import { buildLegs } from '../../../calc';
-import { api } from '../../../data/api';
-import { useAsync } from '../../../data/useAsync';
+import type { Flight } from '../../../shared';
+import { usePilot } from '../../../app/session';
 import { REF, SUN_TABLES } from '../../../data/ref';
-import { atcInput, atcLegRelevance, endpointAerodrome, generateAtcList } from '../../../data/atc';
-import { fetchRouteWeather, type RouteWeather } from '../../../data/weather';
-import { fetchMetarTaf, type MetarTafResult } from '../../../data/weatherMetar';
+import { atcInput, atcLegRelevance, generateAtcList } from '../../../data/atc';
+import { useFlightWeather } from '../../../data/useFlightWeather';
+import { Loading, Panel } from '../../../ui';
 import {
   buildNavlogDocument, computeFlightNavlog, LEGS_PER_SHEET, MIN_TERMINAL_ROWS, NOTE_LINES,
   type NavlogDocument, type NavlogSheet, type SheetLeg, type TerminalRow,
 } from './model';
 import { fitSheets, SHEET_UNITS } from './fit';
-import { WarningList } from '../WarningList';
+import { ExportWarnings } from '../WarningList';
+import { useFlightAircraft } from '../useExportData';
 import { Signature, type ShownSignature } from '../form731/Form731';
 import '../form731/forms.css';
 import './navlog.css';
 
-/** METAR/TAF are fetched only when the flight is within this long of now (otherwise the forecast is used). */
-const METAR_HORIZON_MS = 6 * 3600 * 1000;
-
 export function NavlogExport({ flight }: { flight: Flight }) {
-  const pilotQ = useAsync<Pilot | null>(() => api.me.get().catch(() => null), []);
-  const acQ = useAsync<Aircraft | null>(
-    () => (flight.aircraftId ? api.aircraft.get(flight.aircraftId).catch(() => null) : Promise.resolve(null)),
-    [flight.aircraftId],
-  );
-  const pilot = pilotQ.data ?? null;
+  const pilot = usePilot();
+  const ac = useFlightAircraft(flight.aircraftId);
   // the PIC's e-signature on every sheet, dated when the log is generated
   const [signedAt] = useState(() => Date.now());
-  const signature: ShownSignature | null = pilot?.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
-  const aircraft = acQ.data ?? null;
+  const signature: ShownSignature | null = pilot.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
+  const aircraft = ac.aircraft;
 
-  // ---- weather: winds aloft at leg midpoints + surface at both ends (Open-Meteo), METAR/TAF
-  const legs = useMemo(() => buildLegs(flight.route, flight.date), [flight.route, flight.date]);
-  const model = flight.options.windModel || pilot?.settings.windModel;
-  const wxKey = JSON.stringify([flight.date, model, legs.map((l) => [l.mid.lat.toFixed(3), l.mid.lon.toFixed(3)])]);
-  const [weather, setWeather] = useState<RouteWeather | null>(null);
-  const [wxBusy, setWxBusy] = useState(false);
-  const [refresh, setRefresh] = useState(0);
-  useEffect(() => {
-    if (!legs.length || !flight.date) { setWeather(null); return; }
-    let live = true;
-    setWxBusy(true);
-    fetchRouteWeather({
-      date: flight.date, model,
-      legMidpoints: legs.map((l) => l.mid),
-      departure: flight.route[0] ?? null,
-      destination: flight.route.length > 1 ? flight.route[flight.route.length - 1] : null,
-      force: refresh > 0,
-    }).then((w) => { if (live) { setWeather(w); setWxBusy(false); } });
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wxKey, refresh]);
-
-  const endIcaos = useMemo(() => {
-    const ends = [flight.route[0], flight.route.length > 1 ? flight.route[flight.route.length - 1] : undefined];
-    return ends.map((p) => (p ? endpointAerodrome(p, REF.aerodromes)?.icao ?? null : null)).filter((x): x is string => !!x);
-  }, [flight.route]);
-  const nearNow = useMemo(() => {
-    const day = Date.parse(flight.date + 'T00:00:00Z');
-    return isFinite(day) && Math.abs(day + 12 * 3600000 - Date.now()) < 12 * 3600000 + METAR_HORIZON_MS;
-  }, [flight.date]);
-  const [metar, setMetar] = useState<MetarTafResult | null>(null);
-  useEffect(() => {
-    if (!nearNow || !endIcaos.length) { setMetar(null); return; }
-    let live = true;
-    fetchMetarTaf(endIcaos, { force: refresh > 0 }).then((m) => { if (live) setMetar(m); });
-    return () => { live = false; };
-  }, [endIcaos.join(','), nearNow, refresh]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ---- weather: winds aloft at leg midpoints, surface at both ends and every stop (Open-Meteo), METAR/TAF
+  const wx = useFlightWeather({
+    date: flight.date, route: flight.route, options: flight.options, model: flight.options.windModel || pilot.settings.windModel,
+  });
+  const { weather, metar, legs } = wx;
 
   // ---- the document
-  const loading = pilotQ.loading || acQ.loading;
   const doc: NavlogDocument | null = useMemo(() => {
-    if (loading) return null;
+    if (ac.loading) return null;
     const computed = computeFlightNavlog({
-      doc: flight, aircraft, settings: pilot?.settings ?? null, weather,
+      doc: flight, aircraft, settings: pilot.settings, weather,
       ref: { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES },
     });
-    const gen = atcInput(flight.route, computed.altitudesFt, REF, pilot?.settings.enrouteAerodromeRadiusNm ?? 2);
+    const gen = atcInput(flight.route, computed.altitudesFt, REF, pilot.settings.enrouteAerodromeRadiusNm ?? 2);
     const atc = flight.atc ?? generateAtcList(gen);
     return buildNavlogDocument({ doc: flight, aircraft, computed, atc, atcRelevance: atcLegRelevance(gen), aerodromes: REF.aerodromes, weather, metar, nowMs: Date.now() });
-  }, [loading, flight, aircraft, pilot, weather, metar]);
+  }, [ac.loading, flight, aircraft, pilot, weather, metar]);
 
   // ---- scale to the container on screen; fit text after every render
   const host = useRef<HTMLDivElement>(null);
@@ -114,19 +73,22 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     return () => { live = false; };
   }, [doc]);
 
-  if (!doc) return <div className="md42-doc-loading muted">Loading…</div>;
-  const wxPending = wxBusy && legs.length > 0;
+  if (!doc) return <Loading />;
+  const wxPending = wx.weatherLoading && legs.length > 0;
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const snap = (w: number, min: number) => `${Math.max(min, Math.round(w * dpr)) / dpr}px`;
 
   return (
     <div className="md42-doc print-sheet-page" data-testid="navlog-export" data-ready={wxPending ? 'false' : 'true'} data-sheets={doc.sheets.length}>
       {legs.length > 0 && (
-        <div className="md42-status no-print">
-          <div className="md42-sources" data-testid="navlog-sources">{wxPending ? 'Loading weather…' : doc.sources.join(' · ')}</div>
-          <button className="ghost" onClick={() => setRefresh((x) => x + 1)} disabled={wxPending}>Refresh weather</button>
-          <WarningList warnings={doc.warnings} aircraftId={flight.aircraftId} className="md42-warnings" testId="navlog-warnings" />
-        </div>
+        <Panel
+          title="Weather"
+          className="md42-status"
+          status={<span className="md42-sources" data-testid="navlog-sources">{wxPending ? 'Loading…' : doc.sources.join(' · ')}</span>}
+          actions={<button className="ghost" onClick={wx.refresh} disabled={wxPending}>Refresh weather</button>}
+        >
+          <ExportWarnings warnings={doc.warnings} aircraftId={flight.aircraftId} testId="navlog-warnings" />
+        </Panel>
       )}
       <div
         className="md42-stage"

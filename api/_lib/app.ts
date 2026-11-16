@@ -8,6 +8,7 @@ import { googleKeys, localPilotRow, sessionPilotRow } from './auth.js';
 import type { Pilot } from '../../src/shared/types.js';
 import { toPilot } from './rows.js';
 import { ROUTES } from './routes/index.js';
+import { isConstraintViolation } from './pgErrors.js';
 import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
 
 const emailList = (v: string | undefined) => (v || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
@@ -81,9 +82,8 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
         // 409 carries the current record as the body (optimistic concurrency)
         return send(res, e.status, e.body !== undefined ? e.body : { error: e.message });
       }
-      const msg = String((e as Error)?.message || e);
       // constraint violations from bad references are client errors
-      if (/violates (foreign key|check|unique) constraint/.test(msg)) return send(res, 400, { error: 'invalid reference' });
+      if (isConstraintViolation(e)) return send(res, 400, { error: 'invalid reference' });
       console.error(e);
       return send(res, 500, { error: 'server error' });
     }

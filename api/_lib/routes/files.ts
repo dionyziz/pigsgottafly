@@ -20,6 +20,9 @@ import {
 } from '../../../src/shared/types.js';
 
 const COLS = 'id, kind, title, name, mime, size, chunks, created';
+/** An upload that has not completed after this long is abandoned (deleted on the next upload). */
+const INCOMPLETE_UPLOAD_TTL_MS = 24 * 3600e3;
+const MIB = 1024 * 1024;
 export const toFile = (r: any): AircraftFile => ({
   id: r.id, kind: r.kind, title: r.title ?? '', name: r.name, mime: r.mime, size: Number(r.size), chunks: Number(r.chunks), uploaded: Number(r.created),
 });
@@ -70,12 +73,12 @@ export const routes: Route[] = [
       if (typeof v.mime !== 'string' || !types.includes(v.mime)) throw badRequest(`mime must be one of ${types.join(', ')}`);
       const max = kind === 'photo' ? PHOTO_MAX_BYTES : DOCUMENT_MAX_BYTES;
       if (typeof v.size !== 'number' || !Number.isInteger(v.size) || v.size <= 0) throw badRequest('size (bytes) is required');
-      if (v.size > max) throw badRequest(`the file is larger than ${Math.round(max / 1048576)} MB`);
+      if (v.size > max) throw badRequest(`the file is larger than ${Math.round(max / MIB)} MB`);
       const name = cleanText(v.name, 200) || (kind === 'photo' ? 'photo' : 'document.pdf');
       const title = kind === 'document' ? cleanText(v.title, 120) || name.replace(/\.pdf$/i, '') : '';
       // uploads that never completed (closed tab, lost connection) go after a day
       await db.query(`DELETE FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND NOT complete AND created < $3`,
-        [params.id, owner, Date.now() - 86400000]);
+        [params.id, owner, Date.now() - INCOMPLETE_UPLOAD_TTL_MS]);
       const [r] = await db.query(
         `INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created, kind, title, chunks, complete)
          VALUES ($1, $2, $3, $4, $5, $6, '', $7, $8, $9, $10, FALSE) RETURNING ${COLS}`,

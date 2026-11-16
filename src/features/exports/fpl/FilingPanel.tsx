@@ -8,10 +8,11 @@
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiRequestError } from '../../../data/api';
-import { AipLink } from '../../../app/AipLink';
 import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import type { Flight } from '../../../shared';
 import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
+import { Chip, Loading, Panel } from '../../../ui';
+import { ExportWarnings } from '../WarningList';
 
 const STATUS_LABEL: Record<FilingStatus, string> = {
   'not-filed': 'Not filed', created: 'Created', filed: 'Filed', manual_correction: 'Queued for manual correction', suspended: 'Suspended',
@@ -88,15 +89,16 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
   })();
 
   return (
-    <div className="fpl-filing no-print" data-testid="fpl-filing" data-enabled={st ? String(enabled) : ''}>
-      <div className="fpl-filing-head">
-        <div className="fpl-panel-title">Filing</div>
-        {st && (
-          <span className={`chip ${filing ? (filing.status === 'rejected' ? 'danger' : open ? 'ok' : '') : ''}`} data-testid="fpl-filing-status">
-            {filing ? STATUS_LABEL[filing.status] : 'Not filed'}
-          </span>
-        )}
-        <span className="spacer" />
+    <Panel
+      title="Filing"
+      className="fpl-panel fpl-filing"
+      testId="fpl-filing"
+      status={st && (
+        <Chip tone={filing ? (filing.status === 'rejected' ? 'danger' : open ? 'ok' : undefined) : undefined} testId="fpl-filing-status">
+          {filing ? STATUS_LABEL[filing.status] : 'Not filed'}
+        </Chip>
+      )}
+      actions={<>
         <button className="primary" data-testid="fpl-file" disabled={!enabled || !complete || open || !!busy || !addresses.length}
           title={!complete ? 'The message has missing fields' : undefined}
           onClick={() => run('file', () => api.filing.file(flight.id, { fpl: message, addresses }))}>
@@ -115,11 +117,11 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
         <button className="ghost" data-testid="fpl-refresh" disabled={!enabled || !filing?.providerId || !!busy} onClick={() => run('refresh', () => api.filing.refresh(flight.id))}>
           {busy === 'refresh' ? 'Checking…' : 'Refresh status'}
         </button>
-      </div>
-
-      {loadErr && <div className="fpl-note fpl-warn">{loadErr}</div>}
-      {st && !enabled && <div className="fpl-note fpl-warn" data-testid="fpl-filing-disabled">{st.reason ?? 'Filing is not enabled yet.'}</div>}
-      {actionErr && <div className="fpl-note fpl-danger" role="alert">{actionErr}</div>}
+      </>}
+    >
+      <ExportWarnings warnings={loadErr ? [loadErr] : []} classify={false} />
+      {st && !enabled && <ExportWarnings warnings={[st.reason ?? 'Filing is not enabled yet.']} classify={false} testId="fpl-filing-disabled" />}
+      {actionErr && <div className="form-error" role="alert">{actionErr}</div>}
       {filing && (
         <div className="fpl-filing-record">
           {filing.filed != null && <span>Filed {dateTimeZ(filing.filed)}</span>}
@@ -131,8 +133,8 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
       )}
 
       <div className="fpl-addressees" data-testid="fpl-addressees">
-        <div className="fpl-filing-sub">AFTN addressees <span className="muted">(<AipLink refText="ENR 1.11">AIP Greece ENR 1.11</AipLink> · {addresses.length} selected)</span></div>
-        {!st && !loadErr && <div className="muted">Loading…</div>}
+        <div className="fpl-filing-sub">AFTN addressees <Chip count sm testId="fpl-addressee-count">{addresses.length}</Chip></div>
+        {!st && !loadErr && <Loading variant="sm" />}
         <ul>
           {(st?.addressees ?? []).map((a) => (
             <li key={a.address}>
@@ -166,6 +168,6 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
           </ul>
         </details>
       )}
-    </div>
+    </Panel>
   );
 }

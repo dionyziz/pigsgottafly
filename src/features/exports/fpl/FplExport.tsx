@@ -6,11 +6,11 @@
 // pilot comes from the session, EET from the navlog with live winds aloft, endurance from the
 // fuel plan (fuel on board at the planning burn).
 import { useMemo, useState, type ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
 import type { Flight } from '../../../shared';
 import { usePilot } from '../../../app/session';
+import { Panel } from '../../../ui';
 import { Signature, type ShownSignature } from '../form731/Form731';
-import { WarningItem } from '../WarningList';
+import { ExportWarnings } from '../WarningList';
 import type { Fix } from '../fix';
 import { buildFpl, oneLine, type FplOptions, type FplResult } from './fpl';
 import { fplInputFrom } from './input';
@@ -42,7 +42,6 @@ async function copyText(text: string): Promise<boolean> {
 
 export function FplExport({ flight }: { flight: Flight }) {
   const pilot = usePilot();
-  const { id } = useParams();
   const data = useFplData(flight, pilot);
   const [opts, setOpts] = useState<Required<FplOptions>>({ includeItem19: true, regInItem18: false });
   const fpl = useMemo(
@@ -65,35 +64,31 @@ export function FplExport({ flight }: { flight: Flight }) {
   if (!flight.aircraftId) warnings.push({ text: 'No aircraft chosen for this flight.', fix: { kind: 'flight', focus: 'aircraft' } });
   else if (!data.aircraftLoading && !data.aircraft) warnings.push({ text: 'The flight’s aircraft is no longer in the hangar.', fix: { kind: 'flight', focus: 'aircraft' } });
   for (const w of fpl.warnings) warnings.push({ text: w, fix: fpl.fixes[w] });
-  const ctx = { flightId: id ?? flight.id, aircraftId: flight.aircraftId };
 
   return (
     <div className="fpl-export print-sheet-page" data-testid="fpl-export">
-      <div className="fpl-panel no-print">
-        <div className="fpl-panel-head">
-          <div className="fpl-panel-title">FPL message</div>
-          <span className="spacer" />
+      <Panel
+        title="FPL message"
+        className="fpl-panel"
+        actions={<>
           <button className="primary" onClick={() => copy('lines')} data-testid="fpl-copy" disabled={loading}>
             {copied === 'lines' ? 'Copied' : 'Copy message'}
           </button>
           <button onClick={() => copy('one')} disabled={loading}>{copied === 'one' ? 'Copied' : 'Copy as one line'}</button>
-        </div>
-        {copied === 'error' && <div className="fpl-note fpl-danger">Copy failed: select the text and copy it by hand.</div>}
+        </>}
+      >
+        {copied === 'error' && <div className="form-error">Copy failed: select the text and copy it by hand.</div>}
         <pre className={`fpl-message${loading ? ' fpl-loading' : ''}`} data-testid="fpl-message" aria-busy={loading}>{fpl.message}</pre>
         <div className="fpl-options">
           <label><input type="checkbox" checked={opts.includeItem19} onChange={(e) => setOpts({ ...opts, includeItem19: e.target.checked })} data-testid="fpl-opt-item19" /> Item 19</label>
           <label><input type="checkbox" checked={opts.regInItem18} onChange={(e) => setOpts({ ...opts, regInItem18: e.target.checked })} /> REG/</label>
         </div>
-        {warnings.length > 0 && (
-          <div className={`fpl-note ${fpl.complete ? 'fpl-warn' : 'fpl-danger'}`} role="note" data-testid="fpl-warnings">
-            <strong>{fpl.complete ? 'Check before filing' : 'Incomplete'}</strong>
-            <ul>
-              {warnings.map((w) => <li key={w.text}><WarningItem text={w.text} fix={w.fix} ctx={ctx} /></li>)}
-            </ul>
-          </div>
-        )}
-        <FilingPanel flight={flight} message={fpl.message} complete={fpl.complete && !loading} onAddresses={setAddresses} />
-      </div>
+        <ExportWarnings
+          warnings={warnings} aircraftId={flight.aircraftId} classify={false}
+          title={fpl.complete ? 'Check before filing' : 'Incomplete'} level={fpl.complete ? 'warn' : 'danger'} testId="fpl-warnings"
+        />
+      </Panel>
+      <FilingPanel flight={flight} message={fpl.message} complete={fpl.complete && !loading} onAddresses={setAddresses} />
       <FplForm fpl={fpl} addressees={addresses} signature={signature} />
     </div>
   );

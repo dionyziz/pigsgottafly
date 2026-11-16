@@ -3,13 +3,10 @@
    scoped under .md42 / .md42-doc so it cannot leak into other exports. */
 
 .md42-doc { --md42-ink: #17418f; }
-.md42-doc-loading { padding: 40px 0; text-align: center; }
 
-/* ---------------- screen chrome (not printed) */
-.md42-status { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s3); margin: 0 0 var(--s3); font-size: var(--fs-sm); }
-.md42-sources { flex: 1; min-width: 0; color: var(--muted); }
-.md42-warnings { flex-basis: 100%; margin: 4px 0 0; padding: 0 0 0 18px; color: var(--warn); }
-.md42-warnings li { margin: 1px 0; }
+/* ---------------- screen chrome (not printed): the weather panel (src/ui Panel) */
+.md42-status { margin-bottom: var(--s3); }
+.md42-sources { flex: 1 1 240px; min-width: 0; color: var(--muted); font-size: var(--fs-sm); }
 .md42-stage { --hair: 1px; --thick: 2px; display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
 
 /* ---------------- the sheet */

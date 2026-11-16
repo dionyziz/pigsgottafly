@@ -27,7 +27,7 @@ export function attachmentInput(v: Record<string, unknown>): { name: string; mim
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(data) || data.length % 4 !== 0) throw badRequest('data must be base64');
   const size = (data.length / 4) * 3 - (data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0);
   if (size <= 0) throw badRequest('the file is empty');
-  if (size > ATTACHMENT_MAX_BYTES) throw badRequest(`the file is larger than ${Math.round(ATTACHMENT_MAX_BYTES / 1048576)} MB`);
+  if (size > ATTACHMENT_MAX_BYTES) throw badRequest(`the file is larger than ${Math.round(ATTACHMENT_MAX_BYTES / (1024 * 1024))} MB`);
   return { name, mime: v.mime as AttachmentType, data, size };
 }
 

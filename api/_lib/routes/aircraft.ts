@@ -7,6 +7,7 @@ import { aircraftFor, listAircraft, toHangarAircraft } from '../access.js';
 import { blankAircraft } from '../../../src/shared/templates.js';
 import type { AircraftInput } from '../../../src/shared/types.js';
 import type { Queryable } from '../db.js';
+import { isUniqueViolation } from '../pgErrors.js';
 import { checkReports, deleteAttachments } from './attachments.js';
 
 async function write(db: Queryable, pilotId: string, id: string, a: AircraftInput, insert: boolean) {
@@ -24,8 +25,9 @@ async function write(db: Queryable, pilotId: string, id: string, a: AircraftInpu
           equipment=$17::jsonb, compass_cards=$18::jsonb, notes=$19, updated=$20 WHERE id=$1 AND pilot_id=$2 RETURNING *`, vals);
     if (!rows.length) throw notFound('no such aircraft');
     return toAircraft(rows[0]);
-  } catch (e: any) {
-    if (/aircraft_pilot_id_registration_key|duplicate key/.test(String(e?.message))) throw new HttpError(409, `${a.registration} is already in the hangar`);
+  } catch (e) {
+    // the only unique key a write can break is (pilot_id, registration)
+    if (isUniqueViolation(e)) throw new HttpError(409, `${a.registration} is already in the hangar`);
     throw e;
   }
 }

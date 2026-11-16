@@ -77,21 +77,36 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDeni
   return { flight, aircraft, pilot, c731, gendec, hash731: sha(form731SigningText(c731)), hashGendec: sha(genDecText(gendec)), mailDenied };
 }
 
-/** The end of the day after the flight (UTC); a flight without a date: a week from now. */
+/** A signing link works until the end of the day after the flight (UTC)… */
+const LINK_DAYS_FROM_FLIGHT = 2;
+/** …or, for a flight without a date, this many days from now. */
+const LINK_DAYS_UNDATED = 7;
+
 function linkExpiry(date: string, now: number): number {
   const d = Date.parse(`${date}T00:00:00Z`);
-  return Number.isFinite(d) ? d + 2 * DAY : now + 7 * DAY;
+  return Number.isFinite(d) ? d + LINK_DAYS_FROM_FLIGHT * DAY : now + LINK_DAYS_UNDATED * DAY;
+}
+
+/**
+ * Records `key`'s signature of the form version `hash` (one row per flight and person). A row of
+ * another pilot is never touched. `keepSigned`: a signature of this same version stays as it is
+ * (its time too); only a changed form is signed anew (the PIC's automatic signatures).
+ */
+async function upsertSignature(db: Queryable, s: {
+  flightId: string; pilotId: string; key: string; name: string; hash: string; at?: number; keepSigned?: boolean;
+}): Promise<void> {
+  await db.query(
+    `INSERT INTO form_signatures (flight_id, pilot_id, person_key, signer_name, signed_at, text_hash) VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (flight_id, person_key) DO UPDATE SET signer_name = EXCLUDED.signer_name, signed_at = EXCLUDED.signed_at, text_hash = EXCLUDED.text_hash
+     WHERE form_signatures.pilot_id = EXCLUDED.pilot_id${s.keepSigned ? ' AND form_signatures.text_hash <> EXCLUDED.text_hash' : ''}`,
+    [s.flightId, s.pilotId, s.key, s.name, s.at ?? Date.now(), s.hash]);
 }
 
 /** The PIC signs the current version automatically ("signed when the form is prepared"). */
 async function signPic(db: Queryable, L: Loaded): Promise<void> {
   const pic = L.c731.people.find((p) => p.role === 'PIC');
   if (!pic || !pic.name) return;
-  await db.query(
-    `INSERT INTO form_signatures (flight_id, pilot_id, person_key, signer_name, signed_at, text_hash) VALUES ($1,$2,$3,$4,$5,$6)
-     ON CONFLICT (flight_id, person_key) DO UPDATE SET signer_name = EXCLUDED.signer_name, signed_at = EXCLUDED.signed_at, text_hash = EXCLUDED.text_hash
-     WHERE form_signatures.pilot_id = EXCLUDED.pilot_id AND form_signatures.text_hash <> EXCLUDED.text_hash`,
-    [L.flight.id, L.pilot.id, pic.key, pic.name, Date.now(), L.hash731]);
+  await upsertSignature(db, { flightId: L.flight.id, pilotId: L.pilot.id, key: pic.key, name: pic.name, hash: L.hash731, keepSigned: true });
 }
 
 /**
@@ -101,11 +116,7 @@ async function signPic(db: Queryable, L: Loaded): Promise<void> {
 async function signGenDecPic(db: Queryable, L: Loaded): Promise<PdfSignature | null> {
   const name = L.gendec.picName.trim();
   if (!name) return null;
-  await db.query(
-    `INSERT INTO form_signatures (flight_id, pilot_id, person_key, signer_name, signed_at, text_hash) VALUES ($1,$2,$3,$4,$5,$6)
-     ON CONFLICT (flight_id, person_key) DO UPDATE SET signer_name = EXCLUDED.signer_name, signed_at = EXCLUDED.signed_at, text_hash = EXCLUDED.text_hash
-     WHERE form_signatures.pilot_id = EXCLUDED.pilot_id AND form_signatures.text_hash <> EXCLUDED.text_hash`,
-    [L.flight.id, L.pilot.id, GENDEC_PIC_KEY, name, Date.now(), L.hashGendec]);
+  await upsertSignature(db, { flightId: L.flight.id, pilotId: L.pilot.id, key: GENDEC_PIC_KEY, name, hash: L.hashGendec, keepSigned: true });
   const [s] = await db.query('SELECT * FROM form_signatures WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3', [L.flight.id, L.pilot.id, GENDEC_PIC_KEY]);
   return s && s.text_hash === L.hashGendec ? { key: GENDEC_PIC_KEY, name: s.signer_name, signedAt: Number(s.signed_at) } : null;
 }
@@ -382,11 +393,7 @@ export const routes: Route[] = [
     async handler({ db, params }) {
       const { l, L, me } = await linkOf(db, params.token);
       const now = Date.now();
-      await db.query(
-        `INSERT INTO form_signatures (flight_id, pilot_id, person_key, signer_name, signed_at, text_hash) VALUES ($1,$2,$3,$4,$5,$6)
-         ON CONFLICT (flight_id, person_key) DO UPDATE SET signer_name = EXCLUDED.signer_name, signed_at = EXCLUDED.signed_at, text_hash = EXCLUDED.text_hash
-         WHERE form_signatures.pilot_id = EXCLUDED.pilot_id`,
-        [L.flight.id, L.pilot.id, me.key, me.name, now, L.hash731]);
+      await upsertSignature(db, { flightId: L.flight.id, pilotId: L.pilot.id, key: me.key, name: me.name, hash: L.hash731, at: now });
       await db.query('UPDATE form_links SET first_opened = COALESCE(first_opened, $2), last_opened = $2 WHERE id = $1', [l.id, now]);
       return signingView(db, L, me);
     },

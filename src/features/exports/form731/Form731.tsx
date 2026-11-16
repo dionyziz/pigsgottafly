@@ -5,6 +5,7 @@ import type { FormExportProps } from './common';
 import { FormWarnings } from './FormWarnings';
 import { signatureName } from '../../../shared/forms';
 import { transliterate } from '../../../shared/translit';
+import { fmtDateTimeMs } from '../../../shared/format';
 import type { ReactNode } from 'react';
 
 /** A signature on the current version of the form: the signer's name and when (epoch ms). */
@@ -23,11 +24,7 @@ export function Form731(props: FormExportProps & { signatures?: Record<string, S
   );
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
-function stamp(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}Z`;
-}
+const stamp = (ms: number) => fmtDateTimeMs(ms);
 
 /** "D. Zindros" in the handwriting font over a faint Pig's Gotta Fly mark, with when it was signed. */
 export function Signature({ s, size = 4.6 }: { s: ShownSignature; size?: number }) {
