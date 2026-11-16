@@ -1,7 +1,7 @@
 // Keeps one failing part of a page (e.g. the map) from blanking the whole app.
 import { Component, type ReactNode } from 'react';
 import { isChunkLoadError, reloadForNewBuild } from './staleBuild';
-import { Loading } from './Loading';
+import { Loading } from '../ui/Loading';
 
 export class ErrorBoundary extends Component<{ children: ReactNode; label?: string }, { error: Error | null; reloading: boolean }> {
   static getDerivedStateFromError(error: Error) { return { error }; }
@@ -13,7 +13,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; label?: stri
   }
   override render() {
     // a stale chunk: the page is reloading onto the new build; never flash an error meanwhile
-    if (this.state.error && (this.state.reloading || isChunkLoadError(this.state.error))) return <Loading screen />;
+    if (this.state.error && (this.state.reloading || isChunkLoadError(this.state.error))) return <Loading variant="screen" />;
     if (this.state.error) {
       return (
         <div className="center-screen" role="alert">

@@ -3,13 +3,13 @@
 //
 // The session pilot is the 'pilot' entity (src/data/entities.ts): a profile change anywhere (this
 // page, another page, another tab) or a window focus refreshes it, so usePilot() is never stale.
-import { Loading } from './Loading';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, ApiRequestError } from '../data/api';
 import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/entities';
 import type { Pilot, SessionResponse } from '../shared';
 import { SessionContext, type SessionValue } from './session';
 import { SignIn } from './SignIn';
+import { Loading } from '../ui';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionResponse | null>(null);
@@ -57,7 +57,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   } : null), [session, signedIn, load]);
 
   if (error) return <div className="center-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><button onClick={load}>Try again</button></div></div>;
-  if (!session) return <Loading screen />;
+  if (!session) return <Loading variant="screen" />;
   if (!value) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

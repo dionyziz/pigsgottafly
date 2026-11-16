@@ -2,16 +2,16 @@
 // defaults (home → home route, default aircraft, taxi times, wind model, PIC on the manifest). When
 // the profile has no home aerodrome (or ?ask=1), the pilot is asked for the origin (and, optionally,
 // the destination) first; nothing is assumed (pilot correction #1). Either way the editor's Route
-// section shows both ends as fields.
+// section shows both ends as fields. Route points come from aerodromePoint (src/shared/aerodrome).
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
 import { usePilot } from '../../app/session';
 import { api } from '../../data/api';
-import { aerodromePoint as point, type FlightCreateRequest } from '../../shared';
-import { AerodromePicker, resolveAerodrome } from '../profile/AerodromePicker';
-import { EmptyState } from './ui';
-
+import { resolveAerodrome } from '../../data/ref';
+import { aerodromeName, aerodromePoint, type FlightCreateRequest } from '../../shared';
+import { errorMessage } from '../../shared/format';
+import { AerodromeTextInput, EmptyState, Field, Loading } from '../../ui';
 
 export function NewFlightPage() {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export function NewFlightPage() {
     setError(null);
     api.flights.create(req).then(
       (f) => navigate(`/flights/${f.id}`, { replace: true }),
-      (e) => { started.current = false; setError(String((e as Error).message || e)); },
+      (e) => { started.current = false; setError(errorMessage(e)); },
     );
   };
 
@@ -41,9 +41,11 @@ export function NewFlightPage() {
   if (!ask) {
     return error
       ? <Shell><EmptyState title="Could not create the flight" action={<div className="row"><Link to="/" className="btn">Back to flights</Link><button className="primary" onClick={() => create({})}>Try again</button></div>}>{error}</EmptyState></Shell>
-      : <div className="loading-screen">Creating flight…</div>;
+      : <Loading variant="screen" label="Creating flight…" />;
   }
 
+  // An unknown aerodrome says so under its field ("Not an aerodrome in the current AIP"); an
+  // empty destination means back to the origin.
   const ad = resolveAerodrome(from);
   const dest = to.trim() ? resolveAerodrome(to) : ad;
   const ok = !!ad && !!dest;
@@ -51,25 +53,21 @@ export function NewFlightPage() {
     <Shell>
       <div className="page-head"><h1>New flight</h1></div>
       <form className="card form-section" style={{ maxWidth: 520 }} data-testid="new-flight-form"
-        onSubmit={(e) => { e.preventDefault(); if (ad && dest) create({ route: [point(ad), point(dest)] }); }}>
-        <header>
-          <h2>Where does the flight go?</h2>
-          <p>{pilot.homeAerodrome ? 'Draw the rest of the route on the map. Both ends can be changed later in the editor.' : <>You have no home aerodrome in your <Link to="/profile">profile</Link> yet. Draw the rest of the route on the map; both ends can be changed later in the editor.</>}</p>
-        </header>
+        onSubmit={(e) => { e.preventDefault(); if (ad && dest) create({ route: [aerodromePoint(ad), aerodromePoint(dest)] }); }}>
         <div className="grid2">
-          <label className="field">Origin
-            <AerodromePicker name="from" value={from} onChange={setFrom} autoFocus />
-          </label>
-          <label className="field">Destination
-            <AerodromePicker name="to" value={to} onChange={setTo} placeholder={ad ? `${ad.icao || ad.id} (back to the origin)` : 'ICAO or name'} />
-          </label>
+          <Field label="Origin" req>
+            <AerodromeTextInput name="from" value={from} onChange={(t) => setFrom(t)} autoFocus required />
+          </Field>
+          <Field label="Destination">
+            <AerodromeTextInput name="to" value={to} onChange={(t) => setTo(t)} placeholder={ad ? `${aerodromeName(ad)} (back to the origin)` : 'ICAO or name'} />
+          </Field>
         </div>
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="row">
           <button type="button" className="ghost" onClick={() => create({ route: [] })}>Start with an empty map</button>
           <span className="spacer" />
           <Link to="/" className="btn ghost">Cancel</Link>
-          <button className="primary" type="submit" disabled={!ok}>Create flight</button>
+          <button className="primary" type="submit" disabled={!ok} data-testid="create-flight">Create flight</button>
         </div>
       </form>
     </Shell>

@@ -89,7 +89,8 @@ src/
                            AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
                            REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a),
                            resolveAerodrome(text), searchAerodromes(q)
-  app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context
+  app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context,
+                           AboutPage (/about: the one place the weather model and the data sources are named)
                            (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (design tokens, base
                            elements, shell, list tables, the print-sheet-page rule; no var(--token, fallback) anywhere)
   ui/                      ui.css: global component classes (button variants sm/icon/ghost.danger/danger-fill/linkish; hint,
@@ -105,7 +106,8 @@ src/
                            Shims until W6: lobby/ui, profile/AerodromePicker, editor/panels/ui (Icon/Chip/NumberInput),
                            hangar/fields (Field/Check/NumInput/Section/parseNum), app/Loading, app/XIcon
   features/
-    lobby/                 LobbyPage, NewFlightPage
+    lobby/                 LobbyPage (fixed header: h1 Flights, fixed-width tabs, New flight kept hidden in Trash),
+                           NewFlightPage (AerodromeTextInput status lines say why Create is disabled; aerodromePoint)
     profile/               ProfilePage (?welcome=1 = first-use onboarding)
     hangar/                HangarPage, AircraftPage
     passengers/            PassengersPage
