@@ -11,14 +11,44 @@ export const ARTIFACTS = path.join(ROOT, 'tests', 'e2e', 'artifacts');
 fs.mkdirSync(ARTIFACTS, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// No e2e test reaches the real Open-Meteo, aviationweather.gov or autorouter: the API server runs in
+// this process, whose fetch refuses those hosts (tests/setup/noExternalApis.ts), and every page
+// refuses them in the browser too (Page.init). startServer's close() fails the test if anything tried.
+const { externalCalls } = await import('../setup/noExternalApis.ts');
+export const EXTERNAL_HOSTS = ['*open-meteo.com*', '*aviationweather.gov*', '*autorouter.aero*'];
+
+/** Open-Meteo for the API server unless a test brings its own: always down (the app degrades). */
+export const offlineOpenMeteo = async () => new Response(JSON.stringify({ error: true, reason: 'offline in tests' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+
+/** aviationweather.gov for the API server unless a test brings its own: no reports (HTTP 204). */
+export const noReports = async () => new Response(null, { status: 204 });
+
+/** A fetch for the API server's Open-Meteo from a handler(url) -> {status, body} (as the browser mocks were). */
+export const openMeteoFetch = (handler) => async (input) => {
+  const out = handler(new URL(String(input)));
+  return new Response(JSON.stringify(out.body), { status: out.status || 200, headers: { 'Content-Type': 'application/json' } });
+};
+
 // Serves the built client (dist/: run `vite build` first; npm run test:e2e does) and the API on
 // in-memory PGlite. Run with tsx loaded (node --import tsx), since the server is TypeScript.
+// opts.openMeteo: { fetch } answers the server's Open-Meteo requests (default: offlineOpenMeteo);
+// opts.aviationWeather: { fetch } its METAR/TAF requests (default: no reports).
 export async function startServer(opts = {}) {
   const { createServer } = await import('../../server/server.ts');
-  const server = createServer({ db: 'memory://', ...opts });
-  await server.ready;
+  const server = createServer({
+    db: 'memory://', ...opts,
+    openMeteo: { fetch: offlineOpenMeteo, ...opts.openMeteo },
+    aviationWeather: { fetch: noReports, ...opts.aviationWeather },
+  });
+  const { db } = await server.ready;
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  return { url: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+  return {
+    url: `http://127.0.0.1:${server.address().port}`, db,
+    close: () => {
+      server.close();
+      if (externalCalls.length) throw new Error(`e2e called real external APIs: ${externalCalls.slice(0, 3).join(', ')}`);
+    },
+  };
 }
 
 function chromePath() {
@@ -74,6 +104,8 @@ export class Page {
     await this.send('Log.enable');
     this.on('Log.entryAdded', (p) => { if (/Content Security Policy/i.test(p.entry.text || '')) this.errors.push('csp: ' + p.entry.text); });
     this.on('Page.javascriptDialogOpening', () => this.send('Page.handleJavaScriptDialog', { accept: true }));
+    // the browser never calls the weather/NOTAM services itself (the API does): any attempt is a page error
+    for (const host of EXTERNAL_HOSTS) await this.intercept(host, (u) => { this.errors.push('external API called from the browser: ' + u.href); return { status: 503, body: { error: true, reason: 'offline in tests' } }; });
     await this.viewport(1600, 1300);
   }
   on(method, h) { if (!this.handlers.has(method)) this.handlers.set(method, []); this.handlers.get(method).push(h); }
@@ -189,10 +221,6 @@ export class Page {
     const re = new RegExp('^' + urlPattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
     this.routes.push({ re, handler, urlPattern });
     await this.send('Fetch.enable', { patterns: this.routes.map((r) => ({ urlPattern: r.urlPattern, requestStage: 'Request' })) });
-  }
-  // Intercept Open-Meteo and answer from `handler(url) -> {status, body}`.
-  async mockOpenMeteo(handler) {
-    await this.intercept('*api.open-meteo.com*', (u) => { this.requests.push(u.href); return handler(u); });
   }
   async close() { try { await fetch(`${this.base}/json/close/${this.id}`); } catch { /* ignore */ } this.ws.close(); }
 }

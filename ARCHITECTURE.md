@@ -35,6 +35,8 @@ src/
     operators.ts           Operator, OperatorItem (access, viaAircraft), OperatorSharing; isEmail
     declarations.ts        WbPerfContent (the W&B and performance sheets as sent to an operator), wbPerfContentOf
                            (normalization, both sides), wbPerfText (hashed: "changed since sent"), DeclarationsState
+    weatherGrid.ts         forecast contract of GET /api/weather/grid: variable sets (wind, hazard), model grid steps
+                           (ECMWF/GFS 0.25°, ICON-EU 0.0625°), nodeKey/pointKey, forecastAvailability, WeatherGridResponse
   calc/                    pure calculations (no I/O, no DOM)
     nav.ts                 port of v2 js/nav.js: geodesy, wind triangle, deviation, NOAA sunset, computeLeg, summarize
     wmm.ts                 World Magnetic Model WMM2025: magneticVariation(lat, lon, date, altFt), wmmField, wmmValid
@@ -65,13 +67,16 @@ src/
                            (list/get/create/update/remove), api.flights (list/get/create/update/trash/restore/copy/opened),
                            api.ref, api.weather.metar; ApiRequestError(status, auth, offline)
     flightStore.ts         offline-tolerant flight saving (port of v2 js/store.js): load(id), save(id, doc), onStatus
-    weather.ts             Open-Meteo (port of v2 js/weather.js): buildUrl, fetchPoints, sampleAt, sampleSurface,
-                           fetchRouteWeather, surfaceConditions, chooseSurface (METAR vs forecast), windProviderFromLegs()
+    weather.ts             Open-Meteo data (port of v2 js/weather.js): sampleAt, sampleSurface, fetchRouteWeather (winds
+                           at the model grid node nearest each leg midpoint, surface at the aerodromes), surfaceConditions,
+                           chooseSurface (METAR vs forecast), windProviderFromLegs()
+    weatherGrid.ts         fetchGrid: GET /api/weather/grid, cached in memory per location and model run (until the
+                           server's recheckMs), concurrent requests shared, only uncached locations asked for
     weatherMetar.ts        parseMetar, parseTaf, fetchMetarTaf (through GET /api/weather/metar)
     notams.ts              NOTAM briefing: fetchNotams (GET /api/flights/:id/notams), texts (validity, limits, decoded
                            subject), Q-line circle rings for the map, visibleNotams (relevant / show all)
-    hazardWeather.ts       Open-Meteo corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid cells cached one by
-                           one): fetchHazardWeather, computeRouteHazards (editor strip + map)
+    hazardWeather.ts       corridor samples for hazards (every ~10 NM, ±5 NM, 0.25° grid nodes through fetchGrid):
+                           fetchHazardWeather, computeRouteHazards (editor strip + map)
     atc.ts                 generateAtcList(AtcGenInput), atcInput(), regenerateAtcList()
     entityStore.ts         entity cache + invalidation bus (no React): keys pilot|passengers|aircraft|operators|waypoints|flights;
                            invalidate(keys) → refetch what is on screen + BroadcastChannel('pgf') to the other tabs;
@@ -201,21 +206,26 @@ api/
                            030_mail_log.ts (every e-mail sent for a pilot, for the sending caps),
                            031_mail_log_details.ts (the e-mail action log: recipient, subject, result, message id, error;
                            app mails without a pilot), 032_rate_limits.ts (token buckets; indexes for the upload sweep),
-                           040_app_errors.ts (app_errors, app_error_alerts; IF NOT EXISTS)
+                           040_app_errors.ts (app_errors, app_error_alerts; IF NOT EXISTS),
+                           044_weather_cache.ts (weather_cache: Open-Meteo data per model, endpoint, run, set, location and
+                           UTC day, with expiry; weather_budget: Open-Meteo calls per UTC day)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form; HCAA_DAILY_CAP
                            (default 200) for all pilots together; signing links 60/24 h and 20 per flight
   _lib/limits.ts           per-pilot counts (aircraft 50, operators 20, flights 2000, passengers 500, waypoints 1000, files
                            per parent 50), STORAGE_QUOTA_MB (300) over owned files, 3 unfinished uploads, the 1 h sweep,
                            magic bytes of uploads
-  _lib/rateLimit.ts        DB token buckets (429): login and client error reports per IP, METAR, NOTAMs, ref, share creation (30/day) per pilot
+  _lib/rateLimit.ts        DB token buckets (429): login and client error reports per IP, METAR, weather grid, NOTAMs, ref, share
+                           creation (30/day) per pilot; takeTokens(cost) for weighted buckets (weatherFetch: Open-Meteo calls per pilot)
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
+                           weatherGrid.ts (the Open-Meteo proxy and shared forecast cache),
                            attachments.ts, files.ts (fileRoutes: aircraft photo/documents and operator documents, chunked),
                            shares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts,
                            monitoring.ts (health, client-errors, admin/errors)
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
 server/dev.ts              dev server: API + Vite middleware with hot reload (npm run dev)
+server/syntheticOpenMeteo.ts  generated forecasts for local runs (no Open-Meteo calls unless OPEN_METEO_LIVE=1)
 tools/build_ref.ts         data/aip.js, vfr.js, sun.js, tools/runways.json, tools/ad_hours.json, tools/enr5_areas.json
                            → src/data/ref/*.json + migrations 002, 005, 012, 017
 tools/parse_enr5.ts        eAIP ENR 5.1 (P/R/D, LGC101), 5.2 (TSAs), 5.3.1 (local flying areas; ENR 5.5 refers to it) text
@@ -235,7 +245,10 @@ data/                      aip.js, vfr.js, sun.js (made by the Python tools from
 tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calculator cases), data/, exports/, screens/
 src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
 tests/api/                 vitest: API, auth, migrations (PGlite in memory)
-tests/e2e/                 harness.mjs (CDP), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs, sharing.e2e.test.mjs,
+tests/setup/               noExternalApis.ts: the test process's fetch refuses Open-Meteo, aviationweather.gov and autorouter
+                           (vitest setupFiles and the e2e harness; startServer's close() fails the test if anything tried)
+tests/helpers/             openMeteoGrid.ts: fake Open-Meteo from recorded ECMWF responses + gridApi (the real route on PGlite)
+tests/e2e/                 harness.mjs (CDP; API server with mocked Open-Meteo/METAR upstreams, pages refuse external APIs), oracle.mjs (independent navlog reference), png.mjs, firefox.mjs, sharing.e2e.test.mjs,
                            smoke.e2e.test.mjs, lists.e2e.test.mjs (lobby and account lists), freshness.e2e.test.mjs
                            (two tabs: a profile edit / flight rename in one shows in the other),
                            flight.e2e.test.mjs (whole workflow: map drawing/snapping, panels, navlog vs oracle,
@@ -261,7 +274,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 2. **Lobby** calls `GET /api/flights`. "New flight" goes to `/flights/new`, which calls `POST /api/flights {}`; the server fills in the profile defaults: home → home route, taxi times, default aircraft, wind model, PIC on the manifest.
 3. **Editor**: `flightStore.load(id)` returns the server copy, or the local copy while offline. `EditorProvider` holds the `FlightDoc`. Every `update(fn)` is an undo step, unless calls share a `coalesce` key within 1.5 s; it also recomputes the summary and calls `flightStore.save()`, which saves to localStorage at once and sends a debounced `PUT {flight, version}`. On 409 our copy wins on top of the server version (last writer wins, as in v2). Derived values come from the context: `legs` (buildLegs), `altitudeDefaults`, `altitudesFt`.
    Derived values the lobby shows (navlog ETE and fuel) are written with `setDerived()`: saved, but no undo step.
-4. **Calculations** run on the client (`src/calc`), wired in `panels/calc.tsx` (`useFlightCalc`). Weather comes from Open-Meteo directly from the browser (`src/data/weather.ts`). METAR/TAF come through `GET /api/weather/metar`; a METAR is used for performance when it is at most 90 min old and within 90 min of the take-off/landing time, otherwise the forecast.
+4. **Calculations** run on the client (`src/calc`), wired in `panels/calc.tsx` (`useFlightCalc`). Forecasts come from Open-Meteo through `GET /api/weather/grid` (`src/data/weather.ts`, `weatherGrid.ts`; the browser never calls Open-Meteo, and the CSP does not allow it). METAR/TAF come through `GET /api/weather/metar`; a METAR is used for performance when it is at most 90 min old and within 90 min of the take-off/landing time, otherwise the forecast.
 5. **Exports**: `/flights/:id/export/:kind` loads the flight and renders print-ready A4 pages (`@media print`, named `@page`s: navlog landscape, Form 731 landscape, the others portrait). The editor, exports and waypoints routes are lazy-loaded chunks (MapLibre is only fetched with the map).
 
 ## API routes (all JSON, under /api)
@@ -313,6 +326,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | POST | /flights/:id/forms/gendec/handled | `{handled: true \| false \| null}`: the flight's override (`options.genDecHandled`; a PUT of the flight never changes it). |
 | GET | /ref/airac, /ref/bundle, /ref/{aerodromes,runways,airspaces,fis,vfr-points,vfr-routes,atc-units,areas} | Current AIRAC, read-only. /ref/bundle has an ETag by AIRAC (304 on If-None-Match) and `Cache-Control: private, max-age=86400`. |
 | GET | /weather/metar?ids=… | METAR + TAF from aviationweather.gov (≤ 6 ICAO ids; the client splits longer lists), cached per station; stale reports up to 3 h when upstream fails. |
+| GET | /weather/grid?kind=wind\|hazard&model=&from=&to=&locs=k;k…[&fresh=1] | `WeatherGridResponse` (src/shared/weatherGrid.ts): hourly Open-Meteo data per grid node (`38.25,23.75`, on the model's grid) or aerodrome (`p:37.936,23.945`, winds only, ≤ 12), ≤ 100 locations, ≤ 2 days. Served from `weather_cache` (shared by every pilot) for the model's latest run (meta.json, checked again once the next run is due; `fresh=1` at most once a minute); missing locations fetched in batched multi-location requests. Each Open-Meteo call is weighted as Open-Meteo counts it and taken from `OPEN_METEO_DAILY_BUDGET` (default 8000/UTC day, all pilots) and the pilot's `weatherFetch` bucket (2000/day); over either, or when Open-Meteo refuses, the location is null and `message` says why (never a 5xx). Rate-limited per pilot (200/10 min). |
 
 Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's record answers 404. References between owned rows are composite `(id, pilot_id)` foreign keys (flight_crew → passengers), so the database itself prevents cross-pilot references. `tests/api/api.test.ts` checks isolation for every entity.
 
@@ -350,7 +364,9 @@ The W&B and performance sheets are computed in the browser (weather, models), so
 
 The signed-in pilot is one copy for the app (AuthGate): `setPilot` is posted to the other tabs (BroadcastChannel) and a tab re-reads `/api/me` when it comes to the foreground, so details fixed in an export's tab show everywhere at once. Exports read it with `usePilot()`, never their own `GET /me`.
 
-Abuse limits (env, optional): `HCAA_DAILY_CAP` (forms to the HCAA per 24 h, all pilots; default 200), `STORAGE_QUOTA_MB` (per pilot; default 300).
+Abuse limits (env, optional): `HCAA_DAILY_CAP` (forms to the HCAA per 24 h, all pilots; default 200), `STORAGE_QUOTA_MB` (per pilot; default 300), `OPEN_METEO_DAILY_BUDGET` (Open-Meteo calls per UTC day, all pilots; default 8000).
+
+Forecasts: local runs (`npm run dev`, `npm start`, the tests) never call Open-Meteo: they get generated data (`server/syntheticOpenMeteo.ts`, the source line says "synthetic data") unless `OPEN_METEO_LIVE=1`; tests inject a fake built from recorded responses (`tests/helpers/openMeteoGrid.ts`). `tests/unit/data/weatherEquivalence.test.ts` checks that the proxy gives the same winds, temperatures, navlog, surface conditions and hazards as the old browser-side fetching (frozen in `tests/unit/data/legacy/weatherBefore.ts`).
 
 With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`, `ADMIN_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 

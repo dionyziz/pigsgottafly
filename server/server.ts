@@ -8,6 +8,7 @@
 //   Local mode against a postgres:// database is refused (it would create an open 'local' pilot in
 //   whatever database DATABASE_URL names, e.g. production from .env.local) unless LOCAL_MODE_ON_POSTGRES=1.
 //   Built-client responses carry the same security headers as production (vercel.json).
+//   Forecasts are generated data (server/syntheticOpenMeteo.ts) unless OPEN_METEO_LIVE=1.
 //   (PORT=8765, HOST=127.0.0.1)
 import http from 'node:http';
 import fs from 'node:fs';
@@ -16,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { openDb, type Db } from '../api/_lib/db.js';
 import { configFromEnv, createApi } from '../api/_lib/app.js';
 import type { ApiConfig } from '../api/_lib/http.js';
+import { syntheticOpenMeteo } from './syntheticOpenMeteo.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TYPES: Record<string, string> = {
@@ -82,7 +84,9 @@ export interface ServerOptions extends Partial<ApiConfig> {
 
 export function createServer({ db: where = path.join(ROOT, 'server', 'pgdata'), client, allowLocalOnPostgres = false, ...opts }: ServerOptions = {}) {
   checkLocalMode(where, opts.googleClientId, allowLocalOnPostgres); // before openDb: no migrations, no 'local' pilot
-  const ready: Promise<{ db: Db; api: Handler }> = openDb(where).then((db) => ({ db, api: createApi({ db, ...opts }) }));
+  // Local runs never call Open-Meteo unless asked to (OPEN_METEO_LIVE=1): generated data instead.
+  const openMeteo = opts.openMeteo?.fetch || process.env.OPEN_METEO_LIVE === '1' ? opts.openMeteo : { ...opts.openMeteo, fetch: syntheticOpenMeteo(), synthetic: true };
+  const ready: Promise<{ db: Db; api: Handler }> = openDb(where).then((db) => ({ db, api: createApi({ db, ...opts, openMeteo }) }));
   const serveClient = client || staticHandler(path.join(ROOT, 'dist'));
   const server = http.createServer(async (req, res) => {
     try {

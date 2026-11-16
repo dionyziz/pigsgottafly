@@ -41,7 +41,6 @@ before(async () => {
   page = await browser.newPage();
   await page.viewport(1500, 950);
   // no network: forecasts and METARs unavailable (the map does not need them)
-  await page.intercept('*open-meteo.com*', () => ({ status: 503, body: { error: true, reason: 'offline in tests' } }));
   await page.intercept('*/api/weather/metar*', () => ({ body: { stations: {}, fetched: Date.now() } }));
 });
 after(async () => { await page?.close(); await browser?.close(); await server?.close(); });

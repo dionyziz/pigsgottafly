@@ -1,5 +1,6 @@
 // End-to-end test of the whole flight workflow, in headless Chrome against the local server
-// (in-memory PGlite) with Open-Meteo and the METAR proxy answered by mocks:
+// (in-memory PGlite) with Open-Meteo (behind the API's GET /api/weather/grid) and the METAR proxy
+// answered by mocks:
 //   1. create a flight from the lobby;
 //   2. draw a route on the map by clicking near LGTT, a VFR point and an aerodrome (snapping),
 //      add a custom named waypoint, edit an altitude on the map;
@@ -12,11 +13,13 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, startServer, ROOT } from './harness.mjs';
+import { launch, startServer, openMeteoFetch, ROOT } from './harness.mjs';
 import * as O from './oracle.mjs';
 import { fleetSeed } from '../../tools/build_seed.ts';
 
 let server, browser, page;
+/** Open-Meteo requests the API made (the browser makes none). */
+const openMeteoCalls = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const api = async (method, p, body) => {
   const r = await fetch(`${server.url}/api/${p}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -53,16 +56,19 @@ const METARS = {
 };
 
 before(async () => {
-  server = await startServer();
+  const forecast = O.openMeteoResponder(windFn);
+  server = await startServer({
+    openMeteo: {
+      fetch: openMeteoFetch((u) => {
+        openMeteoCalls.push(u.href);
+        if (u.pathname.endsWith('/meta.json')) return { body: { last_run_initialisation_time: Math.floor(now.getTime() / 21600000) * 21600, last_run_availability_time: Math.floor(now.getTime() / 21600000) * 21600 + 7200 } };
+        return forecast(u);
+      }),
+    },
+  });
   browser = await launch();
   page = await browser.newPage();
   await page.viewport(1600, 1000);
-  const forecast = O.openMeteoResponder(windFn);
-  await page.intercept('*open-meteo.com*', (u) => {
-    page.requests.push(u.href);
-    if (u.pathname.endsWith('/meta.json')) return { body: { last_run_initialisation_time: Math.floor(now.getTime() / 21600000) * 21600, last_run_availability_time: Math.floor(now.getTime() / 21600000) * 21600 + 7200 } };
-    return forecast(u);
-  });
   await page.intercept('*/api/weather/metar*', (u) => {
     const ids = (u.searchParams.get('ids') || '').split(',');
     const stations = {};
@@ -518,4 +524,6 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await shot('7-aircraft');
 
   assert.deepEqual(page.errors, []);
+  // forecasts came through the API (GET /api/weather/grid), which asked Open-Meteo for grid nodes
+  assert.ok(openMeteoCalls.some((u) => u.includes("/v1/forecast")), "the API fetched the forecast");
 });

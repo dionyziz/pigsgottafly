@@ -1,11 +1,12 @@
-// Winds/temperature aloft and surface conditions from Open-Meteo (free, no key, CORS open), ported
-// from the v2 js/weather.js: values interpolated in height (geopotential) and time.
+// Winds/temperature aloft and surface conditions from Open-Meteo, through our server (GET
+// /api/weather/grid, src/data/weatherGrid.ts), ported from the v2 js/weather.js: values interpolated
+// in height (geopotential) and time.
 //
-//   - buildUrl / fetchPoints: one request for many points (pressure levels 1000…600 hPa + surface).
 //   - sampleAt: wind (u/v interpolated) and temperature at altitude ft MSL and time.
 //   - sampleSurface / surfaceConditions: 2 m temperature, dewpoint, MSL pressure (≈ QNH), 10 m wind.
-//   - fetchRouteWeather: everything a flight needs in one call (leg midpoints + departure +
-//     destination), with the source recorded (provider, model, model run, fetch time, coverage).
+//   - fetchRouteWeather: everything a flight needs (winds aloft at the model grid node nearest each
+//     leg midpoint, surface conditions at the departure, stops and destination), with the source
+//     recorded (provider, model, model run, fetch time, coverage).
 //   - chooseSurface: METAR (src/data/weatherMetar.ts) when it is recent and close to the time of
 //     interest, otherwise the forecast.
 //
@@ -13,47 +14,20 @@
 import type { IsoDate, LatLon, WindModel } from '../shared';
 import { WIND_MODELS } from '../shared';
 import { isoDay } from '../shared/date';
+import {
+  DEFAULT_MODEL, GRID_STEP_DEG, LEVELS, forecastAvailability, nodeKey, pointKey, snapToGrid,
+  type Hourly, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation,
+} from '../shared/weatherGrid';
 import type { WindProvider, WindSample } from '../calc';
 import { qnhFromStationPressure } from '../calc/performance';
 import type { MetarWind, ParsedMetar } from './weatherMetar';
+import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
 
-export const LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600] as const;
-export const SURFACE = ['pressure_msl', 'surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high'] as const;
-export const DEFAULT_MODEL: WindModel = 'ecmwf_ifs025';
+export {
+  DEFAULT_MODEL, FORECAST_PAST_DAYS, LEVELS, MODEL_HORIZON_DAYS, SURFACE, forecastAvailability,
+  type ForecastAvailability, type Hourly, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation,
+} from '../shared/weatherGrid';
 export const MODEL_LABELS = WIND_MODELS;
-
-/** One location's hourly arrays as returned by Open-Meteo (keys like 'wind_speed_850hPa'). */
-export type Hourly = { time: string[] } & Record<string, (number | null)[] | string[]>;
-export interface OpenMeteoLocation {
-  hourly: Hourly;
-  /** Grid point actually used and its elevation (m), as returned. */
-  latitude?: number;
-  longitude?: number;
-  elevation?: number;
-}
-
-export type OpenMeteoEndpoint = 'forecast' | 'historical';
-const HOSTS: Record<OpenMeteoEndpoint, string> = {
-  forecast: 'https://api.open-meteo.com/v1/forecast',
-  historical: 'https://historical-forecast-api.open-meteo.com/v1/forecast',
-};
-
-export function buildUrl(points: { lat: number; lon: number }[], dateFrom: string, dateTo: string, model: WindModel, endpoint: OpenMeteoEndpoint = 'forecast'): string {
-  const vars: string[] = [];
-  for (const l of LEVELS) vars.push(`wind_speed_${l}hPa`, `wind_direction_${l}hPa`, `temperature_${l}hPa`, `geopotential_height_${l}hPa`);
-  vars.push(...SURFACE);
-  const p = new URLSearchParams({
-    latitude: points.map((x) => x.lat.toFixed(4)).join(','),
-    longitude: points.map((x) => x.lon.toFixed(4)).join(','),
-    hourly: vars.join(','),
-    wind_speed_unit: 'kn',
-    timezone: 'GMT',
-    start_date: dateFrom,
-    end_date: dateTo,
-    models: model || DEFAULT_MODEL,
-  });
-  return `${HOSTS[endpoint]}?${p}`;
-}
 
 interface Level { z: number; u: number; v: number; temp: number }
 const val = (h: Hourly, k: string, i: number) => (h[k] as (number | null)[] | undefined)?.[i];
@@ -206,35 +180,7 @@ export function fmtSky(s: SurfaceSample | null): string {
 
 // ---- fetching -----------------------------------------------------------------------------------
 
-/** Responses are reused for this long (models update every 6 h; the pilot can force a refresh). */
-export const FORECAST_TTL_MS = 30 * 60 * 1000;
-const cache = new Map<string, { at: number; p: Promise<OpenMeteoLocation[]> }>();
-
-/**
- * Fetches hourly data for the points (one response entry per point, same order). Concurrent and
- * repeated calls for the same URL share one request for FORECAST_TTL_MS. Rejects on HTTP errors with
- * Open-Meteo's reason (e.g. "Parameter 'start_date' is out of allowed range …").
- */
-export async function fetchPoints(
-  points: { lat: number; lon: number }[], dateFrom: string, dateTo: string, model: WindModel,
-  opts: { endpoint?: OpenMeteoEndpoint; fetch?: typeof fetch; now?: () => number } = {},
-): Promise<OpenMeteoLocation[]> {
-  const url = buildUrl(points, dateFrom, dateTo, model, opts.endpoint);
-  const now = (opts.now || Date.now)();
-  const hit = cache.get(url);
-  if (hit && now - hit.at < FORECAST_TTL_MS) return hit.p;
-  const doFetch = opts.fetch || fetch;
-  const p = (async () => {
-    const res = await doFetch(url);
-    const body = await res.json().catch(() => null);
-    if (!res.ok || !body || body.error) throw new Error((body && body.reason) || `Open-Meteo HTTP ${res.status}`);
-    return (Array.isArray(body) ? body : [body]) as OpenMeteoLocation[];
-  })();
-  cache.set(url, { at: now, p });
-  p.catch(() => { if (cache.get(url)?.p === p) cache.delete(url); });
-  return p;
-}
-export const clearCache = () => { cache.clear(); runCache.clear(); };
+export const clearCache = () => clearGridCache();
 
 /** A WindProvider over per-leg midpoint data: perLeg[i] is the response for leg i's midpoint. */
 export function windProviderFromLegs(perLeg: (OpenMeteoLocation | null)[]): WindProvider {
@@ -242,66 +188,6 @@ export function windProviderFromLegs(perLeg: (OpenMeteoLocation | null)[]): Wind
     const loc = perLeg[legIndex];
     return loc && loc.hourly && isFinite(altFt) && isFinite(timeMs) ? sampleAt(loc.hourly, altFt, timeMs) : null;
   };
-}
-
-// ---- availability and model runs ------------------------------------------------------------------
-
-/** Forecast length of each model on Open-Meteo, days after today (ICON global/EU ~7.5 days). */
-export const MODEL_HORIZON_DAYS: Record<WindModel, number> = { ecmwf_ifs025: 15, gfs_seamless: 16, icon_seamless: 7, best_match: 16 };
-/** The forecast endpoint serves this many past days; older dates go to the historical-forecast API. */
-export const FORECAST_PAST_DAYS = 92;
-
-const DAY = 86400000;
-const dayMs = (d: IsoDate) => Date.parse(d + 'T00:00:00Z');
-
-export type ForecastAvailability =
-  | { kind: 'forecast' | 'historical'; endpoint: OpenMeteoEndpoint; lastDate: IsoDate }
-  | { kind: 'too-far'; availableFrom: IsoDate; lastDate: IsoDate }
-  | { kind: 'invalid' };
-
-/** Whether winds can be had for a flight date with this model, and from which endpoint. */
-export function forecastAvailability(date: IsoDate, model: WindModel, nowMs: number = Date.now()): ForecastAvailability {
-  const d = dayMs(date);
-  if (!isFinite(d)) return { kind: 'invalid' };
-  const today = dayMs(isoDay(nowMs));
-  const horizon = MODEL_HORIZON_DAYS[model] ?? 15;
-  const last = today + horizon * DAY;
-  if (d > last) return { kind: 'too-far', availableFrom: isoDay(d - horizon * DAY), lastDate: isoDay(last) };
-  if (d < today - FORECAST_PAST_DAYS * DAY) return { kind: 'historical', endpoint: 'historical', lastDate: isoDay(last) };
-  return { kind: 'forecast', endpoint: 'forecast', lastDate: isoDay(last) };
-}
-
-/** Open-Meteo metadata ids of the model actually used over Greece (seamless → the regional run). */
-const META_IDS: Partial<Record<WindModel, string>> = { ecmwf_ifs025: 'ecmwf_ifs025', gfs_seamless: 'ncep_gfs025', icon_seamless: 'dwd_icon_eu' };
-export interface ModelRun {
-  /** Initialisation (analysis) time of the latest run, epoch ms. */
-  runMs: number;
-  /** When that run became available on Open-Meteo, epoch ms. */
-  availableMs: number | null;
-}
-const runCache = new Map<string, { at: number; p: Promise<ModelRun | null> }>();
-
-/** Latest model run (best effort: null for best_match or on any failure). */
-export function fetchModelRun(model: WindModel, opts: { fetch?: typeof fetch; now?: () => number } = {}): Promise<ModelRun | null> {
-  const id = META_IDS[model];
-  if (!id) return Promise.resolve(null);
-  const now = (opts.now || Date.now)();
-  const hit = runCache.get(id);
-  if (hit && now - hit.at < FORECAST_TTL_MS) return hit.p;
-  const doFetch = opts.fetch || fetch;
-  const p = (async (): Promise<ModelRun | null> => {
-    try {
-      const res = await doFetch(`https://api.open-meteo.com/data/${id}/static/meta.json`);
-      if (!res.ok) return null;
-      const m = await res.json();
-      const init = Number(m?.last_run_initialisation_time), avail = Number(m?.last_run_availability_time);
-      return isFinite(init) && init > 0 ? { runMs: init * 1000, availableMs: isFinite(avail) && avail > 0 ? avail * 1000 : null } : null;
-    } catch {
-      return null;
-    }
-  })();
-  runCache.set(id, { at: now, p });
-  return p;
 }
 
 // ---- route weather --------------------------------------------------------------------------------
@@ -318,20 +204,22 @@ export interface ForecastSource {
   /** Hours covered by the data, epoch ms. */
   coverFromMs: number | null;
   coverToMs: number | null;
+  /** Local runs: generated data (server/syntheticOpenMeteo.ts). */
+  synthetic?: boolean;
 }
 
 export interface RouteWeatherRequest {
   date: IsoDate;
   model: WindModel | null | undefined;
-  /** One point per leg (its midpoint). */
+  /** One point per leg (its midpoint): winds from the model grid node nearest to it. */
   legMidpoints: LatLon[];
   departure: LatLon | null;
   destination: LatLon | null;
   /** Intermediate full-stop aerodromes (surface conditions for their landing and take-off). */
   stops?: LatLon[];
-  /** Ignore the cache (the pilot's "refresh winds"). */
+  /** Ask the server again (the pilot's "refresh winds"). */
   force?: boolean;
-  fetch?: typeof fetch;
+  get?: GridGet;
   now?: () => number;
 }
 
@@ -357,15 +245,23 @@ export function describeSource(s: ForecastSource): string {
   if (s.endpoint === 'historical') parts.push('archived forecast');
   if (s.run) parts.push(`run ${runLabel(s.run.runMs)}`);
   parts.push(`fetched ${hhmmZ(s.fetchedMs)}`);
+  if (s.synthetic) parts.push('synthetic data');
   return parts.join(', ');
 }
 
 const empty = (status: RouteWeather['status'], message: string, n: number): RouteWeather =>
   ({ status, message, legs: Array(n).fill(null), departure: null, destination: null, stops: [], source: null });
 
+const DAY = 86400000;
+const dayMs = (d: IsoDate) => Date.parse(d + 'T00:00:00Z');
+
+/** The model grid node whose data stands for a point's winds aloft (Open-Meteo answers a point with its nearest node). */
+export const windNode = (p: LatLon, model: WindModel): LatLon => snapToGrid(p, GRID_STEP_DEG[model] ?? 0.0625);
+
 /**
- * Winds aloft at every leg midpoint plus surface conditions at departure and destination, for the
- * flight date and the next day (flights past midnight), in one Open-Meteo request. Never rejects.
+ * Winds aloft at every leg (the model grid node nearest its midpoint) plus surface conditions at the
+ * departure, stops and destination, for the flight date and the next day (flights past midnight).
+ * Never rejects.
  */
 export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<RouteWeather> {
   const n = req.legMidpoints.length;
@@ -375,28 +271,30 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
   const av = forecastAvailability(req.date, model, now());
   if (av.kind === 'invalid') return empty('idle', 'No flight date', n);
   if (av.kind === 'too-far') return empty('unavailable', `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}; winds for ${req.date} from ${av.availableFrom}`, n);
-  const points: LatLon[] = [...req.legMidpoints];
-  const depIdx = req.departure ? points.push(req.departure) - 1 : -1;
-  const destIdx = req.destination ? points.push(req.destination) - 1 : -1;
-  const stopIdx = (req.stops ?? []).map((p) => points.push(p) - 1);
+  const legKeys = req.legMidpoints.map((m) => nodeKey(windNode(m, model)));
+  const depKey = req.departure ? pointKey(req.departure) : null;
+  const destKey = req.destination ? pointKey(req.destination) : null;
+  const stopKeys = (req.stops ?? []).map((p) => pointKey(p));
+  const order = [...legKeys, depKey, destKey, ...stopKeys].filter((k): k is string => !!k);
   const next = isoDay(dayMs(req.date) + DAY);
   const d1 = next <= av.lastDate ? next : req.date;
-  if (req.force) for (const k of [...cache.keys()]) if (k.includes(`start_date=${req.date}`)) cache.delete(k);
-  const opts = { endpoint: av.endpoint, fetch: req.fetch, now };
   try {
-    const runP = av.endpoint === 'forecast' ? fetchModelRun(model, { fetch: req.fetch, now }) : Promise.resolve(null);
-    // fall back to the flight date alone at the edge of the range
-    const raw = await fetchPoints(points, req.date, d1, model, opts).catch((e) => (d1 !== req.date ? fetchPoints(points, req.date, req.date, model, opts) : Promise.reject(e)));
-    const run = await runP;
-    const at = (i: number) => (i >= 0 && raw[i] && raw[i].hourly ? raw[i] : null);
-    const ts = raw[0]?.hourly?.time ? times(raw[0].hourly) : [];
+    const r = await fetchGrid({ kind: 'wind', model, from: req.date, to: d1, locs: order, force: req.force, get: req.get, now });
+    const at = (k: string | null) => (k ? r.locations.get(k) ?? null : null);
+    if (order.every((k) => !at(k))) return empty('error', `Winds unavailable: ${r.message || 'no data'}`, n);
+    const legs = legKeys.map(at);
+    const firstLoc = at(order[0]);
+    const ts = firstLoc?.hourly?.time ? times(firstLoc.hourly) : [];
+    const endpoint = r.endpoint ?? av.endpoint;
     const source: ForecastSource = {
-      provider: 'Open-Meteo', model, modelLabel: MODEL_LABELS[model] || model, endpoint: av.endpoint, run,
+      provider: 'Open-Meteo', model, modelLabel: MODEL_LABELS[model] || model, endpoint, run: endpoint === 'forecast' ? r.run : null,
       fetchedMs: now(), coverFromMs: ts.length ? ts[0] : null, coverToMs: ts.length ? ts[ts.length - 1] : null,
+      ...(r.synthetic ? { synthetic: true } : {}),
     };
+    const gaps = legs.some((l) => !l) && r.message ? ` (some legs without winds: ${r.message})` : '';
     return {
-      status: 'ok', message: describeSource(source),
-      legs: req.legMidpoints.map((_, i) => at(i)), departure: at(depIdx), destination: at(destIdx), stops: stopIdx.map(at), source,
+      status: 'ok', message: describeSource(source) + gaps,
+      legs, departure: at(depKey), destination: at(destKey), stops: stopKeys.map(at), source,
     };
   } catch (e) {
     return empty('error', `Winds unavailable: ${String((e as Error)?.message || e)}`, n);

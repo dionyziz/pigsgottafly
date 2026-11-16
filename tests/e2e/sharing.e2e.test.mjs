@@ -4,15 +4,12 @@
 // Local mode has one pilot ('local'); the other pilot is written straight into the database.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { launch } from './harness.mjs';
+import { launch, startServer } from './harness.mjs';
 
 let server, db, url, browser, page;
 before(async () => {
-  const { createServer } = await import('../../server/server.ts');
-  server = createServer({ db: 'memory://' });
-  ({ db } = await server.ready);
-  await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  url = `http://127.0.0.1:${server.address().port}`;
+  server = await startServer();
+  ({ db, url } = server);
   browser = await launch();
   page = await browser.newPage();
 });

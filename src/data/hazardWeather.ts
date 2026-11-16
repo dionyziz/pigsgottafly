@@ -1,29 +1,26 @@
 // Model data for the weather hazards along the route (src/calc/hazards.ts): weather code, CAPE,
 // visibility, low cloud, 2 m temperature/dewpoint and cloud cover + height of each pressure level,
-// from Open-Meteo (the flight's model; ECMWF IFS by default) at corridor points.
+// from Open-Meteo (the flight's model; ECMWF IFS by default) at corridor points, through our server
+// (GET /api/weather/grid, src/data/weatherGrid.ts).
 //
 // Corridor: every ~10 NM along each leg and ±5 NM either side. Points are snapped to the 0.25°
-// model grid and de-duplicated, and each grid cell is cached on its own (per model and date), so
-// editing the route only fetches the cells that are new.
+// model grid and de-duplicated; each grid node is cached on its own (per model run, here and on
+// the server for every pilot), so editing the route only fetches the nodes that are new.
 import type { IsoDate, LatLon, WindModel } from '../shared';
 import type { CorridorSeries, Hazard, HazardSample, NavlogResult } from '../calc';
 import { aerodromeModelHazards, legHazards, reportHazards, tafHazardContent } from '../calc';
 import type { StationReports } from './weatherMetar';
 import { isoDay } from '../shared/date';
-import { DEFAULT_MODEL, LEVELS, METAR_MAX_AGE_MS, METAR_USE_WINDOW_MS, MODEL_LABELS, describeSource, fetchModelRun, forecastAvailability, type ForecastSource, type OpenMeteoEndpoint, type OpenMeteoLocation } from './weather';
+import { HAZARD_STEP_DEG, nodeKey } from '../shared/weatherGrid';
+import { DEFAULT_MODEL, LEVELS, METAR_MAX_AGE_MS, METAR_USE_WINDOW_MS, MODEL_LABELS, describeSource, forecastAvailability, type ForecastSource, type OpenMeteoLocation } from './weather';
+import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
 
-export const HAZARD_SURFACE = ['weather_code', 'cape', 'visibility', 'cloud_cover_low', 'temperature_2m', 'dew_point_2m'] as const;
+export { HAZARD_SURFACE } from '../shared/weatherGrid';
 export const CORRIDOR_STEP_NM = 10;
 export const CORRIDOR_HALF_WIDTH_NM = 5;
-export const GRID_DEG = 0.25;
-/** At most this many grid cells per request (URL length); more are fetched in several requests. */
-const CELLS_PER_REQUEST = 80;
-const HOSTS: Record<OpenMeteoEndpoint, string> = {
-  forecast: 'https://api.open-meteo.com/v1/forecast',
-  historical: 'https://historical-forecast-api.open-meteo.com/v1/forecast',
-};
-const TTL_MS = 30 * 60 * 1000;
+export const GRID_DEG = HAZARD_STEP_DEG;
 const DAY = 86400000;
+export const clearHazardCache = () => clearGridCache();
 
 export interface GridCell { key: string; lat: number; lon: number }
 const snap = (x: number) => Math.round(x / GRID_DEG) * GRID_DEG;
@@ -54,21 +51,6 @@ export function legCorridor(from: LatLon, to: LatLon, distNm: number): { spacing
   return { spacingFrac: 1 / n, points };
 }
 
-export function buildHazardUrl(cells: { lat: number; lon: number }[], dateFrom: string, dateTo: string, model: WindModel, endpoint: OpenMeteoEndpoint = 'forecast'): string {
-  const vars: string[] = [...HAZARD_SURFACE];
-  for (const l of LEVELS) vars.push(`cloud_cover_${l}hPa`, `geopotential_height_${l}hPa`);
-  const p = new URLSearchParams({
-    latitude: cells.map((x) => x.lat.toFixed(2)).join(','),
-    longitude: cells.map((x) => x.lon.toFixed(2)).join(','),
-    hourly: vars.join(','),
-    timezone: 'GMT',
-    start_date: dateFrom,
-    end_date: dateTo,
-    models: model || DEFAULT_MODEL,
-  });
-  return `${HOSTS[endpoint]}?${p}`;
-}
-
 const num = (a: unknown, i: number): number | null => {
   const v = Array.isArray(a) ? a[i] : null;
   return typeof v === 'number' && isFinite(v) ? v : null;
@@ -93,30 +75,12 @@ export function hazardSeries(loc: OpenMeteoLocation | null): HazardSample[] {
   });
 }
 
-const cellCache = new Map<string, { at: number; p: Promise<HazardSample[] | null> }>();
-export const clearHazardCache = () => cellCache.clear();
-
-async function fetchCells(cells: GridCell[], date: IsoDate, d1: IsoDate, model: WindModel, endpoint: OpenMeteoEndpoint, doFetch: typeof fetch, now: number, force: boolean): Promise<Map<string, HazardSample[] | null>> {
-  const ck = (c: GridCell) => `${model}|${endpoint}|${date}|${d1}|${c.key}`;
-  const missing = cells.filter((c) => { const hit = cellCache.get(ck(c)); return force || !hit || now - hit.at >= TTL_MS; });
-  for (let i = 0; i < missing.length; i += CELLS_PER_REQUEST) {
-    const chunk = missing.slice(i, i + CELLS_PER_REQUEST);
-    const all = (async () => {
-      const res = await doFetch(buildHazardUrl(chunk, date, d1, model, endpoint));
-      const body = await res.json().catch(() => null);
-      if (!res.ok || !body || body.error) throw new Error((body && body.reason) || `Open-Meteo HTTP ${res.status}`);
-      return (Array.isArray(body) ? body : [body]) as OpenMeteoLocation[];
-    })();
-    chunk.forEach((c, k) => {
-      const p = all.then((locs) => hazardSeries(locs[k] ?? null), () => null);
-      cellCache.set(ck(c), { at: now, p });
-      // a failed request is not cached
-      p.then((v) => { if (v === null && cellCache.get(ck(c))?.p === p) cellCache.delete(ck(c)); });
-    });
-  }
-  const out = new Map<string, HazardSample[] | null>();
-  await Promise.all(cells.map(async (c) => { out.set(c.key, (await cellCache.get(ck(c))?.p) ?? null); }));
-  return out;
+/** Hazard series per grid cell (keys of GridCell), through the server; null where there is no data. */
+async function fetchCells(cells: GridCell[], date: IsoDate, d1: IsoDate, model: WindModel, get: GridGet | undefined, now: () => number, force: boolean) {
+  const r = await fetchGrid({ kind: 'hazard', model, from: date, to: d1, locs: cells.map((c) => nodeKey(c)), force, get, now });
+  const data = new Map<string, HazardSample[] | null>();
+  for (const c of cells) { const loc = r.locations.get(nodeKey(c)) ?? null; data.set(c.key, loc ? hazardSeries(loc) : null); }
+  return { data, run: r.run, endpoint: r.endpoint, message: r.message, synthetic: r.synthetic };
 }
 
 export interface HazardWeatherRequest {
@@ -126,7 +90,7 @@ export interface HazardWeatherRequest {
   departure: LatLon | null;
   destination: LatLon | null;
   force?: boolean;
-  fetch?: typeof fetch;
+  get?: GridGet;
   now?: () => number;
 }
 
@@ -162,11 +126,12 @@ export async function fetchHazardWeather(req: HazardWeatherRequest): Promise<Haz
   const destCell = req.destination ? gridCell(req.destination) : null;
   for (const g of [depCell, destCell]) if (g) cells.set(g.key, g);
   try {
-    const runP = av.endpoint === 'forecast' ? fetchModelRun(model, { fetch: req.fetch, now }) : Promise.resolve(null);
-    const data = await fetchCells([...cells.values()], req.date, d1, model, av.endpoint, req.fetch || fetch, now(), !!req.force);
-    const run = await runP;
-    if ([...data.values()].every((v) => v === null)) return empty('error', 'Weather hazards unavailable (Open-Meteo did not answer).');
-    const source: ForecastSource = { provider: 'Open-Meteo', model, modelLabel: MODEL_LABELS[model] || model, endpoint: av.endpoint, run, fetchedMs: now(), coverFromMs: null, coverToMs: null };
+    const got = await fetchCells([...cells.values()], req.date, d1, model, req.get, now, !!req.force);
+    const data = got.data;
+    const endpoint = got.endpoint ?? av.endpoint;
+    const run = endpoint === 'forecast' ? got.run : null;
+    if ([...data.values()].every((v) => v === null)) return empty('error', `Weather hazards unavailable: ${got.message || 'no data'}`);
+    const source: ForecastSource = { provider: 'Open-Meteo', model, modelLabel: MODEL_LABELS[model] || model, endpoint, run, fetchedMs: now(), coverFromMs: null, coverToMs: null, ...(got.synthetic ? { synthetic: true } : {}) };
     const runText = run ? `run ${describeSource(source).split('run ')[1]?.split(',')[0] ?? ''}` : '';
     const sourceLabel = [source.modelLabel, runText].filter(Boolean).join(', ');
     return {

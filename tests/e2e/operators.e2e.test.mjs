@@ -43,7 +43,6 @@ test('an operator that asks for the W&B and performance sheets gets them from th
   await db.query(`UPDATE pilots SET email = 'pilot@example.com' WHERE id = 'local'`);
   const ac = await api('POST', 'aircraft', { ...fleetSeed()[0], registration: 'SX-OPS', operator: '', operatorId: null });
   assert.equal(ac.operatorId, null);
-  await page.intercept('*open-meteo.com*', () => ({ status: 503, body: { error: true, reason: 'offline in tests' } }));
   await page.intercept('*/api/weather/metar*', () => ({ body: { stations: {}, fetched: Date.now() } }));
 
   // ---- create the operator

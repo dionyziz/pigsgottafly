@@ -27,6 +27,7 @@ import mailLog030 from './migrations/030_mail_log.js';
 import mailLogDetails031 from './migrations/031_mail_log_details.js';
 import rateLimits032 from './migrations/032_rate_limits.js';
 import appErrors040 from './migrations/040_app_errors.js';
+import weatherCache044 from './migrations/044_weather_cache.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -61,6 +62,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '031_mail_log_details', sql: mailLogDetails031 },
   { name: '032_rate_limits', sql: rateLimits032 },
   { name: '040_app_errors', sql: appErrors040 },
+  { name: '044_weather_cache', sql: weatherCache044 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

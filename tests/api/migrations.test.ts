@@ -388,7 +388,7 @@ describe('migrations', () => {
     await db2.exec(V2);
     await db2.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
     await migrate(db2, withOwner(OWNER, upTo('018_operators')));
-    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors']);
+    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors', '044_weather_cache']);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     await db2.close();
   });
@@ -408,7 +408,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT * FROM mail_log`)).toEqual([]);
     expect(await db.query(`SELECT * FROM rate_limits`)).toEqual([]);
     expect(await db.query(`SELECT * FROM app_errors`)).toEqual([]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-5)).toEqual(['018_operators', '030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors']);
+    expect(MIGRATIONS.map((m) => m.name).slice(-6)).toEqual(['018_operators', '030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors', '044_weather_cache']);
     await db.close();
   });
 });

@@ -7,7 +7,6 @@ import type { AddressInfo } from 'node:net';
 import { describe, expect, test } from 'vitest';
 import { checkLocalMode, createServer, productionSecurityHeaders, ROOT, staticHandler } from '../../../server/server';
 import { BASE_MAPS, GLYPHS, OFM_TILES } from '../../../src/features/editor/map/style';
-import { buildUrl } from '../../../src/data/weather';
 
 const headers = productionSecurityHeaders();
 const csp = headers['Content-Security-Policy'] || '';
@@ -53,9 +52,9 @@ describe('production security headers (vercel.json)', () => {
       expect(allows('connect-src', u), u).toBe(true);
       expect(allows('img-src', u), u).toBe(true);
     }
-    const pts = [{ lat: 38, lon: 23.7 }];
-    for (const u of [buildUrl(pts, '2026-11-15', '2026-11-15', 'best_match' as any), buildUrl(pts, '2026-11-15', '2026-11-15', 'best_match' as any, 'historical')]) {
-      expect(allows('connect-src', u), u).toBe(true);
+    // forecasts come through our API (GET /api/weather/grid): the browser never calls Open-Meteo
+    for (const u of ['https://api.open-meteo.com/v1/forecast?latitude=38', 'https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=38']) {
+      expect(allows('connect-src', u), u).toBe(false);
     }
     expect(directives.get('worker-src')).toContain('blob:');
     expect(allows('frame-src', 'https://accounts.google.com/gsi/iframe/select')).toBe(true);
