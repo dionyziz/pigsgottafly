@@ -12,7 +12,7 @@ import { api, ApiRequestError } from '../../../data/api';
 import type { Flight } from '../../../shared';
 import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
-import { Chip, Loading, Panel } from '../../../ui';
+import { Chip, Loading, Panel, TimeField } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
 
 const STATUS_LABEL: Record<FilingStatus, string> = {
@@ -122,7 +122,7 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
     setTyped('');
   };
   const delayMs = (() => {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(delayTo.trim());
+    const m = /^(\d{2}):(\d{2})$/.exec(delayTo);
     const day = Date.parse(`${flight.date}T00:00:00Z`);
     return m && isFinite(day) ? day + (+m[1] * 60 + +m[2]) * 60000 : NaN;
   })();
@@ -154,15 +154,7 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
             {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
           </button>
           <label className="fpl-filing-delay">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={delayTo}
-              onChange={(e) => setDelayTo(e.target.value)}
-              placeholder="HH:MM"
-              aria-label="New EOBT (UTC)"
-              size={5}
-            />
+            <TimeField value={delayTo} onChange={setDelayTo} ariaLabel="New EOBT (UTC)" testId="fpl-delay-to" />
             <button
               data-testid="fpl-delay"
               disabled={!enabled || !open || !!busy || !isFinite(delayMs)}

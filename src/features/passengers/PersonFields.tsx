@@ -1,8 +1,7 @@
 // The one person editor: a passenger's details, or the pilot's (licence number instead of notes,
 // phone required). Used by the passenger dialog, the pilot's details dialog and the profile page.
 // Renders fields only; the caller owns the <form>. Problems show under their field.
-import { DateInput } from '../../app/DateInput';
-import { Field, NumberField } from '../../ui';
+import { DateField, Field, NumberField } from '../../ui';
 import { type PersonField, type PersonForm, WEIGHT_MAX_KG, WEIGHT_MIN_KG } from './person';
 
 export type SetPerson = <K extends keyof PersonForm>(k: K, v: PersonForm[K]) => void;
@@ -51,11 +50,7 @@ export function PersonFields({
         <>
           <div className="grid3">
             <Field label="Date of birth" issues={issues('dateOfBirth')}>
-              <DateInput
-                name="dateOfBirth"
-                value={f.dateOfBirth}
-                onChange={(e) => set('dateOfBirth', e.target.value)}
-              />
+              <DateField name="dateOfBirth" value={f.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} />
             </Field>
             <Field label="Weight" issues={issues('weightKg')}>
               <NumberField

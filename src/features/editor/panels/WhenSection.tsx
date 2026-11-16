@@ -1,28 +1,13 @@
 // When: date, block-off (UTC, with local time), taxi out/in for this flight, and the computed
 // take-off, landing and block-on times.
-import { useEffect, useState } from 'react';
-
-import { DateInput } from '../../../app/DateInput';
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
-import { localOffsetLabel } from '../../../shared/date';
+import { localOffsetLabel, utcToLocal } from '../../../shared/date';
 import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
-import { NumberField } from '../../../ui';
+import { DateField, NumberField, TimeField } from '../../../ui';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { KV, Section } from './ui';
-
-/** 'HHMM', 'HH:MM', 'H:MM', 'HH.MM' → 'HH:MM', or null if invalid; '' stays ''. */
-export function normalizeClock(s: string): string | null {
-  const t = s.trim();
-  if (!t) return '';
-  const m = /^(\d{1,2})[:.h]?(\d{2})$/.exec(t);
-  if (!m) return null;
-  const h = +m[1],
-    mi = +m[2];
-  if (h > 23 || mi > 59) return null;
-  return `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`;
-}
 
 function TimeRow({
   label,
@@ -54,12 +39,6 @@ function TimeRow({
 export function WhenSection() {
   const { doc, update } = useEditor();
   const { navlog, dayMs } = useFlightCalc();
-  const [draft, setDraft] = useState(doc.blockOff);
-  const [focused, setFocused] = useState(false);
-  useEffect(() => {
-    if (!focused) setDraft(doc.blockOff);
-  }, [doc.blockOff, focused]);
-  const parsed = normalizeClock(draft);
 
   const bo = parseClock(doc.blockOff);
   const boMs = isFinite(dayMs) && isFinite(bo) ? dayMs + bo * 60000 : NaN;
@@ -80,36 +59,20 @@ export function WhenSection() {
       <div className="ep-grid2">
         <label className="field" data-focus="date">
           Date
-          <DateInput
+          <DateField
             value={doc.date}
             testId="flight-date"
-            onChange={(e) => update((d) => ({ ...d, date: e.target.value }), { coalesce: 'date' })}
+            onChange={(v) => update((d) => ({ ...d, date: v }), { coalesce: 'date' })}
           />
         </label>
         <label className="field">
           Block-off (UTC)
-          <input
-            value={draft}
-            placeholder="HH:MM"
-            className={parsed === null ? 'invalid' : ''}
-            data-testid="block-off"
-            data-focus="blockOff"
-            onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setFocused(false);
-              if (parsed !== null) setDraft(parsed);
-              else setDraft(doc.blockOff);
-            }}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              const v = normalizeClock(e.target.value);
-              if (
-                v !== null &&
-                v !== doc.blockOff &&
-                (v === '' || /^(\d{1,2}[:.h]\d{2}|\d{4})$/.test(e.target.value.trim()))
-              )
-                update((d) => ({ ...d, blockOff: v }), { coalesce: 'blockOff' });
-            }}
+          <TimeField
+            value={doc.blockOff}
+            testId="block-off"
+            focusKey="blockOff"
+            optionNote={doc.date ? (hhmm) => `${utcToLocal(doc.date, hhmm)}LT` : undefined}
+            onChange={(v) => update((d) => ({ ...d, blockOff: v }), { coalesce: 'blockOff' })}
           />
           {isFinite(boMs) && (
             <span className="hint tnum" data-testid="block-off-local">
