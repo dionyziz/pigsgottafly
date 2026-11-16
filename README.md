@@ -50,7 +50,7 @@ Node 24.
 npm install
 npm run dev        # http://127.0.0.1:8765/ (API + client with hot reload, PGlite in server/pgdata, no sign-in)
 npm start          # production build, then the same server
-npm run typecheck && npm test && npm run build && npm run test:e2e
+npm run typecheck && npm run lint && npm run format:check && npm run knip && npm test && npm run build && npm run test:e2e
 ```
 
 Without `GOOGLE_CLIENT_ID` the local server runs in local mode as a single `local` pilot, without sign-in. It refuses a `postgres://` `DATABASE_URL` in local mode unless `LOCAL_MODE_ON_POSTGRES=1` is set. The local server does not read `.env.local`. Never point a local run at the production database. `PORT` and `HOST` default to 8765 and 127.0.0.1.

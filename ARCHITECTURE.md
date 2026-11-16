@@ -7,6 +7,7 @@ The design is in PLAN-v3.md. This file covers how the code is laid out and the c
 - **Client**: TypeScript, Vite 8, React 19, react-router 8 (BrowserRouter, imported from `react-router`), MapLibre GL 6 (ES modules; imported through src/app/maplibre.ts, which sets the worker URL).
 - **API**: one Vercel Node function (`api/index.ts`) that dispatches to a route registry. Postgres runs on Neon (`@neondatabase/serverless`) in production, and on PGlite (`@electric-sql/pglite`) locally and in tests.
 - **Tests**: vitest for unit and API tests (in-memory PGlite), plus a dependency-free headless-Chrome CDP harness for end-to-end tests.
+- **Tooling**: TypeScript 7 type-checks (`npm run typecheck`); the `typescript` package stays on 6.0, the newest with the JS API that typescript-eslint and Vercel's function builder load. ESLint, Prettier and knip; `.github/workflows/ci.yml` runs every check, the e2e suite included, on pushes and pull requests to main. Renovate (`renovate.json`) proposes updates weekly.
 
 ## Layout
 
@@ -370,7 +371,10 @@ Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/a
 npm install
 npm run dev          # http://127.0.0.1:8765/  API + Vite hot reload, PGlite in server/pgdata, no sign-in
 npm start            # vite build, then serve dist/ + API on http://127.0.0.1:8765/
-npm run typecheck    # tsc for the client (tsconfig.app.json) and for node/api/tools (tsconfig.node.json)
+npm run typecheck    # TypeScript 7 (the typescript7 alias) for the client (tsconfig.app.json) and node/api/tools (tsconfig.node.json)
+npm run lint         # ESLint (typescript-eslint with types, react-hooks, @eslint-react, sorted imports); lint:fix fixes
+npm run format       # Prettier (format:check in CI); CSS, Markdown, generated data and applied migrations are left alone
+npm run knip         # unused files, exports and dependencies
 npm test             # vitest: tests/unit + tests/api
 npm run test:e2e     # vite build + headless Chrome (CDP, SwiftShader WebGL) smoke test
 npm run build        # dist/
