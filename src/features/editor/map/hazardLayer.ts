@@ -7,6 +7,7 @@
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 import type { Hazard } from '../../../calc';
 import type { LatLon } from '../../../shared';
+import { CHART } from './style';
 
 export interface MapHazard {
   level: 'danger' | 'warn';
@@ -97,7 +98,7 @@ function featureCollection(list: MapHazard[]) {
 function ensureLayers(m: MlMap, beforeId: string | undefined) {
   if (m.getSource(SRC)) return;
   m.addSource(SRC, { type: 'geojson', data: featureCollection([]) as never });
-  const color = ['match', ['get', 'level'], 'danger', '#d64545', '#e0a106'] as never;
+  const color = ['match', ['get', 'level'], 'danger', CHART.hazard, CHART.hazardWarn] as never;
   const before = beforeId && m.getLayer(beforeId) ? beforeId : undefined;
   m.addLayer({
     id: 'wx-hazards-band', type: 'line', source: SRC, filter: ['==', ['geometry-type'], 'LineString'],
@@ -106,7 +107,7 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
   }, before);
   m.addLayer({
     id: 'wx-hazards-ring', type: 'circle', source: SRC, filter: ['==', ['geometry-type'], 'Point'],
-    paint: { 'circle-radius': 18, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': color, 'circle-stroke-width': 3, 'circle-stroke-opacity': 0.75 },
+    paint: { 'circle-radius': 18, 'circle-opacity': 0, 'circle-stroke-color': color, 'circle-stroke-width': 3, 'circle-stroke-opacity': 0.75 },
   }, before);
 }
 

@@ -2,8 +2,10 @@
 // vector layers drawn from our reference data, plus the route layers.
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
 
-/** Chart palette (kept close to ICAO VFR charts, calm against the light base map). */
-export const CHART = {
+/** Chart palette (kept close to ICAO VFR charts, calm against the light base map). The values are the
+ *  --map-* tokens of src/app/styles.css: loadChartTokens() reads them from the page before the map is
+ *  built; these defaults are the same values (Node, unit tests). */
+const CHART_DEFAULTS = {
   aerodrome: '#1d3f8f',
   tma: '#2f64c0',
   mtma: '#8a3b9c',
@@ -21,10 +23,41 @@ export const CHART = {
   vfr: '#1e6b46',
   waypoint: '#7a3db8',
   route: '#c2185b',
-  routeCasing: '#ffffff',
-  halo: 'rgba(255,255,255,0.92)',
-  ink: '#16191d',
-} as const;
+  /** Chart white: route casing, route points, symbol outlines. */
+  paper: '#ffffff',
+  halo: 'rgba(255, 255, 255, 0.92)',
+  /** NOTAM areas: relevant, hidden by the filters, picked in the panel. */
+  notam: '#c77700',
+  notamOff: '#7a828c',
+  notamSelected: '#1f5fbf',
+  /** Weather hazard bands and rings (and the leg-label badge). */
+  hazard: '#d64545',
+  hazardWarn: '#d49a06',
+};
+export type ChartColor = keyof typeof CHART_DEFAULTS;
+
+/** The design token of each chart colour. */
+export const CHART_TOKENS: Record<ChartColor, string> = {
+  aerodrome: '--map-aerodrome', tma: '--map-tma', mtma: '--map-mtma', zone: '--map-zone', zoneG: '--map-zone-g',
+  fis: '--map-fis', prohibited: '--map-prohibited', restricted: '--map-restricted', danger: '--map-danger-area',
+  mil: '--map-mil', act: '--map-activity', vfr: '--map-vfr', waypoint: '--map-waypoint', route: '--map-route',
+  paper: '--map-paper', halo: '--map-halo', notam: '--map-notam', notamOff: '--map-notam-off',
+  notamSelected: '--map-notam-selected', hazard: '--map-hazard', hazardWarn: '--map-hazard-warn',
+};
+export const CHART_DEFAULT_VALUES: Readonly<Record<ChartColor, string>> = CHART_DEFAULTS;
+
+/** The chart colours in use (the defaults until loadChartTokens()). */
+export const CHART: Record<ChartColor, string> = { ...CHART_DEFAULTS };
+
+/** Takes the chart colours from the page's --map-* tokens (a token that is not set keeps its default). */
+export function loadChartTokens(root: Element | null = typeof document === 'undefined' ? null : document.documentElement): void {
+  if (!root || typeof getComputedStyle === 'undefined') return;
+  const cs = getComputedStyle(root);
+  for (const k of Object.keys(CHART_TOKENS) as ChartColor[]) {
+    const v = cs.getPropertyValue(CHART_TOKENS[k]).trim();
+    if (v) CHART[k] = v;
+  }
+}
 
 export type BaseMapId = 'light' | 'terrain' | 'street';
 
@@ -90,7 +123,7 @@ const EMPTY = { type: 'FeatureCollection', features: [] } as const;
 /** Sources that carry our own data (setData later). */
 export const DATA_SOURCES = [
   'airspaces', 'zones', 'areas', 'fis', 'vfr-routes', 'vfr-points', 'aerodromes', 'waypoints',
-  'route-line', 'route-band', 'route-mid', 'route-points', 'snap',
+  'route-line', 'route-arrows', 'route-band', 'route-mid', 'route-points', 'snap',
 ] as const;
 export type DataSourceId = (typeof DATA_SOURCES)[number];
 
@@ -132,7 +165,8 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
   for (const id of DATA_SOURCES) {
     sources[id] = {
       type: 'geojson', data: EMPTY as never,
-      ...(id === 'route-mid' ? { generateId: true } : {}),
+      // hover feature-state keyed by the feature's index (midpoint handles, route points)
+      ...(id === 'route-mid' || id === 'route-points' ? { generateId: true } : {}),
       // airspace hover highlight (feature-state keyed by the airspace id)
       ...(id === 'airspaces' || id === 'zones' || id === 'areas' ? { promoteId: 'id' } : {}),
     };
@@ -303,15 +337,29 @@ function chartLayers(): LayerSpecification[] {
   ];
 }
 
+/** Feature-state `hover` (route points and midpoint handles under the cursor). */
+const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false];
+
 function routeLayers(): LayerSpecification[] {
+  const selected: ExpressionSpecification = ['get', 'selected'];
+  const isMid: ExpressionSpecification = ['==', ['get', 'role'], 'mid'];
   return [
     {
       id: 'route-casing', type: 'line', source: 'route-line', layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': CHART.routeCasing, 'line-width': 7.5, 'line-opacity': 0.9 },
+      paint: { 'line-color': CHART.paper, 'line-width': 7.5, 'line-opacity': 0.9 },
     },
     {
       id: 'route-line', type: 'line', source: 'route-line', layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': CHART.route, 'line-width': 3.5 },
+    },
+    {
+      // direction of flight: arrowheads on each leg (features.ts routeArrowFeatures)
+      id: 'route-arrows', type: 'symbol', source: 'route-arrows',
+      layout: {
+        'icon-image': 'pgf-route-arrow', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.75, 9, 1],
+      },
     },
     {
       id: 'route-band', type: 'line', source: 'route-band', layout: { 'line-cap': 'round' },
@@ -320,10 +368,10 @@ function routeLayers(): LayerSpecification[] {
     {
       id: 'route-mid', type: 'circle', source: 'route-mid',
       paint: {
-        'circle-radius': ['case', ['boolean', ['feature-state', 'hover'], false], 6.5, 4.5],
-        'circle-color': '#fff', 'circle-stroke-color': CHART.route, 'circle-stroke-width': 1.6,
-        'circle-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.8],
-        'circle-stroke-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.7],
+        'circle-radius': ['case', HOVER, 6.5, 4.5],
+        'circle-color': CHART.paper, 'circle-stroke-color': CHART.route, 'circle-stroke-width': 1.6,
+        'circle-opacity': ['case', HOVER, 1, 0.8],
+        'circle-stroke-opacity': ['case', HOVER, 1, 0.7],
       },
     },
     {
@@ -331,12 +379,21 @@ function routeLayers(): LayerSpecification[] {
       paint: { 'circle-radius': 13, 'circle-color': CHART.route, 'circle-opacity': 0.12, 'circle-stroke-color': CHART.route, 'circle-stroke-width': 2 },
     },
     {
+      // the halo around a route point under the cursor (it can be dragged, clicked, right-clicked)
+      id: 'route-point-halo', type: 'circle', source: 'route-points',
+      paint: {
+        'circle-radius': ['case', HOVER, 15, 0],
+        'circle-color': CHART.route, 'circle-opacity': 0.16,
+        'circle-stroke-color': CHART.route, 'circle-stroke-width': ['case', HOVER, 1, 0], 'circle-stroke-opacity': 0.35,
+      },
+    },
+    {
       id: 'route-points', type: 'circle', source: 'route-points',
       paint: {
-        'circle-radius': ['case', ['get', 'selected'], 8, ['==', ['get', 'role'], 'mid'], 5.5, 7],
-        'circle-color': ['case', ['get', 'selected'], CHART.route, '#ffffff'],
-        'circle-stroke-color': ['case', ['get', 'selected'], '#ffffff', CHART.route],
-        'circle-stroke-width': ['case', ['get', 'selected'], 3, ['==', ['get', 'role'], 'mid'], 2.5, 3],
+        'circle-radius': ['case', HOVER, ['case', selected, 9.5, isMid, 7.5, 8.5], ['case', selected, 8, isMid, 5.5, 7]],
+        'circle-color': ['case', selected, CHART.route, CHART.paper],
+        'circle-stroke-color': ['case', selected, CHART.paper, CHART.route],
+        'circle-stroke-width': ['case', selected, 3, isMid, 2.5, 3],
       },
     },
     {

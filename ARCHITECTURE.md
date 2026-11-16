@@ -101,7 +101,8 @@ src/
                            NumberField (live commit, clamp on blur, limit shown; parsing in shared/number.ts), Combobox (comboKey),
                            AerodromeInput (RefAerodrome|null) / AerodromeTextInput, PersonPicker, Collapsible (whole header toggles,
                            remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
-                           WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL).
+                           WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL),
+                           Segmented (one of a few options; ←/→).
                            Shims until W6: lobby/ui, profile/AerodromePicker, editor/panels/ui (Icon/Chip/NumberInput),
                            hangar/fields (Field/Check/NumInput/Section/parseNum), app/Loading, app/XIcon
   features/
@@ -117,7 +118,11 @@ src/
                            tooltip, click details (identity only: type, limits, lateral, activity, units, remarks, AIP link);
                            dragging a route point snaps it and it becomes the point dropped on (routeEdit.movePoint);
                            notamLayer.ts + NotamPopover: NOTAM areas, hover tooltip, click details),
-                           AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date),
+                           AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date;
+                           MapPopover (MapTip, MapPopover, PopItem + useAccordion): the frame of those three; MapToolbar
+                           (route tools, LayersControl, MapHint), PointMenu (+ NameBox), mapPrefs.ts; route points grow with a
+                           halo on hover (feature-state), legs carry direction arrowheads (features.routeArrowFeatures);
+                           colours = the --map-* tokens, read by style.ts loadChartTokens),
                            notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
                            AerodromeHours.tsx (an aerodrome's hours, ATS, handling on a date, NOTAM changes, AIP text),
                            panels/ (FlightPanel sections incl. RouteSection (origin/destination fields), NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,

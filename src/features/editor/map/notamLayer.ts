@@ -6,6 +6,7 @@
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 import type { Notam } from '../../../shared/briefing';
 import { circleRing, hasNotamArea } from '../../../data/notams';
+import { CHART } from './style';
 
 export interface MapNotam {
   key: string;
@@ -42,7 +43,7 @@ function featureCollection(list: MapNotam[], selected: string | null) {
 function ensureLayers(m: MlMap, beforeId: string | undefined) {
   if (m.getSource(SRC)) return;
   m.addSource(SRC, { type: 'geojson', data: featureCollection([], null) as never });
-  const color = ['case', ['==', ['get', 'selected'], 1], '#1f5fbf', ['==', ['get', 'relevant'], 1], '#c77700', '#7a828c'] as never;
+  const color = ['case', ['==', ['get', 'selected'], 1], CHART.notamSelected, ['==', ['get', 'relevant'], 1], CHART.notam, CHART.notamOff] as never;
   const before = beforeId && m.getLayer(beforeId) ? beforeId : undefined;
   m.addLayer({
     id: 'notam-fill', type: 'fill', source: SRC,

@@ -83,6 +83,15 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .tabs button { border-radius: var(--r-pill); padding: 5px 12px; font-size: var(--fs-sm); border-color: transparent; background: transparent; color: var(--ink-2); }
 .tabs button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
 
+/* ---- segmented control (Segmented.tsx) */
+.seg { display: flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; }
+.seg button { flex: 1; justify-content: center; height: var(--ctl-h); padding: 0 12px; border: 0; border-radius: 0; background: var(--surface); color: var(--ink-2); font-weight: 500; }
+.seg.sm button { height: var(--ctl-h-sm); font-size: var(--fs-sm); }
+.seg button + button { border-left: 1px solid var(--line-strong); }
+.seg button:hover { background: var(--hover); color: var(--ink); }
+.seg button[aria-pressed='true'] { background: var(--accent-soft); color: var(--accent); }
+.seg button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+
 /* ---- combobox (aerodrome picker) */
 .combo { position: relative; }
 .combo-list { position: absolute; left: 0; right: 0; top: calc(100% + 4px); max-height: 280px; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); z-index: 60; padding: 4px 0; margin: 0; list-style: none; }

@@ -93,6 +93,27 @@ test('setup: a pilot and a flight LGTT → ABLONAS → LGMG with altitude overri
   assert.equal(g.route.length, 3);
 });
 
+test('legs carry direction arrows; a route point under the cursor grows with a halo', async () => {
+  const lats = [LGTT.lat, LGMG.lat, ABLONAS.lat], lons = [LGTT.lon, LGMG.lon, ABLONAS.lon];
+  await frame([[Math.min(...lons) - 0.05, Math.min(...lats) - 0.05], [Math.max(...lons) + 0.05, Math.max(...lats) + 0.05]]);
+  await sleep(400);
+  const arrows = await page.eval(() => {
+    const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+    return { layer: !!m.getLayer('route-arrows'), image: m.hasImage('pgf-route-arrow'), n: m.getSource('route-arrows').serialize().data.features.length };
+  });
+  assert.deepEqual(arrows, { layer: true, image: true, n: 4 }, 'two arrowheads on each of the two legs');
+  const hovered = () => page.eval(() => {
+    const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+    return [0, 1, 2].filter((id) => m.getFeatureState({ source: 'route-points', id }).hover);
+  });
+  const a = await mapPx(ABLONAS.lat, ABLONAS.lon);
+  await hover(a.x, a.y);
+  await page.waitFor(() => document.querySelector('.pgf-map-canvas canvas')?.style.cursor === 'grab');
+  assert.deepEqual(await hovered(), [1]);
+  await hover(a.x + 60, a.y + 60);
+  assert.deepEqual(await hovered(), []);
+});
+
 test('dragging a route point snaps it to the point it is dropped on, which it becomes', async () => {
   const lats = [LGTT.lat, LGMG.lat, ABLONAS.lat, OTHER.lat], lons = [LGTT.lon, LGMG.lon, ABLONAS.lon, OTHER.lon];
   await frame([[Math.min(...lons) - 0.05, Math.min(...lats) - 0.05], [Math.max(...lons) + 0.05, Math.max(...lats) + 0.05]]);
