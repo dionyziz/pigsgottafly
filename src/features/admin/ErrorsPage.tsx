@@ -8,7 +8,7 @@ import { api } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import type { AppErrorDetail, AppErrorGroup } from '../../shared/monitoring';
 import { errorMessage } from '../../shared/format';
-import { AsyncView, Chip, EmptyState, Loading, Segmented, rowClick } from '../../ui';
+import { AsyncView, Chip, EmptyState, Loading, SegmentedControl, rowClick } from '../../ui';
 import '../lobby/lists.css';
 import { AdminNav } from './AdminNav';
 import { adminErrorTitle, when } from './AdminPage';
@@ -51,7 +51,7 @@ export function ErrorsPage() {
         {data && <Chip count sm>{data.length}</Chip>}
         <AdminNav current="errors" />
         <span className="spacer" />
-        <Segmented sm label="Show" value={filter} options={FILTERS} onChange={setFilter} />
+        <SegmentedControl sm label="Show" value={filter} options={FILTERS} onChange={setFilter} />
       </div>
       {resolveError && <p className="form-error" role="alert">{resolveError}</p>}
       <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle={error ? adminErrorTitle(error, 'errors') : undefined}

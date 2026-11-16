@@ -6,6 +6,7 @@ import { api } from '../../../data/api';
 import { aerodrome } from '../../../data/ref';
 import { useEditor } from '../state';
 import { RouteMap, type LegAltitude } from './RouteMap';
+import { flightLayers } from './mapPrefs';
 import { pruneOverrides, setAltitudeOverride } from './routeEdit';
 import { mapHazards, type MapHazard } from './hazardLayer';
 import { AD_ROLE, useFlightCalc } from '../panels/calc';
@@ -16,7 +17,7 @@ import { useNotams } from '../notams';
 import { visibleNotams } from '../../../data/notams';
 
 export function MapView() {
-  const { doc, update, undo, redo, canUndo, canRedo, waypoints, ref, legs, altitudeDefaults, altitudesFt, pilot, reloadLists } = useEditor();
+  const { doc, update, setMapLayers, undo, redo, canUndo, canRedo, waypoints, ref, legs, altitudeDefaults, altitudesFt, pilot, reloadLists } = useEditor();
 
   const { hazards, aerodromeChecks, adEffects } = useFlightCalc();
   // weather hazards, and the route's aerodromes that are closed at the planned time (a ring like an aerodrome hazard)
@@ -90,8 +91,12 @@ export function MapView() {
     }));
   }, [reloadLists, update]);
 
+  const layers = useMemo(() => flightLayers(doc.options.mapLayers, pilot.settings.mapLayers), [doc.options.mapLayers, pilot.settings.mapLayers]);
+
   return (
     <RouteMap
+      layers={layers}
+      onLayers={setMapLayers}
       route={doc.route}
       date={doc.date}
       altitudes={altitudes}

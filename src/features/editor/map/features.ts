@@ -2,7 +2,7 @@
 // Pure (no map), unit-tested.
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 import type { RoutePoint, Waypoint } from '../../../shared';
-import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
+import type { RefAerodrome, RefAirspace, RefFir, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import { aerodromeName } from './snap';
 import { mercatorMid } from './routeEdit';
 import { airspaceLabel, fmtVertical, isArea, type AirspaceInfo } from './airspace';
@@ -104,10 +104,17 @@ export function airspaceFeatures(airspaces: RefAirspace[]): FC<Polygon> {
 }
 
 /** The FIS sector boundary (ATHINAI / MAKEDONIA INFORMATION). */
-export function fisFeatures(fis: RefFis): FC<LineString> {
-  if (fis.boundary.length < 2) return fc([]);
-  const label = fis.units.map((u) => `${u.callsign.replace(' INFORMATION', ' INFO')} ${u.freqs[0] ?? ''}`.trim()).join('  ·  ');
-  return fc([{ type: 'Feature', geometry: { type: 'LineString', coordinates: fis.boundary.map(([lat, lon]) => [lon, lat]) }, properties: { label } }]);
+/** The FIR boundary ('LGGG ATHINAI FIR') and the dividing line inside it ('ATHINAI | MAKEDONIA'). */
+export function firFeatures(fir: RefFir | undefined): FC<LineString> {
+  if (!fir || fir.boundary.length < 3) return fc([]);
+  const line = (pts: [number, number][]) => pts.map(([lat, lon]) => [lon, lat]);
+  const out: Feature<LineString, Record<string, unknown>>[] = [
+    { type: 'Feature', geometry: { type: 'LineString', coordinates: line(fir.boundary) }, properties: { kind: 'fir', label: `${fir.id} ${fir.name}` } },
+  ];
+  if (fir.divider.line.length >= 2) {
+    out.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line(fir.divider.line) }, properties: { kind: 'divider', label: fir.divider.label } });
+  }
+  return fc(out);
 }
 
 /** VFR reporting points: charted ones solid, open-flightmaps ones hollow. */

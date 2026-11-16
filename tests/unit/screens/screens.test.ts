@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { flightSearchText, matchesQuery, splitFlights } from '../../../src/features/lobby/format';
 import { ageOn, daysBetween, fmtDate, relativeDay, utcToLocal } from '../../../src/shared/date';
 import { fmtDuration } from '../../../src/shared/format';
+import { DEFAULT_MAP_LAYERS } from '../../../src/shared/mapLayers';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
 import { resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
 import { formOf, toUpdate, validateProfile, type ProfileForm } from '../../../src/features/profile/ProfilePage';
@@ -124,7 +125,7 @@ describe('profile form', () => {
   const base: ProfileForm = {
     fullName: ' Test Pilot ', phone: '+30 690', licenceNo: '', nationality: 'greek', relation: 'M123', dateOfBirth: '', weightKg: 80,
     idType: '', idNumber: '', notes: '', homeAerodrome: 'lgtt', defaultAircraftId: '', defaultAlternate: '', taxiOutMin: null, taxiInMin: 12, reserveMin: null,
-    finalReserveMin: null, enrouteAerodromeRadiusNm: null,
+    finalReserveMin: null, enrouteAerodromeRadiusNm: null, mapLayers: null,
   };
   it('never fills pilot-specific values the pilot left empty', () => {
     const u = toUpdate(base, true);
@@ -138,6 +139,11 @@ describe('profile form', () => {
     expect(u.settings).toMatchObject({ finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, defaultAlternate: null });
     expect(u.settings).not.toHaveProperty('windModel');
     expect(toUpdate({ ...base, defaultAlternate: 'lgav' }, false).settings?.defaultAlternate).toBe('LGAV');
+    // map layers for new flights: sent once chosen
+    expect(u.settings).not.toHaveProperty('mapLayers');
+    const layers = { ...DEFAULT_MAP_LAYERS, vfrRoutes: false };
+    expect(toUpdate({ ...base, mapLayers: layers }, false).settings?.mapLayers).toEqual(layers);
+    expect(toUpdate({ ...base, mapLayers: layers }, true).settings).not.toHaveProperty('mapLayers');
     expect(() => toUpdate({ ...base, defaultAlternate: 'nowhere' }, false)).toThrow(/not an aerodrome/);
   });
   it('rejects a missing name/phone, an unknown aerodrome and bad numbers', () => {

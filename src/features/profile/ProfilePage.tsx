@@ -1,6 +1,6 @@
 // Profile: the pilot's details for the forms (the person editor shared with passengers, plus the
 // licence number), home aerodrome, default aircraft and planning defaults (taxi out/in, fuel
-// reserve, final reserve, ATC list radius). With ?welcome=1 (or while name, phone or home is
+// reserve, final reserve, ATC list radius) and the map layers of new flights. With ?welcome=1 (or while name, phone or home is
 // missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
 // Nothing pilot-specific is prefilled (pilot correction #1): unset values show neutral placeholders.
 // The form follows the pilot (another tab, a dialog) until it is edited.
@@ -13,13 +13,14 @@ import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { resolveAerodrome } from '../../data/ref';
-import { profileMissing, SETTING_SUGGESTIONS, type Pilot, type PilotUpdate } from '../../shared';
+import { DEFAULT_MAP_LAYERS, mapLayersOf, profileMissing, SETTING_SUGGESTIONS, type MapLayers, type Pilot, type PilotUpdate } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, CardSection, Field, NumberField } from '../../ui';
 import { useFormIssues, type FormIssue } from '../passengers/formIssues';
 import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from '../passengers/person';
 import { PersonFields, type SetPerson } from '../passengers/PersonFields';
 import { AccountSection } from './AccountSection';
+import { MapLayerToggles } from '../editor/map/MapLayerToggles';
 import '../lobby/lists.css';
 
 export interface ProfileForm extends PersonForm {
@@ -27,6 +28,8 @@ export interface ProfileForm extends PersonForm {
   homeAerodrome: string; defaultAircraftId: string; defaultAlternate: string;
   taxiOutMin: number | null; taxiInMin: number | null; reserveMin: number | null;
   finalReserveMin: number | null; enrouteAerodromeRadiusNm: number | null;
+  /** Map layers for new flights; null = not chosen (all shown). */
+  mapLayers: MapLayers | null;
 }
 
 type ProfileField = PersonField | 'homeAerodrome' | 'defaultAlternate' | 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin' | 'enrouteAerodromeRadiusNm';
@@ -40,6 +43,7 @@ export function formOf(p: Pilot): ProfileForm {
     homeAerodrome: p.homeAerodrome ?? '', defaultAircraftId: p.defaultAircraftId ?? '', defaultAlternate: p.settings.defaultAlternate ?? '',
     taxiOutMin: p.settings.taxiOutMin, taxiInMin: p.settings.taxiInMin, reserveMin: p.settings.reserveMin,
     finalReserveMin: p.settings.finalReserveMin, enrouteAerodromeRadiusNm: p.settings.enrouteAerodromeRadiusNm,
+    mapLayers: mapLayersOf(p.settings.mapLayers),
   };
 }
 
@@ -86,6 +90,7 @@ export function profileUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
       finalReserveMin: f.finalReserveMin ?? 0,
       enrouteAerodromeRadiusNm: f.enrouteAerodromeRadiusNm ?? 2,
       defaultAlternate: altn ? altn.icao || altn.id : null,
+      ...(f.mapLayers ? { mapLayers: f.mapLayers } : {}),
     },
   };
 }
@@ -212,6 +217,14 @@ export function ProfilePage() {
             </div>
           )}
         </CardSection>
+
+        {!welcome && (
+          <CardSection id="map-layers" title="Map layers for new flights" plain>
+            <div style={{ maxWidth: 320 }} data-testid="profile-map-layers">
+              <MapLayerToggles value={f.mapLayers ?? DEFAULT_MAP_LAYERS} onChange={(l) => put('mapLayers', l)} />
+            </div>
+          </CardSection>
+        )}
 
         <div className="form-actions">
           {error && <p className="form-error" role="alert">{error}</p>}

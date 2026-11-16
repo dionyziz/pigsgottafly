@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { client, startApi, type Client } from './helpers';
 import { blankAircraft } from '../../src/shared/templates';
+import { DEFAULT_MAP_LAYERS } from '../../src/shared/mapLayers';
 import type { Flight } from '../../src/shared/types';
 import { AREAS } from '../../src/data/ref';
 
@@ -82,6 +83,24 @@ describe('profile', () => {
     await c.call('PUT', 'me', { settings: { defaultAlternate: null } });
     await c.call('PUT', 'me', { homeAerodrome: 'LGTT' });
     expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
+  });
+  test('map layers: the profile\'s choice goes to new flights; each flight keeps its own', async () => {
+    const c = client(api.base);
+    await c.login('sub-layers', 'layers@example.com');
+    const old = (await c.call('POST', 'flights', {})).body;
+    expect(old.options.mapLayers).toBeUndefined();
+    expect((await c.call('PUT', 'me', { settings: { mapLayers: 'all' } })).status).toBe(400);
+    const me = await c.call('PUT', 'me', { settings: { mapLayers: { base: 'terrain', vfrRoutes: false, junk: true } } });
+    expect(me.body.settings.mapLayers).toEqual({ ...DEFAULT_MAP_LAYERS, base: 'terrain', vfrRoutes: false });
+    const f = (await c.call('POST', 'flights', {})).body;
+    expect(f.options.mapLayers).toEqual(me.body.settings.mapLayers);
+    const mine = { ...DEFAULT_MAP_LAYERS, tma: false };
+    const put = await c.call('PUT', `flights/${f.id}`, { flight: { options: { ...f.options, mapLayers: mine } }, version: f.version });
+    expect(put.status).toBe(200);
+    expect((await c.call('GET', `flights/${f.id}`)).body.options.mapLayers).toEqual(mine);
+    expect((await c.call('PUT', `flights/${f.id}`, { flight: { options: { mapLayers: 5 } }, version: put.body.version })).status).toBe(400);
+    // a flight from before keeps working without layers
+    expect((await c.call('GET', `flights/${old.id}`)).body.options.mapLayers).toBeUndefined();
   });
 });
 

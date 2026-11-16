@@ -1,6 +1,7 @@
 // Map style: keyless raster base maps, the optional openflightmaps aero overlay, and the VFR-chart
 // vector layers drawn from our reference data, plus the route layers.
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
+import type { BaseMapId } from '../../../shared/mapLayers';
 
 /** Chart palette (kept close to ICAO VFR charts, calm against the light base map). The values are the
  *  --map-* tokens of src/app/styles.css: loadChartTokens() reads them from the page before the map is
@@ -59,7 +60,7 @@ export function loadChartTokens(root: Element | null = typeof document === 'unde
   }
 }
 
-export type BaseMapId = 'light' | 'terrain' | 'street';
+export type { BaseMapId };
 
 interface RasterBase { id: BaseMapId; label: string; kind: 'raster'; tiles: string[]; maxzoom: number; attribution: string }
 interface VectorBase { id: BaseMapId; label: string; kind: 'vector'; styleUrl: string }
@@ -122,7 +123,7 @@ const EMPTY = { type: 'FeatureCollection', features: [] } as const;
 
 /** Sources that carry our own data (setData later). */
 export const DATA_SOURCES = [
-  'airspaces', 'zones', 'areas', 'fis', 'vfr-routes', 'vfr-points', 'aerodromes', 'waypoints',
+  'airspaces', 'zones', 'areas', 'fir', 'vfr-routes', 'vfr-points', 'aerodromes', 'waypoints',
   'route-line', 'route-arrows', 'route-band', 'route-mid', 'route-points', 'snap',
 ] as const;
 export type DataSourceId = (typeof DATA_SOURCES)[number];
@@ -177,14 +178,18 @@ export function buildStyle(base: BaseMapId, ofm: boolean, vector: StyleSpecifica
   return { style, baseLayers };
 }
 
-/** Our chart layers (toggled together by "Chart layers"). */
-export const CHART_LAYER_IDS = [
-  'airspace-fill', 'airspace-line', 'airspace-line-m', 'airspace-label', 'zone-fill', 'zone-line', 'zone-line-atz', 'zone-label',
-  'area-fill', 'area-hatch', 'area-line', 'area-line-d', 'area-line-mil', 'area-line-act', 'area-label',
-  'fis-line', 'fis-label',
-  'vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt', 'vfr-point-icon', 'vfr-point-label',
-  'aerodrome-icon', 'aerodrome-label', 'waypoint-icon', 'waypoint-label',
-];
+/** Our chart layers by the layer toggle that shows them (MapLayers). The ENR 5 areas are always
+ *  visible: their toggles filter the data (one per area kind). */
+export const LAYER_GROUPS = {
+  fir: ['fir-line', 'fir-divider', 'fir-label', 'fir-divider-label'],
+  tma: ['airspace-fill', 'airspace-line', 'airspace-line-m', 'airspace-label'],
+  zones: ['zone-fill', 'zone-line', 'zone-line-atz', 'zone-label'],
+  aerodromes: ['aerodrome-icon', 'aerodrome-label'],
+  vfrPoints: ['vfr-point-icon', 'vfr-point-label'],
+  vfrRoutes: ['vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt'],
+  waypoints: ['waypoint-icon', 'waypoint-label'],
+} as const satisfies Record<string, readonly string[]>;
+export type LayerGroup = keyof typeof LAYER_GROUPS;
 
 /** ENR 5 areas in VFR-chart style: P red tint, R red hatching, D amber dashed, MIL violet dash-dot, ACT green dotted. */
 function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
@@ -266,13 +271,30 @@ function chartLayers(): LayerSpecification[] {
     },
     ...areaLayers(hov),
     {
-      id: 'fis-line', type: 'line', source: 'fis',
+      // LGGG FIR boundary: dark grey, long dash-dot (ICAO FIR boundary)
+      id: 'fir-line', type: 'line', source: 'fir', filter: ['==', ['get', 'kind'], 'fir'],
+      paint: { 'line-color': CHART.fis, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.4, 9, 2.4], 'line-dasharray': [7, 2, 1.5, 2], 'line-opacity': 0.85 },
+    },
+    {
+      // ATHINAI / MAKEDONIA line
+      id: 'fir-divider', type: 'line', source: 'fir', filter: ['==', ['get', 'kind'], 'divider'],
       paint: { 'line-color': CHART.fis, 'line-width': 1.2, 'line-dasharray': [6, 3, 1, 3], 'line-opacity': 0.7 },
     },
     {
-      id: 'fis-label', type: 'symbol', source: 'fis', minzoom: 6.5,
-      layout: { 'symbol-placement': 'line', 'symbol-spacing': 700, 'text-field': ['get', 'label'], 'text-font': REG, 'text-size': 10, 'text-offset': [0, 0.9] },
-      paint: { 'text-color': CHART.fis, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
+      id: 'fir-label', type: 'symbol', source: 'fir', filter: ['==', ['get', 'kind'], 'fir'],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 600, 'text-field': ['get', 'label'], 'text-font': BOLD,
+        'text-size': 10.5, 'text-letter-spacing': 0.08, 'text-max-angle': 30, 'text-keep-upright': true,
+      },
+      paint: { 'text-color': CHART.fis, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
+    },
+    {
+      id: 'fir-divider-label', type: 'symbol', source: 'fir', filter: ['==', ['get', 'kind'], 'divider'], minzoom: 5.5,
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 500, 'text-field': ['get', 'label'], 'text-font': BOLD,
+        'text-size': 10, 'text-letter-spacing': 0.06, 'text-max-angle': 30, 'text-keep-upright': true,
+      },
+      paint: { 'text-color': CHART.fis, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
     },
     {
       id: 'vfr-route-line', type: 'line', source: 'vfr-routes', minzoom: 7.5,

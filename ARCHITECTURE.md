@@ -18,8 +18,11 @@ src/
     types.ts               Pilot, Aircraft (FuelSpec, MassBalance, Station/SeatPosition, Envelope,
                            PerformanceTables, Equipment, CompassCard), Passenger, Waypoint, Flight/FlightDoc,
                            RoutePoint, LegOverride, FlightCrew, AtcEntry, FlightOptions, FlightSummary
-    ref.ts                 RefAerodrome, RefRunway, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute, RefAtcUnit,
+    ref.ts                 RefAerodrome, RefRunway, RefAirspace, RefFis, RefFir, RefVfrPoint, RefVfrRoute, RefAtcUnit,
                            RefSunTable, RefBundle, RefAirac
+    mapLayers.ts           MapLayers (base map + one toggle per map layer), DEFAULT_MAP_LAYERS, mapLayersOf (lenient
+                           normalisation, API and client): FlightOptions.mapLayers (per flight) and PilotSettings.mapLayers
+                           (copied to new flights by POST /flights)
     api.ts                 request/response bodies of every /api route
     constants.ts           DEFAULT_SETTINGS (unset values), SETTING_SUGGESTIONS, profileMissing(), seatLayout(),
                            seatStation(), validateCrew(), EXPORT_KINDS, legKey(), uid(), autoTitle(), emptyFlightDoc()
@@ -94,7 +97,7 @@ src/
                            set by tools/update_aip.sh), aipSection/aipUrl ('LGAV AD 2.3' → AD 2 LGAV PDF; the
                            eAIP start page when a section has no PDF), from ref/aip-files.json
     ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
-                           AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
+                           AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, FIR (fir.json), VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
                            REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id), aerodromeLabel(a),
                            resolveAerodrome(text), searchAerodromes(q)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context,
@@ -116,7 +119,7 @@ src/
                            AerodromeInput (RefAerodrome|null) / AerodromeTextInput, PersonPicker, Collapsible (whole header toggles,
                            remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
                            WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL),
-                           Segmented (one of a few options; ←/→).
+                           SegmentedControl (one of a few options; one outer border, even dividers; ←/→).
                            Pages import these from src/ui directly (no re-export shims left).
   features/
     lobby/                 LobbyPage (fixed header: h1 Flights, fixed-width tabs, New flight kept hidden in Trash),
@@ -146,8 +149,14 @@ src/
                            dragging a route point snaps it and it becomes the point dropped on (routeEdit.movePoint);
                            notamLayer.ts + NotamPopover: NOTAM areas, hover tooltip, click details),
                            AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date;
-                           MapPopover (MapTip, MapPopover, PopItem + useAccordion): the frame of those three; MapToolbar
-                           (route tools, LayersControl, MapHint), PointMenu (+ NameBox), mapPrefs.ts; route points grow with a
+                           MapPopover (MapTip, MapPopover, PopItem + useAccordion, useInsideMap): the frame of those three and
+                           of the snap / weather tooltips, all kept inside the map (flipped left / up near its edges); MapToolbar
+                           (route tools, LayersControl, MapHint: fades near the cursor, not near its close button), MapLayerToggles
+                           (the layer list, also the profile's "Map layers for new flights"), PointMenu (+ NameBox), mapPrefs.ts
+                           (flightLayers: flight → profile → this browser's old choice → all; tips per browser); layers are
+                           saved with the flight (useEditor().setMapLayers: not an undo step); style.LAYER_GROUPS maps toggles to
+                           MapLibre layers; snapping and hover details follow the layers shown; the FIR boundary and the
+                           ATHINAI | MAKEDONIA line (features.firFeatures); route points grow with a
                            halo on hover (feature-state), legs carry direction arrowheads (features.routeArrowFeatures);
                            colours = the --map-* tokens, read by style.ts loadChartTokens),
                            notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
@@ -226,6 +235,9 @@ tools/extract_ad_hours.ts  eAIP AD 2.3, AD 1.6.N.3/4 text → tools/ad_hours.jso
 tools/parse_runways.py     eAIP AD 2.12/2.13, AD 1.6.N.12/13 text → tools/runways.json (declared distances, slopes, …)
 tools/parse_ad_airspace.py eAIP AD 2.17, AD 1.6.N.17 text → src/data/ref/ad-airspaces.json (aerodrome CTR/ATZ: limits,
                            class, units; client map layer only, REF.adAirspaces — not in the ref_* tables)
+tools/build_fir.ts         AIP ENR 2.1 FIR / CTA lines + Natural Earth 1:10m land borders (npm world-atlas countries-10m.json,
+                           shared TopoJSON arcs) → src/data/ref/fir.json; the Corfu strait and the Aegean line to Türkiye are
+                           documented approximations; client map layer only (REF.fir)
 tools/smoke.ts             post-deploy smoke test: npm run smoke -- https://pigsgottafly.com
 .github/workflows/uptime.yml  every 10 min: /api/health and / must answer 200 (a failed run e-mails the repo owner)
 tools/build_seed.ts        data/aircraft/*.json → fleetSeed(): the owner's SX-ASV/SX-ASG as the migrations leave them

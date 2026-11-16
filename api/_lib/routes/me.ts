@@ -5,6 +5,7 @@ import { optNum, personColumns, str, toPilot } from '../rows.js';
 import { canUseAircraft } from '../access.js';
 import type { PilotUpdate, PilotSettings } from '../../../src/shared/types.js';
 import { WIND_MODELS } from '../../../src/shared/constants.js';
+import { mapLayersOf } from '../../../src/shared/mapLayers.js';
 
 function settingsPatch(s: unknown): Partial<PilotSettings> {
   if (!s || typeof s !== 'object') throw badRequest('settings must be an object');
@@ -25,6 +26,14 @@ function settingsPatch(s: unknown): Partial<PilotSettings> {
     const v = i.defaultAlternate == null ? '' : String(i.defaultAlternate).trim().toUpperCase();
     if (v && !/^[A-Z0-9]{2,8}$/.test(v)) throw badRequest('defaultAlternate must be an aerodrome code');
     out.defaultAlternate = v || null;
+  }
+  if ('mapLayers' in i) {
+    if (i.mapLayers == null) out.mapLayers = null;
+    else {
+      const l = mapLayersOf(i.mapLayers);
+      if (!l) throw badRequest('mapLayers must be an object');
+      out.mapLayers = l;
+    }
   }
   if ('windModel' in i) {
     if (!(String(i.windModel) in WIND_MODELS)) throw badRequest('unknown windModel');

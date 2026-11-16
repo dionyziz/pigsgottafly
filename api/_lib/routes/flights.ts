@@ -12,6 +12,7 @@ import type { Queryable } from '../db.js';
 import { checkCount } from '../limits.js';
 import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
+import { mapLayersOf } from '../../../src/shared/mapLayers.js';
 import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, validateCrew } from '../../../src/shared/constants.js';
 import { findAerodrome } from './ref.js';
 import { aerodromePoint } from '../../../src/shared/aerodrome.js';
@@ -155,6 +156,9 @@ export const routes: Route[] = [
       base.taxiInMin = pilot.settings.taxiInMin;
       base.aircraftId = pilot.defaultAircraftId && (await canUseAircraft(db, pilot.id, pilot.defaultAircraftId)) ? pilot.defaultAircraftId : null;
       base.options = { ...base.options, windModel: pilot.settings.windModel };
+      // the profile's map layers for new flights
+      const layers = mapLayersOf(pilot.settings.mapLayers);
+      if (layers) base.options.mapLayers = layers;
       // PIC in the PIC seat of the aircraft the flight starts with (front left, else its first seat),
       // the same rule as the editor's picSeat(): a hangar-built aircraft may have no 'front-left'.
       const acId = 'aircraftId' in input ? input.aircraftId : base.aircraftId;

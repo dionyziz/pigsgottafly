@@ -4,6 +4,7 @@
 // numbers (W&B, altitudes, fuel) into NaN or nonsense. Numbers must be JSON numbers: strings,
 // booleans and null are not coerced (null / absent means "not set" where a field is optional).
 import type { AerodromeRequest, AtcEntry, AtcRole, FlightOptions, FuelType, FlightSummary, LegOverride, RoutePoint, WbCategory, WindModel } from '../../src/shared/types.js';
+import { mapLayersOf } from '../../src/shared/mapLayers.js';
 import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
 import { MAX_STOP_MIN } from '../../src/shared/requests.js';
 import { FUEL_TYPES } from '../../src/shared/fuel.js';
@@ -185,6 +186,14 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
         if (n !== null) out[k as FuelType] = n;
       }
       o.fuelL = Object.keys(out).length ? out : null;
+    }
+  }
+  if ('mapLayers' in i) {
+    if (i.mapLayers === null || i.mapLayers === undefined) o.mapLayers = null;
+    else {
+      const l = mapLayersOf(i.mapLayers);
+      if (!l) throw badRequest('options.mapLayers must be an object');
+      o.mapLayers = l;
     }
   }
   return o;

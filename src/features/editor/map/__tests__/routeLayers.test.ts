@@ -1,10 +1,12 @@
-// Route direction arrows, the route-point hover halo and the chart colours (design tokens).
+// Route direction arrows, the route-point hover halo, the layer toggles, the FIR and the chart colours (design tokens).
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { RoutePoint } from '../../../../shared';
-import { ARROW_AT, routeArrowFeatures } from '../features';
-import { buildStyle, CHART, CHART_DEFAULT_VALUES, CHART_TOKENS, loadChartTokens, type ChartColor } from '../style';
-import { areaShown, areaToggle, DEFAULT_PREFS } from '../mapPrefs';
+import { ARROW_AT, firFeatures, routeArrowFeatures } from '../features';
+import { FIR } from '../../../../data/ref';
+import { buildStyle, LAYER_GROUPS, CHART, CHART_DEFAULT_VALUES, CHART_TOKENS, loadChartTokens, type ChartColor } from '../style';
+import { airspaceShown, areaShown, areaToggle, flightLayers, legacyLayers } from '../mapPrefs';
+import { DEFAULT_MAP_LAYERS, mapLayersOf } from '../../../../shared/mapLayers';
 
 const p = (lat: number, lon: number): RoutePoint => ({ uid: `${lat},${lon}`, kind: 'custom', refId: null, name: 'P', lat, lon });
 
@@ -42,6 +44,31 @@ describe('route layers', () => {
   });
 });
 
+describe('layer toggles and the FIR', () => {
+  it('every toggled layer exists in the style', () => {
+    const ids = new Set(buildStyle('light', false, null).style.layers.map((l) => l.id));
+    for (const g of Object.values(LAYER_GROUPS)) for (const id of g) expect(ids.has(id), id).toBe(true);
+  });
+  it('draws the LGGG boundary (closed, through the AIP points) and the ATHINAI | MAKEDONIA line ending on it', () => {
+    const fc = firFeatures(FIR);
+    const fir = fc.features.find((f) => f.properties.kind === 'fir')!;
+    const div = fc.features.find((f) => f.properties.kind === 'divider')!;
+    expect(fir.properties.label).toBe('LGGG ATHINAI FIR');
+    expect(div.properties.label).toBe('ATHINAI | MAKEDONIA');
+    const ring = fir.geometry.coordinates;
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+    const has = (lon: number, lat: number) => ring.some(([x, y]) => Math.abs(x - lon) < 1e-4 && Math.abs(y - lat) < 1e-4);
+    expect(has(30, 36 + 5 / 60) && has(30, 33.5) && has(19, 36.5) && has(19, 40 + 25 / 60)).toBe(true);
+    // the dividing line ends on the boundary at 381449N 0261010E
+    const end = div.geometry.coordinates[div.geometry.coordinates.length - 1];
+    expect(has(end[0], end[1])).toBe(true);
+    expect(div.geometry.coordinates).toHaveLength(6);
+    // the land borders reach the Bulgarian and Turkish tripoint area (about 41.7N 26.3E)
+    expect(Math.max(...ring.map(([, y]) => y))).toBeGreaterThan(41.7);
+    expect(firFeatures(undefined).features).toEqual([]);
+  });
+});
+
 describe('chart colours', () => {
   const read = (rel: string) => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
   it('are the --map-* tokens of the stylesheet, with the same defaults', () => {
@@ -75,7 +102,33 @@ describe('chart colours', () => {
 describe('map prefs', () => {
   it('maps each ENR 5 area kind to its toggle', () => {
     expect(['P', 'R', 'D', 'MIL', 'ACT'].map(areaToggle)).toEqual(['prd', 'prd', 'prd', 'mil', 'act']);
-    expect(areaShown({ ...DEFAULT_PREFS, mil: false }, 'MIL')).toBe(false);
-    expect(areaShown({ ...DEFAULT_PREFS, mil: false }, 'R')).toBe(true);
+    expect(areaShown({ ...DEFAULT_MAP_LAYERS, mil: false }, 'MIL')).toBe(false);
+    expect(areaShown({ ...DEFAULT_MAP_LAYERS, mil: false }, 'R')).toBe(true);
+  });
+  it('TMA/MTMA and CTR/ATZ details follow their own toggles', () => {
+    const l = { ...DEFAULT_MAP_LAYERS, tma: false };
+    expect(['TMA', 'MTMA', 'CTR', 'ATZ', 'D'].map((t) => airspaceShown(l, t))).toEqual([false, false, true, true, true]);
+    expect(airspaceShown({ ...DEFAULT_MAP_LAYERS, zones: false }, 'ATZ')).toBe(false);
+  });
+  it('a flight keeps its own layers; else the pilot\'s setting; else what the browser used; else all', () => {
+    const store = new Map<string, string>();
+    const g = globalThis as { localStorage?: unknown };
+    const prev = g.localStorage;
+    g.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
+    try {
+      expect(flightLayers(undefined, null)).toEqual(DEFAULT_MAP_LAYERS);
+      store.set('pgf:map', JSON.stringify({ base: 'terrain', ofm: false, chart: false, tips: true, notams: true, prd: true, mil: true, act: true }));
+      const legacy = legacyLayers()!;
+      expect([legacy.base, legacy.tma, legacy.aerodromes, legacy.notams]).toEqual(['terrain', false, false, true]);
+      expect(flightLayers(undefined, undefined)).toEqual(legacy);
+      expect(flightLayers(null, { ...DEFAULT_MAP_LAYERS, vfrRoutes: false }).vfrRoutes).toBe(false);
+      expect(flightLayers({ ...DEFAULT_MAP_LAYERS, base: 'street' }, { ...DEFAULT_MAP_LAYERS, vfrRoutes: false })).toEqual({ ...DEFAULT_MAP_LAYERS, base: 'street' });
+    } finally {
+      g.localStorage = prev;
+    }
+  });
+  it('a stored selection is completed and checked', () => {
+    expect(mapLayersOf('x')).toBeNull();
+    expect(mapLayersOf({ base: 'moon', tma: 'no', zones: false, junk: 1 })).toEqual({ ...DEFAULT_MAP_LAYERS, zones: false });
   });
 });
