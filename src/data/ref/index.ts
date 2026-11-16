@@ -21,7 +21,7 @@ import airacJson from './airac.json';
 import airspacesJson from './airspaces.json';
 import areasJson from './areas.json';
 import atcUnitsJson from './atc-units.json';
-// Not from build_ref.ts: tools/build_fir.ts (ENR 2.1 + Natural Earth borders), client only.
+// Not from build_ref.ts: tools/build_fir.ts (ENR 2.1 + OpenStreetMap land borders), client only.
 import firJson from './fir.json';
 import fisJson from './fis.json';
 import runwaysJson from './runways.json';

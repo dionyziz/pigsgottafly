@@ -1,12 +1,38 @@
 // Builds src/data/ref/fir.json: the ATHINAI FIR / HELLAS UIR (LGGG) boundary and the ATHINAI CTA /
 // MAKEDONIA CTA dividing line, for the map.
 //
-//   npx tsx tools/build_fir.ts <countries-10m.json>
+//   npx tsx tools/build_fir.ts <greek-borders.json>
 //
-// <countries-10m.json> is Natural Earth admin-0 countries at 1:10m (public domain) as TopoJSON, from the
-// npm package world-atlas@2.0.2 (`npm pack world-atlas@2.0.2`). TopoJSON shares the arcs between
-// neighbours, so the Greek land borders are the arcs Greece shares with Albania, North Macedonia,
-// Bulgaria and Türkiye.
+// Over land the FIR follows the Greek national frontier. It is taken from OpenStreetMap, the source of the
+// base map's own borders, so the two lines coincide: the ways shared by the admin_level=2 relations of
+// Greece (192307) and of each neighbour, Albania (53292), North Macedonia (53293), Bulgaria (186382) and
+// Türkiye (174737; the Evros down to its mouth). <greek-borders.json> is the answer of the Overpass API
+// (data © OpenStreetMap contributors, ODbL) to this query (the lines marked `>`):
+//
+//   > [out:json][timeout:300][bbox:39.5,19.8,42.0,26.8];
+//   > rel(192307);way(r)->.gr;
+//   > rel(53292);way(r)->.al;
+//   > rel(53293);way(r)->.mk;
+//   > rel(186382);way(r)->.bg;
+//   > rel(174737);way(r)->.tr;
+//   > make neighbour name="Albania";out;
+//   > way.gr.al;out tags geom;
+//   > make neighbour name="North Macedonia";out;
+//   > way.gr.mk;out tags geom;
+//   > make neighbour name="Bulgaria";out;
+//   > way.gr.bg;out tags geom;
+//   > make neighbour name="Türkiye";out;
+//   > way.gr.tr;out tags geom;
+//
+// fetched with (about 1 MB; not committed):
+//
+//   sed -n 's|^//   > ||p' tools/build_fir.ts > /tmp/q.overpassql
+//   curl -A pigsgottafly https://overpass-api.de/api/interpreter --data-urlencode data@/tmp/q.overpassql \
+//     -o /tmp/greek-borders.json
+//
+// The `neighbour` markers say whose border the ways after them are. Ways tagged maritime=yes (territorial
+// waters) are left out: at sea the AIP lines below apply. fir.json was last built from the OSM data of
+// 2026-11-16T18:39:05Z; the land borders are thinned by Douglas-Peucker at TOLERANCE_M.
 //
 // Sources
 //   AIP Greece ENR 2.1.1 / 2.1.2: 3605N 03000E - 3330N 03000E - 3400N 02710E - 3400N 02410E -
@@ -109,89 +135,185 @@ const DIVIDER: LonLat[] = [
   pt('381449N', '0261010E'),
 ];
 
-interface Topo {
-  transform: { scale: [number, number]; translate: [number, number] };
-  arcs: [number, number][][];
-  objects: { countries: { geometries: { properties: { name: string }; arcs: unknown }[] } };
+/** The neighbours along the frontier, west to east, as the query's markers name them. */
+const NEIGHBOURS = ['Albania', 'North Macedonia', 'Bulgaria', 'Türkiye'] as const;
+type Neighbour = (typeof NEIGHBOURS)[number];
+/** Douglas-Peucker tolerance for the land borders, metres. */
+const TOLERANCE_M = 25;
+/** Aerodromes near every part of the boundary, which must lie inside it. */
+const MUST_CONTAIN = ['LGTT', 'LGKR', 'LGAL', 'LGSM', 'LGRP', 'LGKO'];
+
+interface Overpass {
+  osm3s?: { timestamp_osm_base?: string };
+  elements: (
+    | { type: 'neighbour'; tags: { name: string } }
+    | { type: 'way'; id: number; tags?: Record<string, string>; geometry: { lat: number; lon: number }[] }
+  )[];
 }
 
-function landBorders(file: string): Record<string, LonLat[]> {
-  const topo = JSON.parse(fs.readFileSync(file, 'utf8')) as Topo;
-  const [sx, sy] = topo.transform.scale,
-    [tx, ty] = topo.transform.translate;
-  const arcs = topo.arcs.map((a) => {
-    let x = 0,
-      y = 0;
-    return a.map(([dx, dy]): LonLat => {
-      x += dx;
-      y += dy;
-      return [x * sx + tx, y * sy + ty];
-    });
-  });
-  const arcSet = (name: string) => {
-    const g = topo.objects.countries.geometries.find((c) => c.properties.name === name);
-    if (!g) throw new Error('no ' + name);
-    const s = new Set<number>();
-    const walk = (o: unknown): void => {
-      if (typeof o === 'number') s.add(o >= 0 ? o : ~o);
-      else if (Array.isArray(o)) o.forEach(walk);
-    };
-    walk(g.arcs);
-    return s;
-  };
-  const gr = arcSet('Greece');
-  const out: Record<string, LonLat[]> = {};
-  for (const n of ['Albania', 'Macedonia', 'Bulgaria', 'Turkey']) {
-    const shared = [...arcSet(n)].filter((i) => gr.has(i));
-    if (shared.length !== 1) throw new Error(`${n}: ${shared.length} shared arcs`);
-    out[n] = arcs[shared[0]];
-  }
-  return out;
-}
-
-/** Douglas-Peucker in degrees (the borders at about 100 m). */
-function simplify(p: LonLat[], tol: number): LonLat[] {
-  if (p.length < 3) return p;
-  const [a, b] = [p[0], p[p.length - 1]];
-  let best = -1,
-    bd = 0;
-  for (let i = 1; i < p.length - 1; i++) {
-    const dx = b[0] - a[0],
-      dy = b[1] - a[1];
-    const len = Math.hypot(dx, dy) || 1e-12;
-    const d = Math.abs(dy * p[i][0] - dx * p[i][1] + b[0] * a[1] - b[1] * a[0]) / len;
-    if (d > bd) {
-      bd = d;
-      best = i;
+/** The land frontier with each neighbour: the shared ways (not the maritime ones), stitched into one line. */
+function landBorders(file: string): { borders: Map<Neighbour, LonLat[]>; timestamp: string } {
+  const json = JSON.parse(fs.readFileSync(file, 'utf8')) as Overpass;
+  const ways = new Map<Neighbour, LonLat[][]>(NEIGHBOURS.map((n) => [n, []]));
+  let current: LonLat[][] | undefined;
+  for (const e of json.elements) {
+    if (e.type === 'neighbour') {
+      current = ways.get(e.tags.name as Neighbour);
+      if (!current) throw new Error('unknown neighbour ' + e.tags.name);
+    } else {
+      if (!current) throw new Error(`way ${e.id} before any neighbour marker`);
+      if (e.tags?.maritime === 'yes') continue;
+      current.push(e.geometry.map(({ lat, lon }): LonLat => [lon, lat]));
     }
   }
-  if (bd <= tol) return [a, b];
-  return [...simplify(p.slice(0, best + 1), tol).slice(0, -1), ...simplify(p.slice(best), tol)];
+  const borders = new Map<Neighbour, LonLat[]>();
+  for (const [n, w] of ways) {
+    if (!w.length) throw new Error(`${n}: no shared ways`);
+    borders.set(n, stitch(w, n));
+  }
+  return { borders, timestamp: json.osm3s?.timestamp_osm_base ?? 'unknown' };
 }
 
-const near = (a: LonLat, b: LonLat) => Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
-/** The arc oriented to start at `from`. */
-function from(arc: LonLat[], start: LonLat): LonLat[] {
-  if (near(arc[0], start)) return arc;
-  if (near(arc[arc.length - 1], start)) return [...arc].reverse();
-  throw new Error('arcs do not join');
+const same = (a: LonLat, b: LonLat) => a[0] === b[0] && a[1] === b[1];
+const reversed = (p: LonLat[]) => [...p].reverse();
+const at = ([lon, lat]: LonLat) => `${lat}N ${lon}E`;
+
+/** Joins ways (in any order and direction) end to end into one line; throws on a gap or a branch. */
+function stitch(ways: LonLat[][], name: string): LonLat[] {
+  const left = [...ways];
+  let line = left.pop()!;
+  while (left.length) {
+    const head = line[0],
+      tail = line[line.length - 1];
+    const i = left.findIndex((w) => [w[0], w[w.length - 1]].some((p) => same(p, head) || same(p, tail)));
+    if (i < 0) throw new Error(`${name}: ${left.length} ways do not join the line ${at(head)} … ${at(tail)}`);
+    const [w] = left.splice(i, 1);
+    if (same(w[0], tail)) line = [...line, ...w.slice(1)];
+    else if (same(w[w.length - 1], tail)) line = [...line, ...reversed(w).slice(1)];
+    else if (same(w[w.length - 1], head)) line = [...w, ...line.slice(1)];
+    else line = [...reversed(w), ...line.slice(1)];
+  }
+  return line;
+}
+
+/** The line oriented to start at `start`. */
+function from(line: LonLat[], start: LonLat, name: string): LonLat[] {
+  if (same(line[0], start)) return line;
+  if (same(line[line.length - 1], start)) return reversed(line);
+  throw new Error(`${name} does not start at ${at(start)}`);
+}
+
+/** Metres per degree around 40N (equirectangular; good to a fraction of a percent along the frontier). */
+const M_LAT = 111_045,
+  M_LON = M_LAT * Math.cos((40 * Math.PI) / 180);
+
+/** Douglas-Peucker with a tolerance in metres. */
+function simplify(p: LonLat[], tolM: number): LonLat[] {
+  const keep = new Uint8Array(p.length);
+  keep[0] = keep[p.length - 1] = 1;
+  const stack: [number, number][] = [[0, p.length - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop()!;
+    const ax = p[i][0] * M_LON,
+      ay = p[i][1] * M_LAT;
+    const dx = p[j][0] * M_LON - ax,
+      dy = p[j][1] * M_LAT - ay;
+    const len2 = dx * dx + dy * dy;
+    let best = -1,
+      bd = 0;
+    for (let k = i + 1; k < j; k++) {
+      const px = p[k][0] * M_LON - ax,
+        py = p[k][1] * M_LAT - ay;
+      const t = len2 ? Math.max(0, Math.min(1, (px * dx + py * dy) / len2)) : 0;
+      const d = Math.hypot(px - t * dx, py - t * dy);
+      if (d > bd) [bd, best] = [d, k];
+    }
+    if (bd > tolM) {
+      keep[best] = 1;
+      stack.push([i, best], [best, j]);
+    }
+  }
+  return p.filter((_, k) => keep[k]);
+}
+
+/** Whether segments ab and cd meet (crossing or touching). */
+function meet(a: LonLat, b: LonLat, c: LonLat, d: LonLat): boolean {
+  const side = (p: LonLat, q: LonLat, r: LonLat) =>
+    Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  const within = (p: LonLat, q: LonLat, r: LonLat) =>
+    Math.min(p[0], q[0]) <= r[0] &&
+    r[0] <= Math.max(p[0], q[0]) &&
+    Math.min(p[1], q[1]) <= r[1] &&
+    r[1] <= Math.max(p[1], q[1]);
+  const [s1, s2, s3, s4] = [side(a, b, c), side(a, b, d), side(c, d, a), side(c, d, b)];
+  if (s1 !== s2 && s3 !== s4) return true;
+  return (!s1 && within(a, b, c)) || (!s2 && within(a, b, d)) || (!s3 && within(c, d, a)) || (!s4 && within(c, d, b));
+}
+
+/** Throws unless the ring is closed, has no repeated point and no two non-adjacent edges meet. */
+function checkSimple(ring: LonLat[]): void {
+  if (!same(ring[0], ring[ring.length - 1])) throw new Error('the ring is not closed');
+  const n = ring.length - 1; // edges
+  for (let i = 0; i < n; i++) {
+    const [a, b] = [ring[i], ring[i + 1]];
+    if (same(a, b)) throw new Error(`repeated point ${at(a)}`);
+    for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue; // the last edge meets the first at the closing point
+      const [c, d] = [ring[j], ring[j + 1]];
+      if (
+        Math.max(c[0], d[0]) < Math.min(a[0], b[0]) ||
+        Math.min(c[0], d[0]) > Math.max(a[0], b[0]) ||
+        Math.max(c[1], d[1]) < Math.min(a[1], b[1]) ||
+        Math.min(c[1], d[1]) > Math.max(a[1], b[1])
+      )
+        continue;
+      if (meet(a, b, c, d)) throw new Error(`the ring crosses itself: edges at ${at(a)} and ${at(c)}`);
+    }
+  }
+}
+
+function inside([x, y]: LonLat, ring: LonLat[]): boolean {
+  let c = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i],
+      [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
 }
 
 const src = process.argv[2];
 if (!src) {
-  console.error('usage: tsx tools/build_fir.ts <countries-10m.json>');
+  console.error('usage: tsx tools/build_fir.ts <greek-borders.json>');
   process.exit(1);
 }
-const b = landBorders(src);
-// Albania's arc starts on the coast (south-west) in Natural Earth; orient each to run west → east
-const al = b.Albania[0][1] < b.Albania[b.Albania.length - 1][1] ? b.Albania : [...b.Albania].reverse();
-const mk = from(b.Macedonia, al[al.length - 1]);
-const bg = from(b.Bulgaria, mk[mk.length - 1]);
-const tr = from(b.Turkey, bg[bg.length - 1]);
+const { borders, timestamp } = landBorders(src);
+const [AL, MK, BG, TR] = NEIGHBOURS.map((n) => borders.get(n)!);
+// Albania's border runs from the coast (south) to the tripoint with North Macedonia; each next one
+// starts where the previous one ends, and Türkiye's ends at the Evros mouth
+const mkEnds = [MK[0], MK[MK.length - 1]];
+const al = mkEnds.some((p) => same(p, AL[AL.length - 1])) ? AL : reversed(AL);
+const mk = from(MK, al[al.length - 1], 'North Macedonia');
+const bg = from(BG, mk[mk.length - 1], 'Bulgaria');
+const tr = from(TR, bg[bg.length - 1], 'Türkiye');
 const land = [...al, ...mk.slice(1), ...bg.slice(1), ...tr.slice(1)];
-const ring = [...SEA_AIP, ...CORFU_STRAIT, ...simplify(land, 0.001), ...AEGEAN, SEA_AIP[0]];
-const r6 = (v: number) => +v.toFixed(5);
-const toLatLon = (p: LonLat[]) => p.map(([lon, lat]) => [r6(lat), r6(lon)]);
+const r5 = (v: number) => +v.toFixed(5);
+// rounded as written, so the checks see the ring the map gets
+const ring = [...SEA_AIP, ...CORFU_STRAIT, ...simplify(land, TOLERANCE_M), ...AEGEAN, SEA_AIP[0]]
+  .map(([lon, lat]): LonLat => [r5(lon), r5(lat)])
+  .filter((p, i, a) => i === 0 || !same(p, a[i - 1]));
+checkSimple(ring);
+const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+const aerodromes = JSON.parse(fs.readFileSync(path.join(root, 'src/data/ref/aerodromes.json'), 'utf8')) as {
+  id: string;
+  lat: number;
+  lon: number;
+}[];
+for (const id of MUST_CONTAIN) {
+  const a = aerodromes.find((x) => x.id === id);
+  if (!a || !inside([a.lon, a.lat], ring)) throw new Error(`${id} is not inside the FIR`);
+}
+const toLatLon = (p: LonLat[]) => p.map(([lon, lat]) => [r5(lat), r5(lon)]);
 const out = {
   id: 'LGGG',
   name: 'ATHINAI FIR',
@@ -199,6 +321,8 @@ const out = {
   divider: { label: 'ATHINAI | MAKEDONIA', line: toLatLon(DIVIDER) },
   source: 'ENR 2.1',
 };
-const file = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'src', 'data', 'ref', 'fir.json');
+const file = path.join(root, 'src', 'data', 'ref', 'fir.json');
 fs.writeFileSync(file, JSON.stringify(out) + '\n');
-console.log(`${file}: ${ring.length} boundary points (land ${land.length} → simplified)`);
+console.log(
+  `${file}: ${ring.length} boundary points (OSM ${timestamp}: land ${land.length} → ${TOLERANCE_M} m tolerance)`,
+);
