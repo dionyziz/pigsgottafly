@@ -1,7 +1,7 @@
 // Page chrome for the lobby and the account pages: brand, optional centre content, account menu.
 // The flight editor and the export pages have their own full-window layouts.
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { AccountMenu } from './AccountMenu';
 
 export function TopBar({ children }: { children?: ReactNode }) {

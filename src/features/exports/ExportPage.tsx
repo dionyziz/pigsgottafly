@@ -7,7 +7,7 @@
 // The flight is loaded after the editor's pending edits are sent (so the export never shows the
 // manifest from before the last edit), and again when the window regains focus or a flight changes
 // here or in another tab. The aircraft and passengers come from the shared entity cache.
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router';
 import { api } from '../../data/api';
 import { flightStore } from '../../data/flightStore';
 import { useAsync } from '../../data/useAsync';

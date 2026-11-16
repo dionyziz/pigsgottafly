@@ -5,7 +5,7 @@
 // Nothing pilot-specific is prefilled (pilot correction #1): unset values show neutral placeholders.
 // The form follows the pilot (another tab, a dialog) until it is edited.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useFocusParam } from '../../app/focusParam';
 import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';

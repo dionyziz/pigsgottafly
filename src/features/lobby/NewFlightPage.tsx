@@ -4,7 +4,7 @@
 // the destination) first; nothing is assumed (pilot correction #1). Either way the editor's Route
 // section shows both ends as fields. Route points come from aerodromePoint (src/shared/aerodrome).
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Shell } from '../../app/Shell';
 import { usePilot } from '../../app/session';
 import { api } from '../../data/api';

@@ -1,7 +1,7 @@
 // /privacy: the privacy policy (GDPR). Describes what the code actually stores and sends: keep it in
 // step with api/_lib/migrations (tables), api/_lib/routes and the external services in vercel.json's
 // CSP (connect-src, img-src). Dated LEGAL_UPDATED.
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { LegalPage, Mail, type LegalSection } from './LegalPage';
 
 const sections: LegalSection[] = [

@@ -5,7 +5,7 @@
 // now with the version sent; then "Re-send". Screen only. The operator's settings are refetched when
 // an operator or aircraft changes (here or in another tab) and on focus.
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { api, ApiRequestError } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { wbPerfText, type WbPerfContent } from '../../../shared';

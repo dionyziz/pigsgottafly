@@ -1,6 +1,6 @@
 // A list of warnings, each with its level and, when it can be fixed, a fix: a link to where it is
 // fixed (`to`) or a fix done in place (`onFix`, e.g. open a section and focus a field).
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Icon } from './Icon';
 
 export type WarningLevel = 'danger' | 'warn' | 'info';

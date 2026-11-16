@@ -5,7 +5,7 @@
 // (header chip). The section nav follows the scroll (useScrollSpy). Shared aircraft: editors edit like
 // the owner; viewers see the page read-only. Share opens the sharing dialog.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { Shell } from '../../app/Shell';
 import { focusAndHighlight, useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';

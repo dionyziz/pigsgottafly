@@ -2,7 +2,7 @@
 // before each flight and where they go, its documents (operations manual, PDFs), its aircraft, and
 // who has access (shared directly, or through one of its aircraft). Viewers see it read-only.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';

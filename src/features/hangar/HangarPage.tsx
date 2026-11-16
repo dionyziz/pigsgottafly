@@ -3,7 +3,7 @@
 // Aircraft shared with the pilot are listed with their own, with a "Shared by" chip; the row menu
 // shares an aircraft, and removes a shared one from the pilot's hangar (their access only).
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';

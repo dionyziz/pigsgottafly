@@ -1,6 +1,6 @@
 // Sign in with Google (Google Identity Services); the server verifies the ID token.
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { api, ApiRequestError } from '../data/api';
 
 declare global {

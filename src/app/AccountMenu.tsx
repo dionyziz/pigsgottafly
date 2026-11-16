@@ -1,7 +1,7 @@
 // Top-right account menu: Profile, Hangar, Operators, Passengers, My waypoints, (admins: Admin), About,
 // Terms, Privacy, Sign out, Sign out everywhere (confirmed).
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useSession } from './session';
 import { ConfirmDialog } from '../ui';
 

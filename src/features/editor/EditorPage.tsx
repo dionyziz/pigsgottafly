@@ -5,7 +5,7 @@
 // driven by EditorProvider.update().
 import { useResizable } from './resizable';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { useSession } from '../../app/session';
 import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';

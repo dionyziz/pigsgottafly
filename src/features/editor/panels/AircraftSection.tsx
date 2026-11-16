@@ -1,5 +1,5 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { todayUtc } from '../../../shared/date';
 import { pickCompassCard } from '../../../calc';
 import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';

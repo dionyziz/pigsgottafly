@@ -2,7 +2,7 @@
 // or created on the spot), each in a seat of the aircraft; body weights for this flight; baggage per
 // baggage area; W&B category; take-off/landing mass and CG against the envelope.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { FALLBACK_SEATS, seatLayout, type FlightCrew, type Passenger, type PersonDetails, type Pilot } from '../../../shared';
 import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';

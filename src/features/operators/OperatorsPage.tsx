@@ -2,7 +2,7 @@
 // through a shared aircraft), with their aircraft and whether they ask for the W&B and performance
 // sheets before each flight. "New operator" creates one and opens its page. The list is the
 // 'operators' entity (src/data/entities.ts): fresh after any operator, aircraft or share change.
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { Shell } from '../../app/Shell';
 import { useEntity } from '../../data/entities';

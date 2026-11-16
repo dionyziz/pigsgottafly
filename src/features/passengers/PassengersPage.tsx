@@ -2,7 +2,7 @@
 // on the row or Delete in the dialog, confirmed, with Undo). These are added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
 // The pilot is listed first (PIC) and edited with the same form, saved to the profile.
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 import { Shell } from '../../app/Shell';
 import { usePilot } from '../../app/session';
 import { useToast } from '../../app/toast';

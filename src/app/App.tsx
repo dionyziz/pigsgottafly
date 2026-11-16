@@ -11,7 +11,7 @@
 //   /privacy  /terms               privacy policy, terms of service (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Loading } from '../ui';

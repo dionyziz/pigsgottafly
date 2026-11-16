@@ -3,7 +3,7 @@
 // shared WarningList, each warning with a link to where it is fixed.
 import { afterEach, describe, expect, test } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import type { ReactNode } from 'react';
 import { ExportWarnings } from '../../../src/features/exports/WarningList';
 

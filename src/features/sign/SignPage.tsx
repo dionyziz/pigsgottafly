@@ -4,7 +4,7 @@
 // masked, and a single "Sign" button. The signature is the signer's initial and last name in the
 // handwriting font, with the time.
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { api, ApiRequestError } from '../../data/api';
 import { Loading } from '../../ui';
 import type { SigningView } from '../../shared/forms';

@@ -2,7 +2,7 @@
 // (or danger) box, each warning with a link to where it is fixed (the flight editor with the input
 // focused, the hangar, the profile, the passenger dialog: fix.ts).
 import type { ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { WarningList, type WarningLevel } from '../../ui';
 import { fixLink, planningFix, type Fix, type FixContext } from './fix';
 

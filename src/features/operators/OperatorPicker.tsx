@@ -4,7 +4,7 @@
 // aircraft without a linked operator keeps its old free-text operator, shown as such.
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { EMPTY_OPERATOR, type AircraftInput, type OperatorItem } from '../../shared';

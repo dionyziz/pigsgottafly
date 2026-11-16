@@ -3,7 +3,7 @@
 // ConfirmDialog, Menu, AsyncView, rowClick, Field, WarningList, useHighlightFields, Icon, Loading.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { useRef, useState } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import {
   AsyncView, Collapsible, ConfirmDialog, Dialog, DialogFooter, DragHandle, Field, ICON_NAMES, Icon, KebabMenu, Loading,

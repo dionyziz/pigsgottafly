@@ -3,7 +3,7 @@
 // flight (winds, compass card, W&B, performance, crosswind, fuel, manifest), each with its fix.
 // A click anywhere on the header (not on its buttons) opens or closes it.
 import { useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { fmtAltitude, fmtHdg } from '../../../calc';
 import type { RouteWeather } from '../../../data/weather';
 import { fmtClock, fmtDuration, fmtEte } from '../../../shared/format';

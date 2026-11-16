@@ -4,7 +4,7 @@
 // Undo). A Trash view lists trashed flights with Restore. The header (h1, tabs, New flight) keeps
 // its layout in both views.
 import { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
