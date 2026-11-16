@@ -67,7 +67,7 @@ function queue(id: string, delay = 700) {
   LS.set(PENDING, [...p]);
   setStatus('saving');
   if (timer) clearTimeout(timer);
-  timer = setTimeout(flush, delay);
+  timer = setTimeout(() => void flush(), delay);
 }
 const drop = (id: string) =>
   LS.set(
@@ -113,7 +113,7 @@ async function flush(): Promise<void> {
   if (status !== 'error' || left) setStatus(left ? (failed ? 'offline' : 'saving') : 'saved');
   if (left) {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(flush, failed ? 5000 : 300);
+    timer = setTimeout(() => void flush(), failed ? 5000 : 300);
   }
 }
 
@@ -124,7 +124,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     if ((LS.get<string[]>(PENDING) || []).length) void flush();
   });
-  if ((LS.get<string[]>(PENDING) || []).length) setTimeout(flush, 500);
+  if ((LS.get<string[]>(PENDING) || []).length) setTimeout(() => void flush(), 500);
 }
 
 export const flightStore = {

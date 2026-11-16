@@ -30,14 +30,18 @@ const C172_SEATS: Record<string, SeatPosition[]> = {
   ],
 };
 
+/** A type JSON as read from data/aircraft/*.json: AFM data, checked by the tests that load each one. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON of several shapes, read field by field
+export type AircraftTypeJson = Record<string, any>;
+
 function stationKind(id: string): StationKind {
   return id === 'fuel' ? 'fuel' : id.startsWith('bag') ? 'baggage' : 'seat';
 }
 
 /** AircraftInput (blank airframe) from a type JSON in the data/aircraft/reims-f172m.json format. */
-export function aircraftFromTypeJson(type: any): AircraftInput {
+export function aircraftFromTypeJson(type: AircraftTypeJson): AircraftInput {
   const mb = type.massBalance;
-  const stations: Station[] = mb.stations.map((s: any): Station => {
+  const stations: Station[] = mb.stations.map((s: AircraftTypeJson): Station => {
     const kind = stationKind(s.id);
     const seats: SeatPosition[] | null =
       kind === 'seat'

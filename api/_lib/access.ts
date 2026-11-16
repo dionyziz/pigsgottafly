@@ -3,12 +3,10 @@
 // the API goes through here: no access answers 404 (the aircraft does not exist for that pilot),
 // too little access answers 403.
 import type { AircraftAccess, AircraftRole, HangarAircraft } from '../../src/shared/sharing.js';
-import type { Queryable } from './db.js';
+import type { Queryable, Row } from './db.js';
 import { HttpError, notFound } from './http.js';
 import { photoJsonSql, toFile } from './routes/files.js';
 import { toAircraft } from './rows.js';
-
-type Row = Record<string, any>;
 
 /** SQL condition: aircraft `alias` is accessible to the pilot id in `param` (e.g. accessibleSql('a', '$2')). */
 export const accessibleSql = (alias: string, param: string) =>

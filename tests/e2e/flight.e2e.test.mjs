@@ -212,21 +212,6 @@ const flightId = () => page.eval(() => location.pathname.split('/')[2]);
 const waitSaved = () =>
   page.waitFor(() => document.querySelector('[data-testid=save-state]')?.textContent === 'Saved', { timeout: 15000 });
 const text = (sel) => page.eval((s) => document.querySelector(s)?.textContent ?? null, sel);
-/** Clicks the first element matching `sel` whose text includes `t`. */
-async function clickText(sel, t) {
-  await page.waitFor((s, t) => [...document.querySelectorAll(s)].some((e) => e.textContent.includes(t)), {
-    args: [sel, t],
-  });
-  await page.eval(
-    (s, t) => {
-      document.querySelectorAll('[data-e2e]').forEach((e) => e.removeAttribute('data-e2e'));
-      [...document.querySelectorAll(s)].find((e) => e.textContent.includes(t)).setAttribute('data-e2e', '1');
-    },
-    sel,
-    t,
-  );
-  await page.click('[data-e2e]');
-}
 
 test('plan a flight end to end: map, panels, navlog, exports, W&B and performance', { timeout: 240000 }, async () => {
   // ---- pilot profile, hangar (SX-ASV from the seed), one passenger: through the API

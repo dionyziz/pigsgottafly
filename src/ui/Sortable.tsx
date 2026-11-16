@@ -4,7 +4,7 @@
 //
 //   const s = useSortable({ count: rows.length, onMove: (a, b) => set(moveAt(rows, a, b)) });
 //   rows.map((r, i) => <tr key={r.id} {...s.itemProps(i)}><td><DragHandle {...s.handleProps(i)} /></td>…</tr>)
-import { forwardRef, type KeyboardEvent, type PointerEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type PointerEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon } from './Icon';
 
@@ -132,10 +132,11 @@ export function useSortable({ count, onMove, disabled }: SortableOptions) {
 type HandleProps = Omit<ReturnType<ReturnType<typeof useSortable>['handleProps']>, 'ref'>;
 
 /** The ⠿ handle on the left of a sortable item. Spread handleProps(i) into it. */
-export const DragHandle = forwardRef<HTMLButtonElement, HandleProps & { label?: string }>(function DragHandle(
-  { label = 'Reorder', ...rest },
+export function DragHandle({
+  label = 'Reorder',
   ref,
-) {
+  ...rest
+}: HandleProps & { label?: string; ref?: Ref<HTMLButtonElement> }) {
   return (
     <button
       type="button"
@@ -148,4 +149,4 @@ export const DragHandle = forwardRef<HTMLButtonElement, HandleProps & { label?: 
       <Icon name="grip" size={14} />
     </button>
   );
-});
+}

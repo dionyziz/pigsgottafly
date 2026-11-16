@@ -63,7 +63,7 @@ export function OperatorsPage() {
                     key={o.id}
                     className="clickable"
                     data-operator-id={o.id}
-                    onClick={rowClick(() => navigate(`/operators/${o.id}`))}
+                    onClick={rowClick(() => void navigate(`/operators/${o.id}`))}
                   >
                     <td>
                       <div className="nm">
@@ -92,7 +92,7 @@ export function OperatorsPage() {
         )}
       </AsyncView>
       {creating && (
-        <NewOperatorDialog onClose={() => setCreating(false)} onCreated={(o) => navigate(`/operators/${o.id}`)} />
+        <NewOperatorDialog onClose={() => setCreating(false)} onCreated={(o) => void navigate(`/operators/${o.id}`)} />
       )}
     </Shell>
   );

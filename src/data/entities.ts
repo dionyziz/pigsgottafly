@@ -17,7 +17,7 @@ import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { OperatorItem, Passenger, Pilot, Waypoint } from '../shared';
 import type { HangarAircraft } from '../shared/sharing';
 import { api } from './api';
-import { type EntitySnapshot, getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity } from './entityStore';
+import { getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity } from './entityStore';
 
 export {
   clearEntities,
@@ -63,7 +63,7 @@ export interface EntityState<T> {
 /** One of the pilot's record lists (or the pilot), cached, shared, and refetched when it changes. */
 export function useEntity<K extends CachedEntityKey>(key: K): EntityState<Entities[K]> {
   const subscribe = useCallback((fn: () => void) => subscribeEntity(key, fn), [key]);
-  const snap = useSyncExternalStore(subscribe, () => getEntity<Entities[K]>(key)) as EntitySnapshot<Entities[K]>;
+  const snap = useSyncExternalStore(subscribe, () => getEntity<Entities[K]>(key));
   useEffect(() => {
     const s = getEntity(key);
     if (s.data === undefined || s.stale) void loadEntity(key).catch(() => {});

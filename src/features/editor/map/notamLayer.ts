@@ -89,7 +89,7 @@ export function setNotamLayer(
 ) {
   try {
     ensureLayers(m, beforeId);
-    (m.getSource(SRC) as GeoJSONSource | undefined)?.setData(featureCollection(list, selected) as never);
+    void m.getSource<GeoJSONSource>(SRC)?.setData(featureCollection(list, selected) as never);
     for (const id of NOTAM_LAYER_IDS)
       if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
   } catch {

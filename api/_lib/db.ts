@@ -1,11 +1,12 @@
 // Postgres access. One SQL dialect everywhere:
 //   postgres://… → Neon (@neondatabase/serverless): HTTP for single queries, a WebSocket Pool for
-//                  transactions, multi-statement scripts and session-scoped advisory locks.
+//                  transactions, multi-statement scripts and sessions.
 //   anything else → PGlite (Postgres compiled to WebAssembly, in-process): a directory path for
 //                  local use, or 'memory://' for tests.
 // openDb() also runs pending migrations (api/_lib/migrate.ts) before returning.
 
-/** Rows come back as plain objects keyed by column name. */
+/** Rows come back as plain objects keyed by column name; each column is typed where it is read (rows.ts). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the one untyped boundary: driver rows
 export type Row = Record<string, any>;
 
 export interface Queryable {
@@ -40,16 +41,15 @@ export async function openDb(where: string = process.env.DATABASE_URL || 'memory
 
 async function connectNeon(url: string): Promise<Db> {
   const { neon, neonConfig, Pool } = await import('@neondatabase/serverless');
-  if (typeof (globalThis as any).WebSocket === 'function' && !neonConfig.webSocketConstructor) {
-    neonConfig.webSocketConstructor = (globalThis as any).WebSocket;
-  }
+  const { WebSocket } = globalThis as { WebSocket?: typeof globalThis.WebSocket };
+  if (typeof WebSocket === 'function' && !neonConfig.webSocketConstructor) neonConfig.webSocketConstructor = WebSocket;
   const sql = neon(url);
   // A pool per call: serverless functions must not keep WebSocket connections across requests.
   async function onClient<T>(fn: (c: Queryable) => Promise<T>, tx: boolean): Promise<T> {
     const pool = new Pool({ connectionString: url, max: 1 });
     const client = await pool.connect();
     const q: Queryable = {
-      query: async (text, params = []) => (await client.query(text, params as any[])).rows,
+      query: async <T extends Row>(text: string, params: unknown[] = []) => (await client.query<T>(text, params)).rows,
       exec: async (s) => {
         await client.query(s);
       },
@@ -69,7 +69,7 @@ async function connectNeon(url: string): Promise<Db> {
   }
   return {
     kind: 'neon',
-    query: async (text, params = []) => (await sql.query(text, params as any[])) as any[],
+    query: async <T extends Row>(text: string, params: unknown[] = []) => (await sql.query(text, params)) as T[],
     exec: (s) => onClient((c) => c.exec(s), false),
     transaction: (fn) => onClient(fn, true),
     session: (fn) => onClient(fn, false),
@@ -81,7 +81,7 @@ async function connectPglite(where: string): Promise<Db> {
   const { PGlite } = await import('@electric-sql/pglite');
   const pg = await PGlite.create(where);
   const base: Queryable = {
-    query: async (text, params = []) => (await pg.query(text, params as any[])).rows as any[],
+    query: async <T extends Row>(text: string, params: unknown[] = []) => (await pg.query<T>(text, params)).rows,
     exec: async (s) => {
       await pg.exec(s);
     },
@@ -92,7 +92,7 @@ async function connectPglite(where: string): Promise<Db> {
     transaction: (fn) =>
       pg.transaction((tx) =>
         fn({
-          query: async (text, params = []) => (await tx.query(text, params as any[])).rows as any[],
+          query: async <T extends Row>(text: string, params: unknown[] = []) => (await tx.query<T>(text, params)).rows,
           exec: async (s) => {
             await tx.exec(s);
           },

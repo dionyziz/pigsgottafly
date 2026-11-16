@@ -86,7 +86,7 @@ function readBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => {
-      const s = String(r.result);
+      const s = typeof r.result === 'string' ? r.result : '';
       resolve(s.slice(s.indexOf(',') + 1));
     };
     r.onerror = () => reject(r.error ?? new Error('could not read the file'));

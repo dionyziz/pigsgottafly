@@ -173,7 +173,7 @@ interface Hover {
 }
 
 function setData(map: MlMap, id: DataSourceId, data: unknown) {
-  (map.getSource(id) as GeoJSONSource | undefined)?.setData(data as never);
+  void map.getSource<GeoJSONSource>(id)?.setData(data as never);
 }
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
@@ -723,7 +723,7 @@ export function RouteMap(props: RouteMapProps) {
     if (!rec) return;
     setEditingLeg(key);
     live.current.editingLeg = key;
-    const btn = rec.inner.querySelector('.pgf-leg-alt') as HTMLButtonElement | null;
+    const btn = rec.inner.querySelector<HTMLButtonElement>('.pgf-leg-alt');
     const alt = live.current.props.altitudes[key];
     const input = document.createElement('input');
     input.className = 'pgf-leg-input';
@@ -1140,7 +1140,8 @@ export function RouteMap(props: RouteMapProps) {
       return d;
     };
 
-    const onUp = async (ev: MouseEvent) => {
+    const onUp = (ev: MouseEvent) => void release(ev);
+    const release = async (ev: MouseEvent) => {
       if (ev.button !== 0) return;
       const d = endDrag();
       if (!d) return;

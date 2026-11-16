@@ -98,7 +98,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   useEffect(() => {
     // web fonts can change the metrics after the first fit
     let live = true;
-    document.fonts?.ready.then(() => {
+    void document.fonts?.ready.then(() => {
       if (live) fitSheets(host.current);
     });
     return () => {

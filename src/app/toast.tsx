@@ -1,5 +1,5 @@
 // Toasts: const toast = useToast(); toast('Moved to trash', { label: 'Undo', onClick: restore })
-import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useRef, useState } from 'react';
 
 type Action = { label: string; onClick: () => void };
 const ToastContext = createContext<(text: string, action?: Action) => void>(() => {});
@@ -13,7 +13,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     timer.current = setTimeout(() => setT(null), 6000);
   }, []);
   return (
-    <ToastContext.Provider value={show}>
+    <ToastContext value={show}>
       {children}
       {t && (
         <div className="toast no-print" role="status">
@@ -30,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           )}
         </div>
       )}
-    </ToastContext.Provider>
+    </ToastContext>
   );
 }
-export const useToast = () => useContext(ToastContext);
+export const useToast = () => use(ToastContext);

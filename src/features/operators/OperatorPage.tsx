@@ -345,7 +345,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
           onClose={() => setSharing(false)}
           onLeft={() => {
             toast(`You no longer have ${op.name}`);
-            navigate('/operators');
+            void navigate('/operators');
           }}
         />
       )}
@@ -357,7 +357,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
           onConfirm={async () => {
             await api.operators.remove(op.id);
             toast(`Deleted ${op.name}`);
-            navigate('/operators');
+            void navigate('/operators');
           }}
         >
           Its details and documents are deleted.

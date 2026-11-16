@@ -222,10 +222,9 @@ test('dragging a route point snaps it to the point it is dropped on, which it be
   await shot('1-drag-snap');
   await mouse('mouseReleased', b.x + 5, b.y - 4);
   await page.waitFor(
-    (name) =>
+    () =>
       [...document.querySelectorAll('[data-testid=leg-label]')].length === 2 &&
       !document.querySelector('[data-testid=name-prompt]'),
-    { args: [OTHER.name] },
   );
   await waitSaved();
   let f = await api('GET', `flights/${flightId}`);

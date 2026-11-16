@@ -127,7 +127,7 @@ export function createServer({
     api: createApi({ db, ...opts, openMeteo }),
   }));
   const serveClient = client || staticHandler(path.join(ROOT, 'dist'));
-  const server = http.createServer(async (req, res) => {
+  const handle = async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
       if ((req.url || '').startsWith('/api/') || req.url === '/api') return await (await ready).api(req, res);
       await serveClient(req, res);
@@ -137,12 +137,15 @@ export function createServer({
         res.end(String((e as Error).message || e));
       }
     }
-  });
-  (server as any).ready = ready;
+  };
+  const server = Object.assign(
+    http.createServer((req, res) => void handle(req, res)),
+    { ready },
+  );
   server.on('close', () => {
     ready.then(({ db }) => db.close()).catch(() => {});
   });
-  return server as http.Server & { ready: typeof ready };
+  return server;
 }
 
 export function listenFromEnv(client?: Handler) {

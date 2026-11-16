@@ -45,7 +45,7 @@ import type { RoutePoint } from '../../../src/shared/types.js';
 import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
 import { accessibleSql, AIRCRAFT_FROM } from '../access.js';
 import { hashToken } from '../auth.js';
-import type { Queryable } from '../db.js';
+import type { Queryable, Row } from '../db.js';
 import { flightContext, loadRef } from '../flightContext.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
 import type { Route } from '../http.js';
@@ -69,7 +69,7 @@ export function personHash(p: Pick<Form731Person, 'key' | 'name' | 'idPassport'>
     : sha(JSON.stringify(['key', p.key]));
 }
 /** The person on the manifest a link row belongs to, if they are still on it. */
-const holderOf = (L: Loaded, l: Record<string, any>) =>
+const holderOf = (L: Loaded, l: Row) =>
   L.c731.people.find(
     (x) => x.role === 'PAX' && x.key === l.person_key && l.person_hash != null && l.person_hash === personHash(x),
   );

@@ -1,6 +1,6 @@
 // Session context: the signed-in pilot (or the local pilot). Kept fresh by AuthGate through the
 // 'pilot' entity (src/data/entities.ts): profile edits here or in another tab, and window focus.
-import { createContext, useContext } from 'react';
+import { createContext, use } from 'react';
 
 import type { Pilot, SessionResponse } from '../shared';
 
@@ -17,7 +17,7 @@ export interface SessionValue {
 export const SessionContext = createContext<SessionValue | null>(null);
 
 export function useSession(): SessionValue {
-  const v = useContext(SessionContext);
+  const v = use(SessionContext);
   if (!v) throw new Error('useSession outside <AuthGate>');
   return v;
 }

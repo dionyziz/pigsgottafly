@@ -128,7 +128,7 @@ export async function fetchGrid(req: GridRequest): Promise<GridResult> {
             if (cache.get(base + k) === entry) cache.delete(base + k);
             return;
           }
-          all.then((r) => {
+          void all.then((r) => {
             entry.until = r.recheckMs;
           });
         },
@@ -153,9 +153,10 @@ export async function fetchGrid(req: GridRequest): Promise<GridResult> {
       failure ||= s.reason;
     }
   });
-  if (!first && failure) throw failure;
+  const failed = failure instanceof Error ? failure : failure ? new Error(String(failure)) : null;
+  if (!first && failed) throw failed;
   const f = first as Answer | null;
-  if (failure) messages.add(String((failure as Error)?.message || failure));
+  if (failed) messages.add(failed.message);
   return {
     locations,
     endpoint: f?.endpoint ?? null,

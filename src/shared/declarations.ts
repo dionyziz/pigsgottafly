@@ -99,21 +99,24 @@ const DOMAIN = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b(?:\/\S*)?/gi;
 /** Text as printed on the sheets: links and e-mail addresses removed, whitespace collapsed. */
 export function sheetText(v: unknown, max: number): string {
   const t = typeof v === 'string' ? v : v == null ? '' : String(v);
-  return t
-    .slice(0, max * 2)
-    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ')
-    .replace(LINK, '')
-    .replace(EMAIL, '')
-    .replace(DOMAIN, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, max);
+  return (
+    t
+      .slice(0, max * 2)
+      // eslint-disable-next-line no-control-regex -- control characters are what this strips
+      .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ')
+      .replace(LINK, '')
+      .replace(EMAIL, '')
+      .replace(DOMAIN, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, max)
+  );
 }
 const S = (v: unknown, max = 200): string => sheetText(v, max);
 const B = (v: unknown): boolean => v === true;
 const N = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-1e6, Math.min(1e6, v)) : 0);
-function L<T>(v: unknown, max: number, f: (x: any) => T): T[] {
-  return Array.isArray(v) ? v.slice(0, max).map((x) => f(x && typeof x === 'object' ? x : {})) : [];
+function L<T>(v: unknown, max: number, f: (x: Obj) => T): T[] {
+  return Array.isArray(v) ? v.slice(0, max).map((x) => f(O(x))) : [];
 }
 const LS = (v: unknown, max: number, len: number): string[] =>
   Array.isArray(v)
@@ -122,13 +125,16 @@ const LS = (v: unknown, max: number, len: number): string[] =>
         .map((x) => S(x, len))
         .filter(Boolean)
     : [];
-const O = (v: unknown): Record<string, any> =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, any>) : {};
+type Obj = Record<string, unknown>;
+const O = (v: unknown): Obj => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Obj) : {});
+/** v when it is one of the options, else the fallback. */
+const oneOf = <T extends string, F>(v: unknown, options: readonly T[], fallback: F): T | F =>
+  options.find((o) => o === v) ?? fallback;
 const V = (v: unknown): Verdict => (v === 'pass' || v === 'fail' ? v : 'incomplete');
 const pair = (p: unknown): [number, number] => (Array.isArray(p) ? [N(p[0]), N(p[1])] : [0, 0]);
 
-function row(r: Record<string, any>): WbPerfRow {
-  const kind = ['line', 'person', 'total', 'burn'].includes(r.kind) ? r.kind : 'line';
+function row(r: Obj): WbPerfRow {
+  const kind = oneOf(r.kind, ['line', 'person', 'total', 'burn'] as const, 'line' as const);
   return {
     kind,
     label: S(r.label, 60),
@@ -139,7 +145,7 @@ function row(r: Record<string, any>): WbPerfRow {
     over: B(r.over),
   };
 }
-function block(b: Record<string, any>): PerfBlockContent {
+function block(b: Obj): PerfBlockContent {
   return {
     title: S(b.title, 60),
     aerodrome: S(b.aerodrome, 80),
@@ -148,7 +154,7 @@ function block(b: Record<string, any>): PerfBlockContent {
       label: S(r.label, 60),
       value: S(r.value, 80),
       note: S(r.note, 120),
-      status: ['ok', 'bad', 'warn'].includes(r.status) ? r.status : null,
+      status: oneOf(r.status, ['ok', 'bad', 'warn'] as const, null),
     })),
     verdict: V(b.verdict),
     verdictText: S(b.verdictText, 120),
@@ -160,7 +166,7 @@ function block(b: Record<string, any>): PerfBlockContent {
 /** The content as the server takes it. Throws on something that is not an object. */
 export function wbPerfContentOf(input: unknown): WbPerfContent {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('content must be an object');
-  const c = input as Record<string, any>;
+  const c = input as Obj;
   const wb = O(c.wb);
   const chart = O(wb.chart);
   const perf = O(c.perf);

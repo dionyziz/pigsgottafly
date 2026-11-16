@@ -41,7 +41,10 @@ export function latestOnly<A extends unknown[], R>(fn: (...a: A) => Promise<R>):
     const my = ++n;
     const p: Promise<R> = fn(...a).then(
       (r) => (my === n ? r : newest!),
-      (e) => (my === n ? Promise.reject(e) : newest!),
+      (e: unknown) => {
+        if (my === n) throw e;
+        return newest!;
+      },
     );
     newest = p;
     return p;

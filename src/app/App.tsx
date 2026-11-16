@@ -44,8 +44,8 @@ function LegacyHashRedirect() {
   const navigate = useNavigate();
   useEffect(() => {
     const m = /^#\/f\/([\w-]+)$/.exec(window.location.hash);
-    if (m) navigate(`/flights/${m[1]}`, { replace: true });
-    else if (window.location.hash === '#/new') navigate('/flights/new', { replace: true });
+    if (m) void navigate(`/flights/${m[1]}`, { replace: true });
+    else if (window.location.hash === '#/new') void navigate('/flights/new', { replace: true });
   }, [navigate]);
   return null;
 }

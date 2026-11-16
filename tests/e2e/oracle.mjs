@@ -210,7 +210,7 @@ export function openMeteoResponder(windFn, { nullAll = false, status = 200, reas
           continue;
         }
         const lvl = +m[2];
-        hourly[v] = time.map((t, hi) => {
+        hourly[v] = time.map((t) => {
           if (nullAll || !(lvl in LEVELS)) return null; // like ECMWF: only some levels
           const w = windFn({
             level: lvl,

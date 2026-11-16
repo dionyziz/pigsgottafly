@@ -146,11 +146,14 @@ export class AutorouterClient {
         this.token = null;
         continue;
       }
-      const out = (await res.json().catch(() => null)) as any;
+      const out: unknown = await res.json().catch(() => null);
+      const error = out && typeof out === 'object' && 'error' in out ? out.error : null;
       if (!res.ok)
-        throw new AutorouterError(`autorouter: ${out?.error || `HTTP ${res.status}`}`, res.status >= 500 ? 502 : 400);
-      if (out && typeof out === 'object' && typeof out.error === 'string' && out.error)
-        throw new AutorouterError(`autorouter: ${out.error}`, 400);
+        throw new AutorouterError(
+          `autorouter: ${typeof error === 'string' && error ? error : `HTTP ${res.status}`}`,
+          res.status >= 500 ? 502 : 400,
+        );
+      if (typeof error === 'string' && error) throw new AutorouterError(`autorouter: ${error}`, 400);
       return out as T;
     }
   }

@@ -15,6 +15,7 @@ import {
   scrubUrl,
 } from '../../../src/shared/monitoring.js';
 import { localPilotRow, sessionPilotRow } from '../auth.js';
+import type { Row } from '../db.js';
 import type { Route } from '../http.js';
 import { HttpError, notFound, reply } from '../http.js';
 import { mailAvailability } from '../mail.js';
@@ -22,7 +23,6 @@ import { MIGRATIONS } from '../migrate.js';
 import { recordError, release } from '../monitor.js';
 import { rateLimit } from '../rateLimit.js';
 
-type Row = Record<string, any>;
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
 const AIRAC_CYCLE_DAYS = 28;
@@ -126,7 +126,7 @@ export const routes: Route[] = [
       await rateLimit(db, 'clientErrors', { req }); // per IP, signed in or not
       const b = (await body()) as Partial<ClientErrorReport>;
       if (JSON.stringify(b).length > CLIENT_REPORT_MAX_BYTES) throw new HttpError(413, 'too large');
-      const source = SOURCES.has(b.source as any) ? b.source! : null;
+      const source = b.source && SOURCES.has(b.source) ? b.source : null;
       const message = str(b.message, 1000);
       if (!source || !message) throw new HttpError(400, 'source and message are required');
       let pilotId: string | null = null;

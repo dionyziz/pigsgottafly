@@ -201,11 +201,11 @@ export function ProfilePage() {
       setF(formOf(p));
       setError(null);
       if (welcome && !profileMissing(p).length) {
-        navigate('/', { replace: true });
+        void navigate('/', { replace: true });
         if (hangar && hangar.length === 0)
           toast('Welcome aboard. Add your aircraft next.', {
             label: 'Open hangar',
-            onClick: () => navigate('/hangar'),
+            onClick: () => void navigate('/hangar'),
           });
         else toast('Welcome aboard.');
       } else {

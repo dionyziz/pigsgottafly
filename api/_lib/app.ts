@@ -5,12 +5,16 @@ import type { Pilot } from '../../src/shared/types.js';
 import { googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
 import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
 import type { Db } from './db.js';
-import type { ApiConfig, Ctx, Req, Res, Route } from './http.js';
+import type { ApiConfig, Ctx, JsonBody, Req, Res, Route } from './http.js';
 import { compilePath, HttpError, isJsonContentType, readJsonObject, Reply, send } from './http.js';
 import { recordError } from './monitor.js';
 import { isConstraintViolation } from './pgErrors.js';
 import { ROUTES } from './routes/index.js';
 import { toPilot } from './rows.js';
+
+/** The `error` text of a thrown { error } object, if any. */
+const errorField = (e: unknown): string | null =>
+  e && typeof e === 'object' && 'error' in e && typeof e.error === 'string' ? e.error : null;
 
 const header = (req: Req, name: string): string => {
   const v = req.headers[name];
@@ -107,8 +111,7 @@ export function createApi(
       db,
       {
         kind: 'server',
-        message:
-          e instanceof Error ? e.message : typeof (e as any)?.error === 'string' ? (e as any).error : `HTTP ${status}`,
+        message: e instanceof Error ? e.message : (errorField(e) ?? `HTTP ${status}`),
         stack: e instanceof Error && !(e instanceof HttpError) ? e.stack : null,
         route,
         method: req.method || null,
@@ -145,7 +148,7 @@ export function createApi(
           if (!row) return send(res, 401, { error: 'sign in' });
           pilot = toPilot(row);
         }
-        let bodyP: Promise<any> | null = null;
+        let bodyP: Promise<JsonBody> | null = null;
         const arOk = autorouterFor(pilot);
         const ctx: Ctx = {
           req,

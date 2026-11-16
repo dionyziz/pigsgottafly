@@ -4,12 +4,10 @@
 // a share row and cannot be changed or removed here.
 import type { AircraftRole, AircraftSharing, ShareRole } from '../../../src/shared/sharing.js';
 import { aircraftFor, personName } from '../access.js';
-import type { Queryable } from '../db.js';
+import type { Queryable, Row } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, notFound, reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';
-
-type Row = Record<string, any>;
 
 function shareRole(v: unknown): ShareRole {
   if (v !== 'view' && v !== 'edit') throw badRequest("role must be 'view' or 'edit'");

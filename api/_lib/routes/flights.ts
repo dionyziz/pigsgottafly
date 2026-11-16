@@ -21,7 +21,7 @@ import {
 import { mapLayersOf } from '../../../src/shared/mapLayers.js';
 import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import { accessibleSql, canUseAircraft } from '../access.js';
-import type { Queryable } from '../db.js';
+import type { Queryable, Row } from '../db.js';
 import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
@@ -50,7 +50,7 @@ async function aircraftSeats(db: Queryable, pilotId: string, aircraftId: string)
   const raw = ac.mass_balance?.stations;
   const stations = (Array.isArray(raw) ? raw : [])
     .filter((s) => s && typeof s === 'object' && Array.isArray(s.seats))
-    .map((s) => ({ ...s, seats: s.seats.filter((q: any) => q && typeof q.id === 'string' && q.id) }));
+    .map((s) => ({ ...s, seats: (s.seats as Row[]).filter((q) => q && typeof q.id === 'string' && q.id) }));
   const seats = seatLayout(stations).map((s) => s.id);
   return seats.length ? seats : null;
 }

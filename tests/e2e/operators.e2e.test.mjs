@@ -41,20 +41,6 @@ const api = async (method, p, body) => {
   });
   return r.status === 204 ? null : r.json();
 };
-async function clickText(sel, text) {
-  await page.waitFor((s, t) => [...document.querySelectorAll(s)].some((e) => e.textContent.trim() === t), {
-    args: [sel, text],
-  });
-  await page.eval(
-    (s, t) => {
-      document.querySelectorAll('[data-e2e-target]').forEach((e) => e.removeAttribute('data-e2e-target'));
-      [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === t).setAttribute('data-e2e-target', '1');
-    },
-    sel,
-    text,
-  );
-  await page.click('[data-e2e-target]');
-}
 const shot = async (name) => {
   if (process.env.SHOTS) await page.screenshot(name);
 };

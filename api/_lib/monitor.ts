@@ -15,7 +15,7 @@
 import crypto from 'node:crypto';
 
 import { type AppErrorKind, scrubText, scrubUrl } from '../../src/shared/monitoring.js';
-import type { Db, Queryable } from './db.js';
+import type { Db, Queryable, Row } from './db.js';
 import { mailAvailability, sendSystemMail } from './mail.js';
 import { migrate, type Migration, MIGRATIONS } from './migrate.js';
 import { MONITOR_SCHEMA } from './migrations/040_app_errors.js';
@@ -127,8 +127,6 @@ async function withSchema<T>(db: Queryable, q: () => Promise<T>): Promise<T> {
     return q();
   }
 }
-
-type Row = Record<string, any>;
 
 /** Pure: why this occurrence should alert (before throttling), or null. */
 export function alertReason(row: Row, now: number): AlertReason | null {

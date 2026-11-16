@@ -421,7 +421,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           onLeft={() => {
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Removed ${aircraft.registration} from your hangar`);
-            navigate('/hangar');
+            void navigate('/hangar');
           }}
         />
       )}
@@ -434,7 +434,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             await api.shares.remove(aircraft.id, pilot.id);
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Removed ${aircraft.registration} from your hangar`);
-            navigate('/hangar');
+            void navigate('/hangar');
           }}
         />
       )}
@@ -447,7 +447,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             await api.aircraft.remove(aircraft.id);
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Deleted ${aircraft.registration}`);
-            navigate('/hangar');
+            void navigate('/hangar');
           }}
         />
       )}

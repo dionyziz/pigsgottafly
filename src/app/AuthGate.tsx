@@ -64,7 +64,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             signOut: async () => {
               await api.logout().catch(() => {});
               try {
-                (window as any).google?.accounts?.id?.disableAutoSelect?.();
+                window.google?.accounts.id.disableAutoSelect();
               } catch {
                 /* ignore */
               }
@@ -74,7 +74,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             signOutEverywhere: async () => {
               await api.revokeAllSessions().catch(() => {});
               try {
-                (window as any).google?.accounts?.id?.disableAutoSelect?.();
+                window.google?.accounts.id.disableAutoSelect();
               } catch {
                 /* ignore */
               }
@@ -97,5 +97,5 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   if (!session) return <Loading variant="screen" />;
   if (!value) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
-  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+  return <SessionContext value={value}>{children}</SessionContext>;
 }

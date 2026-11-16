@@ -3,7 +3,7 @@
 //
 // SHARED CONTRACT (frozen until integration): map and panels read everything through useEditor()
 // and change the flight only through update().
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type AltitudeDefault, buildLegs, defaultAltitudes, type LegGeometry } from '../../calc';
 import { flightStore, type SaveStatus } from '../../data/flightStore';
@@ -55,7 +55,7 @@ export interface EditorValue {
 
 export const EditorContext = createContext<EditorValue | null>(null);
 export function useEditor(): EditorValue {
-  const v = useContext(EditorContext);
+  const v = use(EditorContext);
   if (!v) throw new Error('useEditor outside <EditorProvider>');
   return v;
 }
@@ -236,5 +236,5 @@ export function EditorProvider({
     altitudeDefaults,
     altitudesFt,
   };
-  return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
+  return <EditorContext value={value}>{children}</EditorContext>;
 }

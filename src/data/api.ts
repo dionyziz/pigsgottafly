@@ -258,7 +258,7 @@ export const api = {
     mail: (f: { pilot?: string; kind?: string } = {}) =>
       request<AdminMail[]>(
         'GET',
-        `admin/mail?${new URLSearchParams(Object.entries(f).filter(([, v]) => !!v) as [string, string][])}`,
+        `admin/mail?${new URLSearchParams(Object.entries(f).filter((e): e is [string, string] => !!e[1]))}`,
       ),
     errors: (status: 'open' | 'resolved' | 'all' = 'open') =>
       request<AppErrorGroup[]>('GET', `admin/errors?status=${status}`),

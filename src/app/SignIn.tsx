@@ -4,9 +4,25 @@ import { Link } from 'react-router';
 
 import { api, ApiRequestError } from '../data/api';
 
+/** The part of Google Identity Services (accounts.google.com/gsi/client) this app uses. */
+interface GoogleIdentity {
+  accounts: {
+    id: {
+      initialize: (o: {
+        client_id: string;
+        auto_select: boolean;
+        callback: (r: { credential: string }) => void;
+      }) => void;
+      renderButton: (el: HTMLElement, o: Record<string, string | number>) => void;
+      prompt: () => void;
+      disableAutoSelect: () => void;
+    };
+  };
+}
+
 declare global {
   interface Window {
-    google?: any;
+    google?: GoogleIdentity;
   }
 }
 
@@ -16,32 +32,35 @@ export function SignIn({ clientId, onSignedIn }: { clientId: string | null; onSi
 
   useEffect(() => {
     if (!clientId) return;
+    const signIn = async (credential: string) => {
+      try {
+        await api.login(credential);
+        onSignedIn();
+      } catch (e) {
+        setError(
+          e instanceof ApiRequestError && e.status === 403
+            ? 'This Google account can’t use this planner.'
+            : 'Sign-in failed. Try again.',
+        );
+      }
+    };
     const init = () => {
-      window.google.accounts.id.initialize({
+      const gsi = window.google?.accounts.id;
+      if (!gsi) return;
+      gsi.initialize({
         client_id: clientId,
         auto_select: true,
-        callback: async ({ credential }: { credential: string }) => {
-          try {
-            await api.login(credential);
-            onSignedIn();
-          } catch (e) {
-            setError(
-              e instanceof ApiRequestError && e.status === 403
-                ? 'This Google account can’t use this planner.'
-                : 'Sign-in failed. Try again.',
-            );
-          }
-        },
+        callback: ({ credential }) => void signIn(credential),
       });
       if (button.current)
-        window.google.accounts.id.renderButton(button.current, {
+        gsi.renderButton(button.current, {
           theme: 'outline',
           size: 'large',
           shape: 'pill',
           text: 'signin_with',
           width: 260,
         });
-      window.google.accounts.id.prompt();
+      gsi.prompt();
     };
     if (window.google?.accounts?.id) {
       init();

@@ -6,10 +6,8 @@
 import type { Operator, OperatorItem } from '../../src/shared/operators.js';
 import type { AircraftRole } from '../../src/shared/sharing.js';
 import { accessibleSql, personName } from './access.js';
-import type { Queryable } from './db.js';
+import type { Queryable, Row } from './db.js';
 import { HttpError, notFound } from './http.js';
-
-type Row = Record<string, any>;
 
 /** SQL: the registrations of the aircraft of operator `alias` that pilot `param` can access. */
 const viaSql = (alias: string, param: string) =>

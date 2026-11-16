@@ -127,7 +127,7 @@ export interface AdWarning {
 }
 
 /** Editor warnings: closed (danger), NOTAM limits (warn), hours not known and ATS off (info). */
-export function aerodromeWarnings(checks: AdCheck[], routeLength: number): AdWarning[] {
+export function aerodromeWarnings(checks: AdCheck[]): AdWarning[] {
   const w: AdWarning[] = [];
   const timed = checks.filter((c) => fin(c.fromMs));
   for (const c of timed) {

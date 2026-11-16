@@ -11,7 +11,7 @@ import {
   type CompassCard,
 } from '../../../src/shared/types.js';
 import { aircraftFor } from '../access.js';
-import type { Queryable } from '../db.js';
+import type { Queryable, Row } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { checkMagic, checkQuota, LIMITS } from '../limits.js';
@@ -21,7 +21,7 @@ async function ownerOf(db: Queryable, pilotId: string, id: string, need: 'view' 
   return (await aircraftFor(db, pilotId, id, need)).pilot_id;
 }
 
-const ref = (r: any): AttachmentRef => ({
+const ref = (r: Row): AttachmentRef => ({
   id: r.id,
   name: r.name,
   mime: r.mime,
@@ -40,6 +40,7 @@ export function attachmentInput(v: Record<string, unknown>): {
     typeof v.name === 'string'
       ? v.name
           .trim()
+          // eslint-disable-next-line no-control-regex -- control characters are what this strips
           .replace(/[\u0000-\u001f]/g, '')
           .slice(0, 200)
       : '';
@@ -79,7 +80,7 @@ export async function checkReports(
     "SELECT id, name, mime, size, created FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND kind = 'report'",
     [aircraftId, pilotId],
   );
-  const byId = new Map(rows.map((r: any) => [r.id as string, ref(r)]));
+  const byId = new Map(rows.map((r: Row) => [r.id as string, ref(r)]));
   const used = new Set<string>();
   const out = cards.map((c, i) => {
     if (!c.report) return c;

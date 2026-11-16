@@ -62,7 +62,7 @@ export function HangarPage() {
       }
     }
     toast(becameDefault ? `Added ${a.registration} as your default aircraft` : `Added ${a.registration}`);
-    navigate(`/hangar/${a.id}`);
+    void navigate(`/hangar/${a.id}`);
   };
 
   return (
@@ -117,7 +117,7 @@ export function HangarPage() {
                   <span className="spacer" />
                   <KebabMenu
                     items={[
-                      { label: 'Open', onSelect: () => navigate(`/hangar/${a.id}`) },
+                      { label: 'Open', onSelect: () => void navigate(`/hangar/${a.id}`) },
                       { label: 'Share…', onSelect: () => setSharing(a) },
                       ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault(a) }]),
                       { label: 'Add another of this type', onSelect: () => setAdding({ copyOf: a }) },

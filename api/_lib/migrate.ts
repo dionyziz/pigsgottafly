@@ -119,7 +119,7 @@ async function migrateLocked(db: Db, list: Migration[]): Promise<string[]> {
         await s.exec('COMMIT');
       } catch (e) {
         await s.exec('ROLLBACK').catch(() => {});
-        throw new Error(`migration ${m.name} failed: ${(e as Error).message}`);
+        throw new Error(`migration ${m.name} failed: ${(e as Error).message}`, { cause: e });
       }
       now.push(m.name);
     }

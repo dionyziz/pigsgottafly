@@ -31,7 +31,7 @@ export function NewFlightPage() {
     started.current = true;
     setError(null);
     api.flights.create(req).then(
-      (f) => navigate(`/flights/${f.id}`, { replace: true }),
+      (f) => void navigate(`/flights/${f.id}`, { replace: true }),
       (e) => {
         started.current = false;
         setError(errorMessage(e));

@@ -3,7 +3,7 @@
 // Without a Google client id (local mode) every request is the one 'local' pilot.
 import crypto from 'node:crypto';
 
-import type { Queryable } from './db.js';
+import type { Queryable, Row } from './db.js';
 import type { ApiConfig, Req } from './http.js';
 
 export const COOKIE = 'pgf_session';
@@ -45,12 +45,12 @@ export async function verifyGoogleToken(
   const header = JSON.parse(Buffer.from(h, 'base64url').toString('utf8'));
   const claims = JSON.parse(Buffer.from(p, 'base64url').toString('utf8')) as GoogleClaims;
   if (header.alg !== 'RS256') throw new Error('unexpected algorithm');
-  const jwk = (await getKeys()).find((k) => (k as any).kid === header.kid);
+  const jwk = (await getKeys()).find((k) => (k as { kid?: string }).kid === header.kid);
   if (!jwk) throw new Error('unknown signing key');
   const ok = crypto.verify(
     'RSA-SHA256',
     Buffer.from(`${h}.${p}`),
-    crypto.createPublicKey({ key: jwk as any, format: 'jwk' }),
+    crypto.createPublicKey({ key: jwk as crypto.JsonWebKey, format: 'jwk' }),
     Buffer.from(sig, 'base64url'),
   );
   if (!ok) throw new Error('bad signature');
@@ -91,7 +91,7 @@ export async function sessionPilotRow(
   req: Req,
   allowedEmails: string[] = [],
   onRenew?: (token: string) => void,
-): Promise<Record<string, any> | null> {
+): Promise<Row | null> {
   const t = tokenFrom(req);
   if (!t) return null;
   const now = Date.now();
@@ -131,7 +131,7 @@ export function emailAllowed(email: unknown, allowedEmails: string[]): boolean {
 }
 
 /** Local mode: the single 'local' pilot, created on first use (empty profile, empty hangar). */
-export async function localPilotRow(q: Queryable): Promise<Record<string, any>> {
+export async function localPilotRow(q: Queryable): Promise<Row> {
   const now = Date.now();
   await q.query(
     `INSERT INTO pilots (id, email, name, created, last_login, seeded_at) VALUES ('local', '', '', $1, $1, $1) ON CONFLICT (id) DO NOTHING`,

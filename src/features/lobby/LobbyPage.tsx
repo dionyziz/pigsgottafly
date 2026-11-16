@@ -80,7 +80,7 @@ export function LobbyPage() {
     setData((d) => d?.filter((x) => x.id !== r.id));
     try {
       await api.flights.restore(r.id);
-      toast(`“${titleOf(r)}” restored`, { label: 'Open', onClick: () => navigate(`/flights/${r.id}`) });
+      toast(`“${titleOf(r)}” restored`, { label: 'Open', onClick: () => void navigate(`/flights/${r.id}`) });
     } catch (e) {
       fail('Could not restore')(e);
     }
@@ -90,7 +90,10 @@ export function LobbyPage() {
     try {
       const c = await api.flights.copy(r.id);
       await reload();
-      toast(`Made “${c.title || c.summary.title}”`, { label: 'Open', onClick: () => navigate(`/flights/${c.id}`) });
+      toast(`Made “${c.title || c.summary.title}”`, {
+        label: 'Open',
+        onClick: () => void navigate(`/flights/${c.id}`),
+      });
     } catch (e) {
       fail('Could not copy')(e);
     }
@@ -101,7 +104,7 @@ export function LobbyPage() {
     rowClick((e) => {
       if (trashView) return;
       if (e.metaKey || e.ctrlKey) openNewTab(r);
-      else navigate(`/flights/${r.id}`);
+      else void navigate(`/flights/${r.id}`);
     });
 
   const row = (r: FlightListItem) => {

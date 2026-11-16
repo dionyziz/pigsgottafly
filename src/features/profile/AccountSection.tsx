@@ -31,7 +31,7 @@ export function AccountSection() {
         /* blocked storage */
       }
       try {
-        (window as any).google?.accounts?.id?.disableAutoSelect?.();
+        window.google?.accounts.id.disableAutoSelect();
       } catch {
         /* ignore */
       }

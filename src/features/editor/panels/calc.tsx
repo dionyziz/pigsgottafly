@@ -4,16 +4,7 @@
 // from each stop) and one list of warnings. Everything numeric comes from src/calc; this file only wires inputs.
 //
 // <FlightCalcProvider> sits inside <EditorProvider> (EditorPage); read with useFlightCalc().
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import {
   type AerodromePerf,
@@ -150,7 +141,7 @@ export interface FlightCalc {
 
 const CalcContext = createContext<FlightCalc | null>(null);
 export function useFlightCalc(): FlightCalc {
-  const v = useContext(CalcContext);
+  const v = use(CalcContext);
   if (!v) throw new Error('useFlightCalc outside <FlightCalcProvider>');
   return v;
 }
@@ -698,7 +689,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       for (const h of hazards) add(h.level, 'weather', `${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}).`);
     }
     // aerodrome hours (AIP AD 2.3 / AD 1.6, NOTAMs) at the planned times
-    for (const x of aerodromeWarnings(aerodromeChecks, doc.route.length)) add(x.level, 'aerodrome', x.text);
+    for (const x of aerodromeWarnings(aerodromeChecks)) add(x.level, 'aerodrome', x.text);
     if (fin(dayMs) && navlog && (fin(takeoffMs) ? takeoffMs : dayMs + DAY) < Date.now() - DAY)
       add('info', 'time', 'This flight is in the past.');
     return w;
@@ -710,7 +701,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     navlog,
     card,
     doc.date,
-    doc.route.length,
     doc.options.category,
     doc.options.fuelL,
     dayMs,
@@ -759,7 +749,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     adEffects,
     warnings,
   };
-  return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
+  return <CalcContext value={value}>{children}</CalcContext>;
 }
 
 const fmtMin = (min: number): string => fmtClock(min, { fallback: '--:--' });

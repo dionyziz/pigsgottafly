@@ -4,7 +4,7 @@
 // The server assesses the NOTAMs against the SAVED flight (route, times, altitudes), so the
 // briefing is (re)loaded once the editor's changes are saved and the route/times/altitudes changed.
 // <NotamProvider> sits inside <EditorProvider> (EditorPage); read with useNotams().
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiRequestError } from '../../data/api';
 import { fetchNotams, type Notam, type NotamBriefing } from '../../data/notams';
@@ -25,7 +25,7 @@ export interface NotamState {
   selectedNotam: Notam | null;
 }
 
-const Ctx = createContext<NotamState | null>(null);
+const NotamContext = createContext<NotamState | null>(null);
 
 const EMPTY: NotamState = {
   briefing: null,
@@ -41,7 +41,7 @@ const EMPTY: NotamState = {
 
 /** The editor's NOTAM state; outside a <NotamProvider> an empty, inert state. */
 export function useNotams(): NotamState {
-  return useContext(Ctx) ?? EMPTY;
+  return use(NotamContext) ?? EMPTY;
 }
 
 /** Wait this long after the last saved change before asking the server again. */
@@ -131,5 +131,5 @@ export function NotamProvider({ children }: { children: ReactNode }) {
     }),
     [briefing, loading, error, refresh, showAll, selected, select, selectedNotam],
   );
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <NotamContext value={value}>{children}</NotamContext>;
 }

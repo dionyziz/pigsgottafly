@@ -1,11 +1,11 @@
 // Minimal PNG decoder (8-bit RGB/RGBA, non-interlaced), enough for CDP screenshots. No dependencies.
 import zlib from 'node:zlib';
 export function decodePng(buf) {
+  const idat = [];
   let p = 8,
     w,
     h,
-    ct,
-    idat = [];
+    ct;
   while (p < buf.length) {
     const len = buf.readUInt32BE(p),
       type = buf.toString('latin1', p + 4, p + 8),

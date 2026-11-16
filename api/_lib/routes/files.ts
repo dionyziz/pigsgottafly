@@ -27,7 +27,7 @@ import {
   PHOTO_TYPES,
 } from '../../../src/shared/types.js';
 import { aircraftFor } from '../access.js';
-import type { Queryable } from '../db.js';
+import type { Queryable, Row } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { checkMagic, checkOpenUploads, checkQuota, LIMITS, sweepStaleUploads } from '../limits.js';
@@ -35,7 +35,7 @@ import { operatorFor } from '../operators.js';
 
 const COLS = 'id, kind, title, name, mime, size, chunks, created';
 const MIB = 1024 * 1024;
-export const toFile = (r: any): AircraftFile => ({
+export const toFile = (r: Row): AircraftFile => ({
   id: r.id,
   kind: r.kind,
   title: r.title ?? '',
@@ -56,6 +56,7 @@ export const photoJsonSql = (
 const cleanText = (v: unknown, max: number) =>
   typeof v === 'string'
     ? v
+        // eslint-disable-next-line no-control-regex -- control characters are what this strips
         .replace(/[\u0000-\u001f]/g, ' ')
         .trim()
         .slice(0, max)

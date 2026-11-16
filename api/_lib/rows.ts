@@ -15,9 +15,9 @@ import type {
   WaypointInput,
 } from '../../src/shared/types.js';
 import { checkCompassCards, checkEquipment, checkFuel, checkMassBalance, checkPerformance } from './aircraftDoc.js';
+import type { Row } from './db.js';
 import { badRequest } from './http.js';
 
-type Row = Record<string, any>;
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 export function toPilot(r: Row): Pilot {

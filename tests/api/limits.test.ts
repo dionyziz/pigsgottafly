@@ -185,13 +185,15 @@ describe('counts', () => {
 
 describe('cross-site requests (CSRF)', () => {
   test('a foreign Origin or Sec-Fetch-Site: cross-site is refused; JSON is required, even with no body', async () => {
-    const cookie = (await (
+    const cookie = (
       await fetch(api.base + 'login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: signToken(googleClaims('sub-csrf', 'csrf@example.com')) }),
       })
-    ).headers.get('set-cookie'))!.split(';')[0];
+    ).headers
+      .get('set-cookie')!
+      .split(';')[0];
     const f = await (
       await fetch(api.base + 'flights', {
         method: 'POST',
@@ -286,13 +288,15 @@ describe('rate limits', () => {
   test('the reference bundle: ETag by AIRAC, cached a day, 304 when unchanged', async () => {
     const { c } = await pilot();
     void c;
-    const cookie = (await (
+    const cookie = (
       await fetch(api.base + 'login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: signToken(googleClaims('sub-ref', 'ref@example.com')) }),
       })
-    ).headers.get('set-cookie'))!.split(';')[0];
+    ).headers
+      .get('set-cookie')!
+      .split(';')[0];
     const r = await fetch(api.base + 'ref/bundle', { headers: { cookie } });
     expect(r.status).toBe(200);
     const etag = r.headers.get('etag')!;

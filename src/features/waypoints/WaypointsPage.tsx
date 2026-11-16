@@ -112,7 +112,7 @@ export function WaypointsPage() {
                                 className="inline-edit"
                                 onSubmit={(e) => {
                                   e.preventDefault();
-                                  (e.currentTarget.querySelector('input') as HTMLInputElement | null)?.blur();
+                                  e.currentTarget.querySelector('input')?.blur();
                                 }}
                               >
                                 <input

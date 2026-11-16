@@ -202,7 +202,7 @@ export function buildRunways(
 
         const corrections = parsed.corrections
           .filter((c) => c.source === a.source && c.designator === d)
-          .map((c) => `${c.field}: printed ${c.printed}, used ${c.used} (${c.why})`);
+          .map((c) => `${c.field}: printed ${String(c.printed)}, used ${String(c.used)} (${c.why})`);
 
         runways.push({
           aerodromeId: a.id,

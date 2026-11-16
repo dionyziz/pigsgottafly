@@ -166,7 +166,7 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
 export function setHazardLayer(m: MlMap, list: MapHazard[], beforeId?: string) {
   try {
     ensureLayers(m, beforeId);
-    (m.getSource(SRC) as GeoJSONSource | undefined)?.setData(featureCollection(list) as never);
+    void m.getSource<GeoJSONSource>(SRC)?.setData(featureCollection(list) as never);
   } catch {
     /* style not ready or glyphs missing: the strip still lists the hazards */
   }

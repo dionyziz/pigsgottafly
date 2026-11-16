@@ -38,6 +38,13 @@ export interface ApiConfig {
   aviationWeather?: WeatherProxyOptions;
 }
 
+/**
+ * A request's JSON object as the client sent it. Every handler validates or normalises the fields it
+ * reads (rows.ts, the *Of normalisers), so this stays loose.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untrusted input, checked field by field
+export type JsonBody = Record<string, any>;
+
 export interface Ctx {
   req: Req;
   db: Db;
@@ -48,7 +55,7 @@ export interface Ctx {
   /** The session's pilot; always set for routes with auth !== false. */
   pilot: Pilot;
   /** Parsed JSON body ({} when empty); always a plain object (400 otherwise, 415 if not application/json). */
-  body: () => Promise<any>;
+  body: () => Promise<JsonBody>;
   /** Extra response headers (e.g. Set-Cookie). */
   headers: Record<string, string>;
   /** The autorouter client of this API instance, or null when not configured or not for this pilot. */
@@ -69,7 +76,8 @@ export class Reply {
     public headers?: Record<string, string>,
   ) {}
 }
-export type Handler = (ctx: Ctx) => Promise<unknown | Reply | undefined>;
+/** Resolves to the body (200), a Reply, or undefined (204). */
+export type Handler = (ctx: Ctx) => Promise<unknown>;
 
 export interface Route {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -117,7 +125,7 @@ export function isJsonContentType(ct: string | string[] | undefined): boolean {
  * application/json (415 otherwise): HTML forms can only post text/plain, urlencoded or multipart,
  * so this keeps cross-site form posts (login CSRF) out, without relying on CORS or SameSite.
  */
-export async function readJson(req: Req): Promise<any> {
+export async function readJson(req: Req): Promise<unknown> {
   let raw: unknown;
   let pre: unknown;
   try {
@@ -149,7 +157,7 @@ export async function readJson(req: Req): Promise<any> {
 }
 
 /** readJson, and the body must be a JSON object (every route takes one): null, arrays and scalars are 400. */
-export async function readJsonObject(req: Req): Promise<Record<string, any>> {
+export async function readJsonObject(req: Req): Promise<JsonBody> {
   const v = await readJson(req);
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw badRequest('the request body must be a JSON object');
   return v;

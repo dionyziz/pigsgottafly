@@ -3,10 +3,9 @@
 //   GET /admin/mail?pilot=<id>&kind=<k>    the e-mail action log (mail_log, sendCaps.ts), newest first, 300 at most
 import type { AdminMail, AdminPilot, AdminShare } from '../../../src/shared/api.js';
 import { personName } from '../access.js';
+import type { Row } from '../db.js';
 import type { Route } from '../http.js';
 import { HttpError } from '../http.js';
-
-type Row = Record<string, any>;
 
 export const routes: Route[] = [
   {

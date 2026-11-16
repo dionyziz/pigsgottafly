@@ -17,7 +17,7 @@ import type { FilingLogEntry, FilingRecord, FilingState, FilingStatus } from '..
 import { generateAddressees } from '../addressees.js';
 import type { AutorouterClient } from '../autorouter.js';
 import { AutorouterError } from '../autorouter.js';
-import type { Queryable } from '../db.js';
+import type { Queryable, Row } from '../db.js';
 import { flightContext } from '../flightContext.js';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId } from '../http.js';
@@ -73,7 +73,7 @@ export function filingAvailability(
 
 const toStatus = (s: string): FilingStatus => (STATUSES.has(s as FilingStatus) ? (s as FilingStatus) : 'unknown');
 
-function toRecord(r: Record<string, any>): FilingRecord {
+function toRecord(r: Row): FilingRecord {
   return {
     provider: 'autorouter',
     providerId: r.provider_id ?? null,
@@ -87,7 +87,7 @@ function toRecord(r: Record<string, any>): FilingRecord {
     polled: r.polled == null ? null : Number(r.polled),
   };
 }
-const toLog = (r: Record<string, any>): FilingLogEntry => ({
+const toLog = (r: Row): FilingLogEntry => ({
   id: r.id,
   flightId: r.flight_id ?? null,
   at: Number(r.at),

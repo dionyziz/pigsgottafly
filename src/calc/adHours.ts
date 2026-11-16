@@ -376,12 +376,12 @@ function tokenize(text: string): Tok[] | null {
       s = s.slice(m[0].length);
       continue;
     }
-    if ((m = /^[,;.]/.exec(s))) {
+    if (/^[,;.]/.test(s)) {
       out.push({ k: 'sep' });
       s = s.slice(1);
       continue;
     }
-    if ((m = /^:/.exec(s))) {
+    if (s.startsWith(':')) {
       out.push({ k: 'colon' });
       s = s.slice(1);
       continue;

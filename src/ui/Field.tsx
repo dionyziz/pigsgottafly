@@ -42,7 +42,8 @@ export function Field({
   // A plain input/select/textarea child is marked aria-invalid too.
   const child =
     invalid && isValidElement(children) && typeof children.type === 'string'
-      ? cloneElement(children as ReactElement<{ 'aria-invalid'?: boolean }>, { 'aria-invalid': true })
+      ? // eslint-disable-next-line @eslint-react/no-clone-element -- marks the one native control passed in
+        cloneElement(children as ReactElement<{ 'aria-invalid'?: boolean }>, { 'aria-invalid': true })
       : children;
   return (
     <label

@@ -23,10 +23,10 @@ const fin = (n: unknown): n is number => typeof n === 'number' && Number.isFinit
  * A FuelSpec in the current shape. Rows written before migration 014 (and old clients) have a
  * single `type` and `densityKgPerL`; they become one approved fuel.
  */
-export function normalizeFuelSpec(f: any): FuelSpec {
-  if (!f || typeof f !== 'object') return f;
-  if (Array.isArray(f.types)) return f as FuelSpec;
-  const { type, densityKgPerL, ...rest } = f;
+export function normalizeFuelSpec(f: unknown): FuelSpec {
+  if (!f || typeof f !== 'object') return f as FuelSpec;
+  if ('types' in f && Array.isArray(f.types)) return f as FuelSpec;
+  const { type, densityKgPerL, ...rest } = f as { type?: string; densityKgPerL?: number };
   // an unknown type is passed through as it is, for the API's validation to refuse
   const t = (type ?? 'AVGAS') as FuelType;
   const rho = densityKgPerL !== undefined ? densityKgPerL : isFuelType(t) ? DEFAULT_FUEL_DENSITY[t] : undefined;
