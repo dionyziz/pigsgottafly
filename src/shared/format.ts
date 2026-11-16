@@ -1,5 +1,5 @@
 // The app's formatters: clock times, durations, altitudes, sizes, error text. Pure and Node-safe
-// (used by the client, src/calc and api/_lib). Pilot conventions: durations '1h44', clock times
+// (used by the client, src/calc and api/_lib). Pilot conventions: durations '1h44' (navlog ETE/ATE columns '00:10'), clock times
 // 'HH:MM' UTC (with 'Z' where the reader needs it), dates 'YYYY-MM-DD', altitudes '3000' / 'FL065'.
 // Unit-tested in tests/unit/shared/format.test.ts.
 import { LOCAL_TZ, localDayTime } from './date.js';
@@ -41,6 +41,13 @@ export function fmtDuration(min: number | null | undefined, opts: { fallback?: s
   if (!finite(min) || min < 0) return opts.fallback ?? '';
   const m = Math.round(min);
   return `${Math.floor(m / 60)}h${pad(m % 60)}`;
+}
+
+/** A leg time as the navlog columns write it (ETE, ATE): minutes → '00:10', '01:44' (no wrap past 24 h). Fallback ('') for unknown or negative. */
+export function fmtEte(min: number | null | undefined, opts: { fallback?: string } = {}): string {
+  if (!finite(min) || min < 0) return opts.fallback ?? '';
+  const m = Math.round(min);
+  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
 }
 
 /** Local (Greek) clock time of an instant, 'HH:MM'. */

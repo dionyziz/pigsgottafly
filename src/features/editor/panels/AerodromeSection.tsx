@@ -12,12 +12,11 @@ import { Section, SECTIONS_STORE } from './ui';
 
 function StatusChip({ c }: { c: AdCheck }) {
   if (!Number.isFinite(c.fromMs)) return <span className="muted">time not set</span>;
-  const s = c.ad.status;
-  return (
-    <Chip tone={s === 'open' ? 'ok' : s === 'closed' ? 'danger' : undefined} title={`${c.ad.why} (${c.ad.source})`}>
-      {s === 'open' ? 'Open' : s === 'closed' ? `Closed ${clockZ(c.ad.at)}Z` : 'Hours not known'}
-    </Chip>
-  );
+  const { status, limits } = c.ad;
+  if (status === 'closed') return <Chip tone="danger" title={`${c.ad.why} (${c.ad.source})`}>Closed {clockZ(c.ad.at)}Z</Chip>;
+  if (limits.length) return <Chip tone="warn" title={limits.map((l) => `NOTAM ${l.key}: ${l.summary}`).join('\n')}>Limited</Chip>;
+  if (status === 'open') return <Chip tone="ok" title={`${c.ad.why} (${c.ad.source})`}>Open</Chip>;
+  return null;
 }
 
 export function AerodromeSection() {

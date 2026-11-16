@@ -98,7 +98,7 @@ export function LobbyPage() {
     const rel = relativeDay(date, today);
     const local = utcToLocal(date, s.blockOff);
     const route = s.from && s.to ? (s.from === s.to ? `Local flight · ${s.from}` : `${s.from} → ${s.to}`) : '';
-    const totals = [s.distNm != null ? `${Math.round(s.distNm)} NM` : '', s.eteMin != null ? fmtDuration(s.eteMin) : '', s.fuelL != null ? `${Math.round(s.fuelL)} L` : ''].filter(Boolean).join(' · ');
+    const dash = <span className="muted">—</span>;
     const items = trashView
       ? [{ label: 'Restore', onSelect: () => void restore(r) }]
       : [
@@ -121,7 +121,9 @@ export function LobbyPage() {
         <div className="cell hide-sm" title={local ? `${local} local time` : undefined}>
           {s.blockOff ? <><b>{s.blockOff}</b> UTC{local && <div className="sub">{local} local</div>}</> : <span className="muted">—</span>}
         </div>
-        <div className="cell totals hide-sm">{totals || <span className="muted">—</span>}</div>
+        <div className="cell num hide-sm" data-testid="flight-dist">{s.distNm != null ? `${Math.round(s.distNm)} NM` : dash}</div>
+        <div className="cell num hide-sm" data-testid="flight-time">{s.eteMin != null ? fmtDuration(s.eteMin) : dash}</div>
+        <div className="cell num hide-sm" data-testid="flight-fuel">{s.fuelL != null ? `${Math.round(s.fuelL)} L` : dash}</div>
         <KebabMenu items={items} />
       </div>
     );
@@ -130,7 +132,7 @@ export function LobbyPage() {
   const section = (label: string, list: FlightListItem[]) => list.length > 0 && (
     <>
       <div className="lobby-section">{label}<span className="count">{list.length}</span></div>
-      <div className="lobby-head-cols"><span /><span>Flight</span><span className="hide-sm">Date</span><span className="hide-sm">Block-off</span><span className="totals hide-sm">Distance · time · fuel</span><span /></div>
+      <div className="lobby-head-cols"><span /><span>Flight</span><span className="hide-sm">Date</span><span className="hide-sm">Block-off</span><span className="num hide-sm">Distance</span><span className="num hide-sm">Time</span><span className="num hide-sm">Fuel</span><span /></div>
       <div className="card flights">{list.map(row)}</div>
     </>
   );

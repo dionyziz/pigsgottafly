@@ -85,6 +85,8 @@ export interface PersonDetails {
   relation: string;
 }
 
+export type PersonKey = keyof PersonDetails;
+
 export interface Pilot extends PersonDetails {
   id: Id;
   /** From Google sign-in ('' in local mode). */
@@ -506,6 +508,11 @@ export interface FlightCrew {
   passengerId: Id | null;
   seat: SeatId;
   snapshot: PersonDetails;
+  /**
+   * Snapshot fields edited on this flight (e.g. a weight typed for it): they no longer follow the
+   * passenger list / profile until "Reset from the saved details". Missing = none.
+   */
+  overrides?: PersonKey[];
 }
 
 export type AtcRole = 'departure' | 'enroute' | 'destination' | 'airspace' | 'fis' | 'custom';

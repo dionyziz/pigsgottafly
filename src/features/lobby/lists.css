@@ -15,7 +15,7 @@
 .lobby-section { margin: var(--s5) 0 var(--s2); font-size: var(--fs-sm); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: var(--s2); align-items: baseline; }
 .lobby-section .count { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .flights { overflow: visible; }
-.flight-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 150px 110px 150px 36px; gap: var(--s4); align-items: center; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); color: var(--ink); position: relative; }
+.flight-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 150px 110px 64px 48px 48px 36px; gap: var(--s4); align-items: center; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); color: var(--ink); position: relative; }
 .flight-row:last-child { border-bottom: 0; }
 .flight-row:first-child { border-top-left-radius: var(--r-lg); border-top-right-radius: var(--r-lg); }
 .flight-row:last-child { border-bottom-left-radius: var(--r-lg); border-bottom-right-radius: var(--r-lg); }
@@ -24,10 +24,10 @@
 .flight-row .sub { font-size: var(--fs-sm); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .flight-row .cell { font-size: var(--fs-sm); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .flight-row .cell b { font-weight: 500; color: var(--ink); }
-.flight-row .totals { font-variant-numeric: tabular-nums; text-align: right; }
+.flight-row .num { text-align: right; }
 .flight-row.today { box-shadow: inset 3px 0 0 var(--accent); }
-.lobby-head-cols { display: grid; grid-template-columns: 44px minmax(0, 1fr) 150px 110px 150px 36px; gap: var(--s4); padding: 0 12px 6px 16px; font-size: var(--fs-xs); color: var(--muted); }
-.lobby-head-cols .totals { text-align: right; }
+.lobby-head-cols { display: grid; grid-template-columns: 44px minmax(0, 1fr) 150px 110px 64px 48px 48px 36px; gap: var(--s4); padding: 0 12px 6px 16px; font-size: var(--fs-xs); color: var(--muted); }
+.lobby-head-cols .num { text-align: right; }
 @media (max-width: 760px) {
   .flight-row, .lobby-head-cols { grid-template-columns: 44px minmax(0, 1fr) 36px; }
 }

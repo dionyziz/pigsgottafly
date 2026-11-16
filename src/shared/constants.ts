@@ -5,6 +5,7 @@ import type {
   FlightSummary,
   LegKey,
   PersonDetails,
+  PersonKey,
   PilotSettings,
   RoutePoint,
   Station,
@@ -99,6 +100,9 @@ export const EXPORT_LABEL: Record<ExportKind, string> = {
 export const LEGS_PER_SHEET = 9;
 /** Compass cards expiring within this many days of the flight date are warned. */
 export const CARD_EXPIRY_WARN_DAYS = 90;
+
+/** Every PersonDetails field (the manifest's follow / override unit). */
+export const PERSON_KEYS: readonly PersonKey[] = ['fullName', 'phone', 'dateOfBirth', 'weightKg', 'idNumber', 'idType', 'nationality', 'relation'];
 
 export const EMPTY_PERSON: PersonDetails = {
   fullName: '',

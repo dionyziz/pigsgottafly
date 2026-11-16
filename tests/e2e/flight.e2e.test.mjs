@@ -351,7 +351,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     t += minExact * 60000;
     const c = exp.cells[i], r = strip[i];
     assert.deepEqual([r[3], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[15]],
-      [c.tc, c.wca, c.mh, c.dev, c.ch, c.gs, c.dist, O.dur(exp.rows[i].ete), c.fuel], `strip leg ${i}`);
+      [c.tc, c.wca, c.mh, c.dev, c.ch, c.gs, c.dist, O.legTime(exp.rows[i].ete), c.fuel], `strip leg ${i}`);
   }
   const hhmm = (ms) => new Date(ms).toISOString().slice(11, 16);
   const landing = strip[2][14];
@@ -372,7 +372,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.equal(cells['5,10'], 'ABLONAS');
   assert.equal(cells['9,10'], 'LGMG');
   assert.equal(cells['22,12'], String(exp.totals.dist));
-  assert.equal(cells['22,14'], O.dur(exp.totals.ete));
+  assert.equal(cells['22,14'], O.legTime(exp.totals.ete));
   assert.equal(cells['22,16'], String(exp.totals.fuel));
   const sunset = O.sunsetMinutes(DATE, LGMG.lat, LGMG.lon);
   const shownSunset = /SUNSET (\d\d):(\d\d)Z/.exec(cells['22,17']);

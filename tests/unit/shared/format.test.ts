@@ -5,7 +5,7 @@ import {
   parseIsoDate, relativeDay, todayUtc, utcToLocal,
 } from '../../../src/shared/date';
 import {
-  errorMessage, fmtAltitude, fmtClock, fmtClockMs, fmtDateTimeMs, fmtDuration, fmtLocalClock, fmtLocalDayTime, fmtSize, pad,
+  errorMessage, fmtAltitude, fmtClock, fmtClockMs, fmtDateTimeMs, fmtDuration, fmtEte, fmtLocalClock, fmtLocalDayTime, fmtSize, pad,
 } from '../../../src/shared/format';
 import { aerodromeName, aerodromePoint } from '../../../src/shared/aerodrome';
 import * as calc from '../../../src/calc';
@@ -81,6 +81,14 @@ describe('clock times and durations', () => {
     expect(fmtDuration(59.6)).toBe('1h00');
     expect(fmtDuration(null)).toBe('');
     expect(fmtDuration(-1, { fallback: '–' })).toBe('–');
+  });
+  it('navlog leg times read 00:10', () => {
+    expect(fmtEte(10)).toBe('00:10');
+    expect(fmtEte(104)).toBe('01:44');
+    expect(fmtEte(0.4)).toBe('00:00');
+    expect(fmtEte(1500)).toBe('25:00');
+    expect(fmtEte(undefined)).toBe('');
+    expect(fmtEte(-1, { fallback: '–' })).toBe('–');
   });
 });
 

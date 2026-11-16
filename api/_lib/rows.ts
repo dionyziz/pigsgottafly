@@ -106,7 +106,7 @@ export function toFlight(r: Row, crewRows: Row[]): Flight {
     atc: r.atc ?? null,
     crew: crewRows
       .sort((a, b) => a.position - b.position)
-      .map((c): FlightCrew => ({ role: c.role, passengerId: c.passenger_id ?? null, seat: c.seat, snapshot: c.snapshot })),
+      .map((c): FlightCrew => ({ role: c.role, passengerId: c.passenger_id ?? null, seat: c.seat, snapshot: c.snapshot, overrides: c.overrides ?? [] })),
     baggageKg: r.baggage_kg ?? {},
     options: { ...DEFAULT_FLIGHT_OPTIONS, ...(r.options || {}) },
     summary: { ...EMPTY_SUMMARY, ...(r.summary || {}) },

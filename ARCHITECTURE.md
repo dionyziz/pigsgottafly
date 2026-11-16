@@ -28,7 +28,8 @@ src/
                            seatStation(), validateCrew(), EXPORT_KINDS, legKey(), uid(), autoTitle(), emptyFlightDoc()
     templates.ts           aircraft TYPE templates (AFM data, blank airframe): aircraftFromTypeJson(), blankAircraft()
     format.ts              THE formatters: pad, fmtClock(min,{z,fallback}) 'HH:MM', fmtClockMs, fmtDateTimeMs
-                           'YYYY-MM-DD HH:MMZ', fmtDuration(min,{fallback}) '1h44', fmtAltitude '3000'/'FL065'
+                           'YYYY-MM-DD HH:MMZ', fmtDuration(min,{fallback}) '1h44', fmtEte '00:10'
+                           (navlog ETE/ATE columns), fmtAltitude '3000'/'FL065'
                            (TRANSITION_ALTITUDE_FT), fmtLocalClock, fmtLocalDayTime, fmtSize, errorMessage(e)
     date.ts                LOCAL_TZ = Europe/Athens (the one local zone), parseIsoDate, isIsoDate, isoDay, todayUtc,
                            localToday, localDayTime, fmtDate, daysBetween, addDays, relativeDay, ageOn, utcToLocal,
@@ -210,7 +211,8 @@ api/
                            030_mail_log.ts (every e-mail sent for a pilot, for the sending caps),
                            031_mail_log_details.ts (the e-mail action log: recipient, subject, result, message id, error;
                            app mails without a pilot), 032_rate_limits.ts (token buckets; indexes for the upload sweep),
-                           040_app_errors.ts (app_errors, app_error_alerts; IF NOT EXISTS)
+                           040_app_errors.ts (app_errors, app_error_alerts; IF NOT EXISTS),
+                           042_crew_overrides.ts (flight_crew.overrides: manifest fields edited on the flight)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form; HCAA_DAILY_CAP
                            (default 200) for all pilots together; signing links 60/24 h and 20 per flight
@@ -265,7 +267,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 - **Imports**: `src/shared`, `src/calc`, `api/` and `tools/` use explicit `.js` extensions, because the API runs as Node ESM. `tsconfig.node.json` (NodeNext) enforces this. Client code (`src/app`, `src/features`, `src/data`) uses Bundler resolution: no extensions, and `../shared` works.
 - **Nothing pilot-specific is an app default** (pilot correction #1). A new pilot starts with an empty profile (`homeAerodrome: null`, taxi and reserve `null`) and an empty hangar. The app asks for the profile on first use (the onboarding redirect to `/profile?welcome=1`). `SETTING_SUGGESTIONS` are placeholders only. Calculations treat `null` as "not set" and warn. Only the pilot who already existed in production gets his stated values (LGTT, 15/15/60) and SX-ASV/SX-ASG, through one-time migration 003.
 - **Route points** always store a name, lat and lon snapshot, plus `kind` and `refId` (aerodrome id, VFR point id `CHART/NAME`, saved waypoint id, or `null` for a custom point). Per-leg overrides are keyed by `legKey(a, b) = "<a.uid>><b.uid>"`, so inserting a point resets only the leg it splits.
-- **The manifest** (`FlightDoc.crew`) is saved with the flight and stored in the `flight_crew` table. The PIC is the pilot (`passengerId: null`). `validateCrew` rules: exactly one PIC, one person per seat, seats must exist on the aircraft (`seatLayout(stations)`). Snapshots keep old forms correct.
+- **The manifest** (`FlightDoc.crew`) is saved with the flight and stored in the `flight_crew` table. The PIC is the pilot (`passengerId: null`). `validateCrew` rules: exactly one PIC, one person per seat, seats must exist on the aircraft (`seatLayout(stations)`). Snapshots keep old forms correct. A snapshot follows its person (passenger list / profile) field by field until that field is edited on the flight (`FlightCrew.overrides`, panels/manifest.ts); "Reset from the saved details" clears the overrides.
 
 ## Data flow
 
