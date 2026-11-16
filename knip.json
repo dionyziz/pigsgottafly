@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "api/index.ts",
+    "server/dev.ts",
+    "server/server.ts",
+    "tools/*.ts",
+    "tests/e2e/*.e2e.test.mjs",
+    "tests/e2e/shots-*.mjs"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "api/**/*.ts", "server/**/*.ts", "tools/*.ts", "tests/**/*.{ts,tsx,mjs}"],
+  "ignore": ["tests/e2e/artifacts/**"]
+}

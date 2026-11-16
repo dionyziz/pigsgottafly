@@ -1,0 +1,19 @@
+# Generated, vendored or not ours
+dist/
+node_modules/
+package-lock.json
+aip/
+trn-docs/
+data/
+src/data/ref/
+tools/**/*.json
+tests/e2e/artifacts/
+tests/fixtures/
+public/
+server/pgdata/
+# Applied migrations are frozen (byte for byte)
+api/_lib/migrations/
+# Hand-aligned one-rule-per-line CSS and prose
+*.css
+*.md
+*.html

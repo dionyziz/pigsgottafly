@@ -1,0 +1,46 @@
+# Checks on every push and pull request to main: types, lint, formatting, unit/API tests, the
+# production build and the headless-Chrome e2e suite. No secrets: every external API is mocked
+# (tests/setup/noExternalApis.ts; the e2e harness serves fake upstreams).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run knip
+      - run: npm test
+      - run: npm run build
+      - name: e2e (headless Chrome)
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: npm run test:e2e
+      - name: e2e artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-artifacts
+          path: tests/e2e/artifacts/
+          if-no-files-found: ignore
