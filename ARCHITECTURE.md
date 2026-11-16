@@ -41,7 +41,8 @@ src/
     declarations.ts        WbPerfContent (the W&B and performance sheets as sent to an operator), wbPerfContentOf
                            (normalization, both sides), wbPerfText (hashed: "changed since sent"), DeclarationsState
     weatherGrid.ts         forecast contract of GET /api/weather/grid: variable sets (wind, hazard), model grid steps
-                           (ECMWF/GFS 0.25°, ICON-EU 0.0625°), nodeKey/pointKey, forecastAvailability, WeatherGridResponse
+                           (ECMWF/GFS 0.25°, ICON-EU 0.0625°), gridCorners (the nodes around a point, bilinear weights),
+                           nodeKey/pointKey, forecastAvailability, WeatherGridResponse
   calc/                    pure calculations (no I/O, no DOM)
     nav.ts                 port of v2 js/nav.js: geodesy, wind triangle, deviation, NOAA sunset, computeLeg, summarize
     wmm.ts                 World Magnetic Model WMM2025: magneticVariation(lat, lon, date, altFt), wmmField, wmmValid
@@ -73,8 +74,9 @@ src/
                            api.ref, api.weather.metar; ApiRequestError(status, auth, offline)
     flightStore.ts         offline-tolerant flight saving (port of v2 js/store.js): load(id), save(id, doc), onStatus
     weather.ts             Open-Meteo data (port of v2 js/weather.js): sampleAt, sampleSurface, fetchRouteWeather (winds
-                           at the model grid node nearest each leg midpoint, surface at the aerodromes), surfaceConditions,
-                           chooseSurface (METAR vs forecast), windProviderFromLegs()
+                           at each leg midpoint, interpolated bilinearly between the model grid nodes around it:
+                           windCorners + blendLocations, winds as u/v; surface at the aerodromes, exact points),
+                           surfaceConditions, chooseSurface (METAR vs forecast), windProviderFromLegs()
     weatherGrid.ts         fetchGrid: GET /api/weather/grid, cached in memory per location and model run (until the
                            server's recheckMs), concurrent requests shared, only uncached locations asked for
     weatherMetar.ts        parseMetar, parseTaf, fetchMetarTaf (through GET /api/weather/metar)
@@ -394,7 +396,9 @@ The signed-in pilot is one copy for the app (AuthGate): `setPilot` is posted to 
 
 Abuse limits (env, optional): `HCAA_DAILY_CAP` (forms to the HCAA per 24 h, all pilots; default 200), `STORAGE_QUOTA_MB` (per pilot; default 300), `OPEN_METEO_DAILY_BUDGET` (Open-Meteo calls per UTC day, all pilots; default 8000).
 
-Forecasts: local runs (`npm run dev`, `npm start`, the tests) never call Open-Meteo: they get generated data (`server/syntheticOpenMeteo.ts`, the source line says "synthetic data") unless `OPEN_METEO_LIVE=1`; tests inject a fake built from recorded responses (`tests/helpers/openMeteoGrid.ts`). `tests/unit/data/weatherEquivalence.test.ts` checks that the proxy gives the same winds, temperatures, navlog, surface conditions and hazards as the old browser-side fetching (frozen in `tests/unit/data/legacy/weatherBefore.ts`).
+Forecasts: local runs (`npm run dev`, `npm start`, the tests) never call Open-Meteo: they get generated data (`server/syntheticOpenMeteo.ts`, the source line says "synthetic data") unless `OPEN_METEO_LIVE=1`; tests inject a fake built from recorded responses (`tests/helpers/openMeteoGrid.ts`). `tests/unit/data/weatherEquivalence.test.ts` checks that the proxy gives the same surface conditions (QNH), source line and hazards as the old browser-side fetching (frozen in `tests/unit/data/legacy/weatherBefore.ts`), that the winds aloft are the bilinear blend of the grid nodes around each leg midpoint (exact at a node, the u/v mean in the middle of a cell, linear on an edge), and that the navlog stays within a few knots and minutes of the old nearest-node one.
+
+Winds aloft cost: each leg asks for the up-to-four nodes around its midpoint (fewer on a cell edge or a node; neighbouring legs share them), so a fresh flight costs about 4× the wind nodes of the nearest-node scheme (measured on the test routes: 13 legs, 13 → 48 nodes). A wind node is 45 variables, i.e. 4.5 Open-Meteo calls; a 2-leg flight's weather (winds + aerodromes + hazard corridor) went from ≈ 78 to ≈ 105 calls, a 6-leg one from ≈ 170 to ≈ 250, before any sharing through the cache.
 
 With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`, `ADMIN_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 

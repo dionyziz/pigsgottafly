@@ -71,6 +71,10 @@ export function AboutPage() {
                   and QNH, cloud, visibility, thunderstorms
                 </>,
               ],
+              [
+                'Winds aloft',
+                'At each leg’s midpoint: interpolated between the four model grid points around it, between pressure levels and between hours',
+              ],
               ['METAR, TAF', ext('https://aviationweather.gov', 'aviationweather.gov')],
             ]}
           />

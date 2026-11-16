@@ -5,7 +5,8 @@
 //
 // Winds aloft and hazards are sampled at the model's own grid nodes (ECMWF IFS 0.25°: every 0.25° of
 // latitude and longitude), so one node is fetched once per model run and serves every leg, edit and
-// pilot near it. Surface conditions at aerodromes are fetched at the aerodrome itself (Open-Meteo
+// pilot near it. Winds aloft at a point are interpolated (bilinearly) between the four nodes around
+// it (gridCorners). Surface conditions at aerodromes are fetched at the aerodrome itself (Open-Meteo
 // corrects 2 m temperature and surface pressure to the aerodrome's elevation).
 import { isoDay } from './date.js';
 import type { IsoDate, WindModel } from './types.js';
@@ -67,9 +68,39 @@ export const HAZARD_STEP_DEG = 0.25;
 export const gridStep = (kind: WeatherGridKind, model: WindModel): number =>
   kind === 'hazard' ? HAZARD_STEP_DEG : (GRID_STEP_DEG[model] ?? 0.0625);
 
-/** Nearest grid node of a point. */
-export function snapToGrid(p: { lat: number; lon: number }, step: number): { lat: number; lon: number } {
-  return { lat: Math.round(p.lat / step) * step, lon: Math.round(p.lon / step) * step };
+export interface GridCorner {
+  lat: number;
+  lon: number;
+  /** Bilinear weight (the weights of a point's corners add up to 1). */
+  w: number;
+}
+
+/**
+ * The grid nodes around a point with their bilinear weights: the four corners of its grid cell, or
+ * fewer when it lies on a cell edge (two) or on a node (one); corners of weight 0 are left out.
+ */
+export function gridCorners(p: { lat: number; lon: number }, step: number): GridCorner[] {
+  // within a millionth of a cell of a node counts as on it (floating point of lat / step)
+  const split = (x: number) => {
+    const c = x / step;
+    const r = Math.round(c);
+    if (Math.abs(c - r) < 1e-6) return { i: r, f: 0 };
+    const i = Math.floor(c);
+    return { i, f: c - i };
+  };
+  const a = split(p.lat),
+    b = split(p.lon);
+  const out: GridCorner[] = [];
+  for (const [di, wi] of [
+    [0, 1 - a.f],
+    [1, a.f],
+  ])
+    for (const [dj, wj] of [
+      [0, 1 - b.f],
+      [1, b.f],
+    ])
+      if (wi * wj > 0) out.push({ lat: (a.i + di) * step, lon: (b.i + dj) * step, w: wi * wj });
+  return out;
 }
 
 const coord = (x: number, digits: number) => String(+x.toFixed(digits));

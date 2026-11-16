@@ -256,7 +256,7 @@ describe('availability and fetching', () => {
   const mid = { lat: 38.1089, lon: 23.7838 },
     dep = { lat: 37.9364, lon: 23.9445 };
 
-  test('fetchRouteWeather: through the server; winds at the grid node, surface at the aerodrome; source recorded; cached here and there', async () => {
+  test('fetchRouteWeather: through the server; winds from the grid nodes around the midpoint, surface at the aerodrome; source recorded; cached here and there', async () => {
     const om = fakeOpenMeteo();
     const api = await gridApi({ fetch: om.fetch, now: () => NOW });
     try {
@@ -271,8 +271,8 @@ describe('availability and fetching', () => {
       };
       const rw = await fetchRouteWeather(req);
       expect(rw.status).toBe('ok');
-      expect(rw.legs[0]!.latitude).toBe(38);
-      expect(rw.legs[0]!.longitude).toBe(23.75);
+      expect(rw.legs[0]!.latitude).toBe(38.1089);
+      expect(rw.legs[0]!.longitude).toBe(23.7838);
       expect(rw.departure!.longitude).toBe(24);
       expect(rw.destination).toBeNull();
       expect(rw.source).toMatchObject({
@@ -287,18 +287,24 @@ describe('availability and fetching', () => {
       expect(rw.message).toBe('ECMWF IFS 0.25°, run 2026-11-15 06Z, fetched 13:36Z');
       expect(describeSource(rw.source!)).toBe(rw.message);
       expect(api.requests).toHaveLength(1);
-      expect(new URLSearchParams(api.requests[0].split('?')[1]).get('locs')).toBe('38,23.75;p:37.936,23.945');
-      // one Open-Meteo request for the node, one for the aerodrome, both days at once
+      expect(new URLSearchParams(api.requests[0].split('?')[1]).get('locs')).toBe(
+        '38,23.75;38,24;38.25,23.75;38.25,24;p:37.936,23.945',
+      );
+      // one Open-Meteo request for the four nodes, one for the aerodrome, both days at once
       expect(
-        om.calls.map((c) => [new URL(c).searchParams.get('latitude'), new URL(c).searchParams.get('end_date')]),
+        om.calls.map((c) => [
+          new URL(c).searchParams.get('latitude'),
+          new URL(c).searchParams.get('longitude'),
+          new URL(c).searchParams.get('end_date'),
+        ]),
       ).toEqual([
-        ['38', '2026-11-16'],
-        ['37.936', '2026-11-16'],
+        ['38,38,38.25,38.25', '23.75,24,23.75,24', '2026-11-16'],
+        ['37.936', '23.945', '2026-11-16'],
       ]);
       await fetchRouteWeather(req);
       expect(api.requests).toHaveLength(1); // cached in the browser
-      // another leg in the same 0.25° cell: the same node, nothing new
-      await fetchRouteWeather({ ...req, legMidpoints: [{ lat: 37.95, lon: 23.8 }] });
+      // another leg in the same 0.25° cell: the same nodes, nothing new
+      await fetchRouteWeather({ ...req, legMidpoints: [{ lat: 38.2, lon: 23.9 }] });
       expect(api.requests).toHaveLength(1);
       clearCache(); // another browser: the server's cache answers
       const again = await fetchRouteWeather(req);

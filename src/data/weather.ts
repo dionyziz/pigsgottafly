@@ -4,9 +4,10 @@
 //
 //   - sampleAt: wind (u/v interpolated) and temperature at altitude ft MSL and time.
 //   - sampleSurface / surfaceConditions: 2 m temperature, dewpoint, MSL pressure (≈ QNH), 10 m wind.
-//   - fetchRouteWeather: everything a flight needs (winds aloft at the model grid node nearest each
-//     leg midpoint, surface conditions at the departure, stops and destination), with the source
-//     recorded (provider, model, model run, fetch time, coverage).
+//   - fetchRouteWeather: everything a flight needs (winds aloft at each leg midpoint, interpolated
+//     bilinearly between the four model grid nodes around it: blendLocations; surface conditions at
+//     the departure, stops and destination), with the source recorded (provider, model, model run,
+//     fetch time, coverage).
 //   - chooseSurface: METAR (src/data/weatherMetar.ts) when it is recent and close to the time of
 //     interest, otherwise the forecast.
 //
@@ -20,6 +21,8 @@ import {
   DEFAULT_MODEL,
   forecastAvailability,
   GRID_STEP_DEG,
+  type GridCorner,
+  gridCorners,
   type Hourly,
   LEVELS,
   type ModelRun,
@@ -27,7 +30,6 @@ import {
   type OpenMeteoEndpoint,
   type OpenMeteoLocation,
   pointKey,
-  snapToGrid,
 } from '../shared/weatherGrid';
 import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
 import type { MetarWind, ParsedMetar } from './weatherMetar';
@@ -258,7 +260,7 @@ export interface ForecastSource {
 export interface RouteWeatherRequest {
   date: IsoDate;
   model: WindModel | null | undefined;
-  /** One point per leg (its midpoint): winds from the model grid node nearest to it. */
+  /** One point per leg (its midpoint): winds interpolated between the model grid nodes around it. */
   legMidpoints: LatLon[];
   departure: LatLon | null;
   destination: LatLon | null;
@@ -312,13 +314,111 @@ const empty = (status: RouteWeather['status'], message: string, n: number): Rout
 const DAY = 86400000;
 const dayMs = (d: IsoDate) => Date.parse(d + 'T00:00:00Z');
 
-/** The model grid node whose data stands for a point's winds aloft (Open-Meteo answers a point with its nearest node). */
-export const windNode = (p: LatLon, model: WindModel): LatLon => snapToGrid(p, GRID_STEP_DEG[model] ?? 0.0625);
+/** The model grid nodes around a point, with their bilinear weights (winds aloft are interpolated between them). */
+export const windCorners = (p: LatLon, model: WindModel): GridCorner[] =>
+  gridCorners(p, GRID_STEP_DEG[model] ?? 0.0625);
+
+const WIND_PAIRS: [string, string][] = [
+  ...LEVELS.map((l): [string, string] => [`wind_speed_${l}hPa`, `wind_direction_${l}hPa`]),
+  ['wind_speed_10m', 'wind_direction_10m'],
+];
 
 /**
- * Winds aloft at every leg (the model grid node nearest its midpoint) plus surface conditions at the
- * departure, stops and destination, for the flight date and the next day (flights past midnight).
- * Never rejects.
+ * A point's data from the grid nodes around it, weighted (bilinear weights from windCorners): every
+ * hourly value is the weighted mean of the nodes' values, and winds are averaged as u/v components
+ * (then given back as speed and direction, as Open-Meteo gives them). A node without data, or
+ * without a value at some hour, is left out and the others' weights scaled up; a value from one node
+ * alone is that node's value exactly. Null when no node has data.
+ */
+export function blendLocations(
+  point: LatLon,
+  nodes: { loc: OpenMeteoLocation | null; w: number }[],
+): OpenMeteoLocation | null {
+  const ref = nodes.filter((n) => n.w > 0 && n.loc?.hourly?.time).sort((a, b) => b.w - a.w)[0]?.loc;
+  if (!ref) return null;
+  const time = ref.hourly.time;
+  // only nodes over the same hours (they come from one request, so all of them)
+  const used = nodes.filter(
+    (n): n is { loc: OpenMeteoLocation; w: number } =>
+      n.w > 0 &&
+      !!n.loc?.hourly?.time &&
+      n.loc.hourly.time.length === time.length &&
+      n.loc.hourly.time.every((t, i) => t === time[i]),
+  );
+  if (used.length === 1) return { ...used[0].loc, latitude: point.lat, longitude: point.lon };
+  const num = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
+  const series = (n: { loc: OpenMeteoLocation }, k: string) => n.loc.hourly[k] as (number | null)[] | undefined;
+  const hourly: Hourly = { time: [...time] };
+  const paired = new Set(WIND_PAIRS.flat());
+  for (const [sk, dk] of WIND_PAIRS) {
+    if (!used.some((n) => series(n, sk) && series(n, dk))) continue;
+    const spd: (number | null)[] = [],
+      dir: (number | null)[] = [];
+    for (let i = 0; i < time.length; i++) {
+      let u = 0,
+        v = 0,
+        w = 0;
+      const from: number[] = [];
+      used.forEach((n, k) => {
+        const s = series(n, sk)?.[i],
+          d = series(n, dk)?.[i];
+        if (!num(s) || !num(d)) return;
+        const r = (d * Math.PI) / 180;
+        u += -s * Math.sin(r) * n.w;
+        v += -s * Math.cos(r) * n.w;
+        w += n.w;
+        from.push(k);
+      });
+      if (!from.length) {
+        spd.push(null);
+        dir.push(null);
+      } else if (from.length === 1) {
+        spd.push(series(used[from[0]], sk)![i]);
+        dir.push(series(used[from[0]], dk)![i]);
+      } else {
+        const x = toDirSpd(u / w, v / w);
+        spd.push(x.spd);
+        dir.push(x.dir);
+      }
+    }
+    hourly[sk] = spd;
+    hourly[dk] = dir;
+  }
+  const keys = new Set(used.flatMap((n) => Object.keys(n.loc.hourly)));
+  for (const k of keys) {
+    if (k === 'time' || paired.has(k)) continue;
+    const out: (number | null)[] = [];
+    for (let i = 0; i < time.length; i++) {
+      let sum = 0,
+        w = 0,
+        only: number | null = null,
+        count = 0;
+      for (const n of used) {
+        const x = series(n, k)?.[i];
+        if (!num(x)) continue;
+        sum += x * n.w;
+        w += n.w;
+        only = x;
+        count++;
+      }
+      out.push(!count ? null : count === 1 ? only : sum / w);
+    }
+    hourly[k] = out;
+  }
+  const elev = used.filter((n) => num(n.loc.elevation));
+  const ew = elev.reduce((a, n) => a + n.w, 0);
+  return {
+    hourly,
+    latitude: point.lat,
+    longitude: point.lon,
+    ...(elev.length ? { elevation: elev.reduce((a, n) => a + n.loc.elevation! * n.w, 0) / ew } : {}),
+  };
+}
+
+/**
+ * Winds aloft at every leg (interpolated between the model grid nodes around its midpoint) plus
+ * surface conditions at the departure, stops and destination, for the flight date and the next day
+ * (flights past midnight). Never rejects.
  */
 export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<RouteWeather> {
   const n = req.legMidpoints.length;
@@ -333,11 +433,12 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
       `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}; winds for ${req.date} from ${av.availableFrom}`,
       n,
     );
-  const legKeys = req.legMidpoints.map((m) => nodeKey(windNode(m, model)));
+  const legCorners = req.legMidpoints.map((m) => windCorners(m, model).map((c) => ({ key: nodeKey(c), w: c.w })));
+  const nodeKeys = [...new Set(legCorners.flat().map((c) => c.key))];
   const depKey = req.departure ? pointKey(req.departure) : null;
   const destKey = req.destination ? pointKey(req.destination) : null;
   const stopKeys = (req.stops ?? []).map((p) => pointKey(p));
-  const order = [...legKeys, depKey, destKey, ...stopKeys].filter((k): k is string => !!k);
+  const order = [...nodeKeys, depKey, destKey, ...stopKeys].filter((k): k is string => !!k);
   const next = isoDay(dayMs(req.date) + DAY);
   const d1 = next <= av.lastDate ? next : req.date;
   try {
@@ -353,7 +454,12 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
     });
     const at = (k: string | null) => (k ? (r.locations.get(k) ?? null) : null);
     if (order.every((k) => !at(k))) return empty('error', `Winds unavailable: ${r.message || 'no data'}`, n);
-    const legs = legKeys.map(at);
+    const legs = legCorners.map((cs, i) =>
+      blendLocations(
+        req.legMidpoints[i],
+        cs.map((c) => ({ loc: at(c.key), w: c.w })),
+      ),
+    );
     const firstLoc = at(order[0]);
     const ts = firstLoc?.hourly?.time ? times(firstLoc.hourly) : [];
     const endpoint = r.endpoint ?? av.endpoint;
