@@ -334,7 +334,7 @@ describe('migrations', () => {
     await ins('f2', 'u2', 'SX-FR2', 'FRIENDS CLUB', 'call the club first'); // same operator (case, spaces)
     await ins('f3', 'u2', 'SX-FR3', '', '');
     await ins('f4', 'u2', 'SX-FR4', 'Other Owner', 'OPR TEL +30 210 0000000 and ask for Bob'); // not only numbers: no phone
-    expect((await migrate(db, withOwner(OWNER))).filter((n) => n < '019')).toEqual(['018_operators']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual(MIGRATIONS.slice(MIGRATIONS.findIndex((m) => m.name === '018_operators')).map((m) => m.name));
 
     const ops = await db.query(`SELECT pilot_id, name, phone FROM operators ORDER BY pilot_id, name`);
     expect(ops).toEqual([
@@ -370,7 +370,7 @@ describe('migrations', () => {
     // 030 alone first, with a send logged the old way
     await migrate(db, withOwner(OWNER, upTo('030_mail_log')));
     await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at) VALUES ('ml1', 'u1', 'fx', '731', 5)`);
-    expect(await migrate(db, withOwner(OWNER))).toEqual(['031_mail_log_details', '032_rate_limits']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual(MIGRATIONS.slice(MIGRATIONS.findIndex((m) => m.name === '031_mail_log_details')).map((m) => m.name));
     expect(await db.query(`SELECT id, pilot_id, form, recipient, subject, result, message_id FROM mail_log`)).toEqual([
       { id: 'ml1', pilot_id: 'u1', form: '731', recipient: '', subject: '', result: 'sent', message_id: null },
     ]);
@@ -388,7 +388,7 @@ describe('migrations', () => {
     await db2.exec(V2);
     await db2.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
     await migrate(db2, withOwner(OWNER, upTo('018_operators')));
-    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits']);
+    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors']);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     await db2.close();
   });
@@ -407,6 +407,8 @@ describe('migrations', () => {
     expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(MIGRATIONS.map((m) => m.name).sort());
     expect(await db.query(`SELECT * FROM mail_log`)).toEqual([]);
     expect(await db.query(`SELECT * FROM rate_limits`)).toEqual([]);
+    expect(await db.query(`SELECT * FROM app_errors`)).toEqual([]);
+    expect(MIGRATIONS.map((m) => m.name).slice(-5)).toEqual(['018_operators', '030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors']);
     await db.close();
   });
 });

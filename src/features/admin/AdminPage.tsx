@@ -1,7 +1,8 @@
-// Admin (ADMIN_EMAILS only; the API answers 403 to everyone else): every pilot with their sign-up and
-// last sign-in, what they have (flights, aircraft, passengers, operators) and what they share; and the
-// e-mail action log (every outbound e-mail: forms to HCAA, declarations to operators, signup notices),
-// filterable by pilot and kind. Read-only.
+// Admin (ADMIN_EMAILS only; the API answers 403 to everyone else), tabs Pilots | Errors | E-mails:
+// /admin, every pilot with their sign-up and last sign-in, what they have (flights, aircraft,
+// passengers, operators) and what they share; /admin/mail, the e-mail action log (every outbound
+// e-mail: forms to HCAA, declarations to operators, signup notices), filterable by pilot and kind.
+// Read-only. /admin/errors is ErrorsPage.tsx.
 import { useState } from 'react';
 import { Loading } from '../../app/Loading';
 import { Shell } from '../../app/Shell';
@@ -10,6 +11,7 @@ import { useAsync } from '../../data/useAsync';
 import type { AdminMail, AdminPilot, AdminShare } from '../../shared';
 import { EmptyState } from '../lobby/ui';
 import '../lobby/lists.css';
+import { AdminNav } from './AdminNav';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const when = (ms: number) => {
@@ -28,8 +30,9 @@ function MailLog({ pilots }: { pilots: AdminPilot[] }) {
   const { data, error, loading } = useAsync(() => api.admin.mail({ pilot, kind }), [pilot, kind]);
   return (
     <>
-      <div className="page-head" style={{ marginTop: 32 }}>
-        <h2>E-mails</h2>
+      <div className="page-head">
+        <h1>E-mails</h1>
+        <AdminNav current="mail" />
         <select aria-label="Pilot" value={pilot} onChange={(e) => setPilot(e.target.value)} data-testid="admin-mail-pilot">
           <option value="">All pilots</option>
           {pilots.map((p) => <option key={p.id} value={p.id}>{p.name || p.email || p.id}</option>)}
@@ -70,6 +73,7 @@ export function AdminPage() {
       <div className="page-head">
         <h1>Pilots</h1>
         {data && <span className="muted">{data.length}</span>}
+        <AdminNav current="pilots" />
       </div>
       {error ? (
         <EmptyState title={error instanceof ApiRequestError && error.status === 403 ? 'Admins only' : 'Could not load the pilots'}>{error.message}</EmptyState>
@@ -100,7 +104,20 @@ export function AdminPage() {
           </table>
         </div>
       )}
-      {data && <MailLog pilots={data} />}
+    </Shell>
+  );
+}
+
+export function MailPage() {
+  const { data, error } = useAsync(() => api.admin.pilots(), []);
+  return (
+    <Shell>
+      {error ? (
+        <>
+          <div className="page-head"><h1>E-mails</h1><AdminNav current="mail" /></div>
+          <EmptyState title={error instanceof ApiRequestError && error.status === 403 ? 'Admins only' : 'Could not load the pilots'}>{error.message}</EmptyState>
+        </>
+      ) : <MailLog pilots={data ?? []} />}
     </Shell>
   );
 }

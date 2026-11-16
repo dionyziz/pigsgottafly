@@ -9,6 +9,7 @@ import type { Pilot } from '../../src/shared/types.js';
 import { toPilot } from './rows.js';
 import { ROUTES } from './routes/index.js';
 import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
+import { recordError } from './monitor.js';
 
 const header = (req: Req, name: string): string => {
   const v = req.headers[name];
@@ -73,19 +74,32 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
   const db = opts.db;
   const compiled = routes.map((r) => ({ ...r, match: compilePath(r.path) }));
 
+  /** Records a 5xx answer (or the unhandled error behind it) in app_errors; never throws. */
+  const monitor = (req: Req, status: number, e: unknown, route: string | null, pilot: Pilot | null) =>
+    recordError(db, {
+      kind: 'server',
+      message: e instanceof Error ? e.message : typeof (e as any)?.error === 'string' ? (e as any).error : `HTTP ${status}`,
+      stack: e instanceof Error && !(e instanceof HttpError) ? e.stack : null,
+      route, method: req.method || null, status, pilotId: pilot?.id ?? null,
+      userAgent: String(req.headers['user-agent'] || '') || null,
+    }, { adminEmails: config.adminEmails });
+
   return async function handle(req, res) {
+    let route: string | null = null;
+    let pilot: Pilot | null = null;
     try {
       const refused = crossSiteRefusal(req);
       if (refused) return send(res, refused.status, { error: refused.error });
       const url = new URL(req.url || '/', 'http://x');
       const path = '/' + url.pathname.replace(/^\/api\/?/, '').replace(/\/+$/, '');
+      route = '/api' + path; // until a route matches: scrubbed by the monitor
       let pathMatched = false;
       for (const r of compiled) {
         const params = r.match(path);
         if (!params) continue;
         pathMatched = true;
         if (r.method !== req.method) continue;
-        let pilot = null;
+        route = '/api' + r.path;
         let renewed: string | null = null;
         if (r.auth !== false) {
           const row = config.googleClientId
@@ -104,14 +118,21 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
           body: () => (bodyP ||= readJsonObject(req)),
         };
         const out = await r.handler(ctx);
-        if (out instanceof Reply) return send(res, out.status, out.body, { ...ctx.headers, ...out.headers });
+        if (out instanceof Reply) {
+          if (out.status >= 500) await monitor(req, out.status, out.body, route, pilot);
+          return send(res, out.status, out.body, { ...ctx.headers, ...out.headers });
+        }
         if (out === undefined) return send(res, 204, undefined, ctx.headers);
         return send(res, 200, out, ctx.headers);
       }
       return send(res, pathMatched ? 405 : 404, { error: pathMatched ? 'method not allowed' : 'not found' });
     } catch (e) {
-      if (res.headersSent) return;
+      if (res.headersSent) {
+        if (!(e instanceof HttpError) || e.status >= 500) await monitor(req, 500, e, route, pilot);
+        return;
+      }
       if (e instanceof HttpError) {
+        if (e.status >= 500) await monitor(req, e.status, e, route, pilot);
         // 409 carries the current record as the body (optimistic concurrency)
         return send(res, e.status, e.body !== undefined ? e.body : { error: e.message });
       }
@@ -119,6 +140,7 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
       // constraint violations from bad references are client errors
       if (/violates (foreign key|check|unique) constraint/.test(msg)) return send(res, 400, { error: 'invalid reference' });
       console.error(e);
+      await monitor(req, 500, e, route, pilot);
       return send(res, 500, { error: 'server error' });
     }
   };

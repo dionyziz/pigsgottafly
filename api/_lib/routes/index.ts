@@ -19,5 +19,6 @@ import { routes as forms } from './forms.js';
 import { routes as operators } from './operators.js';
 import { routes as declarations } from './declarations.js';
 import { routes as admin } from './admin.js';
+import { routes as monitoring } from './monitoring.js';
 
-export const ROUTES: Route[] = [...session, ...me, ...account, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing, ...forms, ...operators, ...declarations, ...admin];
+export const ROUTES: Route[] = [...session, ...me, ...account, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing, ...forms, ...operators, ...declarations, ...admin, ...monitoring];

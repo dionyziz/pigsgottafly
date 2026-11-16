@@ -1,0 +1,46 @@
+# Uptime check: every 10 minutes, the site and its health check (database reachable, migrations
+# applied; see api/_lib/routes/monitoring.ts) must answer 200, else the run fails and GitHub e-mails
+# the failure (for scheduled runs: to the user who last changed the cron line of this file).
+# This repository is public: no secrets here, and nothing but status codes and the public health JSON
+# is printed.
+name: uptime
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health and site
+        shell: bash
+        run: |
+          set -u
+          fail=0
+          check() {
+            local url="$1" code
+            # two tries 20 s apart, so one cold start or blip does not page anyone
+            for attempt in 1 2; do
+              code=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 30 -A 'pgf-uptime' "$url" || echo 000)
+              [ "$code" = "200" ] && break
+              [ "$attempt" = 1 ] && sleep 20
+            done
+            echo "$url → $code"
+            if [ "$code" != "200" ]; then
+              head -c 600 /tmp/body; echo
+              fail=1
+            fi
+          }
+          check https://pigsgottafly.com/api/health
+          check https://pigsgottafly.com/
+          exit $fail

@@ -39,6 +39,8 @@ import type {
 } from '../shared';
 import type { FileRequest, FilingState } from '../shared/briefing';
 import type { FormsState, SigningView } from '../shared/forms';
+import type { AppErrorDetail, AppErrorGroup } from '../shared/monitoring';
+import { reportApiFailure } from '../app/errorReporter';
 
 export class ApiRequestError extends Error {
   constructor(public status: number, message: string, public body: unknown) {
@@ -66,6 +68,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   }
   const out = res.status === 204 ? null : await res.json().catch(() => null);
   if (res.status === 401 && typeof window !== 'undefined' && path !== 'session') window.dispatchEvent(new Event('pgf:unauthorized'));
+  if (res.status >= 500) reportApiFailure(method, path, res.status, (out && typeof (out as any).error === 'string' && (out as any).error) || '');
   if (!res.ok) throw new ApiRequestError(res.status, (out && (out as any).error) || `HTTP ${res.status}`, out);
   return out as T;
 }
@@ -176,6 +179,9 @@ export const api = {
     pilots: () => request<AdminPilot[]>('GET', 'admin/pilots'),
     mail: (f: { pilot?: string; kind?: string } = {}) =>
       request<AdminMail[]>('GET', `admin/mail?${new URLSearchParams(Object.entries(f).filter(([, v]) => !!v) as [string, string][])}`),
+    errors: (status: 'open' | 'resolved' | 'all' = 'open') => request<AppErrorGroup[]>('GET', `admin/errors?status=${status}`),
+    error: (fingerprint: string) => request<AppErrorDetail>('GET', `admin/errors/${encodeURIComponent(fingerprint)}`),
+    resolveError: (fingerprint: string) => request<{ ok: true }>('POST', `admin/errors/${encodeURIComponent(fingerprint)}/resolve`),
   },
   /** The signing page (no sign-in). */
   sign: {

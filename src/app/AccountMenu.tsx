@@ -33,7 +33,7 @@ export function AccountMenu() {
           <Link to="/operators" role="menuitem">Operators</Link>
           <Link to="/passengers" role="menuitem">Passengers</Link>
           <Link to="/waypoints" role="menuitem">My waypoints</Link>
-          {session.admin && <><hr /><Link to="/admin" role="menuitem" data-testid="admin-link">Pilots (admin)</Link></>}
+          {session.admin && <><hr /><Link to="/admin" role="menuitem" data-testid="admin-link">Admin</Link></>}
           <hr />
           <Link to="/terms" role="menuitem" style={MINOR}>Terms of Service</Link>
           <Link to="/privacy" role="menuitem" style={MINOR}>Privacy Policy</Link>

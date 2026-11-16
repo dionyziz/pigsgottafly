@@ -21,6 +21,8 @@ export const RATES = {
   ref: { burst: 60, windowMs: HOUR },
   /** POST /aircraft/:id/shares and /operators/:id/shares, per pilot */
   share: { burst: 30, windowMs: 24 * HOUR },
+  /** POST /client-errors (unauthenticated error reports), per IP */
+  clientErrors: { burst: 30, windowMs: 10 * MIN },
 } satisfies Record<string, Rate>;
 
 export function clientIp(req: Req): string {

@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:e2e": "vite build && node --import tsx --test --test-concurrency=1 --test-timeout=300000 \"tests/e2e/*.e2e.test.mjs\"",
     "test:all": "npm run typecheck && npm test && npm run test:e2e",
-    "ref": "tsx tools/build_ref.ts"
+    "ref": "tsx tools/build_ref.ts",
+    "smoke": "tsx tools/smoke.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
