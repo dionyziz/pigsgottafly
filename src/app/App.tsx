@@ -3,8 +3,12 @@
 //   /flights/new                   creates a flight, then → /flights/:id
 //   /flights/:id                   flight editor (map)
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
-//   /profile  /hangar  /hangar/:id  /passengers  /waypoints  /about
+//   /profile  /hangar  /hangar/:id  /operators  /operators/:id  /passengers  /waypoints  /about
+//   /admin                         every pilot (ADMIN_EMAILS only)
+//   /admin/errors                  grouped server/client/migration errors (ADMIN_EMAILS only)
+//   /admin/mail                    the e-mail action log (ADMIN_EMAILS only)
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
+//   /privacy  /terms               privacy policy, terms of service (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -26,6 +30,13 @@ const EditorPage = lazy(() => import('../features/editor').then((m) => ({ defaul
 const ExportPage = lazy(() => import('../features/exports').then((m) => ({ default: m.ExportPage })));
 // The Form 731 signing page: public (no sign-in), outside the AuthGate.
 const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ default: m.SignPage })));
+const OperatorsPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorsPage })));
+const OperatorPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorPage })));
+const AdminPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
+const PrivacyPage = lazy(() => import('../features/legal').then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import('../features/legal').then((m) => ({ default: m.TermsPage })));
+const MailPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.MailPage })));
+const ErrorsPage = lazy(() => import('../features/admin/ErrorsPage').then((m) => ({ default: m.ErrorsPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
@@ -53,6 +64,8 @@ export function App() {
       <ToastProvider>
         <Routes>
         <Route path="/sign/:token" element={<Suspense fallback={<Loading variant="screen" />}><SignPage /></Suspense>} />
+        <Route path="/privacy" element={<Suspense fallback={<Loading variant="screen" />}><PrivacyPage /></Suspense>} />
+        <Route path="/terms" element={<Suspense fallback={<Loading variant="screen" />}><TermsPage /></Suspense>} />
         <Route path="*" element={
         <AuthGate>
           <LegacyHashRedirect />
@@ -66,6 +79,11 @@ export function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/hangar" element={<HangarPage />} />
               <Route path="/hangar/:id" element={<AircraftPage />} />
+              <Route path="/operators" element={<OperatorsPage />} />
+              <Route path="/operators/:id" element={<OperatorPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/admin/errors" element={<ErrorsPage />} />
+              <Route path="/admin/mail" element={<MailPage />} />
               <Route path="/passengers" element={<PassengersPage />} />
               <Route path="/waypoints" element={<WaypointsPage />} />
               <Route path="/about" element={<AboutPage />} />

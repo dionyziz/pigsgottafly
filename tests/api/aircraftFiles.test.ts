@@ -43,8 +43,11 @@ async function download(c: Client, f: { id: string; chunks: number }) {
   return Buffer.concat(parts);
 }
 
+/** `size` random bytes starting with the type's magic bytes (files.ts checks them). */
+const withHead = (head: string, size: number) => Buffer.concat([Buffer.from(head, 'latin1'), crypto.randomBytes(size - head.length)]);
+
 describe('aircraft documents and photo', () => {
-  const poh = crypto.randomBytes(2 * AIRCRAFT_FILE_CHUNK_BYTES + 12345); // three chunks, the last one short
+  const poh = withHead('%PDF-1.4\n', 2 * AIRCRAFT_FILE_CHUNK_BYTES + 12345); // three chunks, the last one short
 
   test('a POH larger than one request goes up in chunks and comes back identical; viewers read it', async () => {
     const r = await upload(owner, poh, { kind: 'document', name: 'F172M_POH.pdf', title: 'POH', mime: 'application/pdf' });
@@ -89,7 +92,7 @@ describe('aircraft documents and photo', () => {
   });
 
   test('one photo per aircraft: a new one replaces the old; the aircraft list carries it', async () => {
-    const a = crypto.randomBytes(1000), b = crypto.randomBytes(2000);
+    const a = withHead('\xff\xd8\xff\xe0', 1000), b = withHead('\xff\xd8\xff\xe0', 2000);
     const p1 = (await upload(owner, a, { kind: 'photo', name: 'a.jpg', mime: 'image/jpeg' })).body;
     const p2 = (await upload(owner, b, { kind: 'photo', name: 'b.jpg', mime: 'image/jpeg' })).body;
     expect((await owner.call('GET', `aircraft/${acId}/files`)).body.photo).toEqual(p2);

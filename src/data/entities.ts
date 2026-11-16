@@ -2,6 +2,7 @@
 //
 //   const { data, error, loading, reload } = useEntity('passengers');   // Passenger[]
 //   useEntity('aircraft')    → HangarAircraft[]  (own and shared)
+//   useEntity('operators')   → OperatorItem[] (own, shared, and those of the pilot's aircraft)
 //   useEntity('waypoints')   → Waypoint[]
 //   useEntity('pilot')       → Pilot              (the session pilot; usePilot() reads the same value)
 //
@@ -12,7 +13,7 @@
 //   - something calls invalidate(key) (e.g. after a change the API layer cannot see).
 // Pages keep showing the cached copy while it refetches (no loading flash).
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import type { Passenger, Pilot, Waypoint } from '../shared';
+import type { OperatorItem, Passenger, Pilot, Waypoint } from '../shared';
 import type { HangarAircraft } from '../shared/sharing';
 import { api } from './api';
 import {
@@ -28,6 +29,7 @@ export interface Entities {
   pilot: Pilot;
   passengers: Passenger[];
   aircraft: HangarAircraft[];
+  operators: OperatorItem[];
   waypoints: Waypoint[];
 }
 export type CachedEntityKey = keyof Entities;
@@ -35,6 +37,7 @@ export type CachedEntityKey = keyof Entities;
 registerFetcher('pilot', () => api.me.get());
 registerFetcher('passengers', () => api.passengers.list());
 registerFetcher('aircraft', () => api.aircraft.list());
+registerFetcher('operators', () => api.operators.list());
 registerFetcher('waypoints', () => api.waypoints.list());
 
 export interface EntityState<T> {

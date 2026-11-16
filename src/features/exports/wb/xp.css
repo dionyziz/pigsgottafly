@@ -35,6 +35,7 @@
 .xp-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6mm 5mm; margin: 0; }
 .xp-fields > div { display: flex; flex-direction: column; border-bottom: 0.25mm solid #999; padding-bottom: 0.6mm; min-width: 0; }
 .xp-fields > div.wide { grid-column: span 3; }
+.xp-fields > div.wide2 { grid-column: span 2; }
 .xp-fields dt { font-size: 6.8pt; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
 .xp-fields dd { margin: 0; font-size: 10pt; min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

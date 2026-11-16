@@ -19,6 +19,7 @@ import type { HangarAircraft } from '../../shared/sharing';
 import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading } from '../../ui';
 import { CompassSection } from './CompassSection';
 import { DocumentsSection, PhotoControl } from './AircraftFiles';
+import { aircraftScope } from '../../data/aircraftFiles';
 import { MassBalanceSection } from './MassBalanceSection';
 import { validateAircraft, type Issue, type SectionId } from './model';
 import { PerformanceSection } from './PerformanceSection';
@@ -196,7 +197,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           <PerformanceSection {...props} />
           <CompassSection {...props} today={today} aircraftId={aircraft.id} />
           </fieldset>
-          <DocumentsSection aircraftId={aircraft.id} canEdit={!readOnly} />
+          <DocumentsSection scope={aircraftScope(aircraft.id)} canEdit={!readOnly} />
 
           {readOnly ? (
             <div className="ac-viewonly card" data-testid="aircraft-viewonly">
@@ -233,7 +234,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
       </div>
 
       {sharing && (
-        <ShareDialog aircraftId={aircraft.id} registration={aircraft.registration} onClose={() => setSharing(false)}
+        <ShareDialog id={aircraft.id} name={aircraft.registration} onClose={() => setSharing(false)}
           onLeft={() => { if (isDefault) setPilot({ ...pilot, defaultAircraftId: null }); toast(`Removed ${aircraft.registration} from your hangar`); navigate('/hangar'); }} />
       )}
       {leaving && (

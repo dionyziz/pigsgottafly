@@ -1,0 +1,5 @@
+/* Profile: "Your data" and the danger zone below the form (AccountSection) */
+.account-card { max-width: 760px; margin-top: var(--s5); overflow: hidden; }
+.account-card .card-section.danger-zone { background: var(--danger-soft); }
+.account-card .card-section.danger-zone > header h2 { color: var(--danger); }
+.account-card .delete-form { max-width: 420px; }

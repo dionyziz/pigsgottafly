@@ -1,34 +1,34 @@
 // The aircraft's photo (hangar cards, aircraft page header) and documents (POH/AFM and other PDFs,
 // read in an in-app viewer). Content comes and goes in chunks (src/data/aircraftFiles.ts). Anyone
-// with access sees them; owners and editors add, replace, rename and remove.
+// with access sees them; owners and editors add, replace, rename and remove. The documents section
+// and the PDF viewer also serve an operator's documents (operations manual): they take a FileScope.
 import { useEffect, useState } from 'react';
-import { api } from '../../data/api';
 import { isoDay as fmtDate } from '../../shared/date';
 import { errorMessage, fmtSize } from '../../shared/format';
-import { aircraftFileBlob, resizePhoto, saveBlob, uploadAircraftFile } from '../../data/aircraftFiles';
+import { aircraftScope, fileBlob, resizePhoto, saveBlob, uploadFile, type FileScope } from '../../data/aircraftFiles';
 import { DOCUMENT_MAX_BYTES, PHOTO_TYPES, type AircraftFile } from '../../shared/types';
 import { FilePicker, Loading, PdfViewer, RowRemove } from '../../ui';
 import { Section } from './fields';
 
 
 /** A file's content while mounted (null while loading or on error). */
-function useFileBlob(aircraftId: string, f: AircraftFile | null | undefined, onProgress?: (x: number) => void): { blob: Blob | null; error: string | null } {
+function useFileBlob(scope: FileScope, f: AircraftFile | null | undefined, onProgress?: (x: number) => void): { blob: Blob | null; error: string | null } {
   const [state, setState] = useState<{ blob: Blob | null; error: string | null }>({ blob: null, error: null });
   useEffect(() => {
     if (!f) { setState({ blob: null, error: null }); return; }
     let live = true;
     setState({ blob: null, error: null });
-    aircraftFileBlob(aircraftId, f, onProgress).then((blob) => { if (live) setState({ blob, error: null }); },
+    fileBlob(scope, f, onProgress).then((blob) => { if (live) setState({ blob, error: null }); },
       (e) => { if (live) setState({ blob: null, error: errorMessage(e) }); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aircraftId, f?.id]);
+  }, [scope.files, scope.id, f?.id]);
   return state;
 }
 
 /** Object URL of a file's content while mounted (null while loading or on error). */
-function useFileUrl(aircraftId: string, f: AircraftFile | null | undefined): string | null {
-  const { blob } = useFileBlob(aircraftId, f);
+function useFileUrl(scope: FileScope, f: AircraftFile | null | undefined): string | null {
+  const { blob } = useFileBlob(scope, f);
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!blob) { setUrl(null); return; }
@@ -50,7 +50,7 @@ function PhotoPlaceholder() {
 
 /** The aircraft's photo (or the placeholder), filling its box: className 'card-top' (hangar card) or 'head'. */
 export function AircraftPhoto({ aircraftId, photo, className = '', alt }: { aircraftId: string; photo: AircraftFile | null | undefined; className?: string; alt: string }) {
-  const url = useFileUrl(aircraftId, photo);
+  const url = useFileUrl(aircraftScope(aircraftId), photo);
   return (
     <div className={'ac-photo ' + className} data-testid="aircraft-photo">
       {photo && url ? <img src={url} alt={alt} /> : <PhotoPlaceholder />}
@@ -70,7 +70,7 @@ export function PhotoControl({ aircraftId, registration, photo, canEdit, onChang
     setBusy(0);
     try {
       const small = await resizePhoto(file);
-      onChange(await uploadAircraftFile(aircraftId, small, { kind: 'photo', name: file.name.replace(/\.\w+$/, '') + '.jpg' }, setBusy));
+      onChange(await uploadFile(aircraftScope(aircraftId), small, { kind: 'photo', name: file.name.replace(/\.\w+$/, '') + '.jpg' }, setBusy));
     } catch (e) {
       setErr(`Upload failed: ${errorMessage(e)}`);
     } finally {
@@ -80,7 +80,7 @@ export function PhotoControl({ aircraftId, registration, photo, canEdit, onChang
   const remove = async () => {
     if (!photo) return;
     setErr(null);
-    try { await api.files.remove(aircraftId, photo.id); onChange(null); } catch (e) { setErr(errorMessage(e)); }
+    try { await aircraftScope(aircraftId).files.remove(aircraftId, photo.id); onChange(null); } catch (e) { setErr(errorMessage(e)); }
   };
   return (
     <div className="ac-head-photo">
@@ -99,17 +99,23 @@ export function PhotoControl({ aircraftId, registration, photo, canEdit, onChang
 }
 
 /** A document in the full-screen PDF viewer (src/ui PdfViewer), with download. */
-function DocumentViewer({ aircraftId, file, onClose }: { aircraftId: string; file: AircraftFile; onClose: () => void }) {
+function DocumentViewer({ scope, file, onClose }: { scope: FileScope; file: AircraftFile; onClose: () => void }) {
   const [progress, setProgress] = useState(0);
-  const { blob, error } = useFileBlob(aircraftId, file, setProgress);
+  const { blob, error } = useFileBlob(scope, file, setProgress);
   return (
     <PdfViewer src={blob} title={file.title || file.name} detail={fmtSize(file.size)} progress={progress} error={error} onClose={onClose}
       onDownload={() => { if (blob) saveBlob(blob, file.name); }} />
   );
 }
 
-/** Documents section: the aircraft's PDFs, each with a title; open in the viewer, download. */
-export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; canEdit: boolean }) {
+const AIRCRAFT_DOCS = {
+  title: 'Documents',
+  empty: 'No documents.',
+  placeholder: 'Title, e.g. POH',
+};
+
+/** Documents section: the PDFs of an aircraft (or, with `text`, of an operator), each with a title; open in the viewer, download. */
+export function DocumentsSection({ scope, canEdit, text = AIRCRAFT_DOCS }: { scope: FileScope; canEdit: boolean; text?: typeof AIRCRAFT_DOCS }) {
   const [docs, setDocs] = useState<AircraftFile[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<AircraftFile | null>(null);
@@ -117,9 +123,9 @@ export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; 
   const [upload, setUpload] = useState<{ name: string; progress: number } | null>(null);
   useEffect(() => {
     let live = true;
-    api.files.list(aircraftId).then((f) => { if (live) setDocs(f.documents); }, (e) => { if (live) setError(errorMessage(e)); });
+    scope.files.list(scope.id).then((f) => { if (live) setDocs((f as { documents: AircraftFile[] }).documents); }, (e) => { if (live) setError(errorMessage(e)); });
     return () => { live = false; };
-  }, [aircraftId]);
+  }, [scope.files, scope.id]);
 
   const pick = async (file: File) => {
     setError(null);
@@ -127,7 +133,7 @@ export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; 
     if (file.size > DOCUMENT_MAX_BYTES) { setError(`The file is ${fmtSize(file.size)}; the limit is ${fmtSize(DOCUMENT_MAX_BYTES)}.`); return; }
     setUpload({ name: file.name, progress: 0 });
     try {
-      const f = await uploadAircraftFile(aircraftId, file, { kind: 'document', name: file.name, title: title.trim() || file.name.replace(/\.pdf$/i, '') },
+      const f = await uploadFile(scope, file, { kind: 'document', name: file.name, title: title.trim() || file.name.replace(/\.pdf$/i, '') },
         (p) => setUpload({ name: file.name, progress: p }));
       setDocs((d) => [...(d ?? []), f]);
       setTitle('');
@@ -141,21 +147,21 @@ export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; 
     const v = t.trim();
     if (!v || v === f.title) return;
     try {
-      const n = await api.files.rename(aircraftId, f.id, v);
+      const n = await scope.files.rename(scope.id, f.id, v);
       setDocs((d) => (d ?? []).map((x) => (x.id === n.id ? n : x)));
     } catch (e) { setError(errorMessage(e)); }
   };
   const remove = async (f: AircraftFile) => {
     try {
-      await api.files.remove(aircraftId, f.id);
+      await scope.files.remove(scope.id, f.id);
       setDocs((d) => (d ?? []).filter((x) => x.id !== f.id));
     } catch (e) { setError(errorMessage(e)); }
   };
 
   return (
-    <Section id="documents" title="Documents">
+    <Section id="documents" title={text.title}>
       {docs === null && !error && <Loading variant="sm" />}
-      {docs && docs.length === 0 && <p className="muted" style={{ margin: 0 }}>No documents.</p>}
+      {docs && docs.length === 0 && <p className="muted" style={{ margin: 0 }}>{text.empty}</p>}
       {docs && docs.length > 0 && (
         <ul className="doc-list" data-testid="documents">
           {docs.map((f) => (
@@ -168,7 +174,7 @@ export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; 
                 <span className="muted">{f.name} · {fmtSize(f.size)} · {fmtDate(f.uploaded)}</span>
               </div>
               <button type="button" className="sm" onClick={() => setOpen(f)} data-testid="doc-open">Open</button>
-              <button type="button" className="ghost sm" onClick={() => void aircraftFileBlob(aircraftId, f).then((b) => saveBlob(b, f.name), (e) => setError(errorMessage(e)))}>Download</button>
+              <button type="button" className="ghost sm" onClick={() => void fileBlob(scope, f).then((b) => saveBlob(b, f.name), (e) => setError(errorMessage(e)))}>Download</button>
               {canEdit && <RowRemove label={`Remove ${f.title}`} onClick={() => void remove(f)} />}
             </li>
           ))}
@@ -176,7 +182,7 @@ export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; 
       )}
       {canEdit && (
         <div className="row wrap doc-add">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title, e.g. POH" aria-label="New document title" maxLength={120} disabled={!!upload} />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={text.placeholder} aria-label="New document title" maxLength={120} disabled={!!upload} />
           <FilePicker accept="application/pdf" onPick={(f) => void pick(f)} disabled={!!upload} className="" testId="doc-pick" inputTestId="doc-file">Add PDF</FilePicker>
           <span className="hint">Up to {fmtSize(DOCUMENT_MAX_BYTES)}</span>
         </div>
@@ -188,7 +194,7 @@ export function DocumentsSection({ aircraftId, canEdit }: { aircraftId: string; 
         </div>
       )}
       {error && <span className="issue error" role="alert">{error}</span>}
-      {open && <DocumentViewer aircraftId={aircraftId} file={open} onClose={() => setOpen(null)} />}
+      {open && <DocumentViewer scope={scope} file={open} onClose={() => setOpen(null)} />}
     </Section>
   );
 }

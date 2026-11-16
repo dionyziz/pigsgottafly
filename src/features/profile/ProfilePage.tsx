@@ -19,6 +19,7 @@ import { AerodromeTextInput, CardSection, Field, NumberField } from '../../ui';
 import { useFormIssues, type FormIssue } from '../passengers/formIssues';
 import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from '../passengers/person';
 import { PersonFields, type SetPerson } from '../passengers/PersonFields';
+import { AccountSection } from './AccountSection';
 import '../lobby/lists.css';
 
 export interface ProfileForm extends PersonForm {
@@ -220,6 +221,7 @@ export function ProfilePage() {
           <button className="primary" type="submit" disabled={busy || (!welcome && !dirty)}>{welcome ? 'Continue' : busy ? 'Saving…' : 'Save'}</button>
         </div>
       </form>
+      {!welcome && <AccountSection />}
     </Shell>
   );
 }

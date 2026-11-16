@@ -16,7 +16,7 @@
 //   click a point to select it, Backspace/Delete removes it, right-click for more.
 //   Leg labels: magnetic course and distance (read-only), altitude (click to edit; Enter/Esc).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import { maplibregl } from '../../../app/maplibre';
 import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefBundle } from '../../../shared/ref';

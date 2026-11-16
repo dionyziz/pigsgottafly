@@ -68,7 +68,11 @@ async function flush(): Promise<void> {
           const now = LS.get<Cached>(key(id))!;
           LS.set(key(id), { ...now, version: (e.body as Flight).version });
         } else if (e instanceof ApiRequestError && (e.status === 404 || e.status === 400)) {
-          drop(id); // gone or rejected: retrying will not help
+          // gone or rejected: retrying will not help, and the rejected copy must not shadow the
+          // server's on the next load (load() prefers a dirty local copy of the same version)
+          drop(id);
+          const now = LS.get<Cached>(key(id));
+          if (now) LS.set(key(id), { ...now, dirty: false });
           setStatus('error');
           console.error('save failed', e);
         } else failed = true;

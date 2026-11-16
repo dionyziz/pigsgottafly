@@ -399,7 +399,13 @@ export interface Aircraft {
   icaoType: string;
   wake: WakeCategory;
   serial: string;
+  /**
+   * The operator's name as the forms print it (GenDec, FPL OPR/, W&B sheet): the name of the linked
+   * operator (operatorId) when there is one, else free text kept from before operators existed.
+   */
   operator: string;
+  /** The operator (src/shared/operators.ts) this aircraft is assigned to. */
+  operatorId: Id | null;
   /** ICAO of the home base. */
   homeBase: string;
   /** Colours and markings (FPL item 19 A/), e.g. 'WHITE BLUE STRIPES'. */

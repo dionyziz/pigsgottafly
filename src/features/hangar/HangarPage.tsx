@@ -118,7 +118,7 @@ export function HangarPage() {
           onCreated={(a) => { void onCreated(a); }} />
       )}
       {sharing && (
-        <ShareDialog aircraftId={sharing.id} registration={sharing.registration} onClose={() => setSharing(null)}
+        <ShareDialog id={sharing.id} name={sharing.registration} onClose={() => setSharing(null)}
           onLeft={() => { dropDefault(sharing); setSharing(null); void reload(); toast(`Removed ${sharing.registration} from your hangar`); }} />
       )}
       {leaving && (
@@ -163,6 +163,11 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
       : { ...buildFromTemplate(src.kind === 'template' ? src.id : null), registration: regNorm };
     setBusy(true);
     try {
+      // a copy keeps the operator only when the pilot may assign it (owner or editor); else its name as text
+      if (base.operatorId) {
+        const op = await api.operators.get(base.operatorId).catch(() => null);
+        if (!op || op.access.role === 'view') base.operatorId = null;
+      }
       onCreated(await api.aircraft.create(base));
     } catch (err) {
       setError(err instanceof ApiRequestError && err.status === 409 ? `${regNorm} is already in your hangar.` : errorMessage(err));

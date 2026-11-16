@@ -51,7 +51,9 @@ export function toAircraft(r: Row): Aircraft {
     icaoType: r.icao_type,
     wake: r.wake,
     serial: r.serial,
-    operator: r.operator,
+    // the linked operator's name (queries join it as operator_name), else the free text
+    operator: r.operator_name ?? r.operator,
+    operatorId: r.operator_id ?? null,
     homeBase: r.home_base,
     colours: r.colours,
     cruiseTasKt: Number(r.cruise_tas_kt),
@@ -191,6 +193,10 @@ export function aircraftInput(input: Partial<AircraftInput>, base: AircraftInput
   if ('registration' in input) a.registration = str(input.registration, 'registration', 20).toUpperCase();
   for (const k of ['makeModel', 'icaoType', 'serial', 'operator', 'homeBase', 'colours', 'notes'] as const) {
     if (k in input) a[k] = str(input[k], k, k === 'notes' ? 5000 : 200);
+  }
+  if ('operatorId' in input) {
+    if (input.operatorId != null && (typeof input.operatorId !== 'string' || input.operatorId.length > 64)) throw badRequest('operatorId must be an operator id or null');
+    a.operatorId = input.operatorId || null;
   }
   if ('icaoType' in input) a.icaoType = a.icaoType.toUpperCase();
   if ('homeBase' in input) a.homeBase = a.homeBase.toUpperCase();

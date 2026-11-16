@@ -13,7 +13,7 @@ before(async () => {
 after(async () => { await page?.close(); await browser?.close(); await server?.close(); });
 
 const api = async (method, path, body) => {
-  const r = await fetch(`${server.url}/api/${path}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${server.url}/api/${path}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   return r.status === 204 ? null : r.json();
 };
 /** Clicks the first element matching `sel` whose text is `text`. */
@@ -142,10 +142,23 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await clickText('[data-testid=passenger-dialog] button', 'Save');
   await page.waitFor(() => !document.querySelector('[data-testid=passenger-dialog]'));
   assert.equal((await api('GET', `passengers/${pax.id}`)).phone, '+30 210 000');
-  await page.click(`[data-passenger-id="${pax.id}"] [data-testid=row-menu]`);
-  await clickText(`[data-passenger-id="${pax.id}"] .menu button`, 'Delete');
+  // delete from the dialog (confirmed), then Undo brings the details back as a new record
+  await page.click(`[data-passenger-id="${pax.id}"] .nm`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=passenger-delete]'));
+  await page.click('[data-testid=passenger-delete]');
   await clickText('.dlg button', 'Delete');
   await page.waitFor(() => document.querySelectorAll('[data-passenger-id]').length === 0);
+  assert.deepEqual(await api('GET', 'passengers'), []);
+  await clickText('.toast button', 'Undo');
+  await page.waitFor(() => document.querySelectorAll('[data-passenger-id]').length === 1);
+  const [back] = await api('GET', 'passengers');
+  assert.deepEqual([back.fullName, back.phone, back.weightKg], ['Jane Doe', '+30 210 000', 62.5]);
+  // and with the row's bin; a link to the deleted passenger says so
+  await page.click(`[data-passenger-id="${back.id}"] [data-testid=passenger-row-delete]`);
+  await clickText('.dlg button', 'Delete');
+  await page.waitFor(() => document.querySelectorAll('[data-passenger-id]').length === 0);
+  await page.goto(`${server.url}/passengers?edit=${back.id}`);
+  await page.waitFor(() => /deleted/.test(document.querySelector('.toast')?.textContent || '') && !location.search);
 
   // waypoints: add by ICAO coordinates, rename in place
   await page.goto(server.url + '/waypoints');
@@ -174,5 +187,24 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.type('input[name=reserveMin]', '60');
   await page.click('[data-testid=profile-form] button[type=submit]');
   await page.waitFor(async () => (await (await fetch('/api/me')).json()).settings.reserveMin === 60);
+  assert.deepEqual(page.errors, []);
+});
+
+test('details saved in one tab show at once in the others (one pilot for the whole app)', async () => {
+  // e.g. an export opened in a new tab links to "Add your ID number"; the editor's tab must not keep the old details
+  await page.goto(server.url + '/passengers');
+  await page.waitFor(() => /licence number/.test(document.querySelector('[data-testid=pilot-row] .hint')?.textContent || ''));
+  const other = await browser.newPage();
+  try {
+    await other.goto(server.url + '/passengers?edit=me&fields=licenceNo');
+    await other.waitFor(() => !!document.querySelector('[data-testid=pilot-dialog] input[name=licenceNo]'));
+    await other.idle(200);
+    await other.type('[data-testid=pilot-dialog] input[name=licenceNo]', 'GR.FCL.PPL.42');
+    await other.eval(() => [...document.querySelectorAll('[data-testid=pilot-dialog] button')].find((b) => b.textContent === 'Save').click());
+    await other.waitFor(() => !document.querySelector('[data-testid=pilot-dialog]'));
+    // the first tab, neither reloaded nor focused, has the new details
+    await page.waitFor(() => !/licence number/.test(document.querySelector('[data-testid=pilot-row] .hint')?.textContent || ''));
+    assert.deepEqual(other.errors, []);
+  } finally { await other.close(); }
   assert.deepEqual(page.errors, []);
 });

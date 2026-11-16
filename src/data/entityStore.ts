@@ -1,7 +1,7 @@
 // The entity cache and its invalidation bus (no React, no fetch: src/data/entities.ts registers the
 // fetchers and the hooks; src/data/api.ts invalidates after every mutation).
 //
-// - Keys name what changed: 'pilot', 'passengers', 'aircraft', 'waypoints', 'flights'.
+// - Keys name what changed: 'pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'.
 // - invalidate(key) marks the cached copy stale, refetches it when something on screen uses it, tells
 //   every onInvalidate listener, and tells the other tabs (BroadcastChannel 'pgf').
 // - A hidden tab defers its refetches until it is visible again; focusing the window or showing
@@ -9,8 +9,8 @@
 // - Each entry keeps a request sequence: only the newest request's answer is stored, so a slow
 //   answer can never overwrite a newer one (or a value set with putEntity after it started).
 
-export type EntityKey = 'pilot' | 'passengers' | 'aircraft' | 'waypoints' | 'flights';
-export const ENTITY_KEYS: readonly EntityKey[] = ['pilot', 'passengers', 'aircraft', 'waypoints', 'flights'];
+export type EntityKey = 'pilot' | 'passengers' | 'aircraft' | 'operators' | 'waypoints' | 'flights';
+export const ENTITY_KEYS: readonly EntityKey[] = ['pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'];
 
 /** BroadcastChannel name shared by every tab of the app. */
 export const CHANNEL_NAME = 'pgf';
@@ -35,7 +35,10 @@ interface Entry {
 }
 
 type Fetcher = () => Promise<unknown>;
-interface BusMessage { v: 1; type: 'invalidate'; keys: EntityKey[]; from: string }
+type BusMessage =
+  | { v: 1; type: 'invalidate'; keys: EntityKey[]; from: string }
+  /** A value one tab stored (putEntity with broadcast): the others store it too, without a request (also while hidden). */
+  | { v: 1; type: 'put'; key: EntityKey; data: unknown; from: string };
 
 const entries = new Map<EntityKey, Entry>();
 const fetchers = new Map<EntityKey, Fetcher>();
@@ -107,7 +110,8 @@ export function loadEntity<T>(key: EntityKey, opts: { force?: boolean } = {}): P
 
 /**
  * Stores a value the app already has (a mutation's answer, a value from the session) as fresh.
- * A request in flight is superseded. With `broadcast`, the other tabs refetch it.
+ * A request in flight is superseded. With `broadcast`, the other tabs store the same value (a value
+ * that cannot be posted, e.g. not cloneable, makes them refetch instead).
  */
 export function putEntity<T>(key: EntityKey, data: T, opts: { broadcast?: boolean } = {}) {
   const e = entry(key);
@@ -115,7 +119,7 @@ export function putEntity<T>(key: EntityKey, data: T, opts: { broadcast?: boolea
   e.seq++;
   e.inflight = null;
   emit(e, { data, error: null, fetching: false, at: now(), stale: false });
-  if (opts.broadcast) post([key]);
+  if (opts.broadcast && !postValue(key, data)) post([key]);
 }
 
 /** Forgets every cached value (sign-in as someone else, sign-out). */
@@ -197,10 +201,21 @@ let channel: BroadcastChannel | null = null;
 function post(keys: EntityKey[]) {
   try { channel?.postMessage({ v: 1, type: 'invalidate', keys, from: tabId } satisfies BusMessage); } catch { /* closed */ }
 }
+/** Posts a stored value to the other tabs; false when it could not be posted. */
+function postValue(key: EntityKey, data: unknown): boolean {
+  if (!channel) return true; // no other tabs to tell
+  try { channel.postMessage({ v: 1, type: 'put', key, data, from: tabId } satisfies BusMessage); return true; } catch { return false; }
+}
 function onMessage(ev: MessageEvent) {
-  const m = ev.data as Partial<BusMessage> | null;
-  if (!m || m.v !== 1 || m.type !== 'invalidate' || m.from === tabId || !Array.isArray(m.keys)) return;
-  const keys = m.keys.filter((k): k is EntityKey => (ENTITY_KEYS as readonly string[]).includes(k));
+  const m = ev.data as (Partial<BusMessage> & { keys?: unknown; key?: unknown; data?: unknown }) | null;
+  if (!m || m.v !== 1 || m.from === tabId) return;
+  const known = (k: unknown): k is EntityKey => (ENTITY_KEYS as readonly string[]).includes(k as string);
+  if (m.type === 'put' && known(m.key) && m.data !== undefined) {
+    putEntity(m.key, m.data);
+    return;
+  }
+  if (m.type !== 'invalidate' || !Array.isArray(m.keys)) return;
+  const keys = m.keys.filter(known);
   if (keys.length) invalidate(keys, { broadcast: false });
 }
 

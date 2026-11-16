@@ -1,5 +1,5 @@
-// Passengers: the pilot's list of people who may fly with them (search, add, edit, delete). These are
-// added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
+// Passengers: the pilot's list of people who may fly with them (search, add, edit, delete: the bin
+// on the row or Delete in the dialog, confirmed, with Undo). These are added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
 // The pilot is listed first (PIC) and edited with the same form, saved to the profile.
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -8,9 +8,10 @@ import { usePilot } from '../../app/session';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
-import type { Passenger, PersonDetails, Pilot } from '../../shared';
+import type { Passenger, PassengerInput, PersonDetails, Pilot } from '../../shared';
+import { errorMessage } from '../../shared/format';
 import { ageOn, fmtDate, localToday } from '../../shared/date';
-import { AsyncView, Chip, ConfirmDialog, EmptyState, KebabMenu, SearchBox, rowClick, type MenuItem } from '../../ui';
+import { AsyncView, Chip, ConfirmDialog, EmptyState, Icon, SearchBox, rowClick } from '../../ui';
 import { matchesQuery } from '../lobby/format';
 import { PassengerDialog, PilotDetailsDialog } from './PassengerDialog';
 import './passengers.css';
@@ -34,14 +35,17 @@ function missing(p: PersonDetails, pilot?: Pilot): [PersonField, string][] {
 
 const none = <span className="muted">—</span>;
 
+const inputOf = ({ id: _i, created: _c, updated: _u, ...rest }: Passenger): PassengerInput => rest;
+
 /** One row of the list: the pilot (PIC) or a passenger. "Missing …" items open the dialog at that field. */
-function PersonRow({ person, pilot, today, onEdit, menu, testId, passengerId }: {
+function PersonRow({ person, pilot, today, onEdit, onDelete, testId, passengerId }: {
   person: PersonDetails;
   /** Set for the pilot's own row. */
   pilot?: Pilot;
   today: string;
   onEdit: (fields?: PersonField[]) => void;
-  menu: MenuItem[];
+  /** The row's bin (passengers only). */
+  onDelete?: () => void;
   testId?: string;
   passengerId?: string;
 }) {
@@ -67,17 +71,23 @@ function PersonRow({ person, pilot, today, onEdit, menu, testId, passengerId }: 
       <td className="num">{person.weightKg != null ? `${person.weightKg} kg` : none}</td>
       <td className="hide-sm">{person.idNumber ? <span className="mono">{person.idNumber}</span> : none}</td>
       <td className="hide-sm">{person.nationality || none}</td>
-      <td className="act"><KebabMenu items={menu} /></td>
+      <td className="act">
+        {onDelete && (
+          <button type="button" className="icon row-delete" title={`Delete ${person.fullName}`} aria-label={`Delete ${person.fullName}`}
+            onClick={onDelete} data-testid="passenger-row-delete"><Icon name="trash" /></button>
+        )}
+      </td>
     </tr>
   );
 }
 
 export function PassengersPage() {
-  const { data, error, loading, reload } = useEntity('passengers');
+  const { data, error, loading, reload, setData } = useEntity('passengers');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Passenger | 'new' | 'me' | null>(null);
   const [focusFields, setFocusFields] = useState<string[]>([]);
   const pilot = usePilot();
+  const toast = useToast();
   // ?edit=me or ?edit=<passenger id>, with &fields=<names> (links from the forms' missing-details list).
   const [params, setParams] = useSearchParams();
   const editParam = params.get('edit');
@@ -85,11 +95,21 @@ export function PassengersPage() {
     if (!editParam) return;
     const fields = (params.get('fields') || '').split(',').filter(Boolean);
     if (editParam === 'me') { setFocusFields(fields); setEditing('me'); setParams({}, { replace: true }); return; }
-    const p = data?.find((x) => x.id === editParam);
-    if (p) { setFocusFields(fields); setEditing(p); setParams({}, { replace: true }); }
+    if (!data) return;
+    const p = data.find((x) => x.id === editParam);
+    if (p) { setFocusFields(fields); setEditing(p); } else toast('That passenger was deleted');
+    setParams({}, { replace: true });
   }, [editParam, data, setParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const [deleting, setDeleting] = useState<Passenger | null>(null);
-  const toast = useToast();
+  // Deletes at once (the row goes), with Undo: the details come back as a new passenger record.
+  const remove = async (p: Passenger) => {
+    await api.passengers.remove(p.id);
+    setData((d) => (d ?? []).filter((x) => x.id !== p.id));
+    toast(`Deleted ${p.fullName}`, {
+      label: 'Undo',
+      onClick: () => { void api.passengers.create(inputOf(p)).catch((e) => toast(errorMessage(e))); },
+    });
+  };
   const today = localToday();
   const rows = useMemo(() => (data || []).filter((p) => matchesQuery(searchText(p), q)), [data, q]);
   const showMe = matchesQuery(searchText(pilot), q);
@@ -115,15 +135,10 @@ export function PassengersPage() {
               </tr></thead>
               <tbody>
                 {showMe && (
-                  <PersonRow person={pilot} pilot={pilot} today={today} testId="pilot-row" onEdit={(fields) => edit('me', fields)}
-                    menu={[{ label: 'Edit', onSelect: () => edit('me') }]} />
+                  <PersonRow person={pilot} pilot={pilot} today={today} testId="pilot-row" onEdit={(fields) => edit('me', fields)} />
                 )}
                 {rows.map((p) => (
-                  <PersonRow key={p.id} person={p} passengerId={p.id} today={today} onEdit={(fields) => edit(p, fields)}
-                    menu={[
-                      { label: 'Edit', onSelect: () => edit(p) },
-                      { label: 'Delete', onSelect: () => setDeleting(p), danger: true, separator: true },
-                    ]} />
+                  <PersonRow key={p.id} person={p} passengerId={p.id} today={today} onEdit={(fields) => edit(p, fields)} onDelete={() => setDeleting(p)} />
                 ))}
               </tbody>
             </table>
@@ -133,11 +148,12 @@ export function PassengersPage() {
       {editing === 'me' && <PilotDetailsDialog focus={focusFields} onClose={close} onSaved={(p) => { close(); toast(`Saved ${p.fullName}`); }} />}
       {editing && editing !== 'me' && (
         <PassengerDialog passenger={editing === 'new' ? null : editing} focus={focusFields} onClose={close}
+          onDelete={(p) => { close(); setDeleting(p); }}
           onSaved={(p, created) => { close(); toast(created ? `Added ${p.fullName}` : `Saved ${p.fullName}`); }} />
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.fullName}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
-          onConfirm={async () => { await api.passengers.remove(deleting.id); toast(`Deleted ${deleting.fullName}`); }}>
+          onConfirm={() => remove(deleting)}>
           Flights that already have them on the manifest keep their details.
         </ConfirmDialog>
       )}

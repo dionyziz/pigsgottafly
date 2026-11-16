@@ -22,6 +22,11 @@ import aircraftShares013 from './migrations/013_aircraft_shares.js';
 import aircraftFuels014 from './migrations/014_aircraft_fuels_provenance.js';
 import aircraftPhotoDocuments015 from './migrations/015_aircraft_photo_documents.js';
 import refAreas017 from './migrations/017_ref_areas_2609.js';
+import { run as operators018 } from './migrations/018_operators.js';
+import mailLog030 from './migrations/030_mail_log.js';
+import mailLogDetails031 from './migrations/031_mail_log_details.js';
+import rateLimits032 from './migrations/032_rate_limits.js';
+import appErrors040 from './migrations/040_app_errors.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -51,6 +56,11 @@ export const MIGRATIONS: Migration[] = [
   { name: '014_aircraft_fuels_provenance', sql: aircraftFuels014 },
   { name: '015_aircraft_photo_documents', sql: aircraftPhotoDocuments015 },
   { name: '017_ref_areas_2609', sql: refAreas017 },
+  { name: '018_operators', run: operators018 },
+  { name: '030_mail_log', sql: mailLog030 },
+  { name: '031_mail_log_details', sql: mailLogDetails031 },
+  { name: '032_rate_limits', sql: rateLimits032 },
+  { name: '040_app_errors', sql: appErrors040 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant
@@ -81,28 +91,28 @@ async function migrateLocked(db: Db, list: Migration[]): Promise<string[]> {
   } catch {
     /* table missing: first run */
   }
+  // Neon is reached through its pooler in transaction mode, where a session advisory lock does not
+  // hold across statements. So each migration takes a transaction-scoped lock and re-checks, inside
+  // that transaction, whether another instance applied it meanwhile.
   return db.session(async (s) => {
-    await s.query('SELECT pg_advisory_lock($1)', [LOCK_KEY]);
-    try {
-      const done = await applied(s);
-      const now: string[] = [];
-      for (const m of list) {
-        if (done.has(m.name)) continue;
-        await s.exec('BEGIN');
-        try {
-          if (m.sql) await s.exec(m.sql);
-          if (m.run) await m.run(s);
-          await s.query('INSERT INTO schema_migrations (name, applied) VALUES ($1, $2)', [m.name, Date.now()]);
-          await s.exec('COMMIT');
-        } catch (e) {
-          await s.exec('ROLLBACK').catch(() => {});
-          throw new Error(`migration ${m.name} failed: ${(e as Error).message}`);
-        }
-        now.push(m.name);
+    await applied(s); // creates schema_migrations if needed
+    const now: string[] = [];
+    for (const m of list) {
+      await s.exec('BEGIN');
+      try {
+        await s.query('SELECT pg_advisory_xact_lock($1)', [LOCK_KEY]);
+        const [row] = await s.query('SELECT 1 AS x FROM schema_migrations WHERE name = $1', [m.name]);
+        if (row) { await s.exec('COMMIT'); continue; }
+        if (m.sql) await s.exec(m.sql);
+        if (m.run) await m.run(s);
+        await s.query('INSERT INTO schema_migrations (name, applied) VALUES ($1, $2)', [m.name, Date.now()]);
+        await s.exec('COMMIT');
+      } catch (e) {
+        await s.exec('ROLLBACK').catch(() => {});
+        throw new Error(`migration ${m.name} failed: ${(e as Error).message}`);
       }
-      return now;
-    } finally {
-      await s.query('SELECT pg_advisory_unlock($1)', [LOCK_KEY]);
+      now.push(m.name);
     }
+    return now;
   });
 }

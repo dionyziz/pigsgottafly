@@ -248,3 +248,8 @@ input.doc-title:hover { border-color: var(--line); }
   .pt-table { max-width: 100%; overflow-x: auto; }
   .pt-table input { width: 80px; }
 }
+
+/* Operators: the picker on the aircraft page, the aircraft list on the operator page */
+.op-picker .row { gap: 8px; }
+.op-picker select { flex: 1; min-width: 0; }
+.op-aircraft { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }

@@ -20,7 +20,7 @@ before(async () => {
 after(async () => { await page?.close(); await browser?.close(); await server?.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
 
 const api = async (method, p, body) => {
-  const r = await fetch(`${server.url}/api/${p}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${server.url}/api/${p}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   return r.status === 204 ? null : r.json();
 };
 /** Puts a file on disk into an <input type=file> (CDP) and fires change. */

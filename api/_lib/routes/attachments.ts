@@ -3,7 +3,8 @@
 // viewers); everyone else gets 404. Files keep pilot_id = the aircraft's owner. The content travels
 // as base64 in JSON (the API is JSON-only); the client turns it into a Blob to view or save.
 import type { Route } from '../http.js';
-import { badRequest, newId, notFound, reply } from '../http.js';
+import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
+import { checkMagic, checkQuota, LIMITS } from '../limits.js';
 import type { Queryable } from '../db.js';
 import { aircraftFor } from '../access.js';
 import {
@@ -60,6 +61,10 @@ export const routes: Route[] = [
     async handler({ db, pilot, params, body }) {
       const owner = await ownerOf(db, pilot.id, params.id, 'edit');
       const a = attachmentInput(await body());
+      checkMagic(a.mime, a.data);
+      const [{ n }] = await db.query('SELECT count(*)::int AS n FROM aircraft_attachments WHERE aircraft_id = $1', [params.id]);
+      if (n >= LIMITS.filesPerParent) throw new HttpError(409, `At most ${LIMITS.filesPerParent} files each: delete one first.`);
+      await checkQuota(db, owner, a.size);
       const [r] = await db.query(
         `INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, mime, size, created`,
@@ -70,11 +75,13 @@ export const routes: Route[] = [
   },
   {
     method: 'GET', path: '/aircraft/:id/attachments/:fileId',
-    async handler({ db, pilot, params }): Promise<Attachment> {
+    async handler(ctx): Promise<Attachment> {
+      const { db, pilot, params } = ctx;
       const owner = await ownerOf(db, pilot.id, params.id, 'view');
       const [r] = await db.query(
         "SELECT * FROM aircraft_attachments WHERE id = $1 AND aircraft_id = $2 AND pilot_id = $3 AND kind = 'report'", [params.fileId, params.id, owner]);
       if (!r) throw notFound('no such file');
+      ctx.headers['Content-Disposition'] = 'attachment';
       return { ...ref(r), data: r.data };
     },
   },

@@ -29,11 +29,12 @@ export async function connect(where: string): Promise<Db> {
   return connectPglite(where);
 }
 
-/** connect() + migrate(): what the server and the Vercel function use. */
+/** connect() + migrate(): what the server and the Vercel function use. A failed migration is
+ * recorded and e-mailed to the admins (api/_lib/monitor.ts), then rethrown. */
 export async function openDb(where: string = process.env.DATABASE_URL || 'memory://'): Promise<Db> {
   const db = await connect(where);
-  const { migrate } = await import('./migrate.js');
-  await migrate(db);
+  const { migrateReporting } = await import('./monitor.js');
+  await migrateReporting(db);
   return db;
 }
 

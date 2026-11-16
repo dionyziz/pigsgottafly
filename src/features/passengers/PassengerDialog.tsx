@@ -25,9 +25,11 @@ function usePersonDialog(initial: () => PersonForm, focus: readonly string[]) {
   return { ref, f, set, busy, setBusy, error, setError, issues };
 }
 
-export function PassengerDialog({ passenger, initialName, onClose, onSaved, focus = [] }: {
+export function PassengerDialog({ passenger, initialName, onClose, onSaved, onDelete, focus = [] }: {
   /** Inputs to highlight and focus (names), from a missing-details link. */
   focus?: string[];
+  /** Offers "Delete" for an existing passenger (the caller confirms and deletes). */
+  onDelete?: (p: Passenger) => void;
   passenger: Passenger | null;
   initialName?: string;
   onClose: () => void;
@@ -52,7 +54,8 @@ export function PassengerDialog({ passenger, initialName, onClose, onSaved, focu
 
   return (
     <Dialog title={passenger ? 'Edit passenger' : 'New passenger'} onClose={onClose} busy={d.busy} wide testId="passenger-dialog"
-      footer={<DialogFooter onCancel={onClose} busy={d.busy} error={d.error} primary={{ label: passenger ? 'Save' : 'Add passenger', onClick: () => void submit() }} />}>
+      footer={<DialogFooter onCancel={onClose} busy={d.busy} error={d.error} primary={{ label: passenger ? 'Save' : 'Add passenger', onClick: () => void submit() }}
+        danger={passenger && onDelete ? { label: 'Delete', onClick: () => onDelete(passenger), testId: 'passenger-delete' } : undefined} />}>
       <form className="stack" onSubmit={submit} ref={d.ref} noValidate>
         <PersonFields f={d.f} set={d.set} issues={d.issues.of} autoFocus={!focus.length} />
         <button type="submit" hidden />

@@ -1,7 +1,8 @@
-// Aircraft photo and documents: chunked upload and download (api.files, api/_lib/routes/files.ts),
+// Aircraft photo and documents, and an operator's documents: chunked upload and download
+// (api.files / api.operatorFiles, api/_lib/routes/files.ts),
 // the photo's resize in the browser, and a per-session cache of downloaded content (a file id's
 // content never changes: a replaced photo or document gets a new id).
-import { api } from './api';
+import { api, type FilesApi } from './api';
 import { AIRCRAFT_FILE_CHUNK_BYTES, PHOTO_MAX_PX, type AircraftFile, type AircraftFileKind } from '../shared/types';
 
 function toBase64(bytes: Uint8Array): string {
@@ -16,19 +17,25 @@ function fromBase64(data: string): Uint8Array {
   return out;
 }
 
+/** Whose files: the aircraft's (api.files) or an operator's (api.operatorFiles), by id. */
+export interface FileScope { files: FilesApi; id: string }
+export const aircraftScope = (aircraftId: string): FileScope => ({ files: api.files, id: aircraftId });
+export const operatorScope = (operatorId: string): FileScope => ({ files: api.operatorFiles, id: operatorId });
+
 /**
  * Uploads `blob` as the aircraft's photo or a document, chunk by chunk; `onProgress` gets 0…1.
  * Returns the stored file (a new photo replaces the old one when it completes).
  */
-export async function uploadAircraftFile(aircraftId: string, blob: Blob, meta: { kind: AircraftFileKind; name: string; title?: string },
+export async function uploadFile(scope: FileScope, blob: Blob, meta: { kind: AircraftFileKind; name: string; title?: string },
   onProgress?: (f: number) => void): Promise<AircraftFile> {
-  const f = await api.files.start(aircraftId, { kind: meta.kind, name: meta.name, title: meta.title ?? '', mime: blob.type, size: blob.size });
+  const { files, id } = scope;
+  const f = await files.start(id, { kind: meta.kind, name: meta.name, title: meta.title ?? '', mime: blob.type, size: blob.size });
   for (let seq = 0; seq < f.chunks; seq++) {
     const part = new Uint8Array(await blob.slice(seq * AIRCRAFT_FILE_CHUNK_BYTES, (seq + 1) * AIRCRAFT_FILE_CHUNK_BYTES).arrayBuffer());
-    await api.files.putChunk(aircraftId, f.id, seq, toBase64(part));
+    await files.putChunk(id, f.id, seq, toBase64(part));
     onProgress?.((seq + 1) / f.chunks);
   }
-  const done = await api.files.complete(aircraftId, f.id);
+  const done = await files.complete(id, f.id);
   cache.set(done.id, Promise.resolve(blob.type === done.mime ? blob : new Blob([blob], { type: done.mime })));
   return done;
 }
@@ -36,13 +43,13 @@ export async function uploadAircraftFile(aircraftId: string, blob: Blob, meta: {
 const cache = new Map<string, Promise<Blob>>();
 
 /** The content of a file as a Blob (downloaded chunk by chunk once per session). */
-export function aircraftFileBlob(aircraftId: string, f: AircraftFile, onProgress?: (x: number) => void): Promise<Blob> {
+export function fileBlob(scope: FileScope, f: AircraftFile, onProgress?: (x: number) => void): Promise<Blob> {
   const hit = cache.get(f.id);
   if (hit) return hit;
   const p = (async () => {
     const parts: Uint8Array[] = [];
     for (let seq = 0; seq < f.chunks; seq++) {
-      parts.push(fromBase64((await api.files.chunk(aircraftId, f.id, seq)).data));
+      parts.push(fromBase64((await scope.files.chunk(scope.id, f.id, seq)).data));
       onProgress?.((seq + 1) / f.chunks);
     }
     return new Blob(parts as BlobPart[], { type: f.mime });

@@ -1,7 +1,13 @@
 // Shared reference data (read-only, current AIRAC): GET /ref/airac, /ref/bundle, /ref/<kind>.
+// /ref/bundle: ETag by AIRAC, Cache-Control private, max-age=86400, 304 on If-None-Match; the full
+// bundle and /ref/<kind> are rate-limited per pilot (rateLimit.ts).
 // Owned by the data agent from here on (declared distances, slopes, new AIRACs).
 import type { Route } from '../http.js';
-import { notFound } from '../http.js';
+import { notFound, reply } from '../http.js';
+import { rateLimit } from '../rateLimit.js';
+
+/** Bumped when the bundle's shape changes (part of its ETag). */
+const BUNDLE_FORMAT = 1;
 import type { Queryable } from '../db.js';
 import type { RefAerodrome, RefAirac, RefBundle } from '../../../src/shared/ref.js';
 
@@ -39,10 +45,15 @@ export const routes: Route[] = [
   { method: 'GET', path: '/ref/airac', handler: async ({ db }) => current(db) },
   {
     method: 'GET', path: '/ref/bundle',
-    async handler({ db }): Promise<RefBundle> {
+    async handler({ db, pilot, req }) {
       const airac = await current(db);
+      // the bundle changes only with the AIRAC: the browser keeps it a day and revalidates by ETag
+      const etag = `"ref-${airac.id}-${BUNDLE_FORMAT}"`;
+      const cache = { ETag: etag, 'Cache-Control': 'private, max-age=86400' };
+      if (String(req.headers['if-none-match'] || '').split(',').map((s) => s.trim().replace(/^W\//, '')).includes(etag)) return reply(304, undefined, cache);
+      await rateLimit(db, 'ref', { pilotId: pilot?.id, req });
       const [fis] = await db.query('SELECT doc FROM ref_fis WHERE airac = $1', [airac.id]);
-      return {
+      const bundle: RefBundle = {
         airac,
         aerodromes: await docs(db, 'aerodromes', airac.id),
         runways: await docs(db, 'runways', airac.id),
@@ -53,6 +64,7 @@ export const routes: Route[] = [
         atcUnits: await docs(db, 'atc-units', airac.id),
         areas: await docs(db, 'areas', airac.id),
       };
+      return reply(200, bundle, cache);
     },
   },
   {
@@ -66,8 +78,9 @@ export const routes: Route[] = [
   },
   {
     method: 'GET', path: '/ref/:kind',
-    async handler({ db, params }) {
+    async handler({ db, params, pilot, req }) {
       if (!Object.hasOwn(TABLES, params.kind)) throw notFound();
+      await rateLimit(db, 'ref', { pilotId: pilot?.id, req });
       return docs(db, params.kind, (await current(db)).id);
     },
   },

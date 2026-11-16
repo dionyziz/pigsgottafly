@@ -7,13 +7,14 @@
 //   POST /flights/:id/forms/731/send               PDF to 731@hcaa.gov.gr, cc/reply-to the pilot (409 until all signed)
 //   POST /flights/:id/forms/gendec/send            PDF to gendec@hcaa.gov.gr, cc/reply-to the pilot
 // Any signed-in pilot may send; the pilot is always cc'd. A version already sent is refused (409)
-// unless the body is {"resend": true}; concurrent sends of one form are refused (409).
+// unless the body is {"resend": true}; concurrent sends of one form are refused (409). Sends and
+// signing links are capped per pilot and per flight in any 24 hours (api/_lib/sendCaps.ts, 429).
 //   GET  /sign/:token                              the signing page's view (no sign-in): own row in full, others masked
 //   POST /sign/:token                              signs the current version of the form
 // A signature is for one version of the form (SHA-256 of every field, form731SigningText): when
 // anything on the form changes, earlier signatures no longer count and the panel shows who must sign
 // again. Links give access to that one form only, are stored hashed, can be revoked and expire at the
-// end of the day after the flight. A link is bound to the person it was given to (personHash): a
+// end of the day after the flight, at most 14 days after they were made. A link is bound to the person it was given to (personHash): a
 // passenger without a saved record is keyed by seat, and whoever later takes that seat is a different
 // person whom the old link must not reach.
 import { fmtDate } from '../../../src/shared/date.js';
@@ -22,7 +23,7 @@ import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
 import type { Queryable } from '../db.js';
 import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
-import { accessibleSql } from '../access.js';
+import { accessibleSql, AIRCRAFT_FROM } from '../access.js';
 import { flightContext, loadRef } from '../flightContext.js';
 import { aerodromeNotamEffects, genDecHandling, type GenDecHandling } from '../../../src/calc/aerodromeStatus.js';
 import type { NotamBriefing } from '../../../src/shared/briefing.js';
@@ -31,6 +32,7 @@ import type { RoutePoint } from '../../../src/shared/types.js';
 import { hashToken } from '../auth.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
+import { checkLinkCap, mailFailed, mailSent, reserveMail } from '../sendCaps.js';
 import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
 import {
   FORM731_TO, GENDEC_PIC_KEY, GENDEC_TO, form731Content, form731SigningText, genDecContent, genDecText, maskTail,
@@ -65,7 +67,7 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDeni
   const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilot.id]);
   const flight = toFlight(r, crew);
   // the flight's aircraft when the pilot owns it or it is shared with them (else none: unavailable)
-  const [a] = flight.aircraftId ? await db.query(`SELECT a.* FROM aircraft a WHERE a.id = $1 AND ${accessibleSql('a', '$2')}`, [flight.aircraftId, pilot.id]) : [];
+  const [a] = flight.aircraftId ? await db.query(`${AIRCRAFT_FROM} WHERE a.id = $1 AND ${accessibleSql('a', '$2')}`, [flight.aircraftId, pilot.id]) : [];
   const aircraft = a ? toAircraft(a) : null;
   const passengers = (await db.query('SELECT * FROM passengers WHERE pilot_id = $1', [pilot.id])).map(toPassenger);
   const ref = await loadRef(db);
@@ -77,14 +79,21 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDeni
   return { flight, aircraft, pilot, c731, gendec, hash731: sha(form731SigningText(c731)), hashGendec: sha(genDecText(gendec)), mailDenied };
 }
 
+/** The current version (hash) of a flight's Form 731. */
+export async function form731Hash(db: Queryable, pilot: Pilot, flightId: string): Promise<string> {
+  return (await loadForms(db, pilot, flightId)).hash731;
+}
+
 /** A signing link works until the end of the day after the flight (UTC)… */
 const LINK_DAYS_FROM_FLIGHT = 2;
-/** …or, for a flight without a date, this many days from now. */
+/** …or, for a flight without a date, this many days from now… */
 const LINK_DAYS_UNDATED = 7;
+/** …and never more than this many days after the link was made. */
+const LINK_MAX_DAYS = 14;
 
-function linkExpiry(date: string, now: number): number {
+export function linkExpiry(date: string, now: number): number {
   const d = Date.parse(`${date}T00:00:00Z`);
-  return Number.isFinite(d) ? d + LINK_DAYS_FROM_FLIGHT * DAY : now + LINK_DAYS_UNDATED * DAY;
+  return Math.min(Number.isFinite(d) ? d + LINK_DAYS_FROM_FLIGHT * DAY : now + LINK_DAYS_UNDATED * DAY, now + LINK_MAX_DAYS * DAY);
 }
 
 /**
@@ -125,7 +134,7 @@ async function signatureRows(db: Queryable, pilotId: string, flightId: string) {
   return db.query('SELECT * FROM form_signatures WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilotId]);
 }
 
-async function submission(db: Queryable, pilotId: string, flightId: string, form: '731' | 'gendec', hash: string): Promise<SubmissionState | null> {
+export async function submission(db: Queryable, pilotId: string, flightId: string, form: SentForm, hash: string): Promise<SubmissionState | null> {
   const [s] = await db.query('SELECT * FROM form_submissions WHERE flight_id = $1 AND pilot_id = $2 AND form = $3', [flightId, pilotId, form]);
   return s ? { sentAt: Number(s.sent_at), messageId: s.message_id, to: s.to_addr, changed: s.text_hash !== hash } : null;
 }
@@ -216,6 +225,30 @@ const CLAIM_MS = 60e3; // longer than the mail provider's timeout (20 s)
  */
 async function sendOnce(db: Queryable, L: Loaded, form: '731' | 'gendec', hash: string, resend: boolean, pdf: () => Promise<Buffer> | Buffer): Promise<void> {
   requireMail(L);
+  requireHcaaWindow(L.flight.date);
+  const m = formMail(L, form);
+  await sendFormOnce(db, { flightId: L.flight.id, pilotId: L.pilot.id, form, hash, resend, to: m.to, subject: m.subject }, async () => sendForm(L, m, await pdf()));
+}
+
+/** HCAA forms only for flights from yesterday to HCAA_MAX_DAYS_AHEAD days ahead (UTC days). */
+export const HCAA_MAX_DAYS_AHEAD = 14;
+export function requireHcaaWindow(date: string, now = Date.now()): void {
+  const d = Date.parse(`${date}T00:00:00Z`);
+  const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
+  if (!Number.isFinite(d)) throw badRequest('the flight has no valid date');
+  if (d < today - DAY) throw conflict('The flight is in the past: forms are sent to the HCAA only for flights from yesterday on.');
+  if (d > today + HCAA_MAX_DAYS_AHEAD * DAY) throw conflict(`The flight is more than ${HCAA_MAX_DAYS_AHEAD} days ahead: send the forms closer to the date.`);
+}
+
+export type SentForm = '731' | 'gendec' | 'wbperf';
+
+/**
+ * Sending any form of a flight once per version (Form 731, the GenDec, the W&B and performance sheets
+ * to the operator: routes/declarations.ts): claims (flight, form) first so that concurrent requests
+ * cannot both send, refuses a version already sent unless `resend`, sends, records what was sent.
+ */
+export async function sendFormOnce(db: Queryable, f: { flightId: string; pilotId: string; form: SentForm; hash: string; resend: boolean; to: string; subject: string },
+  send: () => Promise<{ id: string }>): Promise<void> {
   const now = Date.now();
   const until = now + CLAIM_MS;
   const claimed = await db.query(
@@ -223,22 +256,36 @@ async function sendOnce(db: Queryable, L: Loaded, form: '731' | 'gendec', hash: 
      ON CONFLICT (flight_id, form) DO UPDATE SET until = EXCLUDED.until
      WHERE form_send_claims.pilot_id = EXCLUDED.pilot_id AND form_send_claims.until < $5
      RETURNING flight_id`,
-    [L.flight.id, L.pilot.id, form, until, now]);
+    [f.flightId, f.pilotId, f.form, until, now]);
   if (!claimed.length) throw conflict('this form is being sent right now');
   try {
-    const prev = await submission(db, L.pilot.id, L.flight.id, form, hash);
-    if (prev && !prev.changed && !resend) {
+    const prev = await submission(db, f.pilotId, f.flightId, f.form, f.hash);
+    if (prev && !prev.changed && !f.resend) {
       throw conflict('this version of the form was already sent; send {"resend": true} to send it again');
     }
-    const sent = await mailForm(L, form, await pdf());
-    await recordSent(db, L, form, sent.id, sent.to, hash);
+    // the sending caps (sendCaps.ts): 429 over them; a failed send does not count; all logged
+    const reservation = await reserveMail(db, { pilotId: f.pilotId, flightId: f.flightId, form: f.form, recipient: f.to, subject: f.subject });
+    let sent;
+    try {
+      sent = await send();
+    } catch (e) {
+      await mailFailed(db, reservation, e);
+      throw e;
+    }
+    await mailSent(db, reservation, sent.id);
+    await db.query(
+      `INSERT INTO form_submissions (flight_id, pilot_id, form, sent_at, message_id, to_addr, text_hash) VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (flight_id, form) DO UPDATE SET sent_at = EXCLUDED.sent_at, message_id = EXCLUDED.message_id, to_addr = EXCLUDED.to_addr, text_hash = EXCLUDED.text_hash
+       WHERE form_submissions.pilot_id = EXCLUDED.pilot_id`,
+      [f.flightId, f.pilotId, f.form, Date.now(), sent.id, f.to, f.hash]);
   } finally {
-    await db.query('DELETE FROM form_send_claims WHERE flight_id = $1 AND pilot_id = $2 AND form = $3 AND until = $4', [L.flight.id, L.pilot.id, form, until]);
+    await db.query('DELETE FROM form_send_claims WHERE flight_id = $1 AND pilot_id = $2 AND form = $3 AND until = $4', [f.flightId, f.pilotId, f.form, until]);
   }
 }
 
-async function mailForm(L: Loaded, form: '731' | 'gendec', pdf: Buffer): Promise<{ id: string; to: string }> {
-  requireMail(L);
+interface FormMail { to: string; subject: string; text: string; filename: string }
+
+function formMail(L: Loaded, form: '731' | 'gendec'): FormMail {
   const to = form === '731' ? FORM731_TO : GENDEC_TO;
   const route = L.c731.route.split(' – ').join(' → ');
   const what = form === '731' ? 'Form 731' : 'General Declaration';
@@ -251,22 +298,17 @@ async function mailForm(L: Loaded, form: '731' | 'gendec', pdf: Buffer): Promise
     'Replies go to the pilot in command.',
   ].join('\n');
   const filename = `${form === '731' ? 'Form731' : 'GenDec'}_${(L.c731.registration || 'aircraft').replace(/[^A-Za-z0-9]/g, '')}_${L.flight.date || 'undated'}.pdf`;
+  return { to, subject, text, filename };
+}
+
+async function sendForm(L: Loaded, m: FormMail, pdf: Buffer): Promise<{ id: string }> {
   try {
-    const r = await sendMail({ to: [to], pilotEmail: L.pilot.email || '', subject, text, attachments: [{ filename, content: pdf, contentType: 'application/pdf' }] });
-    return { id: r.id, to };
+    return await sendMail({ to: [m.to], pilotEmail: L.pilot.email || '', subject: m.subject, text: m.text, attachments: [{ filename: m.filename, content: pdf, contentType: 'application/pdf' }] });
   } catch (e) {
     const msg = e instanceof MailError ? e.message : 'the e-mail could not be sent';
     if (!(e instanceof MailError)) console.warn('forms mail:', String((e as Error)?.message || e));
-    throw new HttpError(502, msg);
+    throw Object.assign(new HttpError(502, msg), { cause: e });
   }
-}
-
-async function recordSent(db: Queryable, L: Loaded, form: '731' | 'gendec', id: string, to: string, hash: string) {
-  await db.query(
-    `INSERT INTO form_submissions (flight_id, pilot_id, form, sent_at, message_id, to_addr, text_hash) VALUES ($1,$2,$3,$4,$5,$6,$7)
-     ON CONFLICT (flight_id, form) DO UPDATE SET sent_at = EXCLUDED.sent_at, message_id = EXCLUDED.message_id, to_addr = EXCLUDED.to_addr, text_hash = EXCLUDED.text_hash
-     WHERE form_submissions.pilot_id = EXCLUDED.pilot_id`,
-    [L.flight.id, L.pilot.id, form, Date.now(), id, to, hash]);
 }
 
 // ---------------------------------------------------------------- signing page (no sign-in)
@@ -319,7 +361,9 @@ export const routes: Route[] = [
       // a link given to whoever held this key before does not count (newLink revokes it)
       const have = new Set(existing.filter((r) => holderOf(L, r)).map((r) => r.person_key as string));
       const links: Record<string, string> = {};
-      for (const p of L.c731.people) if (p.role === 'PAX' && !have.has(p.key)) links[p.key] = await newLink(db, L, p);
+      const need = L.c731.people.filter((p) => p.role === 'PAX' && !have.has(p.key));
+      await checkLinkCap(db, pilot.id, L.flight.id, need.length);
+      for (const p of need) links[p.key] = await newLink(db, L, p);
       return state(db, L, links);
     },
   },
@@ -329,6 +373,7 @@ export const routes: Route[] = [
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
       if (!person) throw notFound('no such passenger on this flight');
+      await checkLinkCap(db, pilot.id, L.flight.id, 1);
       return state(db, L, { [params.key]: await newLink(db, L, person) });
     },
   },

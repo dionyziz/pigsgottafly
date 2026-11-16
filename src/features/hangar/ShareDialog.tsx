@@ -1,19 +1,20 @@
-// Share an aircraft, like sharing a Google Doc: add pilots by the e-mail of their Pig's Gotta Fly
-// account as viewer or editor, change their role or remove them. The owner is listed first and
-// cannot be changed. Viewers see who has access but cannot change it. Also: the "Shared by" chip
-// of shared aircraft in the hangar list and on the aircraft page.
+// Share an aircraft or an operator, like sharing a Google Doc: add pilots by the e-mail of their Pig's
+// Gotta Fly account as viewer or editor, change their role or remove them. The owner is listed first
+// and cannot be changed. Viewers see who has access but cannot change it. An operator also lists the
+// pilots who see it through one of its aircraft (changed by sharing that aircraft). Also: the
+// "Shared by" chip of shared aircraft and operators in the lists and on their pages.
 import { useEffect, useState } from 'react';
 import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
-import type { AircraftAccess, AircraftSharing, ShareRole } from '../../shared/sharing';
+import type { AircraftAccess, AircraftRole, ShareRole, SharePerson } from '../../shared/sharing';
 import { Chip, Dialog, Loading, RowRemove } from '../../ui';
 import './share.css';
 
 export const ROLE_LABEL = { owner: 'Owner', edit: 'Editor', view: 'Viewer' } as const;
 
 /** "Shared by Alice · Viewer" for an aircraft the pilot does not own; nothing for their own. */
-export function SharedChip({ access }: { access: AircraftAccess | undefined }) {
+export function SharedChip({ access }: { access: Pick<AircraftAccess, 'role' | 'owner'> | undefined }) {
   if (!access || access.role === 'owner') return null;
   const by = access.owner.name || access.owner.email;
   return (
@@ -25,15 +26,28 @@ export function SharedChip({ access }: { access: AircraftAccess | undefined }) {
 
 const message = errorMessage;
 
-export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
-  aircraftId: string;
-  registration: string;
+/** What both kinds of sharing state have in common (AircraftSharing, OperatorSharing). */
+interface SharingState {
+  role: AircraftRole;
+  canManage: boolean;
+  people: (SharePerson & { via?: string[]; direct?: boolean })[];
+}
+
+const API = { aircraft: api.shares, operator: api.operatorShares } as const;
+const NOUN = { aircraft: 'aircraft', operator: 'operator' } as const;
+
+export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
+  kind?: 'aircraft' | 'operator';
+  id: string;
+  /** Registration or operator name, for the title. */
+  name: string;
   onClose: () => void;
   /** The pilot removed their own access (the aircraft left their hangar). */
   onLeft?: () => void;
 }) {
   const { pilot } = useSession();
-  const [sharing, setSharing] = useState<AircraftSharing | null>(null);
+  const shares = API[kind];
+  const [sharing, setSharing] = useState<SharingState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ShareRole>('view');
@@ -42,11 +56,11 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
 
   useEffect(() => {
     let live = true;
-    api.shares.get(aircraftId).then((s) => { if (live) setSharing(s); }, (e) => { if (live) setLoadError(message(e)); });
+    shares.get(id).then((s) => { if (live) setSharing(s); }, (e) => { if (live) setLoadError(message(e)); });
     return () => { live = false; };
-  }, [aircraftId]);
+  }, [shares, id]);
 
-  const run = async (fn: () => Promise<AircraftSharing | null>) => {
+  const run = async (fn: () => Promise<SharingState | null>) => {
     setBusy(true);
     setError(null);
     try {
@@ -65,21 +79,21 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
     e.preventDefault();
     const addr = email.trim();
     if (!addr) { setError('Enter the e-mail address of their Pig’s Gotta Fly account.'); return; }
-    if (await run(() => api.shares.add(aircraftId, addr, role))) setEmail('');
+    if (await run(() => shares.add(id, addr, role))) setEmail('');
   };
 
   const remove = async (pilotId: string) => {
     const self = pilotId === pilot.id;
     const ok = await run(async () => {
-      await api.shares.remove(aircraftId, pilotId);
-      return self ? null : api.shares.get(aircraftId);
+      await shares.remove(id, pilotId);
+      return self ? null : shares.get(id);
     });
     if (ok && self) onLeft?.();
   };
 
   const canManage = !!sharing?.canManage;
   return (
-    <Dialog title={`Share ${registration}`} onClose={onClose} busy={busy} testId="share-dialog" footer={
+    <Dialog title={`Share ${name}`} onClose={onClose} busy={busy} testId="share-dialog" footer={
       <button type="button" className="primary" onClick={onClose} disabled={busy}>Done</button>
     }>
       {loadError ? <p className="form-error" role="alert">{loadError}</p> : !sharing ? <Loading variant="sm" /> : (
@@ -101,19 +115,23 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
             <ul className="share-people" data-testid="share-people">
               {sharing.people.map((p) => {
                 const self = p.pilotId === pilot.id;
+                const via = p.via?.length ? `through ${p.via.join(', ')}` : '';
                 return (
                   <li key={p.pilotId} data-pilot-id={p.pilotId} data-role={p.role}>
                     <span className="share-avatar" aria-hidden="true">{(p.name || p.email || '?').trim().charAt(0).toUpperCase()}</span>
                     <span className="share-who">
                       <b>{p.name || p.email}{self && <span className="muted"> (you)</span>}</b>
                       {p.name && <span className="hint">{p.email}</span>}
+                      {kind === 'operator' && via && <span className="hint" data-testid="share-via">Aircraft: {p.via!.join(', ')}</span>}
                     </span>
                     {p.role === 'owner' ? (
                       <span className="muted share-role">Owner</span>
+                    ) : p.direct === false ? (
+                      <span className="muted share-role" title={`Sees the ${NOUN[kind]} ${via}: share or unshare the aircraft to change it`}>Viewer (aircraft)</span>
                     ) : canManage ? (
                       <span className="row share-role">
                         <select value={p.role} disabled={busy} aria-label={`Role of ${p.name || p.email}`}
-                          onChange={(e) => void run(() => api.shares.setRole(aircraftId, p.pilotId, e.target.value as ShareRole))}>
+                          onChange={(e) => void run(() => shares.setRole(id, p.pilotId, e.target.value as ShareRole))}>
                           <option value="view">Viewer</option>
                           <option value="edit">Editor</option>
                         </select>

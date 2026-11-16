@@ -48,7 +48,7 @@ label.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ac
 td .unit-input, th .unit-input { display: inline-flex; }
 
 /* ---- dialogs */
-.dlg-backdrop { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 80; padding: var(--s4); }
+.dlg-backdrop { position: fixed; inset: 0; background: var(--scrim); display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; z-index: 80; padding: var(--s4); }
 .dlg { width: 440px; max-width: 100%; max-height: calc(100vh - 32px); display: flex; flex-direction: column; box-shadow: var(--shadow-lg); }
 .dlg.wide { width: 620px; }
 .dlg-head { padding: 20px var(--card-pad) 4px; }
@@ -64,6 +64,7 @@ td .unit-input, th .unit-input { display: inline-flex; }
 .menu > div > button.danger { color: var(--danger); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 .menu .who { padding: 8px 16px; display: flex; flex-direction: column; font-size: var(--fs-sm); }
+.menu > a.minor, .menu > button.minor { padding: 6px 16px; font-size: var(--fs-sm); color: var(--ink-2); }
 .kebab .menu { min-width: 190px; }
 .kebab button.icon svg { fill: currentColor; }
 

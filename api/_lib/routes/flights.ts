@@ -9,6 +9,7 @@ import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
 import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 import type { Queryable } from '../db.js';
+import { checkCount } from '../limits.js';
 import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
 import { autoTitle, DEFAULT_FLIGHT_OPTIONS, EMPTY_PERSON, EMPTY_SUMMARY, emptyFlightDoc, FALLBACK_SEATS, picSeat, seatLayout, validateCrew } from '../../../src/shared/constants.js';
@@ -86,8 +87,11 @@ async function checkDoc(db: Queryable, pilotId: string, input: Partial<FlightDoc
   if (errs.length) throw badRequest(errs.join('; '));
   const paxIds = d.crew.map((c) => c.passengerId).filter((x): x is string => !!x);
   if (paxIds.length) {
-    const own = await db.query('SELECT id FROM passengers WHERE pilot_id = $1 AND id = ANY($2::text[])', [pilotId, paxIds]);
-    if (own.length !== new Set(paxIds).size) throw badRequest('no such passenger');
+    // A passenger link that is not (or no longer) one of the pilot's passengers is dropped, the
+    // snapshot stays: an editor still holding a passenger deleted meanwhile saves without error,
+    // exactly as the database left the flight (flight_crew.passenger_id ON DELETE SET NULL).
+    const own = new Set((await db.query('SELECT id FROM passengers WHERE pilot_id = $1 AND id = ANY($2::text[])', [pilotId, paxIds])).map((r) => r.id as string));
+    if (own.size !== paxIds.length) d.crew = d.crew.map((c) => (c.passengerId && !own.has(c.passengerId) ? { ...c, passengerId: null } : c));
   }
   return d;
 }
@@ -111,6 +115,7 @@ const docParams = (d: FlightDoc) => [d.title, d.date, d.blockOff, d.aircraftId, 
   d.atc === null ? null : JSON.stringify(d.atc), JSON.stringify(d.baggageKg), JSON.stringify(d.options), JSON.stringify(d.summary)];
 
 async function insertFlight(db: Parameters<Route['handler']>[0]['db'], pilotId: string, d: FlightDoc, wanted?: string): Promise<string> {
+  await checkCount(db, pilotId, 'flights');
   const now = Date.now();
   return db.transaction(async (tx) => {
     const ins = (id: string) => tx.query(

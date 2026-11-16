@@ -54,6 +54,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
       clearEntities();
       await load();
     },
+    signOutEverywhere: async () => {
+      await api.revokeAllSessions().catch(() => {});
+      try { (window as any).google?.accounts?.id?.disableAutoSelect?.(); } catch { /* ignore */ }
+      clearEntities();
+      await load();
+    },
   } : null), [session, signedIn, load]);
 
   if (error) return <div className="center-screen"><div className="stack" style={{ alignItems: 'center' }}><p>{error}</p><button onClick={load}>Try again</button></div></div>;

@@ -42,6 +42,8 @@ export interface SessionResponse {
   mode: 'google' | 'local';
   googleClientId: string | null;
   pilot: Pilot | null;
+  /** The pilot is an admin (ADMIN_EMAILS): the admin page is theirs. */
+  admin?: boolean;
 }
 /** POST /api/login (Google ID token from GIS). 401 bad token, 403 email not allowed. */
 export interface LoginRequest {
@@ -154,4 +156,46 @@ export interface MetarTafResponse {
     }
   >;
   fetched: EpochMs;
+}
+
+// --------------------------------------------------------------------------------------------
+// Admin (GET /api/admin/pilots, ADMIN_EMAILS only)
+
+/** An aircraft or operator shared between two pilots; `pilot` is the other side. */
+export interface AdminShare {
+  kind: 'aircraft' | 'operator';
+  /** Registration or operator name. */
+  name: string;
+  role: 'view' | 'edit';
+  pilot: string;
+}
+/** One outbound e-mail of the action log (GET /admin/mail?pilot=<id>&kind=<kind>). */
+export interface AdminMail {
+  id: string;
+  at: EpochMs;
+  /** null: the app's own message with no pilot. */
+  pilotId: string | null;
+  pilot: string;
+  /** '731', 'gendec', 'wbperf', 'signup', 'signup-more' */
+  kind: string;
+  flightId: string | null;
+  recipient: string;
+  subject: string;
+  result: 'pending' | 'sent' | 'failed' | 'capped';
+  messageId: string | null;
+  error: string | null;
+}
+export interface AdminPilot {
+  id: string;
+  email: string;
+  name: string;
+  created: EpochMs;
+  lastLogin: EpochMs;
+  flights: number;
+  trashedFlights: number;
+  aircraft: number;
+  passengers: number;
+  operators: number;
+  sharedByThem: AdminShare[];
+  sharedWithThem: AdminShare[];
 }

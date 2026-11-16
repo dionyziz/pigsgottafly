@@ -20,7 +20,7 @@ export function stampZ(ms: number): string {
 }
 
 /** Signature: faint "PIG'S GOTTA FLY" mark behind the handwritten name, then when it was signed. */
-function signature(p: PdfPage, x: number, y: number, w: number, s: PdfSignature) {
+export function signature(p: PdfPage, x: number, y: number, w: number, s: PdfSignature) {
   p.color(0.85, 0.9, 0.97);
   p.text(x, y - 0.6, "PIG'S GOTTA FLY", { font: 'bold', size: 11, maxW: w });
   p.color(0.07, 0.16, 0.45);

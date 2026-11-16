@@ -9,6 +9,8 @@ export interface SessionValue {
   /** Replace the pilot (e.g. an optimistic change); every page and tab follows. api.me.update already does this. */
   setPilot(p: Pilot): void;
   signOut(): Promise<void>;
+  /** Ends every session of the account (all devices), then this one shows the sign-in screen. */
+  signOutEverywhere(): Promise<void>;
 }
 
 export const SessionContext = createContext<SessionValue | null>(null);

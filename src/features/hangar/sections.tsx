@@ -6,6 +6,7 @@ import { fmtDuration } from '../../shared/format';
 import type { AircraftInput, WakeCategory } from '../../shared/types';
 import { AerodromeTextInput, Check, Field, IssueList, RowRemove } from '../../ui';
 import { NumInput, Section } from './fields';
+import { OperatorPicker } from '../operators/OperatorPicker';
 import { ADS_CODES, ITEM10A_CODES, SSR_CODES, addFuelType, issuesAt, join10a, join10b, makePrimaryFuel, otherFuelTypes, removeFuelType, split10a, split10b, type Issue } from './model';
 
 export interface SectionProps {
@@ -55,7 +56,7 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
           <input name="colours" className="upper" value={a.colours} onChange={(e) => { const v = e.target.value.toUpperCase(); edit((d) => { d.colours = v; }); }} placeholder="e.g. WHITE WITH BLUE STRIPES" maxLength={200} />
         </Field>
         <Field focus="operator" label="Operator" issues={at('operator')}>
-          <input name="operator" value={a.operator} onChange={(e) => { const v = e.target.value; edit((d) => { d.operator = v; }); }} maxLength={200} />
+          <OperatorPicker a={a} edit={edit} />
         </Field>
       </div>
       <Field label="Notes" issues={at('notes')}>

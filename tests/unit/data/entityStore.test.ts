@@ -128,7 +128,8 @@ describe('other tabs (BroadcastChannel)', () => {
       putEntity('pilot', { id: 'p1', quiet: true });
       await vi.waitFor(() => expect(got.length).toBe(2));
       expect(got[0]).toMatchObject({ v: 1, type: 'invalidate', keys: ['passengers'] });
-      expect(got[1]).toMatchObject({ keys: ['pilot'] });
+      // a stored value travels with the message: the other tabs store it without a request
+      expect(got[1]).toMatchObject({ v: 1, type: 'put', key: 'pilot', data: { id: 'p1' } });
 
       const fetch = vi.fn(async () => ({ id: 'p1', licenceNo: 'GR.FCL.PPL.1' }));
       registerFetcher('pilot', fetch);
@@ -139,6 +140,14 @@ describe('other tabs (BroadcastChannel)', () => {
       await vi.waitFor(() => expect(getEntity('pilot').data).toMatchObject({ licenceNo: 'GR.FCL.PPL.1' }));
       expect(heard).toEqual(['pilot']);
       off(); off2();
+
+      // a value another tab stored is taken as it is, even in a hidden tab (no refetch to defer)
+      vi.stubGlobal('document', { visibilityState: 'hidden' });
+      try {
+        other.postMessage({ v: 1, type: 'put', key: 'pilot', data: { id: 'p1', licenceNo: 'GR.FCL.PPL.2' }, from: 'another-tab' });
+        await vi.waitFor(() => expect(getEntity('pilot').data).toMatchObject({ licenceNo: 'GR.FCL.PPL.2' }));
+        expect(fetch).toHaveBeenCalledTimes(1);
+      } finally { vi.unstubAllGlobals(); }
     } finally {
       other.close();
     }

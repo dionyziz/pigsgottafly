@@ -19,7 +19,7 @@ import { fleetSeed } from '../../tools/build_seed.ts';
 let server, browser, page;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const api = async (method, p, body) => {
-  const r = await fetch(`${server.url}/api/${p}`, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`${server.url}/api/${p}`, { method, headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
   if (!r.ok) throw new Error(`${method} ${p}: ${r.status} ${await r.text()}`);
   return r.status === 204 ? null : r.json();
 };
@@ -84,7 +84,7 @@ const mapPx = async (lat, lon) => {
     const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
     await frame(); await new Promise((r) => setTimeout(r, 60)); await frame(); await frame();
     const c = document.querySelector('.pgf-map-canvas'); const m = c.__pgfMap; const r = c.getBoundingClientRect();
-    const sized = Math.abs(m.transform.width - c.clientWidth) < 1 && Math.abs(m.transform.height - c.clientHeight) < 1;
+    const sized = Math.abs((m.getCanvas().width / m.getPixelRatio()) - c.clientWidth) < 1 && Math.abs((m.getCanvas().height / m.getPixelRatio()) - c.clientHeight) < 1;
     const p = m.project([lon, lat]);
     return { sized, x: Math.round((r.left + p.x) * 10) / 10, y: Math.round((r.top + p.y) * 10) / 10 };
   }, lat, lon);

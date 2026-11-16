@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { api } from '../../../src/data/api';
-import { invalidate, putEntity, useEntity } from '../../../src/data/entities';
+import { invalidate, onInvalidate, putEntity, useEntity } from '../../../src/data/entities';
 import { __resetEntityStoreForTests, CHANNEL_NAME, registerFetcher, revalidate } from '../../../src/data/entityStore';
 import { useAsync } from '../../../src/data/useAsync';
 import { latestOnly, sequencer } from '../../../src/data/sequence';
@@ -28,6 +28,7 @@ beforeEach(() => {
   registerFetcher('pilot', () => api.me.get());
   registerFetcher('passengers', () => api.passengers.list());
   registerFetcher('aircraft', () => api.aircraft.list());
+  registerFetcher('operators', () => api.operators.list());
   registerFetcher('waypoints', () => api.waypoints.list());
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -88,6 +89,36 @@ describe('useEntity', () => {
     act(() => revalidate());
     await waitFor(() => expect(screen.getByTestId('a').textContent).toBe('Dora'));
   });
+});
+
+describe('what a mutation invalidates', () => {
+  // every key the server derives from the changed record: operators list their aircraft, aircraft
+  // print their operator's name, a removed share or aircraft clears the pilot's default
+  const cases: [string, () => Promise<unknown>, string[]][] = [
+    ['aircraft create', () => api.aircraft.create({} as never), ['aircraft', 'pilot', 'operators']],
+    ['aircraft update', () => api.aircraft.update('a1', {}), ['aircraft', 'operators']],
+    ['aircraft remove', () => api.aircraft.remove('a1'), ['aircraft', 'pilot', 'operators']],
+    ['aircraft share add', () => api.shares.add('a1', 'x@y', 'view'), ['aircraft', 'operators']],
+    ['aircraft share remove', () => api.shares.remove('a1', 'p2'), ['aircraft', 'operators', 'pilot']],
+    ['operator create', () => api.operators.create({} as never), ['operators']],
+    ['operator update', () => api.operators.update('o1', {}), ['operators', 'aircraft']],
+    ['operator remove', () => api.operators.remove('o1'), ['operators', 'aircraft']],
+    ['operator share setRole', () => api.operatorShares.setRole('o1', 'p2', 'edit'), ['operators']],
+    ['operator share remove', () => api.operatorShares.remove('o1', 'p2'), ['operators', 'aircraft']],
+    ['operator file remove', () => api.operatorFiles.remove('o1', 'f1'), ['operators']],
+    ['passenger remove', () => api.passengers.remove('x'), ['passengers', 'flights']],
+  ];
+  for (const [what, call, keys] of cases) {
+    it(what, async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 204 })));
+      const seen: string[] = [];
+      const off = onInvalidate(['pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'], (k) => { seen.push(k); });
+      await call();
+      off();
+      vi.unstubAllGlobals();
+      expect([...new Set(seen)].sort()).toEqual([...keys].sort());
+    });
+  }
 });
 
 describe('useAsync', () => {

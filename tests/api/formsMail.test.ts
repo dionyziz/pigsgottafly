@@ -30,7 +30,11 @@ async function start(opts: { allowedEmails?: string[]; google?: boolean }) {
   });
   await s.ready;
   await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
-  return { base: `http://127.0.0.1:${(s.address() as AddressInfo).port}/api/`, close: () => new Promise<void>((r) => s.close(() => r())) };
+  return {
+    base: `http://127.0.0.1:${(s.address() as AddressInfo).port}/api/`, close: () => new Promise<void>((r) => s.close(() => r())),
+    /** The 10-minute pause between two sends of a flight's form (sendCaps.ts), passed. */
+    later: async () => { await (await s.ready).db.query('UPDATE mail_log SET at = at - 660000'); },
+  };
 }
 
 async function gendecFlight(c: Client): Promise<string> {
@@ -107,6 +111,11 @@ describe('a form version is sent once', () => {
       expect((await c.call('POST', `flights/${id}/forms/gendec/send`, { resend: false })).status).toBe(409);
       expect(sent.length - n).toBe(1);
 
+      // a re-send waits 10 minutes after the last send
+      const soon = await c.call('POST', `flights/${id}/forms/gendec/send`, { resend: true });
+      expect(soon.status).toBe(429);
+      expect(soon.body.error).toMatch(/less than 10 minutes ago/);
+      await api.later();
       const re = await c.call<FormsState>('POST', `flights/${id}/forms/gendec/send`, { resend: true });
       expect(re.status).toBe(200);
       expect(sent.length - n).toBe(2);
@@ -117,6 +126,7 @@ describe('a form version is sent once', () => {
       const { id: _i, version, created, updated, opened, trashed, pilotId, ...doc } = f;
       expect((await c.call('PUT', `flights/${id}`, { flight: { ...doc, date: new Date(Date.now() + 2 * 24 * 3600e3).toISOString().slice(0, 10) }, version })).status).toBe(200);
       expect((await c.call<FormsState>('GET', `flights/${id}/forms`)).body.gendec.submission!.changed).toBe(true);
+      await api.later();
       expect((await c.call('POST', `flights/${id}/forms/gendec/send`)).status).toBe(200);
       expect(sent.length - n).toBe(3);
       expect((await c.call('POST', `flights/${id}/forms/gendec/send`)).status).toBe(409);
@@ -139,7 +149,8 @@ describe('a form version is sent once', () => {
       const rs = await Promise.all([1, 2, 3].map(() => c.call('POST', `flights/${id}/forms/gendec/send`, { resend: true })));
       expect(rs.map((r) => r.status).sort()).toEqual([200, 409, 409]);
       expect(sent.length - n).toBe(1);
-      // once finished, an explicit resend is possible again
+      // once finished (and 10 minutes later), an explicit resend is possible again
+      await api.later();
       expect((await c.call('POST', `flights/${id}/forms/gendec/send`, { resend: true })).status).toBe(200);
       expect(sent.length - n).toBe(2);
     } finally { await api.close(); }

@@ -43,11 +43,11 @@ const sha = (s: string) => crypto.createHash('sha256').update(s.trim().toLowerCa
 const withOwner = (email: string, list: Migration[] = MIGRATIONS): Migration[] =>
   list.map((m) => (m.sql?.includes(EXISTING_PILOT_PROFILE.ownerEmailSha256) ? { ...m, sql: m.sql.split(EXISTING_PILOT_PROFILE.ownerEmailSha256).join(sha(email)) } : m));
 const upTo = (name: string) => MIGRATIONS.slice(0, MIGRATIONS.findIndex((m) => m.name === name) + 1);
-/** The owner's aircraft as the API returns them, without ids and timestamps. */
+/** The owner's aircraft as the API returns them, without ids, timestamps and the operator's id (018). */
 async function ownerAircraft(db: Awaited<ReturnType<typeof connect>>, pilotId: string) {
   const { toAircraft } = await import('../../api/_lib/rows');
   const rows = await db.query(`SELECT * FROM aircraft WHERE pilot_id = $1 ORDER BY registration DESC`, [pilotId]);
-  return rows.map((r) => { const { id: _i, created: _c, updated: _u, ...rest } = toAircraft(r); return rest; });
+  return rows.map((r) => { const { id: _i, created: _c, updated: _u, operatorId: _o, ...rest } = toAircraft(r); return { ...rest, operatorId: null }; });
 }
 
 describe('migrations', () => {
@@ -321,6 +321,78 @@ describe('migrations', () => {
     await db.close();
   });
 
+  test('018 (operators) on a database at 017 with the seeded owner: one operator per distinct operator text, linked', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await db.query(`INSERT INTO users VALUES ('u2', 'g-sub-2', 'friend@example.com', 'A Friend', '', 3, 4)`);
+    await migrate(db, withOwner(OWNER, upTo('017_ref_areas_2609')));
+    const ins = (id: string, pilot: string, reg: string, operator: string, remarks: string) => db.query(
+      `INSERT INTO aircraft (id, pilot_id, registration, operator, cruise_tas_kt, pattern_tas_kt, fuel, mass_balance, performance, equipment, created, updated)
+       VALUES ($1, $2, $3, $4, 95, 80, '{}', '{}', '{}', $5::jsonb, 1, 1)`, [id, pilot, reg, operator, JSON.stringify({ remarks })]);
+    await ins('f1', 'u2', 'SX-FR1', ' Friends Club ', 'OPR TEL 210 1234567');
+    await ins('f2', 'u2', 'SX-FR2', 'FRIENDS CLUB', 'call the club first'); // same operator (case, spaces)
+    await ins('f3', 'u2', 'SX-FR3', '', '');
+    await ins('f4', 'u2', 'SX-FR4', 'Other Owner', 'OPR TEL +30 210 0000000 and ask for Bob'); // not only numbers: no phone
+    expect(await migrate(db, withOwner(OWNER))).toEqual(MIGRATIONS.slice(MIGRATIONS.findIndex((m) => m.name === '018_operators')).map((m) => m.name));
+
+    const ops = await db.query(`SELECT pilot_id, name, phone FROM operators ORDER BY pilot_id, name`);
+    expect(ops).toEqual([
+      { pilot_id: 'u1', name: 'Aeroclub Mesogeion', phone: '+302108169910 +306974776230' },
+      { pilot_id: 'u2', name: 'Friends Club', phone: '210 1234567' },
+      { pilot_id: 'u2', name: 'Other Owner', phone: '' },
+    ]);
+    const link = await db.query(`SELECT a.registration, o.name FROM aircraft a LEFT JOIN operators o ON o.id = a.operator_id ORDER BY a.registration`);
+    expect(link).toEqual([
+      { registration: 'SX-ASG', name: 'Aeroclub Mesogeion' }, { registration: 'SX-ASV', name: 'Aeroclub Mesogeion' },
+      { registration: 'SX-FR1', name: 'Friends Club' }, { registration: 'SX-FR2', name: 'Friends Club' },
+      { registration: 'SX-FR3', name: null }, { registration: 'SX-FR4', name: 'Other Owner' },
+    ]);
+    // the owner's aircraft are otherwise unchanged
+    const asv = (await ownerAircraft(db, 'u1')).find((a) => a.registration === 'SX-ASV')!;
+    const seed = fleetSeed().find((a) => a.registration === 'SX-ASV')!;
+    expect(asv).toEqual({ ...seed, equipment: { ...seed.equipment, ...FLEET_EQUIPMENT_011 }, colours: FLEET_COLOURS_011['SX-ASV'] });
+    // the forms' check constraints now take the W&B and performance sheets
+    await db.query(`INSERT INTO flights (id, pilot_id, date, created, updated) VALUES ('fl', 'u1', '2026-11-20', 1, 1)`);
+    await db.query(`INSERT INTO form_submissions (flight_id, pilot_id, form, sent_at, message_id, to_addr, text_hash) VALUES ('fl', 'u1', 'wbperf', 1, 'm', 'ops@example.com', 'h')`);
+    await expect(db.query(`INSERT INTO form_submissions (flight_id, pilot_id, form, sent_at, message_id, to_addr, text_hash) VALUES ('fl', 'u1', 'other', 1, 'm', 'x', 'h')`)).rejects.toThrow();
+    await db.close();
+  });
+
+  test('030–032 (e-mail log, rate limits) on a database at 018 with the seeded owner, and on one at 030 with sends', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await migrate(db, withOwner(OWNER, upTo('018_operators')));
+    const [ac] = await db.query(`SELECT id FROM aircraft WHERE pilot_id = 'u1' ORDER BY registration LIMIT 1`);
+    await db.query(`INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created, kind, chunks, complete)
+      VALUES ('old-upload', 'u1', $1, 'x.pdf', 'application/pdf', 10, '', 1, 'document', 1, FALSE)`, [ac.id]);
+    // 030 alone first, with a send logged the old way
+    await migrate(db, withOwner(OWNER, upTo('030_mail_log')));
+    await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at) VALUES ('ml1', 'u1', 'fx', '731', 5)`);
+    expect(await migrate(db, withOwner(OWNER))).toEqual(MIGRATIONS.slice(MIGRATIONS.findIndex((m) => m.name === '031_mail_log_details')).map((m) => m.name));
+    expect(await db.query(`SELECT id, pilot_id, form, recipient, subject, result, message_id FROM mail_log`)).toEqual([
+      { id: 'ml1', pilot_id: 'u1', form: '731', recipient: '', subject: '', result: 'sent', message_id: null },
+    ]);
+    // the app's own messages have no pilot; results are checked
+    await db.query(`INSERT INTO mail_log (id, pilot_id, flight_id, form, at, recipient, subject, result) VALUES ('ml2', NULL, NULL, 'signup-more', 6, 'a@b', 's', 'pending')`);
+    await expect(db.query(`INSERT INTO mail_log (id, form, at, result) VALUES ('ml3', 'x', 7, 'lost')`)).rejects.toThrow();
+    await db.query(`INSERT INTO rate_limits (bucket, subject, pilot_id, tokens, updated) VALUES ('login', 'ip:1.2.3.4', NULL, 5, 1), ('metar', 'p:u1', 'u1', 3, 1)`);
+    await db.query(`DELETE FROM pilots WHERE id = 'u1'`);
+    expect(await db.query(`SELECT bucket FROM rate_limits`)).toEqual([{ bucket: 'login' }]);
+    expect(await db.query(`SELECT id FROM mail_log`)).toEqual([{ id: 'ml2' }]);
+    await db.close();
+
+    // straight from 018 to the end
+    const db2 = await connect('memory://');
+    await db2.exec(V2);
+    await db2.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await migrate(db2, withOwner(OWNER, upTo('018_operators')));
+    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors']);
+    expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
+    await db2.close();
+  });
+
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {
     const db = await connect('memory://');
     await migrate(db);
@@ -332,6 +404,21 @@ describe('migrations', () => {
     const docs = new Map((await db.query<{ id: string; doc: any }>(`SELECT id, doc FROM ref_aerodromes WHERE airac = '2609'`)).map((r) => [r.id, r.doc]));
     for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
     expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
+    expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(MIGRATIONS.map((m) => m.name).sort());
+    expect(await db.query(`SELECT * FROM mail_log`)).toEqual([]);
+    expect(await db.query(`SELECT * FROM rate_limits`)).toEqual([]);
+    expect(await db.query(`SELECT * FROM app_errors`)).toEqual([]);
+    expect(MIGRATIONS.map((m) => m.name).slice(-5)).toEqual(['018_operators', '030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors']);
     await db.close();
   });
+});
+
+import { test as tRace, expect as eRace } from 'vitest';
+import { connect as connectRace } from '../../api/_lib/db';
+import { migrate as migrateRace, MIGRATIONS as LIST } from '../../api/_lib/migrate';
+tRace('a migration already applied by another instance is skipped, not re-run', async () => {
+  const db = await connectRace('memory://');
+  await migrateRace(db);
+  // simulate a second instance that read an older state: forget nothing, re-run the whole list
+  eRace(await migrateRace(db, LIST)).toEqual([]);
 });
