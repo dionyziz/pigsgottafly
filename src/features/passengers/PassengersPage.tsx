@@ -59,7 +59,7 @@ function PersonRow({ person, pilot, today, onEdit, onDelete, testId, passengerId
           {pilot && <> <Chip sm>PIC · you</Chip></>}
         </div>
         {miss.length > 0 && (
-          <div className="hint" title="Needed for the forms or W&B">
+          <div className="hint">
             Missing {miss.map(([field, label], i) => (
               <Fragment key={field}>{i > 0 && ', '}<button type="button" className="linkish" onClick={() => onEdit([field])}>{label}</button></Fragment>
             ))}
@@ -153,9 +153,7 @@ export function PassengersPage() {
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.fullName}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
-          onConfirm={() => remove(deleting)}>
-          Flights that already have them on the manifest keep their details.
-        </ConfirmDialog>
+          onConfirm={() => remove(deleting)} />
       )}
     </Shell>
   );

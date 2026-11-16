@@ -34,7 +34,6 @@ interface SharingState {
 }
 
 const API = { aircraft: api.shares, operator: api.operatorShares } as const;
-const NOUN = { aircraft: 'aircraft', operator: 'operator' } as const;
 
 export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
   kind?: 'aircraft' | 'operator';
@@ -78,7 +77,7 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = email.trim();
-    if (!addr) { setError('Enter the e-mail address of their Pig’s Gotta Fly account.'); return; }
+    if (!addr) { setError('Enter an e-mail address.'); return; }
     if (await run(() => shares.add(id, addr, role))) setEmail('');
   };
 
@@ -127,7 +126,7 @@ export function ShareDialog({ kind = 'aircraft', id, name, onClose, onLeft }: {
                     {p.role === 'owner' ? (
                       <span className="muted share-role">Owner</span>
                     ) : p.direct === false ? (
-                      <span className="muted share-role" title={`Sees the ${NOUN[kind]} ${via}: share or unshare the aircraft to change it`}>Viewer (aircraft)</span>
+                      <span className="muted share-role">Viewer (aircraft)</span>
                     ) : canManage ? (
                       <span className="row share-role">
                         <select value={p.role} disabled={busy} aria-label={`Role of ${p.name || p.email}`}

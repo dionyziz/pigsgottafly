@@ -107,9 +107,7 @@ export function WaypointsPage() {
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.name}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
-          onConfirm={async () => { await api.waypoints.remove(deleting.id); if (selected === deleting.id) setSelected(null); toast(`Deleted ${deleting.name}`); }}>
-          Flights that already go through {deleting.name} keep it at the same position.
-        </ConfirmDialog>
+          onConfirm={async () => { await api.waypoints.remove(deleting.id); if (selected === deleting.id) setSelected(null); toast(`Deleted ${deleting.name}`); }} />
       )}
     </Shell>
   );

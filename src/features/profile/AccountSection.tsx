@@ -2,7 +2,6 @@
 // the danger zone (DELETE /api/me after typing the account's e-mail; "delete" in local mode).
 // After deletion the browser's local copies (offline flights, layout preferences) are cleared too.
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { usePilot } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
@@ -36,11 +35,11 @@ export function AccountSection() {
   return (
     <div className="card account-card" data-testid="account-section">
       <CardSection id="your-data" title="Your data" plain
-        intro={<>Everything your account holds (profile, passengers, aircraft and their file list, flights, waypoints, sharing) as a JSON file. See the <Link to="/privacy">Privacy Policy</Link>.</>}>
+        intro="Everything your account holds, as a JSON file.">
         <div><a className="btn" href="/api/me/export" download data-testid="export-data">Download my data</a></div>
       </CardSection>
       <CardSection id="delete-account" title="Delete account" plain className="danger-zone" testId="danger-zone"
-        intro="Deletes your account and everything in it at once: profile, passengers, waypoints, all flights including the trash, the aircraft you own with their files (also for the pilots you shared them with), sharing, signing links and signatures. This cannot be undone.">
+        intro="Deletes your account and everything in it, including the aircraft you own (also for the pilots you shared them with). This cannot be undone.">
         {!open ? (
           <div><button type="button" className="ghost danger" onClick={() => setOpen(true)} data-testid="delete-account">Delete account…</button></div>
         ) : (

@@ -14,7 +14,7 @@ export const TYPE_TEMPLATES: HangarTemplate[] = [
   {
     id: 'reims-f172m',
     label: 'Reims/Cessna F172M',
-    description: 'AFM 1972: fuel system (AVGAS), four seats and baggage stations, normal and utility envelopes, take-off and landing tables, stall speeds. Planning factors (safety × 1.33 / 1.43, grass and RWYCC 5 factors, crosswind 20 / 15 kt): edit them under Performance.',
+    description: 'AFM 1972',
     build: () => aircraftFromTypeJson(reimsF172m),
   },
 ];

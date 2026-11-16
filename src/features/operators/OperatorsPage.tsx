@@ -26,9 +26,7 @@ export function OperatorsPage() {
       </div>
       <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle="Could not load the operators"
         isEmpty={(d) => d.length === 0} empty={(
-          <EmptyState title="No operators yet" action={<button className="primary" onClick={() => setCreating(true)}>New operator</button>}>
-            The club or owner who operates an aircraft: its name goes on the General Declaration and the flight plan, and it can ask for the W&amp;B and performance sheets before each flight.
-          </EmptyState>
+          <EmptyState title="No operators yet" action={<button className="primary" onClick={() => setCreating(true)}>New operator</button>} />
         )}>
         {(list) => (
           <div className="card list-card">

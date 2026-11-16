@@ -118,7 +118,7 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
     >
       {sub && (
         <div className="pgf-note" data-testid="f731-sent">
-          Sent to {sub.to} on {dayHm(sub.sentAt)}{sub.changed ? ' · the form has changed since: re-send once everyone has signed again' : ''}.
+          Sent to {sub.to} on {dayHm(sub.sentAt)}{sub.changed ? ' · changed since' : ''}
         </div>
       )}
       {!st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
@@ -127,7 +127,7 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
         {f.signatures.map((s) => {
           const token = links[s.key];
           const l = s.link;
-          const status = s.signed ? `signed ${dayHm(s.signedAt!)}${s.role === 'PIC' ? ' (automatically, as PIC)' : ''}`
+          const status = s.signed ? `signed ${dayHm(s.signedAt!)}`
             : s.needsResign ? 'the form changed after signing: must sign again'
             : l && !l.revoked ? (l.lastOpened ? `link opened ${dayHm(l.lastOpened)}, not signed` : `link created ${dayHm(l.created)}, not opened`)
             : s.role === 'PAX' ? 'no link' : 'not signed (set your full name in the profile)';
@@ -154,7 +154,7 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
           );
         })}
       </ul>
-      {Object.keys(links).length > 0 && <div className="pgf-note">Links are shown once: send them now. A lost link can be replaced with “New link”.</div>}
+      {Object.keys(links).length > 0 && <div className="pgf-note">Links are shown once.</div>}
     </Panel>
   );
 }

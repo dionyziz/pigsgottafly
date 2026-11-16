@@ -81,7 +81,7 @@ export function HangarPage() {
                 </Link>
                 <div className="ac-card-head">
                   <Link to={`/hangar/${a.id}`} className="reg mono">{a.registration}</Link>
-                  {isDefault && <Chip tone="ok" title="New flights use this aircraft">Default</Chip>}
+                  {isDefault && <Chip tone="ok">Default</Chip>}
                   <span className="spacer" />
                   <KebabMenu items={[
                     { label: 'Open', onSelect: () => navigate(`/hangar/${a.id}`) },
@@ -196,7 +196,7 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
           <span>Start from</span>
           <div className="src-opts">
             {TYPE_TEMPLATES.map((t) => radio({ kind: 'template', id: t.id }, `${t.label} type template`, t.description))}
-            {hangar.map((a) => radio({ kind: 'copy', id: a.id }, `Same type as ${a.registration}`, `${a.makeModel || 'Unknown type'}: without serial, colours, weighing and compass cards`))}
+            {hangar.map((a) => radio({ kind: 'copy', id: a.id }, `Same type as ${a.registration}`, a.makeModel))}
             {radio({ kind: 'blank' }, 'Blank', '')}
           </div>
         </div>

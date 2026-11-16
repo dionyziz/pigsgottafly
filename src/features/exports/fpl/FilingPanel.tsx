@@ -126,7 +126,6 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
         <div className="fpl-filing-record">
           {filing.filed != null && <span>Filed {dateTimeZ(filing.filed)}</span>}
           {filing.eobt != null && <span>EOBT {clockZ(filing.eobt)}</span>}
-          {filing.providerId && <span className="muted">autorouter id {filing.providerId}</span>}
           {filing.polled != null && <span className="muted">checked {dateTimeZ(filing.polled)}</span>}
           {filing.message && <span>{filing.message}</span>}
         </div>

@@ -149,7 +149,7 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
   const sort = useSortable({ count: cards.length, onMove: (from, to) => edit((d) => { d.compassCards = moveAt(d.compassCards, from, to); }) });
   return (
     <Section id="compass" title="Compass swing" actions={<button type="button" className="sm" onClick={add}>+ Add card</button>}>
-      {cards.length === 0 && <p className="muted" style={{ margin: 0 }}>No cards: compass headings equal magnetic headings.</p>}
+      {cards.length === 0 && <p className="muted" style={{ margin: 0 }}>No cards.</p>}
       {cards.map((c, i) => {
         const p = `compassCards.${i}`;
         return (
@@ -170,7 +170,7 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
               <Field label="Expires" issues={issuesAt(issues, `${p}.expires`, true)} hint={c.swung ? <button type="button" className="linkish" onClick={() => cc(i, (x) => { x.expires = addYears(x.swung, 2); })}>Swung + 2 years</button> : undefined}>
                 <DateInput name={`${p}.expires`} value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
               </Field>
-              <Field label="Reference" hint="Report number or who swung it">
+              <Field label="Reference">
                 <input value={c.source} placeholder="optional" onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.source = v; }); }} />
               </Field>
             </div>
@@ -180,8 +180,7 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
               <PointTable name={`${p}.points`} points={c.points} onChange={(pts) => cc(i, (x) => { x.points = pts; })}
                 xLabel="For (MH)" xUnit="°" yLabel="Steer (CH)" yUnit="°" xProps={{ integer: false, min: 0, max: 359.9, width: 76 }} yProps={{ min: 0, max: 359.9, width: 76 }}
                 extra={(q) => { const d = deviationOf(q[0], q[1]); return <span className={Math.abs(d) > 5 ? 'dev big' : 'dev'}>{d > 0 ? '+' : ''}{Math.round(d * 10) / 10}°</span>; }} extraLabel="Dev"
-                addPoint={(pts) => { const last = pts[pts.length - 1]; const f = last ? (last[0] + 30) % 360 : 0; return [f, f]; }}
-                caption="Deviation = steer − for" minRows={0} />
+                addPoint={(pts) => { const last = pts[pts.length - 1]; const f = last ? (last[0] + 30) % 360 : 0; return [f, f]; }} minRows={0} />
               <DeviationCurve points={c.points} />
             </div>
             <IssueList issues={issuesAt(issues, p).filter((x) => !/\.(swung|expires)$/.test(x.path))} />

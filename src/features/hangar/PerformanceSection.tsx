@@ -40,7 +40,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
 
       <div className="sub-h">Take-off</div>
       <div className="grid3">
-        <Field label="Source" wide hint="Your reference, e.g. the flight manual table"><input value={t.source} placeholder="e.g. AFM 5-8 Table 5" onChange={(e) => { const v = e.target.value; pe((q) => { q.takeoff.source = v; }); }} /></Field>
+        <Field label="Source" wide><input value={t.source} placeholder="e.g. AFM 5-8 Table 5" onChange={(e) => { const v = e.target.value; pe((q) => { q.takeoff.source = v; }); }} /></Field>
         <Field label="Flaps"><input value={t.flaps} placeholder="e.g. 0°" onChange={(e) => { const v = e.target.value; pe((q) => { q.takeoff.flaps = v; }); }} /></Field>
       </div>
       {t.rows.length === 0 && !editing ? (
@@ -121,7 +121,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
         <Field label="Temperature correction" hint="Increase per 15 °C above standard">
           <NumInput value={P(t.tempIncreasePer15C)} min={0} max={100} unit="%" onChange={(v) => pe((q) => { q.takeoff.tempIncreasePer15C = (v ?? 0) / 100; })} />
         </Field>
-        <Field label="Dry grass" hint="Added to both distances, as a fraction of the total">
+        <Field label="Dry grass" hint="Fraction of the total distance">
           <NumInput value={P(t.grassAddFractionOfTotal)} min={0} max={100} unit="%" onChange={(v) => pe((q) => { q.takeoff.grassAddFractionOfTotal = (v ?? 0) / 100; })} />
         </Field>
       </div>
@@ -129,7 +129,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
 
       <div className="sub-h">Landing</div>
       <div className="grid3">
-        <Field label="Source" hint="Your reference, e.g. the flight manual table"><input value={l.source} placeholder="e.g. AFM 5-9 Table 6" onChange={(e) => { const v = e.target.value; pe((q) => { q.landing.source = v; }); }} /></Field>
+        <Field label="Source"><input value={l.source} placeholder="e.g. AFM 5-9 Table 6" onChange={(e) => { const v = e.target.value; pe((q) => { q.landing.source = v; }); }} /></Field>
         <Field label="Flaps"><input value={l.flaps} placeholder="e.g. 40°" onChange={(e) => { const v = e.target.value; pe((q) => { q.landing.flaps = v; }); }} /></Field>
         <Field label="Approach IAS"><input value={l.approachIas} placeholder="e.g. 60 kt" onChange={(e) => { const v = e.target.value; pe((q) => { q.landing.approachIas = v; }); }} /></Field>
       </div>
@@ -181,7 +181,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
         <Field label="Temperature correction" hint="Increase per 15 °C above standard">
           <NumInput value={P(l.tempIncreasePer15C)} min={0} max={100} unit="%" onChange={(v) => pe((q) => { q.landing.tempIncreasePer15C = (v ?? 0) / 100; })} />
         </Field>
-        <Field label="Dry grass" hint="Added to both distances, as a fraction of the total">
+        <Field label="Dry grass" hint="Fraction of the total distance">
           <NumInput value={P(l.grassAddFractionOfTotal)} min={0} max={100} unit="%" onChange={(v) => pe((q) => { q.landing.grassAddFractionOfTotal = (v ?? 0) / 100; })} />
         </Field>
       </div>
@@ -195,7 +195,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
 
 function Notes({ notes, onChange, label = 'Notes' }: { notes: string[]; onChange: (n: string[]) => void; label?: string }) {
   return (
-    <Field label={label} hint="One per line">
+    <Field label={label}>
       <textarea rows={Math.max(2, notes.length + 1)} value={notes.join('\n')} onChange={(e) => onChange(e.target.value.split('\n'))} onBlur={(e) => onChange(e.target.value.split('\n').map((x) => x.trim()).filter(Boolean))} />
     </Field>
   );
@@ -210,13 +210,13 @@ function Factors({ a, edit, at }: SectionProps & { at: (p: string) => ReturnType
     <>
       <div className="sub-h">Planning factors</div>
       <div className="grid3">
-        <Field label="Safety factor, take-off" issues={at('performance.factors.safetyFactorTakeoff')} hint="× the corrected distance">
+        <Field label="Safety factor, take-off" issues={at('performance.factors.safetyFactorTakeoff')}>
           <NumInput name="performance.factors.safetyFactorTakeoff" value={f.safetyFactorTakeoff} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.safetyFactorTakeoff = v ?? 0; })} />
         </Field>
-        <Field label="Safety factor, landing" issues={at('performance.factors.safetyFactorLanding')} hint="× the corrected distance">
+        <Field label="Safety factor, landing" issues={at('performance.factors.safetyFactorLanding')}>
           <NumInput name="performance.factors.safetyFactorLanding" value={f.safetyFactorLanding} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.safetyFactorLanding = v ?? 0; })} />
         </Field>
-        <Field label="Slope factor" issues={at('performance.factors.slopeFactorPer2Pct')} hint="Per 2% upslope (take-off) or downslope (landing)">
+        <Field label="Slope factor" issues={at('performance.factors.slopeFactorPer2Pct')} hint="Per 2% adverse slope">
           <NumInput name="performance.factors.slopeFactorPer2Pct" value={f.slopeFactorPer2Pct} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.slopeFactorPer2Pct = v ?? 0; })} />
         </Field>
       </div>

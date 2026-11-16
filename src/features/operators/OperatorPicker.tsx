@@ -67,7 +67,7 @@ export function NewOperatorDialog({ initialName = '', onClose, onCreated }: { in
       footer={<DialogFooter error={error} onCancel={onClose} busy={busy} primary={{ label: 'Create', onClick: () => void submit(), testId: 'new-operator-create' }} />}>
       <form onSubmit={submit} className="stack" noValidate>
         <Field label="Name" req>
-          <input name="operatorName" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} data-autofocus maxLength={200} placeholder="e.g. the club or the owner" />
+          <input name="operatorName" value={name} onChange={(e) => { setName(e.target.value); setError(null); }} data-autofocus maxLength={200} />
         </Field>
         <button type="submit" hidden />
       </form>

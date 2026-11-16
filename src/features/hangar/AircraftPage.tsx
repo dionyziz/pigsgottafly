@@ -184,7 +184,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           <div className="ac-title">
             <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
             <span className="ac-sub">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</span>
-            {isDefault && <Chip tone="ok" title="New flights use this aircraft">Default</Chip>}
+            {isDefault && <Chip tone="ok">Default</Chip>}
             <SharedChip access={aircraft.access} />
             {warnings.length > 0 && (
               <span className="ac-warn">

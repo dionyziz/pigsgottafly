@@ -122,7 +122,7 @@ export function fromAd(z: RefAdAirspace): AirspaceInfo | null {
   else if (z.polygon && z.polygon.length >= 3) ring = closed(z.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
   else return null;
   const notes: string[] = [];
-  if (z.lateralNote) notes.push(`${z.lateralNote} (drawn as the full circle).`);
+  if (z.lateralNote) notes.push(z.lateralNote);
   if (z.verticalNote) notes.push(z.verticalNote);
   if (z.afis) notes.push('Class D only while ATC is provided. AFIS at present: RMZ, class G (see remarks).');
   return {

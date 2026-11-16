@@ -1,9 +1,9 @@
 // NOTAM hover tooltip and click popover on the route map (PLAN-v3 "Map interaction for weather and
-// NOTAMs"): ID, validity and limits on hover; on click the decoded content, the reasons it is shown
-// (or hidden), the affected leg, the raw ICAO text and the source and fetch time.
+// NOTAMs"): ID, validity and limits on hover; on click the decoded content, the affected leg and the
+// raw ICAO text.
 import { useState } from 'react';
 import type { Notam } from '../../../shared/briefing';
-import { fmtNotamTime, notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
+import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
 
 const Badge = ({ n }: { n: Notam }) => <b className={'pgf-air-type t-notam' + (n.relevant ? '' : ' is-hidden')}>NOTAM</b>;
@@ -32,13 +32,11 @@ interface PopProps {
   items: Notam[];
   /** Leg names by index ('LGTT → KARYSTOS'). */
   legName(i: number): string;
-  source: string;
-  fetched: number | null;
   onOpen(key: string): void;
   onClose(): void;
 }
 
-export function NotamPopover({ x, y, items, legName, source, fetched, onOpen, onClose }: PopProps) {
+export function NotamPopover({ x, y, items, legName, onOpen, onClose }: PopProps) {
   const acc = useAccordion(items[0]?.key);
   const [raw, setRaw] = useState(false);
   const toggle = (key: string) => {
@@ -60,14 +58,12 @@ export function NotamPopover({ x, y, items, legName, source, fetched, onOpen, on
             <dt>Valid</dt><dd>{notamValidity(n)}{n.schedule ? <><br />{n.schedule}</> : null}</dd>
             <dt>Vertical</dt><dd>{notamLimits(n)}</dd>
             {n.legIndex !== null && <><dt>Leg</dt><dd>{n.legIndex + 1}: {legName(n.legIndex)}</dd></>}
-            <dt>{n.relevant ? 'Shown' : 'Hidden'}</dt><dd className="pgf-air-text">{n.reasons.join(' · ') || '—'}</dd>
             <dt>Text</dt><dd className="pgf-notam-text">{n.text}</dd>
             <dt>ICAO</dt>
             <dd>
-              <button type="button" className="linkish" onClick={() => setRaw((v) => !v)} aria-expanded={raw}>{raw ? 'Hide' : 'Show'} the NOTAM as issued</button>
+              <button type="button" className="linkish" onClick={() => setRaw((v) => !v)} aria-expanded={raw}>{raw ? 'Hide' : 'Show'}</button>
               {raw && <pre className="pgf-notam-raw">{n.raw}</pre>}
             </dd>
-            <dt>Source</dt><dd className="pgf-air-text">{source}{fetched ? `, fetched ${fmtNotamTime(fetched)}` : ''}</dd>
           </dl>
         </PopItem>
       ))}

@@ -123,7 +123,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
         <fieldset className="ac-fieldset" disabled={readOnly}>
           <Section id="details" title="Details">
             <div className="grid2">
-              {text('name', 'Name', 'Printed as the operator on the GenDec, FPL OPR/ and the W&B sheet', 'e.g. AEROCLUB MESOGEION')}
+              {text('name', 'Name')}
               {text('phone', 'Phone', undefined, '+30 …')}
             </div>
             <div className="grid2">
@@ -140,7 +140,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
               <span data-testid="operator-requires">Requires the W&amp;B and performance sheets before each flight</span>
             </Check>
             {draft.requiresWbPerf && (
-              <Field focus="declarationsEmail" label="Send them to" req hint="Sent from the W&B and performance export, with you in copy">
+              <Field focus="declarationsEmail" label="Send them to" req>
                 <input name="declarationsEmail" type="email" value={draft.declarationsEmail} onChange={(e) => set('declarationsEmail', e.target.value)} maxLength={320} placeholder="ops@example.com" />
               </Field>
             )}
@@ -150,7 +150,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
         <DocumentsSection scope={operatorScope(op.id)} canEdit={!readOnly} text={DOCS_TEXT} />
 
         <Section id="aircraft" title="Aircraft">
-          {op.aircraft.length === 0 ? <p className="muted" style={{ margin: 0 }}>None. Assign an aircraft on its page in the hangar.</p> : (
+          {op.aircraft.length === 0 ? <p className="muted" style={{ margin: 0 }}>None.</p> : (
             <ul className="op-aircraft">{op.aircraft.map((a) => <li key={a.id}><Link to={`/hangar/${a.id}`} className="mono">{a.registration}</Link></li>)}</ul>
           )}
         </Section>
@@ -193,7 +193,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
       {deleting && (
         <ConfirmDialog title={`Delete ${op.name}?`} confirmLabel="Delete" onClose={() => setDeleting(false)}
           onConfirm={async () => { await api.operators.remove(op.id); toast(`Deleted ${op.name}`); navigate('/operators'); }}>
-          Its details and documents are removed. Its aircraft keep “{op.name}” as their operator’s name, without the link.
+          Its details and documents are deleted.
         </ConfirmDialog>
       )}
     </div>

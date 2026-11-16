@@ -49,6 +49,19 @@ export function AboutPage() {
             ['Sunset', 'AIP GEN 2.7 tables, else the NOAA solar calculation'],
           ]} />
         </CardSection>
+        <CardSection id="rules" title="Planning rules" plain>
+          <Rows rows={[
+            ['Leg altitudes', 'Charted VFR route, else the closest charted route (custom points), else the previous leg; pattern altitude on the first and last legs and at stops; clear an altitude to go back to it'],
+            ['Speeds', 'Pattern TAS on the first and last legs, cruise TAS elsewhere; calm wind where there is no forecast'],
+            ['Compass', 'Deviation = steer − for; no card: compass heading = magnetic heading'],
+            ['Fuel', 'Fixed allowance once per flight, plus once per stop; a total fuel on board is the default fuel'],
+            ['W&B', 'Unusable fuel at the fuel arm unless in the empty mass; empty max landing mass = MTOW'],
+            ['Performance', 'Corrected distance × safety factor; slope factor per 2 % adverse slope'],
+            ['Flight plan', 'Item 7 without the hyphen; the operator as OPR/; aircraft RMK/ joins the flight’s RMK/; DOF/, REG/, DEP/, DEST/, ALTN/, EET/ from the flight'],
+            ['Operator sheets', 'W&B and performance as PDF, you in copy; replies go to you'],
+            ['Signing links', 'Shown once; “New link” replaces a lost one'],
+          ]} />
+        </CardSection>
         <CardSection id="maps" title="Maps" plain>
           <Rows rows={[
             ['Base maps', <>{ext('https://openfreemap.org', 'OpenFreeMap')}, {ext('https://www.openstreetmap.org/copyright', 'OpenStreetMap')}, {ext('https://opentopomap.org', 'OpenTopoMap')}</>],

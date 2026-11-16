@@ -89,8 +89,6 @@ export interface RouteMapProps {
   /** The NOTAM picked in the panel or on the map (highlighted). */
   selectedNotam?: string | null;
   onNotamSelect?(key: string | null): void;
-  /** Where the NOTAMs come from and when they were fetched (popover footer). */
-  notamSource?: { source: string; fetched: number | null };
   /** Touch-and-go / stop request per route point uid (FlightOptions.aerodromeRequests). */
   requests?: Record<string, AerodromeRequest>;
   /** Sets (kind) or removes (null) the request on an aerodrome point of the route. */
@@ -527,12 +525,7 @@ export function RouteMap(props: RouteMapProps) {
     btn.type = 'button';
     btn.className = 'pgf-leg-alt' + (alt?.overridden ? ' is-set' : '') + (!isFinite(altFt) ? ' is-unknown' : '');
     btn.textContent = fmtAltitude(altFt);
-    btn.title = alt?.overridden
-      ? 'Altitude set by you. Click to edit; clear it to go back to the default.'
-      : alt?.source === 'vfr-route' ? 'Charted VFR route altitude. Click to edit.'
-        : alt?.source === 'closest-route' ? 'Altitude of the closest charted VFR route. Click to edit.'
-          : alt?.source === 'pattern' ? 'Pattern altitude of the destination. Click to edit.'
-            : !isFinite(altFt) ? 'No default altitude. Click to set one.' : 'Altitude. Click to edit.';
+    btn.title = !isFinite(altFt) ? 'Set altitude' : 'Edit altitude';
     btn.dataset.testid = 'leg-alt';
     stopMapEvents(btn);
     btn.addEventListener('click', (e) => { e.stopPropagation(); startAltEdit(key); });
@@ -558,7 +551,7 @@ export function RouteMap(props: RouteMapProps) {
     input.value = alt && isFinite(alt.altFt) ? String(Math.round(alt.altFt)) : '';
     input.placeholder = 'ft';
     input.inputMode = 'numeric';
-    input.setAttribute('aria-label', 'Leg altitude, feet (empty = default)');
+    input.setAttribute('aria-label', 'Leg altitude, feet');
     input.size = 5;
     stopMapEvents(input);
     let done = false;
@@ -1117,10 +1110,10 @@ export function RouteMap(props: RouteMapProps) {
       : 'Click to place a custom point and name it · Esc to stop'
     : mode === 'draw'
       ? route.length === 0
-        ? 'Click your departure aerodrome to start · points snap to aerodromes, VFR points and your waypoints'
+        ? 'Click your departure aerodrome to start'
         : closing
-          ? `Click to add points before the return to ${closing.name} (they snap) · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
-          : 'Click to add points (they snap) · Shift-click for a custom point · click the last point, Enter or Esc to finish'
+          ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
+          : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
       : route.length >= 2
         ? 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
         : '';
@@ -1167,7 +1160,6 @@ export function RouteMap(props: RouteMapProps) {
         <NotamPopover
           x={notamPop.x} y={notamPop.y} items={notamsOf(notamPop.keys)}
           legName={(i) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '')}
-          source={props.notamSource?.source ?? ''} fetched={props.notamSource?.fetched ?? null}
           onOpen={(k) => props.onNotamSelect?.(k)}
           onClose={() => setNotamPop(null)}
         />

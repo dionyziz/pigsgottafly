@@ -494,8 +494,8 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   }
 
   // speeds
-  if (!(a.cruiseTasKt > 0)) warn('speeds', 'cruiseTasKt', 'Cruise TAS not set: the navlog needs it.');
-  if (!(a.patternTasKt > 0)) warn('speeds', 'patternTasKt', 'Pattern TAS not set: the first and last legs use it.');
+  if (!(a.cruiseTasKt > 0)) warn('speeds', 'cruiseTasKt', 'Cruise TAS not set.');
+  if (!(a.patternTasKt > 0)) warn('speeds', 'patternTasKt', 'Pattern TAS not set.');
   if (a.cruiseTasKt > 0 && a.patternTasKt > a.cruiseTasKt) warn('speeds', 'patternTasKt', 'Pattern TAS is higher than cruise TAS.');
   if (a.climbTasKt != null && a.cruiseTasKt > 0 && a.climbTasKt > a.cruiseTasKt) warn('speeds', 'climbTasKt', 'Climb TAS is higher than cruise TAS.');
 
@@ -503,18 +503,18 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   const f = a.fuel;
   if (!f.types.length) err('fuel', 'fuel.types', 'Give at least one approved fuel.');
   if (new Set(f.types.map((g) => g.type)).size !== f.types.length) err('fuel', 'fuel.types', 'A fuel type is listed twice.');
-  if (!(f.usableL > 0)) warn('fuel', 'fuel.usableL', 'Usable fuel not set: fuel on board cannot be checked.');
+  if (!(f.usableL > 0)) warn('fuel', 'fuel.usableL', 'Usable fuel not set.');
   if (f.totalL > 0 && f.usableL > f.totalL) err('fuel', 'fuel.usableL', 'Usable fuel is more than the total capacity.');
   if (f.totalL > 0 && f.usableL > 0 && Math.abs(f.usableL + f.unusableL - f.totalL) > 0.5 && f.usableL + f.unusableL < f.totalL)
     warn('fuel', 'fuel.totalL', `Usable + unusable (${r2(f.usableL + f.unusableL)} L) is less than the total ${f.totalL} L (fine if the tank option limits usable fuel).`);
   if (f.totalL > 0 && f.usableL + f.unusableL > f.totalL + 0.5) err('fuel', 'fuel.unusableL', `Usable + unusable (${r2(f.usableL + f.unusableL)} L) is more than the total ${f.totalL} L.`);
-  if (!(f.burnLph > 0)) warn('fuel', 'fuel.burnLph', 'Burn rate not set: fuel per leg cannot be computed.');
+  if (!(f.burnLph > 0)) warn('fuel', 'fuel.burnLph', 'Burn rate not set.');
   else if (f.burnLph > 500) err('fuel', 'fuel.burnLph', 'Burn rate looks wrong (over 500 L/h).');
 
   // mass & balance
   const mb = a.massBalance;
   if (!(mb.mtowKg > 0)) warn('mb', 'massBalance.mtowKg', 'MTOW not set.');
-  if (!(mb.emptyMassKg > 0)) warn('mb', 'massBalance.emptyMassKg', 'Empty mass not set: enter it from the weighing report.');
+  if (!(mb.emptyMassKg > 0)) warn('mb', 'massBalance.emptyMassKg', 'Empty mass not set.');
   else {
     if (mb.mtowKg > 0 && mb.emptyMassKg >= mb.mtowKg) err('mb', 'massBalance.emptyMassKg', 'Empty mass is not below MTOW.');
     if (!(mb.emptyArmM > 0)) warn('mb', 'massBalance.emptyArmM', 'Empty CG arm not set.');
@@ -550,9 +550,9 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     if (s.kind === 'baggage' && s.maxKg != null && !(s.maxKg > 0)) err('mb', `${p}.maxKg`, `Max load of ${s.name} must be positive (or empty for no limit).`);
   });
   const fuelStations = mb.stations.filter((s) => s.kind === 'fuel');
-  if (fuelStations.length === 0) warn('mb', 'massBalance.stations', 'No fuel station: W&B needs the fuel arm.');
+  if (fuelStations.length === 0) warn('mb', 'massBalance.stations', 'No fuel station.');
   if (fuelStations.length > 1) err('mb', 'massBalance.stations', 'Only one fuel station is supported.');
-  if (!mb.stations.some((s) => s.kind === 'seat')) warn('mb', 'massBalance.stations', 'No seat stations: the manifest needs seats.');
+  if (!mb.stations.some((s) => s.kind === 'seat')) warn('mb', 'massBalance.stations', 'No seat stations.');
   mb.combinedLimits.forEach((c, i) => {
     const missing = c.stations.filter((id) => !ids.has(id));
     if (missing.length) err('mb', `massBalance.combinedLimits.${i}`, `Combined limit refers to unknown station ${missing.join(', ')}.`);
@@ -606,13 +606,13 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
       if (r.distances.some((hw) => hw.some(([g, tot]) => !(g > 0) || !(tot >= g)))) warn('performance', `performance.takeoff.rows.${i}`, `Take-off ${r.massKg} kg: every distance should be positive and the total at least the ground run.`);
     });
     if (mb.mtowKg > 0 && Math.max(...t.rows.map((r) => r.massKg)) < mb.mtowKg) warn('performance', 'performance.takeoff.rows', 'Take-off table does not reach MTOW: heavier take-offs are extrapolated.');
-  } else warn('performance', 'performance.takeoff', 'No take-off table: take-off distances cannot be computed.');
+  } else warn('performance', 'performance.takeoff', 'No take-off table.');
   const l = a.performance.landing;
   if (l.distances.length) {
     if (!ascending(l.altitudesFt)) err('performance', 'performance.landing.altitudesFt', 'Landing table: pressure altitudes must increase left to right.');
     if (l.standardTempC.length !== l.altitudesFt.length || l.distances.length !== l.altitudesFt.length) err('performance', 'performance.landing', 'Landing table: one temperature and one distance pair per altitude.');
     if (l.distances.some(([g, tot]) => !(g > 0) || !(tot >= g))) warn('performance', 'performance.landing', 'Landing table: every distance should be positive and the total at least the ground roll.');
-  } else warn('performance', 'performance.landing', 'No landing table: landing distances cannot be computed.');
+  } else warn('performance', 'performance.landing', 'No landing table.');
   const pf = a.performance.factors;
   if (!(pf.safetyFactorTakeoff >= 1)) err('performance', 'performance.factors.safetyFactorTakeoff', 'Take-off safety factor must be at least 1.');
   if (!(pf.safetyFactorLanding >= 1)) err('performance', 'performance.factors.safetyFactorLanding', 'Landing safety factor must be at least 1.');
@@ -644,7 +644,7 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     else if (new Set(fors).size !== fors.length) err('compass', `${p}.points`, `${c.name || 'Card'}: a heading is listed twice.`);
     else if (c.points.some(([fo, s]) => Math.abs(deviationOf(fo, s)) > 10)) warn('compass', `${p}.points`, `${c.name}: a deviation is over 10°; check the card.`);
   });
-  if (!a.compassCards.length) warn('compass', 'compassCards', 'No compass card: compass headings equal magnetic headings.');
+  if (!a.compassCards.length) warn('compass', 'compassCards', 'No compass card.');
 
   return out;
 }

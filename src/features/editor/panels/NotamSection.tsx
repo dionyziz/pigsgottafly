@@ -54,12 +54,12 @@ export function NotamSection() {
     >
       <div className="ep-notams" data-testid="notams">
         {error && <p className="ep-note warn-text">{error}</p>}
-        {!briefing && !error && <p className="ep-note muted">{loading ? 'Loading the NOTAM briefing…' : 'Draw a route to load the NOTAMs along it.'}</p>}
+        {!briefing && !error && <p className="ep-note muted">{loading ? 'Loading the NOTAM briefing…' : 'No route.'}</p>}
         {briefing && briefing.status !== 'ok' && <p className="ep-note warn-text" data-testid="notams-status">{briefing.message}</p>}
         {briefing && ok && (
           <>
             <p className="ep-note muted">
-              {briefing.notams.length} NOTAM{briefing.notams.length === 1 ? '' : 's'} for {briefing.locations.join(' ')}, fetched {fmtFetched(briefing.fetched)}
+              {briefing.notams.length} NOTAM{briefing.notams.length === 1 ? '' : 's'}, fetched {fmtFetched(briefing.fetched)}
               {' '}· below {Math.round(briefing.params.maxAltFt)} ft, {briefing.params.corridorNm} NM either side
             </p>
             {briefing.message && <p className="ep-note warn-text">{briefing.message}</p>}

@@ -43,7 +43,6 @@ export function MapView() {
   }, [doc.date, adEffects]);
   const { briefing, showAll, selected: selectedNotam, select: selectNotam } = useNotams();
   const notams = useMemo(() => visibleNotams(briefing, showAll), [briefing, showAll]);
-  const notamSource = useMemo(() => ({ source: briefing?.source === 'autorouter' ? 'autorouter (EAD)' : briefing?.source ?? '', fetched: briefing?.fetched ?? null }), [briefing]);
 
   const requests = useMemo(() => {
     const out: Record<string, AerodromeRequest> = {};
@@ -114,7 +113,6 @@ export function MapView() {
       notams={notams}
       selectedNotam={selectedNotam}
       onNotamSelect={selectNotam}
-      notamSource={notamSource}
       requests={requests}
       onRequest={onRequest}
       aerodromeInfo={aerodromeInfo}

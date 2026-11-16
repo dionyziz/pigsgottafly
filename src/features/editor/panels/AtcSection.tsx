@@ -85,7 +85,7 @@ export function AtcSection() {
   const badge = (
     <>
       <span className="muted">{list.length} units</span>
-      {edited ? <Chip tone={stale ? 'warn' : undefined} title={stale ? 'The route changed since the list was edited' : 'Edited by hand'}>{stale ? 'Outdated' : 'Edited'}</Chip> : null}
+      {edited ? <Chip tone={stale ? 'warn' : undefined}>{stale ? 'Outdated' : 'Edited'}</Chip> : null}
     </>
   );
 
@@ -93,7 +93,7 @@ export function AtcSection() {
   return (
     <Section id="atc" title="ATC" badge={badge} actions={
       <>
-        {edited && <button type="button" className="icon" title="Regenerate from the route (keeps rows you added)" aria-label="Regenerate" onClick={regenerate} data-testid="atc-regenerate"><Icon name="refresh" className="ep-icon" /></button>}
+        {edited && <button type="button" className="icon" title="Regenerate" aria-label="Regenerate" onClick={regenerate} data-testid="atc-regenerate"><Icon name="refresh" className="ep-icon" /></button>}
         <button type="button" className="icon" title="Add a unit" aria-label="Add a unit" onClick={add} data-testid="atc-add"><Icon name="plus" className="ep-icon" /></button>
       </>
     }>

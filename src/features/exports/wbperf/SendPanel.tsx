@@ -60,9 +60,9 @@ export function OperatorSendPanel({ flightId, content }: { flightId: string; con
       )}
     >
       <div className="pgf-note">
-        {op.name} asks for the weight &amp; balance and performance sheets before each flight: they go as PDF to {op.declarationsEmail || <Link to={`/operators/${op.id}?focus=declarationsEmail`}>an address not set yet</Link>}, with you in copy.
+        W&amp;B and performance sheets to {op.declarationsEmail || <Link to={`/operators/${op.id}?focus=declarationsEmail`}>set the address</Link>}
       </div>
-      {sub && <div className="pgf-note" data-testid="operator-send-sent">Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)} (cc you; replies go to you).</div>}
+      {sub && <div className="pgf-note" data-testid="operator-send-sent">Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)}</div>}
       {!st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
       {err && <div className="form-error" role="alert">{err}</div>}
     </Panel>

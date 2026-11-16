@@ -112,7 +112,6 @@ td.drag, th.drag { width: 24px; padding-left: 0; padding-right: 0; }
 .ed-table.stations th { padding-top: 6px; padding-bottom: 6px; }
 .ed-table.stations input, .ed-table.stations select { width: 100%; height: var(--cell-h); box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
 .ed-table.stations .numfield { display: flex; width: 100%; }
-.ed-table.stations .st-id { margin-top: 3px; }
 .ed-table.stations .cell-na { display: block; height: var(--cell-h); line-height: var(--cell-h); color: var(--muted); padding: 0 9px; }
 .ed-table.stations td.num .cell-na { text-align: right; }
 .ed-table.stations .range { display: grid; grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr); align-items: center; gap: 4px; text-align: center; }

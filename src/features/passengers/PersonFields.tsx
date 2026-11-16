@@ -38,7 +38,7 @@ export function PersonFields({ f, set, issues, pilot = false, minimal = false, a
             <DateInput name="dateOfBirth" value={f.dateOfBirth} onChange={(e) => set('dateOfBirth', e.target.value)} />
           </Field>
           <Field label="Weight" issues={issues('weightKg')}>
-            <NumberField name="weightKg" value={f.weightKg} onChange={(v) => set('weightKg', v)} min={WEIGHT_MIN_KG} max={WEIGHT_MAX_KG} unit="kg" placeholder="for W&B" />
+            <NumberField name="weightKg" value={f.weightKg} onChange={(v) => set('weightKg', v)} min={WEIGHT_MIN_KG} max={WEIGHT_MAX_KG} unit="kg" />
           </Field>
           <Field label="Nationality" issues={issues('nationality')}>
             <input {...text('nationality')} placeholder="e.g. GREEK" />

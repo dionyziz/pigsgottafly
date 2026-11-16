@@ -42,7 +42,6 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
   // The checkbox shows the decision in force; ticking it to the automatic value goes back to automatic.
   const handledNow = !g.pilotSends;
   const setHandled = (v: boolean) => run('handled', () => api.forms.setGenDecHandled(flightId, v === !h.autoPilotSends ? null : v));
-  const fromNotams = h.ends.some((e) => /NOTAM/.test(e.reason));
 
   return (
     <Panel
@@ -50,7 +49,7 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
       testId="gendec-send"
       status={(
         <Chip tone={g.pilotSends ? (sub && !sub.changed ? 'ok' : 'warn') : 'ok'} testId="gendec-status">
-          {!g.pilotSends ? 'Handled: the handler submits the General Declaration' : sub ? (sub.changed ? 'Changed since it was sent' : 'Sent') : 'Not sent'}
+          {!g.pilotSends ? 'Handled' : sub ? (sub.changed ? 'Changed since it was sent' : 'Sent') : 'Not sent'}
         </Chip>
       )}
       actions={g.pilotSends && (
@@ -61,7 +60,7 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
         </button>
       )}
     >
-      {sub && <div className="pgf-note">Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)} (cc you; replies go to you).</div>}
+      {sub && <div className="pgf-note">Sent to {sub.to} on {fmtLocalDayTime(sub.sentAt)}</div>}
       {g.pilotSends && !st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
       {h.ends.length > 0 && (
         <ul className="pgf-note pgf-handling" data-testid="gendec-handling">
@@ -75,14 +74,14 @@ export function GenDecSendPanel({ flightId, forms }: { flightId: string; forms: 
       <div className="pgf-note pgf-handled">
         <label>
           <input type="checkbox" checked={handledNow} disabled={!!busy} onChange={(e) => setHandled(e.target.checked)} data-testid="gendec-handled" />{' '}
-          A handler submits the General Declaration for this flight
+          Submitted by a handler
         </label>
         {h.override !== null && (
           <>
             <Chip sm testId="gendec-override">
-              Set for this flight · {fromNotams ? 'AIP and NOTAMs' : 'AIP'}: {h.autoPilotSends ? 'you send it' : 'handled'}
+              Automatic: {h.autoPilotSends ? 'you send it' : 'handled'}
             </Chip>
-            <button type="button" className="linkish" disabled={!!busy} onClick={() => run('handled', () => api.forms.setGenDecHandled(flightId, null))} data-testid="gendec-handled-auto">Use the automatic decision</button>
+            <button type="button" className="linkish" disabled={!!busy} onClick={() => run('handled', () => api.forms.setGenDecHandled(flightId, null))} data-testid="gendec-handled-auto">Use automatic</button>
           </>
         )}
       </div>

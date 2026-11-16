@@ -33,9 +33,7 @@ function SaveState() {
   }, []);
   const s = !online && saveStatus !== 'error' ? 'offline' : saveStatus;
   const text = s === 'saving' ? 'Saving…' : s === 'offline' ? 'Offline · saved on this device' : s === 'error' ? 'Not saved' : 'Saved';
-  const title = s === 'offline'
-    ? 'Your changes are kept on this device and sent when the connection returns.'
-    : s === 'error' ? 'The server rejected the last change. Reload the page to see the saved version.' : undefined;
+  const title = s === 'error' ? 'The server rejected the last change. Reload the page to see the saved version.' : undefined;
   return (
     <span className={'save-state ' + s} data-testid="save-state" title={title} role="status">
       <span className="save-dot" aria-hidden="true" />{text}
