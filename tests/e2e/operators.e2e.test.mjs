@@ -103,6 +103,8 @@ test('an operator that asks for the W&B and performance sheets gets them from th
   await page.waitFor(() => document.querySelector('[data-testid=wbperf-export]')?.dataset.ready === 'true'
     && document.querySelector('[data-testid=operator-send-status]')?.textContent === 'Changed since it was sent', { timeout: 20000 });
   assert.equal(await page.eval(() => document.querySelector('[data-testid=operator-send-button]').textContent), 'Re-send');
+  // a flight's form goes out at most once every 10 minutes (api/_lib/sendCaps.ts): that pause, passed
+  await db.query('UPDATE mail_log SET at = at - 660000 WHERE flight_id = $1', [f.id]);
   await page.click('[data-testid=operator-send-button]');
   await page.waitFor(() => document.querySelector('[data-testid=operator-send-status]')?.textContent === 'Sent');
   assert.equal(sent.length, 2);
