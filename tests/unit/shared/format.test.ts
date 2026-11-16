@@ -1,5 +1,10 @@
 // src/shared/format.ts and src/shared/date.ts: the app's one set of formatters.
 import { describe, expect, it } from 'vitest';
+
+import * as calc from '../../../src/calc';
+import { ApiRequestError } from '../../../src/data/api';
+import { fmtNotamLevel, fmtNotamTime } from '../../../src/data/notams';
+import { aerodromeName, aerodromePoint } from '../../../src/shared/aerodrome';
 import {
   addDays,
   ageOn,
@@ -29,10 +34,6 @@ import {
   fmtSize,
   pad,
 } from '../../../src/shared/format';
-import { aerodromeName, aerodromePoint } from '../../../src/shared/aerodrome';
-import * as calc from '../../../src/calc';
-import { fmtNotamLevel, fmtNotamTime } from '../../../src/data/notams';
-import { ApiRequestError } from '../../../src/data/api';
 
 const T = (iso: string) => Date.parse(iso);
 

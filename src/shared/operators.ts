@@ -9,8 +9,8 @@
 // GET /api/aircraft returns it as Aircraft.operator. An operator may require the W&B and
 // performance sheets before each flight (requiresWbPerf): they are then e-mailed from the export
 // to declarationsEmail (POST /api/flights/:id/declarations/send), the pilot in cc.
-import type { AircraftFile, EpochMs, Id } from './types.js';
 import type { AircraftRole, SharePerson, ShareRole } from './sharing.js';
+import type { AircraftFile, EpochMs, Id } from './types.js';
 
 export interface Operator {
   id: Id;

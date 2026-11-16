@@ -1,10 +1,11 @@
 // Edits made in one tab show up in the others without a reload (src/data/entityStore.ts:
 // BroadcastChannel 'pgf'): the profile's licence number clears the passengers page's
 // "Missing … licence number" in another tab, and a flight renamed in one lobby is renamed in the other.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import test, { after, before } from 'node:test';
+
 import { launch, startServer } from './harness.mjs';
 
 let server, browser, a, b;

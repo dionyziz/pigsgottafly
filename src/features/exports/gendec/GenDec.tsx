@@ -4,8 +4,9 @@
 // Declaration of Health struck through "NIL", the declaration with the PIC's e-signature and the
 // footnotes. The PDF e-mailed to HCAA (api/_lib/formPdf.ts genDecPdf) has the same layout.
 import './gendec.css';
-import { FormWarnings } from '../form731/FormWarnings';
-import { Signature, type ShownSignature } from '../form731/Form731';
+
+import type { ReactNode } from 'react';
+
 import {
   GENDEC_DISINSECT_CONT,
   GENDEC_DISINSECT_LINES,
@@ -13,8 +14,9 @@ import {
   GENDEC_HEALTH_LINES,
 } from '../../../shared/forms';
 import type { FormExportProps } from '../form731/common';
+import { type ShownSignature, Signature } from '../form731/Form731';
+import { FormWarnings } from '../form731/FormWarnings';
 import { genDecModel, ROUTING_ROWS } from './model';
-import type { ReactNode } from 'react';
 
 const DOTS = ' .'.repeat(120);
 /** Size of the Declaration of Health box (mm): the NIL strike runs corner to corner. */

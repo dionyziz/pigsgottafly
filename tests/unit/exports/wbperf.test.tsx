@@ -14,16 +14,25 @@
 // UP to the metre) within 0.75 % or 2 m of the club's, on cases without tailwind (the club credits
 // a tailwind as a headwind: a club bug, see the calc test). Cases where the block fuel exceeds the
 // fuel on board are skipped for landing figures (the club lands with negative fuel; we use 0 L).
-import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+
 import { renderToStaticMarkup } from 'react-dom/server';
-import { fleetSeed } from '../../../tools/build_seed';
-import { REF, SUN_TABLES, runwaysOf } from '../../../src/data/ref';
+import { describe, expect, test } from 'vitest';
+
+import { magneticVariation } from '../../../src/calc';
+import { REF, runwaysOf, SUN_TABLES } from '../../../src/data/ref';
+import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
+import { perfSheetModel } from '../../../src/features/exports/performance/model';
+import { PerfSheet } from '../../../src/features/exports/performance/PerformanceExport';
+import { ktOf, perfSpeeds } from '../../../src/features/exports/performance/speeds';
+import { computeExportCalc, type ExportCalcInput } from '../../../src/features/exports/wb/exportCalc';
+import { cgToMomentOutline, chartDomain, fmtArm, wbSheetModel } from '../../../src/features/exports/wb/model';
+import { WbSheet } from '../../../src/features/exports/wb/WbExport';
 import {
-  emptyFlightDoc,
   type Aircraft,
   type AircraftInput,
+  emptyFlightDoc,
   type FlightCrew,
   type FlightDoc,
   type PersonDetails,
@@ -31,14 +40,7 @@ import {
   type RoutePoint,
 } from '../../../src/shared';
 import type { RefAerodrome, RefRunway } from '../../../src/shared/ref';
-import { magneticVariation } from '../../../src/calc';
-import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
-import { computeExportCalc, type ExportCalcInput } from '../../../src/features/exports/wb/exportCalc';
-import { cgToMomentOutline, chartDomain, fmtArm, wbSheetModel } from '../../../src/features/exports/wb/model';
-import { WbSheet } from '../../../src/features/exports/wb/WbExport';
-import { perfSheetModel } from '../../../src/features/exports/performance/model';
-import { PerfSheet } from '../../../src/features/exports/performance/PerformanceExport';
-import { ktOf, perfSpeeds } from '../../../src/features/exports/performance/speeds';
+import { fleetSeed } from '../../../tools/build_seed';
 
 // ---------------------------------------------------------------------------------------------
 // fixtures

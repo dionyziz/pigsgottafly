@@ -1,27 +1,27 @@
 // The editor's take-off & landing cards and the MD 4.4 export share one verdict (calc/perfVerdict):
 // an overweight or extrapolated take-off must never read 'Fits' in the editor while the export says FAIL.
 import { describe, expect, test } from 'vitest';
-import { fleetSeed } from '../../../tools/build_seed';
-import { REF, SUN_TABLES, aerodrome, runwaysOf } from '../../../src/data/ref';
+
+import { perfVerdict } from '../../../src/calc/perfVerdict';
+import { aerodrome, REF, runwaysOf, SUN_TABLES } from '../../../src/data/ref';
+import type { EndpointCalc } from '../../../src/features/editor/panels/calc';
+import { endpointVerdict } from '../../../src/features/editor/panels/PerformanceSection';
+import { perfSheetModel } from '../../../src/features/exports/performance/model';
+import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
 import {
-  emptyFlightDoc,
   type Aircraft,
-  type AircraftInput,
+  emptyFlightDoc,
   type FlightCrew,
   type FlightDoc,
   type PersonDetails,
   type Pilot,
   type RoutePoint,
 } from '../../../src/shared';
-import { perfVerdict } from '../../../src/calc/perfVerdict';
-import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
-import { perfSheetModel } from '../../../src/features/exports/performance/model';
-import { endpointVerdict } from '../../../src/features/editor/panels/PerformanceSection';
-import type { EndpointCalc } from '../../../src/features/editor/panels/calc';
+import { fleetSeed } from '../../../tools/build_seed';
 
 const fleet = fleetSeed();
 const asAircraft = (i: number, id: string): Aircraft => ({
-  ...structuredClone(fleet[i] as AircraftInput),
+  ...structuredClone(fleet[i]),
   id,
   created: 0,
   updated: 0,
@@ -120,7 +120,7 @@ function editorEndpoint(e: ReturnType<typeof calcOf>['departure']): EndpointCalc
     massKg: e.massKg,
     massSource: e.massSource,
     massReason: e.massReason ?? null,
-  } as EndpointCalc;
+  };
 }
 
 describe('editor take-off & landing verdict matches the MD 4.4 export', () => {

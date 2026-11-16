@@ -3,9 +3,10 @@
 //   node --import tsx tests/e2e/shots-weather.mjs <outdir>
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, startServer } from './harness.mjs';
-import { fakeOpenMeteo } from '../helpers/openMeteoGrid.ts';
+
 import { fleetSeed } from '../../tools/build_seed.ts';
+import { fakeOpenMeteo } from '../helpers/openMeteoGrid.ts';
+import { launch, startServer } from './harness.mjs';
 
 const out = process.argv[2] || 'tests/e2e/artifacts';
 fs.mkdirSync(out, { recursive: true });

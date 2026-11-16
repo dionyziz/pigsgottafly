@@ -13,12 +13,13 @@
 // No request bodies are stored; messages and stacks are scrubbed of e-mail addresses and tokens, and
 // routes are path patterns (ids replaced), so a group holds no personal data beyond a pilot id.
 import crypto from 'node:crypto';
+
+import { type AppErrorKind, scrubText, scrubUrl } from '../../src/shared/monitoring.js';
 import type { Db, Queryable } from './db.js';
 import { mailAvailability, sendSystemMail } from './mail.js';
-import { migrate, MIGRATIONS, type Migration } from './migrate.js';
+import { migrate, type Migration, MIGRATIONS } from './migrate.js';
 import { MONITOR_SCHEMA } from './migrations/040_app_errors.js';
 import { RATES } from './rateLimit.js';
-import { scrubText, scrubUrl, type AppErrorKind } from '../../src/shared/monitoring.js';
 
 export const ALERT_GAP_MS = 60 * 60 * 1000;
 export const DAILY_ALERT_CAP = 20;

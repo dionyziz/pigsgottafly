@@ -2,8 +2,9 @@
 // https://www.ncei.noaa.gov/products/world-magnetic-model). Declination and inclination are published
 // to 0.01 deg; X, Y, Z to 1e-6 nT.
 import { expect, test } from 'vitest';
-import { WMM_IS_STUB, decimalYear, magneticVariation, wmmField, wmmValid } from '../../../src/calc/wmm';
+
 import { buildLegs } from '../../../src/calc/legs';
+import { decimalYear, magneticVariation, WMM_IS_STUB, wmmField, wmmValid } from '../../../src/calc/wmm';
 import { midpoint } from './navlog.oracle';
 
 // year, height km, geodetic lat, lon, D deg, I deg, X nT, Y nT, Z nT, F nT

@@ -1,15 +1,16 @@
 // Weight and balance: hand-computed loading sheets for the seeded SX-ASV / SX-ASG, envelope checks,
 // station/combined/seat limits and the utility category rules.
 import { describe, expect, test } from 'vitest';
-import { fleetSeed } from '../../../tools/build_seed';
+
 import {
-  weightAndBalance,
+  insidePolygon,
+  performanceMass,
+  type WbInput,
   wbLoadsFromManifest,
   wbStatus,
-  performanceMass,
-  insidePolygon,
-  type WbInput,
+  weightAndBalance,
 } from '../../../src/calc';
+import { fleetSeed } from '../../../tools/build_seed';
 
 const [ASV, ASG] = fleetSeed();
 

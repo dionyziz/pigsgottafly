@@ -7,8 +7,9 @@
 // Those refetches run in the background: `loading` stays false and the current data stays shown;
 // a failed background refetch keeps the data and is not reported.
 // For the pilot's passengers, aircraft, waypoints and profile, prefer useEntity (src/data/entities.ts).
-import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
-import { onInvalidate, onRevalidate, type EntityKey } from './entityStore';
+import { type DependencyList,useCallback, useEffect, useRef, useState } from 'react';
+
+import { type EntityKey,onInvalidate, onRevalidate } from './entityStore';
 
 export interface UseAsyncOptions {
   refetchOnFocus?: boolean;

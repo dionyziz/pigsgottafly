@@ -1,6 +1,6 @@
 // ATC list generation on real routes, against the AIRAC reference data.
 import { describe, expect, test } from 'vitest';
-import { REF, aerodrome, vfrPoint } from '../../../src/data/ref';
+
 import {
   aerodromeUnits,
   atcEntryLegs,
@@ -13,8 +13,9 @@ import {
   regenerateAtcList,
   shortUnit,
 } from '../../../src/data/atc';
-import type { AtcEntry, RoutePoint } from '../../../src/shared/types';
+import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
 import type { RefAirspace } from '../../../src/shared/ref';
+import type { AtcEntry, RoutePoint } from '../../../src/shared/types';
 
 const ad = (icao: string): RoutePoint => {
   const a = aerodrome(icao)!;

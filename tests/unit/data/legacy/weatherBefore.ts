@@ -3,12 +3,12 @@
 // winds at the exact leg midpoints, hazards at 0.25° cells. Used only by weatherEquivalence.test.ts
 // to prove the new path (GET /api/weather/grid) gives identical winds, temperatures and hazards.
 // Do not change it.
+import type { HazardSample } from '../../../../src/calc';
+import { type GridCell, gridCell, hazardSeries, type HazardWeather, type HazardWeatherRequest,legCorridor } from '../../../../src/data/hazardWeather';
+import { type Hourly, LEVELS, type OpenMeteoEndpoint, type OpenMeteoLocation, type RouteWeather,SURFACE } from '../../../../src/data/weather';
 import type { IsoDate, LatLon, WindModel } from '../../../../src/shared';
 import { WIND_MODELS } from '../../../../src/shared';
 import { isoDay } from '../../../../src/shared/date';
-import type { HazardSample } from '../../../../src/calc';
-import { gridCell, hazardSeries, legCorridor, type GridCell, type HazardWeather, type HazardWeatherRequest } from '../../../../src/data/hazardWeather';
-import { LEVELS, SURFACE, type Hourly, type OpenMeteoEndpoint, type OpenMeteoLocation, type RouteWeather } from '../../../../src/data/weather';
 
 const DEFAULT_MODEL: WindModel = 'ecmwf_ifs025';
 const MODEL_LABELS = WIND_MODELS;

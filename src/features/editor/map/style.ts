@@ -1,6 +1,7 @@
 // Map style: keyless raster base maps, the optional openflightmaps aero overlay, and the VFR-chart
 // vector layers drawn from our reference data, plus the route layers.
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
+
 import type { BaseMapId } from '../../../shared/mapLayers';
 
 /** Chart palette (kept close to ICAO VFR charts, calm against the light base map). The values are the
@@ -209,7 +210,7 @@ export function buildStyle(
             ...l,
             id,
             layout: { ...((l as { layout?: object }).layout ?? {}), visibility: vis(b.id, visible) },
-          } as LayerSpecification);
+          });
         }
       } else {
         // offline / unreachable: OSM raster tiles stand in

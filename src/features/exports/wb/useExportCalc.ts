@@ -2,12 +2,13 @@
 // winds aloft and surface forecast, METAR when the flight is near), through computeExportCalc. The
 // weather comes from useFlightWeather, as for the navlog and the editor, so the printouts agree.
 import { useMemo, useState } from 'react';
-import type { Aircraft, Flight, Pilot } from '../../../shared';
+
 import { usePilot } from '../../../app/session';
-import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
+import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { RouteWeather } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
+import type { Aircraft, Flight, Pilot } from '../../../shared';
 import { useFlightAircraft } from '../useExportData';
 import { computeExportCalc, type ExportCalc } from './exportCalc';
 
@@ -19,7 +20,7 @@ export interface ExportCalcState {
   metar: MetarTafResult | null;
   /** Winds/surface forecast still loading. */
   weatherPending: boolean;
-  refresh(): void;
+  refresh: () => void;
   calc: ExportCalc | null;
   nowMs: number;
 }

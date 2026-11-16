@@ -3,15 +3,16 @@
 // "Show all (N hidden)" with the reason each is hidden. Picking one highlights its area on the map
 // and its leg in the navlog strip.
 import { useEffect, useRef, useState } from 'react';
-import { notamLimits, notamSubject, notamValidity, notamWhere, visibleNotams, type Notam } from '../../../data/notams';
-import { useNotams } from '../notams';
+
+import { type Notam, notamLimits, notamSubject, notamValidity, notamWhere, visibleNotams } from '../../../data/notams';
 import { fmtClockMs } from '../../../shared/format';
 import { Chip, Icon } from '../../../ui';
+import { useNotams } from '../notams';
 import { Section } from './ui';
 
 const fmtFetched = (ms: number | null): string => (ms ? fmtClockMs(ms, { z: true }) : '');
 
-function NotamItem({ n, selected, onSelect }: { n: Notam; selected: boolean; onSelect(): void }) {
+function NotamItem({ n, selected, onSelect }: { n: Notam; selected: boolean; onSelect: () => void }) {
   const [raw, setRaw] = useState(false);
   const el = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -63,8 +64,8 @@ export function NotamSection() {
     loading && !briefing ? (
       <span className="muted">Loading…</span>
     ) : ok ? (
-      briefing!.relevantCount ? (
-        <Chip tone="warn">{briefing!.relevantCount}</Chip>
+      briefing.relevantCount ? (
+        <Chip tone="warn">{briefing.relevantCount}</Chip>
       ) : (
         <span className="muted">none relevant</span>
       )

@@ -1,6 +1,7 @@
 // planFuel: hand-computed references.
 import { describe, expect, test } from 'vitest';
-import { isLocalFlight, litresFor, minutesFor, planFuel, type FuelPlanInput } from '../../../src/calc';
+
+import { type FuelPlanInput, isLocalFlight, litresFor, minutesFor, planFuel } from '../../../src/calc';
 
 const base: FuelPlanInput = {
   tripFuelL: 13,

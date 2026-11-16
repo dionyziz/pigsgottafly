@@ -19,38 +19,38 @@
 //     a wind typed in the editor (override) is printed.
 //   - Rounding is that of the paper sheet (calc/nav.ts computeLeg, summarize).
 // Weather sources (winds aloft model run, METAR or forecast at each end) are listed on screen only.
-import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { requestTiming } from '../../../shared';
-import { fmtEte } from '../../../shared/format';
-import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import {
   buildLegs,
+  computeNavlog,
   defaultAltitudes,
   fmtAltitude,
   fmtClock,
   fmtHdg,
   fmtSigned,
+  type FuelPlan,
   isLocalFlight,
+  type LegGeometry,
   magneticVariation,
   navlogAircraft,
-  planFuel,
-  computeNavlog,
-  type FuelPlan,
-  type LegGeometry,
   type NavlogResult,
+  planFuel,
 } from '../../../calc';
 import { atcEntryLegs, endpointAerodrome } from '../../../data/atc';
 import {
   chooseSurface,
-  sampleSurface,
-  surfaceConditions,
-  windProviderFromLegs,
   fmtSky,
   type RouteWeather,
+  sampleSurface,
   type SurfaceConditions,
+  surfaceConditions,
   type SurfaceSample,
+  windProviderFromLegs,
 } from '../../../data/weather';
 import type { MetarTafResult, ParsedMetar } from '../../../data/weatherMetar';
+import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
+import { requestTiming } from '../../../shared';
+import { fmtEte } from '../../../shared/format';
+import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 
 export const LEGS_PER_SHEET = 9;
 /** Rows of the terminal information table (at least; more rows shrink to fit the same height). */
@@ -94,7 +94,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     timing.patternPoints,
   );
   const altitudesFt = defaults.map((d, i) =>
-    typeof altOverrides[i] === 'number' && isFinite(altOverrides[i]!) ? altOverrides[i]! : d.altFt,
+    typeof altOverrides[i] === 'number' && isFinite(altOverrides[i]) ? altOverrides[i] : d.altFt,
   );
   const ac = aircraft
     ? navlogAircraft(aircraft, doc.options.compassCard)
@@ -260,7 +260,7 @@ export function fmtSurfaceWind(c: SurfaceConditions | null): string {
     w.dirTrueDeg === null
       ? 'VRB'
       : String(
-          c!.source === 'forecast' ? (Math.round(w.dirTrueDeg / 10) * 10) % 360 || 360 : Math.round(w.dirTrueDeg),
+          c.source === 'forecast' ? (Math.round(w.dirTrueDeg / 10) * 10) % 360 || 360 : Math.round(w.dirTrueDeg),
         ).padStart(3, '0');
   return `${dir}${String(spd).padStart(2, '0')}${g}KT`;
 }

@@ -1,11 +1,12 @@
 // GeoJSON for the map layers, built from the reference data, the pilot's waypoints and the route.
 // Pure (no map), unit-tested.
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
+
 import type { RoutePoint, Waypoint } from '../../../shared';
 import type { RefAerodrome, RefAirspace, RefFir, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
-import { aerodromeName } from './snap';
+import { type AirspaceInfo, airspaceLabel, fmtVertical, isArea } from './airspace';
 import { mercatorMid } from './routeEdit';
-import { airspaceLabel, fmtVertical, isArea, type AirspaceInfo } from './airspace';
+import { aerodromeName } from './snap';
 
 export type FC<G extends Point | LineString | Polygon = Point | LineString | Polygon> = FeatureCollection<
   G,
@@ -16,7 +17,7 @@ const fc = <G extends Point | LineString | Polygon>(features: Feature<G, Record<
   features,
 });
 
-export { destination, circleRing } from './airspace';
+export { circleRing, destination } from './airspace';
 
 /** Runway direction of the first published runway pair ('03/21' → 30), or null. */
 export function runwayHeading(a: RefAerodrome): number | null {

@@ -1,10 +1,11 @@
 // Client NOTAM helpers (src/data/notams.ts), the map areas (editor/map/notamLayer.ts) and the
 // briefing export model (exports/briefing/model.ts).
 import { describe, expect, test } from 'vitest';
+
+import { distanceNm } from '../../../src/calc';
 import {
   circleRing, fmtNotamLevel, hasNotamArea, notamLimits, notamsPath, notamSubject, notamValidity, notamWhere, visibleNotams,
 } from '../../../src/data/notams';
-import { distanceNm } from '../../../src/calc';
 import { mapNotams } from '../../../src/features/editor/map/notamLayer';
 import { briefingModel } from '../../../src/features/exports/briefing/model';
 import { emptyFlightDoc, type RoutePoint } from '../../../src/shared';

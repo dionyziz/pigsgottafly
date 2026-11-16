@@ -3,17 +3,19 @@
 // enabled yet" states, file / delay / cancel / refresh, the action log, and AFTN addressees
 // (AIP Greece ENR 1.11).
 import type { AddressInfo } from 'node:net';
+
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { createServer } from '../../server/server';
-import type { AutorouterSettings } from '../../api/_lib/autorouter';
+
 import { generateAddressees, northOfBoundary } from '../../api/_lib/addressees';
+import type { AutorouterSettings } from '../../api/_lib/autorouter';
 import { normalizeNotam } from '../../api/_lib/notams';
-import { client, JWK, CID, type Client } from './helpers';
-import fis from '../../src/data/ref/fis.json';
+import { createServer } from '../../server/server';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import airspaces from '../../src/data/ref/airspaces.json';
+import fis from '../../src/data/ref/fis.json';
 import type { RefAerodrome, RefAirspace, RefFis } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
+import { CID, type Client, client, JWK } from './helpers';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const SPACES = ((airspaces as any).airspaces ?? airspaces) as RefAirspace[];

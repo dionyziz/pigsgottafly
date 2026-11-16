@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 // The React side of the data layer: useEntity, useAsync's refetch options, request sequencing, and
 // the session pilot that follows profile changes made anywhere (the stale "missing licence number").
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { AuthGate } from '../../../src/app/AuthGate';
+import { useSession } from '../../../src/app/session';
 import { api } from '../../../src/data/api';
 import { invalidate, onInvalidate, putEntity, useEntity } from '../../../src/data/entities';
 import { __resetEntityStoreForTests, CHANNEL_NAME, registerFetcher, revalidate } from '../../../src/data/entityStore';
-import { useAsync } from '../../../src/data/useAsync';
 import { latestOnly, sequencer } from '../../../src/data/sequence';
-import { AuthGate } from '../../../src/app/AuthGate';
-import { useSession } from '../../../src/app/session';
+import { useAsync } from '../../../src/data/useAsync';
 import type { Passenger, Pilot, SessionResponse } from '../../../src/shared';
 
 function deferred<T>() {
@@ -182,7 +183,7 @@ describe('session pilot freshness', () => {
       </>
     );
   }
-  const session = (p: Pilot): SessionResponse => ({ authed: true, mode: 'local', googleClientId: null, pilot: p }) as SessionResponse;
+  const session = (p: Pilot): SessionResponse => ({ authed: true, mode: 'local', googleClientId: null, pilot: p });
 
   it('clears the warning when the profile changes through the API layer (same tab)', async () => {
     vi.spyOn(api, 'session').mockResolvedValue(session(pilot()));

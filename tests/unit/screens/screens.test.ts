@@ -1,14 +1,14 @@
 // Pure helpers of the lobby and the account list pages.
 import { describe, expect, it } from 'vitest';
-import { flightSearchText, matchesQuery, splitFlights } from '../../../src/features/lobby/format';
-import { ageOn, daysBetween, fmtDate, relativeDay, utcToLocal } from '../../../src/shared/date';
-import { fmtDuration } from '../../../src/shared/format';
-import { DEFAULT_MAP_LAYERS } from '../../../src/shared/mapLayers';
-import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
+
 import { resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
-import { formOf, toUpdate, validateProfile, type ProfileForm } from '../../../src/features/profile/ProfilePage';
-import { passengerInputOf, passengerForm } from '../../../src/features/passengers/person';
+import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
+import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
+import { flightSearchText, matchesQuery, splitFlights } from '../../../src/features/lobby/format';
+import { passengerForm, passengerInputOf } from '../../../src/features/passengers/person';
 import { personForm, validatePerson } from '../../../src/features/passengers/person';
+import { formOf, type ProfileForm, toUpdate, validateProfile } from '../../../src/features/profile/ProfilePage';
+import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
 import { validateWaypoint } from '../../../src/features/waypoints/WaypointsPage';
 import {
   EMPTY_PERSON,
@@ -18,8 +18,9 @@ import {
   type Pilot,
   type Waypoint,
 } from '../../../src/shared';
-import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
-import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
+import { ageOn, daysBetween, fmtDate, relativeDay, utcToLocal } from '../../../src/shared/date';
+import { fmtDuration } from '../../../src/shared/format';
+import { DEFAULT_MAP_LAYERS } from '../../../src/shared/mapLayers';
 
 const item = (
   id: string,

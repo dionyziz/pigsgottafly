@@ -5,6 +5,7 @@
 //                       calls onChange.
 //   AerodromeTextInput  controlled by the text (the caller resolves it with resolveAerodrome()).
 import { useEffect, useMemo, useState } from 'react';
+
 import { resolveAerodrome, searchAerodromes } from '../data/ref';
 import type { RefAerodrome } from '../shared/ref';
 import { Combobox } from './Combobox';

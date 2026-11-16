@@ -3,37 +3,38 @@
 // fuel-burn line (review finding: 'T/O …' drawn on 'NORMAL CATEGORY'); the sheet prints no file
 // paths and no seat arm that contradicts its own table; a moment envelope topping out below the
 // category maximum is explained.
-import { describe, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { fleetSeed } from '../../../tools/build_seed';
-import { REF, SUN_TABLES, runwaysOf } from '../../../src/data/ref';
+import { describe, expect, test } from 'vitest';
+
+import { REF, runwaysOf, SUN_TABLES } from '../../../src/data/ref';
 import {
-  emptyFlightDoc,
+  type Box,
+  layoutChartLabels,
+  overlapArea,
+  segmentInBox,
+  spanAt,
+  textWidth,
+} from '../../../src/features/exports/wb/chartLayout';
+import { type ChartPoint, envelopeChartGeometry } from '../../../src/features/exports/wb/EnvelopeChart';
+import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
+import {
+  envelopeNote,
+  momentTopNote,
+  printableSource,
+  type WbSheetModel,
+  wbSheetModel,
+} from '../../../src/features/exports/wb/model';
+import { WbSheet } from '../../../src/features/exports/wb/WbExport';
+import {
   type Aircraft,
+  emptyFlightDoc,
   type FlightCrew,
   type FlightDoc,
   type PersonDetails,
   type Pilot,
   type RoutePoint,
 } from '../../../src/shared';
-import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
-import {
-  envelopeNote,
-  momentTopNote,
-  printableSource,
-  wbSheetModel,
-  type WbSheetModel,
-} from '../../../src/features/exports/wb/model';
-import { WbSheet } from '../../../src/features/exports/wb/WbExport';
-import { envelopeChartGeometry, type ChartPoint } from '../../../src/features/exports/wb/EnvelopeChart';
-import {
-  layoutChartLabels,
-  overlapArea,
-  segmentInBox,
-  spanAt,
-  textWidth,
-  type Box,
-} from '../../../src/features/exports/wb/chartLayout';
+import { fleetSeed } from '../../../tools/build_seed';
 
 const ASV: Aircraft = { ...structuredClone(fleetSeed()[0]), id: 'ac_asv', created: 0, updated: 0 };
 const person = (fullName: string, weightKg: number | null): PersonDetails => ({

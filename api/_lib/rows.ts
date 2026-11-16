@@ -1,4 +1,6 @@
 // Database rows ↔ API entities, and input sanitising for writes.
+import { DEFAULT_FLIGHT_OPTIONS, DEFAULT_SETTINGS, EMPTY_SUMMARY } from '../../src/shared/constants.js';
+import { normalizeFuelSpec } from '../../src/shared/fuel.js';
 import type {
   Aircraft,
   AircraftInput,
@@ -12,10 +14,8 @@ import type {
   Waypoint,
   WaypointInput,
 } from '../../src/shared/types.js';
-import { DEFAULT_SETTINGS, DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY } from '../../src/shared/constants.js';
-import { normalizeFuelSpec } from '../../src/shared/fuel.js';
-import { badRequest } from './http.js';
 import { checkCompassCards, checkEquipment, checkFuel, checkMassBalance, checkPerformance } from './aircraftDoc.js';
+import { badRequest } from './http.js';
 
 type Row = Record<string, any>;
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));

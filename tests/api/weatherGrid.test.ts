@@ -1,22 +1,24 @@
 // GET /api/weather/grid (api/_lib/routes/weatherGrid.ts): the forecast proxy with its shared cache
 // (migration 044), model runs, batching, the daily budget and the per-pilot limits, against the fake
 // Open-Meteo of tests/helpers/openMeteoGrid.ts (recorded ECMWF data).
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { AddressInfo } from 'node:net';
-import { createServer } from '../../server/server';
-import { openDb, type Db } from '../../api/_lib/db';
+
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+
+import { type Db, openDb } from '../../api/_lib/db';
+import type { HttpError } from '../../api/_lib/http';
 import {
   cleanupWeatherCache,
   createWeatherGrid,
+  joinDays,
   parseGridQuery,
   splitByDay,
-  joinDays,
   weightOf,
 } from '../../api/_lib/routes/weatherGrid';
-import { HttpError } from '../../api/_lib/http';
+import { createServer } from '../../server/server';
 import type { WeatherGridResponse } from '../../src/shared/weatherGrid';
-import { CID, JWK, client } from './helpers';
 import { fakeOpenMeteo, META } from '../helpers/openMeteoGrid';
+import { CID, client, JWK } from './helpers';
 
 const T = (s: string) => Date.parse(s);
 const NOW = T('2026-11-15T13:36:00Z');
@@ -209,9 +211,9 @@ describe('limits and failures', () => {
     expect(b.locations['35,24']).not.toBeNull();
     // no answer at all (network), after one retry
     const down = createWeatherGrid({
-      fetch: (async () => {
+      fetch: async () => {
         throw new TypeError('fetch failed');
-      }) as typeof fetch,
+      },
       now: () => NOW,
     });
     const c = await down.serve(db, wind(['35.25,24']), who);

@@ -1,8 +1,8 @@
 // The NOTAM briefing export: the server's briefing for the saved flight (GET
 // /api/flights/:id/notams) laid out for print. Pure: no I/O, no DOM.
+import { fmtNotamTime, notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 import type { FlightDoc } from '../../../shared';
 import type { Notam, NotamBriefing } from '../../../shared/briefing';
-import { fmtNotamTime, notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 
 export interface BriefingRow {
   key: string;

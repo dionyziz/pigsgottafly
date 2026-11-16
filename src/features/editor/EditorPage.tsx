@@ -3,24 +3,26 @@
 // This page loads the flight, shows the editable title and save state, and wires undo/redo.
 // Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job,
 // driven by EditorProvider.update().
-import { useResizable } from './resizable';
+import './editor.css';
+import './panels/panels.css';
+
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { useSession } from '../../app/session';
+
 import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
+import { useSession } from '../../app/session';
 import { ApiRequestError } from '../../data/api';
-import { flightStore } from '../../data/flightStore';
 import { useEntity } from '../../data/entities';
-import { autoTitle, type Aircraft, type Flight, type FlightDoc, type Passenger, type Waypoint } from '../../shared';
+import { flightStore } from '../../data/flightStore';
+import { autoTitle, type Flight, type FlightDoc } from '../../shared';
 import { Icon, Loading } from '../../ui';
 import { onEditorFocus } from './focus';
-import { EditorProvider, useEditor } from './state';
 import { MapView } from './map';
 import { NotamProvider } from './notams';
 import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
-import './editor.css';
-import './panels/panels.css';
+import { useResizable } from './resizable';
+import { EditorProvider, useEditor } from './state';
 
 function SaveState() {
   const { saveStatus } = useEditor();
@@ -214,9 +216,9 @@ export function EditorPage() {
       flight={state.flight}
       initialDoc={state.doc}
       pilot={pilot}
-      hangar={(hangar.data ?? NONE) as Aircraft[]}
-      passengers={passengers.data ?? (NONE as Passenger[])}
-      waypoints={waypoints.data ?? (NONE as Waypoint[])}
+      hangar={hangar.data ?? NONE}
+      passengers={passengers.data ?? NONE}
+      waypoints={waypoints.data ?? NONE}
       passengersLoaded={passengers.data !== undefined}
       reloadLists={reloadLists}
     >
@@ -291,7 +293,7 @@ function ResizablePanel() {
     onCollapse: () => setCollapsed(true),
   });
   // a warning's fix focuses a field of the panel: show the panel first
-  useEffect(() => onEditorFocus(() => setCollapsed(false)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => onEditorFocus(() => setCollapsed(false)), []);
   const label = collapsed ? 'Show the flight panel' : 'Hide the flight panel';
   return (
     <>

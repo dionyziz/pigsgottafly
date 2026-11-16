@@ -5,13 +5,13 @@
 // briefing says so ('not-configured') instead of showing an incomplete list.
 // The last briefing is stored per flight (flight_notams): served again for 10 minutes while the
 // query is unchanged, and as a fallback (with a message) when the source fails.
-import { rateLimit } from '../rateLimit.js';
-import type { Route } from '../http.js';
-import { badRequest } from '../http.js';
 import type { Notam, NotamBriefing } from '../../../src/shared/briefing.js';
 import { AutorouterError } from '../autorouter.js';
 import { aerodromesNear, flightContext } from '../flightContext.js';
+import type { Route } from '../http.js';
+import { badRequest } from '../http.js';
 import { assessNotams, normalizeNotam } from '../notams.js';
+import { rateLimit } from '../rateLimit.js';
 
 export const NOTAM_TTL_MS = 10 * 60e3;
 export const DEFAULT_CORRIDOR_NM = 10;

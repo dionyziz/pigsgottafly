@@ -1,22 +1,24 @@
 // Passengers: the pilot's list of people who may fly with them (search, add, edit, delete: the bin
 // on the row or Delete in the dialog, confirmed, with Undo). These are added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
 // The pilot is listed first (PIC) and edited with the same form, saved to the profile.
+import './passengers.css';
+import '../lobby/lists.css';
+
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Shell } from '../../app/Shell';
+
 import { usePilot } from '../../app/session';
+import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import type { Passenger, PassengerInput, PersonDetails, Pilot } from '../../shared';
-import { errorMessage } from '../../shared/format';
 import { ageOn, fmtDate, localToday } from '../../shared/date';
-import { AsyncView, Chip, ConfirmDialog, EmptyState, Icon, SearchBox, rowClick } from '../../ui';
+import { errorMessage } from '../../shared/format';
+import { AsyncView, Chip, ConfirmDialog, EmptyState, Icon, rowClick, SearchBox } from '../../ui';
 import { matchesQuery } from '../lobby/format';
 import { PassengerDialog, PilotDetailsDialog } from './PassengerDialog';
-import './passengers.css';
 import type { PersonField } from './person';
-import '../lobby/lists.css';
 
 const searchText = (p: PersonDetails & { notes?: string }) =>
   [p.fullName, p.phone, p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();

@@ -36,8 +36,8 @@
 // lightest row is used; below 0 ft the 0 ft column is used (no extrapolation to shorter distances).
 // The AFM grass increments (+7 %/+20 % of the total) are NOT added: the club's surface factors
 // (short dry grass ×1.2, …) replace them.
-import type { PerformanceTables, DistancePair } from '../shared/types.js';
 import type { RefRunway } from '../shared/ref.js';
+import type { DistancePair, PerformanceTables } from '../shared/types.js';
 import { norm180, norm360, rad } from './nav.js';
 
 /** 'da': AFM table at density altitude with the planning factors (the default); 'afm': the AFM method at pressure altitude. */

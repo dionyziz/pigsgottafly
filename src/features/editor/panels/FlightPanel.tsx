@@ -2,8 +2,9 @@
 // Flight plan (alternates, remarks), Documents. Numbers come from useFlightCalc() (src/calc); edits
 // go through useEditor().update().
 import { useState } from 'react';
-import { EXPORT_KINDS, EXPORT_LABEL } from '../../../shared';
+
 import { flightStore } from '../../../data/flightStore';
+import { EXPORT_KINDS, EXPORT_LABEL } from '../../../shared';
 import { Chip, Icon, WarningList } from '../../../ui';
 import { editorWarningFix } from '../focus';
 import { useEditor } from '../state';

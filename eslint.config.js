@@ -2,10 +2,10 @@
 // Formatting is Prettier's (eslint-config-prettier turns the stylistic rules off).
 import js from '@eslint/js';
 import eslintReact from '@eslint-react/eslint-plugin';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
-import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 

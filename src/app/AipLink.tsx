@@ -1,6 +1,7 @@
 // An AIP reference ('AD 2 LGAV', 'ENR 5.1', 'LGAV AD 2.3') as a link to the official AIP Greece PDF of that
 // section (src/data/aipLinks.ts), opening in a new tab.
 import { Fragment, type ReactNode } from 'react';
+
 import { aipUrl } from '../data/aipLinks';
 
 export function AipLink({

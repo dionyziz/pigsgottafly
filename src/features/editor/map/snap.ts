@@ -1,10 +1,10 @@
 // Snapping: which known point (aerodrome, VFR reporting point, saved waypoint, or a point already
 // on the route) the cursor is over. Pure: the caller passes a projection (lon/lat → screen px), so
 // this is unit-tested without a map.
-import type { LatLon, RoutePoint, RoutePointKind, Waypoint } from '../../../shared';
-import type { RefAerodrome, RefVfrPoint } from '../../../shared/ref';
 import { distanceNm } from '../../../calc';
+import type { LatLon, RoutePoint, RoutePointKind, Waypoint } from '../../../shared';
 import { aerodromeName } from '../../../shared/aerodrome';
+import type { RefAerodrome, RefVfrPoint } from '../../../shared/ref';
 
 export interface SnapCandidate extends LatLon {
   /** What a route point made from this candidate refers to. */

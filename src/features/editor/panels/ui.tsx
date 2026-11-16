@@ -1,8 +1,9 @@
 // Small building blocks of the editor panel: collapsible sections (Collapsible that opens on a focus
 // request) and key/value rows.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Collapsible } from '../../../ui';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+
 import { findFocusTarget, focusAndHighlight, focusParam } from '../../../app/focusParam';
+import { Collapsible } from '../../../ui';
 import { onEditorFocus, sectionOf } from '../focus';
 
 /** Where the editor remembers which boxes are collapsed (id → true). */
@@ -23,7 +24,7 @@ export function useFocusRequest(matches: (key: string) => boolean) {
         if (matches(key)) setReq((r) => ({ key, n: (r?.n ?? 0) + 1 }));
       }),
     [],
-  ); // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!req) return;

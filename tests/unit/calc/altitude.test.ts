@@ -1,17 +1,18 @@
 // Default leg altitudes: charted VFR routes (direction-specific, one-way), the v2 pattern/previous
 // rules, and the closest-charted-leg rule for custom points, checked against a brute-force reference.
 import { expect, test } from 'vitest';
+
 import {
   chartedSegments,
+  CLOSEST_ROUTE_MAX_NM,
   closestVfrRoute,
   defaultAltitudes,
   patternAltitudeFt,
   vfrRouteBetween,
-  CLOSEST_ROUTE_MAX_NM,
 } from '../../../src/calc';
-import { REF, aerodrome, vfrPoint } from '../../../src/data/ref';
+import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
 import type { LatLon, RoutePoint } from '../../../src/shared';
-import { haversineNm, course, n360 } from './navlog.oracle';
+import { course, haversineNm, n360 } from './navlog.oracle';
 
 const ctx = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes };
 let k = 0;

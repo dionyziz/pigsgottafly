@@ -1,5 +1,6 @@
 // Export warnings → where they are fixed (src/features/exports/fix.ts).
 import { describe, expect, test } from 'vitest';
+
 import { EDITOR_FOCUS_SECTION, fixLink, planningFix } from '../../../src/features/exports/fix';
 
 describe('fix links', () => {

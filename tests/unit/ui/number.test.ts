@@ -1,5 +1,6 @@
 // src/shared/number.ts (parsing of typed numbers) and src/shared/list.ts (moveAt).
 import { describe, expect, test } from 'vitest';
+
 import { moveAt, parseDecimal, parseNumber } from '../../../src/shared';
 
 describe('parseDecimal', () => {

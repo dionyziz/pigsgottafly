@@ -2,18 +2,20 @@
 // automatically, signing links (hashed tokens, masking of other people's details, open/sign
 // tracking, revoke/renew, expiry), invalidation when the form changes, access control across
 // pilots, the PDFs, and the e-mail (MOCKED transport: nothing is sent for real).
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
-import { startApi, client, type Client } from './helpers';
-import { setMailTransport, type SentMail } from '../../api/_lib/mail';
-import { parseTtf, PdfDoc, winAnsi } from '../../api/_lib/pdf';
+
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
+
 import handTtf from '../../api/_lib/fonts/homemadeApple';
-import aerodromes from '../../src/data/ref/aerodromes.json';
-import type { RefAerodrome } from '../../src/shared/ref';
-import { GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES, type FormsState, type SigningView } from '../../src/shared/forms';
 import { stampZ } from '../../api/_lib/formPdf';
+import { type SentMail, setMailTransport } from '../../api/_lib/mail';
+import { parseTtf, PdfDoc, winAnsi } from '../../api/_lib/pdf';
+import aerodromes from '../../src/data/ref/aerodromes.json';
+import { type FormsState, GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES, type SigningView } from '../../src/shared/forms';
+import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
+import { type Client, client, startApi } from './helpers';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const pt = (icao: string, uid: string): RoutePoint => {
@@ -333,7 +335,7 @@ describe('sending the forms to HCAA', () => {
 
   test('General Declaration: sent to gendec@hcaa.gov.gr', async () => {
     const { flightId } = await setup();
-    let st = (await forms(A, flightId)).body;
+    const st = (await forms(A, flightId)).body;
     expect(st.gendec.pilotSends).toBe(true);
     // signed once per version: the time stays while the declaration is unchanged
     expect((await forms(A, flightId)).body.gendec.picSignature).toEqual(st.gendec.picSignature);

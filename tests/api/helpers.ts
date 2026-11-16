@@ -1,6 +1,7 @@
 // Test helpers: an API server on in-memory PGlite with Google sign-in faked by a local RSA key.
 import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
+
 import { createServer } from '../../server/server';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -44,8 +45,8 @@ export async function startApi(
 }
 
 export interface Client {
-  call<T = any>(method: string, path: string, body?: unknown): Promise<{ status: number; body: T }>;
-  login(sub: string, email: string): Promise<{ status: number; body: any }>;
+  call: <T = any>(method: string, path: string, body?: unknown) => Promise<{ status: number; body: T }>;
+  login: (sub: string, email: string) => Promise<{ status: number; body: any }>;
 }
 export function client(base: string): Client {
   let cookie = '';

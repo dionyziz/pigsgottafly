@@ -13,8 +13,8 @@
 //   4. Otherwise (v2): the first leg flies the departure's pattern altitude; other legs keep the
 //      previous leg's effective (possibly overridden) altitude.
 // Every default can be overridden per leg (LegOverride.altFt).
-import type { LatLon, RoutePoint } from '../shared/types.js';
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../shared/ref.js';
+import type { LatLon, RoutePoint } from '../shared/types.js';
 import { distanceNm, midpoint, norm180, pointSegDistNm, trueCourse } from './nav.js';
 
 export interface AltitudeContext {

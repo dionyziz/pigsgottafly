@@ -5,6 +5,7 @@
 // (hazardsByLeg) and hovering a band, a ring or the badge shows the texts. Self-contained: adds its
 // own source and layers on demand.
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
+
 import type { Hazard } from '../../../calc';
 import type { LatLon } from '../../../shared';
 import { CHART } from './style';

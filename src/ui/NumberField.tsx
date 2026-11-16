@@ -4,8 +4,9 @@
 // field turns red with the limit shown under it and, on blur or Enter, the value is clamped to the
 // limit and committed, so the stored value always matches the field. Anything else that is not a
 // number goes back to the stored value on blur. Parsing: src/shared/number.ts.
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { parseNumber, type NumberDraft } from '../shared/number';
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
+
+import { type NumberDraft, parseNumber } from '../shared/number';
 
 export interface NumberFieldProps {
   value: number | null;

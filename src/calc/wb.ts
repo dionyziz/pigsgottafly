@@ -11,7 +11,7 @@
 //     with empty tanks). The club calculator does NOT add it for SX-ASG (see the club test).
 //   - Envelopes: a point is inside when it is inside (or on the edge of) the CG polygon AND, when
 //     the envelope has one, the moment polygon (the club's "torque" limits).
-import type { MassBalance, Station, WbCategory, Envelope } from '../shared/types.js';
+import type { Envelope, MassBalance, Station, WbCategory } from '../shared/types.js';
 
 export interface WbLoad {
   /** Station id (MassBalance.stations[].id). Ignored when seatId resolves to a station. */

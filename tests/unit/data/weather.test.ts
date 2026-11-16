@@ -3,19 +3,20 @@
 // points (38.1089,23.7838 → grid 38.00,23.75 and 37.9364,23.9445 → grid 38.00,24.00).
 // Expected values are read off the fixture by hand (or computed by hand from it, noted inline).
 import { beforeEach, describe, expect, test } from 'vitest';
-import fixture from '../../fixtures/weather/open-meteo-ecmwf-2026-11-15.json';
-import {
-  chooseSurface, clearCache, describeSource, fetchRouteWeather, forecastAvailability, sampleAt, sampleSurface,
-  surfaceConditions, surfaceFromMetar, toPerfWind, windProviderFromLegs, fmtWind, fmtTempDew, fmtQnh,
-  type Hourly, type OpenMeteoLocation,
-} from '../../../src/data/weather';
-import { parseMetar } from '../../../src/data/weatherMetar';
-import { pressureAltitudeFt, qnhFromStationPressure } from '../../../src/calc';
+
 import { upstreamUrl } from '../../../api/_lib/routes/weatherGrid';
+import { pressureAltitudeFt, qnhFromStationPressure } from '../../../src/calc';
+import {
+  chooseSurface, clearCache, describeSource, fetchRouteWeather, fmtQnh,
+fmtTempDew, fmtWind, forecastAvailability,   type Hourly, type OpenMeteoLocation,
+sampleAt, sampleSurface,
+  surfaceConditions, surfaceFromMetar, toPerfWind, windProviderFromLegs, } from '../../../src/data/weather';
+import { parseMetar } from '../../../src/data/weatherMetar';
+import fixture from '../../fixtures/weather/open-meteo-ecmwf-2026-11-15.json';
 import { fakeOpenMeteo, gridApi } from '../../helpers/openMeteoGrid';
 
 const locs = fixture as unknown as OpenMeteoLocation[];
-const h0 = locs[0].hourly as Hourly;
+const h0 = locs[0].hourly;
 const near = (a: number, b: number, tol: number) => expect(Math.abs(a - b), `expected ${b}±${tol}, got ${a}`).toBeLessThanOrEqual(tol);
 const T = (s: string) => Date.parse(s);
 const M_TO_FT = 1 / 0.3048;
@@ -55,7 +56,7 @@ describe('winds aloft', () => {
     expect(sampleAt(h0, 3000, T('2026-11-14T22:59Z'))).toBeNull();
     expect(sampleAt(h0, NaN, T('2026-11-15T08:00Z'))).toBeNull();
     expect(sampleAt(h0, 3000, NaN)).toBeNull();
-    expect(sampleAt({ time: [] } as unknown as Hourly, 3000, T('2026-11-15T08:00Z'))).toBeNull();
+    expect(sampleAt({ time: [] }, 3000, T('2026-11-15T08:00Z'))).toBeNull();
   });
 
   test('windProviderFromLegs reads each leg its own location', () => {

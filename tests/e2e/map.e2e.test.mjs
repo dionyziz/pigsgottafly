@@ -9,11 +9,12 @@
 //   5. the layer toggles (kept per flight; the profile's choice for new flights), the FIR, tooltips inside
 //      the map near its edges, the hint's close button.
 // Screenshots go to tests/e2e/artifacts/map-*.png.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, startServer, ROOT } from './harness.mjs';
+import test, { after, before } from 'node:test';
+
+import { launch, ROOT, startServer } from './harness.mjs';
 
 let server, browser, page;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

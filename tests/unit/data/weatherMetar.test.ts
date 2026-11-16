@@ -1,11 +1,12 @@
 // METAR/TAF decoding (src/data/weatherMetar.ts). Reports from tests/fixtures/weather/awc-*.json
 // (aviationweather.gov, 2026-11-15) plus hand-written ones for the edge cases.
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import metars from '../../fixtures/weather/awc-metar-2026-11-15.json';
-import tafs from '../../fixtures/weather/awc-taf-2026-11-15.json';
+
 import {
   clearMetarCache, decodeMetarTafResponse, fetchMetarTaf, fmtMetarWind, parseMetar, parseTaf, resolveDayTime, tafCovers,
 } from '../../../src/data/weatherMetar';
+import metars from '../../fixtures/weather/awc-metar-2026-11-15.json';
+import tafs from '../../fixtures/weather/awc-taf-2026-11-15.json';
 
 const T = (s: string) => Date.parse(s);
 const REF = T('2026-11-15T13:25:00Z');

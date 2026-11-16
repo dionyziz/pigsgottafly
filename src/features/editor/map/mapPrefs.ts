@@ -1,6 +1,6 @@
 // Map preferences. The layer selection belongs to the flight (FlightOptions.mapLayers; a new flight
 // gets the pilot's PilotSettings.mapLayers); only the editing tips are per browser (localStorage).
-import { DEFAULT_MAP_LAYERS, mapLayersOf, type MapLayers } from '../../../shared/mapLayers';
+import { DEFAULT_MAP_LAYERS, type MapLayers, mapLayersOf } from '../../../shared/mapLayers';
 
 const PREFS_KEY = 'pgf:map';
 

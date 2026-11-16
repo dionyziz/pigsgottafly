@@ -1,2 +1,2 @@
 export { MapView } from './MapView';
-export { RouteMap, type RouteMapProps, type LegAltitude } from './RouteMap';
+export { type LegAltitude, RouteMap, type RouteMapProps } from './RouteMap';

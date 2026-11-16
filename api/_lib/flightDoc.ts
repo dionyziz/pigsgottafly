@@ -3,22 +3,22 @@
 // known fields only, so a stale or buggy client cannot store values that later turn the safety
 // numbers (W&B, altitudes, fuel) into NaN or nonsense. Numbers must be JSON numbers: strings,
 // booleans and null are not coerced (null / absent means "not set" where a field is optional).
+import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
+import { FUEL_TYPES } from '../../src/shared/fuel.js';
+import { mapLayersOf } from '../../src/shared/mapLayers.js';
+import { MAX_STOP_MIN } from '../../src/shared/requests.js';
 import type {
   AerodromeRequest,
   AtcEntry,
   AtcRole,
   FlightOptions,
-  FuelType,
   FlightSummary,
+  FuelType,
   LegOverride,
   RoutePoint,
   WbCategory,
   WindModel,
 } from '../../src/shared/types.js';
-import { mapLayersOf } from '../../src/shared/mapLayers.js';
-import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
-import { MAX_STOP_MIN } from '../../src/shared/requests.js';
-import { FUEL_TYPES } from '../../src/shared/fuel.js';
 import { badRequest } from './http.js';
 import { arr, obj } from './rows.js';
 
@@ -225,7 +225,7 @@ export function checkSummary(v: unknown): FlightSummary {
   s.title = text(i.title, 'summary.title', 300);
   const date = text(i.date, 'summary.date', 10);
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw badRequest('summary.date must be YYYY-MM-DD or empty');
-  s.date = date as FlightSummary['date'];
+  s.date = date;
   s.blockOff = text(i.blockOff, 'summary.blockOff', 5);
   s.aircraft = text(i.aircraft, 'summary.aircraft', 20);
   const route = i.route === undefined || i.route === null ? [] : arr<unknown>(i.route, 'summary.route');

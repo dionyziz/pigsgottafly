@@ -1,8 +1,9 @@
 // Aerodrome CTRs and ATZs (tools/parse_ad_airspace.py → src/data/ref/ad-airspaces.json): sanity checks over
 // every record, and spot checks of values read by hand off AD 2.17 / AD 1.6.N.17 (AIRAC 09/26).
 import { describe, expect, test } from 'vitest';
-import { AD_AIRSPACES, AERODROMES, REF } from '../../../src/data/ref';
+
 import { distanceNm } from '../../../src/calc/nav';
+import { AD_AIRSPACES, AERODROMES, REF } from '../../../src/data/ref';
 import { fromAd, limitFt, pointInRing } from '../../../src/features/editor/map/airspace';
 
 const adById = new Map(AERODROMES.map((a) => [a.id, a]));

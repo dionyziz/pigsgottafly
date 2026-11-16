@@ -10,13 +10,13 @@
 // the pilot owned are deleted even when shared: other pilots' flights lose them (aircraft_id SET
 // NULL, as when an owner deletes an aircraft). tests/api/account.test.ts checks that no column of
 // any table still holds the pilot's id or e-mail afterwards.
+import { sessionCookie } from '../auth.js';
+import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, reply } from '../http.js';
-import type { Queryable } from '../db.js';
-import { sessionCookie } from '../auth.js';
+import { toOperator } from '../operators.js';
 import { toAircraft, toFlight, toPassenger, toPilot, toWaypoint } from '../rows.js';
 import { toFile } from './files.js';
-import { toOperator } from '../operators.js';
 
 const OWNER_COLUMNS = ['pilot_id', 'owner_id', 'owner_pilot_id'];
 

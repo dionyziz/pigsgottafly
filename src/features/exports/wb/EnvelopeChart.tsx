@@ -3,8 +3,8 @@
 // each intermediate stop), and the zero-fuel point at the end of a dashed continuation (where the
 // aircraft would be with all fuel burnt).
 import type { WbPoint } from '../../../calc';
-import { chartDomain, fmtKg, type ChartEnvelope } from './model';
-import { layoutChartLabels, type Box, type Segment } from './chartLayout';
+import { type Box, layoutChartLabels, type Segment } from './chartLayout';
+import { chartDomain, type ChartEnvelope, fmtKg } from './model';
 
 export interface ChartPoint {
   /** stop0, stop1…: intermediate full stops, in flight order. */

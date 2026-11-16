@@ -3,20 +3,21 @@
 // failed lazy import must never flash "Something went wrong" while the reload is on its way (Firefox:
 // vite:preloadError used to be preventDefault-ed, so the import resolved to undefined and React threw
 // a generic error).
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+
+import { ErrorBoundary } from '../../../src/app/ErrorBoundary';
 import {
   installStaleBuildReload,
   isChunkLoadError,
   nav,
-  reloadForNewBuild,
-  resetStaleBuildState,
   RELOAD_GUARD_MS,
   RELOAD_PENDING_MS,
-  staleReloadPending,
+  reloadForNewBuild,
+  resetStaleBuildState,
   STALE_RELOAD_KEY,
+  staleReloadPending,
 } from '../../../src/app/staleBuild';
-import { ErrorBoundary } from '../../../src/app/ErrorBoundary';
 
 let t = 1_700_000_000_000;
 let reloads = 0;

@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 // useFlightWeather: one weather + METAR loader for the editor and the exports (stops included, one
 // METAR rule, a failed fetch ends loading, only the newest request counts).
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import type { RoutePoint } from '../../../src/shared';
-import { aerodromePoint } from '../../../src/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { aerodrome } from '../../../src/data/ref';
 import type { RouteWeather } from '../../../src/data/weather';
+import type { RoutePoint } from '../../../src/shared';
+import { aerodromePoint } from '../../../src/shared';
 
 const weatherCalls: any[] = [];
 const metarCalls: string[][] = [];

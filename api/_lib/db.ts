@@ -10,17 +10,17 @@ export type Row = Record<string, any>;
 
 export interface Queryable {
   /** One statement with $1… parameters. */
-  query<T extends Row = Row>(text: string, params?: unknown[]): Promise<T[]>;
+  query: <T extends Row = Row>(text: string, params?: unknown[]) => Promise<T[]>;
   /** A script of several statements, no parameters. */
-  exec(sql: string): Promise<void>;
+  exec: (sql: string) => Promise<void>;
 }
 
 export interface Db extends Queryable {
   /** Runs fn inside BEGIN … COMMIT on one connection (ROLLBACK if it throws). */
-  transaction<T>(fn: (tx: Queryable) => Promise<T>): Promise<T>;
+  transaction: <T>(fn: (tx: Queryable) => Promise<T>) => Promise<T>;
   /** Runs fn on one dedicated connection without a transaction (advisory locks). */
-  session<T>(fn: (s: Queryable) => Promise<T>): Promise<T>;
-  close(): Promise<void>;
+  session: <T>(fn: (s: Queryable) => Promise<T>) => Promise<T>;
+  close: () => Promise<void>;
   kind: 'neon' | 'pglite';
 }
 
@@ -49,7 +49,7 @@ async function connectNeon(url: string): Promise<Db> {
     const pool = new Pool({ connectionString: url, max: 1 });
     const client = await pool.connect();
     const q: Queryable = {
-      query: async (text, params = []) => (await client.query(text, params as any[])).rows as any[],
+      query: async (text, params = []) => (await client.query(text, params as any[])).rows,
       exec: async (s) => {
         await client.query(s);
       },
@@ -97,7 +97,7 @@ async function connectPglite(where: string): Promise<Db> {
             await tx.exec(s);
           },
         }),
-      ) as Promise<any>,
+      ),
     // PGlite is a single connection: every call already runs on "the" session.
     session: (fn) => fn(base),
     close: () => pg.close(),

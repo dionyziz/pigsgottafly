@@ -4,30 +4,30 @@
 // A flight may use the pilot's own aircraft or one shared with them (access.ts). When that access
 // ends, the flight keeps the aircraft id and the editor shows the aircraft as unavailable; saving
 // such a flight keeps that id (without the seat checks) until the pilot picks another aircraft.
-import type { Route } from '../http.js';
-import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
-import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
-import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
-import type { Queryable } from '../db.js';
-import { checkCount } from '../limits.js';
-import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
+import { aerodromePoint } from '../../../src/shared/aerodrome.js';
 import type { FlightCreateRequest, FlightListItem, FlightUpdateRequest } from '../../../src/shared/api.js';
-import { mapLayersOf } from '../../../src/shared/mapLayers.js';
 import {
   autoTitle,
   DEFAULT_FLIGHT_OPTIONS,
   EMPTY_PERSON,
-  PERSON_KEYS,
   EMPTY_SUMMARY,
   emptyFlightDoc,
   FALLBACK_SEATS,
+  PERSON_KEYS,
   picSeat,
   seatLayout,
   validateCrew,
 } from '../../../src/shared/constants.js';
-import { findAerodrome } from './ref.js';
-import { aerodromePoint } from '../../../src/shared/aerodrome.js';
+import { mapLayersOf } from '../../../src/shared/mapLayers.js';
+import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import { accessibleSql, canUseAircraft } from '../access.js';
+import type { Queryable } from '../db.js';
+import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
+import type { Route } from '../http.js';
+import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
+import { checkCount } from '../limits.js';
+import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
+import { findAerodrome } from './ref.js';
 
 async function load(db: Queryable, pilotId: string, id: string) {
   const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [id, pilotId]);

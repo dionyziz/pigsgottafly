@@ -1,13 +1,14 @@
 // Runway reference data (tools/parse_runways.py → tools/runways.json → tools/build_ref.ts): sanity checks
 // over every runway direction, and spot checks of values read by hand off the eAIP PDFs (AIRAC 09/26).
 import { describe, expect, test } from 'vitest';
-import { AERODROMES, RUNWAYS, runwaysOf } from '../../../src/data/ref';
-import { distanceNm, norm180, trueCourse } from '../../../src/calc/nav';
-import { magneticVariation } from '../../../src/calc/wmm';
-import type { RefRunwayFull } from '../../../tools/build_ref_runways';
+
 import { connect } from '../../../api/_lib/db';
 import { migrate, MIGRATIONS } from '../../../api/_lib/migrate';
 import runways005 from '../../../api/_lib/migrations/005_ref_runways_2609';
+import { distanceNm, norm180, trueCourse } from '../../../src/calc/nav';
+import { magneticVariation } from '../../../src/calc/wmm';
+import { AERODROMES, RUNWAYS, runwaysOf } from '../../../src/data/ref';
+import type { RefRunwayFull } from '../../../tools/build_ref_runways';
 
 const RW = RUNWAYS as RefRunwayFull[];
 const rw = (ad: string, d: string) => RW.find((r) => r.aerodromeId === ad && r.designator === d)!;

@@ -1,8 +1,9 @@
 // Keeps one failing part of a page (e.g. the map) from blanking the whole app.
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { isChunkLoadError, reloadForNewBuild, staleReloadPending, staleReloadPendingFor } from './staleBuild';
+
 import { Loading } from '../ui/Loading';
 import { reportError } from './errorReporter';
+import { isChunkLoadError, reloadForNewBuild, staleReloadPending, staleReloadPendingFor } from './staleBuild';
 
 export class ErrorBoundary extends Component<
   { children: ReactNode; label?: string },

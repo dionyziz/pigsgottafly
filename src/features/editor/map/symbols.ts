@@ -3,6 +3,7 @@
 // the runway bar, reporting point = triangle (solid charted, hollow open-flightmaps), my waypoint =
 // four-point star.
 import type { Map as MlMap } from 'maplibre-gl';
+
 import { CHART } from './style';
 
 const PR = 2; // drawn at 2× and registered with pixelRatio 2

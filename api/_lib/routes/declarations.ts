@@ -10,21 +10,22 @@
 // identifying fields replaced by the server's. Every send goes through the sending caps
 // (sendCaps.ts: per pilot, per flight, per declarations address; 10 min between sends of a flight).
 import crypto from 'node:crypto';
-import type { Route } from '../http.js';
-import { badRequest, conflict, HttpError, notFound } from '../http.js';
-import type { Queryable } from '../db.js';
-import { accessibleSql } from '../access.js';
-import { mailAvailability, MailError, sendMail } from '../mail.js';
-import { wbPerfPdf } from '../declarationPdf.js';
-import { sendFormOnce } from './forms.js';
+
 import {
+  type DeclarationsState,
   sheetText,
+  type WbPerfContent,
   wbPerfContentOf,
   wbPerfText,
-  type DeclarationsState,
-  type WbPerfContent,
 } from '../../../src/shared/declarations.js';
 import type { Pilot } from '../../../src/shared/types.js';
+import { accessibleSql } from '../access.js';
+import type { Queryable } from '../db.js';
+import { wbPerfPdf } from '../declarationPdf.js';
+import type { Route } from '../http.js';
+import { badRequest, conflict, HttpError, notFound } from '../http.js';
+import { mailAvailability, MailError, sendMail } from '../mail.js';
+import { sendFormOnce } from './forms.js';
 
 const MAIL_DENIED = 'Your account has no e-mail address to copy the declarations to.';
 export const wbPerfHash = (c: WbPerfContent) => crypto.createHash('sha256').update(wbPerfText(c)).digest('base64url');

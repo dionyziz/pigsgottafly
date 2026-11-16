@@ -4,7 +4,8 @@
 //
 //   const s = useSortable({ count: rows.length, onMove: (a, b) => set(moveAt(rows, a, b)) });
 //   rows.map((r, i) => <tr key={r.id} {...s.itemProps(i)}><td><DragHandle {...s.handleProps(i)} /></td>…</tr>)
-import { forwardRef, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { forwardRef, type KeyboardEvent, type PointerEvent, useCallback, useEffect, useRef, useState } from 'react';
+
 import { Icon } from './Icon';
 
 export interface SortableOptions {

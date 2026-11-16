@@ -3,20 +3,21 @@
 // baggage area; W&B category; take-off/landing mass and CG against the envelope.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
+
 import {
   FALLBACK_SEATS,
-  seatLayout,
   type FlightCrew,
   type Passenger,
   type PersonDetails,
   type Pilot,
+  seatLayout,
 } from '../../../shared';
+import { Chip, Icon, NumberField, PersonPicker } from '../../../ui';
 import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
 import { addPicToCrew, applyPerson, editCrewField, followPerson, resetCrew } from './manifest';
-import { Chip, Icon, NumberField, PersonPicker } from '../../../ui';
 import { KV, Section } from './ui';
 
 export function personOf(p: Pilot | Passenger): PersonDetails {

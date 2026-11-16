@@ -1,8 +1,9 @@
 // Ported from the v2 tests/unit/nav.test.js (js/nav.js → src/calc/nav.ts).
 import { expect, test } from 'vitest';
-import * as Nav from '../../../src/calc/nav';
-import { sampleAt, type Hourly } from '../../../src/data/weather';
+
 import cards from '../../../data/aircraft/compass-cards.json';
+import * as Nav from '../../../src/calc/nav';
+import { type Hourly, sampleAt } from '../../../src/data/weather';
 
 const near = (a: number, b: number, tol: number) =>
   expect(Math.abs(a - b), `expected ${b}±${tol}, got ${a}`).toBeLessThanOrEqual(tol);

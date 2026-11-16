@@ -1,7 +1,8 @@
 // Database errors are classified by SQLSTATE (api/_lib/pgErrors.ts), not by their message text.
-import { describe, expect, test } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
-import { constraintOf, isConstraintViolation, isUniqueViolation, sqlState, SQLSTATE } from '../../api/_lib/pgErrors';
+import { describe, expect, test } from 'vitest';
+
+import { constraintOf, isConstraintViolation, isUniqueViolation, SQLSTATE, sqlState } from '../../api/_lib/pgErrors';
 
 async function errorOf(db: PGlite, q: string): Promise<unknown> {
   try {

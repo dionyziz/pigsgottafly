@@ -8,8 +8,10 @@
 // A new AIRAC gets a NEW migration file (002 stays as applied); bump MIGRATION below.
 import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
+
+import { adHoursFromAip, type AipHoursText } from '../src/calc/adHours.js';
 import type {
   RefAerodrome,
   RefAirac,
@@ -22,8 +24,7 @@ import type {
   RefVfrPoint,
   RefVfrRoute,
 } from '../src/shared/ref.js';
-import { buildRunways, loadParsedRunways, type RefRunwayFull } from './build_ref_runways.js';
-import { adHoursFromAip, type AipHoursText } from '../src/calc/adHours.js';
+import { buildRunways, loadParsedRunways } from './build_ref_runways.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'src', 'data', 'ref');
@@ -324,7 +325,7 @@ export function runwaySql(r: ReturnType<typeof buildRef>): string {
     `-- Runway physical characteristics and declared distances for ${r.airac.name}.`,
     `DELETE FROM ref_runways WHERE airac = ${A};`,
   ];
-  for (const c of chunks(r.runways as RefRunwayFull[])) {
+  for (const c of chunks(r.runways)) {
     L.push(
       `INSERT INTO ref_runways (airac, aerodrome_id, designator, doc) VALUES\n${c.map((w) => `(${A}, ${q(w.aerodromeId)}, ${q(w.designator)}, ${j(w)})`).join(',\n')};`,
     );

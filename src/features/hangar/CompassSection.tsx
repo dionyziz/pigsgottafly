@@ -1,9 +1,14 @@
 // Compass swing section: deviation cards (for / steer), swing and expiry dates, source, the swing
 // report itself (PDF or image, stored with the aircraft), with a deviation curve and an expiry
 // warning. The first card is the flights' default.
-import { DateInput } from '../../app/DateInput';
 import { useState } from 'react';
+
+import { DateInput } from '../../app/DateInput';
+import { saveBlob } from '../../data/aircraftFiles';
+import { api } from '../../data/api';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
+import { errorMessage, fmtSize } from '../../shared/format';
+import { moveAt } from '../../shared/list';
 import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_TYPES,
@@ -11,10 +16,6 @@ import {
   type AttachmentType,
   type CompassCard,
 } from '../../shared/types';
-import { api } from '../../data/api';
-import { saveBlob } from '../../data/aircraftFiles';
-import { moveAt } from '../../shared/list';
-import { errorMessage, fmtSize } from '../../shared/format';
 import { Chip, DragHandle, Field, FilePicker, IssueList, PdfViewer, useObjectUrl, useSortable } from '../../ui';
 import { PointTable, Section } from './fields';
 import { addCompassCard, addYears, cardStatus, deviationOf, issuesAt } from './model';
@@ -112,7 +113,7 @@ export function SwingReport({
 }: {
   aircraftId: string | null;
   report: AttachmentRef | null | undefined;
-  onChange(r: AttachmentRef | null): void;
+  onChange: (r: AttachmentRef | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);

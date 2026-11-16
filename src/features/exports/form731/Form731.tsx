@@ -1,12 +1,14 @@
 // Form 731 (trn-docs/Form_731.pdf), filled: landscape A4, positions measured from the original (mm).
 import './form731.css';
-import { form731Model, ROWS_PER_SHEET, type Form731Row } from './model';
-import type { FormExportProps } from './common';
-import { FormWarnings } from './FormWarnings';
+
+import type { ReactNode } from 'react';
+
+import { fmtDateTimeMs } from '../../../shared/format';
 import { signatureName } from '../../../shared/forms';
 import { transliterate } from '../../../shared/translit';
-import { fmtDateTimeMs } from '../../../shared/format';
-import type { ReactNode } from 'react';
+import type { FormExportProps } from './common';
+import { FormWarnings } from './FormWarnings';
+import { form731Model, type Form731Row, ROWS_PER_SHEET } from './model';
 
 /** A signature on the current version of the form: the signer's name and when (epoch ms). */
 export interface ShownSignature {

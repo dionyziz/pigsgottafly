@@ -11,6 +11,7 @@
 // the HO hours are promulgated by NOTAM twice a year, AD 1.1.1.4.2.2); HX no specific working hours; HS
 // service available during the hours of scheduled operations; O/R on request; PN/PNR prior notice.
 // A service (handling, customs, ATS) marked HO is available while the aerodrome is open ('AD').
+import { isoDay } from '../shared/date.js';
 import type {
   HoursClock,
   HoursRule,
@@ -21,7 +22,6 @@ import type {
   RefSunTable,
 } from '../shared/ref.js';
 import { sunriseUtcMinutes } from './nav.js';
-import { isoDay } from '../shared/date.js';
 import { sunsetMinutes } from './sun.js';
 
 // ---------------------------------------------------------------- text normalisation
@@ -500,7 +500,7 @@ export function parseSchedule(text: string): HoursRule[] | null {
         if (!cur) {
           cur = { times: [] };
           if (season) cur.season = season;
-          if (st.days) cur.days = [...new Set(st.days as number[])].sort((a, b) => a - b);
+          if (st.days) cur.days = [...new Set(st.days)].sort((a, b) => a - b);
           if (st.hol) cur.holidays = true;
           if (st.exceptHol) cur.exceptHolidays = true;
           rules.push(cur);
@@ -525,7 +525,7 @@ export function parseSchedule(text: string): HoursRule[] | null {
   if (!cur && (st.days || st.hol)) {
     const r: HoursRule = { times: [{ t: 'HX' }] };
     if (season) r.season = season;
-    if (st.days) r.days = [...new Set(st.days as number[])].sort((a, b) => a - b);
+    if (st.days) r.days = [...new Set(st.days)].sort((a, b) => a - b);
     if (st.hol) r.holidays = true;
     rules.push(r);
   }
@@ -539,7 +539,7 @@ export function parseSchedule(text: string): HoursRule[] | null {
         continue;
       }
       const shifted = r.times.map((x) =>
-        x.t === 'window' ? { ...x, from: shiftClock(x.from, shift!), to: shiftClock(x.to, shift!) } : x,
+        x.t === 'window' ? { ...x, from: shiftClock(x.from, shift), to: shiftClock(x.to, shift) } : x,
       );
       out.push({ ...r, season: 'summer', times: shifted }, { ...r, season: 'winter' });
     }

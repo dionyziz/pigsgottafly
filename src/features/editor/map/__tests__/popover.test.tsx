@@ -2,18 +2,19 @@
 // The map's shared popover frame (MapPopover, PopItem, useAccordion), the point menu, the layers
 // control (SegmentedControl base map, layer toggles), tooltip placement near the map's edges and the
 // hint's close button.
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { MapPopover, MapTip, PopItem, placeBeside, useAccordion } from '../MapPopover';
-import { PointMenu } from '../PointMenu';
-import { LayersControl, MapHint } from '../MapToolbar';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { DEFAULT_MAP_LAYERS, type MapLayers } from '../../../../shared/mapLayers';
 import { SegmentedControl } from '../../../../ui';
 import { MapLayerToggles } from '../MapLayerToggles';
+import { MapPopover, MapTip, placeBeside, PopItem, useAccordion } from '../MapPopover';
+import { LayersControl, MapHint } from '../MapToolbar';
+import { PointMenu } from '../PointMenu';
 
 afterEach(cleanup);
 
-function List({ onClose }: { onClose(): void }) {
+function List({ onClose }: { onClose: () => void }) {
   const acc = useAccordion('a');
   return (
     <MapPopover x={10} y={10} label="Things" testId="pop" onClose={onClose}>

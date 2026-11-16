@@ -2,26 +2,28 @@
 // with "Add aircraft" from a type template, as a same-type copy of another aircraft, or blank.
 // Aircraft shared with the pilot are listed with their own, with a "Shared by" chip; the row menu
 // shares an aircraft, and removes a shared one from the pilot's hangar (their access only).
+import '../lobby/lists.css';
+import './hangar.css';
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Shell } from '../../app/Shell';
+
 import { useSession } from '../../app/session';
+import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { localToday } from '../../shared/date';
 import { errorMessage } from '../../shared/format';
-import type { Aircraft } from '../../shared/types';
 import type { HangarAircraft } from '../../shared/sharing';
+import type { Aircraft } from '../../shared/types';
 import { Chip, ConfirmDialog, Dialog, DialogFooter, EmptyState, KebabMenu, Loading } from '../../ui';
+import { AircraftPhoto } from './AircraftFiles';
 import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
 import { missingEssentials, sameTypeCopy } from './model';
+import { SharedChip, ShareDialog } from './ShareDialog';
 import { buildFromTemplate, TYPE_TEMPLATES } from './templates';
-import { AircraftPhoto } from './AircraftFiles';
-import { ShareDialog, SharedChip } from './ShareDialog';
-import '../lobby/lists.css';
-import './hangar.css';
 
 export function HangarPage() {
   const { data, error, loading, reload } = useEntity('aircraft');

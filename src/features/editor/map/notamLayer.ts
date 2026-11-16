@@ -4,8 +4,9 @@
 // position have no area. Hovering shows the NOTAM's ID, validity and limits; a click opens the
 // details (NotamPopover). Self-contained: adds its own source and layers on demand.
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
-import type { Notam } from '../../../shared/briefing';
+
 import { circleRing, hasNotamArea } from '../../../data/notams';
+import type { Notam } from '../../../shared/briefing';
 import { CHART } from './style';
 
 export interface MapNotam {

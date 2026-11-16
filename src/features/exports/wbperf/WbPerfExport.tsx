@@ -8,19 +8,20 @@
 // weather (winds aloft for trip fuel; surface forecast / METAR at take-off and landing) itself.
 // When the aircraft's operator asks for these sheets before each flight, a panel sends them to it
 // (./SendPanel.tsx).
+import '../wb/xp.css';
+
 import type { Flight } from '../../../shared';
+import { Chip, type ChipTone, Loading, Panel } from '../../../ui';
 import { routeText } from '../form731/common';
 import type { ShownSignature } from '../form731/Form731';
-import { useExportCalc } from '../wb/useExportCalc';
-import { wbSheetModel } from '../wb/model';
-import { WbSheet } from '../wb/WbExport';
 import { perfSheetModel } from '../performance/model';
-import { PerfSheet, blockName } from '../performance/PerformanceExport';
+import { blockName, PerfSheet } from '../performance/PerformanceExport';
 import { ExportWarnings } from '../WarningList';
-import { Chip, Loading, Panel, type ChipTone } from '../../../ui';
-import { OperatorSendPanel } from './SendPanel';
+import { wbSheetModel } from '../wb/model';
+import { useExportCalc } from '../wb/useExportCalc';
+import { WbSheet } from '../wb/WbExport';
 import { wbPerfContent } from './declaration';
-import '../wb/xp.css';
+import { OperatorSendPanel } from './SendPanel';
 
 const chipTone = (v: string): ChipTone => (v === 'pass' ? 'ok' : v === 'fail' ? 'danger' : 'warn');
 

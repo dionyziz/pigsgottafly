@@ -4,10 +4,10 @@
 // blocks), each signed by the PIC like the print sheets (src/features/exports/wb/WbExport.tsx,
 // performance/PerformanceExport.tsx). Drawn with the forms' PDF writer (pdf.ts), from the content
 // the browser computed; A4 portrait, mm from the top-left.
-import { PdfDoc, winAnsi, type FontName, type PdfPage } from './pdf.js';
-import handTtf from './fonts/homemadeApple.js';
-import { signature, type PdfSignature } from './formPdf.js';
 import type { PerfBlockContent, Verdict, WbPerfContent, WbPerfRow } from '../../src/shared/declarations.js';
+import handTtf from './fonts/homemadeApple.js';
+import { type PdfSignature, signature } from './formPdf.js';
+import { type FontName, PdfDoc, type PdfPage, winAnsi } from './pdf.js';
 
 const L = 15,
   R = 195,

@@ -1,6 +1,7 @@
 // Dropdown menu behind a button (⋮ on rows). Closes on an outside click, Escape or a choice;
 // ↑/↓ move between the items.
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+
 import { Icon } from './Icon';
 
 export interface MenuItem {

@@ -5,8 +5,8 @@
 // changes along the way (LGTT → LGKR region, 123 NM: initial 290.8°, mid-leg 290.0°), and the
 // mid-leg value is the one that best fits the whole leg. The magnetic course on the map label is the
 // sheet's TC + VAR written values (round(TC) − round(variation)), so label and navlog never disagree.
-import type { IsoDate, LatLon, RoutePoint } from '../shared/types.js';
 import { legKey } from '../shared/constants.js';
+import type { IsoDate, LatLon, RoutePoint } from '../shared/types.js';
 import { distanceNm, midpoint, norm360, trueCourse } from './nav.js';
 import { magneticVariation } from './wmm.js';
 

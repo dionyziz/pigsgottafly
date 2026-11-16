@@ -3,21 +3,22 @@
 // an operator, the operator's name on the aircraft (GenDec, FPL), its documents, and the W&B and
 // performance sheets e-mailed to an operator that asks for them (mail transport MOCKED).
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
-import { blankAircraft } from '../../src/shared/templates';
-import { setMailTransport, type SentMail } from '../../api/_lib/mail';
+
+import { type SentMail, setMailTransport } from '../../api/_lib/mail';
+import { wbPerfHash } from '../../api/_lib/routes/declarations';
+import aerodromes from '../../src/data/ref/aerodromes.json';
 import {
-  wbPerfContentOf,
   type DeclarationsState,
   type HangarAircraft,
   type OperatorItem,
   type OperatorSharing,
   type WbPerfContent,
+  wbPerfContentOf,
 } from '../../src/shared';
-import { wbPerfHash } from '../../api/_lib/routes/declarations';
-import aerodromes from '../../src/data/ref/aerodromes.json';
 import type { RefAerodrome } from '../../src/shared/ref';
+import { blankAircraft } from '../../src/shared/templates';
 import type { RoutePoint } from '../../src/shared/types';
+import { type Client, client, startApi } from './helpers';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const pt = (icao: string, uid: string): RoutePoint => {

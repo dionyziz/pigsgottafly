@@ -4,13 +4,14 @@
 // item 18 field warns only about indicators the flight plan drops, the approved fuels, the placeholder
 // picture and the photo, and documents (chunked upload through the file inputs, the PDF opened in the
 // in-app viewer).
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { launch, startServer } from './harness.mjs';
+import test, { after, before } from 'node:test';
+
 import { fleetSeed } from '../../tools/build_seed.ts';
+import { launch, startServer } from './harness.mjs';
 
 let server, browser, page, tmp;
 before(async () => {

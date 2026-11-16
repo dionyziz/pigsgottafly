@@ -2,8 +2,9 @@
 // Terms, Privacy, Sign out, Sign out everywhere (confirmed).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { useSession } from './session';
+
 import { ConfirmDialog } from '../ui';
+import { useSession } from './session';
 
 export function AccountMenu() {
   const { pilot, session, signOut, signOutEverywhere } = useSession();

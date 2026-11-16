@@ -1,6 +1,7 @@
 // Runway wind components and runway selection from the wind.
 import { expect, test } from 'vitest';
-import { windComponents, runwayWind, selectRunway } from '../../../src/calc';
+
+import { runwayWind, selectRunway, windComponents } from '../../../src/calc';
 import type { RefRunway } from '../../../src/shared';
 
 const rwy = (designator: string, extra: Partial<RefRunway> = {}): RefRunway => ({

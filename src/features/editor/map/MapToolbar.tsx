@@ -1,9 +1,10 @@
 // The map's controls: the route toolbar (draw, custom point, undo/redo, zoom to the route), the layers
 // button with its popover (MapLayerToggles, tips, legend) and
 // the editing hint bubble.
-import { useEffect, useLayoutEffect, useRef, type ReactNode, type Ref } from 'react';
-import { Check, CloseButton, Icon } from '../../../ui';
+import { type ReactNode, type Ref, useEffect, useLayoutEffect, useRef } from 'react';
+
 import type { MapLayers } from '../../../shared/mapLayers';
+import { Check, CloseButton, Icon } from '../../../ui';
 import { MapLayerToggles } from './MapLayerToggles';
 
 export type DrawMode = 'idle' | 'draw' | 'custom';
@@ -20,12 +21,12 @@ export function MapToolbar({
 }: {
   mode: DrawMode;
   hasRoute: boolean;
-  onMode(m: DrawMode): void;
-  onUndo?(): void;
-  onRedo?(): void;
+  onMode: (m: DrawMode) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-  onFit(): void;
+  onFit: () => void;
 }) {
   return (
     <div className="pgf-map-toolbar" role="toolbar" aria-label="Route tools">
@@ -69,7 +70,7 @@ function ToolButton({
   testid,
 }: {
   children: ReactNode;
-  onClick(): void;
+  onClick: () => void;
   title: string;
   active?: boolean;
   disabled?: boolean;
@@ -103,11 +104,11 @@ export function LayersControl({
   notamCount,
 }: {
   open: boolean;
-  onOpen(open: boolean): void;
+  onOpen: (open: boolean) => void;
   layers: MapLayers;
-  onLayers(l: MapLayers): void;
+  onLayers: (l: MapLayers) => void;
   tips: boolean;
-  onTips(v: boolean): void;
+  onTips: (v: boolean) => void;
   airac: string;
   areaCount: { prd: number; mil: number; act: number };
   notamCount: number;
@@ -221,7 +222,7 @@ export function MapHint({
 }: {
   text: string;
   away: boolean;
-  onClose(): void;
+  onClose: () => void;
   hintRef: Ref<HTMLDivElement>;
 }) {
   return (

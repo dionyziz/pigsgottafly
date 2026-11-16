@@ -2,17 +2,19 @@
 // recorded Open-Meteo ECMWF response (tests/fixtures/openmeteo-hazards-lgtt-2026-11-16.json: run
 // 15 Nov 06Z, corridor cells of LGTT → 37.80N 24.10E), METAR/TAF texts, and the route wiring
 // (src/data/hazardWeather.ts) through the server route (GET /api/weather/grid) with a mocked Open-Meteo.
-import { beforeEach, describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+
+import { beforeEach, describe, expect, test } from 'vitest';
+
 import {
   aerodromeModelHazards,
+  type HazardSample,
   legHazards,
   modelCloudBase,
+  type NavlogResult,
   reportHazards,
   tafHazardContent,
-  type HazardSample,
-  type NavlogResult,
 } from '../../../src/calc';
 import {
   clearHazardCache,

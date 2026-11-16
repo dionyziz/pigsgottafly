@@ -4,60 +4,61 @@
 // from each stop) and one list of warnings. Everything numeric comes from src/calc; this file only wires inputs.
 //
 // <FlightCalcProvider> sits inside <EditorProvider> (EditorPage); read with useFlightCalc().
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+
 import {
+  type AerodromePerf,
   aerodromePerformance,
   computeNavlog,
   flightSectors,
-  isLocalFlight,
+  type FuelPlan,
   isaTempC,
+  isLocalFlight,
   magneticVariation,
   navlogAircraft,
+  type NavlogResult,
   performanceMass,
   pickCompassCard,
   planFuel,
   sectorBalances,
   stopsOf,
   wbLoadsFromManifest,
-  wbStatus,
-  weightAndBalance,
-  type AerodromePerf,
-  type FuelPlan,
-  type NavlogResult,
   type WbPoint,
   type WbResult,
   type WbStatus,
+  wbStatus,
+  weightAndBalance,
 } from '../../../calc';
-import {
-  CARD_EXPIRY_WARN_DAYS,
-  activeRequests,
-  fuelLoad,
-  requestTiming,
-  seatLayout,
-  validateCrew,
-  type RoutePoint,
-} from '../../../shared';
-import type { RefAerodrome } from '../../../shared/ref';
-import { fmtClock } from '../../../shared/format';
-import { todayUtc } from '../../../shared/date';
-import { useFlightWeather } from '../../../data/useFlightWeather';
-import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
+import { type AdNotamEffect, aerodromeNotamEffects, type Hazard, hazardWhere } from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
+import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
+import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
+import { useFlightWeather } from '../../../data/useFlightWeather';
 import {
   chooseSurface,
-  surfaceConditions,
-  toPerfWind,
-  windProviderFromLegs,
   type OpenMeteoLocation,
   type RouteWeather,
   type SurfaceConditions,
+  surfaceConditions,
+  toPerfWind,
+  windProviderFromLegs,
 } from '../../../data/weather';
 import type { MetarTafResult, StationReports } from '../../../data/weatherMetar';
-import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
-import { aerodromeNotamEffects, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
-import { aerodromeChecks as buildAdChecks, aerodromeWarnings, type AdCheck } from './aerodromeChecks';
-import { useEditor } from '../state';
+import {
+  activeRequests,
+  CARD_EXPIRY_WARN_DAYS,
+  fuelLoad,
+  requestTiming,
+  type RoutePoint,
+  seatLayout,
+  validateCrew,
+} from '../../../shared';
+import { todayUtc } from '../../../shared/date';
+import { fmtClock } from '../../../shared/format';
+import type { RefAerodrome } from '../../../shared/ref';
 import { useNotams } from '../notams';
+import { useEditor } from '../state';
+import { type AdCheck, aerodromeChecks as buildAdChecks, aerodromeWarnings } from './aerodromeChecks';
 
 export type WarningLevel = 'danger' | 'warn' | 'info';
 export type WarningArea =
@@ -110,7 +111,7 @@ export { AD_ROLE, type AdCheck } from './aerodromeChecks';
 export interface FlightCalc {
   weather: RouteWeather | null;
   weatherLoading: boolean;
-  refreshWeather(): void;
+  refreshWeather: () => void;
   metar: MetarTafResult | null;
   navlog: NavlogResult | null;
   fuel: FuelPlan | null;
@@ -394,7 +395,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
           qnhHpa: surface?.qnhHpa ?? 1013.25,
           oatC: surface?.tempC ?? isaTempC(elev),
           variationDeg: magneticVariation(ad.lat, ad.lon, doc.date || todayUtc()),
-          massKg: massKg as number,
+          massKg: massKg,
           tables: aircraft.performance,
           runway,
           surface: surfaceKey,

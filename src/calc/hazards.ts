@@ -22,8 +22,8 @@
 // map can mark that stretch without naming the leg; the strip/export prefix the leg.
 //
 // Everything here is advisory (model guidance); the official briefing remains the pilot's job.
-import { fmtAltitude } from './nav.js';
 import { fmtClockMs } from '../shared/format.js';
+import { fmtAltitude } from './nav.js';
 
 /** Cloud cover on one pressure level. */
 export interface HazardLevel {

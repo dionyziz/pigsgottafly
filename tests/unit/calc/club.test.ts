@@ -43,21 +43,23 @@
 //     club's: with headwind the AFM columns give up to ~28 % shorter take-offs, in heat the
 //     +10 %/15 °C rule gives up to ~15 % shorter take-offs but up to ~10 % longer landings than
 //     entering the table at DA. That is why 'da' is the default method. Checked below.
-import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fleetSeed } from '../../../tools/build_seed';
+
+import { describe, expect, test } from 'vitest';
+
 import {
-  weightAndBalance,
-  pressureAltitudeFt,
   densityAltitudeFt,
-  windComponents,
-  takeoffDistances,
   landingDistances,
   type PerfMethod,
+  pressureAltitudeFt,
+  takeoffDistances,
+  weightAndBalance,
+  windComponents,
 } from '../../../src/calc';
 import type { AircraftInput, PerformanceTables } from '../../../src/shared';
 import { fuelLoad } from '../../../src/shared';
+import { fleetSeed } from '../../../tools/build_seed';
 
 interface ClubInput {
   Registration: 'SXASV' | 'SXASG';

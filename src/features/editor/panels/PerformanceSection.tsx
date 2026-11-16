@@ -5,11 +5,11 @@
 import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
 import type { Aircraft } from '../../../shared';
-import { setStopChoice, type FlightOptions } from '../../../shared';
-import { useEditor } from '../state';
+import { type FlightOptions, setStopChoice } from '../../../shared';
 import { fmtClock } from '../../../shared/format';
 import { Chip, Collapsible } from '../../../ui';
-import { useFlightCalc, type EndpointCalc } from './calc';
+import { useEditor } from '../state';
+import { type EndpointCalc, useFlightCalc } from './calc';
 import { KV, Section, SECTIONS_STORE } from './ui';
 
 const m = (x: number | null | undefined) => (x == null || !isFinite(x) ? '–' : `${Math.round(x)} m`);
@@ -75,10 +75,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
   const sfKey: keyof FlightOptions = to ? 'departureSurface' : 'arrivalSurface';
   // A stop keeps its runway (landing / take-off) and surface on its AerodromeRequest.
   const stopReq = e.stopUid ? (doc.options.aerodromeRequests ?? []).find((r) => r.pointUid === e.stopUid) : undefined;
-  const runwayValue = e.stopUid
-    ? ((to ? stopReq?.takeoffRunway : stopReq?.landingRunway) ?? null)
-    : (doc.options[rwKey] as string | null);
-  const surfaceValue = e.stopUid ? (stopReq?.surface ?? null) : (doc.options[sfKey] as string | null);
+  const runwayValue = e.stopUid ? ((to ? stopReq?.takeoffRunway : stopReq?.landingRunway) ?? null) : doc.options[rwKey];
+  const surfaceValue = e.stopUid ? (stopReq?.surface ?? null) : doc.options[sfKey];
   const setRunway = (v: string | null) =>
     update((d) => ({
       ...d,

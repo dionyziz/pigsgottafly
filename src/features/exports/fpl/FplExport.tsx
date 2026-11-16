@@ -5,19 +5,21 @@
 // Usage (ExportPage): <FplExport flight={flight} />. The aircraft is loaded from the hangar, the
 // pilot comes from the session, EET from the navlog with live winds aloft, endurance from the
 // fuel plan (fuel on board at the planning burn).
-import { useMemo, useState, type ReactNode } from 'react';
-import type { Flight } from '../../../shared';
-import { usePilot } from '../../../app/session';
-import { Panel } from '../../../ui';
-import { Signature, type ShownSignature } from '../form731/Form731';
-import { ExportWarnings } from '../WarningList';
-import type { Fix } from '../fix';
-import { buildFpl, oneLine, type FplOptions, type FplResult } from './fpl';
-import { fplInputFrom } from './input';
-import { useFplData } from './useFplData';
-import { FilingPanel } from './FilingPanel';
 import '../form731/forms.css';
 import './fpl.css';
+
+import { type ReactNode, useMemo, useState } from 'react';
+
+import { usePilot } from '../../../app/session';
+import type { Flight } from '../../../shared';
+import { Panel } from '../../../ui';
+import type { Fix } from '../fix';
+import { type ShownSignature, Signature } from '../form731/Form731';
+import { ExportWarnings } from '../WarningList';
+import { FilingPanel } from './FilingPanel';
+import { buildFpl, type FplOptions, type FplResult, oneLine } from './fpl';
+import { fplInputFrom } from './input';
+import { useFplData } from './useFplData';
 
 async function copyText(text: string): Promise<boolean> {
   try {

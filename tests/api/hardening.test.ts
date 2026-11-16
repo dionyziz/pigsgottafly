@@ -3,8 +3,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { client, googleClaims, signToken, startApi, type Client } from './helpers';
+
+import { type Client, client, googleClaims, signToken, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let a: Client;

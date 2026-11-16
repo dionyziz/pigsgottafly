@@ -1,15 +1,15 @@
 // Form 731 (HCAA "Official statement of persons boarding private aircraft"): what goes in each field.
-import type { FormFix, PersonField } from './FormWarnings';
 import {
   chunk,
   formatDate,
+  type FormExportProps,
   formPeople,
   idText,
   placeLong,
-  routePlaces,
   routeEnds,
-  type FormExportProps,
+  routePlaces,
 } from './common';
+import type { FormFix, PersonField } from './FormWarnings';
 
 /** Rows printed on one Form 731 sheet. */
 export const ROWS_PER_SHEET = 6;

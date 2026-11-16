@@ -12,9 +12,9 @@ import { useEffect, useMemo } from 'react';
 
 export interface Sequencer {
   /** Starts a request: returns its "still current?" check. */
-  next(): () => boolean;
+  next: () => () => boolean;
   /** Makes every request started so far stale (e.g. on unmount, or when the input is cleared). */
-  cancel(): void;
+  cancel: () => void;
 }
 
 export function sequencer(): Sequencer {

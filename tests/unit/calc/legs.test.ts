@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
-import { buildLegs, defaultAltitudes, windComponents, pressureAltitudeFt, densityAltitudeFt } from '../../../src/calc';
-import { REF, aerodrome, vfrPoint } from '../../../src/data/ref';
+
+import { buildLegs, defaultAltitudes, densityAltitudeFt, pressureAltitudeFt, windComponents } from '../../../src/calc';
+import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
 import type { RoutePoint } from '../../../src/shared';
 
 const ad = (icao: string): RoutePoint => {

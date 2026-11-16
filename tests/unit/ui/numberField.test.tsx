@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 // src/ui/NumberField: live commits, clamp on blur with the limit shown, revert of garbage, empty
 // handling (optional, emptyValue, zeroAsEmpty), integer, and the two old shims on top of it.
-import { afterEach, describe, expect, test } from 'vitest';
-import { useState } from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
-import { NumberField, type NumberFieldProps } from '../../../src/ui';
+import { useState } from 'react';
+import { afterEach, describe, expect, test } from 'vitest';
+
 import { NumInput } from '../../../src/features/hangar/fields';
+import { NumberField, type NumberFieldProps } from '../../../src/ui';
 
 afterEach(cleanup);
 

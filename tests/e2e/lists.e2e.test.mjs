@@ -1,7 +1,8 @@
 // End-to-end test of the lobby and the account list pages: onboarding, lobby order/search/⋮ menu
 // (rename, copy, trash + undo, trash view + restore), passengers, saved waypoints, profile.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import test, { after, before } from 'node:test';
+
 import { launch, startServer } from './harness.mjs';
 
 let server, browser, page;

@@ -1,8 +1,9 @@
 // Layout of the public legal pages (/privacy, /terms): no sign-in, no Shell (the Shell needs a
 // session). A top bar back to the app, the document in one card, links to the other document.
-import { useEffect, type ReactNode } from 'react';
-import { Link } from 'react-router';
 import './legal.css';
+
+import { type ReactNode, useEffect } from 'react';
+import { Link } from 'react-router';
 
 export const LEGAL_UPDATED = '16 November 2026';
 export const CONTACT_EMAIL = 'dionyziz@gmail.com';

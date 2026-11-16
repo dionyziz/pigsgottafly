@@ -16,22 +16,22 @@
 // Limits (../limits.ts): the owner's storage quota (checked at the start and at every chunk), at most
 // 3 unfinished uploads per owner, 50 files per aircraft or operator; unfinished uploads older than an
 // hour are swept at every start; the first chunk must be of the declared type (magic bytes).
-import type { Route } from '../http.js';
-import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
-import type { Queryable } from '../db.js';
-import { aircraftFor } from '../access.js';
-import { operatorFor } from '../operators.js';
-import { checkMagic, checkOpenUploads, checkQuota, LIMITS, sweepStaleUploads } from '../limits.js';
 import {
   AIRCRAFT_FILE_CHUNK_BYTES,
+  type AircraftFile,
+  type AircraftFileKind,
+  type AircraftFiles,
   DOCUMENT_MAX_BYTES,
   DOCUMENT_TYPES,
   PHOTO_MAX_BYTES,
   PHOTO_TYPES,
-  type AircraftFile,
-  type AircraftFileKind,
-  type AircraftFiles,
 } from '../../../src/shared/types.js';
+import { aircraftFor } from '../access.js';
+import type { Queryable } from '../db.js';
+import type { Route } from '../http.js';
+import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
+import { checkMagic, checkOpenUploads, checkQuota, LIMITS, sweepStaleUploads } from '../limits.js';
+import { operatorFor } from '../operators.js';
 
 const COLS = 'id, kind, title, name, mime, size, chunks, created';
 const MIB = 1024 * 1024;
@@ -82,14 +82,14 @@ interface FileScope {
   kinds: readonly AircraftFileKind[];
   /** Checks the pilot's access to parent `id` (404 / 403); returns the parent's owner (whose storage
    * the files use) and extra columns for a new file row. */
-  access(
+  access: (
     db: Queryable,
     pilotId: string,
     id: string,
     need: 'view' | 'edit',
-  ): Promise<{ owner: string; extra: Record<string, unknown> }>;
+  ) => Promise<{ owner: string; extra: Record<string, unknown> }>;
   /** After a file is completed, in its transaction. */
-  completed?(tx: Queryable, id: string): Promise<void>;
+  completed?: (tx: Queryable, id: string) => Promise<void>;
 }
 
 export function fileRoutes(scope: FileScope): Route[] {

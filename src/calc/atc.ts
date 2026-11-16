@@ -1,7 +1,7 @@
 // ATC list generation: input/output types. The generator itself lives in src/data/atc.ts, because
 // it walks the reference data; it must stay pure (no I/O) so it can be unit-tested.
-import type { AtcEntry, RoutePoint } from '../shared/types.js';
 import type { RefAerodrome, RefAirspace, RefFis } from '../shared/ref.js';
+import type { AtcEntry, RoutePoint } from '../shared/types.js';
 
 export interface AtcGenLeg {
   from: RoutePoint;

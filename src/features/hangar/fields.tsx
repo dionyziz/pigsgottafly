@@ -1,6 +1,7 @@
 // Form controls of the aircraft page: an editable point table, NumInput (NumberField where an empty
 // field commits 0 unless optional) and Section (CardSection with the page's class).
-import { useId, type ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
+
 import { moveAt } from '../../shared/list';
 import { CardSection, DragHandle, NumberField, RowRemove, useSortable } from '../../ui';
 

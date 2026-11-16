@@ -3,13 +3,14 @@
 //
 // The session pilot is the 'pilot' entity (src/data/entities.ts): a profile change anywhere (this
 // page, another page, another tab) or a window focus refreshes it, so usePilot() is never stale.
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+
 import { api, ApiRequestError } from '../data/api';
 import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/entities';
 import type { Pilot, SessionResponse } from '../shared';
+import { Loading } from '../ui';
 import { SessionContext, type SessionValue } from './session';
 import { SignIn } from './SignIn';
-import { Loading } from '../ui';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionResponse | null>(null);

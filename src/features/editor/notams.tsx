@@ -4,7 +4,8 @@
 // The server assesses the NOTAMs against the SAVED flight (route, times, altitudes), so the
 // briefing is (re)loaded once the editor's changes are saved and the route/times/altitudes changed.
 // <NotamProvider> sits inside <EditorProvider> (EditorPage); read with useNotams().
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+
 import { ApiRequestError } from '../../data/api';
 import { fetchNotams, type Notam, type NotamBriefing } from '../../data/notams';
 import { useEditor } from './state';
@@ -14,13 +15,13 @@ export interface NotamState {
   loading: boolean;
   /** Request failure (network, server), null when fine. A source failure is briefing.status 'error'. */
   error: string | null;
-  refresh(): void;
+  refresh: () => void;
   /** Hidden (not relevant) NOTAMs shown too, in the panel and on the map. */
   showAll: boolean;
-  setShowAll(v: boolean): void;
+  setShowAll: (v: boolean) => void;
   /** NOTAM picked on the map or in the panel (its key), null = none. */
   selected: string | null;
-  select(key: string | null): void;
+  select: (key: string | null) => void;
   selectedNotam: Notam | null;
 }
 

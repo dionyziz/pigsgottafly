@@ -12,9 +12,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { AircraftInput, CompassCard, FuelType } from '../src/shared/types.js';
+
 import { DEFAULT_FUEL_DENSITY } from '../src/shared/fuel.js';
 import { aircraftFromTypeJson } from '../src/shared/templates.js';
+import type { AircraftInput, CompassCard, FuelType } from '../src/shared/types.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const readJson = (p: string) => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'));

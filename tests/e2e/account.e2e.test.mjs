@@ -2,8 +2,9 @@
 // screen and in the account menu, and the profile's "Your data" / "Delete account" section
 // (download, typed confirmation, deletion back to a fresh account). Google's sign-in script is
 // stubbed: nothing is fetched from Google.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import test, { after, before } from 'node:test';
+
 import { launch, startServer } from './harness.mjs';
 
 let local, google, browser, page;

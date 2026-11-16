@@ -1,10 +1,11 @@
 // The admin page's API (ADMIN_EMAILS only) and the e-mail to the admins on each new signup
 // (mail transport MOCKED; a failing transport never blocks the sign-in).
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
-import { setMailTransport, type SentMail } from '../../api/_lib/mail';
-import type { AdminMail, AdminPilot, SessionResponse } from '../../src/shared';
+
+import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { SIGNUP_NOTICE_CAP } from '../../api/_lib/routes/session';
+import type { AdminMail, AdminPilot, SessionResponse } from '../../src/shared';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 const sent: SentMail[] = [];

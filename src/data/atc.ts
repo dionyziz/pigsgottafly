@@ -20,8 +20,8 @@
 //   An airspace/FIS unit already listed with the same primary frequency is not repeated.
 import type { AtcGenInput, AtcGenOutput } from '../calc/index.js';
 import { distanceNm, parseLevelFt, pointSegDistNm, segmentEntersPolygon } from '../calc/index.js';
-import type { AtcEntry, AtcRole, LatLon, RoutePoint } from '../shared/types.js';
 import type { RefAerodrome, RefAirspace, RefFis, RefFrequency } from '../shared/ref.js';
+import type { AtcEntry, AtcRole, LatLon, RoutePoint } from '../shared/types.js';
 
 /** Route endpoints farther than this from every aerodrome are not taken as one (v2). */
 export const ENDPOINT_AERODROME_NM = 2;

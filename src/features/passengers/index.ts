@@ -1,2 +1,2 @@
-export { PassengersPage } from './PassengersPage';
 export { PassengerDialog } from './PassengerDialog';
+export { PassengersPage } from './PassengersPage';

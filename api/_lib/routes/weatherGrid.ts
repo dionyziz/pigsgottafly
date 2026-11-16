@@ -14,30 +14,30 @@
 //   - Requests are rate-limited per pilot ('weather').
 // Open-Meteo failures (its own daily limit, a range error) are answers too: null locations and the
 // reason in `message`, never a 5xx.
-import type { Route } from '../http.js';
-import { HttpError, reply } from '../http.js';
-import type { Queryable } from '../db.js';
-import { rateLimit, takeTokens } from '../rateLimit.js';
-import type { Req } from '../http.js';
-import type { IsoDate, WindModel } from '../../../src/shared/types.js';
 import { isIsoDate, isoDay } from '../../../src/shared/date.js';
+import type { IsoDate, WindModel } from '../../../src/shared/types.js';
 import {
   forecastAvailability,
-  gridStep,
-  gridVariables,
   GRID_MAX_DAYS,
   GRID_MAX_LOCATIONS,
   GRID_MAX_POINTS,
+  gridStep,
+  gridVariables,
+  type Hourly,
   isWindModel,
   MODEL_META_IDS,
-  parseLocKey,
-  type Hourly,
   type ModelRun,
   type OpenMeteoEndpoint,
   type OpenMeteoLocation,
+  parseLocKey,
   type WeatherGridKind,
   type WeatherGridResponse,
 } from '../../../src/shared/weatherGrid.js';
+import type { Queryable } from '../db.js';
+import type { Route } from '../http.js';
+import type { Req } from '../http.js';
+import { HttpError, reply } from '../http.js';
+import { rateLimit, takeTokens } from '../rateLimit.js';
 
 const HOSTS: Record<OpenMeteoEndpoint, string> = {
   forecast: 'https://api.open-meteo.com/v1/forecast',

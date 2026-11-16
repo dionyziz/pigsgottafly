@@ -2,19 +2,20 @@
 // aloft for the navlog (EET), and the fuel plan (endurance). Calculations come from src/calc; the
 // weather from useFlightWeather, as for the other exports and the editor.
 import { useMemo } from 'react';
+
 import {
   computeNavlog,
   defaultAltitudes,
-  navlogAircraft,
-  planFuel,
   type FuelPlan,
+  navlogAircraft,
   type NavlogResult,
+  planFuel,
 } from '../../../calc';
-import type { Aircraft, Flight, Pilot } from '../../../shared';
-import { requestTiming } from '../../../shared';
 import { REF, SUN_TABLES } from '../../../data/ref';
 import { useFlightWeather } from '../../../data/useFlightWeather';
-import { windProviderFromLegs, type RouteWeather } from '../../../data/weather';
+import { type RouteWeather, windProviderFromLegs } from '../../../data/weather';
+import type { Aircraft, Flight, Pilot } from '../../../shared';
+import { requestTiming } from '../../../shared';
 import { useFlightAircraft } from '../useExportData';
 
 export interface FplData {

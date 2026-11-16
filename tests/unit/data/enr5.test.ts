@@ -1,9 +1,11 @@
 // ENR 5 navigation-warning areas: tools/parse_enr5.ts against verbatim AIP text, and checks over the
 // generated tools/enr5_areas.json.
 import fs from 'node:fs';
+
 import { describe, expect, test } from 'vitest';
-import { normLimit, parseCoord, parseEnr51, parseEnr52, parseEnr53, parseLateral, splitActivity } from '../../../tools/parse_enr5';
+
 import type { RefArea } from '../../../src/shared/ref';
+import { normLimit, parseCoord, parseEnr51, parseEnr52, parseEnr53, parseLateral, splitActivity } from '../../../tools/parse_enr5';
 
 // ---- Verbatim excerpts (pdftotext -layout) of AIP Greece ENR 5, AIRAC 09/26:
 // ENR 5.1 pages 1, 3, 4 and 9; ENR 5.2 page 1; ENR 5.3 page 1.

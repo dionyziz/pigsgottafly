@@ -1,5 +1,5 @@
+export type { PerfBlock, PerfRow, PerfSheetModel } from './model';
+export { clockZ, perfSheetModel, surfaceLabel } from './model';
 export { PerfSheet } from './PerformanceExport';
-export { perfSheetModel, clockZ, surfaceLabel } from './model';
-export type { PerfSheetModel, PerfBlock, PerfRow } from './model';
-export { perfSpeeds, typeSpeeds, ktOf, F172M_SPEEDS } from './speeds';
 export type { PerfSpeeds, TypeSpeeds } from './speeds';
+export { F172M_SPEEDS, ktOf, perfSpeeds, typeSpeeds } from './speeds';

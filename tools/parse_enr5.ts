@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import type { RefArea } from '../src/shared/ref.js';
 
 type Kind = RefArea['kind'];
@@ -46,7 +47,7 @@ export function parseCoord(s: string): LatLon | null {
 function findCoords(text: string): { at: number; end: number; p: LatLon }[] {
   const out: { at: number; end: number; p: LatLon }[] = [];
   for (const m of text.matchAll(new RegExp(COORD_SRC, 'g'))) {
-    out.push({ at: m.index!, end: m.index! + m[0].length, p: parseCoord(m[0])! });
+    out.push({ at: m.index, end: m.index + m[0].length, p: parseCoord(m[0])! });
   }
   return out;
 }
@@ -69,7 +70,7 @@ function bearing(c: LatLon, p: LatLon): number {
 
 /** Arc from bearing a to bearing b around c, clockwise or not, end points excluded, about every 10°. */
 function arc(c: LatLon, r: number, a: number, b: number, clockwise: boolean): LatLon[] {
-  let sweep = clockwise ? (b - a + 360) % 360 : -((a - b + 360) % 360);
+  const sweep = clockwise ? (b - a + 360) % 360 : -((a - b + 360) % 360);
   const n = Math.max(2, Math.ceil(Math.abs(sweep) / 10));
   const pts: LatLon[] = [];
   for (let i = 1; i < n; i++) pts.push(offset(c, a + (sweep * i) / n, r));
@@ -277,11 +278,11 @@ export function readTable(text: string, ncols: 3 | 5): Row[] {
     };
     const add = (c: number, s: string) => (cols[c] = cols[c] ? cols[c] + ' ' + s : s);
     for (const m of line.matchAll(/\S+(?: \S+)*/g)) {
-      const c = colOf(m.index!);
+      const c = colOf(m.index);
       // In the 5-column table the authority and remarks columns sometimes touch ('IRAKION Aeroclub Permission …'):
       // split such a chunk word by word.
-      if (ncols === 5 && c === 3 && m.index! + m[0].length > starts[4]) {
-        for (const w of m[0].matchAll(/\S+/g)) add(colOf(m.index! + w.index!), w[0]);
+      if (ncols === 5 && c === 3 && m.index + m[0].length > starts[4]) {
+        for (const w of m[0].matchAll(/\S+/g)) add(colOf(m.index + w.index), w[0]);
       } else add(c, m[0]);
     }
     rows.push({ section, cols: cols.map(norm) });

@@ -2,21 +2,6 @@
 // Every route except session/login/logout requires a session (or local mode) and is scoped to the
 // session's pilot: another pilot's records answer 404, never 403.
 import type {
-  Aircraft,
-  AircraftInput,
-  Flight,
-  FlightDoc,
-  FlightSummary,
-  Id,
-  Passenger,
-  PassengerInput,
-  Pilot,
-  PilotUpdate,
-  Waypoint,
-  WaypointInput,
-  EpochMs,
-} from './types.js';
-import type {
   RefAerodrome,
   RefAirac,
   RefAirspace,
@@ -27,6 +12,21 @@ import type {
   RefVfrPoint,
   RefVfrRoute,
 } from './ref.js';
+import type {
+  Aircraft,
+  AircraftInput,
+  EpochMs,
+  Flight,
+  FlightDoc,
+  FlightSummary,
+  Id,
+  Passenger,
+  PassengerInput,
+  Pilot,
+  PilotUpdate,
+  Waypoint,
+  WaypointInput,
+} from './types.js';
 
 /** Body of every non-2xx response. */
 export interface ApiError {

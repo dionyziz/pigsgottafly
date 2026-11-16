@@ -5,6 +5,8 @@
 // so everything an aircraft holds can be created, changed and removed from the page. No DOM, no
 // React (unit-tested in tests/unit/screens/hangar.test.ts and hangarScratch.test.ts, which builds
 // the owner's SX-ASV and SX-ASG from a blank aircraft with these operations).
+import { isIsoDate, parseIsoDate } from '../../shared/date';
+import { FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
 import type {
   AircraftInput,
   CompassCard,
@@ -20,8 +22,6 @@ import type {
   StationKind,
   TakeoffTable,
 } from '../../shared/types';
-import { FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
-import { isIsoDate, parseIsoDate } from '../../shared/date';
 import { parseItem18 } from '../exports/fpl/fpl';
 
 export type IssueLevel = 'error' | 'warning';

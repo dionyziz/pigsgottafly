@@ -9,13 +9,14 @@
 //   5. open every export, check key fields and the printed page size (PDF);
 //   6. check W&B against an independent sum and take-off performance against the club calculator.
 // Screenshots go to tests/e2e/artifacts/flight-*.png.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, startServer, openMeteoFetch, ROOT } from './harness.mjs';
-import * as O from './oracle.mjs';
+import test, { after, before } from 'node:test';
+
 import { fleetSeed } from '../../tools/build_seed.ts';
+import { launch, openMeteoFetch, ROOT, startServer } from './harness.mjs';
+import * as O from './oracle.mjs';
 
 let server, browser, page;
 /** Open-Meteo requests the API made (the browser makes none). */

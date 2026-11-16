@@ -2,6 +2,7 @@
 // random session token in an HttpOnly cookie; the database keeps only its SHA-256 hash.
 // Without a Google client id (local mode) every request is the one 'local' pilot.
 import crypto from 'node:crypto';
+
 import type { Queryable } from './db.js';
 import type { ApiConfig, Req } from './http.js';
 

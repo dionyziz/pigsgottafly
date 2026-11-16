@@ -1,6 +1,7 @@
 // /terms: the terms of service. Dated LEGAL_UPDATED; plain English.
 import { Link } from 'react-router';
-import { LegalPage, Mail, type LegalSection } from './LegalPage';
+
+import { LegalPage, type LegalSection, Mail } from './LegalPage';
 
 const sections: LegalSection[] = [
   {

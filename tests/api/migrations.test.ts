@@ -1,20 +1,22 @@
 // Migration 001–004 converts the v2 production schema without losing accounts, sessions or flights.
 import crypto from 'node:crypto';
-import { describe, expect, test } from 'vitest';
-import { connect } from '../../api/_lib/db';
-import { migrate, MIGRATIONS, type Migration } from '../../api/_lib/migrate';
-import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
-import {
-  equipment as FLEET_EQUIPMENT_011,
-  colours as FLEET_COLOURS_011,
-} from '../../api/_lib/migrations/011_fleet_fpl_equipment';
-import { legacyAtc, legacyLegOverrides } from '../../api/_lib/migrations/004_legacy_flights';
-import type { AtcEntry } from '../../src/shared/types';
-import { createApi } from '../../api/_lib/app';
-import { CID, JWK } from './helpers';
-import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+
+import { describe, expect, test } from 'vitest';
+
+import { createApi } from '../../api/_lib/app';
+import { connect } from '../../api/_lib/db';
+import { migrate, type Migration, MIGRATIONS } from '../../api/_lib/migrate';
+import { legacyAtc, legacyLegOverrides } from '../../api/_lib/migrations/004_legacy_flights';
+import {
+  colours as FLEET_COLOURS_011,
+  equipment as FLEET_EQUIPMENT_011,
+} from '../../api/_lib/migrations/011_fleet_fpl_equipment';
+import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
+import type { AtcEntry } from '../../src/shared/types';
+import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
+import { CID, JWK } from './helpers';
 
 // The v2 schema exactly as api/_lib/db.mjs created it.
 const V2 = `
@@ -758,7 +760,8 @@ describe('migrations', () => {
   });
 });
 
-import { test as tRace, expect as eRace } from 'vitest';
+import { expect as eRace, test as tRace } from 'vitest';
+
 import { connect as connectRace } from '../../api/_lib/db';
 import { migrate as migrateRace, MIGRATIONS as LIST } from '../../api/_lib/migrate';
 tRace('a migration already applied by another instance is skipped, not re-run', async () => {

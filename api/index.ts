@@ -9,8 +9,9 @@
 // recorded in app_errors and e-mailed to ADMIN_EMAILS (api/_lib/monitor.ts); every request then
 // answers 500 (GET /api/health: 503) and retries the start-up, until it succeeds.
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { openDb } from './_lib/db.js';
+
 import { configFromEnv, createApi } from './_lib/app.js';
+import { openDb } from './_lib/db.js';
 
 let handler: Promise<(req: IncomingMessage, res: ServerResponse) => Promise<void>> | null = null;
 

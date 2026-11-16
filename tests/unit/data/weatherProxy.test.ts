@@ -1,10 +1,11 @@
 // The METAR/TAF proxy route (api/_lib/routes/weather.ts) with a fake upstream serving the recorded
 // aviationweather.gov responses in tests/fixtures/weather/awc-*.json.
 import { describe, expect, test } from 'vitest';
+
+import { type Ctx,HttpError, Reply } from '../../../api/_lib/http';
+import { createWeatherProxy, METAR_TTL_MS, parseIds, pickMetars, pickTafs, STALE_MAX_MS, TAF_TTL_MS } from '../../../api/_lib/routes/weather';
 import metars from '../../fixtures/weather/awc-metar-2026-11-15.json';
 import tafs from '../../fixtures/weather/awc-taf-2026-11-15.json';
-import { createWeatherProxy, parseIds, pickMetars, pickTafs, METAR_TTL_MS, STALE_MAX_MS, TAF_TTL_MS } from '../../../api/_lib/routes/weather';
-import { HttpError, Reply, type Ctx } from '../../../api/_lib/http';
 
 const T0 = Date.parse('2026-11-15T13:36:00Z');
 
@@ -85,7 +86,7 @@ describe('weather proxy', () => {
     await expect(p.get(['LGIR'])).rejects.toMatchObject({ status: 502 });
     await expect(p.get(['LGKR'])).rejects.toBeInstanceOf(HttpError);
     // network errors and timeouts are failures too
-    const q = createWeatherProxy({ fetch: (async () => { throw new DOMException('timed out', 'TimeoutError'); }) as typeof fetch, now: () => T0 });
+    const q = createWeatherProxy({ fetch: (async () => { throw new DOMException('timed out', 'TimeoutError'); }), now: () => T0 });
     await expect(q.get(['LGAV'])).rejects.toMatchObject({ status: 502 });
   });
 

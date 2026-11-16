@@ -7,9 +7,10 @@
 //     buttons stay disabled; the addressees are still shown, for filing by other means).
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { api, ApiRequestError } from '../../../data/api';
-import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import type { Flight } from '../../../shared';
+import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
 import { Chip, Loading, Panel } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
@@ -49,7 +50,7 @@ export interface FilingPanelProps {
   /** False while the message has ???? fields: filing is refused. */
   complete: boolean;
   /** The reviewed addressees, for the printed form. */
-  onAddresses?(addresses: string[]): void;
+  onAddresses?: (addresses: string[]) => void;
 }
 
 export function FilingPanel({ flight, message, complete, onAddresses }: FilingPanelProps) {

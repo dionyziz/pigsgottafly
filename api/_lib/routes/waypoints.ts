@@ -1,9 +1,9 @@
 // Saved custom waypoints CRUD: /waypoints, /waypoints/:id. Scoped to the session pilot.
+import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
 import { newId, notFound, reply } from '../http.js';
-import { toWaypoint, waypointInput } from '../rows.js';
 import { checkCount } from '../limits.js';
-import type { Queryable } from '../db.js';
+import { toWaypoint, waypointInput } from '../rows.js';
 
 async function get(db: Queryable, pilotId: string, id: string) {
   const [r] = await db.query('SELECT * FROM waypoints WHERE id = $1 AND pilot_id = $2', [id, pilotId]);

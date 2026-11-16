@@ -94,7 +94,7 @@ export function fuelByType(
 
 /** Sum of the litres per type (0 when none). */
 export function fuelByTypeTotal(byType: Partial<Record<FuelType, number>> | null | undefined): number {
-  return FUEL_TYPES.reduce((s, t) => s + (fin(byType?.[t]) ? (byType![t] as number) : 0), 0);
+  return FUEL_TYPES.reduce((s, t) => s + (fin(byType?.[t]) ? byType[t] : 0), 0);
 }
 
 /**

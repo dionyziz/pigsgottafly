@@ -2,14 +2,16 @@
 // groups recorded by the monitor (api/_lib/monitor.ts): server errors and 5xx answers, client errors,
 // failed migrations and health-check warnings, newest first. A row opens its last stack; "Resolve"
 // hides it until it happens again (which e-mails the admins again).
+import '../lobby/lists.css';
+
 import { useState } from 'react';
+
 import { Shell } from '../../app/Shell';
 import { api } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
-import type { AppErrorDetail, AppErrorGroup } from '../../shared/monitoring';
 import { errorMessage } from '../../shared/format';
-import { AsyncView, Chip, EmptyState, Loading, SegmentedControl, rowClick } from '../../ui';
-import '../lobby/lists.css';
+import type { AppErrorDetail, AppErrorGroup } from '../../shared/monitoring';
+import { AsyncView, Chip, EmptyState, Loading, rowClick, SegmentedControl } from '../../ui';
 import { AdminNav } from './AdminNav';
 import { adminErrorTitle, when } from './AdminPage';
 

@@ -1,8 +1,9 @@
 // The client error reporter's gate (src/app/errorReporter.ts): dedupe, the per-page cap, noise
 // filtering and scrubbing; and the URL scrubbing shared with the server (src/shared/monitoring.ts).
 import { describe, expect, test } from 'vitest';
+
 import { createReporter } from '../../../src/app/errorReporter';
-import { scrubText, scrubUrl, type ClientErrorReport } from '../../../src/shared/monitoring';
+import { type ClientErrorReport, scrubText, scrubUrl } from '../../../src/shared/monitoring';
 
 function setup(max = 20) {
   let t = 1_000_000;
@@ -89,8 +90,9 @@ describe('scrubbing', () => {
   });
 });
 
+import { expect as e3p, test as t3p } from 'vitest';
+
 import { isIgnorable as ignorable3p } from '../../../src/app/errorReporter';
-import { test as t3p, expect as e3p } from 'vitest';
 t3p('errors entirely inside third-party scripts are ignored; ours are kept', () => {
   (globalThis as any).location ??= { origin: 'https://pigsgottafly.com' };
   e3p(

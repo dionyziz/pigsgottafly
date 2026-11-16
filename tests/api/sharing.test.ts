@@ -1,9 +1,10 @@
 // Shared aircraft: owner / editor / viewer / stranger access to the aircraft, its files and its
 // sharing; adding people by e-mail; flights and the default aircraft on a shared aircraft; revoking.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
-import { blankAircraft } from '../../src/shared/templates';
+
 import type { AircraftSharing, Flight, HangarAircraft } from '../../src/shared';
+import { blankAircraft } from '../../src/shared/templates';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let owner: Client, editor: Client, viewer: Client, stranger: Client;

@@ -17,41 +17,42 @@
 // end of the day after the flight, at most 14 days after they were made. A link is bound to the person it was given to (personHash): a
 // passenger without a saved record is keyed by seat, and whoever later takes that seat is a different
 // person whom the old link must not reach.
-import { fmtDate } from '../../../src/shared/date.js';
 import crypto from 'node:crypto';
-import type { Route } from '../http.js';
-import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
-import type { Queryable } from '../db.js';
-import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
-import { accessibleSql, AIRCRAFT_FROM } from '../access.js';
-import { flightContext, loadRef } from '../flightContext.js';
-import { aerodromeNotamEffects, genDecHandling, type GenDecHandling } from '../../../src/calc/aerodromeStatus.js';
+
+import { aerodromeNotamEffects, type GenDecHandling, genDecHandling } from '../../../src/calc/aerodromeStatus.js';
 import type { NotamBriefing } from '../../../src/shared/briefing.js';
-import type { RefAerodrome } from '../../../src/shared/ref.js';
-import type { RoutePoint } from '../../../src/shared/types.js';
-import { hashToken } from '../auth.js';
-import { mailAvailability, MailError, sendMail } from '../mail.js';
-import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
-import { checkLinkCap, mailFailed, mailSent, reserveMail } from '../sendCaps.js';
-import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
+import { fmtDate } from '../../../src/shared/date.js';
 import {
+  type AerodromeLookup,
   FORM731_TO,
+  type Form731Content,
+  form731Content,
+  type Form731Person,
+  form731SigningText,
+  type FormsState,
   GENDEC_PIC_KEY,
   GENDEC_TO,
-  form731Content,
-  form731SigningText,
+  type GenDecContent,
   genDecContent,
   genDecText,
   maskTail,
-  type AerodromeLookup,
-  type Form731Content,
-  type Form731Person,
-  type FormsState,
-  type GenDecContent,
   type SignatureState,
   type SigningView,
   type SubmissionState,
 } from '../../../src/shared/forms.js';
+import type { RefAerodrome } from '../../../src/shared/ref.js';
+import type { RoutePoint } from '../../../src/shared/types.js';
+import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
+import { accessibleSql, AIRCRAFT_FROM } from '../access.js';
+import { hashToken } from '../auth.js';
+import type { Queryable } from '../db.js';
+import { flightContext, loadRef } from '../flightContext.js';
+import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
+import type { Route } from '../http.js';
+import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
+import { mailAvailability, MailError, sendMail } from '../mail.js';
+import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
+import { checkLinkCap, mailFailed, mailSent, reserveMail } from '../sendCaps.js';
 
 const DAY = 86400e3;
 const sha = (s: string) => crypto.createHash('sha256').update(s).digest('base64url');

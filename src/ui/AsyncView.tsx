@@ -1,5 +1,6 @@
 // Empty state, and the error / loading / empty / no-match switch of a loaded list.
 import type { ReactNode } from 'react';
+
 import { Loading } from './Loading';
 
 export function EmptyState({

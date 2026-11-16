@@ -1,9 +1,9 @@
 // What the filled forms say (Form 731 and the General Declaration), as plain data shared by the
 // client (print sheets, signature panel) and the API (signing page, server-side PDF, e-mail to
 // HCAA, the "form changed since signing" check). Pure: the aerodrome lookup is passed in.
-import type { Aircraft, FlightCrew, IsoDate, Passenger, PersonDetails, Pilot, RoutePoint, Station } from './types.js';
-import { seatLayout } from './constants.js';
 import type { GenDecHandling } from '../calc/aerodromeStatus.js';
+import { seatLayout } from './constants.js';
+import type { Aircraft, FlightCrew, IsoDate, Passenger, PersonDetails, Pilot, RoutePoint, Station } from './types.js';
 
 /** Minimal aerodrome record for the forms. */
 export interface FormAerodrome {

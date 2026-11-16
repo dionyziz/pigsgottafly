@@ -9,9 +9,14 @@
 // And an aircraft survives the editor's draft handling (structuredClone + validation) and the API's
 // content checks without loss.
 import { describe, expect, test } from 'vitest';
-import { fleetSeed } from '../../../tools/build_seed';
-import { blankAircraft } from '../../../src/shared/templates';
-import type { AircraftInput, TakeoffTable } from '../../../src/shared/types';
+
+import {
+  checkCompassCards,
+  checkEquipment,
+  checkFuel,
+  checkMassBalance,
+  checkPerformance,
+} from '../../../api/_lib/aircraftDoc';
 import {
   addCombinedLimit,
   addCompassCard,
@@ -31,13 +36,9 @@ import {
   setRunwayConditions,
   validateAircraft,
 } from '../../../src/features/hangar/model';
-import {
-  checkCompassCards,
-  checkEquipment,
-  checkFuel,
-  checkMassBalance,
-  checkPerformance,
-} from '../../../api/_lib/aircraftDoc';
+import { blankAircraft } from '../../../src/shared/templates';
+import type { AircraftInput, TakeoffTable } from '../../../src/shared/types';
+import { fleetSeed } from '../../../tools/build_seed';
 
 /** Builds `target` on a blank aircraft the way a pilot would on the aircraft page. */
 function buildFromScratch(target: AircraftInput): AircraftInput {

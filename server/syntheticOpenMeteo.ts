@@ -62,7 +62,7 @@ function value(v: string, lat: number, lon: number, tMs: number): number | null 
 
 /** A fetch() that answers Open-Meteo forecast and meta.json URLs with generated data. */
 export function syntheticOpenMeteo(now: () => number = Date.now): typeof fetch {
-  return (async (input: RequestInfo | URL) => {
+  return async (input: RequestInfo | URL) => {
     const url = new URL(String(input instanceof Request ? input.url : input));
     const json = (body: unknown, status = 200) =>
       new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -86,5 +86,5 @@ export function syntheticOpenMeteo(now: () => number = Date.now): typeof fetch {
       return { latitude: lat, longitude: lon, elevation: 50, hourly };
     });
     return json(out.length === 1 ? out[0] : out);
-  }) as typeof fetch;
+  };
 }

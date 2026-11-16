@@ -1,20 +1,22 @@
 // Route direction arrows, the route-point hover halo, the layer toggles, the FIR and the chart colours (design tokens).
 import fs from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
-import type { RoutePoint } from '../../../../shared';
-import { ARROW_AT, firFeatures, routeArrowFeatures } from '../features';
+
 import { FIR } from '../../../../data/ref';
+import type { RoutePoint } from '../../../../shared';
+import { DEFAULT_MAP_LAYERS, mapLayersOf } from '../../../../shared/mapLayers';
+import { ARROW_AT, firFeatures, routeArrowFeatures } from '../features';
+import { airspaceShown, areaShown, areaToggle, flightLayers, legacyLayers } from '../mapPrefs';
 import {
   buildStyle,
-  LAYER_GROUPS,
   CHART,
   CHART_DEFAULT_VALUES,
   CHART_TOKENS,
-  loadChartTokens,
   type ChartColor,
+  LAYER_GROUPS,
+  loadChartTokens,
 } from '../style';
-import { airspaceShown, areaShown, areaToggle, flightLayers, legacyLayers } from '../mapPrefs';
-import { DEFAULT_MAP_LAYERS, mapLayersOf } from '../../../../shared/mapLayers';
 
 const p = (lat: number, lon: number): RoutePoint => ({
   uid: `${lat},${lon}`,

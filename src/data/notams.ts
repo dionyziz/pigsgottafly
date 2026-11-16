@@ -3,8 +3,8 @@
 // the editor panel, the map and the briefing export show, plus the map geometry of its Q-line
 // circle. No DOM here; unit-tested in tests/unit/data/notams.test.ts.
 import type { Notam, NotamBriefing } from '../shared/briefing';
-import { request } from './api';
 import { fmtAltitude, fmtDateTimeMs } from '../shared/format';
+import { request } from './api';
 
 export type { Notam, NotamBriefing };
 

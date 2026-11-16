@@ -2,14 +2,16 @@
 // sent goes out again only with {resend: true}, and concurrent sends of one form send one message.
 // The mail transport is MOCKED: nothing is sent for real.
 import type { AddressInfo } from 'node:net';
+
 import { afterEach, describe, expect, test } from 'vitest';
+
+import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { createServer } from '../../server/server';
-import { setMailTransport, type SentMail } from '../../api/_lib/mail';
-import { client, JWK, CID, type Client } from './helpers';
 import aerodromes from '../../src/data/ref/aerodromes.json';
-import type { RefAerodrome } from '../../src/shared/ref';
 import type { FormsState } from '../../src/shared/forms';
+import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
+import { CID, type Client, client, JWK } from './helpers';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const pt = (icao: string, uid: string): RoutePoint => {

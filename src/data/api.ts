@@ -1,24 +1,31 @@
 // Typed fetch wrappers for /api/… (contract: src/shared/api.ts). Throws ApiRequestError on non-2xx;
 // `auth` is true for 401 (the app then shows the sign-in screen).
+import { reportApiFailure } from '../app/errorReporter';
 import type {
+  AdminMail,
+  AdminPilot,
   AircraftFile,
-  AircraftFileStart,
   AircraftFiles,
+  AircraftFileStart,
   AircraftInput,
   AircraftSharing,
-  HangarAircraft,
-  ShareRole,
   Attachment,
   AttachmentInput,
   AttachmentRef,
+  DeclarationsState,
   Flight,
   FlightCopyRequest,
   FlightCreateRequest,
   FlightDoc,
   FlightListItem,
   FlightUpdateResponse,
+  HangarAircraft,
   LoginResponse,
   MetarTafResponse,
+  OperatorFiles,
+  OperatorInput,
+  OperatorItem,
+  OperatorSharing,
   Passenger,
   PassengerInput,
   Pilot,
@@ -26,22 +33,15 @@ import type {
   RefAirac,
   RefBundle,
   SessionResponse,
+  ShareRole,
   Waypoint,
   WaypointInput,
-  AdminPilot,
-  AdminMail,
-  DeclarationsState,
-  OperatorFiles,
-  OperatorInput,
-  OperatorItem,
-  OperatorSharing,
   WbPerfContent,
 } from '../shared';
 import type { FileRequest, FilingState } from '../shared/briefing';
 import type { FormsState, SigningView } from '../shared/forms';
 import type { AppErrorDetail, AppErrorGroup } from '../shared/monitoring';
-import { reportApiFailure } from '../app/errorReporter';
-import { invalidate, putEntity, type EntityKey } from './entityStore';
+import { type EntityKey,invalidate, putEntity } from './entityStore';
 
 /** After a successful mutation: whatever shows `keys` refetches, in this tab and the others. */
 function changes<A extends unknown[], R>(keys: EntityKey | EntityKey[], fn: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
@@ -78,8 +78,8 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   }
   const out = res.status === 204 ? null : await res.json().catch(() => null);
   if (res.status === 401 && typeof window !== 'undefined' && path !== 'session') window.dispatchEvent(new Event('pgf:unauthorized'));
-  if (res.status >= 500) reportApiFailure(method, path, res.status, (out && typeof (out as any).error === 'string' && (out as any).error) || '');
-  if (!res.ok) throw new ApiRequestError(res.status, (out && (out as any).error) || `HTTP ${res.status}`, out);
+  if (res.status >= 500) reportApiFailure(method, path, res.status, (out && typeof (out).error === 'string' && (out).error) || '');
+  if (!res.ok) throw new ApiRequestError(res.status, (out && (out).error) || `HTTP ${res.status}`, out);
   return out as T;
 }
 

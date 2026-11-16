@@ -9,10 +9,10 @@
 // landing = take-off − (taxi allowance + trip fuel) at the fuel arm. An intermediate full stop
 // adds a total at the stop (landing there, and the take-off from there with the same fuel: no
 // refuelling, no taxi burn before take-off) and its own check against MLW, MTOW and the envelope.
+import type { WbCheck, WbPoint, WbResult } from '../../../calc';
 import type { Aircraft, Envelope, FlightDoc, Pilot, WbCategory } from '../../../shared';
 import { fuelLoad, primaryFuel, seatLayout } from '../../../shared';
 import { fmtDate } from '../../../shared/date';
-import type { WbCheck, WbPoint, WbResult } from '../../../calc';
 import type { ExportCalc } from './exportCalc';
 
 export type WbLineKind = 'empty' | 'unusable' | 'fuel' | 'station' | 'total' | 'burn';

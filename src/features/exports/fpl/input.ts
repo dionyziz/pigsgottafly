@@ -1,9 +1,9 @@
 // FplInput from the app's records: flight, aircraft (hangar), pilot (profile), navlog and fuel plan.
 import type { FuelPlan, NavlogResult } from '../../../calc';
-import { requestRemarks, type Aircraft, type Flight, type Pilot } from '../../../shared';
-import type { RefAerodrome } from '../../../shared/ref';
 import { endpointAerodrome } from '../../../data/atc';
-import { REF, aerodrome } from '../../../data/ref';
+import { aerodrome, REF } from '../../../data/ref';
+import { type Aircraft, type Flight, type Pilot, requestRemarks } from '../../../shared';
+import type { RefAerodrome } from '../../../shared/ref';
 import type { FplAerodrome, FplInput, FplOptions } from './fpl';
 
 const BLANK_EQUIPMENT: Aircraft['equipment'] = {

@@ -1,17 +1,17 @@
 // The PDFs e-mailed to HCAA: Form 731 (landscape, with the handwriting signatures) and the General
 // Declaration (portrait), laid out like the print sheets (src/features/exports/form731/Form731.tsx
 // and gendec/GenDec.tsx, positions in mm measured from the originals in trn-docs/).
-import { PdfDoc, winAnsi, type PdfPage } from './pdf.js';
-import handTtf from './fonts/homemadeApple.js';
 import {
+  type Form731Content,
   GENDEC_DISINSECT_CONT,
   GENDEC_DISINSECT_LINES,
   GENDEC_HEALTH_CONT,
   GENDEC_HEALTH_LINES,
-  signatureName,
-  type Form731Content,
   type GenDecContent,
+  signatureName,
 } from '../../src/shared/forms.js';
+import handTtf from './fonts/homemadeApple.js';
+import { PdfDoc, type PdfPage, winAnsi } from './pdf.js';
 
 /** Rows printed on one Form 731 sheet. */
 const ROWS_731 = 6;

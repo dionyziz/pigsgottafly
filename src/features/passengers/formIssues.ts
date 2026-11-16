@@ -1,7 +1,8 @@
 // Field-level form errors for the people and profile forms. A validator returns {field, message}[];
 // each message shows under its field (<Field issues={…}>, which marks it .invalid), the first bad
 // field gets focus on a failed save, and editing a field clears its messages.
-import { useCallback, useEffect, useState, type RefObject } from 'react';
+import { type RefObject, useCallback, useEffect, useState } from 'react';
+
 import { findFocusTarget } from '../../app/focusParam';
 
 export interface FormIssue<F extends string = string> {

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 // The editor's number field (src/ui NumberField) commits in-range keystrokes live; an out-of-range entry must never be
 // cut to its first digits (typing 60 into a max-54 field once stored 6 and W&B read 'ok').
-import { afterEach, describe, expect, test } from 'vitest';
-import { useState } from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
-import { NumberField } from '../../../src/ui';
+import { useState } from 'react';
+import { afterEach, describe, expect, test } from 'vitest';
+
 import { parseNumber } from '../../../src/shared/number';
+import { NumberField } from '../../../src/ui';
 
 afterEach(cleanup);
 

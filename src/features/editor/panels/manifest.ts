@@ -2,7 +2,7 @@
 // Following: a manifest row's snapshot follows its person (passenger list / profile) field by field
 // until that field is edited on the flight (FlightCrew.overrides); "Reset from the saved details"
 // copies the person again and clears the overrides.
-import { PERSON_KEYS, type FlightCrew, type PersonDetails, type PersonKey } from '../../../shared';
+import { type FlightCrew, PERSON_KEYS, type PersonDetails, type PersonKey } from '../../../shared';
 
 /**
  * The snapshot after the person's record changed from `before` to `after`: the fields that changed

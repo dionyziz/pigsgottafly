@@ -7,8 +7,8 @@
 // latitude and longitude), so one node is fetched once per model run and serves every leg, edit and
 // pilot near it. Surface conditions at aerodromes are fetched at the aerodrome itself (Open-Meteo
 // corrects 2 m temperature and surface pressure to the aerodrome's elevation).
-import type { IsoDate, WindModel } from './types.js';
 import { isoDay } from './date.js';
+import type { IsoDate, WindModel } from './types.js';
 
 /** Pressure levels of the winds aloft and of the cloud layers (hPa). */
 export const LEVELS = [1000, 975, 950, 925, 900, 850, 800, 700, 600] as const;

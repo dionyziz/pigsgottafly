@@ -2,8 +2,7 @@
 // the status over a time window, the day's hours for display, and who sends the General Declaration.
 // Everything must also work with no NOTAMs at all (the NOTAM source may not be configured).
 import { describe, expect, test } from 'vitest';
-import type { Notam } from '../../../src/shared/briefing';
-import { SUN_TABLES, aerodrome } from '../../../src/data/ref';
+
 import {
   aerodromeDay,
   aerodromeNotamEffects,
@@ -12,6 +11,8 @@ import {
   genDecHandling,
   type HandlingEndInput,
 } from '../../../src/calc/aerodromeStatus';
+import { aerodrome, SUN_TABLES } from '../../../src/data/ref';
+import type { Notam } from '../../../src/shared/briefing';
 
 const ms = (iso: string) => Date.parse(iso);
 const ad = (id: string) => aerodrome(id)!;

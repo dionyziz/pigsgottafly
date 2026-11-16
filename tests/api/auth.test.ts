@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
+
 import { describe, expect, test } from 'vitest';
+
 import { verifyGoogleToken } from '../../api/_lib/auth';
-import { CID, JWK, googleClaims, signToken } from './helpers';
+import { CID, googleClaims, JWK, signToken } from './helpers';
 
 const keys = async () => [JWK];
 const good = () => googleClaims('s1', 'pilot@example.com');

@@ -1,18 +1,18 @@
 // Aircraft page sections: identity, flight plan items, speeds, fuel. (Mass & balance, performance
 // and compass cards are in their own files.) Each section edits the draft through `edit`. Inputs are
 // named by the issue path they fix (name="fuel.usableL"), so the save bar's issues can focus them.
-import { fuelDensity } from '../../shared/fuel';
 import { fmtDuration } from '../../shared/format';
+import { fuelDensity } from '../../shared/fuel';
 import type { AircraftInput, WakeCategory } from '../../shared/types';
 import { AerodromeTextInput, Check, Field, IssueList, RowRemove } from '../../ui';
-import { NumInput, Section } from './fields';
 import { OperatorPicker } from '../operators/OperatorPicker';
+import { NumInput, Section } from './fields';
 import {
-  ADS_CODES,
-  ITEM10A_CODES,
-  SSR_CODES,
   addFuelType,
+  ADS_CODES,
+  type Issue,
   issuesAt,
+  ITEM10A_CODES,
   join10a,
   join10b,
   makePrimaryFuel,
@@ -20,7 +20,7 @@ import {
   removeFuelType,
   split10a,
   split10b,
-  type Issue,
+  SSR_CODES,
 } from './model';
 
 export interface SectionProps {

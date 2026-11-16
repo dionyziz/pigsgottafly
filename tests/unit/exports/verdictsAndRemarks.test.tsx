@@ -2,37 +2,37 @@
 // hand-checkable TODR note; FPL item 18 remarks with
 // indicators, touch-and-go / stop requests (remarks and timing); ELOT 743 transliteration.
 import { describe, expect, test } from 'vitest';
-import { fleetSeed } from '../../../tools/build_seed';
-import { REF, SUN_TABLES, aerodrome, runwaysOf, vfrPoint } from '../../../src/data/ref';
-import {
-  activeRequests,
-  emptyFlightDoc,
-  legKey,
-  requestRemarks,
-  requestTiming,
-  setRequest,
-  type Aircraft,
-  type AircraftInput,
-  type FlightCrew,
-  type FlightDoc,
-  type PersonDetails,
-  type Pilot,
-  type RoutePoint,
-} from '../../../src/shared';
+
 import {
   buildLegs,
   computeNavlog,
   defaultAltitudes,
+  landingDistances,
   navlogAircraft,
   takeoffDistances,
-  landingDistances,
 } from '../../../src/calc';
-import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
+import { aerodrome, REF, runwaysOf, SUN_TABLES, vfrPoint } from '../../../src/data/ref';
+import { buildFpl, type FplInput, transliterate } from '../../../src/features/exports/fpl/fpl';
 import { perfSheetModel } from '../../../src/features/exports/performance/model';
-import { buildFpl, transliterate, type FplInput } from '../../../src/features/exports/fpl/fpl';
+import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
+import {
+  activeRequests,
+  type Aircraft,
+  emptyFlightDoc,
+  type FlightCrew,
+  type FlightDoc,
+  legKey,
+  type PersonDetails,
+  type Pilot,
+  requestRemarks,
+  requestTiming,
+  type RoutePoint,
+  setRequest,
+} from '../../../src/shared';
+import { fleetSeed } from '../../../tools/build_seed';
 
 const [ASV_IN] = fleetSeed();
-const ASV: Aircraft = { ...structuredClone(ASV_IN as AircraftInput), id: 'ac_asv', created: 0, updated: 0 };
+const ASV: Aircraft = { ...structuredClone(ASV_IN), id: 'ac_asv', created: 0, updated: 0 };
 const person = (fullName: string, weightKg: number | null): PersonDetails => ({
   fullName,
   phone: '',
@@ -298,7 +298,7 @@ describe('touch-and-go and intermediate-stop requests', () => {
     kor = vfr('LGAV/KORINTHOS'),
     tt2 = { ...adPoint('LGTT') };
   const route = [tt, mg, kor, tt2];
-  const icao = (p: RoutePoint) => aerodrome(p.refId!)?.icao ?? null;
+  const icao = (p: RoutePoint) => aerodrome(p.refId)?.icao ?? null;
 
   test('remarks in the club format, in route order; departure touch-and-go is "initially"', () => {
     let reqs = setRequest([], mg.uid, 'touch-and-go');

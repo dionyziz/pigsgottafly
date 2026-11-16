@@ -3,13 +3,14 @@
 // The pilot is a passenger too: <PilotDetailsDialog /> edits the pilot's own person details (plus the
 // licence number) with the same form, saved to the profile (PUT /api/me).
 import { useRef, useState } from 'react';
+
+import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import type { Passenger, PassengerInput, Pilot } from '../../shared';
 import { errorMessage } from '../../shared/format';
-import { useSession } from '../../app/session';
 import { Dialog, DialogFooter, useHighlightFields } from '../../ui';
 import { useFormIssues } from './formIssues';
-import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from './person';
+import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from './person';
 import { PersonFields, type SetPerson } from './PersonFields';
 
 /** The dialog's form state, its field problems and the fields a link asked to highlight. */

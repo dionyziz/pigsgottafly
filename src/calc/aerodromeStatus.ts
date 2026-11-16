@@ -17,12 +17,12 @@ import type { HoursSpec, RefAdHours, RefAerodrome, RefSunTable } from '../shared
 import {
   clockZ,
   fmtRules,
+  type HoursAt,
   hoursAt,
+  type HoursStatus,
   intervals,
   normalizeAipText,
   parseSchedule,
-  type HoursAt,
-  type HoursStatus,
 } from './adHours.js';
 
 export type AdTarget = 'ad' | 'ats' | 'handling';
@@ -278,7 +278,7 @@ export function aerodromeStatus(
     if (!worst || RANK[v.status] > RANK[worst.status]) worst = { ...v, at: t, limits };
     if (worst.status === 'closed' || t >= end) break;
   }
-  return worst!;
+  return worst;
 }
 
 export interface AdDay {

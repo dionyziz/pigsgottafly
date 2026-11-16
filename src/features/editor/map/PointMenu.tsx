@@ -1,5 +1,6 @@
 // A route point's context menu (right-click) and the name prompt for custom points.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+
 import type { MenuItem } from '../../../ui';
 import { cleanWaypointName } from './snap';
 
@@ -65,8 +66,8 @@ export interface NamePrompt {
   y: number;
   title: string;
   value: string;
-  confirm(name: string): void;
-  cancel(): void;
+  confirm: (name: string) => void;
+  cancel: () => void;
 }
 
 export function NameBox({ prompt }: { prompt: NamePrompt }) {

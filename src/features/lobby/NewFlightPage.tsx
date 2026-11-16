@@ -3,16 +3,18 @@
 // the profile has no home aerodrome (or ?ask=1), the pilot is asked for the origin (and, optionally,
 // the destination) first; nothing is assumed. Either way the editor's Route
 // section shows both ends as fields. Route points come from aerodromePoint (src/shared/aerodrome).
+import './lists.css';
+
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Shell } from '../../app/Shell';
+
 import { usePilot } from '../../app/session';
+import { Shell } from '../../app/Shell';
 import { api } from '../../data/api';
 import { resolveAerodrome } from '../../data/ref';
 import { aerodromeName, aerodromePoint, type FlightCreateRequest } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, EmptyState, Field, Loading } from '../../ui';
-import './lists.css';
 
 export function NewFlightPage() {
   const navigate = useNavigate();

@@ -8,14 +8,15 @@
 //   const wx = useFlightWeather({ date: doc.date, route: doc.route, options: doc.options, model: doc.options.windModel });
 //   wx.weather, wx.weatherLoading, wx.metar, wx.refresh(), wx.departure / wx.destination / wx.stops
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { buildLegs, type LegGeometry } from '../calc';
 import type { FlightOptions, LatLon, RefAerodrome, RoutePoint, WindModel } from '../shared';
 import { landingPointIndices } from '../shared';
 import { endpointAerodrome } from './atc';
 import { REF } from './ref';
+import { useSequencer } from './sequence';
 import { fetchRouteWeather, type RouteWeather } from './weather';
 import { fetchMetarTaf, type MetarTafResult } from './weatherMetar';
-import { useSequencer } from './sequence';
 
 /** METAR/TAF matter when the flight day's noon is within 12 h + this of now. */
 export const METAR_HORIZON_MS = 6 * 3600 * 1000;
@@ -97,7 +98,7 @@ export interface FlightWeather extends FlightWeatherPlan {
   metar: MetarTafResult | null;
   metarLoading: boolean;
   /** Refetch, ignoring the caches. */
-  refresh(): void;
+  refresh: () => void;
   /** Bumped by every refresh() (0 = never refreshed). */
   refreshCount: number;
 }
@@ -106,7 +107,7 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   const { date, route, options, model, debounceMs = 0, enabled = true } = input;
   const builtLegs = useMemo(() => (input.legs ? null : buildLegs(route, date)), [input.legs, route, date]);
   const legs = input.legs ?? builtLegs!;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const plan = useMemo(() => flightWeatherPlan({ date, model, route, options, legs }), [date, model, route, options, legs]);
 
   const [refreshCount, setRefreshCount] = useState(0);

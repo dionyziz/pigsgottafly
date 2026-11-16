@@ -1,10 +1,11 @@
 // HTTP plumbing shared by the route modules: the route type, errors, JSON helpers.
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { Db } from './db.js';
+
 import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
-import type { WeatherGridOptions } from './routes/weatherGrid.js';
+import type { Db } from './db.js';
 import type { WeatherProxyOptions } from './routes/weather.js';
+import type { WeatherGridOptions } from './routes/weatherGrid.js';
 
 /** Node request, possibly with a body pre-parsed by Vercel. */
 export type Req = IncomingMessage & { body?: unknown };
@@ -47,7 +48,7 @@ export interface Ctx {
   /** The session's pilot; always set for routes with auth !== false. */
   pilot: Pilot;
   /** Parsed JSON body ({} when empty); always a plain object (400 otherwise, 415 if not application/json). */
-  body(): Promise<any>;
+  body: () => Promise<any>;
   /** Extra response headers (e.g. Set-Cookie). */
   headers: Record<string, string>;
   /** The autorouter client of this API instance, or null when not configured or not for this pilot. */

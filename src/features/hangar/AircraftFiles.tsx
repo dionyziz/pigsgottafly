@@ -3,10 +3,11 @@
 // with access sees them; owners and editors add, replace, rename and remove. The documents section
 // and the PDF viewer also serve an operator's documents (operations manual): they take a FileScope.
 import { useEffect, useState } from 'react';
+
+import { aircraftScope, fileBlob, type FileScope, resizePhoto, saveBlob, uploadFile } from '../../data/aircraftFiles';
 import { isoDay as fmtDate } from '../../shared/date';
 import { errorMessage, fmtSize } from '../../shared/format';
-import { aircraftScope, fileBlob, resizePhoto, saveBlob, uploadFile, type FileScope } from '../../data/aircraftFiles';
-import { DOCUMENT_MAX_BYTES, PHOTO_TYPES, type AircraftFile } from '../../shared/types';
+import { type AircraftFile, DOCUMENT_MAX_BYTES, PHOTO_TYPES } from '../../shared/types';
 import { FilePicker, Icon, Loading, PdfViewer, RowRemove } from '../../ui';
 import { Section } from './fields';
 

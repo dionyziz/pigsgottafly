@@ -5,8 +5,8 @@
 //
 //   npx tsx tools/aip_files.ts <iso>/ais/side.htm src/data/ref/aip-files.json
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** Section reference → relative PDF path, from the hrefs of side.htm. Charts and other annexes are skipped. */
 export function aipFiles(html: string): Record<string, string> {

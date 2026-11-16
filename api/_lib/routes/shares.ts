@@ -2,12 +2,12 @@
 // Anyone with access sees who else has it; the owner and editors add people by the e-mail of their
 // account, change their role and remove them; anyone can remove their own access. The owner is not
 // a share row and cannot be changed or removed here.
+import type { AircraftRole, AircraftSharing, ShareRole } from '../../../src/shared/sharing.js';
+import { aircraftFor, personName } from '../access.js';
+import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, notFound, reply } from '../http.js';
-import type { Queryable } from '../db.js';
 import { rateLimit } from '../rateLimit.js';
-import { aircraftFor, personName } from '../access.js';
-import type { AircraftRole, AircraftSharing, ShareRole } from '../../../src/shared/sharing.js';
 
 type Row = Record<string, any>;
 

@@ -18,8 +18,8 @@
 //   - the timeline (leg start/end, landing, block-on) uses the unrounded leg minutes (as v2); the
 //     written ETE column rounds each leg.
 //   - sunset at the destination (AIP GEN 2.7 tables when given, else NOAA).
-import type { ClockUtc, CompassCard, IsoDate, LegOverride } from '../shared/types.js';
 import type { RefSunTable } from '../shared/ref.js';
+import type { ClockUtc, CompassCard, IsoDate, LegOverride } from '../shared/types.js';
 import type { LegGeometry } from './legs.js';
 import type { ComputedLeg, NavTotals } from './nav.js';
 import { computeLeg, fmtClock, norm360, parseClock, summarize } from './nav.js';
@@ -189,7 +189,7 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
       const o = input.overrides[i] ?? {};
       const startMin = t;
       const guess =
-        prev[i] && fin(prev[i].minutesExact) ? prev[i].minutesExact! : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
+        prev[i] && fin(prev[i].minutesExact) ? prev[i].minutesExact : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
       const timeMs = dayMs + (startMin + guess / 2) * 60000;
       let w: WindSample | null = null;
       if (input.winds && isFinite(alt[i]) && isFinite(timeMs)) {

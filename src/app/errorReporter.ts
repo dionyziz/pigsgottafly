@@ -4,7 +4,7 @@
 // masked), never request bodies. A stale-chunk error after a deploy is expected (staleBuild.ts) and
 // not reported. Each distinct error is sent at most once per DEDUPE_MS, and a page sends at most
 // MAX_PER_PAGE reports, so an error in a render loop cannot flood the server.
-import { CLIENT_REPORT_MAX_BYTES, scrubText, scrubUrl, type ClientErrorReport } from '../shared/monitoring';
+import { CLIENT_REPORT_MAX_BYTES, type ClientErrorReport, scrubText, scrubUrl } from '../shared/monitoring';
 import { isChunkLoadError } from './staleBuild';
 
 export const DEDUPE_MS = 10 * 60 * 1000;

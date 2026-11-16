@@ -4,15 +4,17 @@
 // HCAA" (../gendec/SendPanel.tsx). "Changed since it was sent" compares the hash of what is shown
 // now with the version sent; then "Re-send". Screen only. The operator's settings are refetched when
 // an operator or aircraft changes (here or in another tab) and on focus.
+import '../form731/forms.css';
+
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+
 import { api, ApiRequestError } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
-import { wbPerfText, type WbPerfContent } from '../../../shared';
+import { type WbPerfContent, wbPerfText } from '../../../shared';
 import { fmtLocalDayTime } from '../../../shared/format';
 import { Chip, Panel } from '../../../ui';
 import { sha256Url } from './declaration';
-import '../form731/forms.css';
 
 const errText = (e: unknown) =>
   e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.';

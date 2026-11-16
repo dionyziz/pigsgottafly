@@ -3,13 +3,15 @@
 // and cannot be changed. Viewers see who has access but cannot change it. An operator also lists the
 // pilots who see it through one of its aircraft (changed by sharing that aircraft). Also: the
 // "Shared by" chip of shared aircraft and operators in the lists and on their pages.
+import './share.css';
+
 import { useEffect, useState } from 'react';
+
 import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
-import type { AircraftAccess, AircraftRole, ShareRole, SharePerson } from '../../shared/sharing';
+import type { AircraftAccess, AircraftRole, SharePerson, ShareRole } from '../../shared/sharing';
 import { Chip, Dialog, Loading, RowRemove } from '../../ui';
-import './share.css';
 
 export const ROLE_LABEL = { owner: 'Owner', edit: 'Editor', view: 'Viewer' } as const;
 

@@ -13,16 +13,17 @@
 //   - something calls invalidate(key) (e.g. after a change the API layer cannot see).
 // Pages keep showing the cached copy while it refetches (no loading flash).
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
+
 import type { OperatorItem, Passenger, Pilot, Waypoint } from '../shared';
 import type { HangarAircraft } from '../shared/sharing';
 import { api } from './api';
 import {
-  getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity, type EntitySnapshot,
-} from './entityStore';
+type EntitySnapshot,
+  getEntity, loadEntity, putEntity, registerFetcher, subscribeEntity, } from './entityStore';
 
 export {
-  clearEntities, getEntity, invalidate, loadEntity, onInvalidate, onRevalidate, putEntity, subscribeEntity,
-  type EntityKey, type EntitySnapshot,
+  clearEntities,   type EntityKey, type EntitySnapshot,
+getEntity, invalidate, loadEntity, onInvalidate, onRevalidate, putEntity, subscribeEntity,
 } from './entityStore';
 
 export interface Entities {
@@ -48,9 +49,9 @@ export interface EntityState<T> {
   /** A background refetch is running (data is shown meanwhile). */
   refreshing: boolean;
   /** Refetch now; resolves when done. */
-  reload(): Promise<void>;
+  reload: () => Promise<void>;
   /** Replace the cached copy locally (e.g. an optimistic removal), for every component showing it. */
-  setData(next: T | ((prev: T | undefined) => T)): void;
+  setData: (next: T | ((prev: T | undefined) => T)) => void;
 }
 
 /** One of the pilot's record lists (or the pilot), cached, shared, and refetched when it changes. */
@@ -64,7 +65,7 @@ export function useEntity<K extends CachedEntityKey>(key: K): EntityState<Entiti
   const reload = useCallback(async () => { await loadEntity(key, { force: true }).catch(() => {}); }, [key]);
   const setData = useCallback((next: Entities[K] | ((prev: Entities[K] | undefined) => Entities[K])) => {
     const prev = getEntity<Entities[K]>(key).data;
-    putEntity(key, typeof next === 'function' ? (next as (p: Entities[K] | undefined) => Entities[K])(prev) : next);
+    putEntity(key, typeof next === 'function' ? (next)(prev) : next);
   }, [key]);
   return {
     data: snap.data,

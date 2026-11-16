@@ -3,12 +3,13 @@
 // people in it, baggage), totals at take-off and landing, the CG moment envelope chart with both
 // points and the burn line, a pass/fail verdict and the PIC's signature. One A4 portrait page,
 // the first page of the "Weight & balance and performance" export (../wbperf).
-import { EnvelopeChart, type ChartPoint } from './EnvelopeChart';
-import { fmtArm, fmtCg, fmtKg, fmtMoment, type WbLine, type WbSheetModel } from './model';
-import { SignLine } from './SignLine';
-import type { ShownSignature } from '../form731/Form731';
 import './xp.css';
 import './wb.css';
+
+import type { ShownSignature } from '../form731/Form731';
+import { type ChartPoint, EnvelopeChart } from './EnvelopeChart';
+import { fmtArm, fmtCg, fmtKg, fmtMoment, type WbLine, type WbSheetModel } from './model';
+import { SignLine } from './SignLine';
 
 function Num({ v, cls = '' }: { v: string; cls?: string }) {
   return <td className={`num ${cls}`}>{v}</td>;

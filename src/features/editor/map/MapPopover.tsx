@@ -2,7 +2,8 @@
 // MapTip follows the cursor; MapPopover opens at a click and has a close button; both stay inside the
 // map (flipped left / up near its right / bottom edge);
 // PopItem + useAccordion make its list of items, one open at a time.
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+
 import { CloseButton } from '../../../ui';
 
 /** Margin kept between a tooltip or popover and the edges of the map. */
@@ -92,7 +93,7 @@ export function MapPopover({
   y: number;
   label: string;
   testId: string;
-  onClose(): void;
+  onClose: () => void;
   children: ReactNode;
 }) {
   const ref = useInsideMap(x, y, POP_GAP);
@@ -133,7 +134,7 @@ export function PopItem({
   data,
 }: {
   open: boolean;
-  onToggle?(): void;
+  onToggle?: () => void;
   head: ReactNode;
   children?: ReactNode;
   testId?: string;

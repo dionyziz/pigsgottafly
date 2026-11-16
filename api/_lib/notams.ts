@@ -9,9 +9,9 @@
 //   - type:     not a checklist (QKKKK) or a cancellation, and not IFR-only (Q traffic 'I') unless it
 //               concerns an aerodrome the flight uses.
 // Everything else is returned with relevant = false and the reasons, for "show all".
+import { distanceNm, pointSegDistNm } from '../../src/calc/nav.js';
 import type { Notam } from '../../src/shared/briefing.js';
 import type { LatLon } from '../../src/shared/types.js';
-import { pointSegDistNm, distanceNm } from '../../src/calc/nav.js';
 import type { AutorouterNotamRow } from './autorouter.js';
 
 const GARMIN = 90 / 2 ** 30;

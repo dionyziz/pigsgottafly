@@ -1,6 +1,6 @@
 // The "SIGN ____" line at the foot of the MD 4.3 and MD 4.4 sheets, with the PIC's e-signature
 // on it (the same handwriting signature as on Form 731 and the General Declaration).
-import { Signature, type ShownSignature } from '../form731/Form731';
+import { type ShownSignature, Signature } from '../form731/Form731';
 
 export function SignLine({ signature }: { signature?: ShownSignature | null }) {
   return (

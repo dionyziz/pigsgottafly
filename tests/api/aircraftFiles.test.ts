@@ -2,10 +2,12 @@
 // larger than a serverless request or response), one photo per aircraft, access by sharing role,
 // and that saving the aircraft never deletes them (only unreferenced swing reports go).
 import crypto from 'node:crypto';
+
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
-import { fleetSeed } from '../../tools/build_seed';
+
 import { AIRCRAFT_FILE_CHUNK_BYTES } from '../../src/shared/types';
+import { fleetSeed } from '../../tools/build_seed';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let owner: Client, viewer: Client, stranger: Client;

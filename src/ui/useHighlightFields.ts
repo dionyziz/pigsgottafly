@@ -1,7 +1,8 @@
 // Draw attention to named fields of a form (from a "missing …" link or a ?focus= key): every one is
 // highlighted until edited and the first is focused, after the dialog's own autofocus. Targets are
 // found as for ?focus= (data-focus, then name, then id: src/app/focusParam.ts).
-import { useEffect, type RefObject } from 'react';
+import { type RefObject, useEffect } from 'react';
+
 import { findFocusTarget, focusAndHighlight } from '../app/focusParam';
 
 const FIELD = 'input:not([type=hidden]), select, textarea';

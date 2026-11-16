@@ -2,8 +2,9 @@
 // editor, reopen, change the role, remove), and an aircraft another pilot shared with us in the
 // hangar list ("Shared by" chip), read-only on its page, then removed from our hangar.
 // Local mode has one pilot ('local'); the other pilot is written straight into the database.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import test, { after, before } from 'node:test';
+
 import { launch, startServer } from './harness.mjs';
 
 let server, db, url, browser, page;

@@ -1,9 +1,10 @@
 // Links to the AIP Greece PDFs (src/data/aipLinks.ts, src/data/ref/aip-files.json from tools/aip_files.ts).
 import { describe, expect, test } from 'vitest';
+
+import { aipRefParts } from '../../../src/app/AipLink';
 import { AIP_EAIP_BASE, AIP_EAIP_INDEX, aipSection, aipUrl, hasAipPdf } from '../../../src/data/aipLinks';
 import { AD_AIRSPACES, AERODROMES, AIRAC, AIRSPACES, AREAS } from '../../../src/data/ref';
 import { aipFiles } from '../../../tools/aip_files';
-import { aipRefParts } from '../../../src/app/AipLink';
 
 describe('AIP links', () => {
   test('the eAIP base is the one of the reference data AIRAC (tools/update_aip.sh sets both)', () => {

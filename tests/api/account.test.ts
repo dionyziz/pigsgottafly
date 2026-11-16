@@ -3,13 +3,14 @@
 // personal data they entered; another pilot's data (and flights that used the deleted pilot's
 // shared aircraft) stays. The mail transport is MOCKED.
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { client, googleClaims, signToken, startApi, type Client } from './helpers';
+
+import type { Db } from '../../api/_lib/db';
 import { setMailTransport } from '../../api/_lib/mail';
-import { blankAircraft } from '../../src/shared/templates';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import type { RefAerodrome } from '../../src/shared/ref';
+import { blankAircraft } from '../../src/shared/templates';
 import type { RoutePoint } from '../../src/shared/types';
-import type { Db } from '../../api/_lib/db';
+import { type Client, client, googleClaims, signToken, startApi } from './helpers';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const pt = (icao: string, uid: string): RoutePoint => {

@@ -2,15 +2,15 @@
 // from the stored flight and the current reference data: planned altitudes (the same defaults as the
 // editor: src/calc/altitudes.ts, overridden per leg), the block-off … block-on window, the
 // aerodromes the flight uses and the aerodromes near the route.
+import { defaultAltitudes } from '../../src/calc/altitudes.js';
+import { distanceNm, parseClock } from '../../src/calc/nav.js';
+import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
+import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
+import { requestTiming } from '../../src/shared/requests.js';
+import type { RoutePoint } from '../../src/shared/types.js';
+import { accessibleSql } from './access.js';
 import type { Queryable } from './db.js';
 import { notFound } from './http.js';
-import { accessibleSql } from './access.js';
-import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
-import type { RoutePoint } from '../../src/shared/types.js';
-import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
-import { defaultAltitudes } from '../../src/calc/altitudes.js';
-import { requestTiming } from '../../src/shared/requests.js';
-import { distanceNm, parseClock } from '../../src/calc/nav.js';
 import { distanceToRoute } from './notams.js';
 
 export interface RefDocs {

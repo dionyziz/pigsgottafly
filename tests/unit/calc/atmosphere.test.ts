@@ -1,7 +1,8 @@
 // Pressure altitude, ISA temperature, density altitude: against the ICAO standard atmosphere table
 // (pressure ↔ height) and hand-computed values of the MD 4.4 density-altitude rule.
 import { expect, test } from 'vitest';
-import { pressureAltitudeFt, isaTempC, densityAltitudeFt } from '../../../src/calc';
+
+import { densityAltitudeFt, isaTempC, pressureAltitudeFt } from '../../../src/calc';
 
 const M_TO_FT = 1 / 0.3048;
 

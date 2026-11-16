@@ -1,6 +1,7 @@
 // End-to-end smoke test of the v3 shell: onboarding → lobby → new flight → editor → export page.
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import test, { after, before } from 'node:test';
+
 import { launch, startServer } from './harness.mjs';
 
 let server, browser, page;

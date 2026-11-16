@@ -7,8 +7,8 @@ import { rateLimit } from '../rateLimit.js';
 
 /** Bumped when the bundle's shape changes (part of its ETag). */
 const BUNDLE_FORMAT = 1;
-import type { Queryable } from '../db.js';
 import type { RefAerodrome, RefAirac, RefBundle } from '../../../src/shared/ref.js';
+import type { Queryable } from '../db.js';
 
 async function current(db: Queryable): Promise<RefAirac> {
   const [r] = await db.query('SELECT id, name, effective FROM ref_airac WHERE current LIMIT 1');
@@ -26,7 +26,7 @@ const TABLES: Record<string, { table: string; order: string }> = {
   areas: { table: 'ref_areas', order: 'id' },
 };
 
-async function docs(db: Queryable, kind: keyof typeof TABLES | string, airac: string) {
+async function docs(db: Queryable, kind: keyof typeof TABLES, airac: string) {
   if (!Object.hasOwn(TABLES, kind)) throw notFound();
   const t = TABLES[kind];
   return (await db.query(`SELECT doc FROM ${t.table} WHERE airac = $1 ORDER BY ${t.order}`, [airac])).map((r) => r.doc);

@@ -1,10 +1,11 @@
 // General Declaration: header fields, routing (origin and destination only) and crew, passenger
 // counts, warnings, render.
-import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { GenDec, genDecModel, ROUTING_ROWS } from '..';
+import { describe, expect, it } from 'vitest';
+
 import { GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES } from '../../../../shared/forms';
 import { ad, aircraft, flight, pilot, vfr } from '../../form731/__tests__/fixtures';
+import { GenDec, genDecModel, ROUTING_ROWS } from '..';
 
 describe('general declaration model', () => {
   it('fills operator, registration, flight number, ISO date and places', () => {

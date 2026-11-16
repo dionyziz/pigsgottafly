@@ -11,22 +11,22 @@
 //     interest, otherwise the forecast.
 //
 // Directions are TRUE everywhere (Open-Meteo and METAR both report true north).
+import type { WindProvider, WindSample } from '../calc';
+import { qnhFromStationPressure } from '../calc/performance';
 import type { IsoDate, LatLon, WindModel } from '../shared';
 import { WIND_MODELS } from '../shared';
 import { isoDay } from '../shared/date';
 import {
-  DEFAULT_MODEL, GRID_STEP_DEG, LEVELS, forecastAvailability, nodeKey, pointKey, snapToGrid,
-  type Hourly, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation,
+  DEFAULT_MODEL, forecastAvailability, GRID_STEP_DEG,   type Hourly, LEVELS, type ModelRun, nodeKey, type OpenMeteoEndpoint, type OpenMeteoLocation,
+pointKey, snapToGrid,
 } from '../shared/weatherGrid';
-import type { WindProvider, WindSample } from '../calc';
-import { qnhFromStationPressure } from '../calc/performance';
-import type { MetarWind, ParsedMetar } from './weatherMetar';
 import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
+import type { MetarWind, ParsedMetar } from './weatherMetar';
 
 export {
-  DEFAULT_MODEL, FORECAST_PAST_DAYS, LEVELS, MODEL_HORIZON_DAYS, SURFACE, forecastAvailability,
-  type ForecastAvailability, type Hourly, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation,
-} from '../shared/weatherGrid';
+  DEFAULT_MODEL, FORECAST_PAST_DAYS,   type ForecastAvailability, forecastAvailability,
+type Hourly, LEVELS, MODEL_HORIZON_DAYS, type ModelRun, type OpenMeteoEndpoint, type OpenMeteoLocation,
+SURFACE, } from '../shared/weatherGrid';
 export const MODEL_LABELS = WIND_MODELS;
 
 interface Level { z: number; u: number; v: number; temp: number }
@@ -55,7 +55,7 @@ function atHeight(h: Hourly, idx: number, altFt: number): { u: number; v: number
   for (const l of LEVELS) {
     const z = val(h, `geopotential_height_${l}hPa`, idx), ws = val(h, `wind_speed_${l}hPa`, idx);
     const wd = val(h, `wind_direction_${l}hPa`, idx), t = val(h, `temperature_${l}hPa`, idx);
-    if ([z, ws, wd, t].every((x) => x !== null && x !== undefined && isFinite(x as number))) {
+    if ([z, ws, wd, t].every((x) => x !== null && x !== undefined && isFinite(x))) {
       const r = ((wd as number) * Math.PI) / 180;
       lv.push({ z: z as number, u: -(ws as number) * Math.sin(r), v: -(ws as number) * Math.cos(r), temp: t as number });
     }
@@ -133,14 +133,14 @@ export function sampleSurface(h: Hourly, timeMs: number, elevationM?: number | n
     const a = val(h, k, i), b = val(h, k, j);
     if (a == null && b == null) return NaN;
     if (a == null) return b as number;
-    if (b == null) return a as number;
-    return (a as number) + ((b as number) - (a as number)) * f;
+    if (b == null) return a;
+    return (a) + ((b) - (a)) * f;
   };
   const uv = (x: number) => {
     const ws = val(h, 'wind_speed_10m', x), wd = val(h, 'wind_direction_10m', x);
     if (ws == null || wd == null) return null;
-    const r = ((wd as number) * Math.PI) / 180;
-    return { u: -(ws as number) * Math.sin(r), v: -(ws as number) * Math.cos(r) };
+    const r = ((wd) * Math.PI) / 180;
+    return { u: -(ws) * Math.sin(r), v: -(ws) * Math.cos(r) };
   };
   const A = uv(i), B = uv(j);
   let wind = null;

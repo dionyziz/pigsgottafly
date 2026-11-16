@@ -2,15 +2,16 @@
 // from block-off to take-off, the destination from landing to block-on, intermediate stops and
 // touch-and-goes at their times, against the AIP and NOTAM fixtures; nothing alarming without NOTAMs.
 import { describe, expect, test } from 'vitest';
-import type { Notam } from '../../../src/shared/briefing';
-import type { RoutePoint } from '../../../src/shared/types';
-import { SUN_TABLES, aerodrome } from '../../../src/data/ref';
+
 import { aerodromeNotamEffects } from '../../../src/calc/aerodromeStatus';
+import { aerodrome, SUN_TABLES } from '../../../src/data/ref';
 import {
+  type AdChecksInput,
   aerodromeChecks,
   aerodromeWarnings,
-  type AdChecksInput,
 } from '../../../src/features/editor/panels/aerodromeChecks';
+import type { Notam } from '../../../src/shared/briefing';
+import type { RoutePoint } from '../../../src/shared/types';
 
 const ad = (id: string) => aerodrome(id)!;
 const pt = (id: string, uid: string): RoutePoint => ({

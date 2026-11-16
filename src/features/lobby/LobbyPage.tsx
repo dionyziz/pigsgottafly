@@ -3,8 +3,11 @@
 // aircraft and totals, and a ⋮ menu: Open in new tab, Rename, Make a copy, Move to trash (with
 // Undo). A Trash view lists trashed flights with Restore. The header (h1, tabs, New flight) keeps
 // its layout in both views.
+import './lists.css';
+
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
@@ -12,10 +15,9 @@ import { useAsync } from '../../data/useAsync';
 import { autoTitle, type Flight, type FlightListItem } from '../../shared';
 import { fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
 import { errorMessage, fmtDuration } from '../../shared/format';
-import { AsyncView, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, SearchBox, rowClick } from '../../ui';
+import { AsyncView, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, rowClick, SearchBox } from '../../ui';
 import { flightSearchText, matchesQuery, splitFlights } from './format';
 import { RouteThumb } from './RouteThumb';
-import './lists.css';
 
 const titleOf = (r: FlightListItem) => r.summary.title || 'Untitled flight';
 

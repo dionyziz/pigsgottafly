@@ -2,19 +2,19 @@
 // Anyone the aircraft is shared with reads them; editors and the owner add and delete them (403 for
 // viewers); everyone else gets 404. Files keep pilot_id = the aircraft's owner. The content travels
 // as base64 in JSON (the API is JSON-only); the client turns it into a Blob to view or save.
-import type { Route } from '../http.js';
-import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
-import { checkMagic, checkQuota, LIMITS } from '../limits.js';
-import type { Queryable } from '../db.js';
-import { aircraftFor } from '../access.js';
 import {
+  type Attachment,
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_TYPES,
-  type Attachment,
   type AttachmentRef,
   type AttachmentType,
   type CompassCard,
 } from '../../../src/shared/types.js';
+import { aircraftFor } from '../access.js';
+import type { Queryable } from '../db.js';
+import type { Route } from '../http.js';
+import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
+import { checkMagic, checkQuota, LIMITS } from '../limits.js';
 
 /** The owner's pilot id of an aircraft the session pilot has `need` access to (404/403 otherwise). */
 async function ownerOf(db: Queryable, pilotId: string, id: string, need: 'view' | 'edit'): Promise<string> {

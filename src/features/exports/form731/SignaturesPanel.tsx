@@ -8,9 +8,10 @@
 //     reply-to the pilot); sent time, and "Re-send" after changes.
 // The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
 import { useCallback, useEffect, useState } from 'react';
+
 import { api, ApiRequestError } from '../../../data/api';
-import type { FormsState } from '../../../shared/forms';
 import { fmtLocalClock, fmtLocalDayTime } from '../../../shared/format';
+import type { FormsState } from '../../../shared/forms';
 import { Chip, Loading, Panel } from '../../../ui';
 import type { ShownSignature } from './Form731';
 

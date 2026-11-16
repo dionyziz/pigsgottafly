@@ -1,7 +1,8 @@
 // Fuel on board by type on a flight (FlightOptions.fuelL): stored, validated, cleared.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
+
 import { fleetSeed } from '../../tools/build_seed';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let c: Client;

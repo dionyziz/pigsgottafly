@@ -3,8 +3,9 @@
 // focused, the hangar, the profile, the passenger dialog: fix.ts).
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router';
-import { WarningList, type WarningLevel } from '../../ui';
-import { fixLink, planningFix, type Fix, type FixContext } from './fix';
+
+import { type WarningLevel, WarningList } from '../../ui';
+import { type Fix, type FixContext, fixLink, planningFix } from './fix';
 
 /** A warning: its text, or the text with its fix. */
 export type ExportWarning = string | { text: string; fix?: Fix | null };

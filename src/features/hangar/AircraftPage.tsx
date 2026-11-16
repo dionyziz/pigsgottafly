@@ -4,33 +4,35 @@
 // leaving). Errors hold the save back and show in a bar with links to their fields; warnings do not
 // (header chip). The section nav follows the scroll (useScrollSpy). Shared aircraft: editors edit like
 // the owner; viewers see the page read-only. Share opens the sharing dialog.
+import '../lobby/lists.css';
+import './hangar.css';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { Shell } from '../../app/Shell';
+
 import { focusAndHighlight, useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
+import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
+import { aircraftScope } from '../../data/aircraftFiles';
 import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { localToday } from '../../shared/date';
-import { standardFuelTypes } from '../../shared/fuel';
 import { errorMessage } from '../../shared/format';
-import type { Aircraft, AircraftInput } from '../../shared/types';
+import { standardFuelTypes } from '../../shared/fuel';
 import type { HangarAircraft } from '../../shared/sharing';
+import type { Aircraft, AircraftInput } from '../../shared/types';
 import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading } from '../../ui';
-import { CompassSection } from './CompassSection';
 import { DocumentsSection, PhotoControl } from './AircraftFiles';
-import { aircraftScope } from '../../data/aircraftFiles';
+import { CompassSection } from './CompassSection';
 import { MassBalanceSection } from './MassBalanceSection';
-import { validateAircraft, type Issue, type SectionId } from './model';
+import { type Issue, type SectionId, validateAircraft } from './model';
 import { PerformanceSection } from './PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from './sections';
-import { ShareDialog, SharedChip } from './ShareDialog';
-import { useAutosave, type AutosaveStatus } from './useAutosave';
+import { SharedChip, ShareDialog } from './ShareDialog';
+import { type AutosaveStatus, useAutosave } from './useAutosave';
 import { useScrollSpy } from './useScrollSpy';
-import '../lobby/lists.css';
-import './hangar.css';
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'identity', label: 'Identity' },

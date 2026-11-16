@@ -3,7 +3,7 @@
 // Renders fields only; the caller owns the <form>. Problems show under their field.
 import { DateInput } from '../../app/DateInput';
 import { Field, NumberField } from '../../ui';
-import { WEIGHT_MAX_KG, WEIGHT_MIN_KG, type PersonField, type PersonForm } from './person';
+import { type PersonField, type PersonForm, WEIGHT_MAX_KG, WEIGHT_MIN_KG } from './person';
 
 export type SetPerson = <K extends keyof PersonForm>(k: K, v: PersonForm[K]) => void;
 

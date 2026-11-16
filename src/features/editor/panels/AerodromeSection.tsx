@@ -3,11 +3,12 @@
 // AD 1.6 + the flight's NOTAMs, marked by NOTAM id) and the AIP text. Warnings for a closed
 // aerodrome are in the warnings list (calc.tsx) and on the map.
 import { useMemo } from 'react';
+
 import { clockZ } from '../../../calc';
-import { useEditor } from '../state';
-import { AdHoursDetail, adDayInfo } from '../AerodromeHours';
-import { AD_ROLE, useFlightCalc, type AdCheck } from './calc';
 import { Chip, Collapsible } from '../../../ui';
+import { adDayInfo, AdHoursDetail } from '../AerodromeHours';
+import { useEditor } from '../state';
+import { AD_ROLE, type AdCheck, useFlightCalc } from './calc';
 import { Section, SECTIONS_STORE } from './ui';
 
 function StatusChip({ c }: { c: AdCheck }) {

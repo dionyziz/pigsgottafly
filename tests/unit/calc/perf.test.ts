@@ -1,18 +1,20 @@
 // Take-off/landing distances and the MD 4.4 aerodrome block, against hand calculations from the
 // AFM tables in data/aircraft/reims-f172m.json (values copied here as literals, so a change to the
 // data or a wrong interpolation both show up).
-import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { aircraftFromTypeJson } from '../../../src/shared/templates';
+
+import { describe, expect, test } from 'vitest';
+
 import {
-  takeoffDistances,
-  landingDistances,
   aerodromePerformance,
   densityAltitudeFt,
+  landingDistances,
   type PerfConditions,
+  takeoffDistances,
 } from '../../../src/calc';
 import type { RefRunway } from '../../../src/shared';
+import { aircraftFromTypeJson } from '../../../src/shared/templates';
 
 const type = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../data/aircraft/reims-f172m.json'), 'utf8'));
 const T = aircraftFromTypeJson(type).performance;

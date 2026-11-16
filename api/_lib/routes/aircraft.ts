@@ -1,16 +1,16 @@
 // Hangar CRUD: /aircraft, /aircraft/:id. The session pilot's own aircraft and those shared with them
 // (access.ts): viewers read, editors also write, only the owner deletes. Writes keep the owner's pilot_id.
-import type { Route } from '../http.js';
-import { HttpError, newId, notFound, reply } from '../http.js';
-import { aircraftInput, toAircraft } from '../rows.js';
-import { aircraftFor, listAircraft, toHangarAircraft } from '../access.js';
 import { blankAircraft } from '../../../src/shared/templates.js';
 import type { AircraftInput } from '../../../src/shared/types.js';
+import { aircraftFor, listAircraft, toHangarAircraft } from '../access.js';
 import type { Queryable } from '../db.js';
-import { isUniqueViolation } from '../pgErrors.js';
+import type { Route } from '../http.js';
+import { HttpError, newId, notFound, reply } from '../http.js';
 import { checkCount } from '../limits.js';
-import { checkReports, deleteAttachments } from './attachments.js';
 import { operatorFor } from '../operators.js';
+import { isUniqueViolation } from '../pgErrors.js';
+import { aircraftInput, toAircraft } from '../rows.js';
+import { checkReports, deleteAttachments } from './attachments.js';
 
 async function write(db: Queryable, pilotId: string, id: string, a: AircraftInput, insert: boolean) {
   const now = Date.now();

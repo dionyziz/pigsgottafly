@@ -1,16 +1,16 @@
 // The API dispatcher, shared by the local server (server/server.ts) and the Vercel function
 // (api/index.ts). Matches /api/<path> against the route registry, resolves the session pilot,
 // and turns handler results/errors into JSON responses.
+import type { Pilot } from '../../src/shared/types.js';
+import { googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
+import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
 import type { Db } from './db.js';
 import type { ApiConfig, Ctx, Req, Res, Route } from './http.js';
 import { compilePath, HttpError, isJsonContentType, readJsonObject, Reply, send } from './http.js';
-import { googleKeys, isAdmin, localPilotRow, sessionCookie, sessionPilotRow, SESSION_MS } from './auth.js';
-import type { Pilot } from '../../src/shared/types.js';
-import { toPilot } from './rows.js';
-import { ROUTES } from './routes/index.js';
-import { isConstraintViolation } from './pgErrors.js';
-import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
 import { recordError } from './monitor.js';
+import { isConstraintViolation } from './pgErrors.js';
+import { ROUTES } from './routes/index.js';
+import { toPilot } from './rows.js';
 
 const header = (req: Req, name: string): string => {
   const v = req.headers[name];

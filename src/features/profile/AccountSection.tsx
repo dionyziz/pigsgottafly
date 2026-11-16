@@ -1,12 +1,14 @@
 // Profile, below the form: "Your data" (GET /api/me/export, a JSON download: GDPR portability) and
 // the danger zone (DELETE /api/me after typing the account's e-mail; "delete" in local mode).
 // After deletion the browser's local copies (offline flights, layout preferences) are cleared too.
+import './profile.css';
+
 import { useState } from 'react';
+
 import { usePilot } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
 import { CardSection, Field } from '../../ui';
-import './profile.css';
 
 export function AccountSection() {
   const pilot = usePilot();

@@ -1,6 +1,6 @@
 // Sunset at a place and date: AIP GEN 2.7 tables (nearest listed aerodrome within 120 NM), else NOAA.
-import type { LatLon } from '../shared/types.js';
 import type { RefSunTable } from '../shared/ref.js';
+import type { LatLon } from '../shared/types.js';
 import { distanceNm, sunsetUtcMinutes } from './nav.js';
 
 /** Index of a date in the 366-entry GEN 2.7 tables (leap-year day index). */

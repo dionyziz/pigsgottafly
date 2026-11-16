@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 // The one warnings box of the exports (src/features/exports/WarningList.tsx ExportWarnings): the
 // shared WarningList, each warning with a link to where it is fixed.
-import { afterEach, describe, expect, test } from 'vitest';
 import { cleanup, render } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
 import type { ReactNode } from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import { afterEach, describe, expect, test } from 'vitest';
+
 import { ExportWarnings } from '../../../src/features/exports/WarningList';
 
 afterEach(cleanup);

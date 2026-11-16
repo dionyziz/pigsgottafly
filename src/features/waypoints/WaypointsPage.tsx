@@ -1,7 +1,10 @@
 // My waypoints: the pilot's saved custom points (list, search, rename in place, edit position/notes,
 // delete) beside a small map. Points are usually saved from the flight editor; here a click on the
 // map, or typed coordinates, adds one too.
+import '../lobby/lists.css';
+
 import { useMemo, useRef, useState } from 'react';
+
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
@@ -16,14 +19,13 @@ import {
   EmptyState,
   Field,
   KebabMenu,
-  SearchBox,
   rowClick,
+  SearchBox,
 } from '../../ui';
 import { matchesQuery } from '../lobby/format';
-import { useFormIssues, type FormIssue } from '../passengers/formIssues';
+import { type FormIssue, useFormIssues } from '../passengers/formIssues';
 import { formatDms, normaliseWaypointName, parseLatLon } from './coords';
 import { WaypointMap } from './WaypointMap';
-import '../lobby/lists.css';
 
 export function WaypointsPage() {
   const { data, error, loading, reload, setData } = useEntity('waypoints');

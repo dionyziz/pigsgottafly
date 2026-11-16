@@ -10,12 +10,13 @@
 //   Built-client responses carry the same security headers as production (vercel.json).
 //   Forecasts are generated data (server/syntheticOpenMeteo.ts) unless OPEN_METEO_LIVE=1.
 //   (PORT=8765, HOST=127.0.0.1)
-import http from 'node:http';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openDb, type Db } from '../api/_lib/db.js';
+
 import { configFromEnv, createApi } from '../api/_lib/app.js';
+import { type Db, openDb } from '../api/_lib/db.js';
 import type { ApiConfig } from '../api/_lib/http.js';
 import { syntheticOpenMeteo } from './syntheticOpenMeteo.js';
 

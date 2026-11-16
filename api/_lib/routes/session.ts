@@ -1,26 +1,27 @@
 // GET /session, POST /login, POST /logout, POST /session/revoke-all (sign out everywhere)
-import type { Route } from '../http.js';
-import { HttpError, newId, reply } from '../http.js';
-import type { Queryable } from '../db.js';
-import { sendLogged } from '../sendCaps.js';
-import { rateLimit } from '../rateLimit.js';
+import { randomBytes } from 'node:crypto';
+
+import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
 import {
   createSession,
   emailAllowed,
-  purgeExpiredSessions,
   hashToken,
   localPilotRow,
+  purgeExpiredSessions,
+  SESSION_MS,
   sessionCookie,
   sessionPilotRow,
-  SESSION_MS,
   tokenFrom,
   verifyGoogleToken,
 } from '../auth.js';
-import { toPilot } from '../rows.js';
-import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
-import { randomBytes } from 'node:crypto';
 import { isAdmin } from '../auth.js';
+import type { Queryable } from '../db.js';
+import type { Route } from '../http.js';
+import { HttpError, newId, reply } from '../http.js';
 import { mailAvailability, sendSystemMail } from '../mail.js';
+import { rateLimit } from '../rateLimit.js';
+import { toPilot } from '../rows.js';
+import { sendLogged } from '../sendCaps.js';
 
 /** Longest a sign-in waits for the signup notice (it is sent before the response, as a serverless
  * function may be stopped once it has answered). */

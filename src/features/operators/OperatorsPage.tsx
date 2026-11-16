@@ -2,14 +2,16 @@
 // through a shared aircraft), with their aircraft and whether they ask for the W&B and performance
 // sheets before each flight. "New operator" creates one and opens its page. The list is the
 // 'operators' entity (src/data/entities.ts): fresh after any operator, aircraft or share change.
-import { Link, useNavigate } from 'react-router';
+import '../lobby/lists.css';
+
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+
 import { Shell } from '../../app/Shell';
 import { useEntity } from '../../data/entities';
 import { AsyncView, Chip, EmptyState, rowClick } from '../../ui';
 import { SharedChip } from '../hangar/ShareDialog';
 import { NewOperatorDialog } from './OperatorPicker';
-import '../lobby/lists.css';
 
 const none = <span className="muted">—</span>;
 

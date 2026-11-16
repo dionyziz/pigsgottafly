@@ -3,6 +3,7 @@
 // aerodrome replaces that end of the route (a new point, so only the leg touching it loses its
 // per-leg overrides); on a route with one point, picking the destination adds it.
 import { useEffect, useState } from 'react';
+
 import { aerodromePoint as pointOf, type FlightDoc, type RefAerodrome, type RoutePoint } from '../../../shared';
 import { AerodromeTextInput } from '../../../ui';
 import { useEditor } from '../state';
@@ -35,7 +36,7 @@ function EndField({
   disabled?: boolean;
   hint?: string;
   testId: string;
-  onPick(a: RefAerodrome): void;
+  onPick: (a: RefAerodrome) => void;
 }) {
   const shown = endText(point);
   const [text, setText] = useState(shown);

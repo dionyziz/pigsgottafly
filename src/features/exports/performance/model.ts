@@ -11,13 +11,13 @@
 // other printed as "other method"; then condition × slope, safety 1.33 / 1.43), fed by exportCalc.ts with the W&B masses and the surface conditions
 // at the take-off / landing time (METAR when current, else the Open-Meteo forecast; ISA and calm
 // when neither). Required distances are printed rounded UP to the metre.
+import { perfVerdict } from '../../../calc/perfVerdict';
 import type { Aircraft, FlightDoc, Pilot } from '../../../shared';
-import type { RefRunway } from '../../../shared/ref';
 import { fmtDate } from '../../../shared/date';
 import { fmtClock } from '../../../shared/format';
+import type { RefRunway } from '../../../shared/ref';
 import type { EndpointPerf, ExportCalc } from '../wb/exportCalc';
-import { perfVerdict } from '../../../calc/perfVerdict';
-import { perfSpeeds, type PerfSpeeds } from './speeds';
+import { type PerfSpeeds, perfSpeeds } from './speeds';
 
 export type RowStatus = 'ok' | 'bad' | 'warn' | null;
 
@@ -277,7 +277,7 @@ function block(
   add(
     'mass',
     takeoff ? 'Take-off mass' : 'Landing mass',
-    fin(e.massKg) ? `${(e.massKg as number).toFixed(1)} kg` : '',
+    fin(e.massKg) ? `${e.massKg.toFixed(1)} kg` : '',
     e.massSource === 'mtow'
       ? e.massReason === 'weight-missing'
         ? 'weight missing on the manifest: MTOW used'
@@ -365,9 +365,9 @@ function block(
       add(
         'margin',
         'Margin',
-        `${r0(p!.marginM as number)} m`,
+        `${r0(p!.marginM)} m`,
         takeoff ? 'least of TODA − TODR, TORA − TORR' : 'LDA − LDR',
-        (p!.marginM as number) < 0 ? 'bad' : 'ok',
+        p!.marginM < 0 ? 'bad' : 'ok',
       );
   } else {
     add('cond', 'Condition of RWY factor', '');

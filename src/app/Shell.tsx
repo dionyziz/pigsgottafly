@@ -2,6 +2,7 @@
 // The flight editor and the export pages have their own full-window layouts.
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
+
 import { AccountMenu } from './AccountMenu';
 
 export function TopBar({ children }: { children?: ReactNode }) {

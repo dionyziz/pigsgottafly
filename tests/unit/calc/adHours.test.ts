@@ -2,10 +2,12 @@
 // over EVERY aerodrome's real text (tools/ad_hours.json, as printed), and the evaluation at an instant
 // (H24, HJ by sunrise/sunset, seasons, weekdays, Greek public holidays, footnotes, closures in remarks).
 import fs from 'node:fs';
+
 import { describe, expect, test } from 'vitest';
-import { AERODROMES, SUN_TABLES, aerodrome } from '../../../src/data/ref';
+
 import {
   adHoursFromAip,
+  type AipHoursText,
   greekHolidays,
   hoursAt,
   isSummerTime,
@@ -14,9 +16,9 @@ import {
   parseHours,
   parseSchedule,
   sunTimes,
-  type AipHoursText,
 } from '../../../src/calc/adHours';
-import { extractAd16, extractAd2 } from '../../../tools/extract_ad_hours';
+import { aerodrome, AERODROMES, SUN_TABLES } from '../../../src/data/ref';
+import { extractAd2, extractAd16 } from '../../../tools/extract_ad_hours';
 
 const RAW = JSON.parse(fs.readFileSync('tools/ad_hours.json', 'utf8')) as Record<
   string,
@@ -149,7 +151,7 @@ describe('extraction from the eAIP text (pdftotext -layout)', () => {
       handlingSource: 'AD 1.6.29.4',
       handlingFromSection: true,
     });
-    expect(r.handling).toMatch(/^1  Cargo-handling facilities  NIL\./);
+    expect(r.handling).toMatch(/^1 {2}Cargo-handling facilities {2}NIL\./);
     expect(r.handling).toContain('For military use only.');
   });
   test('the extracted texts are verbatim (Greek letters kept) and cover every aerodrome', () => {

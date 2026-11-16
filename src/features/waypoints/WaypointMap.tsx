@@ -1,6 +1,7 @@
 // Small MapLibre map of the pilot's saved waypoints (OpenStreetMap raster, no API key).
 // Click a marker to select it; click elsewhere to start a new waypoint there.
 import { useEffect, useRef } from 'react';
+
 import { maplibregl } from '../../app/maplibre';
 import type { Waypoint } from '../../shared';
 

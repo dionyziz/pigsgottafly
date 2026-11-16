@@ -1,11 +1,12 @@
 // The API on in-memory PGlite: sign-in, profile, hangar, passengers, waypoints, flights, ref data,
 // and isolation between two pilots for every entity.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
-import { blankAircraft } from '../../src/shared/templates';
-import { DEFAULT_MAP_LAYERS } from '../../src/shared/mapLayers';
-import type { Flight } from '../../src/shared/types';
+
 import { AREAS } from '../../src/data/ref';
+import { DEFAULT_MAP_LAYERS } from '../../src/shared/mapLayers';
+import { blankAircraft } from '../../src/shared/templates';
+import type { Flight } from '../../src/shared/types';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let a: Client, b: Client;

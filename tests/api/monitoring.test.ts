@@ -3,12 +3,13 @@
 // transport MOCKED), failed migrations are recorded and e-mailed, /api/health, and the admin guard.
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { connect, openDb, type Db } from '../../api/_lib/db';
+
 import { createApi } from '../../api/_lib/app';
+import { connect, type Db, openDb } from '../../api/_lib/db';
 import { HttpError, reply, type Route } from '../../api/_lib/http';
-import { ROUTES } from '../../api/_lib/routes/index';
-import { setMailTransport, type SentMail } from '../../api/_lib/mail';
+import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { migrate, MIGRATIONS } from '../../api/_lib/migrate';
 import {
   BURST_COUNT,
@@ -17,8 +18,9 @@ import {
   migrateReporting,
   recordError,
 } from '../../api/_lib/monitor';
-import { CID, client, JWK, type Client } from './helpers';
+import { ROUTES } from '../../api/_lib/routes/index';
 import type { AppErrorDetail, AppErrorGroup, HealthResponse } from '../../src/shared/monitoring';
+import { CID, type Client, client, JWK } from './helpers';
 
 const BOSS = 'boss@example.com';
 const sent: SentMail[] = [];

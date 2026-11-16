@@ -4,6 +4,7 @@
 // read view, and "Edit tables" turns their cells (masses, altitudes, headwinds, distances) into
 // inputs with rows and columns to add and remove. Source fields are the pilot's own text.
 import { useState } from 'react';
+
 import type { DistancePair, PerformanceTables } from '../../shared/types';
 import { Field, IssueList, RowRemove } from '../../ui';
 import { NumInput, Section } from './fields';

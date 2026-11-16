@@ -2,23 +2,24 @@
 // sectors and the W&B of each one. Expected values by hand (no winds), on the geometry of
 // stops.test.ts: A → P → B → Q → A2, four legs of 46 NM, a 20 min stop at B.
 import { expect, test } from 'vitest';
+
 import {
   computeNavlog,
   flightSectors,
+  type LegGeometry,
   planFuel,
   sectorBalances,
   stopLegs,
   stopsOf,
   weightAndBalance,
-  type LegGeometry,
 } from '../../../src/calc';
 import {
   landingPointIndices,
   requestTiming,
+  type RoutePoint,
   setRequest,
   setStopChoice,
   stopPointIndices,
-  type RoutePoint,
 } from '../../../src/shared';
 import { fleetSeed } from '../../../tools/build_seed';
 

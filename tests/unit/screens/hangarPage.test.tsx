@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 // Aircraft page sections: every issue of the save bar finds the input it is about (issueTarget),
 // the point tables and the stations reorder from the keyboard, fuel densities are the standard ones.
-import { afterEach, describe, expect, test } from 'vitest';
-import { useState } from 'react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { useState } from 'react';
+import { afterEach, describe, expect, test } from 'vitest';
+
 import { issueTarget, toInput } from '../../../src/features/hangar/AircraftPage';
 import { CompassSection } from '../../../src/features/hangar/CompassSection';
 import { MassBalanceSection } from '../../../src/features/hangar/MassBalanceSection';
+import { validateAircraft } from '../../../src/features/hangar/model';
 import { PerformanceSection } from '../../../src/features/hangar/PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from '../../../src/features/hangar/sections';
-import { validateAircraft } from '../../../src/features/hangar/model';
 import type { AircraftInput } from '../../../src/shared/types';
 import { fleetSeed } from '../../../tools/build_seed';
 
@@ -103,7 +104,7 @@ describe('aircraft page', () => {
   test('fuel: standard densities, no density inputs, endurance as 4h48', () => {
     const a = structuredClone(fleetSeed()[0]);
     a.fuel.types[0].densityKgPerL = 0.7;
-    const input = toInput({ ...a, id: 'x', created: 0, updated: 0 } as never);
+    const input = toInput({ ...a, id: 'x', created: 0, updated: 0 });
     expect(input.fuel.types.map((g) => g.densityKgPerL)).toEqual([0.72, 0.75]);
     const { container } = render(<Page initial={a} />);
     expect(container.querySelector('[aria-label$=" density"]')).toBeNull();

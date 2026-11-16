@@ -5,11 +5,12 @@
 // full stop gets a page for each take-off → landing (the landing at the stop and the take-off
 // from it included). Each page carries the PIC's signature. These pages follow the loading sheet
 // in the "Weight & balance and performance" export (../wbperf).
-import { SignLine } from '../wb/SignLine';
-import type { ShownSignature } from '../form731/Form731';
-import type { PerfBlock, PerfPage, PerfSheetModel } from './model';
 import '../wb/xp.css';
 import './performance.css';
+
+import type { ShownSignature } from '../form731/Form731';
+import { SignLine } from '../wb/SignLine';
+import type { PerfBlock, PerfPage, PerfSheetModel } from './model';
 
 /** 'Departure', or 'Landing at stop LGSY' for a stop's block. */
 export function blockName(b: PerfBlock): string {

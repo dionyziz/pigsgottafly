@@ -15,24 +15,34 @@
 //   open map it becomes a custom point (a known point asks for a name); drag a leg's middle handle to insert a point;
 //   click a point to select it, Backspace/Delete removes it, right-click for more.
 //   Leg labels: magnetic course and distance (read-only), altitude (click to edit; Enter/Esc).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { maplibregl } from '../../../app/maplibre';
+import './map.css';
+
 import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
-import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
-import type { RefAerodrome, RefBundle } from '../../../shared/ref';
-import { uid as newUid, DEFAULT_STOP_MIN, requestAllowed, type AerodromeRequest } from '../../../shared';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { maplibregl } from '../../../app/maplibre';
 import {
+  type AltitudeDefault,
   buildLegs,
   distanceNm,
   magneticVariation,
   midpoint,
   norm360,
   trueCourse,
-  type AltitudeDefault,
 } from '../../../calc';
+import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
+import { type AerodromeRequest, DEFAULT_STOP_MIN, requestAllowed, uid as newUid } from '../../../shared';
+import type { Notam } from '../../../shared/briefing';
+import type { MapLayers } from '../../../shared/mapLayers';
+import type { RefAerodrome, RefBundle } from '../../../shared/ref';
+import type { MenuItem } from '../../../ui';
+import type { AdDayInfo } from '../AerodromeHours';
+import { AerodromePopover, AerodromeTip } from './AerodromePopover';
+import { type AirspaceInfo, airspaceInfos, airspacesAt, isArea } from './airspace';
+import { AirspacePopover, AirspaceTip } from './AirspacePopover';
 import {
-  airspaceFeatures,
   aerodromeFeatures,
+  airspaceFeatures,
   areaFeatures,
   firFeatures,
   midpointFeatures,
@@ -44,17 +54,14 @@ import {
   waypointFeatures,
   zoneFeatures,
 } from './features';
+import { hazardLabelsAt, hazardsByLeg, type LegHazards, type MapHazard, setHazardLayer } from './hazardLayer';
 import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from './labels';
-import {
-  autoWaypointName,
-  buildCandidates,
-  findSnap,
-  pointFromCandidate,
-  routeCandidates,
-  SNAP_RADIUS_PX,
-  type SnapCandidate,
-  type SnapHit,
-} from './snap';
+import { MapTip } from './MapPopover';
+import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
+import { type DrawMode, LayersControl, MapHint, MapToolbar } from './MapToolbar';
+import { type MapNotam, mapNotams, notamKeysAt, setNotamLayer } from './notamLayer';
+import { NotamPopover, NotamTip } from './NotamPopover';
+import { NameBox, type NamePrompt, PointMenu } from './PointMenu';
 import {
   addDrawnPoint,
   drawIndex,
@@ -66,32 +73,27 @@ import {
   removePoint,
   renamePoint,
 } from './routeEdit';
-import { addSymbols } from './symbols';
+import {
+  autoWaypointName,
+  buildCandidates,
+  findSnap,
+  pointFromCandidate,
+  routeCandidates,
+  SNAP_RADIUS_PX,
+  type SnapCandidate,
+  type SnapHit,
+} from './snap';
 import {
   BASE_MAPS,
+  type BaseLayers,
   buildStyle,
+  type DataSourceId,
   LAYER_GROUPS,
   LGGG_BOUNDS,
   loadChartTokens,
   loadVectorBase,
-  type BaseLayers,
-  type DataSourceId,
 } from './style';
-import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
-import type { MapLayers } from '../../../shared/mapLayers';
-import { LayersControl, MapHint, MapToolbar, type DrawMode } from './MapToolbar';
-import { NameBox, PointMenu, type NamePrompt } from './PointMenu';
-import { MapTip } from './MapPopover';
-import type { MenuItem } from '../../../ui';
-import { airspaceInfos, airspacesAt, isArea, type AirspaceInfo } from './airspace';
-import { AirspacePopover, AirspaceTip } from './AirspacePopover';
-import './map.css';
-import { hazardLabelsAt, hazardsByLeg, setHazardLayer, type LegHazards, type MapHazard } from './hazardLayer';
-import type { Notam } from '../../../shared/briefing';
-import { mapNotams, notamKeysAt, setNotamLayer, type MapNotam } from './notamLayer';
-import { NotamPopover, NotamTip } from './NotamPopover';
-import { AerodromePopover, AerodromeTip } from './AerodromePopover';
-import type { AdDayInfo } from '../AerodromeHours';
+import { addSymbols } from './symbols';
 
 export interface LegAltitude {
   /** Effective altitude, ft (NaN = unknown). */
@@ -112,15 +114,15 @@ export interface RouteMapProps {
   waypoints: Waypoint[];
   /** Where to look when the route is empty (the pilot's home aerodrome), or null. */
   home: LatLon | null;
-  onRouteChange(route: RoutePoint[], opts?: { coalesce?: string }): void;
+  onRouteChange: (route: RoutePoint[], opts?: { coalesce?: string }) => void;
   /** null = remove the override (back to the default). */
-  onAltitudeChange(legKey: string, altFt: number | null): void;
+  onAltitudeChange: (legKey: string, altFt: number | null) => void;
   /** A custom point was named and placed (informational). */
-  onCustomWaypoint?(p: RoutePoint): void;
+  onCustomWaypoint?: (p: RoutePoint) => void;
   /** "Save to my waypoints" on a custom point; resolves when saved. */
-  onSaveWaypoint?(p: RoutePoint): Promise<void>;
-  onUndo?(): void;
-  onRedo?(): void;
+  onSaveWaypoint?: (p: RoutePoint) => Promise<void>;
+  onUndo?: () => void;
+  onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   /** Weather hazard marks on the affected stretches of the legs (hazardLayer.ts). */
@@ -129,16 +131,16 @@ export interface RouteMapProps {
   notams?: Notam[];
   /** The NOTAM picked in the panel or on the map (highlighted). */
   selectedNotam?: string | null;
-  onNotamSelect?(key: string | null): void;
+  onNotamSelect?: (key: string | null) => void;
   /** Touch-and-go / stop request per route point uid (FlightOptions.aerodromeRequests). */
   requests?: Record<string, AerodromeRequest>;
   /** Sets (kind) or removes (null) the request on an aerodrome point of the route. */
-  onRequest?(uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number): void;
+  onRequest?: (uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) => void;
   /** An aerodrome's hours on the flight's date (AIP + NOTAMs), for its tooltip and details. */
-  aerodromeInfo?(a: RefAerodrome): AdDayInfo;
+  aerodromeInfo?: (a: RefAerodrome) => AdDayInfo;
   /** The layers shown (the flight's selection); the route is always drawn. */
   layers: MapLayers;
-  onLayers(l: MapLayers): void;
+  onLayers: (l: MapLayers) => void;
 }
 
 type Mode = DrawMode;

@@ -2,8 +2,9 @@
 // The aircraft page's autosave: edits within the delay coalesce into one save, edits made while a
 // save is in flight go in the next one, nothing is saved while disabled (errors), a failure waits for
 // retry, and leaving the page saves what is pending.
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+
 import { useAutosave } from '../../../src/features/hangar/useAutosave';
 
 beforeEach(() => {

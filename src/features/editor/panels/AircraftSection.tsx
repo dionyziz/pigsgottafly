@@ -1,17 +1,18 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
 import { Link } from 'react-router';
-import { todayUtc } from '../../../shared/date';
+
 import { pickCompassCard } from '../../../calc';
 import {
-  fuelTypesLabel,
-  seatLayout,
   type Aircraft,
   type FlightCrew,
   type FlightDoc,
+  fuelTypesLabel,
   type HangarAircraft,
+  seatLayout,
 } from '../../../shared';
-import { useEditor } from '../state';
+import { todayUtc } from '../../../shared/date';
 import { Chip } from '../../../ui';
+import { useEditor } from '../state';
 import { KV, Section } from './ui';
 
 /**

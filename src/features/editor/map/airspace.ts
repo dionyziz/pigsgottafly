@@ -1,8 +1,8 @@
 // Airspace on the map: one shape for TMAs/MTMAs (ENR 2.1), aerodrome CTRs/ATZs (AD 2.17) and the ENR 5
 // navigation-warning areas (prohibited, restricted, danger, military, other activities), chart labels,
 // and which of them lie under the cursor. Pure (no map), unit-tested.
+import { deg, R_NM, rad } from '../../../calc';
 import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef } from '../../../shared/ref';
-import { deg, rad, R_NM } from '../../../calc';
 
 /** Point at distance/bearing from a start (great circle), [lon, lat]. */
 export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {

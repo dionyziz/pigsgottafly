@@ -1,9 +1,11 @@
 // Reference data checks, ported from the v2 aip/vfr/sun tests (now on the typed JSON).
-import { expect, test } from 'vitest';
-import { AERODROMES, AIRSPACES, FIS, SUN_TABLES, VFR_POINTS, VFR_ROUTES, RUNWAYS, aerodrome } from '../../../src/data/ref';
-import { distanceNm, pointInPolygon } from '../../../src/calc/nav';
-import { outputs } from '../../../tools/build_ref';
 import fs from 'node:fs';
+
+import { expect, test } from 'vitest';
+
+import { distanceNm, pointInPolygon } from '../../../src/calc/nav';
+import { aerodrome,AERODROMES, AIRSPACES, FIS, RUNWAYS, SUN_TABLES, VFR_POINTS, VFR_ROUTES } from '../../../src/data/ref';
+import { outputs } from '../../../tools/build_ref';
 
 const ad = (icao: string) => aerodrome(icao)!;
 

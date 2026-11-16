@@ -2,13 +2,13 @@
 // Deleting a passenger keeps the flights' manifest snapshots (passengerId becomes null), and their
 // Form 731 signatures and signing links, which are keyed by the passenger id, move to the key the
 // forms use for a passenger without a record ('seat:<seat>', src/shared/forms.ts crewKey).
+import { EMPTY_PERSON } from '../../../src/shared/constants.js';
+import type { PassengerInput, Pilot } from '../../../src/shared/types.js';
+import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
 import { newId, notFound, reply } from '../http.js';
 import { checkCount } from '../limits.js';
 import { passengerInput, toPassenger } from '../rows.js';
-import { EMPTY_PERSON } from '../../../src/shared/constants.js';
-import type { PassengerInput, Pilot } from '../../../src/shared/types.js';
-import type { Queryable } from '../db.js';
 import { form731Hash, personHash } from './forms.js';
 
 async function get(db: Queryable, pilotId: string, id: string) {

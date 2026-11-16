@@ -1,11 +1,13 @@
 // /about: where the data comes from. The weather model and the data sources are named here only;
 // the rest of the app shows the data without its provenance (e.g. the navlog strip shows "06Z run").
+import './about.css';
+
 import type { ReactNode } from 'react';
+
 import { AIP_EAIP_INDEX } from '../data/aipLinks';
 import { AIRAC } from '../data/ref';
 import { CardSection } from '../ui';
 import { Shell } from './Shell';
-import './about.css';
 
 /** The forecast model behind winds aloft, surface forecasts and the weather hazards. */
 export const WEATHER_MODEL = 'ECMWF IFS 0.25°';

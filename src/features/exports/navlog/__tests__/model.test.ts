@@ -1,16 +1,17 @@
 // The MD 4.2 sheet model: cells as computeNavlog results formatted like the paper sheet,
 // multi-sheet splitting, header weather (forecast vs METAR), terminal information, notes.
 import { describe, expect, test } from 'vitest';
-import { REF, SUN_TABLES, aerodrome, vfrPoint } from '../../../../data/ref';
-import { aircraftFromTypeJson, emptyFlightDoc, legKey, DEFAULT_SETTINGS } from '../../../../shared';
-import type { Aircraft, AtcEntry, CompassCard, FlightDoc, RoutePoint } from '../../../../shared';
-import type { RouteWeather, OpenMeteoLocation } from '../../../../data/weather';
-import { parseMetar, type MetarTafResult } from '../../../../data/weatherMetar';
-import { fmtHdg, fmtSigned } from '../../../../calc';
-import { fmtEte } from '../../../../shared/format';
-import { generateAtcList, atcInput, atcLegRelevance } from '../../../../data/atc';
-import reims from '../../../../../data/aircraft/reims-f172m.json';
+
 import cards from '../../../../../data/aircraft/compass-cards.json';
+import reims from '../../../../../data/aircraft/reims-f172m.json';
+import { fmtHdg, fmtSigned } from '../../../../calc';
+import { atcInput, atcLegRelevance, generateAtcList } from '../../../../data/atc';
+import { aerodrome, REF, SUN_TABLES, vfrPoint } from '../../../../data/ref';
+import type { OpenMeteoLocation, RouteWeather } from '../../../../data/weather';
+import { type MetarTafResult, parseMetar } from '../../../../data/weatherMetar';
+import type { Aircraft, AtcEntry, CompassCard, FlightDoc, RoutePoint } from '../../../../shared';
+import { aircraftFromTypeJson, DEFAULT_SETTINGS, emptyFlightDoc, legKey } from '../../../../shared';
+import { fmtEte } from '../../../../shared/format';
 import {
   buildNavlogDocument,
   computeFlightNavlog,
@@ -118,7 +119,7 @@ describe('one sheet', () => {
       expect(c.dist).toBe(String(r.dist));
       expect(c.gs).toBe(String(r.gs));
       expect(c.ete).toMatch(/^\d\d:\d\d$/);
-      expect(c.ete).toBe(fmtEte(r.ete!));
+      expect(c.ete).toBe(fmtEte(r.ete));
       expect(c.fuel).toBe(String(r.fuel));
       expect(c.windMissing).toBe(false);
     });
@@ -293,7 +294,7 @@ describe('surface weather in the header', () => {
       cloud_cover_low: hours.map(() => 0),
       cloud_cover_mid: hours.map(() => 0),
       cloud_cover_high: hours.map(() => 0),
-    } as OpenMeteoLocation['hourly'],
+    },
   });
   const weather: RouteWeather = {
     status: 'ok',

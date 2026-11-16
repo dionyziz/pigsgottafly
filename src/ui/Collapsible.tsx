@@ -1,7 +1,8 @@
 // A box with a header that opens and closes it. The whole header is the toggle (a click anywhere,
 // or Enter/Space when focused); the buttons in `actions` do not toggle. The open state is
 // remembered on this device (localStorage `store`, a map id → collapsed).
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+
 import { Icon } from './Icon';
 
 const DEFAULT_STORE = 'pgf.collapsed';

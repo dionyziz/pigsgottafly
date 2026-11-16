@@ -1,12 +1,14 @@
 // The W&B and performance sheets sent to an operator: the browser's hash of what it shows equals the
 // server's hash of what it sent (so "changed since it was sent" is right), the content is normalized
 // the same on both sides, and the PDF renders (one loading sheet + one page per sector).
-import { describe, expect, test } from 'vitest';
 import zlib from 'node:zlib';
-import { sheetText, wbPerfContentOf, wbPerfText } from '../../../src/shared/declarations';
-import { sha256Url } from '../../../src/features/exports/wbperf/declaration';
-import { wbPerfHash } from '../../../api/_lib/routes/declarations';
+
+import { describe, expect, test } from 'vitest';
+
 import { wbPerfPdf } from '../../../api/_lib/declarationPdf';
+import { wbPerfHash } from '../../../api/_lib/routes/declarations';
+import { sha256Url } from '../../../src/features/exports/wbperf/declaration';
+import { sheetText, wbPerfContentOf, wbPerfText } from '../../../src/shared/declarations';
 
 const sample = (sectors = 1) =>
   wbPerfContentOf({

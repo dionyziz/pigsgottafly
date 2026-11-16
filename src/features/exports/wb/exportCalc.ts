@@ -4,18 +4,10 @@
 // the fuel plan, and the take-off / landing performance at the departure and destination, and at
 // each intermediate full stop (its landing and its take-off, with the sector masses: sectors.ts).
 // Pure: no I/O, no DOM (the hook in useExportCalc.ts fetches the inputs).
-import type { Aircraft, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
 import {
-  activeRequests,
-  fuelLoad,
-  landingPointIndices,
-  requestTiming,
-  type FuelLoad,
-  type RequestTiming,
-} from '../../../shared';
-import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
-import {
+  type AerodromePerf,
   aerodromePerformance,
+  type FlightSector,
   flightSectors,
   isaTempC,
   magneticVariation,
@@ -23,15 +15,23 @@ import {
   sectorBalances,
   stopsOf,
   wbLoadsFromManifest,
-  weightAndBalance,
-  type AerodromePerf,
-  type FlightSector,
   type WbResult,
+  weightAndBalance,
 } from '../../../calc';
 import type { OpenMeteoLocation, RouteWeather, SurfaceConditions } from '../../../data/weather';
 import { toPerfWind } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
-import { computeFlightNavlog, endpointWeather, type EndpointWeather, type NavlogComputed } from '../navlog/model';
+import type { Aircraft, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
+import {
+  activeRequests,
+  type FuelLoad,
+  fuelLoad,
+  landingPointIndices,
+  type RequestTiming,
+  requestTiming,
+} from '../../../shared';
+import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
+import { computeFlightNavlog, type EndpointWeather, endpointWeather, type NavlogComputed } from '../navlog/model';
 
 const sectorTiming = (t: RequestTiming) => ({ groundAfterLegMin: t.groundAfterLegMin, touchAfterLeg: t.touchAfterLeg });
 
@@ -204,9 +204,9 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     const conditions = ew?.conditions ?? null;
     const elev = ad?.elevFt ?? 0;
     const qnhAssumed = !(conditions && fin(conditions.qnhHpa));
-    const qnhHpa = qnhAssumed ? 1013.25 : (conditions!.qnhHpa as number);
+    const qnhHpa = qnhAssumed ? 1013.25 : (conditions.qnhHpa as number);
     const oatAssumed = !(conditions && fin(conditions.tempC));
-    const oatC = oatAssumed ? isaTempC(elev) : (conditions!.tempC as number);
+    const oatC = oatAssumed ? isaTempC(elev) : (conditions.tempC as number);
     const wind = toPerfWind(conditions);
     const date = doc.date || new Date(nowMs).toISOString().slice(0, 10);
     const variationDeg = ad ? magneticVariation(ad.lat, ad.lon, date) : 0;

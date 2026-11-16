@@ -1,8 +1,8 @@
 // Fixture flight for the filled-form tests: made-up people, real reference aerodromes.
-import { aircraftFromTypeJson, emptyFlightDoc, EMPTY_PERSON } from '../../../../shared';
-import type { Aircraft, FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../../shared';
-import { aerodrome } from '../../../../data/ref';
 import f172m from '../../../../../data/aircraft/reims-f172m.json';
+import { aerodrome } from '../../../../data/ref';
+import type { Aircraft, FlightCrew, FlightDoc, Pilot, RoutePoint } from '../../../../shared';
+import { aircraftFromTypeJson, EMPTY_PERSON, emptyFlightDoc } from '../../../../shared';
 
 export const aircraft: Aircraft = {
   ...aircraftFromTypeJson(f172m),

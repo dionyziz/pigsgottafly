@@ -3,16 +3,16 @@
 // its sharing; only the owner deletes it (its aircraft keep the name as free text). Sharing works
 // as for aircraft (shares.ts); people who see the operator only through an aircraft are listed with
 // that aircraft and are changed by sharing the aircraft, not here.
-import type { Route } from '../http.js';
-import { badRequest, conflict, HttpError, newId, notFound, reply } from '../http.js';
-import type { Queryable } from '../db.js';
-import { rateLimit } from '../rateLimit.js';
-import { accessibleSql, personName } from '../access.js';
-import { listOperators, operatorFor, operatorItem } from '../operators.js';
-import { str } from '../rows.js';
-import { checkCount } from '../limits.js';
 import { EMPTY_OPERATOR, isEmail, type OperatorInput, type OperatorSharing } from '../../../src/shared/operators.js';
 import type { ShareRole } from '../../../src/shared/sharing.js';
+import { accessibleSql, personName } from '../access.js';
+import type { Queryable } from '../db.js';
+import type { Route } from '../http.js';
+import { badRequest, conflict, HttpError, newId, notFound, reply } from '../http.js';
+import { checkCount } from '../limits.js';
+import { listOperators, operatorFor, operatorItem } from '../operators.js';
+import { rateLimit } from '../rateLimit.js';
+import { str } from '../rows.js';
 
 type Row = Record<string, any>;
 

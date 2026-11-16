@@ -1,9 +1,11 @@
 // FPL message builder (ICAO Doc 4444 Appendix 2/3): field formats, item 18/19 composition, line
 // wrapping, and the full message for a realistic flight built from the app's records.
 import { describe, expect, test } from 'vitest';
+
+import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, planFuel } from '../../../src/calc';
+import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
 import {
   AFTN_LINE,
-  MISSING,
   aircraftId,
   buildFpl,
   cleanPhone,
@@ -11,9 +13,11 @@ import {
   coordField,
   dofField,
   eobtField,
+  type FplInput,
   hhmm,
-  locationField,
   intlPhone,
+  locationField,
+  MISSING,
   oneLine,
   parseItem18,
   picName,
@@ -22,12 +26,9 @@ import {
   speedField,
   transliterate,
   wrapLine,
-  type FplInput,
 } from '../../../src/features/exports/fpl/fpl';
 import { alternateOf, fplInputFrom, totalEetMin } from '../../../src/features/exports/fpl/input';
-import { buildLegs, computeNavlog, defaultAltitudes, navlogAircraft, planFuel } from '../../../src/calc';
-import { REF, aerodrome, vfrPoint } from '../../../src/data/ref';
-import { emptyFlightDoc, type Aircraft, type Equipment, type Flight, type RoutePoint } from '../../../src/shared';
+import { type Aircraft, emptyFlightDoc, type Equipment, type Flight, type RoutePoint } from '../../../src/shared';
 
 const EQ: Equipment = {
   item10a: 'S',

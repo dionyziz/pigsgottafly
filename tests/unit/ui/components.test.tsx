@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 // src/ui: Sortable (pointer and keyboard reorder), Collapsible (header toggle), Dialog/DialogFooter,
 // ConfirmDialog, Menu, AsyncView, rowClick, Field, WarningList, useHighlightFields, Icon, Loading.
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { MemoryRouter } from 'react-router';
-import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+
+import { moveAt } from '../../../src/shared';
 import {
   AsyncView,
   Collapsible,
@@ -12,18 +14,17 @@ import {
   Dialog,
   DialogFooter,
   DragHandle,
+  dropIndex,
   Field,
-  ICON_NAMES,
   Icon,
+  ICON_NAMES,
   KebabMenu,
   Loading,
-  WarningList,
-  dropIndex,
   rowClick,
   useHighlightFields,
   useSortable,
+  WarningList,
 } from '../../../src/ui';
-import { moveAt } from '../../../src/shared';
 
 // Node's own (flag-gated) localStorage shadows jsdom's: use an in-memory one.
 const mem = new Map<string, string>();

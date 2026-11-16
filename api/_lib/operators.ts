@@ -3,11 +3,11 @@
 // access to an aircraft assigned to the operator views it (derived here on every query, so it ends
 // with that aircraft access, unless the operator is also shared with them directly). No access
 // answers 404, too little 403.
+import type { Operator, OperatorItem } from '../../src/shared/operators.js';
+import type { AircraftRole } from '../../src/shared/sharing.js';
+import { accessibleSql, personName } from './access.js';
 import type { Queryable } from './db.js';
 import { HttpError, notFound } from './http.js';
-import { accessibleSql, personName } from './access.js';
-import type { AircraftRole } from '../../src/shared/sharing.js';
-import type { Operator, OperatorItem } from '../../src/shared/operators.js';
 
 type Row = Record<string, any>;
 

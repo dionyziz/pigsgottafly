@@ -1,8 +1,8 @@
 // Compact CG envelope chart (mass vs CG arm) with the take-off and landing points (and the point at
 // each intermediate stop, on the fuel-burn line between them), for the panel.
 // The full-size MD 4.3 chart is in the W&B export.
-import type { MassBalance, WbCategory } from '../../../shared';
 import type { WbPoint } from '../../../calc';
+import type { MassBalance, WbCategory } from '../../../shared';
 
 const W = 296,
   H = 150,

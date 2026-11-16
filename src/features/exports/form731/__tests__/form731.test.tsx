@@ -1,6 +1,7 @@
 // Form 731: field contents, manifest order, pagination, warnings, and the rendered sheet.
-import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+
 import { Form731, form731Model } from '..';
 import { formatDate, routePlaces, routeText } from '../common';
 import { ad, aircraft, flight, pax, pilot, vfr } from './fixtures';

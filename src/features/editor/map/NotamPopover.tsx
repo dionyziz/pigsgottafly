@@ -2,8 +2,9 @@
 // NOTAMs"): ID, validity and limits on hover; on click the decoded content, the affected leg and the
 // raw ICAO text.
 import { useState } from 'react';
-import type { Notam } from '../../../shared/briefing';
+
 import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
+import type { Notam } from '../../../shared/briefing';
 import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
 
 const Badge = ({ n }: { n: Notam }) => (
@@ -39,9 +40,9 @@ interface PopProps {
   y: number;
   items: Notam[];
   /** Leg names by index ('LGTT → KARYSTOS'). */
-  legName(i: number): string;
-  onOpen(key: string): void;
-  onClose(): void;
+  legName: (i: number) => string;
+  onOpen: (key: string) => void;
+  onClose: () => void;
 }
 
 export function NotamPopover({ x, y, items, legName, onOpen, onClose }: PopProps) {

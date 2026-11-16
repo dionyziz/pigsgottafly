@@ -1,13 +1,14 @@
 // When: date, block-off (UTC, with local time), taxi out/in for this flight, and the computed
 // take-off, landing and block-on times.
-import { DateInput } from '../../../app/DateInput';
 import { useEffect, useState } from 'react';
+
+import { DateInput } from '../../../app/DateInput';
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
-import { useEditor } from '../state';
-import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
 import { localOffsetLabel } from '../../../shared/date';
+import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
 import { NumberField } from '../../../ui';
+import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { KV, Section } from './ui';
 

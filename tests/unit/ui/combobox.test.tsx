@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 // src/ui/Combobox key handling (pure and rendered), AerodromeInput resolution, PersonPicker.
-import { afterEach, describe, expect, test, vi } from 'vitest';
-import { useState } from 'react';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { AerodromeInput, Combobox, Dialog, PersonPicker, comboKey, matchPeople } from '../../../src/ui';
+import { useState } from 'react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+
 import { aerodrome, resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
 import type { RefAerodrome } from '../../../src/shared';
+import { AerodromeInput, Combobox, comboKey, Dialog, matchPeople, PersonPicker } from '../../../src/ui';
 
 afterEach(() => {
   cleanup();

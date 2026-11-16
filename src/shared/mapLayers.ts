@@ -65,6 +65,6 @@ export function mapLayersOf(v: unknown, base: MapLayers = DEFAULT_MAP_LAYERS): M
   const i = v as Record<string, unknown>;
   const out: MapLayers = { ...base };
   if (typeof i.base === 'string' && (BASE_MAP_IDS as string[]).includes(i.base)) out.base = i.base as BaseMapId;
-  for (const k of MAP_LAYER_TOGGLES) if (typeof i[k] === 'boolean') out[k] = i[k] as boolean;
+  for (const k of MAP_LAYER_TOGGLES) if (typeof i[k] === 'boolean') out[k] = i[k];
   return out;
 }

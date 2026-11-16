@@ -3,21 +3,22 @@
 // timed at pattern speed) and free-text remarks (item 18). Everything else in the FPL comes from the
 // aircraft, the profile, the manifest, the route and the navlog.
 import { useEffect, useState } from 'react';
-import { AerodromeTextInput, Check, NumberField } from '../../../ui';
-import { useEditor } from '../state';
-import { alternatesFrom, MAX_ALTERNATES } from './fplOptions';
-import { Section } from './ui';
+
+import { endpointAerodrome } from '../../../data/atc';
+import { REF } from '../../../data/ref';
 import {
   activeRequests,
+  type AerodromeRequest,
   DEFAULT_STOP_MIN,
   MAX_STOP_MIN,
   requestAllowed,
   requestRemark,
   setRequest,
-  type AerodromeRequest,
 } from '../../../shared';
-import { endpointAerodrome } from '../../../data/atc';
-import { REF } from '../../../data/ref';
+import { AerodromeTextInput, Check, NumberField } from '../../../ui';
+import { useEditor } from '../state';
+import { alternatesFrom, MAX_ALTERNATES } from './fplOptions';
+import { Section } from './ui';
 
 const fieldsOf = (alts: string[]) => Array.from({ length: MAX_ALTERNATES }, (_, i) => alts[i] ?? '');
 

@@ -6,30 +6,32 @@
 //
 // Usage (ExportPage): <NavlogExport flight={flight} />. On screen the sheets are scaled to the
 // container width; in print each sheet fills one A4 landscape page (named page "md42").
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { Flight } from '../../../shared';
+import '../form731/forms.css';
+import './navlog.css';
+
+import { Fragment, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+
 import { usePilot } from '../../../app/session';
-import { REF, SUN_TABLES } from '../../../data/ref';
 import { atcInput, atcLegRelevance, generateAtcList } from '../../../data/atc';
+import { REF, SUN_TABLES } from '../../../data/ref';
 import { useFlightWeather } from '../../../data/useFlightWeather';
+import type { Flight } from '../../../shared';
 import { Loading, Panel } from '../../../ui';
+import { type ShownSignature, Signature } from '../form731/Form731';
+import { useFlightAircraft } from '../useExportData';
+import { ExportWarnings } from '../WarningList';
+import { fitSheets, SHEET_UNITS } from './fit';
 import {
   buildNavlogDocument,
   computeFlightNavlog,
   LEGS_PER_SHEET,
   MIN_TERMINAL_ROWS,
-  NOTE_LINES,
   type NavlogDocument,
   type NavlogSheet,
+  NOTE_LINES,
   type SheetLeg,
   type TerminalRow,
 } from './model';
-import { fitSheets, SHEET_UNITS } from './fit';
-import { ExportWarnings } from '../WarningList';
-import { useFlightAircraft } from '../useExportData';
-import { Signature, type ShownSignature } from '../form731/Form731';
-import '../form731/forms.css';
-import './navlog.css';
 
 export function NavlogExport({ flight }: { flight: Flight }) {
   const pilot = usePilot();

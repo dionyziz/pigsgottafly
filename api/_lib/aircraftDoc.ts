@@ -9,6 +9,7 @@
 // treat 0 as unset (warnings, no division), so 0 is accepted; negative, non-finite or non-number
 // values are refused with 400. The limits are the hangar's own errors (src/features/hangar/model.ts
 // validateAircraft) where it has them, and generous plausibility limits elsewhere.
+import { FUEL_TYPES, normalizeFuelSpec } from '../../src/shared/fuel.js';
 import type {
   CompassCard,
   Envelope,
@@ -33,7 +34,6 @@ import {
   type AttachmentRef,
   type AttachmentType,
 } from '../../src/shared/types.js';
-import { FUEL_TYPES, normalizeFuelSpec } from '../../src/shared/fuel.js';
 import { badRequest } from './http.js';
 import { arr, obj } from './rows.js';
 

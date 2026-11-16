@@ -2,9 +2,10 @@
 // out of the aerodrome, ground time on the timeline, one more start-up/taxi/take-off allowance per
 // full stop in the navlog total and the fuel plan. Expected values by hand (no winds).
 import { expect, test } from 'vitest';
-import { computeNavlog, planFuel, type LegGeometry } from '../../../src/calc';
-import { requestTiming } from '../../../src/shared/requests';
+
+import { computeNavlog, type LegGeometry, planFuel } from '../../../src/calc';
 import type { RoutePoint } from '../../../src/shared';
+import { requestTiming } from '../../../src/shared/requests';
 
 const AC = { cruiseTasKt: 92, patternTasKt: 80, burnLph: 30, taxiAllowanceL: 4, card: null };
 const pt = (uid: string, kind: RoutePoint['kind'], lat: number): RoutePoint => ({

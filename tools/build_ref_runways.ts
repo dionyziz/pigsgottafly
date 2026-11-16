@@ -17,10 +17,11 @@
 // Nothing else is filled in: an unpublished value stays null and is listed in `gaps`.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { RefAerodrome, RefRunway } from '../src/shared/ref.js';
-import { distanceNm, trueCourse, norm360 } from '../src/calc/nav.js';
 
-export type { RefRunwayIntersection, RefRunwayDetail } from '../src/shared/ref.js';
+import { distanceNm, norm360, trueCourse } from '../src/calc/nav.js';
+import type { RefAerodrome, RefRunway } from '../src/shared/ref.js';
+
+export type { RefRunwayDetail, RefRunwayIntersection } from '../src/shared/ref.js';
 import type { RefRunwayDetail, RefRunwayIntersection } from '../src/shared/ref.js';
 /** A runway record as generated: every detail field present. */
 export type RefRunwayFull = RefRunway & RefRunwayDetail;
@@ -183,7 +184,7 @@ export function buildRunways(
             slopeUnsignedPct = Math.abs(pub);
             slopeSource = 'aip-unsigned';
             notes.push(
-              `Slope ${p!.slopeText} printed for both directions without threshold elevations: direction unknown, applied as adverse both ways`,
+              `Slope ${p.slopeText} printed for both directions without threshold elevations: direction unknown, applied as adverse both ways`,
             );
           }
         }

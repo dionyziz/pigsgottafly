@@ -1,6 +1,6 @@
 // Choosing a file (a button over a hidden file input), and a full-screen PDF viewer (the browser's
 // own PDF rendering) for a Blob or a URL.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 export function FilePicker({
   accept,

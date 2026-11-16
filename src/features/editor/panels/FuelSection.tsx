@@ -2,7 +2,8 @@
 // required + reserve; editable), capacity and endurance. An aircraft with more than one approved
 // fuel gets one input per type (mixed tanks allowed): FOB is their sum, the W&B weighs each type.
 import { Link } from 'react-router';
-import { fuelByType, fuelLoad, fuelTypesLabel, primaryFuel, type FlightDoc, type FuelType } from '../../../shared';
+
+import { type FlightDoc, fuelByType, fuelLoad, type FuelType, fuelTypesLabel, primaryFuel } from '../../../shared';
 import { fmtDuration } from '../../../shared/format';
 import { Chip, NumberField } from '../../../ui';
 import { useEditor } from '../state';

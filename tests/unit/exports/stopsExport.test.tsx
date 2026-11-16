@@ -3,26 +3,27 @@
 // performance blocks (Skyros weather, runways and the sector masses) on a page of their own, and
 // the loading sheet checks the mass and CG at the stop. Masses are checked against a sum by hand
 // (zero-fuel mass + fuel left at the stop × 0.72 kg/L), not against the code under test.
-import { describe, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { fleetSeed } from '../../../tools/build_seed';
-import { REF, SUN_TABLES, runwaysOf } from '../../../src/data/ref';
+import { describe, expect, test } from 'vitest';
+
+import { magneticVariation, pressureAltitudeFt } from '../../../src/calc';
+import { REF, runwaysOf, SUN_TABLES } from '../../../src/data/ref';
+import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
+import { perfSheetModel } from '../../../src/features/exports/performance/model';
+import { PerfSheet } from '../../../src/features/exports/performance/PerformanceExport';
+import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
+import { wbSheetModel } from '../../../src/features/exports/wb/model';
+import { WbSheet } from '../../../src/features/exports/wb/WbExport';
 import {
-  emptyFlightDoc,
   type Aircraft,
+  emptyFlightDoc,
   type FlightCrew,
   type FlightDoc,
   type PersonDetails,
   type Pilot,
   type RoutePoint,
 } from '../../../src/shared';
-import { magneticVariation, pressureAltitudeFt } from '../../../src/calc';
-import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
-import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
-import { wbSheetModel } from '../../../src/features/exports/wb/model';
-import { WbSheet } from '../../../src/features/exports/wb/WbExport';
-import { perfSheetModel } from '../../../src/features/exports/performance/model';
-import { PerfSheet } from '../../../src/features/exports/performance/PerformanceExport';
+import { fleetSeed } from '../../../tools/build_seed';
 
 const [ASV_IN] = fleetSeed();
 const ASV: Aircraft = { ...structuredClone(ASV_IN), id: 'ac_asv', created: 0, updated: 0 };

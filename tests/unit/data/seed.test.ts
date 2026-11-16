@@ -1,9 +1,10 @@
 // The owner's two aircraft as tools/build_seed.ts describes them (003 + 014; checked against the
 // migrations in tests/api/migrations.test.ts), and the owner match of the data migrations.
 import { expect, test } from 'vitest';
-import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../../tools/build_seed';
+
 import sql003 from '../../../api/_lib/migrations/003_existing_pilot_data';
 import sql014 from '../../../api/_lib/migrations/014_aircraft_fuels_provenance';
+import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../../tools/build_seed';
 
 test('SX-ASV and SX-ASG from the weighing reports and the AFM', () => {
   const [asv, asg] = fleetSeed();

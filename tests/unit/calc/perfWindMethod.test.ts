@@ -1,12 +1,14 @@
 // aerodromePerformance: variable and gusty surface wind against the crosswind limits, and the
 // landing distance computed by both methods (club and AFM), the longer one used.
 // References are hand calculations from the AFM tables (data/aircraft/reims-f172m.json).
-import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { aircraftFromTypeJson } from '../../../src/shared/templates';
+
+import { describe, expect, test } from 'vitest';
+
 import { aerodromePerformance, landingDistances, pressureAltitudeFt, takeoffDistances } from '../../../src/calc';
 import type { RefRunway } from '../../../src/shared';
+import { aircraftFromTypeJson } from '../../../src/shared/templates';
 
 const type = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../data/aircraft/reims-f172m.json'), 'utf8'));
 const T = aircraftFromTypeJson(type).performance;

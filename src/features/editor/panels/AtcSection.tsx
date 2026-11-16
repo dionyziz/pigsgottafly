@@ -3,16 +3,25 @@
 // edited list is saved on the flight (doc.atc) and "Regenerate" refreshes the generated rows while
 // keeping the rows added by hand.
 import { useMemo, useState } from 'react';
-import { uid, type AtcEntry } from '../../../shared';
+
+import { atcFreqText, atcInput, generateAtcList, regenerateAtcList } from '../../../data/atc';
+import { type AtcEntry, uid } from '../../../shared';
 import { moveAt } from '../../../shared/list';
 import { Chip, DragHandle, Icon, useSortable } from '../../../ui';
-import { atcFreqText, atcInput, generateAtcList, regenerateAtcList } from '../../../data/atc';
 import { useEditor } from '../state';
 import { Section } from './ui';
 
 const FREQ_RE = /^\d{3}\.\d{1,3}$/;
 
-function EditRow({ entry, onSave, onCancel }: { entry: AtcEntry; onSave(e: AtcEntry): void; onCancel(): void }) {
+function EditRow({
+  entry,
+  onSave,
+  onCancel,
+}: {
+  entry: AtcEntry;
+  onSave: (e: AtcEntry) => void;
+  onCancel: () => void;
+}) {
   const [f, setF] = useState({
     group: entry.group,
     callsign: entry.callsign,

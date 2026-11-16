@@ -1,7 +1,8 @@
 // Development server: Vite in middleware mode (hot reload) + the API, one port.
 //   npm run dev → http://127.0.0.1:8765/
 import { createServer as createVite } from 'vite';
-import { ROOT, listenFromEnv } from './server.js';
+
+import { listenFromEnv, ROOT } from './server.js';
 
 const vite = await createVite({ root: ROOT, server: { middlewareMode: true }, appType: 'spa' });
 await listenFromEnv(

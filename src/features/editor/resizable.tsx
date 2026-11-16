@@ -16,7 +16,7 @@ export interface ResizableOpts {
   initial: number | null;
   /** Released with the edge dragged below this size (px): onCollapse() instead of a new size. */
   collapseBelow?: number;
-  onCollapse?(): void;
+  onCollapse?: () => void;
 }
 
 const read = (key: string): number | null => {
@@ -127,10 +127,11 @@ export function useResizable(o: ResizableOpts) {
     commit(clamp(cur + (e.key === grow ? 1 : -1) * (e.shiftKey ? 80 : 20)));
   };
 
+  const orientation: 'vertical' | 'horizontal' = o.axis === 'x' ? 'vertical' : 'horizontal';
   const handleProps = {
     role: 'separator' as const,
     tabIndex: 0,
-    'aria-orientation': (o.axis === 'x' ? 'vertical' : 'horizontal') as 'vertical' | 'horizontal',
+    'aria-orientation': orientation,
     'aria-valuemin': o.min,
     'aria-valuenow': size == null ? undefined : Math.round(size),
     title: 'Drag to resize · double-click to reset',

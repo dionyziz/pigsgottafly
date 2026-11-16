@@ -1,9 +1,10 @@
 // Deleting a passenger: flights keep the manifest snapshot (no passenger id), an editor still holding
 // the old id saves without error, and the passenger's Form 731 signature and signing link survive.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
+
 import type { Flight } from '../../src/shared';
 import type { FormsState, SigningView } from '../../src/shared/forms';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let a: Client, b: Client;

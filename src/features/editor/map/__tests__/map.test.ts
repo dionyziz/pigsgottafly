@@ -2,48 +2,11 @@
 // Run: npx vitest run --config src/features/editor/map/__tests__/vitest.config.ts
 // (or move to tests/unit/map/ — the root vitest config only includes tests/unit/**).
 import { describe, expect, it } from 'vitest';
-import type { RoutePoint, Waypoint } from '../../../../shared';
-import { legKey } from '../../../../shared';
+
 import { distanceNm } from '../../../../calc';
 import { AD_AIRSPACES, AERODROMES, AIRSPACES, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
-import {
-  aerodromeName,
-  autoWaypointName,
-  buildCandidates,
-  cleanWaypointName,
-  findSnap,
-  pointFromCandidate,
-  routeCandidates,
-  type SnapCandidate,
-} from '../snap';
-import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from '../labels';
-import {
-  addDrawnPoint,
-  drawIndex,
-  insertPoint,
-  isBareRoundTrip,
-  isRoundTrip,
-  mercatorMid,
-  pruneOverrides,
-  removeDrawnPoint,
-  removePoint,
-  movePoint,
-  renamePoint,
-  replacePoint,
-  setAltitudeOverride,
-} from '../routeEdit';
-import { hazardsByLeg, mapHazards, type MapHazard } from '../hazardLayer';
-import {
-  airspaceFeatures,
-  circleRing,
-  destination,
-  fmtLimit,
-  fmtRouteAltitude,
-  midpointFeatures,
-  runwayHeading,
-  vfrRouteFeatures,
-  zoneFeatures,
-} from '../features';
+import type { RoutePoint, Waypoint } from '../../../../shared';
+import { legKey } from '../../../../shared';
 import {
   airspaceInfos,
   airspaceLabel,
@@ -55,6 +18,44 @@ import {
   pointInRing,
   shortClass,
 } from '../airspace';
+import {
+  airspaceFeatures,
+  circleRing,
+  destination,
+  fmtLimit,
+  fmtRouteAltitude,
+  midpointFeatures,
+  runwayHeading,
+  vfrRouteFeatures,
+  zoneFeatures,
+} from '../features';
+import { hazardsByLeg, type MapHazard, mapHazards } from '../hazardLayer';
+import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from '../labels';
+import {
+  addDrawnPoint,
+  drawIndex,
+  insertPoint,
+  isBareRoundTrip,
+  isRoundTrip,
+  mercatorMid,
+  movePoint,
+  pruneOverrides,
+  removeDrawnPoint,
+  removePoint,
+  renamePoint,
+  replacePoint,
+  setAltitudeOverride,
+} from '../routeEdit';
+import {
+  aerodromeName,
+  autoWaypointName,
+  buildCandidates,
+  cleanWaypointName,
+  findSnap,
+  pointFromCandidate,
+  routeCandidates,
+  type SnapCandidate,
+} from '../snap';
 
 // A flat test projection: 100 px per degree, y down.
 const project = (lon: number, lat: number) => ({ x: lon * 100, y: -lat * 100 });
@@ -167,7 +168,7 @@ describe('snap candidates from the reference data', () => {
     expect(vfr.length).toBeLessThanOrEqual(VFR_POINTS.length);
   });
   it('names aerodromes without ICAO by the last part of their name', () => {
-    expect(aerodromeName({ icao: null, name: 'KALAMATA / TRIODHON' } as never)).toBe('TRIODHON');
+    expect(aerodromeName({ icao: null, name: 'KALAMATA / TRIODHON' })).toBe('TRIODHON');
   });
   it('a snapped route point carries kind, refId, name and position', () => {
     const lgtt = all.find((c) => c.refId === 'LGTT')!;

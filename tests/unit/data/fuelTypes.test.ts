@@ -1,5 +1,6 @@
 // Approved fuels and fuel on board by type (src/shared/fuel.ts).
 import { describe, expect, test } from 'vitest';
+
 import { FUEL_DENSITY, fuelByType, fuelLoad, fuelTypesLabel, normalizeFuelSpec, primaryFuel, standardFuelTypes } from '../../../src/shared/fuel';
 import { fleetSeed } from '../../../tools/build_seed';
 

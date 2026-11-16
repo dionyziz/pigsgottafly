@@ -12,9 +12,9 @@
 //   - aviationweather.gov answers 204 when no station in the list has a report.
 //   - Slow upstream: the first request from a cold instance has been seen to take ~12 s (later ones
 //     ~0.2 s). Each attempt may take TIMEOUT_MS; a timeout, network error or 5xx is retried once.
+import type { MetarTafResponse } from '../../../src/shared/api.js';
 import type { Route } from '../http.js';
 import { HttpError, reply } from '../http.js';
-import type { MetarTafResponse } from '../../../src/shared/api.js';
 import { rateLimit } from '../rateLimit.js';
 
 export const MAX_IDS = 6;

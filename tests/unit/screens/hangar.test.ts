@@ -1,9 +1,7 @@
 // Hangar screen helpers (src/features/hangar/model.ts): aircraft validation, FPL item 10 codes,
 // compass card status, envelope geometry and performance-table reshaping.
 import { describe, expect, test } from 'vitest';
-import { fleetSeed } from '../../../tools/build_seed';
-import { blankAircraft } from '../../../src/shared/templates';
-import { buildFromTemplate } from '../../../src/features/hangar/templates';
+
 import {
   addFuelType,
   addHeadwind,
@@ -13,34 +11,37 @@ import {
   addTakeoffAltitude,
   addTakeoffMassRow,
   badPbn,
-  item18Dropped,
-  makePrimaryFuel,
-  otherFuelTypes,
-  removeFuelType,
-  removeStation,
-  runwayConditions,
-  setArmRange,
-  setRunwayConditions,
-  setStationKind,
   cardStatus,
   deviationOf,
   insidePolygon,
+  item18Dropped,
   join10a,
   join10b,
+  makePrimaryFuel,
   missingEssentials,
   momentPolygonFromCg,
   newSeatId,
   newStationId,
+  otherFuelTypes,
   polygonArea,
+  removeFuelType,
   removeHeadwind,
   removeLandingAltitude,
+  removeStation,
   removeTakeoffAltitude,
+  runwayConditions,
   sameTypeCopy,
   selfIntersects,
+  setArmRange,
+  setRunwayConditions,
+  setStationKind,
   split10a,
   split10b,
   validateAircraft,
 } from '../../../src/features/hangar/model';
+import { buildFromTemplate } from '../../../src/features/hangar/templates';
+import { blankAircraft } from '../../../src/shared/templates';
+import { fleetSeed } from '../../../tools/build_seed';
 
 const TODAY = '2026-11-15';
 const errors = (a: Parameters<typeof validateAircraft>[0], today = TODAY) =>

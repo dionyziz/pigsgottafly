@@ -2,9 +2,10 @@
 // airspace or area is, independent of the route: name, class and vertical limits on hover; on click its
 // type, limits, lateral limits in short, activity, units and frequencies, remarks and the AIP section
 // (a link to the AIP PDF).
-import { AipLink } from '../../../app/AipLink';
 import { Fragment } from 'react';
-import { fmtVertical, isArea, shortClass, type AirspaceInfo } from './airspace';
+
+import { AipLink } from '../../../app/AipLink';
+import { type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
 import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
 
 const TYPE_LABEL: Record<AirspaceInfo['type'], string> = {
@@ -60,7 +61,7 @@ export function AirspacePopover({
   y: number;
   items: AirspaceInfo[];
   airac: string;
-  onClose(): void;
+  onClose: () => void;
 }) {
   const acc = useAccordion(items[0]?.id);
   return (

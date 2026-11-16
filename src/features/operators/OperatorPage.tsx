@@ -1,24 +1,26 @@
 // One operator: its details (name, contacts), whether it asks for the W&B and performance sheets
 // before each flight and where they go, its documents (operations manual, PDFs), its aircraft, and
 // who has access (shared directly, or through one of its aircraft). Viewers see it read-only.
+import '../hangar/hangar.css';
+import '../hangar/share.css';
+import '../lobby/lists.css';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { Shell } from '../../app/Shell';
-import { useSession } from '../../app/session';
-import { useToast } from '../../app/toast';
+
 import { useFocusParam } from '../../app/focusParam';
-import { api, ApiRequestError } from '../../data/api';
+import { useSession } from '../../app/session';
+import { Shell } from '../../app/Shell';
+import { useToast } from '../../app/toast';
 import { operatorScope } from '../../data/aircraftFiles';
+import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { isEmail, type OperatorInput, type OperatorItem } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { Check, Chip, ConfirmDialog, EmptyState, Field, Icon, KebabMenu, Loading } from '../../ui';
 import { DocumentsSection } from '../hangar/AircraftFiles';
 import { Section } from '../hangar/fields';
-import { ROLE_LABEL, ShareDialog, SharedChip } from '../hangar/ShareDialog';
-import '../hangar/hangar.css';
-import '../hangar/share.css';
-import '../lobby/lists.css';
+import { ROLE_LABEL, SharedChip, ShareDialog } from '../hangar/ShareDialog';
 
 const DOCS_TEXT = {
   title: 'Documents',

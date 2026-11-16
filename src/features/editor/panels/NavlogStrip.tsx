@@ -2,18 +2,19 @@
 // ETE, ETA, fuel) from computeNavlog(), the forecast run with a refresh, and every warning of the
 // flight (winds, compass card, W&B, performance, crosswind, fuel, manifest), each with its fix.
 // A click anywhere on the header (not on its buttons) opens or closes it.
-import { useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { type KeyboardEvent, type MouseEvent, useState } from 'react';
 import { Link } from 'react-router';
+
+import { AipRefText } from '../../../app/AipLink';
 import { fmtAltitude, fmtHdg } from '../../../calc';
 import type { RouteWeather } from '../../../data/weather';
 import { fmtClock, fmtDuration, fmtEte } from '../../../shared/format';
 import { Icon } from '../../../ui';
 import { editorWarningFix, focusInEditor } from '../focus';
-import { useEditor } from '../state';
 import { useNotams } from '../notams';
-import { useFlightCalc, type CalcWarning } from './calc';
 import { useResizable } from '../resizable';
-import { AipRefText } from '../../../app/AipLink';
+import { useEditor } from '../state';
+import { type CalcWarning, useFlightCalc } from './calc';
 
 const LS_KEY = 'pgf.editor.strip';
 type StripState = 'open' | 'closed' | 'warnings';

@@ -3,7 +3,7 @@
 // change them (by NOTAM id) and the AIP text (AerodromeHours.tsx), and a link to the aerodrome's AIP PDF.
 import { AipLink } from '../../../app/AipLink';
 import type { RefAerodrome } from '../../../shared/ref';
-import { AdHoursDetail, adHandlingLine, adHoursLine, type AdDayInfo } from '../AerodromeHours';
+import { type AdDayInfo, adHandlingLine, AdHoursDetail, adHoursLine } from '../AerodromeHours';
 import { MapPopover, MapTip, PopItem } from './MapPopover';
 
 const title = (a: RefAerodrome) => (a.icao ? `${a.icao} · ${a.name}` : a.name);
@@ -39,7 +39,7 @@ export function AerodromePopover({
   a: RefAerodrome;
   info: AdDayInfo;
   airac: string;
-  onClose(): void;
+  onClose: () => void;
 }) {
   return (
     <MapPopover x={x} y={y} label="Aerodrome" testId="aerodrome-pop" onClose={onClose}>

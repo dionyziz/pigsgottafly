@@ -10,20 +10,21 @@
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 //   /privacy  /terms               privacy policy, terms of service (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
-import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { lazy, type ReactNode, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
-import { AuthGate } from './AuthGate';
-import { ErrorBoundary } from './ErrorBoundary';
-import { Loading } from '../ui';
-import { ToastProvider } from './toast';
-import { useSession } from './session';
-import { profileMissing } from '../shared';
+
+import { AircraftPage, HangarPage } from '../features/hangar';
 import { LobbyPage } from '../features/lobby';
 import { NewFlightPage } from '../features/lobby/NewFlightPage';
-import { ProfilePage } from '../features/profile';
-import { HangarPage, AircraftPage } from '../features/hangar';
 import { PassengersPage } from '../features/passengers';
+import { ProfilePage } from '../features/profile';
+import { profileMissing } from '../shared';
+import { Loading } from '../ui';
 import { AboutPage } from './AboutPage';
+import { AuthGate } from './AuthGate';
+import { ErrorBoundary } from './ErrorBoundary';
+import { useSession } from './session';
+import { ToastProvider } from './toast';
 
 // The map (MapLibre) and the export sheets are loaded on demand, so the lobby and lists load fast.
 const EditorPage = lazy(() => import('../features/editor').then((m) => ({ default: m.EditorPage })));

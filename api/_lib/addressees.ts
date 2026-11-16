@@ -6,10 +6,10 @@
 //     and alternate aerodromes: <location indicator>ZTZX and <location indicator>ZPZX.
 // The ACC split follows the FIS sector boundary (ENR 2.1.3/2.1.4: ATHINAI INFORMATION south,
 // MAKEDONIA INFORMATION north), which is the ACC boundary. The pilot reviews the list before filing.
+import { pointSegDistNm, segmentEntersPolygon } from '../../src/calc/nav.js';
 import type { Addressee } from '../../src/shared/briefing.js';
 import type { RefAerodrome, RefAirspace, RefFis } from '../../src/shared/ref.js';
 import type { LatLon, RoutePoint } from '../../src/shared/types.js';
-import { pointSegDistNm, segmentEntersPolygon } from '../../src/calc/nav.js';
 
 /** ENR 1.11 TMA/MTMA addresses by airspace name (all sectors of one TMA share them for VFR below FL 195). */
 export const TMA_ADDRESSES: Record<string, string[]> = {

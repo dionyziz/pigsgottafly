@@ -1,11 +1,11 @@
 // GET /me, PUT /me: the session pilot's profile.
+import { WIND_MODELS } from '../../../src/shared/constants.js';
+import { mapLayersOf } from '../../../src/shared/mapLayers.js';
+import type { PilotSettings, PilotUpdate } from '../../../src/shared/types.js';
+import { canUseAircraft } from '../access.js';
 import type { Route } from '../http.js';
 import { badRequest } from '../http.js';
 import { optNum, personColumns, str, toPilot } from '../rows.js';
-import { canUseAircraft } from '../access.js';
-import type { PilotUpdate, PilotSettings } from '../../../src/shared/types.js';
-import { WIND_MODELS } from '../../../src/shared/constants.js';
-import { mapLayersOf } from '../../../src/shared/mapLayers.js';
 
 function settingsPatch(s: unknown): Partial<PilotSettings> {
   if (!s || typeof s !== 'object') throw badRequest('settings must be an object');

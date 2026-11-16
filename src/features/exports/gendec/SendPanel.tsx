@@ -5,10 +5,11 @@
 // flight's NOTAMs at the flight's time there (the server decides: src/calc/aerodromeStatus.ts
 // genDecHandling); the reason is shown per end. A per-flight checkbox overrides the decision.
 import { useState } from 'react';
+
 import { AipRefText } from '../../../app/AipLink';
 import { api, ApiRequestError } from '../../../data/api';
-import type { FormsState } from '../../../shared/forms';
 import { fmtLocalDayTime } from '../../../shared/format';
+import type { FormsState } from '../../../shared/forms';
 import { Chip, Loading, Panel } from '../../../ui';
 import type { useFormsState } from '../form731/SignaturesPanel';
 

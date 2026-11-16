@@ -2,10 +2,10 @@
 // src/calc/aerodromeStatus.ts): operating hours, ATS, handling and customs, the NOTAMs that change them
 // (by NOTAM id), the AIP section (a link to its PDF) and the text the parser could not represent. Shared by the editor's "Aerodrome hours" section and the
 // map's aerodrome tooltip / details.
-import { aerodromeDay, type AdDay, type AdNotamEffect } from '../../calc';
-import type { RefAerodrome } from '../../shared/ref';
-import { SUN_TABLES } from '../../data/ref';
 import { AipLink } from '../../app/AipLink';
+import { type AdDay, type AdNotamEffect, aerodromeDay } from '../../calc';
+import { SUN_TABLES } from '../../data/ref';
+import type { RefAerodrome } from '../../shared/ref';
 
 export interface AdDayInfo {
   day: string;

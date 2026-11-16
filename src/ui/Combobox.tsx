@@ -3,7 +3,7 @@
 //   ↓ opens / next, ↑ previous, Enter picks the active option, Escape closes (and does not close
 //   the dialog around it), Tab closes. A click on an option picks it; blur closes after a moment
 //   (so the click lands).
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useRef, useState } from 'react';
 
 export interface ComboKeyState {
   open: boolean;

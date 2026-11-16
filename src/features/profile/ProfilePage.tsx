@@ -4,32 +4,34 @@
 // missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
 // Nothing pilot-specific is prefilled: unset values show neutral placeholders.
 // The form follows the pilot (another tab, a dialog) until it is edited.
+import '../lobby/lists.css';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+
 import { useFocusParam } from '../../app/focusParam';
-import { Shell } from '../../app/Shell';
 import { useSession } from '../../app/session';
+import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { resolveAerodrome } from '../../data/ref';
 import {
   DEFAULT_MAP_LAYERS,
-  mapLayersOf,
-  profileMissing,
-  SETTING_SUGGESTIONS,
   type MapLayers,
+  mapLayersOf,
   type Pilot,
   type PilotUpdate,
+  profileMissing,
+  SETTING_SUGGESTIONS,
 } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, CardSection, Field, NumberField } from '../../ui';
-import { useFormIssues, type FormIssue } from '../passengers/formIssues';
-import { personForm, personInput, validatePerson, type PersonField, type PersonForm } from '../passengers/person';
+import { MapLayerToggles } from '../editor/map/MapLayerToggles';
+import { type FormIssue, useFormIssues } from '../passengers/formIssues';
+import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from '../passengers/person';
 import { PersonFields, type SetPerson } from '../passengers/PersonFields';
 import { AccountSection } from './AccountSection';
-import { MapLayerToggles } from '../editor/map/MapLayerToggles';
-import '../lobby/lists.css';
 
 export interface ProfileForm extends PersonForm {
   licenceNo: string;

@@ -1,6 +1,7 @@
 // The entity cache and invalidation bus (src/data/entityStore.ts): request sequencing, invalidation,
 // cross-tab broadcasts, focus revalidation.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   __resetEntityStoreForTests, CHANNEL_NAME, clearEntities, getEntity, invalidate, loadEntity, onInvalidate, putEntity,
   registerFetcher, revalidate, subscribeEntity,

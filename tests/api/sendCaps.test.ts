@@ -2,7 +2,8 @@
 // in any rolling 24 hours, re-sends included, failed sends not counted; signing links per flight
 // (20) and per pilot (60). The mail transport is MOCKED: nothing is sent for real.
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { client, startApi, type Client } from './helpers';
+
+import type { Db } from '../../api/_lib/db';
 import { setMailTransport } from '../../api/_lib/mail';
 import {
   LINK_DAILY_CAP,
@@ -11,11 +12,11 @@ import {
   MAIL_FLIGHT_FORM_CAP,
   MAIL_RECIPIENT_CAP,
 } from '../../api/_lib/sendCaps';
-import { wbPerfContentOf } from '../../src/shared/declarations';
 import aerodromes from '../../src/data/ref/aerodromes.json';
+import { wbPerfContentOf } from '../../src/shared/declarations';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
-import type { Db } from '../../api/_lib/db';
+import { type Client, client, startApi } from './helpers';
 
 const ADS = ((aerodromes as any).aerodromes ?? aerodromes) as RefAerodrome[];
 const pt = (icao: string, uid: string): RoutePoint => {

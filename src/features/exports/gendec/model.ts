@@ -1,10 +1,10 @@
 // General Declaration (ICAO Annex 9 Appendix 1, club form MD 4.7): what goes in each field. The
 // content is src/shared/forms.ts genDecContent (shared with the PDF e-mailed to HCAA); here it is
 // bound to the client's reference data, with what is missing as warnings.
-import type { FormFix } from '../form731/FormWarnings';
-import { genDecContent, GENDEC_ROUTING_ROWS, type GenDecContent } from '../../../shared/forms';
 import { aerodrome } from '../../../data/ref';
-import { routePlaces, type FormExportProps } from '../form731/common';
+import { GENDEC_ROUTING_ROWS, type GenDecContent, genDecContent } from '../../../shared/forms';
+import { type FormExportProps, routePlaces } from '../form731/common';
+import type { FormFix } from '../form731/FormWarnings';
 
 /** Ruled rows of the flight routing table on the form. */
 export const ROUTING_ROWS = GENDEC_ROUTING_ROWS;

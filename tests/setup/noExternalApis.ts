@@ -11,7 +11,7 @@ export const externalCalls: string[] = (g.__pgfExternalCalls ||= []);
 if (!g.__pgfNoExternal) {
   g.__pgfNoExternal = true;
   const real = globalThis.fetch;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     let host = '';
     try {
@@ -24,5 +24,5 @@ if (!g.__pgfNoExternal) {
       throw new Error(`test called a real external API: ${url.slice(0, 120)}`);
     }
     return real(input, init);
-  }) as typeof fetch;
+  };
 }

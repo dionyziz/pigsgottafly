@@ -2,13 +2,13 @@
 // shows, as printed text plus the chart geometry, for the server to render to PDF and e-mail to the
 // aircraft's operator. Pure: built from the sheet models.
 import {
-  wbPerfContentOf,
   type PerfBlockContent,
   type WbPerfContent,
+  wbPerfContentOf,
   type WbPerfRow,
 } from '../../../shared/declarations';
-import { fmtArm, fmtCg, fmtKg, fmtMoment, type WbLine, type WbSheetModel } from '../wb/model';
 import type { PerfBlock, PerfSheetModel } from '../performance/model';
+import { fmtArm, fmtCg, fmtKg, fmtMoment, type WbLine, type WbSheetModel } from '../wb/model';
 
 function rows(l: WbLine): WbPerfRow[] {
   const arm = l.kind === 'total' || l.kind === 'empty' ? fmtCg(l.armM) : fmtArm(l.armM);

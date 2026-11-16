@@ -1,8 +1,8 @@
 // Focus a field of the editor in place: a warning's fix (navlog strip, Documents) opens the panel and
 // the section holding that field, then scrolls to it, focuses and highlights it — the same as a
 // ?focus=<key> deep link (src/app/focusParam.ts), without a page load.
-import { EDITOR_FOCUS_SECTION, fixLink, planningFix, type EditorFocus } from '../exports/fix';
 import type { WarningFix } from '../../ui';
+import { EDITOR_FOCUS_SECTION, type EditorFocus, fixLink, planningFix } from '../exports/fix';
 
 /** A focus key, or 'route' (the route ends) for a flight fix without a field. */
 export type EditorFocusKey = EditorFocus | 'route';

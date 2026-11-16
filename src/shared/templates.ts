@@ -6,8 +6,8 @@
 // and by tools/build_seed.ts (the one-time migration of the existing pilot's own aircraft).
 //
 // Input: the parsed JSON of a type file such as data/aircraft/reims-f172m.json.
-import type { AircraftInput, FuelType, Station, StationKind, SeatPosition } from './types.js';
 import { FUEL_DENSITY } from './fuel.js';
+import type { AircraftInput, FuelType, SeatPosition, Station, StationKind } from './types.js';
 
 export interface AircraftTypeTemplate {
   /** e.g. 'reims-f172m' */
@@ -15,7 +15,7 @@ export interface AircraftTypeTemplate {
   /** e.g. 'Reims/Cessna F172M' */
   label: string;
   /** Builds a blank aircraft of this type. */
-  build(): AircraftInput;
+  build: () => AircraftInput;
 }
 
 /** Seat layout per seat station id for the C172 family (front: pilot + front pax, rear: two). */

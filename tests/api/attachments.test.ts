@@ -1,10 +1,11 @@
 // Compass swing reports stored with an aircraft: upload, fetch, references from compass cards,
 // cleanup of unreferenced files on save, limits and isolation between pilots.
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+
 import { ORPHAN_REPORT_GRACE_MS } from '../../api/_lib/routes/attachments';
-import { client, startApi, type Client } from './helpers';
 import { blankAircraft } from '../../src/shared/templates';
 import { ATTACHMENT_MAX_BYTES, type AttachmentRef, type CompassCard } from '../../src/shared/types';
+import { type Client, client, startApi } from './helpers';
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let a: Client, b: Client;

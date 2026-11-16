@@ -1,10 +1,11 @@
 // Editor panel helpers: the manifest following the passenger list, the take-off/landing weather
 // line, the navlog strip's forecast run, and the in-place fixes of warnings.
 import { describe, expect, it } from 'vitest';
-import { applyPerson, editCrewField, followPerson, resetCrew } from '../../../src/features/editor/panels/manifest';
-import { weatherText } from '../../../src/features/editor/panels/PerformanceSection';
-import { weatherRunText } from '../../../src/features/editor/panels/NavlogStrip';
+
 import { editorWarningFix, onEditorFocus, sectionOf } from '../../../src/features/editor/focus';
+import { applyPerson, editCrewField, followPerson, resetCrew } from '../../../src/features/editor/panels/manifest';
+import { weatherRunText } from '../../../src/features/editor/panels/NavlogStrip';
+import { weatherText } from '../../../src/features/editor/panels/PerformanceSection';
 import type { FlightCrew, PersonDetails } from '../../../src/shared';
 
 const person = (o: Partial<PersonDetails> = {}): PersonDetails => ({

@@ -3,12 +3,13 @@
 //
 // SHARED CONTRACT (frozen until integration): map and panels read everything through useEditor()
 // and change the flight only through update().
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+
+import { type AltitudeDefault, buildLegs, defaultAltitudes, type LegGeometry } from '../../calc';
+import { flightStore, type SaveStatus } from '../../data/flightStore';
+import { REF } from '../../data/ref';
 import type { Aircraft, Flight, FlightDoc, MapLayers, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
 import { autoTitle, EMPTY_SUMMARY, requestTiming } from '../../shared';
-import { buildLegs, defaultAltitudes, type AltitudeDefault, type LegGeometry } from '../../calc';
-import { REF } from '../../data/ref';
-import { flightStore, type SaveStatus } from '../../data/flightStore';
 
 export interface EditorValue {
   flight: Flight;
@@ -17,16 +18,16 @@ export interface EditorValue {
    * Change the flight. Every call is one undo step, except consecutive calls with the same
    * `coalesce` key within 1.5 s (e.g. typing in one field, dragging one point).
    */
-  update(fn: (d: FlightDoc) => FlightDoc, opts?: { coalesce?: string }): void;
+  update: (fn: (d: FlightDoc) => FlightDoc, opts?: { coalesce?: string }) => void;
   /**
    * Set derived summary values (navlog ETE and fuel for the lobby). Saved with the flight, but not
    * an undo step and never a reason for a save on its own if nothing changed.
    */
-  setDerived(v: { eteMin: number | null; fuelL: number | null }): void;
+  setDerived: (v: { eteMin: number | null; fuelL: number | null }) => void;
   /** The map's layer selection (options.mapLayers): saved with the flight, not an undo step (undo/redo keep it). */
-  setMapLayers(l: MapLayers): void;
-  undo(): void;
-  redo(): void;
+  setMapLayers: (l: MapLayers) => void;
+  undo: () => void;
+  redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
   saveStatus: SaveStatus;
@@ -38,7 +39,7 @@ export interface EditorValue {
   waypoints: Waypoint[];
   /** The passenger list was fetched (false: it failed to load, `passengers` is empty for that reason). */
   passengersLoaded: boolean;
-  reloadLists(): Promise<void>;
+  reloadLists: () => Promise<void>;
   /** The flight's aircraft (doc.aircraftId), or null. */
   aircraft: Aircraft | null;
   /** Reference data (current AIRAC, shipped with the client). */
@@ -89,7 +90,7 @@ interface Props {
   passengers: Passenger[];
   waypoints: Waypoint[];
   passengersLoaded?: boolean;
-  reloadLists(): Promise<void>;
+  reloadLists: () => Promise<void>;
   children: ReactNode;
 }
 

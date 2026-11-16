@@ -2,13 +2,14 @@
 // performance sheets, to an e-mail address), assign an aircraft to it on the aircraft page, then on
 // the flight's W&B and performance export send the sheets to it (mail transport MOCKED: the PDF is
 // kept in tests/e2e/artifacts), see "Sent", change the flight and see "Changed since it was sent".
-import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { launch, ARTIFACTS, ROOT } from './harness.mjs';
-import { fleetSeed } from '../../tools/build_seed.ts';
+import test, { after, before } from 'node:test';
+
 import { setMailTransport } from '../../api/_lib/mail.ts';
+import { fleetSeed } from '../../tools/build_seed.ts';
+import { ARTIFACTS, launch, ROOT } from './harness.mjs';
 
 let server, db, url, browser, page;
 const sent = [];

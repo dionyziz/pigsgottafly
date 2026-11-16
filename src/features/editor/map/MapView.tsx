@@ -1,20 +1,21 @@
 // The editor's map slot: binds the controlled <RouteMap> to the editor state. Every edit is one
 // update() call (one undo step); leg overrides of legs that no longer exist are dropped with it.
 import { useCallback, useMemo } from 'react';
-import { setRequest, type AerodromeRequest, type RoutePoint } from '../../../shared';
-import { api } from '../../../data/api';
-import { aerodrome } from '../../../data/ref';
-import { useEditor } from '../state';
-import { RouteMap, type LegAltitude } from './RouteMap';
-import { flightLayers } from './mapPrefs';
-import { pruneOverrides, setAltitudeOverride } from './routeEdit';
-import { mapHazards, type MapHazard } from './hazardLayer';
-import { AD_ROLE, useFlightCalc } from '../panels/calc';
+
 import { clockZ } from '../../../calc';
+import { api } from '../../../data/api';
+import { visibleNotams } from '../../../data/notams';
+import { aerodrome } from '../../../data/ref';
+import { type AerodromeRequest, type RoutePoint, setRequest } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { adDayInfo } from '../AerodromeHours';
 import { useNotams } from '../notams';
-import { visibleNotams } from '../../../data/notams';
+import { AD_ROLE, useFlightCalc } from '../panels/calc';
+import { useEditor } from '../state';
+import { type MapHazard, mapHazards } from './hazardLayer';
+import { flightLayers } from './mapPrefs';
+import { pruneOverrides, setAltitudeOverride } from './routeEdit';
+import { type LegAltitude, RouteMap } from './RouteMap';
 
 export function MapView() {
   const {

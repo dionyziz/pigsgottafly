@@ -2,8 +2,8 @@
 // (api.files / api.operatorFiles, api/_lib/routes/files.ts),
 // the photo's resize in the browser, and a per-session cache of downloaded content (a file id's
 // content never changes: a replaced photo or document gets a new id).
+import { AIRCRAFT_FILE_CHUNK_BYTES, type AircraftFile, type AircraftFileKind,PHOTO_MAX_PX } from '../shared/types';
 import { api, type FilesApi } from './api';
-import { AIRCRAFT_FILE_CHUNK_BYTES, PHOTO_MAX_PX, type AircraftFile, type AircraftFileKind } from '../shared/types';
 
 function toBase64(bytes: Uint8Array): string {
   let s = '';

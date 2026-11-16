@@ -2,11 +2,11 @@
 // pilots 'view' or 'edit' (migration 013, src/shared/sharing.ts). Every aircraft read or write in
 // the API goes through here: no access answers 404 (the aircraft does not exist for that pilot),
 // too little access answers 403.
+import type { AircraftAccess, AircraftRole, HangarAircraft } from '../../src/shared/sharing.js';
 import type { Queryable } from './db.js';
 import { HttpError, notFound } from './http.js';
-import { toAircraft } from './rows.js';
 import { photoJsonSql, toFile } from './routes/files.js';
-import type { AircraftAccess, AircraftRole, HangarAircraft } from '../../src/shared/sharing.js';
+import { toAircraft } from './rows.js';
 
 type Row = Record<string, any>;
 

@@ -2,8 +2,8 @@
 // fields, map snapping, labels) and the server's home route: the ICAO code, else the last part of
 // the name ('Kalamaki / Megara Field' → 'Megara Field' for an ICAO-less airstrip).
 import { uid } from './constants.js';
-import type { RoutePoint } from './types.js';
 import type { RefAerodrome } from './ref.js';
+import type { RoutePoint } from './types.js';
 
 /** The name a route point, a label or a list shows for an aerodrome. */
 export function aerodromeName(a: Pick<RefAerodrome, 'icao' | 'name'>): string {

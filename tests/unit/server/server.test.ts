@@ -1,10 +1,12 @@
 // Deployment hardening: the production security headers (vercel.json) and the local server's
 // refusal to run local mode (no sign-in) against a Postgres database.
 import fs from 'node:fs';
+import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import type { AddressInfo } from 'node:net';
+
 import { describe, expect, test } from 'vitest';
+
 import { checkLocalMode, createServer, productionSecurityHeaders, ROOT, staticHandler } from '../../../server/server';
 import { BASE_MAPS, GLYPHS, OFM_TILES } from '../../../src/features/editor/map/style';
 

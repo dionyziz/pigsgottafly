@@ -12,10 +12,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
 import type { Db } from '../../api/_lib/db';
 import { openDb } from '../../api/_lib/db';
+import { type Ctx, Reply } from '../../api/_lib/http';
 import { routes as gridRoutes, type WeatherGridOptions } from '../../api/_lib/routes/weatherGrid';
-import { Reply, type Ctx } from '../../api/_lib/http';
 import type { OpenMeteoLocation } from '../../src/shared/weatherGrid';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -58,13 +59,13 @@ export interface FakeOpenMeteo {
   /** Forecast URLs requested (not meta.json). */
   calls: string[];
   /** Locations requested in all (each counts with Open-Meteo). */
-  locations(): number;
+  locations: () => number;
   /** Answer the next requests with this status and reason (e.g. 429 "Daily API request limit exceeded"). */
-  fail(status: number | null, reason?: string): void;
+  fail: (status: number | null, reason?: string) => void;
   /** meta.json requests so far. */
-  metaCalls(): number;
+  metaCalls: () => number;
   /** A new model run is out (initialised at runMs, available at availableMs). */
-  setRun(runMs: number, availableMs: number): void;
+  setRun: (runMs: number, availableMs: number) => void;
 }
 
 export function fakeOpenMeteo(opts: { step?: number; lastDate?: string; noMeta?: boolean } = {}): FakeOpenMeteo {

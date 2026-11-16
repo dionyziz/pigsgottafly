@@ -1,5 +1,6 @@
 // Small input pieces: the search box, an input with a unit, and the row-click helper of list tables.
 import type { MouseEvent, ReactNode } from 'react';
+
 import { Icon } from './Icon';
 
 /** Rounded search field with the magnifier. `sm` is the narrower list-page variant. */

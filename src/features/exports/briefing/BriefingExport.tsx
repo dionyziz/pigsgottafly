@@ -3,19 +3,21 @@
 // to further pages.
 //
 // Usage (ExportPage): <BriefingExport flight={flight} />. Loads the briefing itself.
-import { useEffect, useState } from 'react';
-import type { Flight } from '../../../shared';
-import { ApiRequestError } from '../../../data/api';
-import { fetchNotams, type NotamBriefing } from '../../../data/notams';
-import { usePilot } from '../../../app/session';
-import { Chip, Panel } from '../../../ui';
-import { ExportWarnings } from '../WarningList';
-import type { ShownSignature } from '../form731/Form731';
-import { SignLine } from '../wb/SignLine';
 import '../form731/forms.css';
-import { briefingModel, type BriefingModel } from './model';
 import '../wb/xp.css';
 import './briefing.css';
+
+import { useEffect, useState } from 'react';
+
+import { usePilot } from '../../../app/session';
+import { ApiRequestError } from '../../../data/api';
+import { fetchNotams, type NotamBriefing } from '../../../data/notams';
+import type { Flight } from '../../../shared';
+import { Chip, Panel } from '../../../ui';
+import type { ShownSignature } from '../form731/Form731';
+import { ExportWarnings } from '../WarningList';
+import { SignLine } from '../wb/SignLine';
+import { type BriefingModel, briefingModel } from './model';
 
 export function BriefingExport({ flight }: { flight: Flight }) {
   const [briefing, setBriefing] = useState<NotamBriefing | null>(null);

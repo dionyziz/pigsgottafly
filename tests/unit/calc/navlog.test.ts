@@ -1,21 +1,22 @@
 // computeNavlog against an independent reference (navlog.oracle.ts, written from the paper rules)
 // and hand-computed values.
 import { describe, expect, test } from 'vitest';
+
+import cards from '../../../data/aircraft/compass-cards.json';
 import {
   buildLegs,
   computeNavlog,
   defaultAltitudes,
+  type LegGeometry,
   navlogAircraft,
+  type NavlogInput,
   pickCompassCard,
   sunsetUtcMinutes,
   sunTableIndex,
-  type LegGeometry,
-  type NavlogInput,
   type WindProvider,
 } from '../../../src/calc';
-import { REF, SUN_TABLES, aerodrome, vfrPoint } from '../../../src/data/ref';
+import { aerodrome, REF, SUN_TABLES, vfrPoint } from '../../../src/data/ref';
 import type { CompassCard, RoutePoint } from '../../../src/shared';
-import cards from '../../../data/aircraft/compass-cards.json';
 import * as O from './navlog.oracle';
 
 const ad = (icao: string): RoutePoint => {

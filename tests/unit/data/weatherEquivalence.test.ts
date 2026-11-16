@@ -9,17 +9,18 @@
 // navlog computed from them, the surface conditions at the departure/stops/destination and every
 // weather hazard must be identical. Also: the second pass costs no Open-Meteo request at all.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+
+import cards from '../../../data/aircraft/compass-cards.json';
 import { buildLegs, computeNavlog, defaultAltitudes, type NavlogInput } from '../../../src/calc';
-import { REF, aerodrome, vfrPoint } from '../../../src/data/ref';
-import type { RoutePoint, WindModel } from '../../../src/shared';
-import { flightWeatherPlan } from '../../../src/data/useFlightWeather';
-import { clearCache, fetchRouteWeather, sampleAt, surfaceConditions, windProviderFromLegs, type RouteWeather } from '../../../src/data/weather';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../src/data/hazardWeather';
-import * as before from './legacy/weatherBefore';
+import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
+import { flightWeatherPlan } from '../../../src/data/useFlightWeather';
+import { clearCache, fetchRouteWeather, type RouteWeather,sampleAt, surfaceConditions, windProviderFromLegs } from '../../../src/data/weather';
+import type { RoutePoint, WindModel } from '../../../src/shared';
+import type { CompassCard } from '../../../src/shared';
 import { fakeOpenMeteo, gridApi } from '../../helpers/openMeteoGrid';
 import { externalCalls } from '../../setup/noExternalApis';
-import cards from '../../../data/aircraft/compass-cards.json';
-import type { CompassCard } from '../../../src/shared';
+import * as before from './legacy/weatherBefore';
 
 const NOW = Date.parse('2026-11-15T13:36:00Z');
 const ad = (icao: string): RoutePoint => { const a = aerodrome(icao)!; return { uid: 'ad-' + icao, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon }; };

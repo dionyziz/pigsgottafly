@@ -1,11 +1,12 @@
 // Mass & balance section: empty aircraft from the weighing report, MTOW/MLW, loading stations with
 // their seat layout, combined limits, and the normal/utility CG and moment envelopes.
-import { DateInput } from '../../app/DateInput';
 import { useState } from 'react';
+
+import { DateInput } from '../../app/DateInput';
 import { moveAt } from '../../shared/list';
 import type { AircraftInput, Envelope, MassBalance, Station, StationKind, WbCategory } from '../../shared/types';
 import { Check, DragHandle, Field, IssueList, RowRemove, useSortable } from '../../ui';
-import { EnvelopeChart, type ChartSeries } from './EnvelopeChart';
+import { type ChartSeries, EnvelopeChart } from './EnvelopeChart';
 import { NumInput, PointTable, Section } from './fields';
 import {
   addCombinedLimit,

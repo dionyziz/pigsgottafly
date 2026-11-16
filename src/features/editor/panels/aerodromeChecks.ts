@@ -5,7 +5,7 @@
 //   stop           landing there … take-off from there (an intermediate full stop)
 //   touch-and-go   when the aircraft gets there
 //   destination    landing … block-on
-import { aerodromeStatus, clockZ, type AdNotamEffect, type AdStatus } from '../../../calc';
+import { type AdNotamEffect, type AdStatus, aerodromeStatus, clockZ } from '../../../calc';
 import { activeRequests, type FlightOptions, type RoutePoint } from '../../../shared';
 import type { RefAerodrome, RefSunTable } from '../../../shared/ref';
 
@@ -36,7 +36,7 @@ export interface AdChecksInput {
   departure: RefAerodrome | null;
   destination: RefAerodrome | null;
   /** The aerodrome a route point stands for. */
-  aerodromeOf(p: RoutePoint): RefAerodrome | null;
+  aerodromeOf: (p: RoutePoint) => RefAerodrome | null;
   /** 00:00 UTC of the flight date, epoch ms. */
   dayMs: number;
   /** Navlog times, minutes after dayMs; undefined when the block-off time is not set. */
