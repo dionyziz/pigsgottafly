@@ -388,11 +388,60 @@ describe('migrations', () => {
     await db2.exec(V2);
     await db2.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
     await migrate(db2, withOwner(OWNER, upTo('018_operators')));
-    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors', '042_crew_overrides', '043_aircraft_placeholder']);
+    expect(await migrate(db2, withOwner(OWNER))).toEqual(['030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors', '042_crew_overrides', '043_aircraft_placeholder', '044_weather_cache']);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
     for (const r of await db2.query<{ placeholder: number }>(`SELECT placeholder FROM aircraft`)) expect([1, 2, 3]).toContain(r.placeholder);
     await db2.close();
+  });
+
+  test('042–044 on a database at 040 (production) with the seeded owner and a converted flight', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await db.query(`INSERT INTO flights (id, owner, data, summary, version, created, updated, opened) VALUES ('f1', 'u1', $1::jsonb, '{}'::jsonb, 7, 10, 20, 30)`,
+      [JSON.stringify(legacyData)]);
+    await migrate(db, withOwner(OWNER, upTo('040_app_errors')));
+    const crewBefore = await db.query(`SELECT flight_id, role, seat, snapshot FROM flight_crew ORDER BY flight_id, role`);
+    expect(crewBefore.length).toBeGreaterThan(0);
+    const acBefore = await db.query(`SELECT id, registration, mass_balance FROM aircraft ORDER BY id`);
+    expect(acBefore.length).toBeGreaterThan(0);
+
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['042_crew_overrides', '043_aircraft_placeholder', '044_weather_cache']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual([]);
+    // 042: manifest rows kept, nothing edited on the flight yet
+    const crew = await db.query(`SELECT flight_id, role, seat, snapshot, overrides FROM flight_crew ORDER BY flight_id, role`);
+    expect(crew).toEqual(crewBefore.map((r) => ({ ...r, overrides: [] })));
+    // 043: aircraft kept, each with a placeholder picture 1–3; new aircraft get one too, out of range refused
+    const ac = await db.query<{ id: string; registration: string; mass_balance: unknown; placeholder: number }>(`SELECT id, registration, mass_balance, placeholder FROM aircraft ORDER BY id`);
+    expect(ac.map(({ placeholder: _p, ...r }) => r)).toEqual(acBefore);
+    for (const r of ac) expect([1, 2, 3]).toContain(r.placeholder);
+    await expect(db.query(`UPDATE aircraft SET placeholder = 4 WHERE id = $1`, [ac[0].id])).rejects.toThrow();
+    // 044: empty forecast cache and budget
+    expect(await db.query(`SELECT * FROM weather_cache`)).toEqual([]);
+    expect(await db.query(`SELECT * FROM weather_budget`)).toEqual([]);
+    await db.query(`INSERT INTO weather_cache (model, endpoint, run, kind, loc, day, data, fetched, expires) VALUES ('ecmwf_ifs025', 'forecast', 1, 'wind', '38.25,23.75', '2026-11-20', '{}', 1, 2)`);
+    await db.query(`INSERT INTO weather_budget (day) VALUES ('2026-11-20')`);
+    expect(await db.query(`SELECT calls, requests FROM weather_budget`)).toEqual([{ calls: 0, requests: 0 }]);
+
+    // the converted flight still loads through the API with its manifest
+    const token = 'tok-' + crypto.randomBytes(8).toString('hex');
+    await db.query(`INSERT INTO sessions (token_hash, pilot_id, created) VALUES ($1, 'u1', $2)`, [crypto.createHash('sha256').update(token).digest('base64url'), Date.now()]);
+    const api = createApi({ db, googleClientId: CID, googleKeys: async () => [JWK] });
+    const server = http.createServer((req, res) => api(req, res));
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    try {
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/`;
+      const res = await fetch(base + 'flights/f1', { headers: { cookie: `pgf_session=${token}` } });
+      expect(res.status).toBe(200);
+      const f = await res.json();
+      expect(f.crew).toEqual([expect.objectContaining({ role: 'PIC', overrides: [] })]);
+      const hangar = await (await fetch(base + 'aircraft', { headers: { cookie: `pgf_session=${token}` } })).json();
+      expect(hangar.map((a: any) => [a.id, a.placeholder]).sort()).toEqual(ac.map((r) => [r.id, r.placeholder]).sort());
+    } finally {
+      server.close();
+      await db.close();
+    }
   });
 
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {
@@ -410,7 +459,12 @@ describe('migrations', () => {
     expect(await db.query(`SELECT * FROM mail_log`)).toEqual([]);
     expect(await db.query(`SELECT * FROM rate_limits`)).toEqual([]);
     expect(await db.query(`SELECT * FROM app_errors`)).toEqual([]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-7)).toEqual(['018_operators', '030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors', '042_crew_overrides', '043_aircraft_placeholder']);
+    // 042–044 on a fresh database
+    expect(await db.query(`SELECT * FROM weather_cache`)).toEqual([]);
+    expect(await db.query(`SELECT * FROM weather_budget`)).toEqual([]);
+    expect((await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'flight_crew' AND column_name = 'overrides'`)).length).toBe(1);
+    expect((await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'aircraft' AND column_name = 'placeholder'`)).length).toBe(1);
+    expect(MIGRATIONS.map((m) => m.name).slice(-8)).toEqual(['018_operators', '030_mail_log', '031_mail_log_details', '032_rate_limits', '040_app_errors', '042_crew_overrides', '043_aircraft_placeholder', '044_weather_cache']);
     await db.close();
   });
 });

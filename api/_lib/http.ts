@@ -3,6 +3,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Db } from './db.js';
 import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
+import type { WeatherGridOptions } from './routes/weatherGrid.js';
+import type { WeatherProxyOptions } from './routes/weather.js';
 
 /** Node request, possibly with a body pre-parsed by Vercel. */
 export type Req = IncomingMessage & { body?: unknown };
@@ -29,6 +31,10 @@ export interface ApiConfig {
    * e-mail for each new signup. Empty (the default) = no admin.
    */
   adminEmails?: string[];
+  /** Open-Meteo through GET /weather/grid: upstream fetch (tests, local synthetic data) and the daily budget. */
+  openMeteo?: WeatherGridOptions;
+  /** aviationweather.gov through GET /weather/metar: upstream fetch (tests). */
+  aviationWeather?: WeatherProxyOptions;
 }
 
 export interface Ctx {

@@ -46,6 +46,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiCon
     allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
     adminEmails: emailList(env.ADMIN_EMAILS),
+    ...(env.OPEN_METEO_DAILY_BUDGET ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } } : {}),
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots; unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
   };
@@ -61,6 +62,8 @@ export function createApi(opts: { db: Db } & Partial<ApiConfig>, routes: Route[]
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
     adminEmails: (opts.adminEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),
+    openMeteo: opts.openMeteo,
+    aviationWeather: opts.aviationWeather,
   };
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {

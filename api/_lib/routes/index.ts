@@ -13,6 +13,7 @@ import { routes as waypoints } from './waypoints.js';
 import { routes as flights } from './flights.js';
 import { routes as ref } from './ref.js';
 import { routes as weather } from './weather.js';
+import { routes as weatherGrid } from './weatherGrid.js';
 import { routes as notams } from './notams.js';
 import { routes as filing } from './filing.js';
 import { routes as forms } from './forms.js';
@@ -21,4 +22,4 @@ import { routes as declarations } from './declarations.js';
 import { routes as admin } from './admin.js';
 import { routes as monitoring } from './monitoring.js';
 
-export const ROUTES: Route[] = [...session, ...me, ...account, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...notams, ...filing, ...forms, ...operators, ...declarations, ...admin, ...monitoring];
+export const ROUTES: Route[] = [...session, ...me, ...account, ...aircraft, ...attachments, ...files, ...shares, ...passengers, ...waypoints, ...flights, ...ref, ...weather, ...weatherGrid, ...notams, ...filing, ...forms, ...operators, ...declarations, ...admin, ...monitoring];

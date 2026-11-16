@@ -7,5 +7,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests/unit", "tests/api", "tests/setup.ts"]
+  "include": ["src", "tests/unit", "tests/api", "tests/setup.ts", "tests/setup", "tests/helpers"]
 }

@@ -164,5 +164,13 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
   return { routes, get, clear: () => { metarCache.clear(); tafCache.clear(); } };
 }
 
-const proxy = createWeatherProxy();
-export const routes: Route[] = proxy.routes;
+// one proxy (and cache) per API configuration that brings its own upstream (tests), else the shared one
+const shared = createWeatherProxy();
+const proxies = new WeakMap<WeatherProxyOptions, ReturnType<typeof createWeatherProxy>>();
+const proxyFor = (o: WeatherProxyOptions | undefined) => {
+  if (!o) return shared;
+  let p = proxies.get(o);
+  if (!p) proxies.set(o, (p = createWeatherProxy(o)));
+  return p;
+};
+export const routes: Route[] = shared.routes.map((r) => ({ ...r, handler: (ctx) => proxyFor(ctx.config?.aviationWeather).routes.find((x) => x.path === r.path)!.handler(ctx) }));

@@ -1,7 +1,7 @@
 // Weather hazards along the route: pure rules (src/calc/hazards.ts) on hand-made samples, a
 // recorded Open-Meteo ECMWF response (tests/fixtures/openmeteo-hazards-lgtt-2026-11-16.json: run
 // 15 Nov 06Z, corridor cells of LGTT → 37.80N 24.10E), METAR/TAF texts, and the route wiring
-// (src/data/hazardWeather.ts) with a mocked fetch.
+// (src/data/hazardWeather.ts) through the server route (GET /api/weather/grid) with a mocked Open-Meteo.
 import { beforeEach, describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import {
   clearHazardCache, computeRouteHazards, fetchHazardWeather, gridCell, hazardSeries, legCorridor,
 } from '../../../src/data/hazardWeather';
 import type { OpenMeteoLocation } from '../../../src/data/weather';
+import { gridApi } from '../../helpers/openMeteoGrid';
 
 const FIX: OpenMeteoLocation[] = JSON.parse(fs.readFileSync(path.join(__dirname, '../../fixtures/openmeteo-hazards-lgtt-2026-11-16.json'), 'utf8'));
 const T = (iso: string) => Date.parse(iso);
@@ -165,14 +166,16 @@ describe('route wiring (corridor, cell cache, navlog times)', () => {
       return new Response(JSON.stringify(lat.map((la, i) => byKey.get(`${Number(la).toFixed(2)},${Number(lon[i]).toFixed(2)}`) ?? FIX[0])));
     }) as unknown as typeof fetch;
     const from = { lat: 38.1089, lon: 23.7836 }, to = { lat: 37.8, lon: 24.1 };
-    const req = { date: '2026-11-16', model: 'ecmwf_ifs025' as const, legs: [{ from, to, distNm: 22 }], departure: from, destination: null, fetch: fakeFetch, now: () => T('2026-11-15T12:00Z') };
+    const api = await gridApi({ fetch: fakeFetch, now: () => T('2026-11-15T12:00Z') });
+    const req = { date: '2026-11-16', model: 'ecmwf_ifs025' as const, legs: [{ from, to, distNm: 22 }], departure: from, destination: null, get: api.get, now: () => T('2026-11-15T12:00Z') };
     const hw = await fetchHazardWeather(req);
+    await api.close();
     expect(hw.status).toBe('ok');
     expect(hw.sourceLabel).toBe('ECMWF IFS 0.25°, run 2026-11-15 06Z');
     expect(hw.legs[0].corridor.length).toBeGreaterThanOrEqual(4);
     const dataCalls = urls.filter((u) => !u.includes('meta.json')).length;
     expect(dataCalls).toBe(1);
-    // cached per cell: the same route again fetches nothing new
+    // cached per node: the same route again fetches nothing new
     await fetchHazardWeather(req);
     expect(urls.filter((u) => !u.includes('meta.json')).length).toBe(dataCalls);
 
