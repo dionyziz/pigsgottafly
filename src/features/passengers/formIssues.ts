@@ -1,7 +1,7 @@
 // Field-level form errors for the people and profile forms. A validator returns {field, message}[];
 // each message shows under its field (<Field issues={…}>, which marks it .invalid), the first bad
 // field gets focus on a failed save, and editing a field clears its messages.
-import { type RefObject, useCallback, useEffect, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useEffectEvent, useState } from 'react';
 
 import { findFocusTarget } from '../../app/focusParam';
 
@@ -16,13 +16,16 @@ export function useFormIssues<F extends string>(root: RefObject<HTMLElement | nu
   const [issues, setIssues] = useState<FormIssue<F>[]>([]);
   const [shown, setShown] = useState(0);
   // Once the messages are rendered: scroll to the first bad field and focus it.
-  useEffect(() => {
-    if (!shown || !root.current || !issues.length) return;
+  const focusFirst = useEffectEvent(() => {
+    if (!root.current || !issues.length) return;
     const t = findFocusTarget(root.current, issues[0].field);
     const input = t && (t.matches(FIELD) ? t : t.querySelector<HTMLElement>(FIELD));
     (input ?? t)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     input?.focus({ preventScroll: true });
-  }, [shown]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => {
+    if (shown) focusFirst();
+  }, [shown]);
   /** Show these problems (none: clear them). Returns true when there are none. */
   const check = useCallback((next: FormIssue<F>[]) => {
     setIssues(next);

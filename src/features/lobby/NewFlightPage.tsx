@@ -5,7 +5,7 @@
 // section shows both ends as fields. Route points come from aerodromePoint (src/shared/aerodrome).
 import './lists.css';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { usePilot } from '../../app/session';
@@ -39,9 +39,9 @@ export function NewFlightPage() {
     );
   };
 
+  const createNow = useEffectEvent(create);
   useEffect(() => {
-    if (!ask) create({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!ask) createNow({});
   }, [ask]);
 
   if (!ask) {

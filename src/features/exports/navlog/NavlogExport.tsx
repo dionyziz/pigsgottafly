@@ -78,6 +78,8 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   // ---- scale to the container on screen; fit text after every render
   const host = useRef<HTMLDivElement>(null);
   const [fitPx, setFitPx] = useState(0.9);
+  // the sheet host renders once there is a document
+  const hasDoc = doc !== null;
   useLayoutEffect(() => {
     const el = host.current;
     if (!el) return;
@@ -89,7 +91,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [doc !== null]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasDoc]);
   useLayoutEffect(() => {
     fitSheets(host.current);
   }, [doc, fitPx]);

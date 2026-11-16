@@ -40,7 +40,7 @@ export function WaypointsPage() {
   const [editing, setEditing] = useState<Waypoint | { new: LatLon | null } | null>(null);
   const [deleting, setDeleting] = useState<Waypoint | null>(null);
   const toast = useToast();
-  const all = data || [];
+  const all = useMemo(() => data ?? [], [data]);
   const rows = useMemo(() => all.filter((w) => matchesQuery(`${w.name} ${w.notes}`.toLowerCase(), q)), [all, q]);
 
   const commitRename = async () => {

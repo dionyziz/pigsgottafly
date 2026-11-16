@@ -4,7 +4,7 @@
 // field turns red with the limit shown under it and, on blur or Enter, the value is clamped to the
 // limit and committed, so the stored value always matches the field. Anything else that is not a
 // number goes back to the stored value on blur. Parsing: src/shared/number.ts.
-import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useEffectEvent, useState } from 'react';
 
 import { type NumberDraft, parseNumber } from '../shared/number';
 
@@ -94,15 +94,12 @@ export function NumberField(props: NumberFieldProps) {
   const [focused, setFocused] = useState(false);
   // Edited since focus: only then does blur commit (focus and blur alone never change the value).
   const [dirty, setDirty] = useState(false);
-  useEffect(() => {
-    if (!focused) {
-      setDraft(shown(value, decimals, zeroAsEmpty));
-      return;
-    }
-    // Changed from outside while typing (undo, another input): show the new value unless it is what the draft says.
+  // Changed from outside while typing (undo, another input): show the new value unless it is what the draft says.
+  const syncDraft = useEffectEvent(() => {
     const p = classify(draft, props);
-    if (!(p.kind === 'ok' && p.value === value)) setDraft(shown(value, decimals, zeroAsEmpty));
-  }, [value, focused]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!focused || !(p.kind === 'ok' && p.value === value)) setDraft(shown(value, decimals, zeroAsEmpty));
+  });
+  useEffect(() => syncDraft(), [value, focused, decimals, zeroAsEmpty]);
 
   const p = classify(draft, props);
   const settle = () => {

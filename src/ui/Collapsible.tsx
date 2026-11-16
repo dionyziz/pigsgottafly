@@ -1,7 +1,7 @@
 // A box with a header that opens and closes it. The whole header is the toggle (a click anywhere,
 // or Enter/Space when focused); the buttons in `actions` do not toggle. The open state is
 // remembered on this device (localStorage `store`, a map id → collapsed).
-import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { Icon } from './Icon';
 
@@ -76,10 +76,11 @@ export function Collapsible({
 }) {
   const { collapsed, toggle, openNow } = useCollapsed(id, { store, defaultCollapsed });
   const was = useRef(false);
-  useEffect(() => {
+  const followOpenWhen = useEffectEvent(() => {
     if (openWhen && !was.current && collapsed) openNow();
     was.current = !!openWhen;
-  }, [openWhen]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => followOpenWhen(), [openWhen]);
   const onClick = (e: React.MouseEvent<HTMLElement>) => {
     const hit = (e.target as Element).closest(INTERACTIVE);
     if (hit && hit !== e.currentTarget && e.currentTarget.contains(hit)) return;

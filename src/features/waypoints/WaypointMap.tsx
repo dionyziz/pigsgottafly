@@ -1,6 +1,6 @@
 // Small MapLibre map of the pilot's saved waypoints (OpenStreetMap raster, no API key).
 // Click a marker to select it; click elsewhere to start a new waypoint there.
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 
 import { maplibregl } from '../../app/maplibre';
 import type { Waypoint } from '../../shared';
@@ -106,12 +106,12 @@ export function WaypointMap({
   }, [waypoints, selectedId]);
 
   // fly to the selection
-  useEffect(() => {
+  const flyTo = useEffectEvent((id: string | null) => {
     const m = map.current;
-    const w = waypoints.find((x) => x.id === selectedId);
+    const w = waypoints.find((x) => x.id === id);
     if (m && w) m.easeTo({ center: [w.lon, w.lat], zoom: Math.max(m.getZoom(), 9), duration: 500 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  });
+  useEffect(() => flyTo(selectedId), [selectedId]);
 
   return <div ref={el} className="wp-map card" data-testid="waypoint-map" />;
 }

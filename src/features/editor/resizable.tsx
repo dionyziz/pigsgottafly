@@ -37,7 +37,8 @@ const write = (key: string, v: number | null) => {
 };
 
 export function useResizable(o: ResizableOpts) {
-  const maxOf = useCallback(() => (typeof o.max === 'function' ? o.max() : o.max), [o.max]);
+  const { max } = o;
+  const maxOf = useCallback(() => (typeof max === 'function' ? max() : max), [max]);
   const clamp = useCallback((v: number) => Math.max(o.min, Math.min(maxOf(), v)), [o.min, maxOf]);
   const [size, setSize] = useState<number | null>(() => {
     const v = read(o.key) ?? o.initial;

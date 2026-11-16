@@ -22,6 +22,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList, opts: Us
   const [loading, setLoading] = useState(true);
   const seq = useRef(0);
   const hasData = useRef(false);
+  // the callers' deps are checked where they call useAsync (exhaustive-deps additionalHooks)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const run = useCallback(fn, deps);
   // reload() always fetches with the CURRENT fn: a reload captured before the deps changed (e.g. the

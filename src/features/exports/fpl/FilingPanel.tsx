@@ -6,7 +6,7 @@
 //   - while the server has no autorouter API access, a clear "filing not enabled yet" state (the
 //     buttons stay disabled; the addressees are still shown, for filing by other means).
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { api, ApiRequestError } from '../../../data/api';
 import type { Flight } from '../../../shared';
@@ -89,9 +89,8 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
     return [...new Set([...prop, ...extra])];
   }, [st, excluded, extra]);
   const addrKey = addresses.join(' ');
-  useEffect(() => {
-    onAddresses?.(addresses);
-  }, [addrKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const reportAddresses = useEffectEvent(() => onAddresses?.(addresses));
+  useEffect(() => reportAddresses(), [addrKey]);
 
   const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<FilingState>) => {
     setBusy(kind);

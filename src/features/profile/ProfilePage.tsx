@@ -169,7 +169,7 @@ export function ProfilePage() {
     if (pilot === base || dirty) return;
     setBase(pilot);
     setF(formOf(pilot));
-  }, [pilot, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pilot, base, dirty]);
 
   useEffect(() => {
     if (!dirty) return;

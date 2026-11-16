@@ -18,7 +18,7 @@
 import './map.css';
 
 import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { maplibregl } from '../../../app/maplibre';
 import {
@@ -263,11 +263,7 @@ export function RouteMap(props: RouteMapProps) {
     () => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? []),
     [refData],
   );
-  const airInfos = useMemo(
-    () => allInfos.filter((a) => airspaceShown(layers, a.type)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allInfos, layers.tma, layers.zones, layers.prd, layers.mil, layers.act],
-  );
+  const airInfos = useMemo(() => allInfos.filter((a) => airspaceShown(layers, a.type)), [allInfos, layers]);
   const areaCount = useMemo(() => {
     const n = { prd: 0, mil: 0, act: 0 };
     for (const a of allInfos) if (isArea(a.type)) n[areaToggle(a.type)]++;
@@ -313,22 +309,25 @@ export function RouteMap(props: RouteMapProps) {
 
   // ---------------------------------------------------------------------------------- map setup
   const baseLayers = useRef<BaseLayers | null>(null);
+  // the map is built once, with the layers shown at that time (later toggles restyle it in place)
+  const buildMap = useEffectEvent((container: HTMLDivElement, vector: maplibregl.StyleSpecification | null) => {
+    loadChartTokens();
+    const built = buildStyle(layers.base, layers.ofm, vector);
+    baseLayers.current = built.baseLayers;
+    return createMap(container, built.style);
+  });
   useEffect(() => {
     let cancelled = false;
     let m: MlMap | null = null;
     void loadVectorBase().then((vector) => {
       if (cancelled || !el.current) return;
-      loadChartTokens();
-      const built = buildStyle(layers.base, layers.ofm, vector);
-      baseLayers.current = built.baseLayers;
-      m = createMap(el.current, built.style);
+      m = buildMap(el.current, vector);
     });
     return () => {
       cancelled = true;
       m?.remove();
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function createMap(container: HTMLDivElement, style: maplibregl.StyleSpecification): MlMap | null {
@@ -467,17 +466,17 @@ export function RouteMap(props: RouteMapProps) {
   }, [notamMarks, props.selectedNotam, layers.notams, loaded]);
   // a NOTAM picked in the panel: bring its area into view
   const selectedNotam = props.selectedNotam ?? null;
-  useEffect(() => {
+  const showNotam = useEffectEvent((key: string | null) => {
     const m = mapRef.current;
-    const mk = selectedNotam && layers.notams ? notamMarks.find((n) => n.key === selectedNotam) : undefined;
+    const mk = key && layers.notams ? notamMarks.find((n) => n.key === key) : undefined;
     if (!m || !loaded || !mk) return;
     const view = m.getBounds();
     if (mk.ring.some((c) => view.contains(c))) return;
     const b = new maplibregl.LngLatBounds();
     for (const c of mk.ring) b.extend(c);
     m.fitBounds(b, { padding: 80, maxZoom: Math.max(m.getZoom(), 8) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNotam, loaded]);
+  });
+  useEffect(() => showNotam(selectedNotam), [selectedNotam, loaded]);
   const notamsOf = (keys: string[]) =>
     keys.map((k) => (notamList ?? []).find((n) => n.key === k)).filter((n): n is Notam => !!n);
 
@@ -632,7 +631,6 @@ export function RouteMap(props: RouteMapProps) {
       }
     }
     layoutLabels(moved);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [legs, altitudes, legHazards, loaded, drawing, layoutLabels]);
 
   useEffect(
@@ -663,45 +661,47 @@ export function RouteMap(props: RouteMapProps) {
     };
   }, [loaded, layoutLabels]);
 
-  function renderLegLabel(
-    inner: HTMLDivElement,
-    key: string,
-    mc: number,
-    dist: number,
-    altFt: number,
-    alt: LegAltitude | undefined,
-    haz: LegHazards | undefined,
-  ) {
-    inner.textContent = '';
-    if (haz) {
-      // weather on this leg: a small badge; its texts show on hover (and in the navlog strip)
-      const b = document.createElement('span');
-      b.className = 'pgf-leg-wx is-' + haz.level;
-      b.textContent = '!';
-      b.title = haz.labels.join('\n');
-      b.setAttribute('aria-label', 'Weather: ' + haz.labels.join('; '));
-      b.dataset.testid = 'leg-hazard';
-      inner.appendChild(b);
-    }
-    const course = document.createElement('span');
-    course.className = 'pgf-leg-mc';
-    course.textContent = fmtCourse(mc);
-    const d = document.createElement('span');
-    d.className = 'pgf-leg-dist';
-    d.textContent = fmtDistance(dist);
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'pgf-leg-alt' + (alt?.overridden ? ' is-set' : '') + (!isFinite(altFt) ? ' is-unknown' : '');
-    btn.textContent = fmtAltitude(altFt);
-    btn.title = !isFinite(altFt) ? 'Set altitude' : 'Edit altitude';
-    btn.dataset.testid = 'leg-alt';
-    stopMapEvents(btn);
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      startAltEdit(key);
-    });
-    inner.append(course, d, btn);
-  }
+  const renderLegLabel = useEffectEvent(
+    (
+      inner: HTMLDivElement,
+      key: string,
+      mc: number,
+      dist: number,
+      altFt: number,
+      alt: LegAltitude | undefined,
+      haz: LegHazards | undefined,
+    ) => {
+      inner.textContent = '';
+      if (haz) {
+        // weather on this leg: a small badge; its texts show on hover (and in the navlog strip)
+        const b = document.createElement('span');
+        b.className = 'pgf-leg-wx is-' + haz.level;
+        b.textContent = '!';
+        b.title = haz.labels.join('\n');
+        b.setAttribute('aria-label', 'Weather: ' + haz.labels.join('; '));
+        b.dataset.testid = 'leg-hazard';
+        inner.appendChild(b);
+      }
+      const course = document.createElement('span');
+      course.className = 'pgf-leg-mc';
+      course.textContent = fmtCourse(mc);
+      const d = document.createElement('span');
+      d.className = 'pgf-leg-dist';
+      d.textContent = fmtDistance(dist);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pgf-leg-alt' + (alt?.overridden ? ' is-set' : '') + (!isFinite(altFt) ? ' is-unknown' : '');
+      btn.textContent = fmtAltitude(altFt);
+      btn.title = !isFinite(altFt) ? 'Set altitude' : 'Edit altitude';
+      btn.dataset.testid = 'leg-alt';
+      stopMapEvents(btn);
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startAltEdit(key);
+      });
+      inner.append(course, d, btn);
+    },
+  );
 
   function stopMapEvents(node: HTMLElement) {
     for (const t of [
@@ -781,8 +781,7 @@ export function RouteMap(props: RouteMapProps) {
   }
 
   // After an edit ends, re-render that label (its text key was reset).
-  useEffect(() => {
-    if (editingLeg) return;
+  const redrawResetLabels = useEffectEvent(() => {
     for (const rec of markers.current.values()) rec.el.classList.remove('is-editing');
     // force the label effect to redraw labels whose text was reset
     const m = mapRef.current;
@@ -798,7 +797,9 @@ export function RouteMap(props: RouteMapProps) {
       }
     });
     layoutLabels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => {
+    if (!editingLeg) redrawResetLabels();
   }, [editingLeg]);
 
   // ---------------------------------------------------------------------------------- snapping

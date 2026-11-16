@@ -1,7 +1,7 @@
 // Manifest and loading: PIC (me, from the profile) and PAX from the passenger list (type-ahead,
 // or created on the spot), each in a seat of the aircraft; body weights for this flight; baggage per
 // baggage area; W&B category; take-off/landing mass and CG against the envelope.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -48,15 +48,13 @@ const FALLBACK_LABELS: Record<string, string> = {
 function useCrewSync() {
   const { doc, update, passengers, passengersLoaded, pilot } = useEditor();
   const seen = useRef<Map<string, PersonDetails> | null>(null);
-  const crewRef = useRef(doc.crew);
-  crewRef.current = doc.crew;
-  useEffect(() => {
+  const sync = useEffectEvent(() => {
     if (!passengersLoaded) return;
     const now = new Map<string, PersonDetails>(passengers.map((p) => [p.id, personOf(p)]));
     now.set('PIC', personOf(pilot));
     const before = seen.current;
     seen.current = now;
-    const crew = crewRef.current;
+    const crew = doc.crew;
     const keyOf = (c: FlightCrew) => (c.role === 'PIC' ? 'PIC' : c.passengerId);
     const next = crew.map((c) => {
       const k = keyOf(c);
@@ -70,7 +68,8 @@ function useCrewSync() {
     });
     if (next.some((c, i) => c !== crew[i]))
       update((d) => ({ ...d, crew: d.crew.map((c, i) => (crew[i] === c ? next[i] : c)) }), { coalesce: 'crew-sync' });
-  }, [passengers, pilot, passengersLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => sync(), [passengers, pilot, passengersLoaded]);
 }
 
 export function ManifestSection() {

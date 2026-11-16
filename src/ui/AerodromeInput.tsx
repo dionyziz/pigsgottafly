@@ -4,7 +4,7 @@
 //                       an internal draft, and every change that resolves (or stops resolving)
 //                       calls onChange.
 //   AerodromeTextInput  controlled by the text (the caller resolves it with resolveAerodrome()).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { resolveAerodrome, searchAerodromes } from '../data/ref';
 import type { RefAerodrome } from '../shared/ref';
@@ -104,9 +104,11 @@ export function AerodromeInput({
 }) {
   const [draft, setDraft] = useState(() => (value ? code(value) : ''));
   // A new value from outside (another field, undo) replaces the draft unless the draft names it.
-  useEffect(() => {
+  const syncDraft = useEffectEvent(() => {
     if ((resolveAerodrome(draft)?.id ?? null) !== (value?.id ?? null)) setDraft(value ? code(value) : '');
-  }, [value?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+  const valueId = value?.id;
+  useEffect(() => syncDraft(), [valueId]);
   return (
     <AerodromeTextInput
       {...rest}

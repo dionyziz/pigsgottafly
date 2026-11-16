@@ -4,7 +4,7 @@
 import './passengers.css';
 import '../lobby/lists.css';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { usePilot } from '../../app/session';
@@ -130,7 +130,7 @@ export function PassengersPage() {
   // ?edit=me or ?edit=<passenger id>, with &fields=<names> (links from the forms' missing-details list).
   const [params, setParams] = useSearchParams();
   const editParam = params.get('edit');
-  useEffect(() => {
+  const openFromParams = useEffectEvent(() => {
     if (!editParam) return;
     const fields = (params.get('fields') || '').split(',').filter(Boolean);
     if (editParam === 'me') {
@@ -146,7 +146,8 @@ export function PassengersPage() {
       setEditing(p);
     } else toast('That passenger was deleted');
     setParams({}, { replace: true });
-  }, [editParam, data, setParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => openFromParams(), [editParam, data]);
   const [deleting, setDeleting] = useState<Passenger | null>(null);
   // Deletes at once (the row goes), with Undo: the details come back as a new passenger record.
   const remove = async (p: Passenger) => {

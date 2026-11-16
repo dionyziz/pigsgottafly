@@ -182,16 +182,17 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
   });
   const blocked = autosave.dirty && errors.length > 0;
 
+  const { flush } = autosave;
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        autosave.flush();
+        flush();
       }
     };
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
-  }, [autosave.flush]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [flush]);
 
   // the warnings list closes on a click elsewhere or Escape
   useEffect(() => {

@@ -2,7 +2,7 @@
 // (item 16), touch-and-go / intermediate-stop requests at the route's aerodromes (item 18 RMK/,
 // timed at pattern speed) and free-text remarks (item 18). Everything else in the FPL comes from the
 // aircraft, the profile, the manifest, the route and the navlog.
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 import { endpointAerodrome } from '../../../data/atc';
 import { REF } from '../../../data/ref';
@@ -30,9 +30,10 @@ export function FplSection() {
   // window changing the alternates resets the fields.
   const [fields, setFields] = useState(() => fieldsOf(alts));
   const key = alts.join(' ');
-  useEffect(() => {
+  const syncFields = useEffectEvent(() => {
     if (alternatesFrom(fields).join(' ') !== key) setFields(fieldsOf(alts));
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  });
+  useEffect(() => syncFields(), [key]);
 
   const setField = (i: number, v: string) => {
     const next = fields.map((f, j) => (j === i ? v : f));

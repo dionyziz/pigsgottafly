@@ -2,7 +2,7 @@
 // scrolled to, focused and highlighted (.attention, src/app/styles.css) until it is edited.
 // Targets: an element with data-focus="<key>" (its first input, select or textarea is focused), else
 // an input with name="<key>", else an element with id="<key>" (a section, highlighted).
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 /** The ?focus= value of the current URL ('' when none). */
 export function focusParam(): string {
@@ -49,12 +49,13 @@ export function focusAndHighlight(el: HTMLElement): void {
  * to render, then focuses and highlights it. Runs once per key.
  */
 export function useFocusParam(root: () => ParentNode | null, enabled = true, key = focusParam()): void {
+  const rootNow = useEffectEvent(root);
   useEffect(() => {
     if (!enabled || !key) return;
     let tries = 0;
     let timer = 0;
     const attempt = () => {
-      const r = root();
+      const r = rootNow();
       const el = r ? findFocusTarget(r, key) : null;
       if (el) {
         focusAndHighlight(el);
@@ -64,5 +65,5 @@ export function useFocusParam(root: () => ParentNode | null, enabled = true, key
     };
     timer = window.setTimeout(attempt, 50);
     return () => window.clearTimeout(timer);
-  }, [enabled, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, key]);
 }

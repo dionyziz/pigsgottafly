@@ -2,7 +2,7 @@
 // the viewport (IntersectionObserver on a thin band; in the gap between two sections the previous one
 // stays); at the top of the page the first, at the bottom the last. go(id) scrolls there smoothly
 // and puts #id in the URL.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 
 export function useScrollSpy(ids: readonly string[], ready = true): { active: string; go: (id: string) => void } {
   const [active, setActive] = useState(ids[0] ?? '');
@@ -12,7 +12,10 @@ export function useScrollSpy(ids: readonly string[], ready = true): { active: st
 
   useEffect(() => {
     if (!ready || typeof IntersectionObserver === 'undefined') return;
-    const els = ids.map((id) => document.getElementById(id)).filter((e): e is HTMLElement => !!e);
+    const els = key
+      .split('|')
+      .map((id) => document.getElementById(id))
+      .filter((e): e is HTMLElement => !!e);
     if (!els.length) return;
     const inBand = new Set<string>();
     const atBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
@@ -36,7 +39,10 @@ export function useScrollSpy(ids: readonly string[], ready = true): { active: st
     };
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) e.isIntersecting ? inBand.add(e.target.id) : inBand.delete(e.target.id);
+        for (const e of entries) {
+          if (e.isIntersecting) inBand.add(e.target.id);
+          else inBand.delete(e.target.id);
+        }
         pick();
       },
       { rootMargin: '-25% 0px -74% 0px', threshold: 0 },
@@ -53,19 +59,20 @@ export function useScrollSpy(ids: readonly string[], ready = true): { active: st
       window.removeEventListener('scroll', scroll);
       cancelAnimationFrame(frame);
     };
-  }, [key, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, ready]);
 
   // #section in the URL on arrival
+  const isSection = useEffectEvent((id: string) => ids.includes(id));
   useEffect(() => {
     if (!ready) return;
     const id = decodeURIComponent(window.location.hash.slice(1));
-    if (!ids.includes(id)) return;
+    if (!isSection(id)) return;
     const t = window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ block: 'start' });
       setActive(id);
     }, 50);
     return () => window.clearTimeout(t);
-  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   const go = useCallback((id: string) => {
     const el = document.getElementById(id);

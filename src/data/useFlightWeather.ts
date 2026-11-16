@@ -7,7 +7,7 @@
 //
 //   const wx = useFlightWeather({ date: doc.date, route: doc.route, options: doc.options, model: doc.options.windModel });
 //   wx.weather, wx.weatherLoading, wx.metar, wx.refresh(), wx.departure / wx.destination / wx.stops
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { buildLegs, type LegGeometry } from '../calc';
 import type { FlightOptions, LatLon, RefAerodrome, RoutePoint, WindModel } from '../shared';
@@ -129,12 +129,9 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   const wxSeq = useSequencer();
   const [weather, setWeather] = useState<RouteWeather | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const planRef = useRef(plan);
-  planRef.current = plan;
   const hasPoints = plan.mids.length > 0 || !!plan.depLoc;
-  useEffect(() => {
-    const current = wxSeq.next();
-    if (!enabled) return;
+  // one request per plan key (route, date, model) and refresh, with the plan of that render
+  const requestWeather = useEffectEvent((current: () => boolean) => {
     if (!hasPoints || !date) {
       setWeather(null);
       setWeatherLoading(false);
@@ -142,7 +139,7 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
     }
     const force = refreshCount !== lastRefresh.current.wx;
     setWeatherLoading(true);
-    const p = planRef.current;
+    const p = plan;
     const go = () => {
       if (!current()) return;
       lastRefresh.current.wx = refreshCount;
@@ -181,8 +178,12 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
       return () => clearTimeout(t);
     }
     go();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan.key, refreshCount, enabled]);
+  });
+  useEffect(() => {
+    const current = wxSeq.next();
+    if (!enabled) return;
+    return requestWeather(current);
+  }, [wxSeq, plan.key, refreshCount, enabled]);
 
   // ---- METAR/TAF
   const metarSeq = useSequencer();
@@ -215,8 +216,7 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
         }
       },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [icaoKey, refreshCount, enabled]);
+  }, [metarSeq, icaoKey, refreshCount, enabled]);
 
   return {
     ...plan,

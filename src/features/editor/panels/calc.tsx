@@ -4,7 +4,16 @@
 // from each stop) and one list of warnings. Everything numeric comes from src/calc; this file only wires inputs.
 //
 // <FlightCalcProvider> sits inside <EditorProvider> (EditorPage); read with useFlightCalc().
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useState,
+} from 'react';
 
 import {
   type AerodromePerf,
@@ -190,13 +199,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   // Winds kept by leg midpoint, so unchanged legs keep their data while a changed route refetches.
   // A result is only ever the newest request's, made for the midpoints of this render.
   const [byMid, setByMid] = useState<Map<string, OpenMeteoLocation | null>>(new Map());
-  useEffect(() => {
-    if (!weather) {
-      setByMid(new Map());
-      return;
-    }
-    setByMid(new Map(mids.map((m, i) => [midKey(m), weather.legs[i] ?? null])));
-  }, [weather]); // eslint-disable-line react-hooks/exhaustive-deps
+  const keepByMid = useEffectEvent(() => {
+    setByMid(weather ? new Map(mids.map((m, i) => [midKey(m), weather.legs[i] ?? null])) : new Map());
+  });
+  useEffect(() => keepByMid(), [weather]);
 
   // ---- weather hazards: corridor samples along each leg (grid cells cached individually)
   const hzKey = JSON.stringify([
@@ -207,21 +213,28 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     arr && [arr.lat, arr.lon],
   ]);
   const [hazardWeather, setHazardWeather] = useState<HazardWeather | null>(null);
+  const fetchHazards = useEffectEvent(() =>
+    legs.length && doc.date
+      ? () =>
+          fetchHazardWeather({
+            date: doc.date,
+            model,
+            legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
+            departure: dep ? { lat: dep.lat, lon: dep.lon } : null,
+            destination: arr ? { lat: arr.lat, lon: arr.lon } : null,
+            force: force > 0,
+          })
+      : null,
+  );
   useEffect(() => {
-    if (!legs.length || !doc.date) {
+    const request = fetchHazards();
+    if (!request) {
       setHazardWeather(null);
       return;
     }
     let live = true;
     const t = setTimeout(() => {
-      fetchHazardWeather({
-        date: doc.date,
-        model,
-        legs: legs.map((l) => ({ from: l.from, to: l.to, distNm: l.distNm })),
-        departure: dep ? { lat: dep.lat, lon: dep.lon } : null,
-        destination: arr ? { lat: arr.lat, lon: arr.lon } : null,
-        force: force > 0,
-      }).then(
+      request().then(
         (h) => {
           if (live) setHazardWeather(h);
         },
@@ -234,7 +247,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       live = false;
       clearTimeout(t);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hzKey, force]);
 
   // ---- navlog
@@ -364,60 +376,71 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const times = navlog?.blockOffSet ? navlog.times : undefined;
   const takeoffMs = fin(dayMs) && times ? dayMs + times.takeoffMin * 60000 : NaN;
   const landingMs = fin(dayMs) && times ? dayMs + times.landingMin * 60000 : NaN;
-  const endpoint = (
-    phase: 'takeoff' | 'landing',
-    ad: RefAerodrome | null,
-    loc: OpenMeteoLocation | null,
-    timeMs: number,
-    massWb: WbResult | null = wb,
-    runway: string | null = phase === 'takeoff' ? doc.options.departureRunway : doc.options.arrivalRunway,
-    surfaceKey: string | null = phase === 'takeoff' ? doc.options.departureSurface : doc.options.arrivalSurface,
-    stopUid?: string,
-    stopKind?: 'stop' | 'touch-and-go',
-  ): EndpointCalc => {
-    const reports = ad?.icao && metar ? (metar.stations[ad.icao] ?? null) : null;
-    const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs) : null;
-    const surface = fin(timeMs) ? chooseSurface({ metar: reports?.metar ?? null, forecast, timeMs }) : null;
-    const {
-      massKg,
-      massSource,
-      reason: massReason,
-    } = performanceMass(massWb, phase, aircraft?.massBalance.mtowKg, wbMissingWeights.length);
-    let perf: AerodromePerf | null = null;
-    if (ad && aircraft && massKg != null) {
-      const elev = ad.elevFt ?? 0;
-      perf = safe(() =>
-        aerodromePerformance({
-          phase,
-          aerodromeElevFt: elev,
-          runways: runwaysOf(ad.id),
-          wind: toPerfWind(surface),
-          qnhHpa: surface?.qnhHpa ?? 1013.25,
-          oatC: surface?.tempC ?? isaTempC(elev),
-          variationDeg: magneticVariation(ad.lat, ad.lon, doc.date || todayUtc()),
-          massKg: massKg,
-          tables: aircraft.performance,
-          runway,
-          surface: surfaceKey,
-        }),
-      );
-    }
-    const out: EndpointCalc = { phase, aerodrome: ad, timeMs, surface, reports, perf, massKg, massSource, massReason };
-    if (stopUid) {
-      out.stopUid = stopUid;
-      out.stopKind = stopKind ?? 'stop';
-    }
-    return out;
-  };
+  const endpoint = useCallback(
+    (
+      phase: 'takeoff' | 'landing',
+      ad: RefAerodrome | null,
+      loc: OpenMeteoLocation | null,
+      timeMs: number,
+      massWb: WbResult | null = wb,
+      runway: string | null = phase === 'takeoff' ? doc.options.departureRunway : doc.options.arrivalRunway,
+      surfaceKey: string | null = phase === 'takeoff' ? doc.options.departureSurface : doc.options.arrivalSurface,
+      stopUid?: string,
+      stopKind?: 'stop' | 'touch-and-go',
+    ): EndpointCalc => {
+      const reports = ad?.icao && metar ? (metar.stations[ad.icao] ?? null) : null;
+      const forecast = fin(timeMs) ? surfaceConditions(loc, timeMs) : null;
+      const surface = fin(timeMs) ? chooseSurface({ metar: reports?.metar ?? null, forecast, timeMs }) : null;
+      const {
+        massKg,
+        massSource,
+        reason: massReason,
+      } = performanceMass(massWb, phase, aircraft?.massBalance.mtowKg, wbMissingWeights.length);
+      let perf: AerodromePerf | null = null;
+      if (ad && aircraft && massKg != null) {
+        const elev = ad.elevFt ?? 0;
+        perf = safe(() =>
+          aerodromePerformance({
+            phase,
+            aerodromeElevFt: elev,
+            runways: runwaysOf(ad.id),
+            wind: toPerfWind(surface),
+            qnhHpa: surface?.qnhHpa ?? 1013.25,
+            oatC: surface?.tempC ?? isaTempC(elev),
+            variationDeg: magneticVariation(ad.lat, ad.lon, doc.date || todayUtc()),
+            massKg: massKg,
+            tables: aircraft.performance,
+            runway,
+            surface: surfaceKey,
+          }),
+        );
+      }
+      const out: EndpointCalc = {
+        phase,
+        aerodrome: ad,
+        timeMs,
+        surface,
+        reports,
+        perf,
+        massKg,
+        massSource,
+        massReason,
+      };
+      if (stopUid) {
+        out.stopUid = stopUid;
+        out.stopKind = stopKind ?? 'stop';
+      }
+      return out;
+    },
+    [wb, metar, aircraft, wbMissingWeights, doc.date, doc.options],
+  );
   const departure = useMemo(
     () => endpoint('takeoff', dep, weather?.departure ?? null, takeoffMs),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dep, weather, takeoffMs, metar, wb, wbMissingWeights, aircraft, doc.date, doc.options],
+    [endpoint, dep, weather, takeoffMs],
   );
   const arrival = useMemo(
     () => endpoint('landing', arr, weather?.destination ?? null, landingMs),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [arr, weather, landingMs, metar, wb, wbMissingWeights, aircraft, doc.date, doc.options],
+    [endpoint, arr, weather, landingMs],
   );
   const stops = useMemo((): StopCalc[] => {
     if (!sectorCalc || sectorCalc.sectors.length < 2) return [];
@@ -478,21 +501,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         fuelL: Math.max(0, x.before.fuelLandingL),
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    sectorCalc,
-    stopIdx,
-    stopAds,
-    weather,
-    metar,
-    times,
-    dayMs,
-    wbMissingWeights,
-    aircraft,
-    doc.date,
-    doc.route,
-    doc.options,
-  ]);
+  }, [sectorCalc, stopIdx, stopAds, weather, times, dayMs, endpoint, doc.route, doc.options]);
 
   // ---- weather hazards at the planned times and altitudes
   const hazards = useMemo(
@@ -708,7 +717,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     fuel,
     wbAll,
     wb,
-    wbOk,
     departure,
     arrival,
     stops,

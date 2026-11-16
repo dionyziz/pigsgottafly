@@ -2,7 +2,7 @@
 // read in an in-app viewer). Content comes and goes in chunks (src/data/aircraftFiles.ts). Anyone
 // with access sees them; owners and editors add, replace, rename and remove. The documents section
 // and the PDF viewer also serve an operator's documents (operations manual): they take a FileScope.
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 import { aircraftScope, fileBlob, type FileScope, resizePhoto, saveBlob, uploadFile } from '../../data/aircraftFiles';
 import { isoDay as fmtDate } from '../../shared/date';
@@ -18,14 +18,17 @@ function useFileBlob(
   onProgress?: (x: number) => void,
 ): { blob: Blob | null; error: string | null } {
   const [state, setState] = useState<{ blob: Blob | null; error: string | null }>({ blob: null, error: null });
+  const load = useEffectEvent(() => (f ? fileBlob(scope, f, onProgress) : null));
+  const fileId = f?.id;
   useEffect(() => {
-    if (!f) {
+    const loading = load();
+    if (!loading) {
       setState({ blob: null, error: null });
       return;
     }
     let live = true;
     setState({ blob: null, error: null });
-    fileBlob(scope, f, onProgress).then(
+    loading.then(
       (blob) => {
         if (live) setState({ blob, error: null });
       },
@@ -36,8 +39,7 @@ function useFileBlob(
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope.files, scope.id, f?.id]);
+  }, [scope.files, scope.id, fileId]);
   return state;
 }
 
