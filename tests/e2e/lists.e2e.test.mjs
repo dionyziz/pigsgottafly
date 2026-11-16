@@ -74,6 +74,8 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await clickText(`[data-flight-id="${old.id}"] .menu button`, 'Rename');
   await page.waitFor(() => !!document.querySelector('[data-testid=rename-dialog] input'));
   await shot('lists-rename');
+  // a typed title stays in the field; the automatic name (from the route) is the placeholder
+  assert.deepEqual(await page.eval(() => { const i = document.querySelector('[data-testid=rename-dialog] input'); return [i.value, !!i.placeholder]; }), ['Old trip', true]);
   await page.type('[data-testid=rename-dialog] input', 'Renamed trip');
   await page.key('Enter');
   await page.waitFor((id) => document.querySelector(`[data-flight-id="${id}"] .title`)?.textContent === 'Renamed trip', { args: [old.id] });
@@ -98,6 +100,9 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.waitFor((id) => !document.querySelector(`[data-flight-id="${id}"]`), { args: [later.id] });
   await page.click('[data-testid=trash-view]');
   await page.waitFor((id) => !!document.querySelector(`[data-flight-id="${id}"]`) && document.querySelectorAll('[data-flight-id]').length === 1, { args: [later.id] });
+  // the header keeps its place: same h1, New flight kept but hidden
+  assert.equal(await page.eval(() => document.querySelector('.page-head h1').textContent), 'Flights');
+  assert.equal(await page.eval(() => getComputedStyle(document.querySelector('[data-testid=new-flight]')).visibility), 'hidden');
   await page.click(`[data-flight-id="${later.id}"] [data-testid=row-menu]`);
   await clickText(`[data-flight-id="${later.id}"] .menu button`, 'Restore');
   await page.waitFor(() => document.querySelectorAll('[data-flight-id]').length === 0);

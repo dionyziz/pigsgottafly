@@ -1,18 +1,20 @@
 // Lobby (Google Docs style): search by name/date/aircraft/route, upcoming flights first (soonest
 // first) then past ones (most recent first); each row has a route sketch, title, date, block-off,
-// aircraft and totals, and a ⋮ menu: Open, Open in new tab, Rename, Make a copy, Move to trash
-// (with Undo). A Trash view lists trashed flights with Restore.
-import { Loading } from '../../app/Loading';
+// aircraft and totals, and a ⋮ menu: Open in new tab, Rename, Make a copy, Move to trash (with
+// Undo). A Trash view lists trashed flights with Restore. The header (h1, tabs, New flight) keeps
+// its layout in both views.
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
-import { usePilot } from '../../app/session';
 import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { autoTitle, type Flight, type FlightListItem } from '../../shared';
-import { fmtDate, fmtHm, flightSearchText, localToday, matchesQuery, relativeDay, splitFlights, utcToLocal } from './format';
-import { Dialog, EmptyState, KebabMenu, RouteThumb } from './ui';
+import { fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
+import { errorMessage, fmtDuration } from '../../shared/format';
+import { AsyncView, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, SearchBox, rowClick } from '../../ui';
+import { flightSearchText, matchesQuery, splitFlights } from './format';
+import { RouteThumb } from './ui';
 
 const titleOf = (r: FlightListItem) => r.summary.title || 'Untitled flight';
 
@@ -42,13 +44,12 @@ export function LobbyPage() {
   const [renaming, setRenaming] = useState<FlightListItem | null>(null);
   const navigate = useNavigate();
   const toast = useToast();
-  const pilot = usePilot();
   const today = localToday();
 
   const rows = useMemo(() => (data || []).filter((r) => matchesQuery(flightSearchText(r), q)), [data, q]);
   const { upcoming, past } = useMemo(() => splitFlights(rows, today), [rows, today]);
 
-  const fail = useCallback((what: string) => (e: unknown) => toast(`${what}: ${(e as Error).message || e}`), [toast]);
+  const fail = useCallback((what: string) => (e: unknown) => toast(`${what}: ${errorMessage(e)}`), [toast]);
 
   const trash = async (r: FlightListItem) => {
     setData((d) => d?.filter((x) => x.id !== r.id));
@@ -84,12 +85,11 @@ export function LobbyPage() {
   };
   const openNewTab = (r: FlightListItem) => window.open(`/flights/${r.id}`, '_blank', 'noopener');
 
-  const onRowClick = (r: FlightListItem) => (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('a, button, .menu')) return;
+  const onRowClick = (r: FlightListItem) => rowClick((e) => {
     if (trashView) return;
     if (e.metaKey || e.ctrlKey) openNewTab(r);
     else navigate(`/flights/${r.id}`);
-  };
+  });
 
   const row = (r: FlightListItem) => {
     const s = r.summary;
@@ -97,11 +97,10 @@ export function LobbyPage() {
     const rel = relativeDay(date, today);
     const local = utcToLocal(date, s.blockOff);
     const route = s.from && s.to ? (s.from === s.to ? `Local flight · ${s.from}` : `${s.from} → ${s.to}`) : '';
-    const totals = [s.distNm != null ? `${Math.round(s.distNm)} NM` : '', s.eteMin != null ? fmtHm(s.eteMin) : '', s.fuelL != null ? `${Math.round(s.fuelL)} L` : ''].filter(Boolean).join(' · ');
+    const totals = [s.distNm != null ? `${Math.round(s.distNm)} NM` : '', s.eteMin != null ? fmtDuration(s.eteMin) : '', s.fuelL != null ? `${Math.round(s.fuelL)} L` : ''].filter(Boolean).join(' · ');
     const items = trashView
       ? [{ label: 'Restore', onSelect: () => void restore(r) }]
       : [
-          { label: 'Open', onSelect: () => navigate(`/flights/${r.id}`) },
           { label: 'Open in new tab', onSelect: () => openNewTab(r) },
           { label: 'Rename', onSelect: () => setRenaming(r), separator: true },
           { label: 'Make a copy', onSelect: () => void copy(r) },
@@ -130,57 +129,54 @@ export function LobbyPage() {
   const section = (label: string, list: FlightListItem[]) => list.length > 0 && (
     <>
       <div className="lobby-section">{label}<span className="count">{list.length}</span></div>
-      <div className="lobby-head-cols"><span /><span>Flight</span><span className="hide-sm">Date</span><span className="hide-sm">Block off</span><span className="totals hide-sm">Distance · time · fuel</span><span /></div>
+      <div className="lobby-head-cols"><span /><span>Flight</span><span className="hide-sm">Date</span><span className="hide-sm">Block-off</span><span className="totals hide-sm">Distance · time · fuel</span><span /></div>
       <div className="card flights">{list.map(row)}</div>
     </>
   );
 
   const searchBox = (
-    <div className="searchbox">
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" strokeWidth="1.6" /><path d="M11 11l3.5 3.5" strokeWidth="1.6" strokeLinecap="round" /></svg>
-      <input type="search" placeholder={trashView ? 'Search the trash' : 'Search by name, date, aircraft or aerodrome'} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search flights" data-testid="flight-search" />
-    </div>
+    <SearchBox value={q} onChange={setQ} placeholder={trashView ? 'Search the trash' : 'Search by name, date, aircraft or aerodrome'} label="Search flights" testId="flight-search" />
   );
 
   return (
     <Shell top={searchBox}>
-      <div className="page-head">
-        <h1>{trashView ? 'Trash' : 'Flights'}</h1>
-        <div className="tabs" style={{ marginLeft: 12 }}>
+      <div className="page-head lobby-head">
+        <h1>Flights</h1>
+        <div className="tabs lobby-tabs">
           <button type="button" aria-pressed={!trashView} onClick={() => setParams({}, { replace: true })}>All flights</button>
           <button type="button" aria-pressed={trashView} onClick={() => setParams({ view: 'trash' }, { replace: true })} data-testid="trash-view">Trash</button>
         </div>
         <span className="spacer" />
-        {!trashView && <Link to="/flights/new" className="btn primary" data-testid="new-flight">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+        {/* kept in the trash view (hidden), so the header does not move */}
+        <Link to="/flights/new" className="btn primary" data-testid="new-flight" style={trashView ? { visibility: 'hidden' } : undefined} aria-hidden={trashView || undefined} tabIndex={trashView ? -1 : undefined}>
+          <Icon name="plus" size={14} />
           New flight
-        </Link>}
+        </Link>
       </div>
-      {error && !data ? (
-        <EmptyState title="Could not load your flights" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
-      ) : loading && !data ? (
-        <p><Loading /></p>
-      ) : rows.length === 0 ? (
-        q ? <EmptyState title="No matching flights">Nothing matches “{q}”. Search looks at the title, every point on the route, the aircraft and the date.</EmptyState>
-          : trashView ? <EmptyState title="The trash is empty">Flights you move to the trash appear here, where you can restore them.</EmptyState>
-          : <EmptyState title="No flights yet" action={<Link to="/flights/new" className="btn primary">Plan your first flight</Link>}>
-              {pilot.homeAerodrome ? `A new flight starts at ${pilot.homeAerodrome} and comes back there; draw your route on the map.` : 'A new flight opens on the map, where you draw your route.'}
-            </EmptyState>
-      ) : (
-        <div data-testid="flight-list">
-          {trashView ? section('In the trash', [...upcoming, ...past]) : (<>
-            {section('Upcoming', upcoming)}
-            {section('Past', past)}
-          </>)}
-        </div>
-      )}
+      <AsyncView data={data} error={error} loading={loading} reload={() => void reload()} errorTitle="Could not load your flights"
+        isEmpty={() => rows.length === 0 && !q}
+        empty={trashView ? <EmptyState title="The trash is empty" />
+          : <EmptyState title="No flights yet" action={<Link to="/flights/new" className="btn primary">New flight</Link>} />}
+        isNoMatch={() => rows.length === 0}
+        noMatch={<EmptyState title="No matching flights" />}>
+        {() => (
+          <div data-testid="flight-list">
+            {trashView ? section('In the trash', [...upcoming, ...past]) : (<>
+              {section('Upcoming', upcoming)}
+              {section('Past', past)}
+            </>)}
+          </div>
+        )}
+      </AsyncView>
       {renaming && <RenameDialog row={renaming} onClose={() => setRenaming(null)} onDone={async () => { setRenaming(null); await reload(); }} />}
     </Shell>
   );
 }
 
 function RenameDialog({ row, onClose, onDone }: { row: FlightListItem; onClose: () => void; onDone: () => Promise<void> }) {
-  const [title, setTitle] = useState(row.summary.title);
+  // the automatic name (from the route) is the placeholder; an automatic title starts empty
+  const auto = autoTitle((row.points ?? []).map((name) => ({ name })));
+  const [title, setTitle] = useState(row.summary.title === auto ? '' : row.summary.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async (e?: React.FormEvent) => {
@@ -190,20 +186,16 @@ function RenameDialog({ row, onClose, onDone }: { row: FlightListItem; onClose: 
       await renameFlight(row.id, title.trim());
       await onDone();
     } catch (err) {
-      setError(String((err as Error).message || err));
+      setError(errorMessage(err));
       setBusy(false);
     }
   };
   return (
-    <Dialog title="Rename flight" onClose={onClose} busy={busy} testId="rename-dialog" footer={<>
-      <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-      <button type="button" className="primary" onClick={() => void submit()} disabled={busy}>Rename</button>
-    </>}>
+    <Dialog title="Rename flight" onClose={onClose} busy={busy} testId="rename-dialog"
+      footer={<DialogFooter onCancel={onClose} busy={busy} error={error} primary={{ label: 'Rename', onClick: () => void submit() }} />}>
       <form onSubmit={submit}>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} onFocus={(e) => e.target.select()} style={{ width: '100%' }} aria-label="Flight name" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} onFocus={(e) => e.target.select()} placeholder={auto} style={{ width: '100%' }} aria-label="Flight name" />
       </form>
-      <div className="hint">Leave empty to name the flight after its route.</div>
-      {error && <p className="form-error">{error}</p>}
     </Dialog>
   );
 }

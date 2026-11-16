@@ -9,6 +9,9 @@
 .thumb-dot { fill: var(--accent); opacity: 0.5; }
 
 /* lobby */
+.lobby-tabs { margin-left: var(--s3); }
+/* fixed width: the bold pressed tab never shifts its neighbour */
+.lobby-tabs button { width: 88px; justify-content: center; text-align: center; }
 .lobby-section { margin: var(--s5) 0 var(--s2); font-size: var(--fs-sm); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: var(--s2); align-items: baseline; }
 .lobby-section .count { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .flights { overflow: visible; }

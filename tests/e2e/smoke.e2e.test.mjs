@@ -92,3 +92,21 @@ test('navlog over two sheets: checkpoints evenly spaced, each sheet with its own
   if (process.env.SHOTS) await page.screenshot('smoke-navlog-sheets');
   assert.deepEqual(page.errors, []);
 });
+
+test('new flight asks for the ends: an unknown aerodrome says so and blocks Create; About names the sources', async () => {
+  await page.goto(`${server.url}/flights/new?ask=1`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=new-flight-form]'));
+  await page.type('input[name=from]', 'LGMG');
+  await page.type('input[name=to]', 'XXQQ');
+  await page.click('h1');
+  await page.waitFor(() => /Not an aerodrome/.test(document.querySelectorAll('[data-testid=aerodrome-status]')[1]?.textContent || ''));
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=create-flight]').disabled), true);
+  await page.type('input[name=to]', 'LGSY');
+  await page.click('h1');
+  await page.waitFor(() => !document.querySelector('[data-testid=create-flight]').disabled);
+  await page.click('[data-testid=create-flight]');
+  await page.waitFor(() => /^\/flights\/[\w-]+$/.test(location.pathname) && document.querySelector('[data-testid=flight-title]')?.textContent === 'LGMG → LGSY');
+
+  await page.goto(`${server.url}/about`);
+  await page.waitFor(() => document.querySelector('[data-testid=about-weather-model]')?.textContent === 'ECMWF IFS 0.25°');
+});

@@ -1,0 +1,9 @@
+/* /about: the data sources. */
+.about { max-width: 760px; }
+.about-list { margin: 0; display: grid; gap: var(--s2); }
+.about-list > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--s3); }
+.about-list dt { color: var(--muted); font-size: var(--fs-sm); padding-top: 1px; }
+.about-list dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .about-list > div { grid-template-columns: 1fr; gap: 0; }
+}

@@ -3,10 +3,10 @@
 // filled form, built for a phone: the passenger's own row in full, other people's ID and contact
 // masked, and a single "Sign" button. The signature is the signer's initial and last name in the
 // handwriting font, with the time.
-import { Loading } from '../../app/Loading';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiRequestError } from '../../data/api';
+import { Loading } from '../../ui';
 import type { SigningView } from '../../shared/forms';
 import { Signature } from '../exports/form731/Form731';
 import '../exports/form731/forms.css';
@@ -28,7 +28,7 @@ export function SignPage() {
   };
 
   if (err && !view) return <main className="sign-page"><div className="sign-card"><h1>Form 731</h1><p className="sign-err" role="alert">{err}</p></div></main>;
-  if (!view) return <main className="sign-page"><div className="sign-card"><p><Loading /></p></div></main>;
+  if (!view) return <main className="sign-page"><div className="sign-card"><Loading /></div></main>;
   const c = view.content;
   const me = c.people.find((p) => p.key === view.me);
   const mySig = view.signatures.find((s) => s.key === view.me);
@@ -67,7 +67,7 @@ export function SignPage() {
         {mySig?.signedAt
           ? <p className="sign-done" data-testid="sign-done">Signed. Thank you{me?.name ? `, ${me.name.split(/\s+/)[0]}` : ''}: you can close this page.</p>
           : <button className="primary sign-button" onClick={sign} disabled={busy} data-testid="sign-button">{busy ? 'Signing…' : `Sign as ${me?.name || 'passenger'}`}</button>}
-        <p className="sign-fine">If your details are wrong, tell the pilot in command before signing: any change to the form clears the signatures.</p>
+        {!mySig?.signedAt && <p className="sign-fine">Details wrong? Tell the PIC before signing.</p>}
       </div>
     </main>
   );

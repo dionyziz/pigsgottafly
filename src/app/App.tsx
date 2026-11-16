@@ -3,14 +3,14 @@
 //   /flights/new                   creates a flight, then → /flights/:id
 //   /flights/:id                   flight editor (map)
 //   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
-//   /profile  /hangar  /hangar/:id  /passengers  /waypoints
+//   /profile  /hangar  /hangar/:id  /passengers  /waypoints  /about
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
-import { Loading } from './Loading';
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
+import { Loading } from '../ui';
 import { ToastProvider } from './toast';
 import { useSession } from './session';
 import { profileMissing } from '../shared';
@@ -19,6 +19,7 @@ import { NewFlightPage } from '../features/lobby/NewFlightPage';
 import { ProfilePage } from '../features/profile';
 import { HangarPage, AircraftPage } from '../features/hangar';
 import { PassengersPage } from '../features/passengers';
+import { AboutPage } from './AboutPage';
 
 // The map (MapLibre) and the export sheets are loaded on demand, so the lobby and lists load fast.
 const EditorPage = lazy(() => import('../features/editor').then((m) => ({ default: m.EditorPage })));
@@ -51,12 +52,12 @@ export function App() {
     <BrowserRouter>
       <ToastProvider>
         <Routes>
-        <Route path="/sign/:token" element={<Suspense fallback={<Loading screen />}><SignPage /></Suspense>} />
+        <Route path="/sign/:token" element={<Suspense fallback={<Loading variant="screen" />}><SignPage /></Suspense>} />
         <Route path="*" element={
         <AuthGate>
           <LegacyHashRedirect />
           <Onboarding>
-            <Suspense fallback={<Loading screen />}>
+            <Suspense fallback={<Loading variant="screen" />}>
             <Routes>
               <Route path="/" element={<LobbyPage />} />
               <Route path="/flights/new" element={<NewFlightPage />} />
@@ -67,6 +68,7 @@ export function App() {
               <Route path="/hangar/:id" element={<AircraftPage />} />
               <Route path="/passengers" element={<PassengersPage />} />
               <Route path="/waypoints" element={<WaypointsPage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             </Suspense>
