@@ -1,6 +1,7 @@
 // Compass swing reports stored with an aircraft: upload, fetch, references from compass cards,
 // cleanup of unreferenced files on save, limits and isolation between pilots.
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { ORPHAN_REPORT_GRACE_MS } from '../../api/_lib/routes/attachments';
 import { client, startApi, type Client } from './helpers';
 import { blankAircraft } from '../../src/shared/templates';
 import { ATTACHMENT_MAX_BYTES, type AttachmentRef, type CompassCard } from '../../src/shared/types';
@@ -47,9 +48,14 @@ describe('aircraft attachments', () => {
     expect(put.body.compassCards[0].report).toEqual(ref);
     expect((await a.call('GET', `aircraft/${id}`)).body.compassCards[0].report).toEqual(ref);
 
-    // a second upload never saved, then a save: only the referenced file stays
+    // a second upload never saved: a save right after keeps it (the page autosaves; a save may have
+    // left before the upload finished), a save after the grace period deletes it
     const orphan = (await a.call('POST', `aircraft/${id}/attachments`, { name: 'x.png', mime: 'image/png', data: 'iVBORw0KGgo=' })).body as AttachmentRef;
     expect((await a.call('PUT', `aircraft/${id}`, { notes: 'saved' })).status).toBe(200);
+    expect((await a.call('GET', `aircraft/${id}/attachments/${orphan.id}`)).status).toBe(200);
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + ORPHAN_REPORT_GRACE_MS + 1000);
+    try { expect((await a.call('PUT', `aircraft/${id}`, { notes: 'later' })).status).toBe(200); } finally { clock.mockRestore(); }
     expect((await a.call('GET', `aircraft/${id}/attachments/${orphan.id}`)).status).toBe(404);
     expect((await a.call('GET', `aircraft/${id}/attachments/${ref.id}`)).status).toBe(200);
 

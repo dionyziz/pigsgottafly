@@ -28,6 +28,7 @@ import mailLogDetails031 from './migrations/031_mail_log_details.js';
 import rateLimits032 from './migrations/032_rate_limits.js';
 import appErrors040 from './migrations/040_app_errors.js';
 import crewOverrides042 from './migrations/042_crew_overrides.js';
+import aircraftPlaceholder043 from './migrations/043_aircraft_placeholder.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -63,6 +64,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '032_rate_limits', sql: rateLimits032 },
   { name: '040_app_errors', sql: appErrors040 },
   { name: '042_crew_overrides', sql: crewOverrides042 },
+  { name: '043_aircraft_placeholder', sql: aircraftPlaceholder043 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

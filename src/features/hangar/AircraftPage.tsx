@@ -1,8 +1,10 @@
 // One aircraft of the hangar: identity, flight plan items, speeds, fuel, mass & balance (stations,
-// seats, envelopes), performance tables and compass cards. The page edits a local draft; Save sends
-// the whole aircraft (PUT /api/aircraft/:id). Errors block saving, warnings do not. Shared aircraft:
-// editors edit like the owner; viewers see the page read-only. Share opens the sharing dialog.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// seats, envelopes), performance tables and compass cards. The page edits a local draft and saves it
+// on its own (useAutosave: PUT /api/aircraft/:id of the whole aircraft, debounced; on blur, Ctrl+S and
+// leaving). Errors hold the save back and show in a bar with links to their fields; warnings do not
+// (header chip). The section nav follows the scroll (useScrollSpy). Shared aircraft: editors edit like
+// the owner; viewers see the page read-only. Share opens the sharing dialog.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
 import { focusAndHighlight, useFocusParam } from '../../app/focusParam';
@@ -25,6 +27,8 @@ import { validateAircraft, type Issue, type SectionId } from './model';
 import { PerformanceSection } from './PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from './sections';
 import { ShareDialog, SharedChip } from './ShareDialog';
+import { useAutosave, type AutosaveStatus } from './useAutosave';
+import { useScrollSpy } from './useScrollSpy';
 import '../lobby/lists.css';
 import './hangar.css';
 
@@ -38,10 +42,11 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'compass', label: 'Compass swing' },
   { id: 'documents', label: 'Documents' },
 ];
+const SECTION_IDS = SECTIONS.map((s) => s.id);
 
 /** The editable part of an aircraft (fuel densities at the standard values: saving migrates old ones). */
 export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
-  const { id: _i, created: _c, updated: _u, access: _a, photo: _p, ...rest } = a as HangarAircraft;
+  const { id: _i, created: _c, updated: _u, access: _a, photo: _p, placeholder: _ph, ...rest } = a as HangarAircraft;
   return { ...rest, fuel: { ...rest.fuel, types: standardFuelTypes(rest.fuel.types) } };
 }
 
@@ -75,63 +80,74 @@ export function AircraftPage() {
   );
 }
 
+/** Header status of the autosave: "Saving…", "Saved", or "Not saved" (the problem bar says why). */
+function SaveStatus({ status, blocked }: { status: AutosaveStatus; blocked: boolean }) {
+  const [text, cls] = blocked || status === 'failed' ? ['Not saved', 'danger-text']
+    : status === 'pending' || status === 'saving' ? ['Saving…', 'muted']
+    : status === 'saved' ? ['Saved', 'muted'] : ['', ''];
+  return <span className={'ac-save-status ' + cls} data-testid="save-status" data-status={blocked ? 'blocked' : status} aria-live="polite">{text}</span>;
+}
+
+/** The edits as they will be sent on unload (fetch keepalive survives the page). */
+function keepaliveSave(id: string, input: AircraftInput) {
+  try {
+    void fetch(`/api/aircraft/${encodeURIComponent(id)}`, {
+      method: 'PUT', keepalive: true, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    }).catch(() => undefined);
+  } catch { /* the body is over the keepalive limit: the page is going anyway */ }
+}
+
 function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSaved: (a: HangarAircraft) => void }) {
   const { pilot, setPilot } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
   const today = localToday();
-  const baseline = useMemo(() => toInput(aircraft), [aircraft]);
-  const [draft, setDraft] = useState<AircraftInput>(baseline);
-  const [busy, setBusy] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<AircraftInput>(() => toInput(aircraft));
   const [deleting, setDeleting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [showWarnings, setShowWarnings] = useState(false);
   const role = aircraft.access?.role ?? 'owner';
   const readOnly = role === 'view';
-  const [showIssues, setShowIssues] = useState(false);
-  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(baseline), [draft, baseline]);
   const issues = useMemo(() => validateAircraft(draft, today, CARD_EXPIRY_WARN_DAYS), [draft, today]);
   const errors = issues.filter((i) => i.level === 'error');
   const warnings = issues.filter((i) => i.level === 'warning');
   const isDefault = pilot.defaultAircraftId === aircraft.id;
   // ?focus=<field>: a warning elsewhere (an export) linked here
   useFocusParam(() => document.querySelector('[data-testid=aircraft-page]'));
+  const spy = useScrollSpy(SECTION_IDS);
 
   const edit = useCallback((fn: (d: AircraftInput) => void) => {
     setDraft((d) => { const c: AircraftInput = structuredClone(d); fn(c); return c; });
-    setSaveError(null);
   }, []);
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
-
-  const save = useCallback(async () => {
-    if (!dirty || busy) return;
-    if (errors.length) { setShowIssues(true); setSaveError(`Fix ${errors.length === 1 ? 'the error' : `the ${errors.length} errors`} before saving.`); return; }
-    setBusy(true);
-    try {
-      const saved = await api.aircraft.update(aircraft.id, draft);
-      onSaved(saved);
-      setDraft(toInput(saved));
-      setSaveError(null);
-      toast(`Saved ${saved.registration}`);
-    } catch (e) {
-      setSaveError(e instanceof ApiRequestError && e.status === 0 ? 'You are offline. Your changes are kept.' : errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }, [dirty, busy, errors.length, aircraft.id, draft, onSaved, toast]);
+  // autosave: errors hold it back (the bar lists them); the server's copy keeps photo and access current
+  const latestAircraft = useRef(aircraft);
+  latestAircraft.current = aircraft;
+  const save = useCallback(async (input: AircraftInput) => {
+    const saved = await api.aircraft.update(aircraft.id, input);
+    // the photo may have changed meanwhile (it is not part of the save)
+    onSaved({ ...saved, photo: latestAircraft.current.photo });
+  }, [aircraft.id, onSaved]);
+  const autosave = useAutosave({ value: draft, enabled: !readOnly && errors.length === 0, save, keepalive: (v) => keepaliveSave(aircraft.id, v) });
+  const blocked = autosave.dirty && errors.length > 0;
 
   useEffect(() => {
-    const key = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); void save(); } };
+    const key = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); autosave.flush(); } };
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
-  }, [save]);
+  }, [autosave.flush]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // the warnings list closes on a click elsewhere or Escape
+  useEffect(() => {
+    if (!showWarnings) return;
+    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.('.ac-warn')) setShowWarnings(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowWarnings(false); };
+    document.addEventListener('pointerdown', down);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', esc); };
+  }, [showWarnings]);
 
   const makeDefault = async () => {
     try { setPilot(await api.me.update({ defaultAircraftId: aircraft.id })); toast(`${aircraft.registration} is now your default aircraft`); }
@@ -143,51 +159,80 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
     return { e: xs.filter((i) => i.level === 'error').length, w: xs.filter((i) => i.level === 'warning').length };
   };
   const props = { a: draft, edit, issues };
-  const goTo = (i: Issue) => {
+  const goTo = (i: Pick<Issue, 'path' | 'section'>) => {
     const root = document.querySelector('[data-testid=aircraft-page]');
     const el = root && issueTarget(root, i);
     if (!el) return;
-    setShowIssues(false);
+    setShowWarnings(false);
     focusAndHighlight(el);
   };
+  const saveError = autosave.status === 'failed' ? autosave.error : null;
+  const duplicate = saveError instanceof ApiRequestError && saveError.status === 409;
+  const sectionLabel = (id: SectionId) => SECTIONS.find((s) => s.id === id)?.label;
 
   return (
     <div className="ac-page" data-testid="aircraft-page">
-      <div className="page-head ac-head">
-        <Link to="/hangar" className="back" aria-label="Back to the hangar" title="Hangar">
-          <Icon name="back" size={18} />
-        </Link>
-        <PhotoControl aircraftId={aircraft.id} registration={aircraft.registration} photo={aircraft.photo} canEdit={!readOnly}
-          onChange={(p) => onSaved({ ...aircraft, photo: p })} />
-        <div>
-          <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
-          <div className="muted">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</div>
+      <div className="ac-head">
+        <div className="ac-head-back">
+          <Link to="/hangar" className="back" aria-label="Back to the hangar" title="Hangar">
+            <Icon name="back" size={18} />
+          </Link>
         </div>
-        {isDefault && <Chip tone="ok" title="New flights use this aircraft">Default</Chip>}
-        <SharedChip access={aircraft.access} />
-        <span className="spacer" />
-        <button type="button" onClick={() => setSharing(true)} data-testid="share-aircraft">Share</button>
-        <KebabMenu label="Aircraft actions" items={[
-          ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault() }]),
-          role === 'owner'
-            ? { label: 'Delete aircraft', onSelect: () => setDeleting(true), danger: true, separator: !isDefault }
-            : { label: 'Remove from my hangar', onSelect: () => setLeaving(true), danger: true, separator: !isDefault },
-        ]} />
+        <div className="ac-head-main">
+          <PhotoControl aircraftId={aircraft.id} registration={aircraft.registration} photo={aircraft.photo} placeholder={aircraft.placeholder}
+            canEdit={!readOnly} onChange={(p) => onSaved({ ...latestAircraft.current, photo: p })} />
+          <div className="ac-title">
+            <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
+            <span className="ac-sub">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</span>
+            {isDefault && <Chip tone="ok" title="New flights use this aircraft">Default</Chip>}
+            <SharedChip access={aircraft.access} />
+            {warnings.length > 0 && (
+              <span className="ac-warn">
+                <button type="button" className="ac-warn-btn" onClick={() => setShowWarnings((v) => !v)} aria-expanded={showWarnings} data-testid="warnings-toggle">
+                  <Chip tone="warn">{warnings.length} warning{warnings.length > 1 ? 's' : ''}</Chip>
+                </button>
+                {showWarnings && (
+                  <ul className="issue-pop below" data-testid="issue-pop">
+                    {warnings.map((i, k) => (
+                      <li key={k} className={i.level}>
+                        <button type="button" className="issue-go" onClick={() => goTo(i)} data-testid="issue-go">
+                          <span className="sec">{sectionLabel(i.section)}</span>
+                          <span className="msg">{i.message}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </span>
+            )}
+            {!readOnly && <SaveStatus status={autosave.status} blocked={blocked} />}
+          </div>
+          <span className="spacer" />
+          <button type="button" onClick={() => setSharing(true)} data-testid="share-aircraft">Share</button>
+          <KebabMenu label="Aircraft actions" items={[
+            ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault() }]),
+            role === 'owner'
+              ? { label: 'Delete aircraft', onSelect: () => setDeleting(true), danger: true, separator: !isDefault }
+              : { label: 'Remove from my hangar', onSelect: () => setLeaving(true), danger: true, separator: !isDefault },
+          ]} />
+        </div>
       </div>
 
       <div className="ac-layout">
-        <nav className="ac-nav" aria-label="Sections">
+        <nav className="ac-nav" aria-label="Sections" data-testid="section-nav">
           {SECTIONS.map((s) => {
             const c = counts(s.id);
+            const on = spy.active === s.id;
             return (
-              <a key={s.id} href={`#${s.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+              <a key={s.id} href={`#${s.id}`} className={on ? 'active' : undefined} aria-current={on ? 'location' : undefined}
+                onClick={(e) => { e.preventDefault(); spy.go(s.id); }}>
                 <span>{s.label}</span>
                 {c.e > 0 ? <Chip tone="danger" count sm title={`${c.e} error${c.e > 1 ? 's' : ''}`}>{c.e}</Chip> : c.w > 0 ? <Chip tone="warn" count sm title={`${c.w} warning${c.w > 1 ? 's' : ''}`}>{c.w}</Chip> : null}
               </a>
             );
           })}
         </nav>
-        <form className="ac-main" onSubmit={(e) => { e.preventDefault(); void save(); }} noValidate>
+        <form className="ac-main" onSubmit={(e) => { e.preventDefault(); autosave.flush(); }} onBlur={() => autosave.flush()} noValidate>
           <fieldset className="ac-fieldset" disabled={readOnly}>
           <IdentitySection {...props} />
           <FplSection {...props} />
@@ -204,32 +249,35 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
               <Chip>View only</Chip>
               <span className="muted">Shared by {aircraft.access.owner.name || aircraft.access.owner.email}</span>
             </div>
-          ) : (
-
-          <div className={'ac-savebar card' + (dirty ? ' dirty' : '')} role="region" aria-label="Save">
-            <button type="button" className="issue-sum" onClick={() => setShowIssues((v) => !v)} aria-expanded={showIssues} disabled={!issues.length}>
-              {errors.length > 0 && <Chip tone="danger">{errors.length} error{errors.length > 1 ? 's' : ''}</Chip>}
-              {warnings.length > 0 && <Chip tone="warn">{warnings.length} warning{warnings.length > 1 ? 's' : ''}</Chip>}
-              {!issues.length && <Chip tone="ok">Complete</Chip>}
-            </button>
-            {saveError ? <span className="form-error" role="alert">{saveError}</span> : <span className="muted">{dirty ? 'Unsaved changes' : 'All changes saved'}</span>}
-            <span className="spacer" />
-            {dirty && <button type="button" className="ghost" onClick={() => { setDraft(baseline); setSaveError(null); }} disabled={busy}>Discard</button>}
-            <button type="submit" className="primary" disabled={!dirty || busy} title="Save (Ctrl+S)">{busy ? 'Saving…' : 'Save'}</button>
-            {showIssues && issues.length > 0 && (
-              <ul className="issue-pop" data-testid="issue-pop">
-                {[...errors, ...warnings].map((i, k) => (
-                  <li key={k} className={i.level}>
+          ) : errors.length > 0 ? (
+            <div className="ac-problem card" role="region" aria-label="Not saved" data-testid="problem-bar">
+              <span className="ac-problem-head">
+                <Chip tone="danger">{errors.length} error{errors.length > 1 ? 's' : ''}</Chip>
+                {autosave.dirty && <span className="danger-text">Changes not saved</span>}
+              </span>
+              <ul className="ac-problem-list">
+                {errors.map((i, k) => (
+                  <li key={k}>
                     <button type="button" className="issue-go" onClick={() => goTo(i)} data-testid="issue-go">
-                      <span className="sec">{SECTIONS.find((s) => s.id === i.section)?.label}</span>
+                      <span className="sec">{sectionLabel(i.section)}</span>
                       <span className="msg">{i.message}</span>
                     </button>
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
-          )}
+            </div>
+          ) : saveError ? (
+            <div className="ac-problem card" role="alert" data-testid="problem-bar">
+              <span className="ac-problem-head">
+                <span className="danger-text">
+                  {saveError instanceof ApiRequestError && saveError.offline ? 'Offline: changes not saved yet' : `Not saved: ${errorMessage(saveError)}`}
+                </span>
+              </span>
+              <span className="spacer" />
+              {duplicate && <button type="button" className="ghost sm" onClick={() => goTo({ path: 'registration', section: 'identity' })}>Registration</button>}
+              <button type="button" className="sm" onClick={autosave.retry} data-testid="save-retry">Retry</button>
+            </div>
+          ) : null}
         </form>
       </div>
 

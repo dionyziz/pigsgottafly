@@ -77,7 +77,7 @@ export function HangarPage() {
             return (
               <div key={a.id} className="ac-card card" data-aircraft-id={a.id}>
                 <Link to={`/hangar/${a.id}`} className="ac-card-photo" tabIndex={-1} aria-hidden="true">
-                  <AircraftPhoto aircraftId={a.id} photo={a.photo} className="card-top" alt="" />
+                  <AircraftPhoto aircraftId={a.id} photo={a.photo} placeholder={a.placeholder} className="card-top" alt="" />
                 </Link>
                 <div className="ac-card-head">
                   <Link to={`/hangar/${a.id}`} className="reg mono">{a.registration}</Link>

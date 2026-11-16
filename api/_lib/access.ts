@@ -30,7 +30,7 @@ function access(r: Row): AircraftAccess {
   };
 }
 
-export const toHangarAircraft = (r: Row): HangarAircraft => ({ ...toAircraft(r), access: access(r), photo: r.photo_file ? toFile(r.photo_file) : null });
+export const toHangarAircraft = (r: Row): HangarAircraft => ({ ...toAircraft(r), access: access(r), photo: r.photo_file ? toFile(r.photo_file) : null, placeholder: Number(r.placeholder) || 1 });
 
 /** Every aircraft the pilot owns or that is shared with them, by registration (own first on a tie). */
 export async function listAircraft(db: Queryable, pilotId: string): Promise<HangarAircraft[]> {

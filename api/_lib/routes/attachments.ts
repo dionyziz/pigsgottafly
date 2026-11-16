@@ -33,11 +33,18 @@ export function attachmentInput(v: Record<string, unknown>): { name: string; mim
 }
 
 /**
+ * A report uploaded but not referenced yet is kept this long: the page saves on its own (autosave),
+ * so a save sent before an upload finished must not delete the new file.
+ */
+export const ORPHAN_REPORT_GRACE_MS = 30 * 60_000;
+
+/**
  * Before an aircraft's compass cards are saved: every report they reference must be a file of this
  * aircraft (400 otherwise), and the stored metadata replaces what the client sent. Returns the cards
- * to store and the ids of this aircraft's files no card references any more (deleted after the save).
+ * to store and the ids of this aircraft's files to delete after the save: those the stored cards
+ * (`previous`) referenced and these do not, and unreferenced uploads older than ORPHAN_REPORT_GRACE_MS.
  */
-export async function checkReports(db: Queryable, pilotId: string, aircraftId: string, cards: CompassCard[]): Promise<{ cards: CompassCard[]; unused: string[] }> {
+export async function checkReports(db: Queryable, pilotId: string, aircraftId: string, cards: CompassCard[], previous: CompassCard[] = []): Promise<{ cards: CompassCard[]; unused: string[] }> {
   const rows = await db.query("SELECT id, name, mime, size, created FROM aircraft_attachments WHERE aircraft_id = $1 AND pilot_id = $2 AND kind = 'report'", [aircraftId, pilotId]);
   const byId = new Map(rows.map((r: any) => [r.id as string, ref(r)]));
   const used = new Set<string>();
@@ -48,7 +55,9 @@ export async function checkReports(db: Queryable, pilotId: string, aircraftId: s
     used.add(f.id);
     return { ...c, report: f };
   });
-  return { cards: out, unused: [...byId.keys()].filter((id) => !used.has(id)) };
+  const before = new Set(previous.map((c) => c.report?.id).filter(Boolean));
+  const stale = Date.now() - ORPHAN_REPORT_GRACE_MS;
+  return { cards: out, unused: [...byId.values()].filter((f) => !used.has(f.id) && (before.has(f.id) || f.uploaded < stale)).map((f) => f.id) };
 }
 
 export async function deleteAttachments(db: Queryable, pilotId: string, ids: string[]): Promise<void> {

@@ -26,8 +26,11 @@ export interface AircraftAccess {
 }
 
 /** GET /api/aircraft and /api/aircraft/:id return aircraft with the session pilot's access. */
-/** `photo`: the aircraft's photo (metadata; null without one). */
-export type HangarAircraft = Aircraft & { access: AircraftAccess; photo?: AircraftFile | null };
+/**
+ * `photo`: the aircraft's photo (metadata; null without one). `placeholder`: the picture shown
+ * without a photo (public/aircraft/placeholder-N.webp), chosen at random when the aircraft was created.
+ */
+export type HangarAircraft = Aircraft & { access: AircraftAccess; photo?: AircraftFile | null; placeholder?: number };
 
 /**
  * GET /api/aircraft/:id/shares → AircraftSharing (anyone with access; the owner first, then by name).
