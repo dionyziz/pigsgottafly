@@ -91,28 +91,28 @@ async function migrateLocked(db: Db, list: Migration[]): Promise<string[]> {
   } catch {
     /* table missing: first run */
   }
+  // Neon is reached through its pooler in transaction mode, where a session advisory lock does not
+  // hold across statements. So each migration takes a transaction-scoped lock and re-checks, inside
+  // that transaction, whether another instance applied it meanwhile.
   return db.session(async (s) => {
-    await s.query('SELECT pg_advisory_lock($1)', [LOCK_KEY]);
-    try {
-      const done = await applied(s);
-      const now: string[] = [];
-      for (const m of list) {
-        if (done.has(m.name)) continue;
-        await s.exec('BEGIN');
-        try {
-          if (m.sql) await s.exec(m.sql);
-          if (m.run) await m.run(s);
-          await s.query('INSERT INTO schema_migrations (name, applied) VALUES ($1, $2)', [m.name, Date.now()]);
-          await s.exec('COMMIT');
-        } catch (e) {
-          await s.exec('ROLLBACK').catch(() => {});
-          throw new Error(`migration ${m.name} failed: ${(e as Error).message}`);
-        }
-        now.push(m.name);
+    await applied(s); // creates schema_migrations if needed
+    const now: string[] = [];
+    for (const m of list) {
+      await s.exec('BEGIN');
+      try {
+        await s.query('SELECT pg_advisory_xact_lock($1)', [LOCK_KEY]);
+        const [row] = await s.query('SELECT 1 AS x FROM schema_migrations WHERE name = $1', [m.name]);
+        if (row) { await s.exec('COMMIT'); continue; }
+        if (m.sql) await s.exec(m.sql);
+        if (m.run) await m.run(s);
+        await s.query('INSERT INTO schema_migrations (name, applied) VALUES ($1, $2)', [m.name, Date.now()]);
+        await s.exec('COMMIT');
+      } catch (e) {
+        await s.exec('ROLLBACK').catch(() => {});
+        throw new Error(`migration ${m.name} failed: ${(e as Error).message}`);
       }
-      return now;
-    } finally {
-      await s.query('SELECT pg_advisory_unlock($1)', [LOCK_KEY]);
+      now.push(m.name);
     }
+    return now;
   });
 }

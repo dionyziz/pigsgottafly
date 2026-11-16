@@ -17,6 +17,11 @@ export function isIgnorable(message: string, stack?: string): boolean {
   if (/ResizeObserver loop/i.test(message)) return true;
   if (/(chrome|moz|safari(-web)?)-extension:\/\//i.test(stack || '')) return true;
   if (/^AbortError|The (operation|user) aborted|signal is aborted/i.test(message)) return true;
+  // errors raised entirely inside third-party scripts (e.g. Google's sign-in client): every stack
+  // frame is on another origin, so there's nothing of ours to fix
+  const frames = (stack || '').split('\n').map((l) => /(https?:\/\/[^/\s)]+)/.exec(l)?.[1]).filter((o): o is string => !!o);
+  const own = typeof location !== 'undefined' ? location.origin : '';
+  if (frames.length && frames.every((o) => o !== own)) return true;
   return false;
 }
 

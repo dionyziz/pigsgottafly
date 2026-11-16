@@ -65,3 +65,11 @@ describe('scrubbing', () => {
     expect(scrubText('tok a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7 end')).toBe('tok <token> end');
   });
 });
+
+import { isIgnorable as ignorable3p } from '../../../src/app/errorReporter';
+import { test as t3p, expect as e3p } from 'vitest';
+t3p('errors entirely inside third-party scripts are ignored; ours are kept', () => {
+  (globalThis as any).location ??= { origin: 'https://pigsgottafly.com' };
+  e3p(ignorable3p('pa', 'Error: pa\n    at _.Tk (https://accounts.google.com/gsi/client:179:95)\n    at ql (https://accounts.google.com/gsi/client:285:499)')).toBe(true);
+  e3p(ignorable3p('boom', `Error: boom\n    at x (${(globalThis as any).location.origin}/assets/index-abc.js:1:2)\n    at y (https://accounts.google.com/gsi/client:1:1)`)).toBe(false);
+});

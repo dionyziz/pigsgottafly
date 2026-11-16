@@ -412,3 +412,13 @@ describe('migrations', () => {
     await db.close();
   });
 });
+
+import { test as tRace, expect as eRace } from 'vitest';
+import { connect as connectRace } from '../../api/_lib/db';
+import { migrate as migrateRace, MIGRATIONS as LIST } from '../../api/_lib/migrate';
+tRace('a migration already applied by another instance is skipped, not re-run', async () => {
+  const db = await connectRace('memory://');
+  await migrateRace(db);
+  // simulate a second instance that read an older state: forget nothing, re-run the whole list
+  eRace(await migrateRace(db, LIST)).toEqual([]);
+});
