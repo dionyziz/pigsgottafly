@@ -1,4 +1,4 @@
-// ATC list generation (data agent): departure, aerodromes near the route, destination, TMAs/MTMAs
+// ATC list generation: departure, aerodromes near the route, destination, TMAs/MTMAs
 // entered at the planned altitude, FIS — as js/app.js terminalRows() did in v2 (legacy copy:
 // see ARCHITECTURE.md). Pure; inputs/outputs typed in src/calc/atc.ts.
 //

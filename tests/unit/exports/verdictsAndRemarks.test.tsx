@@ -1,4 +1,4 @@
-// Exports, review round 2: performance verdict above MTOW / outside the AFM table and the
+// Exports: performance verdict above MTOW / outside the AFM table and the
 // hand-checkable TODR note; FPL item 18 remarks with
 // indicators, touch-and-go / stop requests (remarks and timing); ELOT 743 transliteration.
 import { describe, expect, test } from 'vitest';

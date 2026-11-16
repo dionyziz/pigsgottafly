@@ -77,7 +77,7 @@ export function fleetSeed(): AircraftInput[] {
 /** The existing pilot's own profile values (one-time migration; NOT app defaults). */
 export const EXISTING_PILOT_PROFILE = {
   /**
-   * Only the account with this e-mail gets the values below and the hangar (pilot correction 1).
+   * Only the account with this e-mail gets the values below and the hangar.
    * SHA-256 (hex) of the lower-cased, trimmed address, so the address itself is not published in
    * this public repository. Any other account existing when the migration runs is marked seeded
    * and gets nothing.

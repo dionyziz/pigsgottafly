@@ -1,7 +1,6 @@
 // Shared reference data (read-only, current AIRAC): GET /ref/airac, /ref/bundle, /ref/<kind>.
 // /ref/bundle: ETag by AIRAC, Cache-Control private, max-age=86400, 304 on If-None-Match; the full
 // bundle and /ref/<kind> are rate-limited per pilot (rateLimit.ts).
-// Owned by the data agent from here on (declared distances, slopes, new AIRACs).
 import type { Route } from '../http.js';
 import { notFound, reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';

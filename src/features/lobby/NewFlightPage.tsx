@@ -1,7 +1,7 @@
 // /flights/new: creates a flight and opens it in the editor. The server fills in the profile
 // defaults (home → home route, default aircraft, taxi times, wind model, PIC on the manifest). When
 // the profile has no home aerodrome (or ?ask=1), the pilot is asked for the origin (and, optionally,
-// the destination) first; nothing is assumed (pilot correction #1). Either way the editor's Route
+// the destination) first; nothing is assumed. Either way the editor's Route
 // section shows both ends as fields. Route points come from aerodromePoint (src/shared/aerodrome).
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';

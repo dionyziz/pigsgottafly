@@ -1,5 +1,5 @@
 // Flight editor: full-window map, left panel, collapsible navlog strip at the bottom.
-// Layout slots: <MapView/> (map agent, ./map), <FlightPanel/> and <NavlogStrip/> (./panels).
+// Layout slots: <MapView/> (./map), <FlightPanel/> and <NavlogStrip/> (./panels).
 // This page loads the flight, shows the editable title and save state, and wires undo/redo.
 // Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job,
 // driven by EditorProvider.update().

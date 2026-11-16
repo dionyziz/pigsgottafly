@@ -2,7 +2,7 @@
 // licence number), home aerodrome, default aircraft and planning defaults (taxi out/in, fuel
 // reserve, final reserve, ATC list radius) and the map layers of new flights. With ?welcome=1 (or while name, phone or home is
 // missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
-// Nothing pilot-specific is prefilled (pilot correction #1): unset values show neutral placeholders.
+// Nothing pilot-specific is prefilled: unset values show neutral placeholders.
 // The form follows the pilot (another tab, a dialog) until it is edited.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';

@@ -33,7 +33,7 @@ export type WindModel = 'ecmwf_ifs025' | 'gfs_seamless' | 'icon_seamless' | 'bes
 
 /**
  * Per-pilot planning defaults; copied into a new flight where the flight has its own field.
- * PILOT CORRECTION: no pilot-specific values are app defaults. A new pilot starts with null here;
+ * No pilot-specific values are app defaults. A new pilot starts with null here;
  * the UI asks for them (SETTING_SUGGESTIONS in constants.ts are placeholders only, never saved
  * silently). Calculations treat null as "not set" and warn.
  */

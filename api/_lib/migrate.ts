@@ -1,7 +1,8 @@
 // Numbered migrations, applied in order and recorded in schema_migrations. Used by the local
 // server, the tests and production (the Vercel function runs pending migrations on cold start,
-// before serving). Safe under concurrency: a session-level advisory lock serialises runners, and
-// each migration runs in its own transaction together with its schema_migrations row.
+// before serving). Safe under concurrency: each migration runs in its own transaction, together with
+// its schema_migrations row, under a transaction-scoped advisory lock (pg_advisory_xact_lock), and
+// re-checks inside that transaction whether another instance applied it meanwhile.
 //
 // To add a migration: add api/_lib/migrations/NNN_name.ts (default export: SQL string, or export a
 // run function) and list it in MIGRATIONS below. Never edit a migration that has been applied in production.
@@ -77,8 +78,8 @@ async function applied(q: Queryable): Promise<Set<string>> {
   return new Set(rows.map((r) => r.name));
 }
 
-// Runners in this process are serialised per Db too: PGlite is one connection, where a session
-// advisory lock is re-entrant and would not exclude a second runner.
+// Runners in this process are serialised per Db too: PGlite is one connection, where two runners
+// would interleave their BEGIN/COMMIT on the same session.
 const running = new WeakMap<Db, Promise<unknown>>();
 
 /** Applies pending migrations; returns the names applied now. */

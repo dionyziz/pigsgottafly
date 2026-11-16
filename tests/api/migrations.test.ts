@@ -68,7 +68,7 @@ describe('migrations', () => {
     expect([...x, ...y].sort()).toEqual(MIGRATIONS.map((m) => m.name).sort());
     expect(await migrate(db)).toEqual([]);
 
-    // any other pre-existing account is marked seeded and gets nothing (pilot correction 1)
+    // any other pre-existing account is marked seeded and gets nothing
     const [friend] = await db.query(`SELECT * FROM pilots WHERE id = 'u2'`);
     expect(friend.home_aerodrome).toBeNull();
     expect(friend.default_aircraft_id).toBeNull();

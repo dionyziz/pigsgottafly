@@ -1,6 +1,6 @@
 # Architecture (v3)
 
-The design is in PLAN-v3.md. This file covers how the code is laid out, the contracts between its parts, and who owns what while agents work on it in parallel.
+The design is in PLAN-v3.md. This file covers how the code is laid out and the contracts between its parts.
 
 ## Stack
 
@@ -282,7 +282,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 - **Formatting**: use `src/shared/format.ts` / `date.ts` (no local `pad2`, `fmtDate`, `clockZ` copies). Local time is always Greek time (`LOCAL_TZ`), whatever the device zone. `tsconfig` has `noUnusedLocals`.
 - **Units**: kg, m (arms), kg·m, L, kt, ft, NM (route), m (runway), °C, hPa. Fuel densities are not per aircraft: the W&B always uses `FUEL_DENSITY` (`src/shared/fuel.ts`: AVGAS 0.72, MOGAS 0.75, Jet A-1 0.80); a stored `densityKgPerL` is ignored and the hangar saves the standard value. Dates are `YYYY-MM-DD`, clock times are `HH:MM` UTC, and record timestamps are epoch ms.
 - **Imports**: `src/shared`, `src/calc`, `api/` and `tools/` use explicit `.js` extensions, because the API runs as Node ESM. `tsconfig.node.json` (NodeNext) enforces this. Client code (`src/app`, `src/features`, `src/data`) uses Bundler resolution: no extensions, and `../shared` works.
-- **Nothing pilot-specific is an app default** (pilot correction #1). A new pilot starts with an empty profile (`homeAerodrome: null`, taxi and reserve `null`) and an empty hangar. The app asks for the profile on first use (the onboarding redirect to `/profile?welcome=1`). `SETTING_SUGGESTIONS` are placeholders only. Calculations treat `null` as "not set" and warn. Only the pilot who already existed in production gets his stated values (LGTT, 15/15/60) and SX-ASV/SX-ASG, through one-time migration 003.
+- **Nothing pilot-specific is an app default**. A new pilot starts with an empty profile (`homeAerodrome: null`, taxi and reserve `null`) and an empty hangar. The app asks for the profile on first use (the onboarding redirect to `/profile?welcome=1`). `SETTING_SUGGESTIONS` are placeholders only. Calculations treat `null` as "not set" and warn. Only the pilot who already existed in production gets his stated values (LGTT, 15/15/60) and SX-ASV/SX-ASG, through one-time migration 003.
 - **Route points** always store a name, lat and lon snapshot, plus `kind` and `refId` (aerodrome id, VFR point id `CHART/NAME`, saved waypoint id, or `null` for a custom point). Per-leg overrides are keyed by `legKey(a, b) = "<a.uid>><b.uid>"`, so inserting a point resets only the leg it splits.
 - **The manifest** (`FlightDoc.crew`) is saved with the flight and stored in the `flight_crew` table. The PIC is the pilot (`passengerId: null`). `validateCrew` rules: exactly one PIC, one person per seat, seats must exist on the aircraft (`seatLayout(stations)`). Snapshots keep old forms correct. A snapshot follows its person (passenger list / profile) field by field until that field is edited on the flight (`FlightCrew.overrides`, panels/manifest.ts); "Reset from the saved details" clears the overrides.
 
@@ -388,7 +388,7 @@ Forecasts: local runs (`npm run dev`, `npm start`, the tests) never call Open-Me
 
 With `GOOGLE_CLIENT_ID` (and optionally `ALLOWED_EMAILS`, `ADMIN_EMAILS`) set, local runs use Google sign-in. With `DATABASE_URL=postgres://…` they use that database. Never point a local run at the production database. Without `GOOGLE_CLIENT_ID` the local server refuses a `postgres://` `DATABASE_URL` (local mode would serve an unauthenticated 'local' pilot from that database) unless `LOCAL_MODE_ON_POSTGRES=1` is set for a disposable Postgres. The built client is served locally with the same security headers (CSP, `X-Frame-Options: DENY`) that `vercel.json` sets in production, so the e2e suite fails on any CSP violation.
 
-Deployment (not done by agents): Vercel builds with `vite build` to `dist/`. `vercel.json` rewrites `/api/*` to the function and every other non-file path to `index.html` (the SPA). HTML is served with no-cache, `/assets/*` is immutable, and www redirects to the apex. `.vercelignore` drops aip/, trn-docs/, tools/, tests/ and server/.
+Deployment: Vercel builds with `vite build` to `dist/`. `vercel.json` rewrites `/api/*` to the function and every other non-file path to `index.html` (the SPA). HTML is served with no-cache, `/assets/*` is immutable, and www redirects to the apex. `.vercelignore` drops aip/, trn-docs/, tools/, tests/ and server/.
 
 ## Monitoring
 
@@ -400,8 +400,7 @@ Errors are recorded in-house (`api/_lib/monitor.ts`, table `app_errors`, migrati
 
 No request bodies are stored; e-mail addresses and long tokens are masked, URLs are paths with ids as `:id`. The admins (`ADMIN_EMAILS`) get an e-mail (`sendSystemMail`) for a new group, a recurrence after 24 h quiet or after "resolve", a burst (more than 20 in 10 min) and every migration failure, at most one per group per hour (a resolved group that recurs is exempt) and 20 a day overall. Recording and alerting never throw. They are listed on `/admin/errors`. Uptime: `.github/workflows/uptime.yml` polls `/api/health` and `/` every 10 minutes.
 
-## Ownership
+## Contracts
 
-The parallel build phase is over and everything is integrated (one commit). From here on, any agent may
-change any file, but the contracts above (`src/shared/**`, `state.tsx`'s `useEditor()`, the API routes)
-change only together with their users, and an applied migration is never edited.
+The contracts above (`src/shared/**`, `state.tsx`'s `useEditor()`, the API routes) change only together with
+their users, and an applied migration is never edited.

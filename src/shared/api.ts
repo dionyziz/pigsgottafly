@@ -141,7 +141,7 @@ export type RefVfrPointsResponse = RefVfrPoint[];
 export type RefVfrRoutesResponse = RefVfrRoute[];
 export type RefAtcUnitsResponse = RefAtcUnit[];
 
-// ---- weather (owned by the data agent; api/_lib/routes/weather.ts) ------------------------------
+// ---- weather (api/_lib/routes/weather.ts) -------------------------------------------------------
 
 /** GET /api/weather/metar?ids=LGAV,LGTT → MetarTafResponse (aviationweather.gov proxy). */
 export interface MetarTafResponse {
