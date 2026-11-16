@@ -2,10 +2,12 @@
 // their seat layout, combined limits, and the normal/utility CG and moment envelopes.
 import { DateInput } from '../../app/DateInput';
 import { useState } from 'react';
+import { moveAt } from '../../shared/list';
 import type { AircraftInput, Envelope, MassBalance, Station, StationKind, WbCategory } from '../../shared/types';
+import { Check, DragHandle, Field, IssueList, RowRemove, useSortable } from '../../ui';
 import { EnvelopeChart, type ChartSeries } from './EnvelopeChart';
-import { Check, Field, IssueList, NumInput, PointTable, Section } from './fields';
-import { addCombinedLimit, addSeat, addStation, addUtilityEnvelope, issuesAt, momentPolygonFromCg, moveItem, removeSeat, removeStation, setArmRange, setStationKind } from './model';
+import { NumInput, PointTable, Section } from './fields';
+import { addCombinedLimit, addSeat, addStation, addUtilityEnvelope, issuesAt, momentPolygonFromCg, removeSeat, removeStation, setArmRange, setStationKind } from './model';
 import type { SectionProps } from './sections';
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -19,33 +21,33 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
   const m = (fn: (q: AircraftInput['massBalance']) => void) => edit((d) => fn(d.massBalance));
   const product = r2(mb.emptyMassKg * mb.emptyArmM);
   return (
-    <Section id="mb" title="Mass and balance" intro="From the weighing report and the flight manual. Arms are metres aft of the datum; moments are kg·m.">
+    <Section id="mb" title="Mass and balance">
       <div className="sub-h">Empty aircraft</div>
       <div className="grid3">
         <Field focus="emptyMassKg" label="Empty mass" issues={at('massBalance.emptyMassKg')}>
-          <NumInput value={mb.emptyMassKg} zeroAsEmpty min={0} max={1e6} unit="kg" placeholder="not set" invalid={bad('massBalance.emptyMassKg')}
+          <NumInput name="massBalance.emptyMassKg" value={mb.emptyMassKg} zeroAsEmpty min={0} max={1e6} unit="kg" placeholder="not set" invalid={bad('massBalance.emptyMassKg')}
             onChange={(v) => m((q) => { q.emptyMassKg = v ?? 0; if (q.emptyArmM > 0) q.emptyMomentKgM = r2(q.emptyMassKg * q.emptyArmM); })} />
         </Field>
         <Field label="Empty CG arm" issues={at('massBalance.emptyArmM')}>
-          <NumInput value={mb.emptyArmM} zeroAsEmpty min={-10} max={50} unit="m" placeholder="not set"
+          <NumInput name="massBalance.emptyArmM" value={mb.emptyArmM} zeroAsEmpty min={-10} max={50} unit="m" placeholder="not set"
             onChange={(v) => m((q) => { q.emptyArmM = v ?? 0; q.emptyMomentKgM = r2(q.emptyMassKg * q.emptyArmM); })} />
         </Field>
         <Field label="Empty moment" issues={at('massBalance.emptyMomentKgM')} hint={mb.emptyMassKg > 0 && mb.emptyArmM > 0 && Math.abs(product - mb.emptyMomentKgM) > 0.005 ? <>mass × arm = {product} <button type="button" className="linkish" onClick={() => m((q) => { q.emptyMomentKgM = product; })}>use</button></> : 'Editing it recomputes the arm'}>
-          <NumInput value={mb.emptyMomentKgM} zeroAsEmpty min={-1e6} max={1e7} unit="kg·m" placeholder="not set"
+          <NumInput name="massBalance.emptyMomentKgM" value={mb.emptyMomentKgM} zeroAsEmpty min={-1e6} max={1e7} unit="kg·m" placeholder="not set"
             onChange={(v) => m((q) => { q.emptyMomentKgM = v ?? 0; if (q.emptyMassKg > 0) q.emptyArmM = r4(q.emptyMomentKgM / q.emptyMassKg); })} />
         </Field>
       </div>
       <div className="grid3">
         <Field label="Weighing date" issues={at('massBalance.weighingDate')}>
-          <DateInput value={mb.weighingDate ?? ''} onChange={(e) => { const v = e.target.value || null; m((q) => { q.weighingDate = v; }); }} />
+          <DateInput name="massBalance.weighingDate" value={mb.weighingDate ?? ''} onChange={(e) => { const v = e.target.value || null; m((q) => { q.weighingDate = v; }); }} />
         </Field>
         <Field label="Weighing report" issues={at('massBalance.weighingSource')} hint="Who weighed it, report reference" wide>
-          <input value={mb.weighingSource} onChange={(e) => { const v = e.target.value; m((q) => { q.weighingSource = v; }); }} maxLength={300} />
+          <input name="massBalance.weighingSource" value={mb.weighingSource} onChange={(e) => { const v = e.target.value; m((q) => { q.weighingSource = v; }); }} maxLength={300} />
         </Field>
       </div>
       <div className="grid3">
         <Field label="Datum" issues={at('massBalance.datum')}>
-          <input value={mb.datum} onChange={(e) => { const v = e.target.value; m((q) => { q.datum = v; }); }} placeholder="e.g. Forward face of firewall" />
+          <input name="massBalance.datum" value={mb.datum} onChange={(e) => { const v = e.target.value; m((q) => { q.datum = v; }); }} placeholder="e.g. Forward face of firewall" />
         </Field>
         <div className="checks-col">
           <span className="lbl">The empty mass includes</span>
@@ -58,10 +60,10 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
       <div className="sub-h">Maximum masses</div>
       <div className="grid3">
         <Field label="MTOW" issues={at('massBalance.mtowKg')}>
-          <NumInput value={mb.mtowKg} zeroAsEmpty min={0} max={1e6} unit="kg" placeholder="not set" onChange={(v) => m((q) => { q.mtowKg = v ?? 0; })} />
+          <NumInput name="massBalance.mtowKg" value={mb.mtowKg} zeroAsEmpty min={0} max={1e6} unit="kg" placeholder="not set" onChange={(v) => m((q) => { q.mtowKg = v ?? 0; })} />
         </Field>
         <Field label="Max landing mass" issues={at('massBalance.mlwKg')} hint="Empty = same as MTOW">
-          <NumInput value={mb.mlwKg} optional min={0} max={1e6} unit="kg" onChange={(v) => m((q) => { q.mlwKg = v; })} />
+          <NumInput name="massBalance.mlwKg" value={mb.mlwKg} optional min={0} max={1e6} unit="kg" onChange={(v) => m((q) => { q.mlwKg = v; })} />
         </Field>
       </div>
 
@@ -78,22 +80,23 @@ function Stations({ a, edit, issues }: SectionProps) {
   const stIssues = issuesAt(issues, 'massBalance.stations');
   const hasFuel = mb.stations.some((s) => s.kind === 'fuel');
   const na = (title: string) => <span className="cell-na" title={title}>—</span>;
+  const sort = useSortable({ count: mb.stations.length, onMove: (from, to) => m((q) => { q.stations = moveAt(q.stations, from, to); }) });
   return (
     <>
       <div className="sub-h">Loading stations and seats</div>
-      <p className="hint" style={{ margin: 0 }}>Seats are what the flight manifest offers; the first seat is the PIC’s default. Station ids are used by saved flights (baggage), so keep them stable.</p>
       <ArmRuler a={a} />
       <div className="tbl-wrap">
         <table className="ed-table stations">
           <colgroup>
-            <col className="c-name" /><col className="c-kind" /><col className="c-arm" /><col className="c-range" /><col className="c-max" /><col className="c-seats" /><col className="c-tools" />
+            <col className="c-drag" /><col className="c-name" /><col className="c-kind" /><col className="c-arm" /><col className="c-range" /><col className="c-max" /><col className="c-seats" /><col className="c-tools" />
           </colgroup>
-          <thead><tr><th>Station</th><th>Kind</th><th className="num">Arm <span className="u">m</span></th><th className="num">Seat range <span className="u">m</span></th><th className="num">Max load <span className="u">kg</span></th><th>Seats</th><th /></tr></thead>
+          <thead><tr><th /><th>Station</th><th>Kind</th><th className="num">Arm <span className="u">m</span></th><th className="num">Seat range <span className="u">m</span></th><th className="num">Max load <span className="u">kg</span></th><th>Seats</th><th /></tr></thead>
           <tbody>
             {mb.stations.map((s, i) => (
-              <tr key={s.id + i}>
+              <tr key={s.id + i} {...sort.itemProps(i)}>
+                <td className="drag"><DragHandle {...sort.handleProps(i)} label={`Move ${s.name || 'station'}`} /></td>
                 <td>
-                  <input value={s.name} onChange={(e) => { const v = e.target.value; st(i, (x) => { x.name = v; }); }} aria-label="Station name" className={issuesAt(issues, `massBalance.stations.${i}.name`, true).length ? 'invalid' : ''} />
+                  <input name={`massBalance.stations.${i}.name`} value={s.name} onChange={(e) => { const v = e.target.value; st(i, (x) => { x.name = v; }); }} aria-label="Station name" className={issuesAt(issues, `massBalance.stations.${i}.name`, true).length ? 'invalid' : ''} />
                   <div className="hint mono st-id">id {s.id}</div>
                 </td>
                 <td>
@@ -101,28 +104,27 @@ function Stations({ a, edit, issues }: SectionProps) {
                     {(Object.keys(KIND_LABEL) as StationKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
                   </select>
                 </td>
-                <td className="num"><NumInput className="num" value={s.armM} min={-10} max={50} ariaLabel={`Arm of ${s.name}`} onChange={(v) => st(i, (x) => { x.armM = v ?? 0; })} invalid={issuesAt(issues, `massBalance.stations.${i}.armM`, true).length > 0} /></td>
+                <td className="num"><NumInput name={`massBalance.stations.${i}.armM`} value={s.armM} min={-10} max={50} ariaLabel={`Arm of ${s.name}`} onChange={(v) => st(i, (x) => { x.armM = v ?? 0; })} invalid={issuesAt(issues, `massBalance.stations.${i}.armM`, true).length > 0} /></td>
                 <td className="num">
                   {s.kind === 'seat' ? (
                     <div className="range">
-                      <NumInput className="num" value={s.armRangeM?.[0] ?? null} optional min={-10} max={50} ariaLabel="Seat range from" onChange={(v) => st(i, (x) => setArmRange(x, 0, v))} />
+                      <NumInput name={`massBalance.stations.${i}.armRangeM`} value={s.armRangeM?.[0] ?? null} optional min={-10} max={50} ariaLabel="Seat range from" onChange={(v) => st(i, (x) => setArmRange(x, 0, v))} />
                       <span className="muted">–</span>
-                      <NumInput className="num" value={s.armRangeM?.[1] ?? null} optional min={-10} max={50} ariaLabel="Seat range to" onChange={(v) => st(i, (x) => setArmRange(x, 1, v))} />
+                      <NumInput value={s.armRangeM?.[1] ?? null} optional min={-10} max={50} ariaLabel="Seat range to" onChange={(v) => st(i, (x) => setArmRange(x, 1, v))} />
                     </div>
                   ) : na('Seat stations only')}
                 </td>
                 <td className="num">
-                  {s.kind === 'baggage' ? <NumInput className="num" value={s.maxKg ?? null} optional min={0} max={100000} ariaLabel={`Max load of ${s.name}`} onChange={(v) => st(i, (x) => { x.maxKg = v; })} /> : na('Baggage areas only')}
+                  {s.kind === 'baggage' ? <NumInput name={`massBalance.stations.${i}.maxKg`} value={s.maxKg ?? null} optional min={0} max={100000} ariaLabel={`Max load of ${s.name}`} onChange={(v) => st(i, (x) => { x.maxKg = v; })} /> : na('Baggage areas only')}
                 </td>
                 <td>
                   {s.kind === 'seat' ? (
                     <div className="seats">
                       {(s.seats || []).map((p, k) => (
                         <span className="seat" key={p.id}>
-                          <input value={p.label} aria-label={`Seat ${k + 1} of ${s.name}`} title={`Seat id ${p.id}`}
+                          <input name={k === 0 ? `massBalance.stations.${i}.seats` : undefined} value={p.label} aria-label={`Seat ${k + 1} of ${s.name}`} title={`Seat id ${p.id}`}
                             onChange={(e) => { const v = e.target.value; st(i, (x) => { x.seats![k].label = v; }); }} />
-                          <button type="button" className="icon sm danger" aria-label={`Remove seat ${p.label}`} title="Remove seat" disabled={(s.seats || []).length <= 1}
-                            onClick={() => m((q) => removeSeat(q, i, k))}>×</button>
+                          <RowRemove label={`Remove seat ${p.label}`} disabled={(s.seats || []).length <= 1} onClick={() => m((q) => removeSeat(q, i, k))} />
                         </span>
                       ))}
                       <button type="button" className="ghost sm add-seat" onClick={() => m((q) => addSeat(q, i))}>+ Seat</button>
@@ -130,9 +132,7 @@ function Stations({ a, edit, issues }: SectionProps) {
                   ) : na('Seat stations only')}
                 </td>
                 <td className="row-tools">
-                  <button type="button" className="icon sm" onClick={() => m((q) => moveItem(q.stations, i, -1))} disabled={i === 0} aria-label="Move up" title="Move up">↑</button>
-                  <button type="button" className="icon sm" onClick={() => m((q) => moveItem(q.stations, i, 1))} disabled={i === mb.stations.length - 1} aria-label="Move down" title="Move down">↓</button>
-                  <button type="button" className="icon sm danger" aria-label={`Remove ${s.name}`} title="Remove station" onClick={() => m((q) => removeStation(q, i))}>×</button>
+                  <RowRemove label={`Remove ${s.name || 'station'}`} onClick={() => m((q) => removeStation(q, i))} />
                 </td>
               </tr>
             ))}
@@ -149,9 +149,8 @@ function Stations({ a, edit, issues }: SectionProps) {
       <IssueList issues={stIssues.filter((i) => !/\.(name|armM)$/.test(i.path))} />
 
       <div className="sub-h">Combined load limits</div>
-      {mb.combinedLimits.length === 0 && <p className="hint" style={{ margin: 0 }}>None, e.g. baggage areas 1 and 2 together at most 54 kg.</p>}
       {mb.combinedLimits.map((c, i) => (
-        <div className="row wrap combined" key={i}>
+        <div className="row wrap combined" key={i} data-path={`massBalance.combinedLimits.${i}`}>
           {mb.stations.filter((s) => s.kind !== 'fuel').map((s) => (
             <Check key={s.id} checked={c.stations.includes(s.id)} onChange={(v) => edit((d) => {
               const cl = d.massBalance.combinedLimits[i];
@@ -160,7 +159,7 @@ function Stations({ a, edit, issues }: SectionProps) {
           ))}
           <span className="muted">together at most</span>
           <NumInput value={c.maxKg} min={0} max={100000} width={90} unit="kg" ariaLabel="Combined limit" onChange={(v) => edit((d) => { d.massBalance.combinedLimits[i].maxKg = v ?? 0; })} />
-          <button type="button" className="icon sm danger" aria-label="Remove limit" title="Remove limit" onClick={() => edit((d) => { d.massBalance.combinedLimits.splice(i, 1); })}>×</button>
+          <RowRemove label="Remove limit" onClick={() => edit((d) => { d.massBalance.combinedLimits.splice(i, 1); })} />
           <IssueList issues={issuesAt(issues, `massBalance.combinedLimits.${i}`, true)} />
         </div>
       ))}
@@ -238,7 +237,7 @@ function Envelopes({ a, edit, issues }: SectionProps) {
         <>
           <div className="grid2">
             <Field label="Max mass" issues={issuesAt(issues, `${p}.maxKg`, true)}>
-              <NumInput value={env.maxKg} min={0} max={1e6} unit="kg" onChange={(v) => set((e) => { e.maxKg = v ?? 0; })} />
+              <NumInput name={`${p}.maxKg`} value={env.maxKg} min={0} max={1e6} unit="kg" onChange={(v) => set((e) => { e.maxKg = v ?? 0; })} />
             </Field>
             <Field label="Notes" hint={tab === 'utility' ? 'e.g. no rear passengers, no baggage' : undefined}>
               <input value={env.notes ?? ''} onChange={(ev) => { const v = ev.target.value; set((e) => { e.notes = v; }); }} />
@@ -247,7 +246,7 @@ function Envelopes({ a, edit, issues }: SectionProps) {
           <div className="env-row" data-testid="env-cg">
             <div className="stack">
               <div className="lbl">CG limits, in order around the outline</div>
-              <PointTable points={env.polygon} onChange={(pts) => set((e) => { e.polygon = pts; })} xLabel="CG arm" xUnit="m" yLabel="Mass" yUnit="kg"
+              <PointTable name={`${p}.polygon`} points={env.polygon} onChange={(pts) => set((e) => { e.polygon = pts; })} xLabel="CG arm" xUnit="m" yLabel="Mass" yUnit="kg"
                 xProps={{ min: -10, max: 50 }} yProps={{ min: 0, max: 1e6 }} />
               <IssueList issues={issuesAt(issues, `${p}.polygon`, true)} />
             </div>
@@ -264,8 +263,7 @@ function Envelopes({ a, edit, issues }: SectionProps) {
                   onClick={() => set((e) => { e.momentPolygon = momentPolygonFromCg(e.polygon); })}>Derive from CG limits</button>
                 {env.momentPolygon && env.momentPolygon.length > 0 && <button type="button" className="ghost sm danger" onClick={() => set((e) => { e.momentPolygon = null; })}>Clear</button>}
               </div>
-              <p className="hint" style={{ margin: 0 }}>Loading moment against mass, as on the loading graph of the flight manual. When given, the W&B also checks the moment.</p>
-              <PointTable points={env.momentPolygon || []} onChange={(pts) => set((e) => { e.momentPolygon = pts.length ? pts : null; })} xLabel="Moment" xUnit="kg·m" yLabel="Mass" yUnit="kg"
+              <PointTable name={`${p}.momentPolygon`} points={env.momentPolygon || []} onChange={(pts) => set((e) => { e.momentPolygon = pts.length ? pts : null; })} xLabel="Moment" xUnit="kg·m" yLabel="Mass" yUnit="kg"
                 xProps={{ min: -1e6, max: 1e7 }} yProps={{ min: 0, max: 1e6 }}
                 extra={(q) => (q[1] > 0 ? `${(q[0] / q[1]).toFixed(3)} m` : '—')} extraLabel="CG" />
               <IssueList issues={issuesAt(issues, `${p}.momentPolygon`, true)} />

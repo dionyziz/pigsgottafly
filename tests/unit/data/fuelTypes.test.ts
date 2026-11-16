@@ -1,6 +1,6 @@
 // Approved fuels and fuel on board by type (src/shared/fuel.ts).
 import { describe, expect, test } from 'vitest';
-import { fuelByType, fuelLoad, fuelTypesLabel, normalizeFuelSpec, primaryFuel } from '../../../src/shared/fuel';
+import { FUEL_DENSITY, fuelByType, fuelLoad, fuelTypesLabel, normalizeFuelSpec, primaryFuel, standardFuelTypes } from '../../../src/shared/fuel';
 import { fleetSeed } from '../../../tools/build_seed';
 
 const [ASV] = fleetSeed();
@@ -46,6 +46,14 @@ describe('fuel on board by type', () => {
     const l = fuelLoad({ types: [{ type: 'AVGAS', densityKgPerL: 0.72 }] }, 10, { 'JET A-1': 10 });
     expect(l.unapproved).toEqual(['JET A-1']);
     expect(l.kg).toBeCloseTo(8, 9);
+  });
+  test('densities are the standard ones, whatever the aircraft record says', () => {
+    const odd = { types: [{ type: 'AVGAS' as const, densityKgPerL: 0.7 }, { type: 'MOGAS' as const, densityKgPerL: 0.9 }] };
+    expect(primaryFuel(odd)).toEqual({ type: 'AVGAS', densityKgPerL: FUEL_DENSITY.AVGAS });
+    expect(fuelLoad(odd, 100, null).kg).toBeCloseTo(72, 9);
+    expect(fuelLoad(odd, 100, { AVGAS: 50, MOGAS: 50 }).kg).toBeCloseTo(50 * 0.72 + 50 * 0.75, 9);
+    expect(standardFuelTypes(odd.types)).toEqual([{ type: 'AVGAS', densityKgPerL: 0.72 }, { type: 'MOGAS', densityKgPerL: 0.75 }]);
+    expect(FUEL_DENSITY).toEqual({ AVGAS: 0.72, MOGAS: 0.75, 'JET A-1': 0.8 });
   });
   test('empty and zero splits mean no split', () => {
     expect(fuelByType(null)).toBeNull();

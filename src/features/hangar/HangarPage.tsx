@@ -9,10 +9,11 @@ import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
 import { useEntity } from '../../data/entities';
+import { localToday } from '../../shared/date';
+import { errorMessage } from '../../shared/format';
 import type { Aircraft } from '../../shared/types';
 import type { HangarAircraft } from '../../shared/sharing';
-import { localToday } from '../lobby/format';
-import { ConfirmDialog, Dialog, EmptyState, KebabMenu } from '../lobby/ui';
+import { Chip, ConfirmDialog, Dialog, DialogFooter, EmptyState, KebabMenu, Loading } from '../../ui';
 import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
 import { missingEssentials, sameTypeCopy } from './model';
@@ -36,7 +37,7 @@ export function HangarPage() {
 
   const makeDefault = async (a: Aircraft) => {
     try { setPilot(await api.me.update({ defaultAircraftId: a.id })); toast(`${a.registration} is now your default aircraft`); }
-    catch (e) { toast(String((e as Error).message || e)); }
+    catch (e) { toast(errorMessage(e)); }
   };
 
   // The server makes a new aircraft the default when the pilot has none; refresh the profile to show it.
@@ -62,13 +63,11 @@ export function HangarPage() {
         <button className="primary" onClick={() => setAdding({})} data-testid="add-aircraft">Add aircraft</button>
       </div>
       {error && !data ? (
-        <EmptyState title="Could not load your hangar" action={<button onClick={() => void reload()}>Try again</button>}>{error.message}</EmptyState>
+        <EmptyState title="Could not load your hangar" action={<button onClick={() => void reload()}>Try again</button>}>{errorMessage(error)}</EmptyState>
       ) : loading && !data ? (
-        <p className="muted">Loading…</p>
+        <Loading />
       ) : !data || data.length === 0 ? (
-        <EmptyState title="Your hangar is empty" action={<button className="primary" onClick={() => setAdding({})}>Add aircraft</button>}>
-          Add the aircraft you fly. Start from a type template to get the flight manual’s fuel system, loading stations, envelopes and performance tables, then enter the registration, the weighing report and the compass card.
-        </EmptyState>
+        <EmptyState title="No aircraft" action={<button className="primary" onClick={() => setAdding({})}>Add aircraft</button>} />
       ) : (
         <div className="ac-grid" data-testid="hangar-list">
           {data.map((a) => {
@@ -78,11 +77,11 @@ export function HangarPage() {
             return (
               <div key={a.id} className="ac-card card" data-aircraft-id={a.id}>
                 <Link to={`/hangar/${a.id}`} className="ac-card-photo" tabIndex={-1} aria-hidden="true">
-                  <AircraftPhoto aircraftId={a.id} photo={a.photo} className="card" alt="" />
+                  <AircraftPhoto aircraftId={a.id} photo={a.photo} className="card-top" alt="" />
                 </Link>
                 <div className="ac-card-head">
                   <Link to={`/hangar/${a.id}`} className="reg mono">{a.registration}</Link>
-                  {isDefault && <span className="chip ok" title="New flights use this aircraft">Default</span>}
+                  {isDefault && <Chip tone="ok" title="New flights use this aircraft">Default</Chip>}
                   <span className="spacer" />
                   <KebabMenu items={[
                     { label: 'Open', onSelect: () => navigate(`/hangar/${a.id}`) },
@@ -104,8 +103,8 @@ export function HangarPage() {
                     <div><dt>Seats</dt><dd>{seats || '—'}{a.massBalance.envelopes.utility && <span className="muted"> · utility</span>}</dd></div>
                   </dl>
                   <div className="row wrap foot">
-                    {a.compassCards.length ? <StatusChip card={a.compassCards[0]} today={today} /> : <span className="chip">No compass card</span>}
-                    {a.equipment.item10a && <span className="chip mono" title="FPL item 10">{a.equipment.item10a}/{a.equipment.item10b || '?'}</span>}
+                    {a.compassCards.length ? <StatusChip card={a.compassCards[0]} today={today} /> : <Chip>No compass card</Chip>}
+                    {a.equipment.item10a && <Chip mono title="FPL item 10">{a.equipment.item10a}/{a.equipment.item10b || '?'}</Chip>}
                   </div>
                   {miss.length > 0 && <div className="hint missing">Not set: {miss.join(', ')}</div>}
                 </Link>
@@ -129,9 +128,7 @@ export function HangarPage() {
             dropDefault(leaving);
             await reload();
             toast(`Removed ${leaving.registration} from your hangar`);
-          }}>
-          Your access ends; {leaving.access.owner.name || leaving.access.owner.email} keeps the aircraft. Flights you planned with it keep it as unavailable until you choose another aircraft.
-        </ConfirmDialog>
+          }} />
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${deleting.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(null)}
@@ -140,9 +137,7 @@ export function HangarPage() {
             dropDefault(deleting);
             await reload();
             toast(`Deleted ${deleting.registration}`);
-          }}>
-          The aircraft and its weight and balance, performance and compass data are removed. Flights planned with it keep their route and manifest but will have no aircraft.
-        </ConfirmDialog>
+          }} />
       )}
     </Shell>
   );
@@ -159,8 +154,8 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
   // registrations are unique among the pilot's own aircraft (a shared one may have the same)
   const dup = hangar.some((a) => a.registration === regNorm && ((a as HangarAircraft).access?.role ?? 'owner') === 'owner');
 
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const create = async () => {
+    if (busy) return;
     if (!regNorm) { setError('Enter the registration.'); return; }
     if (dup) { setError(`${regNorm} is already in your hangar.`); return; }
     const base = src.kind === 'copy'
@@ -170,7 +165,7 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
     try {
       onCreated(await api.aircraft.create(base));
     } catch (err) {
-      setError(err instanceof ApiRequestError && err.status === 409 ? `${regNorm} is already in your hangar.` : String((err as Error).message || err));
+      setError(err instanceof ApiRequestError && err.status === 409 ? `${regNorm} is already in your hangar.` : errorMessage(err));
       setBusy(false);
     }
   };
@@ -179,16 +174,16 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
     return (
       <label className={'src-opt' + (on ? ' on' : '')} key={s.kind + ('id' in s ? s.id : '')}>
         <input type="radio" name="src" checked={on} onChange={() => setSrc(s)} />
-        <span><b>{title}</b><span className="hint">{desc}</span></span>
+        <span><b>{title}</b>{desc && <span className="hint">{desc}</span>}</span>
       </label>
     );
   };
   return (
-    <Dialog title="Add aircraft" onClose={onClose} busy={busy} wide testId="add-aircraft-dialog" footer={<>
-      <button type="button" className="ghost" onClick={onClose} disabled={busy}>Cancel</button>
-      <button type="submit" form="add-ac" className="primary" disabled={busy}>{busy ? 'Adding…' : 'Add aircraft'}</button>
-    </>}>
-      <form id="add-ac" onSubmit={create} className="stack" noValidate>
+    <Dialog title="Add aircraft" onClose={onClose} busy={busy} wide testId="add-aircraft-dialog" footer={
+      <DialogFooter onCancel={onClose} busy={busy} error={error}
+        primary={{ label: busy ? 'Adding…' : 'Add aircraft', onClick: () => void create(), disabled: busy, testId: 'add-aircraft-submit' }} />
+    }>
+      <form id="add-ac" onSubmit={(e) => { e.preventDefault(); void create(); }} className="stack" noValidate>
         <label className="field"><span>Registration<span className="req" aria-hidden>*</span></span>
           <input className={'mono upper' + (dup ? ' invalid' : '')} value={reg} onChange={(e) => { setReg(e.target.value.toUpperCase()); setError(null); }} placeholder="e.g. SX-ABC" maxLength={20} data-autofocus />
         </label>
@@ -196,12 +191,10 @@ function AddAircraftDialog({ hangar, copyOf, onClose, onCreated }: { hangar: Air
           <span>Start from</span>
           <div className="src-opts">
             {TYPE_TEMPLATES.map((t) => radio({ kind: 'template', id: t.id }, `${t.label} type template`, t.description))}
-            {hangar.map((a) => radio({ kind: 'copy', id: a.id }, `Same type as ${a.registration}`, `${a.makeModel || 'Unknown type'}: copies speeds, fuel, equipment, stations, envelopes and performance. Serial, colours, weighing and compass cards start empty.`))}
-            {radio({ kind: 'blank' }, 'Blank', 'Enter everything yourself.')}
+            {hangar.map((a) => radio({ kind: 'copy', id: a.id }, `Same type as ${a.registration}`, `${a.makeModel || 'Unknown type'}: without serial, colours, weighing and compass cards`))}
+            {radio({ kind: 'blank' }, 'Blank', '')}
           </div>
         </div>
-        <p className="hint" style={{ margin: 0 }}>Either way, enter this airframe’s weighing report (empty mass and CG), speeds, burn rate and compass card on the next page.</p>
-        {error && <p className="form-error" role="alert">{error}</p>}
       </form>
     </Dialog>
   );

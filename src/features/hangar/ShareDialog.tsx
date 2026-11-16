@@ -7,7 +7,7 @@ import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
 import type { AircraftAccess, AircraftSharing, ShareRole } from '../../shared/sharing';
-import { Dialog } from '../lobby/ui';
+import { Chip, Dialog, Loading, RowRemove } from '../../ui';
 import './share.css';
 
 export const ROLE_LABEL = { owner: 'Owner', edit: 'Editor', view: 'Viewer' } as const;
@@ -17,9 +17,9 @@ export function SharedChip({ access }: { access: AircraftAccess | undefined }) {
   if (!access || access.role === 'owner') return null;
   const by = access.owner.name || access.owner.email;
   return (
-    <span className="chip share-chip" title={`Shared with you by ${by}${access.owner.email && access.owner.name ? ` (${access.owner.email})` : ''}`} data-testid="shared-chip">
+    <Chip className="share-chip" title={`Shared with you by ${by}${access.owner.email && access.owner.name ? ` (${access.owner.email})` : ''}`} testId="shared-chip">
       Shared by {by} · {ROLE_LABEL[access.role]}
-    </span>
+    </Chip>
   );
 }
 
@@ -82,7 +82,7 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
     <Dialog title={`Share ${registration}`} onClose={onClose} busy={busy} testId="share-dialog" footer={
       <button type="button" className="primary" onClick={onClose} disabled={busy}>Done</button>
     }>
-      {loadError ? <p className="form-error" role="alert">{loadError}</p> : !sharing ? <p className="muted">Loading…</p> : (
+      {loadError ? <p className="form-error" role="alert">{loadError}</p> : !sharing ? <Loading variant="sm" /> : (
         <div className="stack share">
           {canManage ? (
             <form className="share-add" onSubmit={add} noValidate>
@@ -94,9 +94,7 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
               </select>
               <button type="submit" className="primary" disabled={busy} data-testid="share-add">Share</button>
             </form>
-          ) : (
-            <p className="hint" style={{ margin: 0 }}>You can view this aircraft and fly it on your flights. The owner or an editor can change who has access.</p>
-          )}
+          ) : null}
           {error && <p className="form-error" role="alert" data-testid="share-error">{error}</p>}
           <div>
             <h3 className="share-h">People with access</h3>
@@ -119,8 +117,7 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
                           <option value="view">Viewer</option>
                           <option value="edit">Editor</option>
                         </select>
-                        <button type="button" className="icon sm danger" disabled={busy} onClick={() => void remove(p.pilotId)}
-                          aria-label={self ? 'Remove my access' : `Remove ${p.name || p.email}`} title={self ? 'Remove my access' : 'Remove'}>✕</button>
+                        <RowRemove disabled={busy} onClick={() => void remove(p.pilotId)} label={self ? 'Remove my access' : `Remove ${p.name || p.email}`} />
                       </span>
                     ) : (
                       <span className="row share-role">
@@ -133,9 +130,6 @@ export function ShareDialog({ aircraftId, registration, onClose, onLeft }: {
               })}
             </ul>
           </div>
-          <p className="hint" style={{ margin: 0 }}>
-            Viewers can see the aircraft and use it on their own flights. Editors can also change it and share it. Only the owner can delete it.
-          </p>
         </div>
       )}
     </Dialog>

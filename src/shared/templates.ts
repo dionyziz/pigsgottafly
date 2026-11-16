@@ -7,7 +7,7 @@
 //
 // Input: the parsed JSON of a type file such as data/aircraft/reims-f172m.json.
 import type { AircraftInput, FuelType, Station, StationKind, SeatPosition } from './types.js';
-import { DEFAULT_FUEL_DENSITY } from './fuel.js';
+import { FUEL_DENSITY } from './fuel.js';
 
 export interface AircraftTypeTemplate {
   /** e.g. 'reims-f172m' */
@@ -52,7 +52,7 @@ export function aircraftFromTypeJson(type: any): AircraftInput {
     climbTasKt: null,
     fuel: {
       // The type's approved fuels (the AFM's: AVGAS); a MOGAS STC is per airframe, added in the hangar.
-      types: (type.fuel.approved ?? ['AVGAS']).map((t: FuelType) => ({ type: t, densityKgPerL: type.fuel.densityKgPerL?.[t] ?? DEFAULT_FUEL_DENSITY[t] })),
+      types: (type.fuel.approved ?? ['AVGAS']).map((t: FuelType) => ({ type: t, densityKgPerL: FUEL_DENSITY[t] })),
       totalL: type.fuel.totalStandardL,
       usableL: type.fuel.usableStandardL,
       unusableL: type.fuel.unusableL,

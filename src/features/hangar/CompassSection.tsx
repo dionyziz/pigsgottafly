@@ -2,21 +2,24 @@
 // report itself (PDF or image, stored with the aircraft), with a deviation curve and an expiry
 // warning. The first card is the flights' default.
 import { DateInput } from '../../app/DateInput';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type AttachmentRef, type AttachmentType, type CompassCard } from '../../shared/types';
 import { api } from '../../data/api';
-import { fmtSize } from '../../shared/format';
-import { Field, IssueList, PointTable, Section } from './fields';
+import { saveBlob } from '../../data/aircraftFiles';
+import { moveAt } from '../../shared/list';
+import { errorMessage, fmtSize } from '../../shared/format';
+import { Chip, DragHandle, Field, FilePicker, IssueList, PdfViewer, useObjectUrl, useSortable } from '../../ui';
+import { PointTable, Section } from './fields';
 import { addCompassCard, addYears, cardStatus, deviationOf, issuesAt } from './model';
 import type { SectionProps } from './sections';
 
 export function StatusChip({ card, today }: { card: Pick<CompassCard, 'expires'>; today: string }) {
   const st = cardStatus(card, today, CARD_EXPIRY_WARN_DAYS);
-  if (st.state === 'unknown') return <span className="chip">No expiry date</span>;
-  if (st.state === 'expired') return <span className="chip danger">Expired {card.expires}</span>;
-  if (st.state === 'expiring') return <span className="chip warn">Expires in {st.days} days</span>;
-  return <span className="chip ok">Valid to {card.expires}</span>;
+  if (st.state === 'unknown') return <Chip>No expiry date</Chip>;
+  if (st.state === 'expired') return <Chip tone="danger">Expired {card.expires}</Chip>;
+  if (st.state === 'expiring') return <Chip tone="warn">Expires in {st.days} days</Chip>;
+  return <Chip tone="ok">Valid to {card.expires}</Chip>;
 }
 
 function DeviationCurve({ points }: { points: [number, number][] }) {
@@ -54,20 +57,22 @@ function base64Blob(data: string, mime: string): Blob {
 }
 
 /**
- * The swing report of one card: upload (PDF/PNG/JPEG/WebP up to 3 MB), download, image preview,
- * replace, remove. The upload is stored at once; the card's reference to it is saved with the
- * aircraft (files no saved card refers to are deleted by the server on the next save).
+ * The swing report of one card: attach (PDF/PNG/JPEG/WebP up to 3 MB), open (a PDF in the viewer,
+ * an image inline), download, replace, remove. The upload is stored at once; the card's reference
+ * to it is saved with the aircraft (files no saved card refers to are deleted by the server on the
+ * next save).
  */
 export function SwingReport({ aircraftId, report, onChange }: { aircraftId: string | null; report: AttachmentRef | null | undefined; onChange(r: AttachmentRef | null): void }) {
-  const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
-  useEffect(() => { setPreview(null); }, [report?.id]);
+  // the report's content while it is shown (a PDF in the viewer, an image inline)
+  const [shown, setShown] = useState<{ id: string; blob: Blob | null } | null>(null);
+  const open = shown && report && shown.id === report.id ? shown : null;
+  const isPdf = report?.mime === 'application/pdf';
+  const imageUrl = useObjectUrl(open && !isPdf ? open.blob : null);
 
-  const pick = async (file: File | undefined) => {
-    if (!file || !aircraftId) return;
+  const pick = async (file: File) => {
+    if (!aircraftId) return;
     setErr(null);
     if (!(ATTACHMENT_TYPES as readonly string[]).includes(file.type)) { setErr('Attach a PDF or an image (PNG, JPEG, WebP).'); return; }
     if (file.size > ATTACHMENT_MAX_BYTES) { setErr(`The file is ${fmtSize(file.size)}; the limit is ${fmtSize(ATTACHMENT_MAX_BYTES)}.`); return; }
@@ -76,10 +81,9 @@ export function SwingReport({ aircraftId, report, onChange }: { aircraftId: stri
       const ref = await api.attachments.upload(aircraftId, { name: file.name, mime: file.type as AttachmentType, data: await readBase64(file) });
       onChange(ref);
     } catch (e) {
-      setErr(`Upload failed: ${(e as Error).message}`);
+      setErr(`Upload failed: ${errorMessage(e)}`);
     } finally {
       setBusy(false);
-      if (input.current) input.current.value = '';
     }
   };
   const load = async (): Promise<Blob | null> => {
@@ -89,26 +93,21 @@ export function SwingReport({ aircraftId, report, onChange }: { aircraftId: stri
       const f = await api.attachments.get(aircraftId, report.id);
       return base64Blob(f.data, f.mime);
     } catch (e) {
-      setErr(`Could not load the report: ${(e as Error).message}`);
+      setErr(`Could not load the report: ${errorMessage(e)}`);
       return null;
     }
   };
   const download = async () => {
-    const b = await load();
-    if (!b || !report) return;
-    const url = URL.createObjectURL(b);
-    const el = document.createElement('a');
-    el.href = url;
-    el.download = report.name;
-    document.body.appendChild(el);
-    el.click();
-    el.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    const b = open?.blob ?? await load();
+    if (b && report) saveBlob(b, report.name);
   };
   const show = async () => {
-    if (preview) { setPreview(null); return; }
+    if (!report) return;
+    if (open && !isPdf) { setShown(null); return; }
+    const id = report.id;
+    setShown({ id, blob: null });
     const b = await load();
-    if (b) setPreview(URL.createObjectURL(b));
+    setShown((s) => (s && s.id === id ? (b ? { id, blob: b } : (isPdf ? s : null)) : s));
   };
 
   return (
@@ -117,25 +116,28 @@ export function SwingReport({ aircraftId, report, onChange }: { aircraftId: stri
       {report ? (
         <div className="row wrap cc-report-row">
           <span className="cc-report-name" title={report.name}>{report.name}</span>
-          <span className="muted">{report.mime === 'application/pdf' ? 'PDF' : 'image'} · {fmtSize(report.size)}</span>
+          <span className="muted">{isPdf ? 'PDF' : 'image'} · {fmtSize(report.size)}</span>
           <span className="spacer" />
-          {report.mime !== 'application/pdf' && <button type="button" className="ghost sm" onClick={show}>{preview ? 'Hide' : 'Preview'}</button>}
-          <button type="button" className="ghost sm" onClick={download} data-testid="swing-report-download">Download</button>
-          <button type="button" className="ghost sm" onClick={() => input.current?.click()} disabled={busy || !aircraftId}>Replace</button>
-          <button type="button" className="ghost sm danger" onClick={() => onChange(null)}>Remove</button>
+          <button type="button" className="sm" onClick={() => void show()} data-testid="swing-report-open">{open && !isPdf ? 'Hide' : 'Open'}</button>
+          <button type="button" className="ghost sm" onClick={() => void download()} data-testid="swing-report-download">Download</button>
+          <FilePicker accept={ATTACHMENT_TYPES.join(',')} onPick={(f) => void pick(f)} disabled={busy || !aircraftId} className="ghost sm" inputTestId="swing-report-file">Replace</FilePicker>
+          <button type="button" className="ghost sm danger" onClick={() => { setShown(null); onChange(null); }}>Remove</button>
         </div>
       ) : (
         <div className="row wrap cc-report-row">
-          <button type="button" className="sm" onClick={() => input.current?.click()} disabled={busy || !aircraftId} data-testid="swing-report-attach">
+          <FilePicker accept={ATTACHMENT_TYPES.join(',')} onPick={(f) => void pick(f)} disabled={busy || !aircraftId} testId="swing-report-attach" inputTestId="swing-report-file">
             {busy ? 'Uploading…' : 'Attach report'}
-          </button>
+          </FilePicker>
           <span className="muted">{aircraftId ? `PDF or image, up to ${fmtSize(ATTACHMENT_MAX_BYTES)}` : 'Save the aircraft first'}</span>
         </div>
       )}
-      <input ref={input} type="file" hidden accept={ATTACHMENT_TYPES.join(',')} onChange={(e) => void pick(e.target.files?.[0])} data-testid="swing-report-file" />
       {busy && report && <span className="muted">Uploading…</span>}
-      {err && <span className="issue error" role="alert">{err}</span>}
-      {preview && <img className="cc-report-img" src={preview} alt={`Compass swing report ${report?.name ?? ''}`} />}
+      {err && !(open && isPdf) && <span className="issue error" role="alert">{err}</span>}
+      {imageUrl && <img className="cc-report-img" src={imageUrl} alt={`Compass swing report ${report?.name ?? ''}`} />}
+      {open && isPdf && report && (
+        <PdfViewer src={open.blob} title={report.name} detail={fmtSize(report.size)} error={err} testId="swing-report-viewer"
+          onClose={() => setShown(null)} onDownload={() => void download()} />
+      )}
     </div>
   );
 }
@@ -144,17 +146,18 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
   const cards = a.compassCards;
   const cc = (i: number, fn: (c: CompassCard) => void) => edit((d) => fn(d.compassCards[i]));
   const add = () => edit((d) => { addCompassCard(d, today); });
+  const sort = useSortable({ count: cards.length, onMove: (from, to) => edit((d) => { d.compassCards = moveAt(d.compassCards, from, to); }) });
   return (
-    <Section id="compass" title="Compass swing" intro="Deviation cards from the compass swing report. The navigation log turns magnetic heading (for) into compass heading (steer) by interpolating the card. The first card is the default for new flights."
-      actions={<button type="button" className="sm" onClick={add}>+ Add card</button>}>
-      {cards.length === 0 && <p className="muted" style={{ margin: 0 }}>No cards. Without one, compass headings equal magnetic headings on the navigation log.</p>}
+    <Section id="compass" title="Compass swing" actions={<button type="button" className="sm" onClick={add}>+ Add card</button>}>
+      {cards.length === 0 && <p className="muted" style={{ margin: 0 }}>No cards: compass headings equal magnetic headings.</p>}
       {cards.map((c, i) => {
         const p = `compassCards.${i}`;
         return (
-          <div className="compass-card" key={i}>
+          <div key={i} {...sort.itemProps(i, 'compass-card')} data-testid="compass-card">
             <div className="row wrap cc-head">
-              <input className="cc-name" value={c.name} aria-label="Card name" onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.name = v; }); }} placeholder="e.g. Magnetic compass" />
-              {i === 0 && cards.length > 1 && <span className="chip">Default</span>}
+              {cards.length > 1 && <DragHandle {...sort.handleProps(i)} label={`Move ${c.name || 'card'}`} />}
+              <input name={`${p}.name`} className="cc-name" value={c.name} aria-label="Card name" onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.name = v; }); }} placeholder="e.g. Magnetic compass" />
+              {i === 0 && cards.length > 1 && <Chip>Default</Chip>}
               <StatusChip card={c} today={today} />
               <span className="spacer" />
               {i > 0 && <button type="button" className="ghost sm" onClick={() => edit((d) => { const [x] = d.compassCards.splice(i, 1); d.compassCards.unshift(x); })}>Make default</button>}
@@ -162,10 +165,10 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
             </div>
             <div className="grid3">
               <Field label="Swung" issues={issuesAt(issues, `${p}.swung`, true)}>
-                <DateInput value={c.swung} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.swung = v; }); }} />
+                <DateInput name={`${p}.swung`} value={c.swung} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.swung = v; }); }} />
               </Field>
               <Field label="Expires" issues={issuesAt(issues, `${p}.expires`, true)} hint={c.swung ? <button type="button" className="linkish" onClick={() => cc(i, (x) => { x.expires = addYears(x.swung, 2); })}>Swung + 2 years</button> : undefined}>
-                <DateInput value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
+                <DateInput name={`${p}.expires`} value={c.expires} onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.expires = v; }); }} />
               </Field>
               <Field label="Reference" hint="Report number or who swung it">
                 <input value={c.source} placeholder="optional" onChange={(e) => { const v = e.target.value; cc(i, (x) => { x.source = v; }); }} />
@@ -174,7 +177,7 @@ export function CompassSection({ a, edit, issues, today, aircraftId = null }: Se
             <SwingReport aircraftId={aircraftId} report={c.report}
               onChange={(r) => cc(i, (x) => { if (r) x.report = r; else delete x.report; })} />
             <div className="cc-body">
-              <PointTable points={c.points} onChange={(pts) => cc(i, (x) => { x.points = pts; })}
+              <PointTable name={`${p}.points`} points={c.points} onChange={(pts) => cc(i, (x) => { x.points = pts; })}
                 xLabel="For (MH)" xUnit="°" yLabel="Steer (CH)" yUnit="°" xProps={{ integer: false, min: 0, max: 359.9, width: 76 }} yProps={{ min: 0, max: 359.9, width: 76 }}
                 extra={(q) => { const d = deviationOf(q[0], q[1]); return <span className={Math.abs(d) > 5 ? 'dev big' : 'dev'}>{d > 0 ? '+' : ''}{Math.round(d * 10) / 10}°</span>; }} extraLabel="Dev"
                 addPoint={(pts) => { const last = pts[pts.length - 1]; const f = last ? (last[0] + 30) % 360 : 0; return [f, f]; }}

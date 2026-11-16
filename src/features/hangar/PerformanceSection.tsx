@@ -5,7 +5,8 @@
 // inputs with rows and columns to add and remove. Source fields are the pilot's own text.
 import { useState } from 'react';
 import type { DistancePair, PerformanceTables } from '../../shared/types';
-import { Field, IssueList, NumInput, Section } from './fields';
+import { Field, IssueList, RowRemove } from '../../ui';
+import { NumInput, Section } from './fields';
 import {
   addHeadwind, addLandingAltitude, addRunwayCondition, addStallSpeeds, addTakeoffAltitude, addTakeoffMassRow, issuesAt, removeHeadwind,
   removeLandingAltitude, removeTakeoffAltitude, removeTakeoffMassRow, runwayConditions, setRunwayConditions,
@@ -33,7 +34,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
   const at = (p: string) => issuesAt(issues, p, true);
   const all = issuesAt(issues, 'performance');
   return (
-    <Section id="performance" title="Performance" intro="Flight manual tables and the factors the take-off and landing calculation applies on top of them. Distances in metres: ground run or roll, and total over a 15 m (50 ft) obstacle."
+    <Section id="performance" title="Performance"
       actions={<button type="button" className={editing ? 'primary sm' : 'sm'} onClick={() => setEditing((e) => !e)} aria-pressed={editing}>{editing ? 'Done editing' : 'Edit tables'}</button>}>
       <IssueList issues={all.filter((i) => !i.path.startsWith('performance.factors'))} />
 
@@ -48,7 +49,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
           <button type="button" onClick={() => { setEditing(true); pe((q) => { if (!q.takeoff.altitudesFt.length) q.takeoff = addTakeoffAltitude(q.takeoff); q.takeoff = addTakeoffMassRow(q.takeoff); }); }}>Create take-off table</button>
         </div>
       ) : (
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" data-path="performance.takeoff">
           <table className="perf">
             <thead>
               <tr>
@@ -58,7 +59,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                     {editing ? (
                       <span className="alt-ed">
                         <NumInput value={alt} integer min={-2000} max={20000} width={70} unit="ft" ariaLabel={`Pressure altitude column ${i + 1}`} onChange={(v) => pe((q) => { q.takeoff.altitudesFt[i] = v ?? 0; })} />
-                        <button type="button" className="icon sm danger" title="Remove column" aria-label={`Remove ${alt} ft column`} onClick={() => pe((q) => { q.takeoff = removeTakeoffAltitude(q.takeoff, i); })}>×</button>
+                        <RowRemove label={`Remove ${alt} ft column`} onClick={() => pe((q) => { q.takeoff = removeTakeoffAltitude(q.takeoff, i); })} />
                       </span>
                     ) : <>{alt === 0 ? 'SL' : `${alt} ft`}</>}
                   </th>
@@ -94,7 +95,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                       {editing ? (
                         <span className="alt-ed">
                           <NumInput value={hw} min={0} max={100} width={64} unit="kt" ariaLabel="Headwind" onChange={(v) => pe((q) => { q.takeoff.rows[ri].headwindKt[hi] = v ?? 0; })} />
-                          <button type="button" className="icon sm danger" title="Remove headwind row" aria-label="Remove headwind row" disabled={r.headwindKt.length <= 1} onClick={() => pe((q) => { q.takeoff = removeHeadwind(q.takeoff, ri, hi); })}>×</button>
+                          <RowRemove label="Remove headwind row" disabled={r.headwindKt.length <= 1} onClick={() => pe((q) => { q.takeoff = removeHeadwind(q.takeoff, ri, hi); })} />
                         </span>
                       ) : `${hw} kt`}
                     </td>
@@ -138,7 +139,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
           <button type="button" onClick={() => { setEditing(true); pe((q) => { q.landing = addLandingAltitude(q.landing); }); }}>Create landing table</button>
         </div>
       ) : (
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" data-path="performance.landing">
           <table className="perf">
             <thead><tr>
               <th>Mass</th>
@@ -147,7 +148,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                   {editing ? (
                     <span className="alt-ed">
                       <NumInput value={alt} integer min={-2000} max={20000} width={70} unit="ft" ariaLabel={`Landing pressure altitude ${i + 1}`} onChange={(v) => pe((q) => { q.landing.altitudesFt[i] = v ?? 0; })} />
-                      <button type="button" className="icon sm danger" title="Remove column" aria-label={`Remove ${alt} ft column`} onClick={() => pe((q) => { q.landing = removeLandingAltitude(q.landing, i); })}>×</button>
+                      <RowRemove label={`Remove ${alt} ft column`} onClick={() => pe((q) => { q.landing = removeLandingAltitude(q.landing, i); })} />
                     </span>
                   ) : <>{alt === 0 ? 'SL' : `${alt} ft`}</>}
                 </th>
@@ -208,39 +209,38 @@ function Factors({ a, edit, at }: SectionProps & { at: (p: string) => ReturnType
   return (
     <>
       <div className="sub-h">Planning factors</div>
-      <p className="hint" style={{ margin: 0 }}>Applied on top of the flight manual figures: your club’s or your own rules. A factor of 1 changes nothing.</p>
       <div className="grid3">
         <Field label="Safety factor, take-off" issues={at('performance.factors.safetyFactorTakeoff')} hint="× the corrected distance">
-          <NumInput value={f.safetyFactorTakeoff} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.safetyFactorTakeoff = v ?? 0; })} />
+          <NumInput name="performance.factors.safetyFactorTakeoff" value={f.safetyFactorTakeoff} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.safetyFactorTakeoff = v ?? 0; })} />
         </Field>
         <Field label="Safety factor, landing" issues={at('performance.factors.safetyFactorLanding')} hint="× the corrected distance">
-          <NumInput value={f.safetyFactorLanding} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.safetyFactorLanding = v ?? 0; })} />
+          <NumInput name="performance.factors.safetyFactorLanding" value={f.safetyFactorLanding} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.safetyFactorLanding = v ?? 0; })} />
         </Field>
         <Field label="Slope factor" issues={at('performance.factors.slopeFactorPer2Pct')} hint="Per 2% upslope (take-off) or downslope (landing)">
-          <NumInput value={f.slopeFactorPer2Pct} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.slopeFactorPer2Pct = v ?? 0; })} />
+          <NumInput name="performance.factors.slopeFactorPer2Pct" value={f.slopeFactorPer2Pct} min={0} max={5} unit="×" onChange={(v) => fe((q) => { q.slopeFactorPer2Pct = v ?? 0; })} />
         </Field>
       </div>
       <div className="grid3">
         <Field label="Max crosswind, take-off" issues={at('performance.factors.maxCrosswindKt')}>
-          <NumInput value={f.maxCrosswindKt.takeoff} min={0} max={100} unit="kt" onChange={(v) => fe((q) => { q.maxCrosswindKt.takeoff = v ?? 0; })} />
+          <NumInput name="performance.factors.maxCrosswindKt" value={f.maxCrosswindKt.takeoff} min={0} max={100} unit="kt" onChange={(v) => fe((q) => { q.maxCrosswindKt.takeoff = v ?? 0; })} />
         </Field>
         <Field label="Max crosswind, landing">
           <NumInput value={f.maxCrosswindKt.landing} min={0} max={100} unit="kt" onChange={(v) => fe((q) => { q.maxCrosswindKt.landing = v ?? 0; })} />
         </Field>
-        <Field label="Source" hint="Your reference, if any">
-          <input value={f.source} placeholder="e.g. club operations manual" onChange={(e) => { const v = e.target.value; fe((q) => { q.source = v; }); }} />
+        <Field label="Source">
+          <input value={f.source} placeholder="optional" onChange={(e) => { const v = e.target.value; fe((q) => { q.source = v; }); }} />
         </Field>
       </div>
-      <div className="lbl">Runway surface and condition factors <span className="muted">(paved and dry = × 1; offered per flight for the departure, arrival and stops)</span></div>
+      <div className="lbl">Runway surface and condition factors <span className="muted">· paved and dry × 1</span></div>
       {conds.length > 0 && (
-        <table className="ed-table conds">
+        <table className="ed-table conds" data-path="performance.factors.runwayCondition">
           <thead><tr><th>Surface or condition</th><th className="num">Factor</th><th /></tr></thead>
           <tbody>
             {conds.map(([k, v], i) => (
               <tr key={i}>
-                <td><input value={k} aria-label="Condition" onChange={(e) => { const nk = e.target.value; setConds(conds.map((c, j) => (j === i ? [nk, c[1]] : c))); }} /></td>
+                <td><input name={i === 0 ? 'performance.factors.runwayCondition' : undefined} value={k} aria-label="Condition" onChange={(e) => { const nk = e.target.value; setConds(conds.map((c, j) => (j === i ? [nk, c[1]] : c))); }} /></td>
                 <td className="num"><NumInput value={v} min={0} max={5} width={90} unit="×" ariaLabel={`Factor for ${k}`} onChange={(x) => setConds(conds.map((c, j) => (j === i ? [c[0], x ?? 0] : c)))} /></td>
-                <td className="row-tools"><button type="button" className="icon sm danger" aria-label={`Remove ${k}`} title="Remove" onClick={() => setConds(conds.filter((_, j) => j !== i))}>×</button></td>
+                <td className="row-tools"><RowRemove label={`Remove ${k || 'condition'}`} onClick={() => setConds(conds.filter((_, j) => j !== i))} /></td>
               </tr>
             ))}
           </tbody>

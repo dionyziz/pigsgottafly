@@ -5,20 +5,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Shell } from '../../app/Shell';
-import { useFocusParam } from '../../app/focusParam';
+import { focusAndHighlight, useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
+import { localToday } from '../../shared/date';
+import { standardFuelTypes } from '../../shared/fuel';
+import { errorMessage } from '../../shared/format';
 import type { Aircraft, AircraftInput } from '../../shared/types';
 import type { HangarAircraft } from '../../shared/sharing';
-import { localToday } from '../lobby/format';
-import { ConfirmDialog, EmptyState, KebabMenu } from '../lobby/ui';
+import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading } from '../../ui';
 import { CompassSection } from './CompassSection';
 import { DocumentsSection, PhotoControl } from './AircraftFiles';
 import { MassBalanceSection } from './MassBalanceSection';
-import { validateAircraft, type SectionId } from './model';
+import { validateAircraft, type Issue, type SectionId } from './model';
 import { PerformanceSection } from './PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from './sections';
 import { ShareDialog, SharedChip } from './ShareDialog';
@@ -36,9 +38,26 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'documents', label: 'Documents' },
 ];
 
+/** The editable part of an aircraft (fuel densities at the standard values: saving migrates old ones). */
 export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
   const { id: _i, created: _c, updated: _u, access: _a, photo: _p, ...rest } = a as HangarAircraft;
-  return rest;
+  return { ...rest, fuel: { ...rest.fuel, types: standardFuelTypes(rest.fuel.types) } };
+}
+
+/**
+ * The input an issue is about: inputs are named by their issue path (name="fuel.usableL"), lists
+ * and tables carry data-path; a path with no element of its own falls back to its parent path, and
+ * at last to the section.
+ */
+export function issueTarget(root: ParentNode, issue: Pick<Issue, 'path' | 'section'>): HTMLElement | null {
+  const parts = issue.path ? issue.path.split('.') : [];
+  for (let n = parts.length; n > 0; n--) {
+    const p = parts.slice(0, n).join('.').replace(/["\\]/g, '');
+    const el = root.querySelector<HTMLElement>(`[name="${p}"], [data-path="${p}"]`)
+      ?? root.querySelector<HTMLElement>(`[name^="${p}."], [data-path^="${p}."]`);
+    if (el) return el;
+  }
+  return root.querySelector<HTMLElement>(`#${issue.section}`);
 }
 
 export function AircraftPage() {
@@ -50,7 +69,7 @@ export function AircraftPage() {
         <EmptyState title={error instanceof ApiRequestError && error.status === 404 ? 'Aircraft not found' : 'Could not load the aircraft'} action={<Link to="/hangar" className="btn">Back to the hangar</Link>}>
           {error instanceof ApiRequestError && error.status === 404 ? 'It may have been deleted.' : error.message}
         </EmptyState>
-      ) : !data ? <p className="muted">Loading…</p> : <AircraftEditor key={data.id} aircraft={data} onSaved={setData} />}
+      ) : !data ? <Loading /> : <AircraftEditor key={data.id} aircraft={data} onSaved={setData} />}
     </Shell>
   );
 }
@@ -101,7 +120,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
       setSaveError(null);
       toast(`Saved ${saved.registration}`);
     } catch (e) {
-      setSaveError(e instanceof ApiRequestError && e.status === 0 ? 'You are offline. Your changes are still here; try again when back online.' : String((e as Error).message || e));
+      setSaveError(e instanceof ApiRequestError && e.status === 0 ? 'You are offline. Your changes are kept.' : errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -115,7 +134,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
 
   const makeDefault = async () => {
     try { setPilot(await api.me.update({ defaultAircraftId: aircraft.id })); toast(`${aircraft.registration} is now your default aircraft`); }
-    catch (e) { toast(String((e as Error).message || e)); }
+    catch (e) { toast(errorMessage(e)); }
   };
 
   const counts = (s: SectionId) => {
@@ -123,12 +142,19 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
     return { e: xs.filter((i) => i.level === 'error').length, w: xs.filter((i) => i.level === 'warning').length };
   };
   const props = { a: draft, edit, issues };
+  const goTo = (i: Issue) => {
+    const root = document.querySelector('[data-testid=aircraft-page]');
+    const el = root && issueTarget(root, i);
+    if (!el) return;
+    setShowIssues(false);
+    focusAndHighlight(el);
+  };
 
   return (
     <div className="ac-page" data-testid="aircraft-page">
       <div className="page-head ac-head">
         <Link to="/hangar" className="back" aria-label="Back to the hangar" title="Hangar">
-          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 3L5 9l6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <Icon name="back" size={18} />
         </Link>
         <PhotoControl aircraftId={aircraft.id} registration={aircraft.registration} photo={aircraft.photo} canEdit={!readOnly}
           onChange={(p) => onSaved({ ...aircraft, photo: p })} />
@@ -136,7 +162,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
           <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
           <div className="muted">{[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator].filter(Boolean).join(' · ') || 'Type not set'}</div>
         </div>
-        {isDefault && <span className="chip ok" title="New flights use this aircraft">Default</span>}
+        {isDefault && <Chip tone="ok" title="New flights use this aircraft">Default</Chip>}
         <SharedChip access={aircraft.access} />
         <span className="spacer" />
         <button type="button" onClick={() => setSharing(true)} data-testid="share-aircraft">Share</button>
@@ -155,7 +181,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             return (
               <a key={s.id} href={`#${s.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
                 <span>{s.label}</span>
-                {c.e > 0 ? <span className="hg-count err" title={`${c.e} error${c.e > 1 ? 's' : ''}`}>{c.e}</span> : c.w > 0 ? <span className="hg-count warn" title={`${c.w} warning${c.w > 1 ? 's' : ''}`}>{c.w}</span> : null}
+                {c.e > 0 ? <Chip tone="danger" count sm title={`${c.e} error${c.e > 1 ? 's' : ''}`}>{c.e}</Chip> : c.w > 0 ? <Chip tone="warn" count sm title={`${c.w} warning${c.w > 1 ? 's' : ''}`}>{c.w}</Chip> : null}
               </a>
             );
           })}
@@ -174,27 +200,29 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
 
           {readOnly ? (
             <div className="ac-viewonly card" data-testid="aircraft-viewonly">
-              <span className="chip">View only</span>
-              <span className="muted">{aircraft.access.owner.name || aircraft.access.owner.email} shared this aircraft with you to view and fly. The owner or an editor can change it.</span>
+              <Chip>View only</Chip>
+              <span className="muted">Shared by {aircraft.access.owner.name || aircraft.access.owner.email}</span>
             </div>
           ) : (
 
           <div className={'ac-savebar card' + (dirty ? ' dirty' : '')} role="region" aria-label="Save">
             <button type="button" className="issue-sum" onClick={() => setShowIssues((v) => !v)} aria-expanded={showIssues} disabled={!issues.length}>
-              {errors.length > 0 && <span className="chip danger">{errors.length} error{errors.length > 1 ? 's' : ''}</span>}
-              {warnings.length > 0 && <span className="chip warn">{warnings.length} warning{warnings.length > 1 ? 's' : ''}</span>}
-              {!issues.length && <span className="chip ok">Complete</span>}
+              {errors.length > 0 && <Chip tone="danger">{errors.length} error{errors.length > 1 ? 's' : ''}</Chip>}
+              {warnings.length > 0 && <Chip tone="warn">{warnings.length} warning{warnings.length > 1 ? 's' : ''}</Chip>}
+              {!issues.length && <Chip tone="ok">Complete</Chip>}
             </button>
             {saveError ? <span className="form-error" role="alert">{saveError}</span> : <span className="muted">{dirty ? 'Unsaved changes' : 'All changes saved'}</span>}
             <span className="spacer" />
             {dirty && <button type="button" className="ghost" onClick={() => { setDraft(baseline); setSaveError(null); }} disabled={busy}>Discard</button>}
             <button type="submit" className="primary" disabled={!dirty || busy} title="Save (Ctrl+S)">{busy ? 'Saving…' : 'Save'}</button>
             {showIssues && issues.length > 0 && (
-              <ul className="issue-pop">
+              <ul className="issue-pop" data-testid="issue-pop">
                 {[...errors, ...warnings].map((i, k) => (
                   <li key={k} className={i.level}>
-                    <a href={`#${i.section}`} onClick={(e) => { e.preventDefault(); document.getElementById(i.section)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>{SECTIONS.find((s) => s.id === i.section)?.label}</a>
-                    <span>{i.message}</span>
+                    <button type="button" className="issue-go" onClick={() => goTo(i)} data-testid="issue-go">
+                      <span className="sec">{SECTIONS.find((s) => s.id === i.section)?.label}</span>
+                      <span className="msg">{i.message}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -215,9 +243,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Removed ${aircraft.registration} from your hangar`);
             navigate('/hangar');
-          }}>
-          Your access ends; {aircraft.access.owner.name || aircraft.access.owner.email} keeps the aircraft. Flights you planned with it keep it as unavailable until you choose another aircraft. To get it back, ask its owner or an editor to share it again.
-        </ConfirmDialog>
+          }} />
       )}
       {deleting && (
         <ConfirmDialog title={`Delete ${aircraft.registration}?`} confirmLabel="Delete" onClose={() => setDeleting(false)}
@@ -226,9 +252,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             if (isDefault) setPilot({ ...pilot, defaultAircraftId: null });
             toast(`Deleted ${aircraft.registration}`);
             navigate('/hangar');
-          }}>
-          The aircraft and its weight and balance, performance and compass data are removed. Flights planned with it keep their route and manifest but will have no aircraft.
-        </ConfirmDialog>
+          }} />
       )}
     </div>
   );

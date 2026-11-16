@@ -36,11 +36,10 @@ function buildFromScratch(target: AircraftInput): AircraftInput {
   Object.assign(a.equipment.jackets, t.equipment.jackets);
   a.equipment.dinghies = t.equipment.dinghies ? { ...t.equipment.dinghies } : null;
 
-  // Fuel: approved fuels added (+ AVGAS, + MOGAS …) at their default density, then edited; the blank's AVGAS removed if not wanted
+  // Fuel: approved fuels added (+ AVGAS, + MOGAS …) at their standard density; the blank's AVGAS removed if not wanted
   for (const g of t.fuel.types) addFuelType(a.fuel, g.type);
   for (const g of [...a.fuel.types]) if (!t.fuel.types.some((x) => x.type === g.type)) removeFuelType(a.fuel, g.type);
   a.fuel.types.sort((x, y) => t.fuel.types.findIndex((g) => g.type === x.type) - t.fuel.types.findIndex((g) => g.type === y.type));
-  a.fuel.types.forEach((g, i) => { g.densityKgPerL = t.fuel.types[i].densityKgPerL; });
   a.fuel.totalL = t.fuel.totalL; a.fuel.usableL = t.fuel.usableL; a.fuel.unusableL = t.fuel.unusableL; a.fuel.tanks = t.fuel.tanks;
   a.fuel.burnLph = t.fuel.burnLph; a.fuel.taxiAllowanceL = t.fuel.taxiAllowanceL;
   a.fuel.unusableIncludedInEmptyMass = t.fuel.unusableIncludedInEmptyMass;
@@ -169,7 +168,7 @@ describe('the seeded aircraft can be built from scratch in the hangar editor', (
   test('a from-scratch build also works for a different layout (six seats, two fuels, no utility)', () => {
     const t = structuredClone(fleetSeed()[1]);
     t.massBalance.stations.splice(2, 0, { id: 'mid', name: 'Middle row', kind: 'seat', armM: 1.5, armRangeM: null, maxKg: null, seats: [{ id: 'mid-l', label: 'Mid left' }, { id: 'mid-r', label: 'Mid right' }] });
-    t.fuel.types = [{ type: 'MOGAS', densityKgPerL: 0.74 }, { type: 'AVGAS', densityKgPerL: 0.71 }];
+    t.fuel.types = [{ type: 'MOGAS', densityKgPerL: 0.75 }, { type: 'AVGAS', densityKgPerL: 0.72 }];
     t.performance.factors.runwayCondition = { 'wet asphalt': 1.15 };
     t.performance.stallIasKt = null;
     expect(withIdsOf(buildFromScratch(t), t)).toEqual(t);

@@ -58,9 +58,44 @@ test('aircraft page: layout, item 18, fuels, photo and documents', async () => {
     return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right) };
   })));
   for (const row of grid) assert.ok(Math.max(...row.map((c) => c.top)) - Math.min(...row.map((c) => c.top)) <= 1, `row tops ${JSON.stringify(row)}`);
-  for (const col of [0, 1, 2]) assert.equal(new Set(grid.map((row) => row[col].left)).size, 1, `column ${col} left edges`);
-  assert.equal(new Set(grid.map((row) => row[2].right)).size, 1, 'arm column right edges');
-  assert.equal(new Set(grid.map((row) => row[4].right)).size, 1, 'max load column right edges');
+  // (column 0 is the drag handle)
+  for (const col of [0, 1, 2, 3]) assert.equal(new Set(grid.map((row) => row[col].left)).size, 1, `column ${col} left edges`);
+  assert.equal(new Set(grid.map((row) => row[3].right)).size, 1, 'arm column right edges');
+  assert.equal(new Set(grid.map((row) => row[5].right)).size, 1, 'max load column right edges');
+  // numbers are right-aligned in the tables
+  assert.deepEqual(await page.eval(() => [...new Set([...document.querySelectorAll('.ed-table.stations .numfield input, .pt-table .numfield input')].map((i) => getComputedStyle(i).textAlign))]), ['right']);
+
+  // stations reorder by dragging the handle; the order is saved
+  const ids = () => api('GET', `aircraft/${ac.id}`).then((x) => x.massBalance.stations.map((s) => s.id));
+  const before = await ids();
+  const [from, to] = await page.eval(() => {
+    const rows = [...document.querySelectorAll('.ed-table.stations tbody tr')];
+    rows[0].scrollIntoView({ block: 'center' });
+    const h = rows[0].querySelector('.drag-handle').getBoundingClientRect();
+    const r = rows[1].getBoundingClientRect();
+    return [[h.left + h.width / 2, h.top + h.height / 2], [h.left + h.width / 2, r.top + r.height * 0.75]];
+  });
+  const mouse = (type, [x, y], extra = {}) => page.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1, ...extra });
+  await mouse('mousePressed', from);
+  await mouse('mouseMoved', [from[0], (from[1] + to[1]) / 2]);
+  await mouse('mouseMoved', to);
+  await mouse('mouseReleased', to);
+  await page.waitFor(() => !!document.querySelector('.ac-savebar.dirty'));
+  await page.key('s', 2); // Ctrl+S
+  await page.waitFor(() => !document.querySelector('.ac-savebar.dirty'));
+  assert.deepEqual(await ids(), [before[1], before[0], ...before.slice(2)]);
+
+  // a save-bar issue focuses its own input
+  await page.eval(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.type('input[name="fuel.usableL"]', '999');
+  await page.blur();
+  await page.click('.issue-sum');
+  await page.waitFor(() => !!document.querySelector('[data-testid=issue-go]'));
+  await page.eval(() => [...document.querySelectorAll('[data-testid=issue-go]')].find((b) => /more than the total capacity/.test(b.textContent)).click());
+  await page.waitFor(() => document.activeElement?.getAttribute('name') === 'fuel.usableL' && document.activeElement.classList.contains('attention'));
+  await page.type('input[name="fuel.usableL"]', '144');
+  await page.blur();
+  await page.waitFor(() => !document.querySelector('.ac-savebar.dirty'));
 
   // envelope charts are in normal flow next to their tables
   assert.deepEqual(await page.eval(() => [...document.querySelectorAll('.env-row .chart-col')].map((e) => getComputedStyle(e).position)), ['static', 'static']);
@@ -84,6 +119,17 @@ test('aircraft page: layout, item 18, fuels, photo and documents', async () => {
   await page.key('Escape');
   await page.waitFor(() => !document.querySelector('[data-testid=pdf-viewer]'));
 
+  // compass swing report: a PDF attached to the first card opens in the same viewer
+  const small = path.join(tmp, 'swing.pdf');
+  fs.writeFileSync(small, pdfFile(10).buf);
+  await page.eval(() => document.getElementById('compass').scrollIntoView());
+  await setFile('[data-testid=compass-card] [data-testid=swing-report-file]', small);
+  await page.waitFor(() => !!document.querySelector('[data-testid=compass-card] [data-testid=swing-report-open]'), { timeout: 15000 });
+  await page.click('[data-testid=compass-card] [data-testid=swing-report-open]');
+  await page.waitFor(() => /^blob:/.test(document.querySelector('[data-testid=swing-report-viewer] [data-testid=pdf-frame]')?.src || ''), { timeout: 15000 });
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=swing-report-viewer]'));
+
   // photo: a large PNG is resized to at most 1600 px and shown in the header and on the hangar card
   const png = await page.eval(async () => {
     const c = document.createElement('canvas'); c.width = 3000; c.height = 2000;
@@ -101,6 +147,6 @@ test('aircraft page: layout, item 18, fuels, photo and documents', async () => {
   assert.deepEqual(dims, [1600, 1067]);
   assert.equal((await api('GET', `aircraft/${ac.id}/files`)).photo.mime, 'image/jpeg');
   await page.goto(`${server.url}/hangar`);
-  await page.waitFor((id) => !!document.querySelector(`[data-aircraft-id="${id}"] .ac-photo.card img`), { args: [ac.id] });
+  await page.waitFor((id) => !!document.querySelector(`[data-aircraft-id="${id}"] .ac-photo.card-top img`), { args: [ac.id] });
   assert.deepEqual(page.errors, []);
 });

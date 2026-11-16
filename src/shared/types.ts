@@ -122,10 +122,14 @@ export type PilotUpdate = Partial<
 export type WakeCategory = 'L' | 'M' | 'H' | 'J';
 export type FuelType = 'AVGAS' | 'MOGAS' | 'JET A-1';
 
-/** One fuel approved for the aircraft, with the density the W&B uses for it. */
+/** One fuel approved for the aircraft. */
 export interface FuelGrade {
   type: FuelType;
-  /** kg per litre (MD 4.3: AVGAS 0.72, MOGAS 0.75; DEFAULT_FUEL_DENSITY in fuel.ts). */
+  /**
+   * kg per litre. Kept in the record for older clients, but not per aircraft: the W&B always uses
+   * the standard density of the type (FUEL_DENSITY in fuel.ts: AVGAS 0.72, MOGAS 0.75, Jet A-1 0.80),
+   * and the hangar saves that value.
+   */
   densityKgPerL: number;
 }
 
@@ -133,7 +137,7 @@ export interface FuelSpec {
   /**
    * The approved fuels, at least one, each type once. The first is the aircraft's usual fuel: a
    * flight that gives only a total (FlightDoc.fobL without FlightOptions.fuelL) carries that one.
-   * Mixed tanks are allowed: the W&B mass is the sum of litres × density per type.
+   * Mixed tanks are allowed: the W&B mass is the sum of litres × standard density per type.
    * (Before migration 014 this was a single `type` + `densityKgPerL`; normalizeFuelSpec reads both.)
    */
   types: FuelGrade[];

@@ -1,7 +1,11 @@
 // Aircraft page sections: identity, flight plan items, speeds, fuel. (Mass & balance, performance
-// and compass cards are in their own files.) Each section edits the draft through `edit`.
+// and compass cards are in their own files.) Each section edits the draft through `edit`. Inputs are
+// named by the issue path they fix (name="fuel.usableL"), so the save bar's issues can focus them.
+import { fuelDensity } from '../../shared/fuel';
+import { fmtDuration } from '../../shared/format';
 import type { AircraftInput, WakeCategory } from '../../shared/types';
-import { Check, Field, IssueList, NumInput, Section } from './fields';
+import { AerodromeTextInput, Check, Field, IssueList, RowRemove } from '../../ui';
+import { NumInput, Section } from './fields';
 import { ADS_CODES, ITEM10A_CODES, SSR_CODES, addFuelType, issuesAt, join10a, join10b, makePrimaryFuel, otherFuelTypes, removeFuelType, split10a, split10b, type Issue } from './model';
 
 export interface SectionProps {
@@ -20,41 +24,42 @@ const WAKE: { v: WakeCategory; label: string }[] = [
 export function IdentitySection({ a, edit, issues }: SectionProps) {
   const at = (p: string) => issuesAt(issues, p, true);
   return (
-    <Section id="identity" title="Identity" intro="How the aircraft appears on the flight plan (items 7, 9 and 19 A/) and on the forms.">
+    <Section id="identity" title="Identity">
       <div className="grid3">
         <Field focus="registration" label="Registration" req issues={at('registration')} hint="FPL item 7 drops the hyphen">
-          <input className="mono upper" value={a.registration} onChange={(e) => { const v = e.target.value.toUpperCase(); edit((d) => { d.registration = v; }); }} placeholder="e.g. SX-ABC" maxLength={20} />
+          <input name="registration" className="mono upper" value={a.registration} onChange={(e) => { const v = e.target.value.toUpperCase(); edit((d) => { d.registration = v; }); }} placeholder="e.g. SX-ABC" maxLength={20} />
         </Field>
         <Field label="Make and model" issues={at('makeModel')}>
-          <input value={a.makeModel} onChange={(e) => { const v = e.target.value; edit((d) => { d.makeModel = v; }); }} placeholder="e.g. Reims/Cessna F172M" maxLength={200} />
+          <input name="makeModel" value={a.makeModel} onChange={(e) => { const v = e.target.value; edit((d) => { d.makeModel = v; }); }} placeholder="e.g. Reims/Cessna F172M" maxLength={200} />
         </Field>
         <Field label="Serial number" issues={at('serial')}>
-          <input className="mono" value={a.serial} onChange={(e) => { const v = e.target.value; edit((d) => { d.serial = v; }); }} maxLength={200} />
+          <input name="serial" className="mono" value={a.serial} onChange={(e) => { const v = e.target.value; edit((d) => { d.serial = v; }); }} maxLength={200} />
         </Field>
       </div>
       <div className="grid3">
         <Field focus="icaoType" label="ICAO type designator" issues={at('icaoType')} hint="FPL item 9, e.g. C172">
-          <input className="mono upper" value={a.icaoType} onChange={(e) => { const v = e.target.value.toUpperCase().trim(); edit((d) => { d.icaoType = v; }); }} maxLength={4} placeholder="C172" />
+          <input name="icaoType" className="mono upper" value={a.icaoType} onChange={(e) => { const v = e.target.value.toUpperCase().trim(); edit((d) => { d.icaoType = v; }); }} maxLength={4} placeholder="C172" />
         </Field>
         <Field focus="wake" label="Wake turbulence category" issues={at('wake')}>
-          <select value={a.wake} onChange={(e) => { const v = e.target.value as WakeCategory; edit((d) => { d.wake = v; }); }}>
+          <select name="wake" value={a.wake} onChange={(e) => { const v = e.target.value as WakeCategory; edit((d) => { d.wake = v; }); }}>
             {WAKE.map((w) => <option key={w.v} value={w.v}>{w.label}</option>)}
           </select>
         </Field>
-        <Field label="Home base" issues={at('homeBase')} hint="ICAO">
-          <input className="mono upper" value={a.homeBase} onChange={(e) => { const v = e.target.value.toUpperCase().trim(); edit((d) => { d.homeBase = v; }); }} maxLength={4} placeholder="e.g. LGTT" />
+        <Field label="Home base" issues={at('homeBase')}>
+          <AerodromeTextInput name="homeBase" value={a.homeBase} placeholder="e.g. LGTT" testId="home-base"
+            onChange={(t, ad) => { const v = ad?.icao || t.toUpperCase().trim(); edit((d) => { d.homeBase = v; }); }} />
         </Field>
       </div>
       <div className="grid2">
         <Field focus="colours" label="Colours and markings" issues={at('colours')} hint="FPL item 19 A/, in capitals as filed">
-          <input className="upper" value={a.colours} onChange={(e) => { const v = e.target.value.toUpperCase(); edit((d) => { d.colours = v; }); }} placeholder="e.g. WHITE WITH BLUE STRIPES" maxLength={200} />
+          <input name="colours" className="upper" value={a.colours} onChange={(e) => { const v = e.target.value.toUpperCase(); edit((d) => { d.colours = v; }); }} placeholder="e.g. WHITE WITH BLUE STRIPES" maxLength={200} />
         </Field>
-        <Field focus="operator" label="Operator" issues={at('operator')} hint="Owner or club, printed on the General Declaration">
-          <input value={a.operator} onChange={(e) => { const v = e.target.value; edit((d) => { d.operator = v; }); }} maxLength={200} />
+        <Field focus="operator" label="Operator" issues={at('operator')}>
+          <input name="operator" value={a.operator} onChange={(e) => { const v = e.target.value; edit((d) => { d.operator = v; }); }} maxLength={200} />
         </Field>
       </div>
       <Field label="Notes" issues={at('notes')}>
-        <textarea rows={2} value={a.notes} onChange={(e) => { const v = e.target.value; edit((d) => { d.notes = v; }); }} maxLength={5000} />
+        <textarea name="notes" rows={2} value={a.notes} onChange={(e) => { const v = e.target.value; edit((d) => { d.notes = v; }); }} maxLength={5000} />
       </Field>
     </Section>
   );
@@ -80,7 +85,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
     `A/${a.colours || '—'}`,
   ];
   return (
-    <Section id="fpl" title="Flight plan items" intro="Equipment and capabilities (item 10), PBN and other item 18 indicators, and the supplementary information of item 19.">
+    <Section id="fpl" title="Flight plan items">
       <div className="sub-h">Item 10a: radio communication, navigation and approach aids</div>
       <div className="code-chips" role="group" aria-label="Item 10a designators">
         <button type="button" className={'code-chip' + (e.item10a === 'N' ? ' on' : '')} aria-pressed={e.item10a === 'N'} title="No COM/NAV/approach aid equipment for the route, or it is unserviceable"
@@ -91,7 +96,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
       </div>
       <div className="grid3">
         <Field focus="item10a" label="Item 10a as filed" issues={at('equipment.item10a')} hint="Click the codes above or type, e.g. SDFGY">
-          <input className="mono upper" value={e.item10a} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.item10a = v; }); }} maxLength={40} />
+          <input name="equipment.item10a" className="mono upper" value={e.item10a} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.item10a = v; }); }} maxLength={40} />
         </Field>
         <Field label="Transponder (item 10b)" issues={valid10b ? at('equipment.item10b') : []}>
           <select value={b.ssr} onChange={(ev) => set10b(ev.target.value, ev.target.value === 'N' ? [] : b.ads)} disabled={!valid10b}>
@@ -100,7 +105,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
           </select>
         </Field>
         <Field focus="item10b" label="Item 10b as filed" issues={valid10b ? [] : at('equipment.item10b')} hint="e.g. C, S, SB2">
-          <input className="mono upper" value={e.item10b} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.item10b = v; }); }} maxLength={20} />
+          <input name="equipment.item10b" className="mono upper" value={e.item10b} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.item10b = v; }); }} maxLength={20} />
         </Field>
       </div>
       <div className="code-chips" role="group" aria-label="ADS designators of item 10b">
@@ -114,10 +119,10 @@ export function FplSection({ a, edit, issues }: SectionProps) {
 
       <div className="grid2">
         <Field focus="pbn" label="PBN/ (item 18)" issues={at('equipment.pbn')} hint="Only with R in item 10a, e.g. B2D2S1">
-          <input className="mono upper" value={e.pbn} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.pbn = v; }); }} maxLength={16} placeholder="none" />
+          <input name="equipment.pbn" className="mono upper" value={e.pbn} onChange={(ev) => { const v = ev.target.value.toUpperCase().replace(/\s/g, ''); eq((q) => { q.pbn = v; }); }} maxLength={16} placeholder="none" />
         </Field>
         <Field focus="item18Extras" label="Other item 18 indicators" issues={at('equipment.item18Extras')} hint="e.g. NAV/SBAS COM/… · RMK/ text joins the flight’s RMK/">
-          <input className="mono upper" value={e.item18Extras} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.item18Extras = v; }); }} maxLength={200} />
+          <input name="equipment.item18Extras" className="mono upper" value={e.item18Extras} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.item18Extras = v; }); }} maxLength={200} />
         </Field>
       </div>
 
@@ -152,18 +157,18 @@ export function FplSection({ a, edit, issues }: SectionProps) {
           {e.dinghies && (
             <div className="indent stack-sm">
               <div className="row">
-                <label className="field mini">Number<NumInput value={e.dinghies.number} integer min={1} max={99} width={70} onChange={(v) => eq((q) => { q.dinghies!.number = v ?? 0; })} invalid={issuesAt(issues, 'equipment.dinghies.number', true).length > 0} /></label>
-                <label className="field mini">Total capacity<NumInput value={e.dinghies.capacity} integer min={1} max={999} width={90} unit="pers" onChange={(v) => eq((q) => { q.dinghies!.capacity = v ?? 0; })} invalid={issuesAt(issues, 'equipment.dinghies.capacity', true).length > 0} /></label>
+                <label className="field mini">Number<NumInput name="equipment.dinghies.number" value={e.dinghies.number} integer min={1} max={99} width={70} onChange={(v) => eq((q) => { q.dinghies!.number = v ?? 0; })} invalid={issuesAt(issues, 'equipment.dinghies.number', true).length > 0} /></label>
+                <label className="field mini">Total capacity<NumInput name="equipment.dinghies.capacity" value={e.dinghies.capacity} integer min={1} max={999} width={90} unit="pers" onChange={(v) => eq((q) => { q.dinghies!.capacity = v ?? 0; })} invalid={issuesAt(issues, 'equipment.dinghies.capacity', true).length > 0} /></label>
               </div>
               <Check checked={e.dinghies.covered} onChange={(v) => eq((q) => { q.dinghies!.covered = v; })}>C: covered</Check>
-              <label className="field mini">Colour<input className="upper" value={e.dinghies.colour} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.dinghies!.colour = v; }); }} placeholder="e.g. ORANGE" /></label>
+              <label className="field mini">Colour<input name="equipment.dinghies.colour" className="upper" value={e.dinghies.colour} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.dinghies!.colour = v; }); }} placeholder="e.g. ORANGE" /></label>
               {issuesAt(issues, 'equipment.dinghies').map((i, k) => <span key={k} className={'issue ' + i.level}>{i.message}</span>)}
             </div>
           )}
         </fieldset>
       </div>
       <Field focus="remarks" label="N/ Remarks for this aircraft" issues={at('equipment.remarks')} hint="Other survival equipment and useful remarks">
-        <input className="upper" value={e.remarks} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.remarks = v; }); }} maxLength={200} />
+        <input name="equipment.remarks" className="upper" value={e.remarks} onChange={(ev) => { const v = ev.target.value.toUpperCase(); eq((q) => { q.remarks = v; }); }} maxLength={200} />
       </Field>
       <div className="fpl-preview" aria-label="Preview">
         <span className="muted">Preview</span>
@@ -178,16 +183,16 @@ export function FplSection({ a, edit, issues }: SectionProps) {
 export function SpeedsSection({ a, edit, issues }: SectionProps) {
   const at = (p: string) => issuesAt(issues, p, true);
   return (
-    <Section id="speeds" title="Speeds" intro="True airspeeds for the navigation log: the first and last legs are flown at pattern TAS, the others at cruise TAS.">
+    <Section id="speeds" title="Speeds">
       <div className="grid3">
         <Field focus="cruiseTasKt" label="Cruise TAS" issues={at('cruiseTasKt')}>
-          <NumInput value={a.cruiseTasKt} zeroAsEmpty onChange={(v) => edit((d) => { d.cruiseTasKt = v ?? 0; })} min={0} max={1000} unit="kt" placeholder="not set" invalid={at('cruiseTasKt').some((i) => i.level === 'error')} />
+          <NumInput name="cruiseTasKt" value={a.cruiseTasKt} zeroAsEmpty onChange={(v) => edit((d) => { d.cruiseTasKt = v ?? 0; })} min={0} max={1000} unit="kt" placeholder="not set" invalid={at('cruiseTasKt').some((i) => i.level === 'error')} />
         </Field>
-        <Field focus="patternTasKt" label="Pattern TAS" issues={at('patternTasKt')}>
-          <NumInput value={a.patternTasKt} zeroAsEmpty onChange={(v) => edit((d) => { d.patternTasKt = v ?? 0; })} min={0} max={1000} unit="kt" placeholder="not set" />
+        <Field focus="patternTasKt" label="Pattern TAS" issues={at('patternTasKt')} hint="First and last legs">
+          <NumInput name="patternTasKt" value={a.patternTasKt} zeroAsEmpty onChange={(v) => edit((d) => { d.patternTasKt = v ?? 0; })} min={0} max={1000} unit="kt" placeholder="not set" />
         </Field>
-        <Field label="Climb TAS" issues={at('climbTasKt')} hint="Optional, for reference">
-          <NumInput value={a.climbTasKt} optional onChange={(v) => edit((d) => { d.climbTasKt = v; })} min={0} max={1000} unit="kt" />
+        <Field label="Climb TAS" issues={at('climbTasKt')}>
+          <NumInput name="climbTasKt" value={a.climbTasKt} optional onChange={(v) => edit((d) => { d.climbTasKt = v; })} min={0} max={1000} unit="kt" />
         </Field>
       </div>
     </Section>
@@ -199,30 +204,25 @@ export function FuelSection({ a, edit, issues }: SectionProps) {
   const at = (p: string) => issuesAt(issues, p, true);
   const bad = (p: string) => at(p).some((i) => i.level === 'error');
   const fu = (fn: (q: AircraftInput['fuel']) => void) => edit((d) => fn(d.fuel));
-  const endurance = f.burnLph > 0 && f.usableL > 0 ? f.usableL / f.burnLph : null;
-  const hm = (h: number) => `${Math.floor(h)} h ${String(Math.round((h % 1) * 60)).padStart(2, '0')} min`;
+  const enduranceMin = f.burnLph > 0 && f.usableL > 0 ? (f.usableL / f.burnLph) * 60 : null;
   const others = otherFuelTypes(f);
-  const rho = f.types[0]?.densityKgPerL ?? 0;
+  const primary = f.types[0]?.type;
   return (
-    <Section id="fuel" title="Fuel" intro="Capacity limits the fuel on board; the burn rate and the fixed allowance give the required fuel of each flight.">
-      <div className="fuel-types">
-        <span className="lbl">Approved fuels <span className="muted">· density for the W&B; with more than one, flights take the litres of each (mixed tanks)</span></span>
+    <Section id="fuel" title="Fuel">
+      <div className="fuel-types" data-path="fuel.types">
+        <span className="lbl">Approved fuels</span>
         <table className="ed-table fuel-tbl">
           <thead><tr><th>Fuel</th><th className="num">Density <span className="u">kg/L</span></th><th /><th /></tr></thead>
           <tbody>
-            {f.types.map((g, i) => (
+            {f.types.map((g) => (
               <tr key={g.type}>
                 <td className="mono">{g.type}</td>
-                <td className="num">
-                  <NumInput value={g.densityKgPerL} min={0} max={2} width={90} ariaLabel={`${g.type} density`} invalid={bad(`fuel.types.${i}.densityKgPerL`)}
-                    onChange={(v) => fu((q) => { q.types[i].densityKgPerL = v ?? 0; })} />
-                </td>
-                <td>{i === 0
+                <td className="num tnum muted">{fuelDensity(g.type).toFixed(2)}</td>
+                <td>{g.type === primary
                   ? (f.types.length > 1 ? <span className="hint" title="A flight that gives only a total carries this fuel">Default</span> : null)
                   : <button type="button" className="linkish" onClick={() => fu((q) => makePrimaryFuel(q, g.type))}>Make default</button>}</td>
                 <td className="row-tools">
-                  <button type="button" className="icon sm danger" aria-label={`Remove ${g.type}`} title="Remove" disabled={f.types.length <= 1}
-                    onClick={() => fu((q) => removeFuelType(q, g.type))}>×</button>
+                  <RowRemove label={`Remove ${g.type}`} disabled={f.types.length <= 1} onClick={() => fu((q) => removeFuelType(q, g.type))} />
                 </td>
               </tr>
             ))}
@@ -234,32 +234,32 @@ export function FuelSection({ a, edit, issues }: SectionProps) {
         <IssueList issues={issuesAt(issues, 'fuel.types')} />
       </div>
       <div className="grid3">
-        <Field label="Tanks" issues={at('fuel.tanks')} hint="e.g. standard, long-range">
-          <input value={f.tanks} onChange={(e) => { const v = e.target.value; fu((q) => { q.tanks = v; }); }} maxLength={60} />
+        <Field label="Tanks" issues={at('fuel.tanks')}>
+          <input name="fuel.tanks" value={f.tanks} onChange={(e) => { const v = e.target.value; fu((q) => { q.tanks = v; }); }} maxLength={60} placeholder="e.g. standard, long-range" />
         </Field>
       </div>
       <div className="grid3">
         <Field label="Total capacity" issues={at('fuel.totalL')}>
-          <NumInput value={f.totalL} zeroAsEmpty onChange={(v) => fu((q) => { q.totalL = v ?? 0; })} min={0} max={100000} unit="L" />
+          <NumInput name="fuel.totalL" value={f.totalL} zeroAsEmpty onChange={(v) => fu((q) => { q.totalL = v ?? 0; })} min={0} max={100000} unit="L" />
         </Field>
-        <Field label="Usable" issues={at('fuel.usableL')} hint="Fuel on board above this is flagged">
-          <NumInput value={f.usableL} zeroAsEmpty onChange={(v) => fu((q) => { q.usableL = v ?? 0; })} min={0} max={100000} unit="L" invalid={bad('fuel.usableL')} />
+        <Field label="Usable" issues={at('fuel.usableL')}>
+          <NumInput name="fuel.usableL" value={f.usableL} zeroAsEmpty onChange={(v) => fu((q) => { q.usableL = v ?? 0; })} min={0} max={100000} unit="L" invalid={bad('fuel.usableL')} />
         </Field>
         <Field label="Unusable" issues={at('fuel.unusableL')}>
-          <NumInput value={f.unusableL} onChange={(v) => fu((q) => { q.unusableL = v ?? 0; })} min={0} max={100000} unit="L" invalid={bad('fuel.unusableL')} />
+          <NumInput name="fuel.unusableL" value={f.unusableL} onChange={(v) => fu((q) => { q.unusableL = v ?? 0; })} min={0} max={100000} unit="L" invalid={bad('fuel.unusableL')} />
         </Field>
       </div>
       <div className="grid3">
-        <Field focus="burnLph" label="Planning burn rate" issues={at('fuel.burnLph')} hint="Used for every leg">
-          <NumInput value={f.burnLph} zeroAsEmpty onChange={(v) => fu((q) => { q.burnLph = v ?? 0; })} min={0} max={10000} unit="L/h" placeholder="not set" invalid={bad('fuel.burnLph')} />
+        <Field focus="burnLph" label="Planning burn rate" issues={at('fuel.burnLph')}>
+          <NumInput name="fuel.burnLph" value={f.burnLph} zeroAsEmpty onChange={(v) => fu((q) => { q.burnLph = v ?? 0; })} min={0} max={10000} unit="L/h" placeholder="not set" invalid={bad('fuel.burnLph')} />
         </Field>
-        <Field label="Fixed allowance" issues={at('fuel.taxiAllowanceL')} hint="Start-up, taxi, take-off and landing; added once per flight">
-          <NumInput value={f.taxiAllowanceL} onChange={(v) => fu((q) => { q.taxiAllowanceL = v ?? 0; })} min={0} max={10000} unit="L" />
+        <Field label="Fixed allowance" issues={at('fuel.taxiAllowanceL')} hint="Start-up, taxi, take-off and landing; once per flight">
+          <NumInput name="fuel.taxiAllowanceL" value={f.taxiAllowanceL} onChange={(v) => fu((q) => { q.taxiAllowanceL = v ?? 0; })} min={0} max={10000} unit="L" />
         </Field>
-        <div className="stat">
+        <div className="stat" data-testid="endurance">
           <span className="muted">Endurance on usable fuel</span>
-          <b>{endurance != null ? hm(endurance) : '—'}</b>
-          {rho > 0 && f.usableL > 0 && <span className="muted">{Math.round(f.usableL * rho)} kg usable ({f.types[0].type})</span>}
+          <b>{fmtDuration(enduranceMin, { fallback: '—' })}</b>
+          {primary && f.usableL > 0 && <span className="muted">{Math.round(f.usableL * fuelDensity(primary))} kg usable ({primary})</span>}
         </div>
       </div>
     </Section>
