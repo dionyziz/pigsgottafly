@@ -1,14 +1,13 @@
 // Flight plan: what only the pilot can say for the ICAO FPL: up to two alternate aerodromes
-// (item 16), touch-and-go / intermediate-stop requests at the route's aerodromes (item 18 RMK/ in
-// the club's words, and timing at pattern speed) and free-text remarks (item 18).
-// Everything else in the FPL comes from the
+// (item 16), touch-and-go / intermediate-stop requests at the route's aerodromes (item 18 RMK/,
+// timed at pattern speed) and free-text remarks (item 18). Everything else in the FPL comes from the
 // aircraft, the profile, the manifest, the route and the navlog.
 import { useEffect, useState } from 'react';
-import { AerodromePicker } from '../../profile/AerodromePicker';
+import { AerodromeTextInput, Check, NumberField } from '../../../ui';
 import { useEditor } from '../state';
 import { alternatesFrom, MAX_ALTERNATES } from './fplOptions';
 import { Section } from './ui';
-import { activeRequests, DEFAULT_STOP_MIN, MAX_STOP_MIN, requestAllowed, requestLabel, requestRemark, setRequest, type AerodromeRequest } from '../../../shared';
+import { activeRequests, DEFAULT_STOP_MIN, MAX_STOP_MIN, requestAllowed, requestRemark, setRequest, type AerodromeRequest } from '../../../shared';
 import { endpointAerodrome } from '../../../data/atc';
 import { REF } from '../../../data/ref';
 
@@ -37,17 +36,18 @@ export function FplSection() {
   return (
     <Section id="fpl" title="Flight plan" badge={badge}>
       <div className="ep-fpl" data-testid="fpl-options">
-        {fields.map((f, i) => (
-          <label className="field" key={i} data-testid={`fpl-alternate-${i + 1}`} data-focus={i === 0 ? 'alternates' : undefined}>
-            {i === 0 ? 'Alternate aerodrome (item 16)' : 'Second alternate'}
-            <AerodromePicker name={`alternate-${i + 1}`} value={f} onChange={(v) => setField(i, v)} placeholder="ICAO or name" />
-          </label>
-        ))}
+        <div className="ep-grid2">
+          {fields.map((f, i) => (
+            <label className="field" key={i} data-testid={`fpl-alternate-${i + 1}`} data-focus={i === 0 ? 'alternates' : undefined}>
+              Alternate {i + 1}
+              <AerodromeTextInput name={`alternate-${i + 1}`} value={f} onChange={(v) => setField(i, v)} placeholder="ICAO or name" />
+            </label>
+          ))}
+        </div>
         <RequestsList />
         <label className="field">Remarks (item 18)
           <textarea rows={2} value={remarks} data-testid="fpl-remarks" data-focus="remarks" placeholder="e.g. PHOTO FLIGHT"
             onChange={(e) => update((d) => ({ ...d, options: { ...d.options, remarks: e.target.value } }), { coalesce: 'fpl-rmk' })} />
-          <span className="hint">Plain text goes to RMK/ after the requests; text after an indicator (STS/, PER/ …) goes to that field.</span>
         </label>
       </div>
     </Section>
@@ -56,7 +56,7 @@ export function FplSection() {
 
 /**
  * The route's aerodromes, each with "Touch-and-go" and "Stop n min" (the same requests as the map
- * point menu); the requests made are listed with their RMK/ text and can be removed.
+ * point menu); a request made shows its RMK/ text.
  */
 function RequestsList() {
   const { doc, update } = useEditor();
@@ -70,7 +70,7 @@ function RequestsList() {
   const icao = (i: number) => (endpointAerodrome(route[i], REF.aerodromes)?.icao || route[i].name).toUpperCase();
   return (
     <div className="field ep-requests" data-testid="fpl-requests" data-focus="requests">
-      <span>Touch-and-go and stops <span className="muted">(item 18 RMK/)</span></span>
+      <span>Touch-and-go and stops</span>
       <ul>
         {ads.map(({ p, index }) => {
           const r = byUid.get(p.uid);
@@ -78,24 +78,25 @@ function RequestsList() {
             <li key={p.uid} data-testid={`fpl-request-${index}`}>
               <span className="ep-req-name">{p.name}</span>
               {requestAllowed(route, index, 'touch-and-go') && (
-                <label><input type="checkbox" checked={r?.kind === 'touch-and-go'} onChange={(e) => set(p.uid, e.target.checked ? 'touch-and-go' : null)} /> {index === 0 ? 'Touch-and-go first' : 'Touch-and-go'}</label>
+                <Check checked={r?.kind === 'touch-and-go'} onChange={(on) => set(p.uid, on ? 'touch-and-go' : null)}>
+                  {index === 0 ? 'Touch-and-go first' : 'Touch-and-go'}
+                </Check>
               )}
               {requestAllowed(route, index, 'stop') && (
-                <label>
-                  <input type="checkbox" checked={r?.kind === 'stop'} onChange={(e) => set(p.uid, e.target.checked ? 'stop' : null, r?.stopMin ?? DEFAULT_STOP_MIN)} /> Stop
+                <span className="ep-req-stop">
+                  <Check checked={r?.kind === 'stop'} onChange={(on) => set(p.uid, on ? 'stop' : null, r?.stopMin ?? DEFAULT_STOP_MIN)}>Stop</Check>
                   {r?.kind === 'stop' && (
-                    <input type="number" min={1} max={MAX_STOP_MIN} step={1} value={r.stopMin ?? DEFAULT_STOP_MIN} aria-label={`Stop at ${p.name}, minutes`} className="ep-req-min"
-                      onChange={(e) => { const n = Number(e.target.value); if (n > 0) set(p.uid, 'stop', n); }} />
+                    <NumberField value={r.stopMin ?? DEFAULT_STOP_MIN} min={1} max={MAX_STOP_MIN} integer optional={false} width={72} unit="min"
+                      ariaLabel={`Stop at ${p.name}, minutes`} className="ep-num" testId={`fpl-stop-min-${index}`}
+                      onChange={(n) => { if (n != null && n > 0) set(p.uid, 'stop', n); }} />
                   )}
-                  {r?.kind === 'stop' ? ' min' : ''}
-                </label>
+                </span>
               )}
-              {r && <span className="hint">{requestLabel(r, index)}: RMK/{requestRemark(r, icao(index), index)}</span>}
+              {r && <span className="ep-req-rmk mono" data-testid="fpl-request-rmk">RMK/{requestRemark(r, icao(index), index)}</span>}
             </li>
           );
         })}
       </ul>
-      {active.length > 0 && <span className="hint">The legs into and out of an intermediate aerodrome with a request are timed at pattern speed and altitude; a stop adds its minutes on the ground.</span>}
     </div>
   );
 }

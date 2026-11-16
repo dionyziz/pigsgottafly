@@ -124,7 +124,10 @@ src/
                            AerodromePopover: aerodrome hover tooltip / click details with the hours on the flight date),
                            notams.tsx (NotamProvider/useNotams: the flight's NOTAM briefing, show all, selected NOTAM),
                            AerodromeHours.tsx (an aerodrome's hours, ATS, handling on a date, NOTAM changes, AIP text),
-                           panels/ (FlightPanel sections incl. RouteSection (origin/destination fields), NavlogStrip; calc.tsx = useFlightCalc: weather, navlog,
+                           focus.ts (focusInEditor(key): a warning's fix opens the panel and the box holding the field and
+                           focuses it in place, like ?focus=; editorWarningFix(text) via exports/fix planningFix),
+                           panels/ (FlightPanel sections on src/ui Collapsible (store pgf.editor.sections; take-off/landing
+                           cards and aerodrome-hours items collapse too, with a summary), RouteSection (origin/destination fields), NavlogStrip; calc.tsx = useFlightCalc (weather via data/useFlightWeather): navlog,
                            fuel, W&B, performance, aerodrome hours at the planned times (aerodromeChecks.ts), warnings)
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope

@@ -34,6 +34,8 @@ export interface EditorValue {
   hangar: Aircraft[];
   passengers: Passenger[];
   waypoints: Waypoint[];
+  /** The passenger list was fetched (false: it failed to load, `passengers` is empty for that reason). */
+  passengersLoaded: boolean;
   reloadLists(): Promise<void>;
   /** The flight's aircraft (doc.aircraftId), or null. */
   aircraft: Aircraft | null;
@@ -79,11 +81,12 @@ interface Props {
   hangar: Aircraft[];
   passengers: Passenger[];
   waypoints: Waypoint[];
+  passengersLoaded?: boolean;
   reloadLists(): Promise<void>;
   children: ReactNode;
 }
 
-export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, waypoints, reloadLists, children }: Props) {
+export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, waypoints, passengersLoaded = true, reloadLists, children }: Props) {
   const [doc, setDoc] = useState<FlightDoc>(initialDoc);
   const hist = useRef({ past: [] as FlightDoc[], future: [] as FlightDoc[], key: '', t: 0 });
   const [, bump] = useState(0);
@@ -161,7 +164,7 @@ export function EditorProvider({ flight, initialDoc, pilot, hangar, passengers, 
   const value: EditorValue = {
     flight, doc, update, setDerived, undo, redo,
     canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0, saveStatus,
-    pilot, hangar, passengers, waypoints, reloadLists, aircraft, ref: REF,
+    pilot, hangar, passengers, waypoints, passengersLoaded, reloadLists, aircraft, ref: REF,
     legs, altitudeDefaults, altitudesFt,
   };
   return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;

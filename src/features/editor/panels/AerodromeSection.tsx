@@ -7,7 +7,8 @@ import { clockZ } from '../../../calc';
 import { useEditor } from '../state';
 import { AdHoursDetail, adDayInfo } from '../AerodromeHours';
 import { AD_ROLE, useFlightCalc, type AdCheck } from './calc';
-import { Chip, Section } from './ui';
+import { Collapsible } from '../../../ui';
+import { Chip, Section, SECTIONS_STORE } from './ui';
 
 function StatusChip({ c }: { c: AdCheck }) {
   if (!Number.isFinite(c.fromMs)) return <span className="muted">time not set</span>;
@@ -27,18 +28,17 @@ export function AerodromeSection() {
   return (
     <Section id="aerodromes" title="Aerodrome hours"
       badge={closed ? <Chip tone="danger">{closed} closed</Chip> : items.length ? <span className="muted">{items.length}</span> : undefined}>
-      {!items.length ? <p className="ep-note muted">Add aerodromes to the route to see their hours.</p> : (
+      {!items.length ? <p className="ep-note muted">No aerodromes on the route.</p> : (
         <ul className="ep-ad-list" data-testid="aerodrome-hours">
           {items.map(({ c, info }) => (
-            <li key={`${c.role}-${c.pointIndex}`} className={'ep-ad' + (c.ad.status === 'closed' && Number.isFinite(c.fromMs) ? ' is-closed' : '')} data-testid="aerodrome-hours-item" data-icao={c.aerodrome.icao ?? c.aerodrome.id}>
-              <div className="ep-ad-head">
-                <b>{AD_ROLE[c.role]} {c.aerodrome.icao || c.aerodrome.name}</b>
-                <span className="muted ep-ad-name">{c.aerodrome.name}</span>
-                <span className="spacer" />
-                <StatusChip c={c} />
-              </div>
-              {Number.isFinite(c.fromMs) && <div className="ep-ad-when muted">{c.when}{c.ad.notam ? ` · NOTAM ${c.ad.notam}` : ''}</div>}
-              <AdHoursDetail a={c.aerodrome} info={info} />
+            <li key={`${c.role}-${c.pointIndex}`} data-testid="aerodrome-hours-item" data-icao={c.aerodrome.icao ?? c.aerodrome.id}>
+              <Collapsible id={`ad-${c.aerodrome.id}`} store={SECTIONS_STORE} testId="aerodrome-hours-box"
+                className={'ep-ad' + (c.ad.status === 'closed' && Number.isFinite(c.fromMs) ? ' is-closed' : '')}
+                title={<>{AD_ROLE[c.role]} {c.aerodrome.icao || c.aerodrome.name}</>}
+                badge={<><span className="muted ep-ad-name">{c.aerodrome.name}</span><StatusChip c={c} /></>}>
+                {Number.isFinite(c.fromMs) && <div className="ep-ad-when muted">{c.when}{c.ad.notam ? ` · NOTAM ${c.ad.notam}` : ''}</div>}
+                <AdHoursDetail a={c.aerodrome} info={info} />
+              </Collapsible>
             </li>
           ))}
         </ul>

@@ -1,8 +1,11 @@
 // The editor's left panel: Route (origin, destination), When, Aerodrome hours, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
-// Flight plan (alternates, remarks), Exports. Numbers come from useFlightCalc() (src/calc); edits
+// Flight plan (alternates, remarks), Documents. Numbers come from useFlightCalc() (src/calc); edits
 // go through useEditor().update().
-import { EXPORT_KINDS, EXPORT_LABEL, type ExportKind } from '../../../shared';
+import { useState } from 'react';
+import { EXPORT_KINDS, EXPORT_LABEL } from '../../../shared';
 import { flightStore } from '../../../data/flightStore';
+import { Chip, Icon, WarningList } from '../../../ui';
+import { editorWarningFix } from '../focus';
 import { useEditor } from '../state';
 import { AerodromeSection } from './AerodromeSection';
 import { AircraftSection } from './AircraftSection';
@@ -14,24 +17,26 @@ import { ManifestSection } from './ManifestSection';
 import { NotamSection } from './NotamSection';
 import { PerformanceSection } from './PerformanceSection';
 import { RouteSection } from './RouteSection';
-import { Chip, Icon, Section } from './ui';
+import { Section } from './ui';
 import { WhenSection } from './WhenSection';
 
-const EXPORT_HINT: Record<ExportKind, string> = {
-  navlog: 'Printable sheet, A4 landscape',
-  form731: 'HCAA persons on board',
-  gendec: 'ICAO Annex 9',
-  fpl: 'ICAO FPL for AFTN',
-  wbperf: 'Loading sheet, envelope, take-off/landing',
-  briefing: 'NOTAMs along the route',
-};
-
-function ExportsSection() {
-  const { flight } = useEditor();
+/** The printable documents; the issues count opens the list of issues, each with its fix. */
+function DocumentsSection() {
+  const { flight, doc } = useEditor();
   const { warnings } = useFlightCalc();
-  const blocking = warnings.filter((w) => w.level === 'danger').length;
+  const issues = warnings.filter((w) => w.level === 'danger');
+  const [showIssues, setShowIssues] = useState(false);
+  const badge = issues.length ? (
+    <button type="button" className="ep-chip-btn" aria-expanded={showIssues} data-testid="documents-issues"
+      onClick={() => setShowIssues((v) => !v)} title={showIssues ? 'Hide the issues' : 'Show the issues'}>
+      <Chip tone="danger">{issues.length} issue{issues.length > 1 ? 's' : ''}</Chip>
+    </button>
+  ) : undefined;
   return (
-    <Section id="exports" title="Exports" badge={blocking ? <Chip tone="danger">{blocking} issue{blocking > 1 ? 's' : ''}</Chip> : undefined}>
+    <Section id="documents" title="Documents" badge={badge}>
+      {showIssues && issues.length > 0 && (
+        <WarningList warnings={issues} className="ep-issues" testId="documents-issue-list" fix={(w) => editorWarningFix(w.text, doc.aircraftId)} />
+      )}
       <ul className="ep-exports" data-testid="exports">
         {EXPORT_KINDS.map((k) => (
           <li key={k}>
@@ -43,9 +48,9 @@ function ExportsSection() {
               // send pending edits first so the export page loads them
               onClick={() => { void flightStore.flushNow(); }}
             >
-              <Icon name="print" />
-              <span className="ep-export-label">{EXPORT_LABEL[k]}<span className="muted">{EXPORT_HINT[k]}</span></span>
-              <Icon name="external" size={14} />
+              <Icon name="print" className="ep-icon" />
+              <span className="ep-export-label">{EXPORT_LABEL[k]}</span>
+              <Icon name="external" size={14} className="ep-icon" />
             </a>
           </li>
         ))}
@@ -67,7 +72,7 @@ export function FlightPanel() {
       <NotamSection />
       <AtcSection />
       <FplSection />
-      <ExportsSection />
+      <DocumentsSection />
     </div>
   );
 }

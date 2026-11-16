@@ -1,5 +1,6 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
 import { Link } from 'react-router-dom';
+import { todayUtc } from '../../../shared/date';
 import { pickCompassCard } from '../../../calc';
 import { fuelTypesLabel, seatLayout, type Aircraft, type FlightCrew, type FlightDoc, type HangarAircraft } from '../../../shared';
 import { useEditor } from '../state';
@@ -46,14 +47,14 @@ function sharedBy(a: Aircraft): string {
 export function AircraftSection() {
   const { doc, update, hangar, aircraft } = useEditor();
   // A compass card is only worth a line when it has expired by the day of the flight.
-  const expiredOn = (expires: string) => !!expires && expires < (doc.date || new Date().toISOString().slice(0, 10));
+  const expiredOn = (expires: string) => !!expires && expires < (doc.date || todayUtc());
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
   const missing = doc.aircraftId && !aircraft;
 
   return (
     <Section id="aircraft" title="Aircraft" badge={aircraft ? <b className="mono">{aircraft.registration}</b> : <Chip tone="warn">None</Chip>}>
       {hangar.length === 0 ? (
-        <p className="ep-note">Your hangar is empty. <Link to="/hangar">Add an aircraft</Link> to compute the navlog, fuel, weight &amp; balance and performance.</p>
+        <p className="ep-note" data-focus="aircraft">Hangar empty. <Link to="/hangar">Add an aircraft</Link></p>
       ) : (
         <select
           value={aircraft?.id ?? ''}
@@ -69,13 +70,13 @@ export function AircraftSection() {
           {hangar.map((a) => <option key={a.id} value={a.id}>{a.registration} · {a.makeModel || a.icaoType}{sharedBy(a)}</option>)}
         </select>
       )}
-      {missing && <p className="ep-note warn-text" data-testid="aircraft-unavailable">The aircraft of this flight is unavailable: it was deleted or is no longer shared with you. Choose another aircraft.</p>}
+      {missing && <p className="ep-note warn-text" data-testid="aircraft-unavailable">Aircraft unavailable: deleted or no longer shared.</p>}
       {aircraft && (
         <>
           <div className="ep-kvs">
             <KV k="Type" v={<>{aircraft.icaoType}/{aircraft.wake}</>} sub={aircraft.colours || undefined} />
             <KV k="TAS cruise / pattern" v={<span className="tnum">{aircraft.cruiseTasKt} / {aircraft.patternTasKt} kt</span>} />
-            <KV k="Planning burn" v={<span className="tnum">{aircraft.fuel.burnLph} L/h</span>} sub={`+${aircraft.fuel.taxiAllowanceL} L allowance`} />
+            <KV k="Planning burn" v={<span className="tnum">{aircraft.fuel.burnLph} L/h</span>} sub={`+${aircraft.fuel.taxiAllowanceL} L taxi`} />
             <KV k="Fuel capacity" v={<span className="tnum">{aircraft.fuel.usableL} L</span>} sub={fuelTypesLabel(aircraft.fuel)} />
           </div>
           {aircraft.compassCards.length > 1 ? (
@@ -87,7 +88,7 @@ export function AircraftSection() {
           ) : card && expiredOn(card.expires) ? (
             <KV k="Compass card" tone="danger" v={card.name} sub={`expired ${card.expires}`} />
           ) : null}
-          <Link to={`/hangar/${aircraft.id}`} className="ep-link">Open {aircraft.registration} in the hangar</Link>
+          <Link to={`/hangar/${aircraft.id}`} className="ep-link">{aircraft.registration} in the hangar</Link>
         </>
       )}
     </Section>

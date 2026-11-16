@@ -4,7 +4,7 @@
 // from each stop) and one list of warnings. Everything numeric comes from src/calc; this file only wires inputs.
 //
 // <FlightCalcProvider> sits inside <EditorProvider> (EditorPage); read with useFlightCalc().
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   aerodromePerformance,
   computeNavlog,
@@ -28,14 +28,15 @@ import {
   type WbResult,
   type WbStatus,
 } from '../../../calc';
-import { CARD_EXPIRY_WARN_DAYS, activeRequests, fuelLoad, requestTiming, seatLayout, landingPointIndices, validateCrew, type RoutePoint } from '../../../shared';
+import { CARD_EXPIRY_WARN_DAYS, activeRequests, fuelLoad, requestTiming, seatLayout, validateCrew, type RoutePoint } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
-import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
+import { fmtClock } from '../../../shared/format';
+import { todayUtc } from '../../../shared/date';
+import { useFlightWeather } from '../../../data/useFlightWeather';
 import { REF, SUN_TABLES, runwaysOf } from '../../../data/ref';
 import { endpointAerodrome } from '../../../data/atc';
 import {
   chooseSurface,
-  fetchRouteWeather,
   surfaceConditions,
   toPerfWind,
   windProviderFromLegs,
@@ -43,7 +44,7 @@ import {
   type RouteWeather,
   type SurfaceConditions,
 } from '../../../data/weather';
-import { fetchMetarTaf, type MetarTafResult, type StationReports } from '../../../data/weatherMetar';
+import type { MetarTafResult, StationReports } from '../../../data/weatherMetar';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
 import { aerodromeNotamEffects, hazardWhere, type AdNotamEffect, type Hazard } from '../../../calc';
 import { aerodromeChecks as buildAdChecks, aerodromeWarnings, type AdCheck } from './aerodromeChecks';
@@ -157,61 +158,24 @@ export function endpointOf(p: RoutePoint | undefined): RefAerodrome | null {
 export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const { doc, legs, altitudesFt, aircraft, pilot, setDerived } = useEditor();
 
-  const dep = useMemo(() => endpointOf(doc.route[0]), [doc.route]);
-  const arr = useMemo(() => (doc.route.length > 1 ? endpointOf(doc.route[doc.route.length - 1]) : null), [doc.route]);
-  // Intermediate full stops and touch-and-goes: their aerodromes get surface weather and METAR too.
-  const stopIdx = useMemo(() => landingPointIndices(doc.route, doc.options), [doc.route, doc.options]);
-  const stopAds = useMemo(() => stopIdx.map((i) => endpointOf(doc.route[i])), [stopIdx, doc.route]);
-  const stopLocs = useMemo(() => stopIdx.map((i, k) => {
-    const a = stopAds[k];
-    return a ? { lat: a.lat, lon: a.lon } : { lat: doc.route[i].lat, lon: doc.route[i].lon };
-  }), [stopIdx, stopAds, doc.route]);
-  const dayMs = doc.date ? Date.parse(doc.date + 'T00:00:00Z') : NaN;
-
-  // ---- winds aloft: fetched per leg midpoint, kept by midpoint so unchanged legs keep their data
+  // ---- winds aloft at the leg midpoints, surface forecast and METAR/TAF at the departure, the stops
+  // (full stops and touch-and-goes) and the destination
   const model = doc.options.windModel;
-  const mids = useMemo(() => legs.map((l) => ({ lat: +l.mid.lat.toFixed(3), lon: +l.mid.lon.toFixed(3) })), [legs]);
-  const fetchKey = JSON.stringify([doc.date, model, mids, dep && [dep.lat, dep.lon], arr && [arr.lat, arr.lon], stopLocs]);
-  const [weather, setWeather] = useState<RouteWeather | null>(null);
+  const wx = useFlightWeather({ date: doc.date, route: doc.route, options: doc.options, model, legs, debounceMs: 500, metar: 'always' });
+  const { weather, weatherLoading, metar, refresh: refreshWeather, refreshCount, mids } = wx;
+  const dep = wx.departure;
+  const arr = wx.destination;
+  const stopIdx = useMemo(() => wx.stops.map((x) => x.pointIndex), [wx.stops]);
+  const stopAds = useMemo(() => wx.stops.map((x) => x.aerodrome), [wx.stops]);
+  const dayMs = doc.date ? Date.parse(doc.date + 'T00:00:00Z') : NaN;
+  const force = refreshCount;
+  // Winds kept by leg midpoint, so unchanged legs keep their data while a changed route refetches.
+  // A result is only ever the newest request's, made for the midpoints of this render.
   const [byMid, setByMid] = useState<Map<string, OpenMeteoLocation | null>>(new Map());
-  const [weatherLoading, setWeatherLoading] = useState(false);
-  const [force, setForce] = useState(0);
-  const seq = useRef(0);
   useEffect(() => {
-    if (!mids.length && !dep && !arr) { setWeather(null); setWeatherLoading(false); return; }
-    const my = ++seq.current;
-    setWeatherLoading(true);
-    const t = setTimeout(() => {
-      fetchRouteWeather({
-        date: doc.date,
-        model,
-        legMidpoints: mids,
-        departure: dep ? { lat: dep.lat, lon: dep.lon } : null,
-        destination: arr ? { lat: arr.lat, lon: arr.lon } : null,
-        stops: stopLocs,
-        force: force > 0,
-      }).then((w) => {
-        if (my !== seq.current) return;
-        setWeather(w);
-        setByMid(new Map(mids.map((m, i) => [midKey(m), w.legs[i] ?? null])));
-        setWeatherLoading(false);
-      });
-    }, 500);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchKey, force]);
-  const refreshWeather = useCallback(() => setForce((x) => x + 1), []);
-
-  // ---- METAR/TAF at the endpoints
-  const icaos = [...new Set([dep?.icao, ...stopAds.map((a) => a?.icao), arr?.icao].filter((x): x is string => !!x))];
-  const icaoKey = icaos.join(',');
-  const [metar, setMetar] = useState<MetarTafResult | null>(null);
-  useEffect(() => {
-    if (!icaoKey) { setMetar(null); return; }
-    let live = true;
-    fetchMetarTaf(icaoKey.split(','), { force: force > 0 }).then((m) => { if (live) setMetar(m); });
-    return () => { live = false; };
-  }, [icaoKey, force]);
+    if (!weather) { setByMid(new Map()); return; }
+    setByMid(new Map(mids.map((m, i) => [midKey(m), weather.legs[i] ?? null])));
+  }, [weather]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- weather hazards: corridor samples along each leg (grid cells cached individually)
   const hzKey = JSON.stringify([doc.date, model, legs.map((l) => [l.from.lat, l.from.lon, l.to.lat, l.to.lon].map((x) => x.toFixed(3))), dep && [dep.lat, dep.lon], arr && [arr.lat, arr.lon]]);
@@ -226,7 +190,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         departure: dep ? { lat: dep.lat, lon: dep.lon } : null,
         destination: arr ? { lat: arr.lat, lon: arr.lon } : null,
         force: force > 0,
-      }).then((h) => { if (live) setHazardWeather(h); });
+      }).then((h) => { if (live) setHazardWeather(h); }, () => { if (live) setHazardWeather(null); });
     }, 700);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,7 +316,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         wind: toPerfWind(surface),
         qnhHpa: surface?.qnhHpa ?? 1013.25,
         oatC: surface?.tempC ?? isaTempC(elev),
-        variationDeg: magneticVariation(ad.lat, ad.lon, doc.date || new Date().toISOString().slice(0, 10)),
+        variationDeg: magneticVariation(ad.lat, ad.lon, doc.date || todayUtc()),
         massKg: massKg as number,
         tables: aircraft.performance,
         runway,
@@ -429,7 +393,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const warnings = useMemo(() => {
     const w: CalcWarning[] = [];
     const add = (level: WarningLevel, area: WarningArea, text: string) => { if (!w.some((x) => x.text === text)) w.push({ level, area, text }); };
-    if (!aircraft) add('warn', 'aircraft', doc.route.length > 1 ? 'Choose an aircraft to compute the navlog, fuel, W&B and performance.' : 'No aircraft chosen.');
+    if (!aircraft) add('warn', 'aircraft', 'No aircraft chosen.');
     for (const e of crewErrors) add('danger', 'manifest', `Manifest: ${e}.`);
     if (weather && (weather.status === 'unavailable' || weather.status === 'error')) add('warn', 'weather', weather.message);
     if (navlog) {
@@ -528,11 +492,4 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   return <CalcContext.Provider value={value}>{children}</CalcContext.Provider>;
 }
 
-/** Minutes after 00:00 UTC → 'HH:MM' (wraps past midnight; '--:--' when unknown). */
-export const fmtMin = (min: number): string => fmtClock(min, { fallback: '--:--' });
-/** Duration in minutes → '1h44' ('–' when unknown). */
-export const fmtDur = (min: number | null | undefined): string => fmtDuration(min, { fallback: '–' });
-/** Local (Greece) clock time of a UTC instant, e.g. '14:30'. */
-export const localClock = (ms: number): string => fmtLocalClock(ms);
-/** Offset label of local time at an instant, e.g. 'UTC+2'. */
-export { localOffsetLabel } from '../../../shared/date';
+const fmtMin = (min: number): string => fmtClock(min, { fallback: '--:--' });

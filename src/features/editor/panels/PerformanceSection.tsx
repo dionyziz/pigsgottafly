@@ -7,17 +7,24 @@ import { runwaysOf } from '../../../data/ref';
 import type { Aircraft } from '../../../shared';
 import { setStopChoice, type FlightOptions } from '../../../shared';
 import { useEditor } from '../state';
-import { fmtMin, useFlightCalc, type EndpointCalc } from './calc';
-import { Chip, KV, Section } from './ui';
+import { fmtClock } from '../../../shared/format';
+import { Collapsible } from '../../../ui';
+import { useFlightCalc, type EndpointCalc } from './calc';
+import { Chip, KV, Section, SECTIONS_STORE } from './ui';
 
 const m = (x: number | null | undefined) => (x == null || !isFinite(x) ? '–' : `${Math.round(x)} m`);
 
-function windText(e: EndpointCalc): string {
-  const w = e.surface?.wind;
-  if (!w) return 'unknown';
-  if (!(w.speedKt > 0.5)) return 'calm';
-  const dir = w.dirTrueDeg == null ? 'VRB' : String(Math.round(w.dirTrueDeg) % 360 || 360).padStart(3, '0');
-  return `${dir}°T / ${Math.round(w.speedKt)} kt${w.gustKt ? ` G${Math.round(w.gustKt)}` : ''}`;
+/** The conditions in one line: '240°/12 kt · 18°C · Q1013' (wind direction true). */
+export function weatherText(e: Pick<EndpointCalc, 'surface'>): string {
+  const s = e.surface;
+  if (!s) return 'ISA, calm';
+  const w = s.wind;
+  const wind = !w ? 'wind –'
+    : !(w.speedKt > 0.5) ? 'calm'
+    : `${w.dirTrueDeg == null ? 'VRB' : `${String(Math.round(w.dirTrueDeg) % 360 || 360).padStart(3, '0')}°`}/${Math.round(w.speedKt)}${w.gustKt ? `G${Math.round(w.gustKt)}` : ''} kt`;
+  const temp = s.tempC != null ? `${Math.round(s.tempC)}°C` : '–°C';
+  const qnh = s.qnhHpa != null ? `Q${Math.round(s.qnhHpa)}` : 'Q–';
+  return `${wind} · ${temp} · ${qnh}`;
 }
 
 /** The same verdict as the MD 4.4 export (mass limit, distances, crosswind, AFM table range). */
@@ -64,25 +71,31 @@ function Endpoint({ e }: { e: EndpointCalc }) {
     : e.stopUid ? (to ? 'Take-off from stop' : 'Landing at stop') : to ? 'Departure' : 'Destination';
   const timeMin = isFinite(e.timeMs) && isFinite(dayMs) ? (e.timeMs - dayMs) / 60000 : NaN;
 
-  if (!ad) return <div className="ep-perf"><div className="ep-perf-head"><b>{title}</b><span className="muted">not an aerodrome</span></div></div>;
+  if (!ad) return <div className="ep-perf ep-perf-none"><b>{title}</b> <span className="muted">not an aerodrome</span></div>;
+  const showVerdict = !!(p || v.overMass);
+  const runway = p?.runway?.designator ?? runwayValue;
+  const dist = p?.distances
+    ? `${to ? 'TODR/TODA' : 'LDR/LDA'} ${Math.round(p.distances.requiredTotalM)}/${p.availableTotalM != null ? Math.round(p.availableTotalM) : '–'} m`
+    : null;
+  const summary = [showVerdict ? (v.verdict === 'pass' ? 'Fits' : v.verdict === 'fail' ? 'No-go' : 'Check') : null, runway ? `RWY ${runway}` : null, dist]
+    .filter(Boolean).join(' · ');
   return (
-    <div className="ep-perf" data-testid={`perf-${tid}`}>
-      <div className="ep-perf-head">
-        <b>{title} {ad.icao ?? ''}</b>
+    <Collapsible id={`perf-${tid}-${ad.id}`} store={SECTIONS_STORE} className="ep-perf" testId={`perf-${tid}`}
+      title={<>{title} {ad.icao ?? ''}</>}
+      badge={<>
         <span className="muted ellipsis">{ad.name}</span>
-        <span className="spacer" />
-        {(p || v.overMass) && <span data-testid={`perf-verdict-${tid}`} data-verdict={v.verdict}><VerdictChip v={v} /></span>}
-      </div>
-      {(p || v.overMass) && v.verdict !== 'pass' && (
+        {showVerdict && <span className="ep-perf-verdict" data-testid={`perf-verdict-${tid}`} data-verdict={v.verdict}><VerdictChip v={v} /></span>}
+      </>}
+      summary={summary ? <span className="tnum" data-testid={`perf-summary-${tid}`}>{summary}</span> : undefined}>
+      {showVerdict && v.verdict !== 'pass' && (
         <div className={`ep-note ${v.verdict === 'fail' ? 'danger-text' : 'warn-text'}`} data-testid={`perf-reason-${tid}`}>
           {reasonText(v)}
         </div>
       )}
       <div className="ep-kvs">
-        <KV k={to ? 'Take-off' : 'Landing'} v={<span className="tnum">{isFinite(timeMin) ? `${fmtMin(timeMin)}Z` : '–'}</span>}
-          sub={e.surface ? e.surface.label : 'no conditions'} />
-        <KV k="Wind" v={<span className="tnum">{windText(e)}</span>}
-          sub={e.surface ? `${e.surface.tempC != null ? `${Math.round(e.surface.tempC)}°C` : '–'} · Q${e.surface.qnhHpa != null ? Math.round(e.surface.qnhHpa) : '–'}` : 'ISA, calm'} />
+        <KV k={to ? 'Take-off' : 'Landing'} v={<span className="tnum">{isFinite(timeMin) ? `${fmtClock(timeMin, { fallback: '--:--' })}Z` : '–'}</span>}
+          sub={e.surface ? (e.surface.source === 'metar' ? e.surface.label : 'forecast') : undefined} />
+        <KV k="Weather" testId={`perf-weather-${tid}`} v={<span className="tnum">{weatherText(e)}</span>} />
         {e.reports?.metar && <div className="ep-metar mono" title="METAR">{e.reports.metar.raw}</div>}
       </div>
       <div className="ep-grid2">
@@ -123,8 +136,8 @@ function Endpoint({ e }: { e: EndpointCalc }) {
           ))}
         </div>
       )}
-      {!aircraft && <p className="muted ep-note">Choose an aircraft for the distances.</p>}
-    </div>
+      {!aircraft && <p className="muted ep-note">No aircraft.</p>}
+    </Collapsible>
   );
 }
 
@@ -137,7 +150,7 @@ export function PerformanceSection() {
   return (
     <Section id="performance" title="Take-off & landing" badge={bad ? <Chip tone="danger">No-go</Chip> : undefined}>
       <div data-focus="performance">
-      {!has && <p className="muted ep-note">Start and end the route at an aerodrome.</p>}
+      {!has && <p className="muted ep-note">No aerodrome at either end.</p>}
       {departure.aerodrome && <Endpoint e={departure} />}
       {stops.map((x) => x.aerodrome && (
         <div key={x.point.uid} className="ep-stop" data-testid="perf-stop">

@@ -4,7 +4,7 @@
 // per-leg overrides); on a route with one point, picking the destination adds it.
 import { useEffect, useState } from 'react';
 import { aerodromePoint as pointOf, type FlightDoc, type RefAerodrome, type RoutePoint } from '../../../shared';
-import { AerodromePicker, resolveAerodrome } from '../../profile/AerodromePicker';
+import { AerodromeTextInput } from '../../../ui';
 import { useEditor } from '../state';
 import { Section } from './ui';
 
@@ -41,14 +41,13 @@ function EndField({ label, point, disabled, hint, testId, onPick }: {
     <label className="field" data-testid={testId} onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); setText(shown); }}>
       {label}
       {disabled ? <input disabled placeholder={hint} /> : (
-        <AerodromePicker name={testId} value={text} placeholder="ICAO or name"
-          onChange={(v) => {
+        <AerodromeTextInput name={testId} value={text} placeholder="ICAO or name" status={!custom || focused}
+          onChange={(v, a) => {
             setText(v);
-            const a = resolveAerodrome(v);
             if (a && !(point?.kind === 'aerodrome' && point.refId === a.id)) onPick(a);
           }} />
       )}
-      {custom && !focused && <span className="hint">A point on the map, not an aerodrome</span>}
+      {custom && !focused && <span className="hint">Map point, not an aerodrome</span>}
     </label>
   );
 }
@@ -61,18 +60,14 @@ export function RouteSection() {
   const set = (end: 'from' | 'to') => (a: RefAerodrome) =>
     update((d: FlightDoc) => ({ ...d, route: setRouteEnd(d.route, end, a) }), { coalesce: `route-${end}` });
   const between = Math.max(0, route.length - 2);
-  const badge = <span className="muted">{from ? `${from.name} → ${to ? to.name : '?'}` : 'No route'}</span>;
+  const badge = <span className="muted">{from ? `${from.name} → ${to ? to.name : '?'}${between ? ` · ${between} via` : ''}` : 'No route'}</span>;
   return (
     <Section id="route" title="Route" badge={badge}>
-      <div className="ep-grid2" data-testid="route-ends">
+      <div className="ep-grid2" data-testid="route-ends" data-focus="route">
         <EndField label="Origin" point={from} testId="route-origin" onPick={set('from')} />
         <EndField label="Destination" point={to} testId="route-destination" onPick={set('to')}
           disabled={!from} hint="Set the origin first" />
       </div>
-      <p className="ep-note muted">
-        {between ? `${between} point${between > 1 ? 's' : ''} in between. ` : ''}
-        Click the map to add points; drag a point to move it.
-      </p>
     </Section>
   );
 }

@@ -4,9 +4,11 @@
 // keeping the rows added by hand.
 import { useMemo, useState } from 'react';
 import { uid, type AtcEntry } from '../../../shared';
+import { moveAt } from '../../../shared/list';
+import { DragHandle, Icon, useSortable } from '../../../ui';
 import { atcFreqText, atcInput, generateAtcList, regenerateAtcList } from '../../../data/atc';
 import { useEditor } from '../state';
-import { Chip, Icon, Section } from './ui';
+import { Chip, Section } from './ui';
 
 const FREQ_RE = /^\d{3}\.\d{1,3}$/;
 
@@ -18,6 +20,8 @@ function EditRow({ entry, onSave, onCancel }: { entry: AtcEntry; onSave(e: AtcEn
   const backups = f.backups.split(/[\s,/]+/).filter(Boolean);
   const bad = [f.primary, ...backups].filter((x) => x && !FREQ_RE.test(x));
   const ok = f.callsign.trim() && bad.length === 0;
+  const badPrimary = !!f.primary && !FREQ_RE.test(f.primary);
+  const badBackups = backups.some((x) => !FREQ_RE.test(x));
   const save = () => {
     if (!ok) return;
     onSave({ ...entry, group: f.group.trim(), callsign: f.callsign.trim().toUpperCase(), service: f.service.trim().toUpperCase(), primary: f.primary.trim(), backups, remark: f.remark.trim() });
@@ -27,8 +31,10 @@ function EditRow({ entry, onSave, onCancel }: { entry: AtcEntry; onSave(e: AtcEn
     <form className="ep-atc-edit" onSubmit={(e) => { e.preventDefault(); save(); }} onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }} data-testid="atc-edit">
       <label className="field wide">Callsign<input value={f.callsign} onChange={set('callsign')} placeholder="TATOI TOWER" autoFocus /></label>
       <label className="field">Unit<input value={f.service} onChange={set('service')} placeholder="TWR" /></label>
-      <label className="field">Primary<input value={f.primary} onChange={set('primary')} placeholder="122.650" className={f.primary && !FREQ_RE.test(f.primary) ? 'invalid' : ''} /></label>
-      <label className="field wide">Backups<input value={f.backups} onChange={set('backups')} placeholder="118.500 …" className={backups.some((x) => !FREQ_RE.test(x)) ? 'invalid' : ''} /></label>
+      <label className="field">Primary<input value={f.primary} onChange={set('primary')} placeholder="122.650" className={badPrimary ? 'invalid' : ''} aria-invalid={badPrimary || undefined} data-testid="atc-primary" />
+        {badPrimary && <span className="hint danger-text" data-testid="atc-freq-format">Format 123.450</span>}</label>
+      <label className="field wide">Backups<input value={f.backups} onChange={set('backups')} placeholder="118.500 …" className={badBackups ? 'invalid' : ''} aria-invalid={badBackups || undefined} />
+        {badBackups && <span className="hint danger-text">Format 123.450</span>}</label>
       <label className="field wide">Heading<input value={f.group} onChange={set('group')} placeholder="e.g. LGTT DEKELIA / TATOI" /></label>
       <label className="field wide">Remark<input value={f.remark} onChange={set('remark')} /></label>
       <div className="row wide">
@@ -65,13 +71,7 @@ export function AtcSection() {
 
   /** Every edit materializes the list on the flight. */
   const edit = (fn: (l: AtcEntry[]) => AtcEntry[]) => update((d) => ({ ...d, atc: fn(d.atc ?? generated) }));
-  const move = (i: number, dir: -1 | 1) => edit((l) => {
-    const j = i + dir;
-    if (j < 0 || j >= l.length) return l;
-    const out = [...l];
-    [out[i], out[j]] = [out[j], out[i]];
-    return out;
-  });
+  const sort = useSortable({ count: list.length, onMove: (from, to) => edit((l) => moveAt(l, from, to)), disabled: editing !== null });
   const regenerate = () => update((d) => {
     const custom = (d.atc ?? []).filter((e) => e.sourceKey === null);
     return { ...d, atc: custom.length ? regenerateAtcList(d.atc, generated) : null };
@@ -93,20 +93,20 @@ export function AtcSection() {
   return (
     <Section id="atc" title="ATC" badge={badge} actions={
       <>
-        <button type="button" className="icon" title={edited ? 'Regenerate from the route (keeps rows you added)' : 'The list follows the route'} onClick={regenerate} disabled={!edited} data-testid="atc-regenerate"><Icon name="refresh" /></button>
-        <button type="button" className="icon" title="Add a unit" onClick={add} data-testid="atc-add"><Icon name="plus" /></button>
+        {edited && <button type="button" className="icon" title="Regenerate from the route (keeps rows you added)" aria-label="Regenerate" onClick={regenerate} data-testid="atc-regenerate"><Icon name="refresh" className="ep-icon" /></button>}
+        <button type="button" className="icon" title="Add a unit" aria-label="Add a unit" onClick={add} data-testid="atc-add"><Icon name="plus" className="ep-icon" /></button>
       </>
     }>
       {stale && (
-        <p className="ep-note warn-text">The route changed since this list was edited. <button type="button" className="linkish" onClick={regenerate}>Regenerate</button></p>
+        <p className="ep-note warn-text">Route changed since this list was edited. <button type="button" className="linkish" onClick={regenerate}>Regenerate</button></p>
       )}
-      {list.length === 0 && <p className="muted ep-note">Draw a route to list the ATC units.</p>}
+      {list.length === 0 && <p className="muted ep-note">No route.</p>}
       <ol className="ep-atc" data-testid="atc-list">
         {list.map((e, i) => {
           const head = e.group !== lastGroup ? e.group : null;
           lastGroup = e.group;
           return (
-            <li key={e.id} className="ep-atc-item">
+            <li key={e.id} {...sort.itemProps(i, 'ep-atc-item')}>
               {head !== null && <div className="ep-atc-group">{head || 'Other'}</div>}
               {editing === e.id ? (
                 <EditRow
@@ -120,16 +120,15 @@ export function AtcSection() {
                 />
               ) : (
                 <div className="ep-atc-row" data-testid="atc-row">
-                  <div className="ep-atc-main" onDoubleClick={() => setEditing(e.id)}>
+                  <DragHandle {...sort.handleProps(i)} label={`Move ${e.callsign || 'unit'}`} />
+                  <div className="ep-atc-main" role="button" tabIndex={0} title="Edit" data-testid="atc-row-edit"
+                    onClick={() => setEditing(e.id)} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setEditing(e.id); } }}>
                     <span className="ep-atc-cs">{e.callsign}{e.service && <span className="ep-atc-svc">{e.service}</span>}</span>
                     <span className="ep-atc-freq tnum">{atcFreqText(e) || <span className="muted">no frequency</span>}</span>
                     {e.remark && <span className="ep-atc-remark muted">{e.remark}</span>}
                   </div>
                   <div className="ep-row-actions">
-                    <button type="button" className="icon" title="Move up" disabled={i === 0} onClick={() => move(i, -1)}><Icon name="up" size={14} /></button>
-                    <button type="button" className="icon" title="Move down" disabled={i === list.length - 1} onClick={() => move(i, 1)}><Icon name="down" size={14} /></button>
-                    <button type="button" className="icon" title="Edit" onClick={() => setEditing(e.id)} data-testid="atc-edit-btn"><Icon name="edit" size={14} /></button>
-                    <button type="button" className="icon" title="Remove" onClick={() => edit((l) => l.filter((x) => x.id !== e.id))} data-testid="atc-remove"><Icon name="x" size={14} /></button>
+                    <button type="button" className="icon" title="Remove" aria-label={`Remove ${e.callsign || 'unit'}`} onClick={() => edit((l) => l.filter((x) => x.id !== e.id))} data-testid="atc-remove"><Icon name="x" size={14} className="ep-icon" /></button>
                   </div>
                 </div>
               )}
