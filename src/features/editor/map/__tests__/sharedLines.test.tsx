@@ -131,7 +131,8 @@ describe('AIP VFR charts', () => {
   it('every chart the VFR points and routes are printed on has its PDF', () => {
     const charts = new Set([...VFR_POINTS.map((p) => p.chart), ...VFR_ROUTES.map((r) => r.chart)]);
     charts.delete('LGGG'); // open flightmaps, not an AIP chart
-    expect([...charts].filter((c) => !vfrChartUrl(c))).toEqual([]);
+    // heliport reporting points come from their AD 3.N.21 tables: no VFR chart
+    expect([...charts].filter((c) => !c.startsWith('AD 3.') && !vfrChartUrl(c))).toEqual([]);
   });
   it('an aerodrome: its own chart, else the smallest chart that shows it', () => {
     expect(aerodromeVfrCharts(idx, ad('LGAV')).map((c) => c.icao)).toEqual(['LGAV']);

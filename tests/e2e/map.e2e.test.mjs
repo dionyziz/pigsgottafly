@@ -596,7 +596,7 @@ test('radio navaids: ICAO symbols labelled with their ident, hover and click det
   assert.equal(icons['KOR NDB'], 'pgf-nav-ndb');
   await shot('navaids-1');
   // hover: type, ident, name, frequency; click: the details with the AIP sections
-  await jump(ATV.lat, ATV.lon, 9.5);
+  await jump(ATV.lat, ATV.lon, 11);
   await sleep(500);
   await page.waitFor(
     () =>
