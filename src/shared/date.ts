@@ -76,14 +76,14 @@ export function addDays(d: string, n: number): string {
   return t === null ? '' : isoDay(t + n * DAY_MS);
 }
 
-/** 'Today', 'Tomorrow', 'In 5 days', 'Yesterday', '3 days ago', or '' beyond two weeks. */
+/** 'today', 'tomorrow', 'in 5 days', 'yesterday', '3 days ago', or '' beyond two weeks. */
 export function relativeDay(d: string, today: string): string {
   const n = daysBetween(today, d);
   if (n === null) return '';
-  if (n === 0) return 'Today';
-  if (n === 1) return 'Tomorrow';
-  if (n === -1) return 'Yesterday';
-  if (n > 1 && n <= 14) return `In ${n} days`;
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n === -1) return 'yesterday';
+  if (n > 1 && n <= 14) return `in ${n} days`;
   if (n < -1 && n >= -14) return `${-n} days ago`;
   return '';
 }

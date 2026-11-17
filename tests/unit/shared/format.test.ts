@@ -68,7 +68,7 @@ describe('dates', () => {
   });
   it('relative days and ages', () => {
     expect(daysBetween('2026-12-31', '2027-01-02')).toBe(2);
-    expect(relativeDay('2026-11-16', '2026-11-15')).toBe('Tomorrow');
+    expect(relativeDay('2026-11-16', '2026-11-15')).toBe('tomorrow');
     expect(relativeDay('2026-10-31', '2026-11-15')).toBe('');
     expect(ageOn('1990-11-16', '2026-11-15')).toBe(35);
     expect(ageOn('1990-11-15', '2026-11-15')).toBe(36);

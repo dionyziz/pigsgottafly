@@ -357,7 +357,7 @@ function Sheet({ sheet }: { sheet: NavlogSheet }) {
     >
       <div className="date-top">
         <V t={h.date} cap={16} cls="date" />
-        <span className="pgno">{sheet.index + 1}</span>
+        {sheet.count > 1 && <span className="pgno">{sheet.index + 1}</span>}
       </div>
       <div className="fold-line" />
       <div className="g hdr">

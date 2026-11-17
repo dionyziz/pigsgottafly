@@ -45,9 +45,9 @@ describe('lobby format', () => {
     expect(fmtDate('2026-11-15')).toBe('2026-11-15');
     expect(fmtDate('nope')).toBe('');
     expect(daysBetween('2026-12-31', '2027-01-02')).toBe(2);
-    expect(relativeDay('2026-11-15', '2026-11-15')).toBe('Today');
-    expect(relativeDay('2026-11-16', '2026-11-15')).toBe('Tomorrow');
-    expect(relativeDay('2026-11-20', '2026-11-15')).toBe('In 5 days');
+    expect(relativeDay('2026-11-15', '2026-11-15')).toBe('today');
+    expect(relativeDay('2026-11-16', '2026-11-15')).toBe('tomorrow');
+    expect(relativeDay('2026-11-20', '2026-11-15')).toBe('in 5 days');
     expect(relativeDay('2026-11-12', '2026-11-15')).toBe('3 days ago');
     expect(relativeDay('2027-03-01', '2026-11-15')).toBe('');
     expect(fmtDuration(95)).toBe('1h35');
