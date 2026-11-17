@@ -789,10 +789,10 @@ export function RouteMap(props: RouteMapProps) {
       'dblclick',
       'pointerdown',
       'touchstart',
-      'wheel',
       'contextmenu',
     ] as const) {
-      node.addEventListener(t, (e) => e.stopPropagation(), { passive: t === 'touchstart' || t === 'wheel' });
+      // the wheel still reaches the map: scrolling over a label or its altitude box zooms
+      node.addEventListener(t, (e) => e.stopPropagation(), { passive: t === 'touchstart' });
     }
   }
 

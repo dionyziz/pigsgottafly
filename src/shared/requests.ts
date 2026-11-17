@@ -5,13 +5,13 @@
 //   - A request is keyed by the route point's uid, so it follows the point when the route is
 //     edited and is dropped when the point is removed or stops being an aerodrome.
 //   - A point carries at most one request of each kind. An intermediate aerodrome may have both:
-//     a touch-and-go, a circuit (CIRCUIT_MIN), then a full-stop landing, n minutes on the ground
+//     a touch-and-go, a circuit (PilotSettings.circuitMin), then a full-stop landing, n minutes on the ground
 //     and a take-off.
 //   - Touch-and-go: any aerodrome point. At the departure it is a circuit before leaving
 //     ('INITIALLY REQUEST TOUCH N GO AT LGTT').
 //   - Stop (n minutes): any aerodrome point of a route of two points or more.
 //       - intermediate: landing, n minutes on the ground, take-off.
-//       - at the departure: after take-off a circuit (CIRCUIT_MIN), a full-stop landing there,
+//       - at the departure: after take-off a circuit, a full-stop landing there,
 //         n minutes on the ground, a new take-off, then the route ('Touch-and-go first' too: the
 //         touch-and-go circuit, then the circuit to the full stop).
 //       - at the destination: landing there (after a touch-and-go and a circuit when both are
@@ -28,8 +28,8 @@ import type { AerodromeRequest, FlightOptions, RoutePoint } from './types.js';
 
 export const MAX_STOP_MIN = 600;
 export const DEFAULT_STOP_MIN = 10;
-/** Minutes of the circuit flown between a touch-and-go and the full-stop landing at the same aerodrome. */
-export const CIRCUIT_MIN = 6;
+/** Minutes of one circuit when the pilot has not set PilotSettings.circuitMin. */
+export const DEFAULT_CIRCUIT_MIN = 7;
 
 type Kind = AerodromeRequest['kind'];
 const KINDS: readonly Kind[] = ['touch-and-go', 'stop'];
@@ -135,10 +135,11 @@ export interface RequestTiming {
 
 const stopMinOf = (r: AerodromeRequest) => Math.max(0, Math.min(MAX_STOP_MIN, r.stopMin ?? DEFAULT_STOP_MIN));
 
-/** Timing effects of the requests on a route of route.length − 1 legs. */
+/** Timing effects of the requests on a route of route.length − 1 legs; circuitMin: one circuit's minutes. */
 export function requestTiming(
   route: RoutePoint[],
   options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
+  circuitMin: number = DEFAULT_CIRCUIT_MIN,
 ): RequestTiming {
   const n = Math.max(0, route.length - 1);
   const patternLegs = new Array<boolean>(n).fill(false);
@@ -159,12 +160,12 @@ export function requestTiming(
     if (request.kind === 'stop') groundAfterLegMin[index - 1] += stopMinOf(request);
     else touchAfterLeg[index - 1] = true;
   }
-  for (let i = 0; i < n; i++) if (touchAfterLeg[i] && groundAfterLegMin[i] > 0) circuitAfterLegMin[i] = CIRCUIT_MIN;
+  for (let i = 0; i < n; i++) if (touchAfterLeg[i] && groundAfterLegMin[i] > 0) circuitAfterLegMin[i] = circuitMin;
   if (n) {
     const dep = at(0, 'stop');
     if (dep) {
-      if (at(0, 'touch-and-go')) departureCircuitsMin.push(CIRCUIT_MIN);
-      departureCircuitsMin.push(CIRCUIT_MIN);
+      if (at(0, 'touch-and-go')) departureCircuitsMin.push(circuitMin);
+      departureCircuitsMin.push(circuitMin);
       departureGroundMin = stopMinOf(dep);
     }
     const dest = at(n, 'stop');
@@ -172,9 +173,9 @@ export function requestTiming(
       groundAfterLegMin[n - 1] = stopMinOf(dest);
       if (at(n, 'touch-and-go')) {
         touchAfterLeg[n - 1] = true;
-        circuitAfterLegMin[n - 1] = CIRCUIT_MIN;
+        circuitAfterLegMin[n - 1] = circuitMin;
       }
-      finalCircuitMin = CIRCUIT_MIN;
+      finalCircuitMin = circuitMin;
     }
   }
   const stops = groundAfterLegMin.filter((m) => m > 0).length + (departureGroundMin > 0 ? 1 : 0);

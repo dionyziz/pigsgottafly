@@ -16,7 +16,7 @@ import { wbSheetModel } from '../../../src/features/exports/wb/model';
 import { WbSheet } from '../../../src/features/exports/wb/WbExport';
 import {
   type Aircraft,
-  CIRCUIT_MIN,
+  DEFAULT_CIRCUIT_MIN,
   emptyFlightDoc,
   type FlightCrew,
   type FlightDoc,
@@ -216,7 +216,11 @@ describe('intermediate stop at LGSY', () => {
     const c = calcOf(doc);
     const legs = c.computed.navlog.legs;
     const circuit = c.computed.navlog.circuits[0];
-    expect(circuit).toMatchObject({ afterLeg: 0, startMin: legs[0].endMin, endMin: legs[0].endMin + CIRCUIT_MIN });
+    expect(circuit).toMatchObject({
+      afterLeg: 0,
+      startMin: legs[0].endMin,
+      endMin: legs[0].endMin + DEFAULT_CIRCUIT_MIN,
+    });
     expect(c.sectors.map((x) => x.ends)).toEqual(['touch-and-go', 'stop', 'destination']);
     expect(c.stops.map((x) => [x.pointIndex, x.kind])).toEqual([
       [1, 'touch-and-go'],
@@ -225,8 +229,8 @@ describe('intermediate stop at LGSY', () => {
     const [tg, st] = c.stops;
     expect(tg.landing.timeMin).toBeCloseTo(legs[0].endMin, 9);
     expect(tg.takeoff.timeMin).toBeCloseTo(legs[0].endMin, 9);
-    expect(st.landing.timeMin).toBeCloseTo(legs[0].endMin + CIRCUIT_MIN, 9);
-    expect(st.takeoff.timeMin).toBeCloseTo(legs[0].endMin + CIRCUIT_MIN + 10, 9);
+    expect(st.landing.timeMin).toBeCloseTo(legs[0].endMin + DEFAULT_CIRCUIT_MIN, 9);
+    expect(st.takeoff.timeMin).toBeCloseTo(legs[0].endMin + DEFAULT_CIRCUIT_MIN + 10, 9);
     // each request's runway choice applies to its own landing / take-off
     expect(tg.landing.perf!.runway!.designator).toBe('17');
     expect(tg.takeoff.perf!.runway!.designator).toBe('35');
@@ -255,8 +259,8 @@ describe('intermediate stop at LGSY', () => {
     const nav = c.computed.navlog;
     const leg = nav.legs[0];
     expect(nav.times.takeoffMin).toBe(9 * 60 + 15);
-    expect(leg.startMin).toBeCloseTo(9 * 60 + 15 + CIRCUIT_MIN + 10, 9);
-    expect(nav.times.landingMin).toBeCloseTo(leg.endMin + 20 + CIRCUIT_MIN, 9);
+    expect(leg.startMin).toBeCloseTo(9 * 60 + 15 + DEFAULT_CIRCUIT_MIN + 10, 9);
+    expect(nav.times.landingMin).toBeCloseTo(leg.endMin + 20 + DEFAULT_CIRCUIT_MIN, 9);
     expect(c.sectors.map((x) => [x.fromPoint, x.toPoint, x.ends])).toEqual([
       [0, 0, 'stop'],
       [0, 1, 'stop'],
@@ -267,7 +271,7 @@ describe('intermediate stop at LGSY', () => {
       [1, 'stop'],
     ]);
     const [dep, dest] = c.stops;
-    expect(dep.landing.timeMin).toBeCloseTo(9 * 60 + 15 + CIRCUIT_MIN, 9);
+    expect(dep.landing.timeMin).toBeCloseTo(9 * 60 + 15 + DEFAULT_CIRCUIT_MIN, 9);
     expect(dep.takeoff.timeMin).toBeCloseTo(leg.startMin, 9);
     expect(dest.landing.timeMin).toBeCloseTo(leg.endMin, 9);
     expect(dest.takeoff.timeMin).toBeCloseTo(leg.endMin + 20, 9);

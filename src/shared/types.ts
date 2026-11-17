@@ -51,6 +51,8 @@ export interface PilotSettings {
   finalReserveMin: number;
   /** Winds/temperatures aloft model. */
   windModel: WindModel;
+  /** Minutes of one circuit (touch-and-go then full stop, full stop at the departure or destination); missing = 7. */
+  circuitMin?: number;
   /** Aerodromes within this distance of the route are listed in the ATC list (default 2 NM). */
   enrouteAerodromeRadiusNm: number;
   /**

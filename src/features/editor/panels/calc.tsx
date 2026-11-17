@@ -246,7 +246,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
 
   // ---- navlog
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]), [legs, doc.legOverrides]);
-  const timing = useMemo(() => requestTiming(doc.route, doc.options), [doc.route, doc.options]);
+  const circuitMin = pilot.settings.circuitMin;
+  const timing = useMemo(() => requestTiming(doc.route, doc.options, circuitMin), [doc.route, doc.options, circuitMin]);
   /** Start-up, taxi, take-off and landing fuel per take-off: the flight's, else the aircraft's. */
   const taxiAllowanceL = aircraft ? taxiAllowanceOf(aircraft.fuel, doc.options) : 0;
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;

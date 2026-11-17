@@ -1,6 +1,7 @@
 // GET /me, PUT /me: the session pilot's profile.
 import { WIND_MODELS } from '../../../src/shared/constants.js';
 import { mapLayersOf } from '../../../src/shared/mapLayers.js';
+import { DEFAULT_CIRCUIT_MIN } from '../../../src/shared/requests.js';
 import type { PilotSettings, PilotUpdate } from '../../../src/shared/types.js';
 import { canUseAircraft } from '../access.js';
 import type { Route } from '../http.js';
@@ -13,6 +14,7 @@ function settingsPatch(s: unknown): Partial<PilotSettings> {
   const out: Partial<PilotSettings> = {};
   for (const k of ['taxiOutMin', 'taxiInMin', 'reserveMin'] as const) if (k in i) out[k] = optNum(i[k], k, 0, 600);
   if ('finalReserveMin' in i) out.finalReserveMin = optNum(i.finalReserveMin, 'finalReserveMin', 0, 600) ?? 0;
+  if ('circuitMin' in i) out.circuitMin = optNum(i.circuitMin, 'circuitMin', 1, 60) ?? DEFAULT_CIRCUIT_MIN;
   if ('enrouteAerodromeRadiusNm' in i)
     out.enrouteAerodromeRadiusNm = optNum(i.enrouteAerodromeRadiusNm, 'enrouteAerodromeRadiusNm', 0, 50) ?? 2;
   if ('handledAerodromes' in i) {

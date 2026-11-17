@@ -345,6 +345,16 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.eval((k) => document.querySelector(`[data-leg="${k}"] [data-testid=leg-alt]`).scrollIntoView(), keys[1]);
   await page.click(`[data-leg="${keys[1]}"] [data-testid=leg-alt]`);
   await page.waitFor(() => !!document.querySelector('[data-testid=leg-alt-input]'));
+  // the wheel over the altitude box still zooms the map
+  const zoomOf = () => document.querySelector('.pgf-map-canvas').__pgfMap.getZoom();
+  const z0 = await page.eval(zoomOf);
+  await page.eval(() => {
+    const r = document.querySelector('[data-testid=leg-alt-input]').getBoundingClientRect();
+    const opts = { bubbles: true, cancelable: true, deltaY: -300, clientX: r.x + 5, clientY: r.y + 5 };
+    document.querySelector('[data-testid=leg-alt-input]').dispatchEvent(new WheelEvent('wheel', opts));
+  });
+  await page.waitFor((z) => document.querySelector('.pgf-map-canvas').__pgfMap.getZoom() > z + 0.05, { args: [z0] });
+  assert.ok(await page.eval(() => !!document.querySelector('[data-testid=leg-alt-input]')), 'still editing');
   await page.type('[data-testid=leg-alt-input]', '4500');
   await page.key('Enter');
   await page.waitFor((k) => /(^|\D)4500(\D|$)/.test(document.querySelector(`[data-leg="${k}"]`)?.textContent || ''), {

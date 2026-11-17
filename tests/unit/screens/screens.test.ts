@@ -181,6 +181,7 @@ describe('profile form', () => {
     taxiInMin: 12,
     reserveMin: null,
     finalReserveMin: null,
+    circuitMin: null,
     enrouteAerodromeRadiusNm: null,
     mapLayers: null,
   };

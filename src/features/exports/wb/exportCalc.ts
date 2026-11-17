@@ -160,7 +160,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     aircraft && navlog.legs.length
       ? flightSectors({
           legs: navlog.legs,
-          ...sectorTiming(requestTiming(doc.route, doc.options)),
+          ...sectorTiming(requestTiming(doc.route, doc.options, settings?.circuitMin)),
           circuits: navlog.circuits,
           taxiAllowanceL: taxiAllowanceOf(aircraft.fuel, doc.options),
           fobL: fuelTakeoffL,

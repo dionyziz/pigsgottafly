@@ -29,6 +29,7 @@ import {
   SETTING_SUGGESTIONS,
 } from '../../shared';
 import { errorMessage } from '../../shared/format';
+import { DEFAULT_CIRCUIT_MIN } from '../../shared/requests';
 import { AerodromeTextInput, CardSection, Field, NumberField, SaveStatus, useAutosave } from '../../ui';
 import { MapLayerToggles } from '../editor/map/MapLayerToggles';
 import { type FormIssue, useFormIssues } from '../passengers/formIssues';
@@ -46,6 +47,7 @@ export interface ProfileForm extends PersonForm {
   taxiInMin: number | null;
   reserveMin: number | null;
   finalReserveMin: number | null;
+  circuitMin: number | null;
   enrouteAerodromeRadiusNm: number | null;
   /** Map layers for new flights; null = not chosen (all shown). */
   mapLayers: MapLayers | null;
@@ -59,10 +61,12 @@ type ProfileField =
   | 'taxiInMin'
   | 'reserveMin'
   | 'finalReserveMin'
+  | 'circuitMin'
   | 'enrouteAerodromeRadiusNm';
 
 const MINUTES_MAX = 600;
 const RADIUS_MAX_NM = 50;
+const CIRCUIT_MAX = 60;
 
 export function formOf(p: Pilot): ProfileForm {
   return {
@@ -75,6 +79,7 @@ export function formOf(p: Pilot): ProfileForm {
     taxiInMin: p.settings.taxiInMin,
     reserveMin: p.settings.reserveMin,
     finalReserveMin: p.settings.finalReserveMin,
+    circuitMin: p.settings.circuitMin ?? null,
     enrouteAerodromeRadiusNm: p.settings.enrouteAerodromeRadiusNm,
     mapLayers: mapLayersOf(p.settings.mapLayers),
   };
@@ -85,6 +90,7 @@ const LABEL: Partial<Record<ProfileField, string>> = {
   taxiInMin: 'Taxi in',
   reserveMin: 'Fuel reserve',
   finalReserveMin: 'Final reserve',
+  circuitMin: 'Circuit',
   enrouteAerodromeRadiusNm: 'Radius',
 };
 
@@ -105,6 +111,8 @@ export function validateProfile(f: ProfileForm, welcome: boolean): FormIssue<Pro
   if (f.defaultAlternate.trim() && !resolveAerodrome(f.defaultAlternate))
     out.push({ field: 'defaultAlternate', message: unknown(f.defaultAlternate) });
   range('finalReserveMin', f.finalReserveMin, MINUTES_MAX);
+  if (f.circuitMin != null && (!isFinite(f.circuitMin) || f.circuitMin < 1 || f.circuitMin > CIRCUIT_MAX))
+    out.push({ field: 'circuitMin', message: `Circuit must be 1–${CIRCUIT_MAX}` });
   range('enrouteAerodromeRadiusNm', f.enrouteAerodromeRadiusNm, RADIUS_MAX_NM);
   return out;
 }
@@ -143,6 +151,7 @@ export function profileUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
     settings: {
       ...base.settings,
       finalReserveMin: f.finalReserveMin ?? 0,
+      circuitMin: f.circuitMin ?? DEFAULT_CIRCUIT_MIN,
       enrouteAerodromeRadiusNm: f.enrouteAerodromeRadiusNm ?? 2,
       defaultAlternate: altn ? altn.icao || altn.id : null,
       ...(f.mapLayers ? { mapLayers: f.mapLayers } : {}),
@@ -259,7 +268,10 @@ export function ProfilePage() {
   };
 
   const notSet = (v: number | null) => (v == null ? <span className="notset">Not set</span> : null);
-  const minutes = (k: 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin', placeholder?: string) => (
+  const minutes = (
+    k: 'taxiOutMin' | 'taxiInMin' | 'reserveMin' | 'finalReserveMin' | 'circuitMin',
+    placeholder?: string,
+  ) => (
     <NumberField
       name={k}
       value={f[k]}
@@ -358,6 +370,9 @@ export function ProfilePage() {
             <div className="grid3">
               <Field label="Final reserve in required fuel" issues={issuesOf('finalReserveMin')}>
                 {minutes('finalReserveMin', '0')}
+              </Field>
+              <Field label="Circuit" issues={issuesOf('circuitMin')}>
+                {minutes('circuitMin', String(DEFAULT_CIRCUIT_MIN))}
               </Field>
               <Field label="ATC list: aerodromes within" issues={issuesOf('enrouteAerodromeRadiusNm')}>
                 <NumberField

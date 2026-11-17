@@ -86,7 +86,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
   const { doc, aircraft, settings, weather, ref } = input;
   const legs = buildLegs(doc.route, doc.date);
   const altOverrides = legs.map((l) => doc.legOverrides[l.key]?.altFt);
-  const timing = requestTiming(doc.route, doc.options);
+  const timing = requestTiming(doc.route, doc.options, settings?.circuitMin);
   const defaults = defaultAltitudes(
     doc.route,
     { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes },

@@ -47,7 +47,11 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
   const { legs, weather } = wx;
   const weatherLoading = wx.weatherLoading && legs.length > 0;
   const overrides = useMemo(() => legs.map((l) => flight.legOverrides[l.key]), [legs, flight.legOverrides]);
-  const timing = useMemo(() => requestTiming(flight.route, flight.options), [flight.route, flight.options]);
+  const circuitMin = pilot.settings.circuitMin;
+  const timing = useMemo(
+    () => requestTiming(flight.route, flight.options, circuitMin),
+    [flight.route, flight.options, circuitMin],
+  );
   const altitudesFt = useMemo(() => {
     const ov = overrides.map((o) => o?.altFt);
     const d = defaultAltitudes(

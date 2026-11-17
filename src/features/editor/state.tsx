@@ -114,7 +114,11 @@ export function EditorProvider({
   const aircraft = useMemo(() => hangar.find((a) => a.id === doc.aircraftId) ?? null, [hangar, doc.aircraftId]);
   const legs = useMemo(() => buildLegs(doc.route, doc.date), [doc.route, doc.date]);
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]?.altFt), [legs, doc.legOverrides]);
-  const requestTimes = useMemo(() => requestTiming(doc.route, doc.options), [doc.route, doc.options]);
+  const circuitMin = pilot.settings.circuitMin;
+  const requestTimes = useMemo(
+    () => requestTiming(doc.route, doc.options, circuitMin),
+    [doc.route, doc.options, circuitMin],
+  );
   const altitudeDefaults = useMemo(
     () =>
       defaultAltitudes(

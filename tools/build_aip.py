@@ -77,8 +77,9 @@ LGKV_ARP = c('405450N 0243711E')     # KAVALA / MEGAS ALEXANDROS ARP (LGKV AD 2.
 MAK_C = c('403537N 0225653E')
 
 A = []  # airspace list
-FIR_NOTE = ('East edge follows the ATHINAI-ISTANBUL FIR boundary (not given as coordinates); '
-            'drawn outside the FIR so the TMA is over- rather than under-approximated.')
+# The east edge follows the FIR boundary (not given as coordinates): drawn outside the FIR so the
+# TMA is over- rather than under-approximated.
+FIR_NOTE = 'East limit: ATHINAI-ISTANBUL FIR boundary.'
 
 
 def add(name, kind, sector, polygon, lower, upper, cls, units, note=''):
@@ -135,7 +136,7 @@ add('KAVALA TMA', 'TMA', 'KAVALA 2',
 add('KERKIRA TMA', 'TMA', '', poly('394300N 0201800E', '392700N 0202910E', '384700N 0195630E', '390500N 0190600E',
                                    '395800N 0193600E', (40.1, 19.9), (39.85, 20.3)),
     '1000 FT AGL', 'FL 245', 'D (C above FL 195)', [u('KERKIRA APPROACH', '122.355', '118.080', hours='H24')],
-    'North/NE edge follows the ATHINAI-TIRANA FIR boundary; drawn outside it (over-approximated).')
+    'North/NE limit: ATHINAI-TIRANA FIR boundary.')
 add('KOS TMA', 'TMA', '', poly(circle(LGKO_ARP, 17)), '1000 FT AGL', 'FL 095', 'D',
     [u('KOS APPROACH', '119.950', hours='H24')], 'Circle 17 NM, limited to the East by the FIR boundary.')
 add('LIMNOS TMA', 'TMA', '', poly('401900N 0245400E', '401900N 0250300E', '400800N 0252830E', '394500N 0252830E',
@@ -158,7 +159,7 @@ add('RODOS TMA', 'TMA', '',
     poly('362302N 0274354E', '362230N 0273845E', '360956N 0273621E', '354900N 0272300E', '353400N 0281000E',
          '361700N 0283100E', arc(c('362510N 0280820E'), 20, c('361700N 0283100E'), c('362302N 0274354E'), False)),
     '1000 FT AGL', 'FL 155', 'D', [u('RODOS APPROACH', '127.250', '118.250', hours='H24')],
-    'North limit: FIR boundary / 20 NM arc (approximated by the arc).')
+    'North limit: FIR boundary / 20 NM arc.')
 add('SAMOS TMA', 'TMA', '',
     poly('375300N 0270200E', '375300N 0263700E', arc(SAM, 18, c('375300N 0263700E'), c('372600N 0270700E'), False),
          '372600N 0270700E', (37.4333, 27.35), (37.8833, 27.35)),
