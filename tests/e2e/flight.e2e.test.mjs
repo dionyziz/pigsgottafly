@@ -64,6 +64,8 @@ const windFn = ({ level, hour }) => ({
 const METARS = {
   LGTT: `LGTT ${metarTime} 03005KT CAVOK 15/05 Q1013`,
   LGMG: `LGMG ${metarTime} 26008KT 9999 FEW030 17/07 Q1014`,
+  // near the route: listed in the METAR box only
+  LGEL: `LGEL ${metarTime} 25010KT 9999 SCT040 16/06 Q1014`,
 };
 
 before(async () => {
@@ -388,6 +390,19 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.equal(f.blockOff, BLOCK_OFF);
   assert.equal(f.aircraftId, ac.id);
   assert.equal(f.fobL, 144);
+  // the flight is near: the METAR box lists the ends, then the aerodromes near the route that report
+  await page.waitFor(() => document.querySelectorAll('[data-testid=metar-list] li').length === 3, { timeout: 20000 });
+  assert.deepEqual(
+    await page.eval(() =>
+      [...document.querySelectorAll('[data-testid=metar-list] li')].map((li) => [li.dataset.icao, li.dataset.role]),
+    ),
+    [
+      ['LGTT', 'departure'],
+      ['LGMG', 'destination'],
+      ['LGEL', 'area'],
+    ],
+  );
+  assert.match(await page.eval(() => document.querySelector('[data-testid=metar-age]').textContent), /^1\d min ago$/);
   assert.deepEqual(
     f.crew.map((c) => [c.role, c.seat, c.snapshot.fullName, c.snapshot.weightKg]),
     [['PIC', f.crew[0].seat, 'Test Pilot', 80]],

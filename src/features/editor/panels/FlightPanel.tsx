@@ -1,4 +1,4 @@
-// The editor's left panel: Route (origin, destination), When, Aerodrome hours, Aircraft, Manifest & loading, Fuel, Take-off & landing, NOTAMs, ATC,
+// The editor's left panel: Route (origin, destination), When, Aircraft, Manifest & loading, Fuel, Aerodrome hours, METAR (near the flight), Take-off & landing, NOTAMs, ATC,
 // Flight plan (alternates, remarks), Documents. Numbers come from useFlightCalc() (src/calc); edits
 // go through useEditor().update().
 import { useState } from 'react';
@@ -15,6 +15,7 @@ import { useFlightCalc } from './calc';
 import { FplSection } from './FplSection';
 import { FuelSection } from './FuelSection';
 import { ManifestSection } from './ManifestSection';
+import { MetarSection } from './MetarSection';
 import { NotamSection } from './NotamSection';
 import { PerformanceSection } from './PerformanceSection';
 import { RouteSection } from './RouteSection';
@@ -84,6 +85,7 @@ export function FlightPanel() {
       <ManifestSection />
       <FuelSection />
       <AerodromeSection />
+      <MetarSection />
       <PerformanceSection />
       <NotamSection />
       <AtcSection />

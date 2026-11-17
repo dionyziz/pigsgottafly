@@ -235,3 +235,9 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-fob-type { display: inline-flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); }
 .ep-fob-total { padding-bottom: 6px; }
 .ns-tas input { width: 5ch; }
+
+/* METAR */
+.ep-metars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.ep-metar-head { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--fs-xs); margin-bottom: 2px; min-width: 0; }
+.ep-metar-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ep-metar-age { flex: none; }
