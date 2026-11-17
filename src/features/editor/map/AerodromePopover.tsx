@@ -1,10 +1,12 @@
 // Aerodrome hover tooltip and click popover on the route map: name, elevation and the hours on the
 // flight's date (with handling) on hover; on click the hours, ATS, handling, customs, the NOTAMs that
-// change them (by NOTAM id) and the AIP text (AerodromeHours.tsx), and a link to the aerodrome's AIP PDF.
-import { AipLink } from '../../../app/AipLink';
+// change them (by NOTAM id) and the AIP text (AerodromeHours.tsx), and links to the aerodrome's AIP PDF
+// and its AIP VFR chart.
+import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefAerodrome } from '../../../shared/ref';
 import { type AdDayInfo, adHandlingLine, AdHoursDetail, adHoursLine } from '../AerodromeHours';
 import { MapPopover, MapTip, PopItem } from './MapPopover';
+import type { VfrChart } from './vfrCharts';
 
 const title = (a: RefAerodrome) => (a.icao ? `${a.icao} · ${a.name}` : a.name);
 
@@ -32,6 +34,7 @@ export function AerodromePopover({
   a,
   info,
   airac,
+  charts = [],
   onClose,
 }: {
   x: number;
@@ -39,6 +42,8 @@ export function AerodromePopover({
   a: RefAerodrome;
   info: AdDayInfo;
   airac: string;
+  /** The AIP VFR chart(s) showing the aerodrome. */
+  charts?: VfrChart[];
   onClose: () => void;
 }) {
   return (
@@ -55,7 +60,13 @@ export function AerodromePopover({
       >
         <AdHoursDetail a={a} info={info} />
         <div className="pgf-air-text pgf-ad-src">
-          <AipLink refText={a.source}>AIP Greece {a.source} (PDF)</AipLink>{' '}
+          <AipLink refText={a.source}>AIP Greece {a.source} (PDF)</AipLink>
+          {charts.length > 0 && (
+            <>
+              {' · '}
+              <VfrChartLinks charts={charts} />
+            </>
+          )}{' '}
           <span className="muted">· AIRAC {airac}</span>
         </div>
       </PopItem>

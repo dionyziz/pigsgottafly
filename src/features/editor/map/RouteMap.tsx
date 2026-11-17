@@ -52,12 +52,22 @@ import {
   routeLineFeatures,
   routePointFeatures,
   vfrPointFeatures,
+  vfrRouteArrowFeatures,
   vfrRouteFeatures,
   waypointFeatures,
   zoneFeatures,
 } from './features';
 import { hazardLabelsAt, hazardsByLeg, type LegHazards, type MapHazard, setHazardLayer } from './hazardLayer';
-import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, placeLabel } from './labels';
+import {
+  fmtAltitude,
+  fmtCourse,
+  fmtDistance,
+  labelAlong,
+  labelMode,
+  legLabelSlots,
+  parseAltitudeInput,
+  placeLabel,
+} from './labels';
 import { MapTip } from './MapPopover';
 import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
 import { type DrawMode, LayersControl, MapHint, MapToolbar } from './MapToolbar';
@@ -97,6 +107,7 @@ import {
   loadVectorBase,
 } from './style';
 import { addSymbols } from './symbols';
+import { aerodromeVfrCharts, airspaceVfrCharts, vfrChartIndex, vfrChartsAt, vfrPointCharts } from './vfrCharts';
 
 export interface LegAltitude {
   /** Effective altitude, ft (NaN = unknown). */
@@ -255,6 +266,11 @@ export function RouteMap(props: RouteMapProps) {
 
   const shown = draft ?? route;
   const legs = useMemo(() => buildLegs(shown, date), [shown, date]);
+  // the AIP VFR charts, for the links in the info boxes
+  const chartIdx = useMemo(
+    () => vfrChartIndex(refData.aerodromes, refData.vfrPoints),
+    [refData.aerodromes, refData.vfrPoints],
+  );
   // snapping follows the layers: only what is on the map (the route's own points always)
   const candidates = useMemo(
     () =>
@@ -383,6 +399,7 @@ export function RouteMap(props: RouteMapProps) {
       setData(m, 'areas', areaFeatures(live.current.airInfos));
       setData(m, 'fir', firFeatures(r.fir));
       setData(m, 'vfr-routes', vfrRouteFeatures(r.vfrRoutes, r.vfrPoints));
+      setData(m, 'vfr-route-arrows', vfrRouteArrowFeatures(r.vfrRoutes, r.vfrPoints));
       setData(m, 'vfr-points', vfrPointFeatures(r.vfrPoints));
       setData(m, 'navaids', navaidFeatures(r.navaids ?? []));
       setData(m, 'aerodromes', aerodromeFeatures(r.aerodromes, variation));
@@ -607,28 +624,37 @@ export function RouteMap(props: RouteMapProps) {
     >(),
   );
 
+  // legs sharing a line (out and back, or flown twice) have their labels spread along it (labels.ts)
+  const labelSlots = useMemo(() => legLabelSlots(legs), [legs]);
+
   /** Rotate/offset/size the labels of these legs (all when omitted). */
   const layoutLabels = useCallback(
     (only?: Set<string>) => {
       const m = mapRef.current;
       if (!m) return;
-      for (const leg of legs) {
-        if (only && !only.has(leg.key)) continue;
+      legs.forEach((leg, i) => {
+        if (only && !only.has(leg.key)) return;
         const rec = markers.current.get(leg.key);
-        if (!rec) continue;
+        if (!rec) return;
         const a = m.project([leg.from.lon, leg.from.lat]);
         const b = m.project([leg.to.lon, leg.to.lat]);
         const pl = placeLabel(a, b);
+        const slot = labelSlots[i] ?? { t: 0.5, room: 1 };
         const editing = live.current.editingLeg === leg.key;
-        const lm = editing ? 'full' : labelMode(pl.lengthPx);
+        const lm = editing ? 'full' : labelMode(pl.lengthPx * slot.room);
         rec.el.dataset.mode = lm;
-        // distance from the line to the label's centre: half the label's height plus a small gap
-        const off = lm === 'compact' ? 21 : 17;
+        // distance from the line to the label's centre: half the label's height plus a small gap (more
+        // off the middle, to clear the direction arrows on the line)
+        const off = (lm === 'compact' ? 21 : 17) + (slot.room === 1 ? 0 : 3);
         const k = off * pl.side;
-        rec.inner.style.transform = `translate(${(pl.normal.x * k).toFixed(1)}px, ${(pl.normal.y * k).toFixed(1)}px) rotate(${pl.angleDeg.toFixed(1)}deg)`;
-      }
+        // the marker sits at the middle of the leg: move the label along it to its place
+        const s = (slot.room === 1 ? 0.5 : labelAlong(slot, pl.lengthPx, rec.inner.offsetWidth)) - 0.5;
+        const tx = pl.normal.x * k + (b.x - a.x) * s,
+          ty = pl.normal.y * k + (b.y - a.y) * s;
+        rec.inner.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) rotate(${pl.angleDeg.toFixed(1)}deg)`;
+      });
     },
-    [legs],
+    [legs, labelSlots],
   );
 
   useEffect(() => {
@@ -663,6 +689,12 @@ export function RouteMap(props: RouteMapProps) {
         moved.add(leg.key);
         rec.marker.setLngLat(mercatorMid(leg.from, leg.to));
       }
+      // where along the leg the label sits (changes when another leg comes to share its line)
+      const slot = String(labelSlots[i]?.t ?? 0.5);
+      if (rec.el.dataset.slot !== slot) {
+        rec.el.dataset.slot = slot;
+        moved.add(leg.key);
+      }
       if (rec.text !== text && live.current.editingLeg !== leg.key) {
         rec.text = text;
         moved.add(leg.key);
@@ -677,7 +709,7 @@ export function RouteMap(props: RouteMapProps) {
       }
     }
     layoutLabels(moved);
-  }, [legs, altitudes, legHazards, loaded, drawing, layoutLabels]);
+  }, [legs, labelSlots, altitudes, legHazards, loaded, drawing, layoutLabels]);
 
   useEffect(
     () => () => {
@@ -1555,6 +1587,19 @@ export function RouteMap(props: RouteMapProps) {
         testId: 'menu-ad-hours',
       });
     }
+    // a VFR reporting point's chart (its id is '<chart>/<NAME>')
+    if (p.kind === 'vfr' && p.refId) {
+      for (const c of vfrPointCharts(chartIdx, { chart: p.refId.split('/')[0], lat: p.lat, lon: p.lon })) {
+        items.push({
+          label: `VFR chart ${c.icao} (PDF)`,
+          onSelect: () => {
+            window.open(c.url, '_blank', 'noopener,noreferrer');
+            setMenu(null);
+          },
+          testId: 'menu-vfr-chart',
+        });
+      }
+    }
     if (route[route.length - 1]?.uid === p.uid) items.push({ label: 'Continue drawing', onSelect: continueFrom });
     items.push({ label: 'Remove point', onSelect: doRemove, danger: true });
     return items;
@@ -1665,6 +1710,7 @@ export function RouteMap(props: RouteMapProps) {
           a={adPop.a}
           info={props.aerodromeInfo(adPop.a)}
           airac={refData.airac.id}
+          charts={aerodromeVfrCharts(chartIdx, adPop.a)}
           onClose={() => setAdPop(null)}
         />
       )}
@@ -1677,6 +1723,7 @@ export function RouteMap(props: RouteMapProps) {
           y={navPop.y}
           n={navPop.n}
           airac={refData.airac.id}
+          charts={vfrChartsAt(chartIdx, navPop.n.lon, navPop.n.lat)}
           onClose={() => setNavPop(null)}
         />
       )}
@@ -1686,6 +1733,7 @@ export function RouteMap(props: RouteMapProps) {
           y={airPop.y}
           items={airPop.items}
           airac={refData.airac.id}
+          chartsFor={(a) => airspaceVfrCharts(chartIdx, a)}
           onClose={() => setAirPop(null)}
           onFocus={setAirFocus}
         />

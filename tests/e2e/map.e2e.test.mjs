@@ -3,11 +3,12 @@
 //      position, a new uid: the overrides of its old legs go); dropped on open map a known point asks for a
 //      name and becomes a custom point;
 //   2. the ENR 5 areas on the map: hover and click details (identity only: no route section, the
-//      vertical limits once), links to the AIP PDFs (areas, airspace, aerodromes);
+//      vertical limits once), links to the AIP PDFs (areas, airspace, aerodromes) and the aerodrome's AIP VFR chart;
 //   3. the flight panel collapses and expands (button, keyboard, dragging its edge; remembered);
 //   4. resizing the panels keeps the map canvas the size of its container in every painted frame;
 //   5. the radio navaids (ENR 4.1, AD 2.19): ICAO symbols with ident labels, hover and click details, their toggle;
-//   6. the layer toggles (kept per flight; the profile's choice for new flights), the FIR, tooltips inside
+//   6. a leg flown both ways has each label in the half nearer its origin; one-way VFR route arrows apart;
+//   7. the layer toggles (kept per flight; the profile's choice for new flights), the FIR, tooltips inside
 //      the map near its edges, the hint's close button.
 // Screenshots go to tests/e2e/artifacts/map-*.png.
 import assert from 'node:assert/strict';
@@ -417,6 +418,18 @@ test('ENR 5 areas: drawn, hover and click details with the AIP PDF link; popover
     links.some((h) => /eaip\/pdf\/AD%202\/AD2-LGAV\/LG_AD_2_LGAV_en\.pdf$/.test(h)),
     links.join(' '),
   );
+  // and its AIP VFR chart
+  const chart = await page.eval(() =>
+    [...document.querySelectorAll('[data-testid=aerodrome-pop] [data-testid=vfr-chart-link]')].map((a) => [
+      a.textContent,
+      a.href,
+      a.target,
+    ]),
+  );
+  assert.equal(chart.length, 1, JSON.stringify(chart));
+  assert.equal(chart[0][0], 'VFR chart LGAV');
+  assert.match(chart[0][1], /eaip\/pdf\/AD%202\/AD2-LGAV\/LG_AD_2_LGAV_VFR_en\.pdf$/);
+  assert.equal(chart[0][2], '_blank');
   await page.key('Escape');
 });
 
@@ -655,6 +668,70 @@ test('radio navaids: ICAO symbols labelled with their ident, hover and click det
   for (let i = 0; i < 100 && (await navaidsOn()) !== true; i++) await sleep(100);
   assert.equal(await navaidsOn(), true);
   assert.deepEqual(page.errors, []);
+});
+
+test('out and back on one line: each leg label in the half nearer its own origin; one-way VFR route arrows never on each other', async () => {
+  const f = await api('POST', 'flights', {
+    route: [
+      pt('q1', 'aerodrome', 'LGTT', 'LGTT', LGTT),
+      pt('q2', 'aerodrome', 'LGMG', 'LGMG', LGMG),
+      pt('q3', 'aerodrome', 'LGTT', 'LGTT', LGTT),
+    ],
+  });
+  await page.goto(`${server.url}/flights/${f.id}`);
+  await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
+  await frame([
+    [Math.min(LGTT.lon, LGMG.lon) - 0.02, Math.min(LGTT.lat, LGMG.lat) - 0.02],
+    [Math.max(LGTT.lon, LGMG.lon) + 0.02, Math.max(LGTT.lat, LGMG.lat) + 0.02],
+  ]);
+  await page.waitFor(() => [...document.querySelectorAll('[data-testid=leg-label]')].length === 2);
+  await sleep(400);
+  const tt = await mapPx(LGTT.lat, LGTT.lon),
+    mg = await mapPx(LGMG.lat, LGMG.lon);
+  const labels = await page.eval(() =>
+    [...document.querySelectorAll('[data-testid=leg-label]')].map((e) => {
+      const r = e.querySelector('.pgf-leg-inner').getBoundingClientRect();
+      return { leg: e.dataset.leg, mode: e.dataset.mode, x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }),
+  );
+  const along = (o, d, p) =>
+    ((p.x - o.x) * (d.x - o.x) + (p.y - o.y) * (d.y - o.y)) / ((d.x - o.x) ** 2 + (d.y - o.y) ** 2);
+  const out = labels.find((l) => l.leg === 'q1>q2'),
+    back = labels.find((l) => l.leg === 'q2>q3');
+  assert.ok(out && back, JSON.stringify(labels));
+  assert.notEqual(out.mode, 'hidden');
+  const tOut = along(tt, mg, out),
+    tBack = along(mg, tt, back);
+  assert.ok(tOut > 0.05 && tOut < 0.45, `LGTT → LGMG label at ${tOut.toFixed(2)} of its leg`);
+  assert.ok(tBack > 0.05 && tBack < 0.45, `LGMG → LGTT label at ${tBack.toFixed(2)} of its leg`);
+  await shot('10-out-and-back-labels');
+
+  // one-way VFR route segments published in both directions: one arrow each way, apart
+  const arrows = await page.eval(() => {
+    const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+    return {
+      layer: m.getLayer('vfr-route-arrow')?.source,
+      at: m
+        .getSource('vfr-route-arrows')
+        .serialize()
+        .data.features.map((f) => f.geometry.coordinates),
+    };
+  });
+  assert.equal(arrows.layer, 'vfr-route-arrows');
+  assert.ok(arrows.at.length > 20, `${arrows.at.length} arrows`);
+  const keys = arrows.at.map(([x, y]) => `${x.toFixed(4)},${y.toFixed(4)}`);
+  assert.equal(new Set(keys).size, keys.length, 'no two arrows on one spot');
+  const vfr = (id) => VFR.find((p) => p.id === id);
+  const [la, lb] = [vfr('LGTS/POSIDI'), vfr('LGTS/PLAYIA')];
+  if (la && lb) {
+    await jump((la.lat + lb.lat) / 2, (la.lon + lb.lon) / 2, 11);
+    await sleep(600);
+    await shot('11-vfr-route-arrows');
+  }
+  assert.deepEqual(page.errors, []);
+  // back to the main flight (the next test toggles its layers)
+  await page.goto(`${server.url}/flights/${flightId}`);
+  await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
 });
 
 test('layers: separate toggles kept per flight, the profile choice for new flights, the FIR drawn; tooltips stay inside the map; the hint X stays clickable', async () => {
