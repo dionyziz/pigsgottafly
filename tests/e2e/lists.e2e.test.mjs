@@ -218,6 +218,13 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.click(`[data-passenger-id="${pax.id}"] .nm`);
   await page.waitFor(() => !!document.querySelector('[data-testid=passenger-dialog]'));
   await shot('lists-passenger-dialog');
+  // an existing passenger saves as it is edited: no Save button
+  assert.equal(
+    await page.eval(() =>
+      [...document.querySelectorAll('[data-testid=passenger-dialog] button')].some((b) => b.textContent === 'Save'),
+    ),
+    false,
+  );
   await page.type('[data-testid=passenger-dialog] input[name=phone]', '+30 210 000');
   // date of birth on the calendar: its title opens the years, PageUp goes back twenty at a time,
   // a year opens its months, a month its days
@@ -242,10 +249,30 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
       !document.querySelector('.datefield-pop') &&
       document.querySelector('[data-testid=passenger-dialog] input[name=dateOfBirth]').value === '1984-03-07',
   );
-  await clickText('[data-testid=passenger-dialog] button', 'Save');
+  await page.waitFor(
+    () => document.querySelector('[data-testid=passenger-dialog] [data-testid=save-status]')?.textContent === 'Saved',
+  );
+  for (let i = 0; ; i++) {
+    const edited = await api('GET', `passengers/${pax.id}`);
+    if (edited.dateOfBirth === '1984-03-07' || i === 50) {
+      assert.deepEqual([edited.phone, edited.dateOfBirth], ['+30 210 000', '1984-03-07']);
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  // an invalid field holds the save back and says why; Done stays open at it
+  await page.type('[data-testid=passenger-dialog] input[name=email]', 'jane@');
+  await page.waitFor(
+    () =>
+      document.querySelector('[data-testid=passenger-dialog] [data-testid=save-status]')?.textContent === 'Not saved' &&
+      !!document.querySelector('[data-testid=passenger-dialog] .field.invalid input[name=email]'),
+  );
+  await page.click('[data-testid=dialog-done]');
+  await page.waitFor(() => document.activeElement?.name === 'email');
+  assert.equal((await api('GET', `passengers/${pax.id}`)).email, 'jane@example.com');
+  await page.type('[data-testid=passenger-dialog] input[name=email]', 'jane@example.com');
+  await page.click('[data-testid=dialog-done]');
   await page.waitFor(() => !document.querySelector('[data-testid=passenger-dialog]'));
-  const edited = await api('GET', `passengers/${pax.id}`);
-  assert.deepEqual([edited.phone, edited.dateOfBirth], ['+30 210 000', '1984-03-07']);
   // delete from the dialog (confirmed), then Undo brings the details back as a new record
   await page.click(`[data-passenger-id="${pax.id}"] .nm`);
   await page.waitFor(() => !!document.querySelector('[data-testid=passenger-delete]'));
@@ -273,7 +300,7 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.waitFor(() => !!document.querySelector('[data-testid=waypoint-dialog]'));
   await page.type('[data-testid=waypoint-dialog] input[name=name]', 'zofri');
   await page.type('[data-testid=waypoint-dialog] input[name=position]', '375430N 0234334E');
-  await clickText('[data-testid=waypoint-dialog] button', 'Save');
+  await clickText('[data-testid=waypoint-dialog] button', 'Add waypoint');
   await page.waitFor(() => document.querySelectorAll('[data-waypoint-id]').length === 1);
   await page.idle(1500);
   await shot('lists-waypoints');
@@ -293,9 +320,26 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.goto(server.url + '/profile');
   await page.waitFor(() => !!document.querySelector('input[name=licenceNo]'));
   await shot('lists-profile');
+  // it saves as it is edited
+  assert.equal(
+    await page.eval(() => !!document.querySelector('[data-testid=profile-form] button[type=submit]:not([hidden])')),
+    false,
+  );
   await page.type('input[name=reserveMin]', '60');
-  await page.click('[data-testid=profile-form] button[type=submit]');
   await page.waitFor(async () => (await (await fetch('/api/me')).json()).settings.reserveMin === 60);
+  await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved');
+  // an invalid value is held back and shown at its field
+  await page.type('input[name=fullName]', '');
+  await page.waitFor(
+    () =>
+      document.querySelector('[data-testid=save-status]')?.textContent === 'Not saved' &&
+      !!document.querySelector('.field.invalid input[name=fullName]'),
+  );
+  await page.idle(1200);
+  assert.equal((await api('GET', 'me')).fullName, 'Test Pilot');
+  await page.type('input[name=fullName]', 'Test Pilot');
+  await page.type('input[name=taxiInMin]', '14');
+  await page.waitFor(async () => (await (await fetch('/api/me')).json()).settings.taxiInMin === 14);
   assert.deepEqual(page.errors, []);
 });
 
@@ -312,7 +356,7 @@ test('details saved in one tab show at once in the others (one pilot for the who
     await other.idle(200);
     await other.type('[data-testid=pilot-dialog] input[name=licenceNo]', 'GR.FCL.PPL.42');
     await other.eval(() =>
-      [...document.querySelectorAll('[data-testid=pilot-dialog] button')].find((b) => b.textContent === 'Save').click(),
+      [...document.querySelectorAll('[data-testid=pilot-dialog] button')].find((b) => b.textContent === 'Done').click(),
     );
     await other.waitFor(() => !document.querySelector('[data-testid=pilot-dialog]'));
     // the first tab, neither reloaded nor focused, has the new details

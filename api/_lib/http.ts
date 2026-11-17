@@ -11,6 +11,16 @@ import type { WeatherGridOptions } from './routes/weatherGrid.js';
 export type Req = IncomingMessage & { body?: unknown };
 export type Res = ServerResponse;
 
+const HOST_RE = /^[a-z0-9.-]+(:\d{1,5})?$/i;
+const firstHeader = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : (v ?? '')).split(',')[0].trim();
+/** The app's origin as the pilot's browser reached it (for links in e-mails). */
+export function appOrigin(req: Req, secure: boolean): string {
+  const host = firstHeader(req.headers['x-forwarded-host']) || firstHeader(req.headers.host);
+  const fwd = firstHeader(req.headers['x-forwarded-proto']);
+  const proto = fwd === 'https' || fwd === 'http' ? fwd : secure ? 'https' : 'http';
+  return HOST_RE.test(host) ? `${proto}://${host}` : 'https://pigsgottafly.com';
+}
+
 export interface ApiConfig {
   /** Google OAuth client id; '' = local mode (no sign-in, one 'local' pilot). */
   googleClientId: string;

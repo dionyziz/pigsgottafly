@@ -583,7 +583,6 @@ test('layers: separate toggles kept per flight, the profile choice for new fligh
   await page.goto(`${server.url}/profile`);
   await page.waitFor(() => !!document.querySelector('[data-testid=profile-map-layers] [data-testid=map-aerodromes]'));
   await page.click('[data-testid=profile-map-layers] [data-testid=map-aerodromes]');
-  await page.click('[data-testid=profile-form] button[type=submit]');
   for (let i = 0; i < 100 && (await api('GET', 'me')).settings.mapLayers?.aerodromes !== false; i++) await sleep(50);
   const nf = await api('POST', 'flights', {});
   assert.deepEqual([nf.options.mapLayers.aerodromes, nf.options.mapLayers.vfrRoutes], [false, true]);

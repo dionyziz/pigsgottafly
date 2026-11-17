@@ -1,8 +1,8 @@
 // Operators: /operators, /operators/:id, /operators/:id/shares[/:pilotId] (src/shared/operators.ts,
 // access in ../operators.ts). Viewers read; editors also change the operator, its documents and
 // its sharing; only the owner deletes it (its aircraft keep the name as free text). Sharing works
-// as for aircraft (shares.ts); people who see the operator only through an aircraft are listed with
-// that aircraft and are changed by sharing the aircraft, not here.
+// as for aircraft (shares.ts, the person is e-mailed too); people who see the operator only through
+// an aircraft are listed with that aircraft and are changed by sharing the aircraft, not here.
 import { EMPTY_OPERATOR, isEmail, type OperatorInput, type OperatorSharing } from '../../../src/shared/operators.js';
 import type { ShareRole } from '../../../src/shared/sharing.js';
 import { accessibleSql, personName } from '../access.js';
@@ -13,6 +13,7 @@ import { checkCount } from '../limits.js';
 import { listOperators, operatorFor, operatorItem } from '../operators.js';
 import { rateLimit } from '../rateLimit.js';
 import { str } from '../rows.js';
+import { notifyShare } from '../shareMail.js';
 
 export function operatorInput(input: Record<string, unknown>, base: OperatorInput): OperatorInput {
   const o = { ...base };
@@ -175,7 +176,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/operators/:id/shares',
-    async handler({ db, pilot, params, body }) {
+    async handler({ db, pilot, params, body, req, config }) {
       const op = await operatorFor(db, pilot.id, params.id, 'edit');
       await rateLimit(db, 'share', { pilotId: pilot.id });
       const input = await body();
@@ -184,7 +185,7 @@ export const routes: Route[] = [
       if (!email) throw badRequest('email is required');
       if (email.length > 320) throw badRequest('email is too long');
       const [p] = await db.query(
-        'SELECT id FROM pilots WHERE lower(email) = lower($1) ORDER BY last_login DESC LIMIT 1',
+        'SELECT id, email FROM pilots WHERE lower(email) = lower($1) ORDER BY last_login DESC LIMIT 1',
         [email],
       );
       if (!p)
@@ -199,6 +200,11 @@ export const routes: Route[] = [
         [op.id, p.id, role, Date.now(), pilot.id],
       );
       if (!ins.length) throw conflict(`${email} already has access to this operator.`);
+      await notifyShare(
+        db,
+        { req, config, pilot },
+        { kind: 'operator', id: op.id, name: op.name, role, to: p.email || email },
+      );
       return reply(201, await sharing(db, op));
     },
   },

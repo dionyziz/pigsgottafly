@@ -1,11 +1,13 @@
 // One operator: its details (name, contacts), whether it asks for the W&B and performance sheets
 // before each flight and where they go, its documents (operations manual, PDFs), its aircraft, and
 // who has access (shared directly, or through one of its aircraft). Viewers see it read-only.
+// Edits save on their own as on the aircraft page (useAutosave: PUT /api/operators/:id, debounced;
+// on blur, Ctrl+S and leaving); invalid fields hold the save back and say why under themselves.
 import '../hangar/hangar.css';
 import '../hangar/share.css';
 import '../lobby/lists.css';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { useFocusParam } from '../../app/focusParam';
@@ -13,14 +15,26 @@ import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { operatorScope } from '../../data/aircraftFiles';
-import { api, ApiRequestError } from '../../data/api';
+import { api, ApiRequestError, keepalivePut } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { isEmail, type OperatorInput, type OperatorItem } from '../../shared';
 import { errorMessage } from '../../shared/format';
-import { Check, Chip, ConfirmDialog, EmptyState, Field, Icon, KebabMenu, Loading } from '../../ui';
+import {
+  Check,
+  Chip,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  Icon,
+  KebabMenu,
+  Loading,
+  SaveStatus,
+  useAutosave,
+} from '../../ui';
 import { DocumentsSection } from '../hangar/AircraftFiles';
 import { Section } from '../hangar/fields';
 import { ROLE_LABEL, SharedChip, ShareDialog } from '../hangar/ShareDialog';
+import type { FormIssue } from '../passengers/formIssues';
 
 const DOCS_TEXT = {
   title: 'Documents',
@@ -38,6 +52,27 @@ const inputOf = ({
   requiresWbPerf,
   declarationsEmail,
 }: OperatorItem): OperatorInput => ({ name, phone, email, address, aftn, notes, requiresWbPerf, declarationsEmail });
+
+type OperatorField = 'name' | 'email' | 'declarationsEmail';
+
+/** What holds the save back, field by field (empty: it can be saved). */
+export function validateOperator(d: OperatorInput): FormIssue<OperatorField>[] {
+  const out: FormIssue<OperatorField>[] = [];
+  if (!d.name.trim()) out.push({ field: 'name', message: 'Enter the operator’s name' });
+  if (d.email.trim() && !isEmail(d.email)) out.push({ field: 'email', message: 'Not an e-mail address' });
+  if (d.requiresWbPerf)
+    if (!d.declarationsEmail.trim()) out.push({ field: 'declarationsEmail', message: 'Enter the e-mail address' });
+    else if (!isEmail(d.declarationsEmail)) out.push({ field: 'declarationsEmail', message: 'Not an e-mail address' });
+  return out;
+}
+
+/** The input as saved: names and addresses trimmed. */
+const normalized = (d: OperatorInput): OperatorInput => ({
+  ...d,
+  name: d.name.trim(),
+  email: d.email.trim(),
+  declarationsEmail: d.declarationsEmail.trim(),
+});
 
 export function OperatorPage() {
   const { id = '' } = useParams();
@@ -72,78 +107,43 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
   const { pilot } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
-  const baseline = useMemo(() => inputOf(op), [op]);
-  const [draft, setDraft] = useState<OperatorInput>(baseline);
-  const [busy, setBusy] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<OperatorInput>(() => inputOf(op));
   const [sharing, setSharing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const role = op.access.role;
   const readOnly = role === 'view';
-  const dirty = JSON.stringify(draft) !== JSON.stringify(baseline);
   useFocusParam(() => document.querySelector('[data-testid=operator-page]'));
   // who has access: refetched when a share of the operator or of one of its aircraft changes
   const people = useAsync(() => api.operatorShares.get(op.id), [op.id], { invalidatedBy: ['operators', 'aircraft'] });
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  const set = <K extends keyof OperatorInput>(k: K, v: OperatorInput[K]) => setDraft((d) => ({ ...d, [k]: v }));
+  const issues = validateOperator(draft);
+  const issuesOf = (k: OperatorField) => issues.filter((i) => i.field === k).map((i) => i.message);
 
-  const set = <K extends keyof OperatorInput>(k: K, v: OperatorInput[K]) => {
-    setDraft((d) => ({ ...d, [k]: v }));
-    setSaveError(null);
-  };
-  const problem = !draft.name.trim()
-    ? 'Enter the operator’s name.'
-    : draft.email.trim() && !isEmail(draft.email)
-      ? 'The e-mail address is not valid.'
-      : draft.requiresWbPerf && !isEmail(draft.declarationsEmail)
-        ? 'Enter the e-mail address that receives the W&B and performance sheets.'
-        : null;
+  const save = useCallback(
+    async (input: OperatorInput) => onSaved(await api.operators.update(op.id, normalized(input))),
+    [op.id, onSaved],
+  );
+  const autosave = useAutosave({
+    value: draft,
+    enabled: !readOnly && issues.length === 0,
+    save,
+    keepalive: (v) => keepalivePut(`operators/${encodeURIComponent(op.id)}`, normalized(v)),
+  });
+  const blocked = autosave.dirty && issues.length > 0;
+  const saveError = autosave.status === 'failed' ? autosave.error : null;
 
-  const save = useCallback(async () => {
-    if (!dirty || busy) return;
-    if (problem) {
-      setSaveError(problem);
-      return;
-    }
-    setBusy(true);
-    try {
-      const saved = await api.operators.update(op.id, {
-        ...draft,
-        name: draft.name.trim(),
-        email: draft.email.trim(),
-        declarationsEmail: draft.declarationsEmail.trim(),
-      });
-      onSaved(saved);
-      setDraft(inputOf(saved));
-      toast(`Saved ${saved.name}`);
-    } catch (err) {
-      setSaveError(
-        err instanceof ApiRequestError && err.status === 0
-          ? 'You are offline. Your changes are kept.'
-          : errorMessage(err),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }, [dirty, busy, problem, op.id, draft, onSaved, toast]);
-
+  const { flush } = autosave;
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        void save();
+        flush();
       }
     };
     document.addEventListener('keydown', key);
     return () => document.removeEventListener('keydown', key);
-  }, [save]);
+  }, [flush]);
 
   const text = (
     k: 'name' | 'phone' | 'email' | 'address' | 'aftn',
@@ -151,7 +151,13 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
     hint?: string,
     placeholder?: string,
   ) => (
-    <Field focus={k} label={label} hint={hint} req={k === 'name'}>
+    <Field
+      focus={k}
+      label={label}
+      hint={hint}
+      req={k === 'name'}
+      issues={k === 'name' || k === 'email' ? issuesOf(k) : undefined}
+    >
       <input
         name={k}
         value={draft[k]}
@@ -165,35 +171,41 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
 
   return (
     <div className="ac-page op-page" data-testid="operator-page">
-      <div className="page-head ac-head">
-        <Link to="/operators" className="back" aria-label="Back to the operators" title="Operators">
-          <Icon name="back" size={18} />
-        </Link>
-        <div>
-          <h1>{draft.name || 'Operator'}</h1>
-          <div className="muted">
-            {op.aircraft.length ? op.aircraft.map((a) => a.registration).join(', ') : 'No aircraft'}
-          </div>
+      <div className="ac-head op-head">
+        <div className="ac-head-back">
+          <Link to="/operators" className="back" aria-label="Back to the operators" title="Operators">
+            <Icon name="back" size={18} />
+          </Link>
         </div>
-        <SharedChip access={op.access} />
-        <span className="spacer" />
-        <button type="button" onClick={() => setSharing(true)} data-testid="share-operator">
-          Share
-        </button>
-        {role === 'owner' && (
-          <KebabMenu
-            label="Operator actions"
-            items={[{ label: 'Delete operator', onSelect: () => setDeleting(true), danger: true }]}
-          />
-        )}
+        <div className="ac-head-main">
+          <div className="ac-title">
+            <h1>{draft.name || 'Operator'}</h1>
+            <span className="ac-sub">
+              {op.aircraft.length ? op.aircraft.map((a) => a.registration).join(', ') : 'No aircraft'}
+            </span>
+            <SharedChip access={op.access} />
+            {!readOnly && <SaveStatus status={autosave.status} blocked={blocked} />}
+          </div>
+          <span className="spacer" />
+          <button type="button" onClick={() => setSharing(true)} data-testid="share-operator">
+            Share
+          </button>
+          {role === 'owner' && (
+            <KebabMenu
+              label="Operator actions"
+              items={[{ label: 'Delete operator', onSelect: () => setDeleting(true), danger: true }]}
+            />
+          )}
+        </div>
       </div>
 
       <form
         className="ac-main"
         onSubmit={(e) => {
           e.preventDefault();
-          void save();
+          autosave.flush();
         }}
+        onBlur={() => autosave.flush()}
         noValidate
       >
         <fieldset className="ac-fieldset" disabled={readOnly}>
@@ -224,7 +236,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
               </span>
             </Check>
             {draft.requiresWbPerf && (
-              <Field focus="declarationsEmail" label="Send them to" req>
+              <Field focus="declarationsEmail" label="Send them to" req issues={issuesOf('declarationsEmail')}>
                 <input
                   name="declarationsEmail"
                   type="email"
@@ -301,40 +313,19 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
             <Chip>View only</Chip>
             <span className="muted">Shared by {op.access.owner.name || op.access.owner.email}</span>
           </div>
-        ) : (
-          <div className={'ac-savebar card' + (dirty ? ' dirty' : '')} role="region" aria-label="Save">
-            {saveError ? (
-              <span className="form-error" role="alert">
-                {saveError}
-              </span>
-            ) : (
-              <span className="muted">{dirty ? 'Unsaved changes' : 'All changes saved'}</span>
-            )}
+        ) : saveError ? (
+          <div className="ac-problem card" role="alert" data-testid="problem-bar">
+            <span className="danger-text">
+              {saveError instanceof ApiRequestError && saveError.offline
+                ? 'Offline: changes not saved yet'
+                : `Not saved: ${errorMessage(saveError)}`}
+            </span>
             <span className="spacer" />
-            {dirty && (
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  setDraft(baseline);
-                  setSaveError(null);
-                }}
-                disabled={busy}
-              >
-                Discard
-              </button>
-            )}
-            <button
-              type="submit"
-              className="primary"
-              disabled={!dirty || busy}
-              title="Save (Ctrl+S)"
-              data-testid="operator-save"
-            >
-              {busy ? 'Saving…' : 'Save'}
+            <button type="button" className="sm" onClick={autosave.retry} data-testid="save-retry">
+              Retry
             </button>
           </div>
-        )}
+        ) : null}
       </form>
 
       {sharing && (

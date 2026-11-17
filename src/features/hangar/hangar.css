@@ -39,11 +39,11 @@
 .ac-head-back { display: flex; }
 .ac-head .back { display: grid; place-items: center; width: 34px; height: 34px; margin-left: 2px; border-radius: 50%; color: var(--ink-2); }
 .ac-head .back:hover { background: var(--hover); }
+.op-head { grid-template-columns: auto minmax(0, 1fr); gap: var(--s2); }
 .ac-head-main { display: flex; align-items: center; gap: var(--s4); min-width: 0; }
 .ac-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s3); min-width: 0; }
 .ac-title h1 { letter-spacing: 0.02em; margin: 0; }
 .ac-sub { color: var(--ink-2); }
-.ac-save-status { font-size: var(--fs-sm); }
 .ac-warn { position: relative; }
 .ac-warn-btn { border: 0; background: transparent; padding: 0; min-height: 0; }
 .ac-warn-btn:hover .chip { filter: brightness(0.97); }
@@ -232,8 +232,6 @@ ul.notes { margin: 0; padding-left: 18px; font-size: var(--fs-sm); color: var(--
 .ac-problem-list .issue-go .sec { color: var(--accent); }
 .ac-problem-list .issue-go .msg { color: var(--danger); }
 .issue-pop.below { bottom: auto; top: calc(100% + 6px); left: 0; right: auto; width: min(560px, 80vw); z-index: 30; }
-.ac-savebar { position: sticky; bottom: 12px; display: flex; align-items: center; gap: var(--s3); padding: 10px 12px 10px 14px; box-shadow: var(--shadow); z-index: 20; }
-.ac-savebar.dirty { border-color: var(--accent-line); }
 .issue-sum { border: 0; background: transparent; padding: 2px; gap: 6px; }
 .issue-sum:hover:not(:disabled) { background: var(--hover); }
 .issue-sum:disabled { opacity: 1; }

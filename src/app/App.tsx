@@ -50,12 +50,15 @@ function LegacyHashRedirect() {
   return null;
 }
 
-/** First use: until name, phone and home aerodrome are set, the profile page (welcome mode) comes first. */
+/** First use: until name, phone and home aerodrome are set, the profile page (welcome mode) comes first,
+ * then the page that was being opened (e.g. the link in a share e-mail). */
 function Onboarding({ children }: { children: ReactNode }) {
   const { pilot } = useSession();
   const loc = useLocation();
-  if (profileMissing(pilot).length && !loc.pathname.startsWith('/profile'))
-    return <Navigate to="/profile?welcome=1" replace />;
+  if (profileMissing(pilot).length && !loc.pathname.startsWith('/profile')) {
+    const next = loc.pathname === '/' ? '' : `&next=${encodeURIComponent(loc.pathname + loc.search)}`;
+    return <Navigate to={`/profile?welcome=1${next}`} replace />;
+  }
   return <>{children}</>;
 }
 

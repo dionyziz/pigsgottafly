@@ -233,16 +233,7 @@ export function PassengersPage() {
           </div>
         )}
       </AsyncView>
-      {editing === 'me' && (
-        <PilotDetailsDialog
-          focus={focusFields}
-          onClose={close}
-          onSaved={(p) => {
-            close();
-            toast(`Saved ${p.fullName}`);
-          }}
-        />
-      )}
+      {editing === 'me' && <PilotDetailsDialog focus={focusFields} onClose={close} />}
       {editing && editing !== 'me' && (
         <PassengerDialog
           passenger={editing === 'new' ? null : editing}
@@ -253,8 +244,9 @@ export function PassengersPage() {
             setDeleting(p);
           }}
           onSaved={(p, created) => {
+            if (!created) return;
             close();
-            toast(created ? `Added ${p.fullName}` : `Saved ${p.fullName}`);
+            toast(`Added ${p.fullName}`);
           }}
         />
       )}

@@ -2,7 +2,8 @@
 // save), at once on flush() (blur, Ctrl+S, leaving the page), and with fetch keepalive when the tab
 // closes. One save at a time: changes made while one is in flight go in the next. A failed save waits
 // for the next edit, retry() or the browser coming back online. The value as last sent counts as
-// saved: the server's normalized copy never replaces what is being typed.
+// saved: the server's normalized copy never replaces what is being typed. Every editor of an existing
+// record uses it (aircraft, operator, profile, passengers, waypoints), with <SaveStatus>.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type AutosaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'failed';
@@ -15,6 +16,10 @@ export interface Autosave {
   /** Saves now (if there is anything to save). */
   flush: () => void;
   retry: () => void;
+  /** Saves now and waits: true once everything is saved (false: invalid, or the save failed). */
+  settle: () => Promise<boolean>;
+  /** The form takes a newer copy from elsewhere (another tab): it counts as saved, not as an edit. */
+  adopt: (value: unknown) => void;
 }
 
 export function useAutosave<T>({
@@ -41,11 +46,12 @@ export function useAutosave<T>({
   const [status, setStatus] = useState<AutosaveStatus>('idle');
   const [error, setError] = useState<unknown>(null);
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (): Promise<boolean> => {
     window.clearTimeout(timer.current);
     timer.current = undefined;
     const cur = latest.current;
-    if (inFlight.current || !cur.enabled || cur.json === savedJson.current) return;
+    if (cur.json === savedJson.current) return true;
+    if (inFlight.current || !cur.enabled) return false;
     setStatus('saving');
     let ok = false;
     const p = cur.save(cur.value);
@@ -61,7 +67,7 @@ export function useAutosave<T>({
     } finally {
       inFlight.current = null;
     }
-    if (!ok) return;
+    if (!ok) return false;
     // edits made while saving go in the next save
     if (latest.current.json !== savedJson.current) {
       setStatus('pending');
@@ -69,6 +75,7 @@ export function useAutosave<T>({
     } else {
       setStatus('saved');
     }
+    return true;
   }, [delay]);
 
   // every change (re)starts the countdown
@@ -125,5 +132,17 @@ export function useAutosave<T>({
   const flush = useCallback(() => {
     void run();
   }, [run]);
-  return { status, error, dirty: json !== savedJson.current, flush, retry: flush };
+  const settle = useCallback(async () => {
+    // edits made during a save need another one
+    for (let i = 0; i < 3; i++) {
+      while (inFlight.current) await inFlight.current;
+      if (!(await run())) return false;
+      if (latest.current.json === savedJson.current) return true;
+    }
+    return false;
+  }, [run]);
+  const adopt = useCallback((v: unknown) => {
+    savedJson.current = JSON.stringify(v);
+  }, []);
+  return { status, error, dirty: json !== savedJson.current, flush, retry: flush, settle, adopt };
 }

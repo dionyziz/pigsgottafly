@@ -1,13 +1,14 @@
 // Sharing an aircraft with other pilots: /aircraft/:id/shares[/:pilotId] (src/shared/sharing.ts).
 // Anyone with access sees who else has it; the owner and editors add people by the e-mail of their
 // account, change their role and remove them; anyone can remove their own access. The owner is not
-// a share row and cannot be changed or removed here.
+// a share row and cannot be changed or removed here. A new share e-mails the person (shareMail.ts).
 import type { AircraftRole, AircraftSharing, ShareRole } from '../../../src/shared/sharing.js';
 import { aircraftFor, personName } from '../access.js';
 import type { Queryable, Row } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, notFound, reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';
+import { notifyShare } from '../shareMail.js';
 
 function shareRole(v: unknown): ShareRole {
   if (v !== 'view' && v !== 'edit') throw badRequest("role must be 'view' or 'edit'");
@@ -55,7 +56,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/aircraft/:id/shares',
-    async handler({ db, pilot, params, body }) {
+    async handler({ db, pilot, params, body, req, config }) {
       const ac = await aircraftFor(db, pilot.id, params.id, 'edit');
       await rateLimit(db, 'share', { pilotId: pilot.id });
       const input = await body();
@@ -65,7 +66,7 @@ export const routes: Route[] = [
       if (email.length > 320) throw badRequest('email is too long');
       // the account that signed in most recently with this address (an address is normally one account)
       const [p] = await db.query(
-        'SELECT id FROM pilots WHERE lower(email) = lower($1) ORDER BY last_login DESC LIMIT 1',
+        'SELECT id, email FROM pilots WHERE lower(email) = lower($1) ORDER BY last_login DESC LIMIT 1',
         [email],
       );
       if (!p)
@@ -80,6 +81,18 @@ export const routes: Route[] = [
         [ac.id, p.id, role, Date.now(), pilot.id],
       );
       if (!ins.length) throw conflict(`${email} already has access to this aircraft.`);
+      await notifyShare(
+        db,
+        { req, config, pilot },
+        {
+          kind: 'aircraft',
+          id: ac.id,
+          name: ac.registration,
+          detail: [ac.make_model, ac.icao_type].filter(Boolean).join(', '),
+          role,
+          to: p.email || email,
+        },
+      );
       return reply(201, await sharing(db, ac));
     },
   },

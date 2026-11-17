@@ -429,7 +429,6 @@ export function ManifestSection() {
         <PilotDetailsDialog
           onClose={() => setEditingMe(false)}
           onSaved={(p) => {
-            setEditingMe(false);
             update((d) => ({ ...d, crew: d.crew.map((c) => (c.role === 'PIC' ? applyPerson(c, personOf(p)) : c)) }));
           }}
         />
@@ -451,7 +450,6 @@ export function ManifestSection() {
           passenger={editingPax}
           onClose={() => setEditingPax(null)}
           onSaved={async (p) => {
-            setEditingPax(null);
             // the snapshot takes the saved details but the fields edited on this flight (the list refetch then finds nothing to change)
             update((d) => ({
               ...d,

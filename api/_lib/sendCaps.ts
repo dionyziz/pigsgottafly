@@ -4,6 +4,8 @@
 //   e-mails         MAIL_DAILY_CAP per pilot, MAIL_FLIGHT_FORM_CAP per flight and form (re-sends included),
 //                   MAIL_RECIPIENT_CAP per pilot to any one operator declarations address,
 //                   (Form 731 to a passenger, '731-pax': the per-flight cap and the pause are per recipient)
+//                   (share notices, 'share-aircraft' and 'share-operator': a daily cap of their own,
+//                   MAIL_DAILY_CAP, apart from the forms, and MAIL_RECIPIENT_CAP to any one person)
 //                   and a global cap on everything sent to HCAA by all pilots together (hcaaDailyCap():
 //                   HCAA_DAILY_CAP, default 200)
 //   re-sends        a flight's form goes out at most once every RESEND_MIN_MS (10 min)
@@ -26,6 +28,8 @@ export const LINK_FLIGHT_CAP = 20;
 export const HCAA_FORMS = ['731', 'gendec'];
 /** Forms sent to each person on a flight separately: the per-flight cap and pause count per recipient. */
 const PER_RECIPIENT_FORMS = ['731-pax'];
+/** The notice to someone an aircraft or an operator was shared with: counted apart from the forms. */
+export const SHARE_FORMS = ['share-aircraft', 'share-operator'];
 
 /** All pilots together, per 24 hours, to the HCAA mailboxes (env HCAA_DAILY_CAP, default 200). */
 export function hcaaDailyCap(env: NodeJS.ProcessEnv = process.env): number {
@@ -45,7 +49,7 @@ export interface MailEntry {
   /** The pilot it is sent for (null: the app's own message with no pilot). */
   pilotId: string | null;
   flightId: string | null;
-  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'signup', 'signup-more' */
+  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'share-aircraft', 'share-operator', 'signup', 'signup-more' */
   form: string;
   /** The To addresses, comma-separated. */
   recipient: string;
@@ -80,8 +84,8 @@ export async function reserveMail(db: Queryable, e: MailEntry & { pilotId: strin
        count(*) FILTER (WHERE lower(recipient) = lower($5) AND form = $4)::int AS addr,
        min(at) FILTER (WHERE lower(recipient) = lower($5) AND form = $4) AS addr_oldest,
        max(at) FILTER (WHERE ${same} AND result = 'sent') AS last_sent
-     FROM mail_log WHERE pilot_id = $1 AND at > $2 AND ${COUNTED}`,
-    [e.pilotId, since, e.flightId, e.form, e.recipient],
+     FROM mail_log WHERE pilot_id = $1 AND at > $2 AND ${COUNTED} AND (form = ANY($6::text[])) = $7`,
+    [e.pilotId, since, e.flightId, e.form, e.recipient, SHARE_FORMS, SHARE_FORMS.includes(e.form)],
   );
   const toWhom = perRecipient ? ` to ${e.recipient}` : '';
   let err: HttpError | null = null;
@@ -95,9 +99,9 @@ export async function reserveMail(db: Queryable, e: MailEntry & { pilotId: strin
       `This form was already e-mailed${toWhom} ${MAIL_FLIGHT_FORM_CAP} times for this flight in the last 24 hours.`,
       Number(c.same_oldest) + CAP_WINDOW_MS,
     );
-  } else if (e.form === 'wbperf' && c.addr > MAIL_RECIPIENT_CAP) {
+  } else if ((e.form === 'wbperf' || SHARE_FORMS.includes(e.form)) && c.addr > MAIL_RECIPIENT_CAP) {
     err = tooMany(
-      `You have sent ${MAIL_RECIPIENT_CAP} declarations to ${e.recipient} in the last 24 hours, the most allowed.`,
+      `You have sent ${MAIL_RECIPIENT_CAP} ${e.form === 'wbperf' ? 'declarations' : 'e-mails'} to ${e.recipient} in the last 24 hours, the most allowed.`,
       Number(c.addr_oldest) + CAP_WINDOW_MS,
     );
   } else if (c.total > MAIL_DAILY_CAP) {

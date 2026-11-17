@@ -212,7 +212,8 @@ describe('GET /me/export', () => {
     expect(x.forms.signingLinks).toHaveLength(1);
     expect(JSON.stringify(x.forms)).not.toMatch(/token/i);
     expect(x.forms.submissions).toEqual([expect.objectContaining({ form: 'gendec', to: 'gendec@hcaa.gov.gr' })]);
-    expect(x.forms.emailsSent).toHaveLength(1);
+    // the GenDec, and the e-mails to the people A shared SX-DEL and the operator with
+    expect(x.forms.emailsSent.map((m: any) => m.form).sort()).toEqual(['gendec', 'share-aircraft', 'share-operator']);
     // nothing of the other pilot beyond the share
     expect(JSON.stringify(x)).not.toContain(ids.bflight);
   });
