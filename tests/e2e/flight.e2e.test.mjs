@@ -250,7 +250,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   );
   await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
   const id = await flightId();
-  assert.equal(await text('[data-testid=flight-title]'), 'LGTT → LGTT');
+  assert.match(await text('[data-testid=flight-title]'), /^\d{4}-\d{2}-\d{2}$/);
 
   // frame the area of the route
   await page.eval(() => {

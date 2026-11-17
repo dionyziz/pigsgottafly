@@ -4,7 +4,15 @@
 // field turns red with the limit shown under it and, on blur or Enter, the value is clamped to the
 // limit and committed, so the stored value always matches the field. Anything else that is not a
 // number goes back to the stored value on blur. Parsing: src/shared/number.ts.
-import { type CSSProperties, type ReactNode, useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { type NumberDraft, parseNumber } from '../shared/number';
 
@@ -118,6 +126,14 @@ export function NumberField(props: NumberFieldProps) {
   const p = classify(draft, props);
   // Escape (commitOnEnter): the blur that follows must not commit the draft it just dropped
   const cancelled = useRef(false);
+  // the default put in on focus is selected before the next keystroke (focus renders synchronously)
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectAll = useRef(false);
+  useLayoutEffect(() => {
+    if (!selectAll.current) return;
+    selectAll.current = false;
+    inputRef.current?.select();
+  }, [draft]);
   const settle = () => {
     if (cancelled.current) {
       cancelled.current = false;
@@ -150,12 +166,12 @@ export function NumberField(props: NumberFieldProps) {
         data-testid={testId}
         disabled={disabled}
         autoFocus={autoFocus}
-        onFocus={(e) => {
+        ref={inputRef}
+        onFocus={() => {
           setFocused(true);
           if (value == null && fillValue != null && !draft) {
-            const t = e.currentTarget;
+            selectAll.current = true;
             setDraft(String(fillValue));
-            requestAnimationFrame(() => t.select());
           }
         }}
         onBlur={() => {

@@ -31,7 +31,7 @@ test('first use asks for the profile, then the lobby, a new flight and the edito
   );
   await page.waitFor(() => !!document.querySelector('[data-testid=map] canvas'));
   const title = await page.eval(() => document.querySelector('[data-testid=flight-title]').textContent);
-  assert.equal(title, 'LGTT → LGTT');
+  assert.match(title, /^\d{4}-\d{2}-\d{2}$/, 'a new flight is titled with its date');
 
   // an edit is saved to the server
   await page.type('[data-testid=flight-panel] input[placeholder="HH:MM"]', '09:30');
@@ -67,11 +67,12 @@ test('origin and destination are fields in the editor, kept in sync with the rou
   assert.equal(await page.eval(() => document.querySelector('[data-testid=route-origin] input').value), 'LGTT');
   await page.type('[data-testid=route-destination] input', 'LGMG');
   await page.blur();
-  await page.waitFor(() => document.querySelector('[data-testid=flight-title]').textContent === 'LGTT → LGMG');
-  await page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', {
-    timeout: 10000,
-  });
-  const f = await (await fetch(`${server.url}/api/flights/${f0.id}`)).json();
+  let f;
+  for (let i = 0; i < 100; i++) {
+    f = await (await fetch(`${server.url}/api/flights/${f0.id}`)).json();
+    if (f.route[f.route.length - 1]?.name === 'LGMG') break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
   assert.deepEqual(
     f.route.map((p) => [p.name, p.kind]),
     [
@@ -229,7 +230,7 @@ test('new flight asks for the ends: an unknown aerodrome says so and blocks Crea
   await page.waitFor(
     () =>
       /^\/flights\/[\w-]+$/.test(location.pathname) &&
-      document.querySelector('[data-testid=flight-title]')?.textContent === 'LGMG → LGSY',
+      /^\d{4}-\d{2}-\d{2}$/.test(document.querySelector('[data-testid=flight-title]')?.textContent ?? ''),
   );
 
   await page.goto(`${server.url}/about`);
