@@ -1,5 +1,6 @@
 // The navlog strip: a leg's warnings under its row (not in the list), the flight panel's collapse tab
-// clear of the strip, and a leg's altitude edited in the strip (saved; the map label follows).
+// clear of the strip, a leg's altitude edited in the strip (saved; the map label follows), and the
+// flight's start-up/taxi fuel edited in the Fuel section (required fuel follows; saved).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test, { after, before } from 'node:test';
@@ -148,5 +149,51 @@ test("a leg's altitude edited in the strip is saved; the map label and the navlo
   await page.waitFor(() => ![...document.querySelectorAll('.pgf-leg-alt')].some((b) => b.textContent === 'FL065'));
   const g = await api('GET', `flights/${flightId}`);
   assert.ok(!Object.values(g.legOverrides).some((o) => o.altFt === 6500), JSON.stringify(g.legOverrides));
+  assert.deepEqual(page.errors, []);
+});
+
+test('the start-up, taxi, take-off and landing fuel is edited per flight in the Fuel section', async () => {
+  await page.goto(`${server.url}/flights/${flightId}`);
+  await page.waitFor(
+    () =>
+      !!document.querySelector('[data-testid=taxi-allowance]') &&
+      !!document.querySelector('[data-testid=fuel-required]'),
+    {
+      timeout: 20000,
+    },
+  );
+  const required = () =>
+    page.eval(() => parseInt(document.querySelector('[data-testid=fuel-required]').textContent, 10));
+  const field = () =>
+    page.eval(() => {
+      const i = document.querySelector('[data-testid=taxi-allowance]');
+      return [i.value, i.placeholder, i.classList.contains('is-set')];
+    });
+  assert.deepEqual(await field(), ['', '4', false]);
+  const before = await required();
+  await page.type('[data-testid=taxi-allowance]', '10');
+  await page.blur();
+  await page.waitFor((b) => parseInt(document.querySelector('[data-testid=fuel-required]').textContent, 10) === b + 6, {
+    args: [before],
+  });
+  assert.deepEqual(await field(), ['10', '4', true]);
+  await page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', {
+    timeout: 10000,
+  });
+  assert.equal((await api('GET', `flights/${flightId}`)).options.taxiAllowanceL, 10);
+  // kept after a reload
+  await page.goto(`${server.url}/flights/${flightId}`);
+  await page.waitFor(() => document.querySelector('[data-testid=taxi-allowance]')?.value === '10', { timeout: 20000 });
+  assert.equal(await required(), before + 6);
+  // cleared: the aircraft's value again
+  await page.type('[data-testid=taxi-allowance]', '');
+  await page.blur();
+  await page.waitFor((b) => parseInt(document.querySelector('[data-testid=fuel-required]').textContent, 10) === b, {
+    args: [before],
+  });
+  await page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', {
+    timeout: 10000,
+  });
+  assert.equal((await api('GET', `flights/${flightId}`)).options.taxiAllowanceL, null);
   assert.deepEqual(page.errors, []);
 });

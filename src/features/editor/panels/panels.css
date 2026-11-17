@@ -18,6 +18,12 @@
 .ep-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) var(--s3); }
 .ep-grid2 input, .ep-grid2 select { width: 100%; min-width: 0; box-sizing: border-box; }
 .ep-num { font-variant-numeric: tabular-nums; }
+.ep-allowance { white-space: nowrap; }
+.ep-inline-num { padding: 1px 4px; text-align: right; font: inherit; border: 1px solid transparent; background: transparent; }
+.ep-inline-num::placeholder { color: var(--ink); opacity: 1; }
+.ep-inline-num:hover { border-color: var(--line-strong); }
+.ep-inline-num:focus { border-color: var(--accent); background: var(--surface); }
+.ep-inline-num.is-set { color: var(--accent); }
 input.ep-num.invalid { border-color: var(--danger); background: var(--danger-soft); }
 
 /* key/value lines */

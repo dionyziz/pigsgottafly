@@ -310,6 +310,17 @@ describe('intermediate stop at LGSY', () => {
     expect(html).toContain('wb-pt-stop0');
   });
 
+  test("the flight's taxi allowance counts once per take-off in the fuel plan and every sector", () => {
+    const c0 = calcOf(flight());
+    const doc = flight();
+    const c = calcOf({ ...doc, options: { ...doc.options, taxiAllowanceL: 10 } });
+    expect(c0.computed.fuel).toMatchObject({ taxiL: 8, takeoffs: 2 });
+    expect(c.computed.fuel).toMatchObject({ taxiL: 20, takeoffs: 2 });
+    expect(c.fuelBurnL - c0.fuelBurnL).toBe(12);
+    expect(c0.sectors[0].fuelLandingL - c.sectors[0].fuelLandingL).toBe(6);
+    expect(c0.fuelLandingL - c.fuelLandingL).toBe(12);
+  });
+
   test('a stop above the maximum landing mass fails the loading sheet', () => {
     const doc = flight();
     const ac: Aircraft = structuredClone(ASV);

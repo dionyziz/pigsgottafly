@@ -209,12 +209,29 @@ export const routes: Route[] = [
          WHERE pilot_id = $1 AND deleted = $2 ORDER BY GREATEST(updated, opened) DESC`,
         [pilot.id, trash],
       );
+      // Passengers' names per flight, in manifest order (the pilot's own manifest rows only).
+      const pax = new Map<string, string[]>();
+      if (rows.length) {
+        const crew = await db.query(
+          `SELECT flight_id, snapshot->>'fullName' AS name FROM flight_crew
+           WHERE pilot_id = $1 AND role = 'PAX' AND flight_id = ANY($2::text[]) ORDER BY flight_id, position`,
+          [pilot.id, rows.map((r) => r.id)],
+        );
+        for (const c of crew) {
+          const name = typeof c.name === 'string' ? c.name.trim() : '';
+          if (!name) continue;
+          const list = pax.get(c.flight_id) ?? [];
+          list.push(name);
+          pax.set(c.flight_id, list);
+        }
+      }
       const names = (route: unknown): string[] =>
         Array.isArray(route) ? route.map((p) => (p && typeof p.name === 'string' ? p.name : '')).filter(Boolean) : [];
       return rows.map((r) => ({
         id: r.id,
         summary: { ...EMPTY_SUMMARY, ...r.summary },
         points: names(r.route),
+        passengers: pax.get(r.id) ?? [],
         date: r.date,
         aircraftId: r.aircraft_id ?? null,
         version: Number(r.version),

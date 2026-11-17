@@ -16,7 +16,7 @@ import { autoTitle, type Flight, type FlightListItem } from '../../shared';
 import { fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
 import { errorMessage, fmtDuration } from '../../shared/format';
 import { AsyncView, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, rowClick, SearchBox } from '../../ui';
-import { flightSearchText, matchesQuery, splitFlights } from './format';
+import { flightSearchText, matchesQuery, passengerNames, splitFlights } from './format';
 import { RouteThumb } from './RouteThumb';
 
 const titleOf = (r: FlightListItem) => r.summary.title || 'Untitled flight';
@@ -114,6 +114,7 @@ export function LobbyPage() {
     const local = utcToLocal(date, s.blockOff);
     const route = s.from && s.to ? (s.from === s.to ? `Local flight · ${s.from}` : `${s.from} → ${s.to}`) : '';
     const dash = <span className="muted">—</span>;
+    const pax = passengerNames(r);
     const items = trashView
       ? [{ label: 'Restore', onSelect: () => void restore(r) }]
       : [
@@ -140,6 +141,9 @@ export function LobbyPage() {
             </Link>
           )}
           <div className="sub">{[route, s.aircraft].filter(Boolean).join(' · ') || 'No route yet'}</div>
+        </div>
+        <div className="cell pax hide-sm" data-testid="flight-pax" title={pax || undefined}>
+          {pax || dash}
         </div>
         <div className="cell hide-sm">
           <b>{fmtDate(date) || 'No date'}</b>
@@ -178,6 +182,7 @@ export function LobbyPage() {
         <div className="lobby-head-cols">
           <span />
           <span>Flight</span>
+          <span className="hide-sm">Passengers</span>
           <span className="hide-sm">Date</span>
           <span className="hide-sm">Block start</span>
           <span className="num hide-sm">Distance</span>

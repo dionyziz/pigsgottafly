@@ -144,7 +144,7 @@ export function pickCompassCard(
   return (name ? cards.find((c) => c.name === name) : undefined) ?? cards[0];
 }
 
-/** NavlogAircraft from the hangar record and the chosen card. */
+/** NavlogAircraft from the hangar record, the chosen card and the flight's taxi allowance (null = the aircraft's). */
 export function navlogAircraft(
   a: {
     cruiseTasKt: number;
@@ -153,13 +153,14 @@ export function navlogAircraft(
     compassCards: CompassCard[];
   },
   cardName: string | null = null,
+  taxiAllowanceL: number | null = null,
 ): NavlogAircraft {
   const card = pickCompassCard(a.compassCards, cardName);
   return {
     cruiseTasKt: a.cruiseTasKt,
     patternTasKt: a.patternTasKt,
     burnLph: a.fuel.burnLph,
-    taxiAllowanceL: a.fuel.taxiAllowanceL,
+    taxiAllowanceL: taxiAllowanceL ?? a.fuel.taxiAllowanceL,
     card: card && card.points.length ? card.points : null,
     cardExpires: card ? card.expires : null,
     cardName: card ? card.name : null,

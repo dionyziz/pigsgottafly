@@ -207,6 +207,7 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
       o.fuelL = Object.keys(out).length ? out : null;
     }
   }
+  if ('taxiAllowanceL' in i) o.taxiAllowanceL = optNumber(i.taxiAllowanceL, 'options.taxiAllowanceL', 0, 1000);
   if ('mapLayers' in i) {
     if (i.mapLayers === null || i.mapLayers === undefined) o.mapLayers = null;
     else {

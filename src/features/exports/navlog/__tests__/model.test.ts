@@ -149,6 +149,16 @@ describe('one sheet', () => {
     expect(s.totals.sunset).toMatch(/^SUNSET \d\d:\d\dZ$/);
   });
 
+  test("the flight's taxi allowance replaces the aircraft's in the fuel plan and the sheet total", () => {
+    const own = flight(route, {
+      legOverrides: windAll(route, 300, 15),
+      options: { ...doc.options, taxiAllowanceL: 9 },
+    });
+    const { computed: c, out: o } = build(own);
+    expect(c.fuel).toMatchObject({ taxiL: 9, requiredL: c.navlog.totals.tripFuel + 9 });
+    expect(o.sheets[0].totals.fuel).toBe(String(c.navlog.totals.tripFuel + 9));
+  });
+
   test('notes box left blank; sources on screen; no weather warnings', () => {
     expect(out).not.toHaveProperty('notes');
     expect(out.sources[0]).toBe('Winds aloft: none, calm wind used');

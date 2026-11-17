@@ -17,7 +17,7 @@ import { distanceNm, fmtDuration } from './nav.js';
 export interface FuelPlanInput {
   /** Σ leg fuel, L (NavlogResult.totals.tripFuel). */
   tripFuelL: number;
-  /** Aircraft FuelSpec.taxiAllowanceL. */
+  /** Per take-off: the flight's override, else the aircraft's FuelSpec.taxiAllowanceL (taxiAllowanceOf). */
   taxiAllowanceL: number;
   burnLph: number;
   /** PilotSettings.finalReserveMin (inside "required"). */
@@ -49,7 +49,10 @@ export interface FuelIssue {
 }
 
 export interface FuelPlan {
+  /** Taxi allowance × take-offs. */
   taxiL: number;
+  /** 1 + intermediate full stops. */
+  takeoffs: number;
   tripL: number;
   finalReserveL: number;
   requiredL: number;
@@ -152,6 +155,7 @@ export function planFuel(input: FuelPlanInput): FuelPlan {
 
   return {
     taxiL,
+    takeoffs: 1 + stops,
     tripL,
     finalReserveL,
     requiredL,

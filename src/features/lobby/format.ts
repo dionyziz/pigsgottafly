@@ -4,7 +4,7 @@ import type { FlightListItem } from '../../shared';
 import { fmtDate } from '../../shared/date';
 
 /** Lower-cased text a flight row is searched by: title, every route point (aerodromes, VFR points,
- *  custom points), aircraft, date in several forms. */
+ *  custom points), passengers, aircraft, date in several forms. */
 export function flightSearchText(r: FlightListItem): string {
   const s = r.summary;
   const date = r.date || s.date;
@@ -13,6 +13,7 @@ export function flightSearchText(r: FlightListItem): string {
     s.from,
     s.to,
     ...(r.points ?? []),
+    ...(r.passengers ?? []),
     s.aircraft,
     s.aircraft.replace('-', ''),
     date,
@@ -22,6 +23,9 @@ export function flightSearchText(r: FlightListItem): string {
     .join(' ')
     .toLowerCase();
 }
+
+/** The row's passengers, comma-separated ('' without any). */
+export const passengerNames = (r: FlightListItem): string => (r.passengers ?? []).join(', ');
 
 /** Every whitespace-separated term of `q` must occur in the row's text. */
 export function matchesQuery(text: string, q: string): boolean {

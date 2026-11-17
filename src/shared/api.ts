@@ -87,6 +87,8 @@ export interface FlightListItem {
   summary: FlightSummary;
   /** Names of every route point in order (departure, waypoints, intermediate aerodromes, destination), for search. */
   points: string[];
+  /** Passengers' names in manifest order (the PIC not included). */
+  passengers: string[];
   date: string;
   aircraftId: Id | null;
   version: number;
