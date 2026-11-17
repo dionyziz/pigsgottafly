@@ -1,7 +1,9 @@
 // Chart symbols drawn on a canvas and registered as map images (crisp at any pixel ratio, no
 // sprite files to host). Shapes follow the ICAO VFR chart conventions loosely: aerodrome = ring with
 // the runway bar, reporting point = triangle (solid charted, hollow open-flightmaps), my waypoint =
-// four-point star.
+// four-point star. Radio navaids use the ICAO Annex 4 symbols: VOR hexagon with a centre dot, DME square,
+// VOR/DME the hexagon in a rectangle, VORTAC the hexagon with three filled lobes (TACAN: outlined lobes),
+// NDB and locator a centre dot in rings of dots.
 import type { Map as MlMap } from 'maplibre-gl';
 
 import { CHART } from './style';
@@ -50,6 +52,81 @@ function triangle(g: CanvasRenderingContext2D, s: number, r: number) {
     else g.moveTo(x, y);
   }
   g.closePath();
+}
+
+/** Flat-topped hexagon of circumradius r around (cx, cy). */
+function hexagon(g: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  g.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI) / 3;
+    const x = cx + r * Math.cos(a),
+      y = cy + r * Math.sin(a);
+    if (i) g.lineTo(x, y);
+    else g.moveTo(x, y);
+  }
+  g.closePath();
+}
+
+function dot(g: CanvasRenderingContext2D, x: number, y: number, r: number, color: string) {
+  g.beginPath();
+  g.arc(x, y, r, 0, Math.PI * 2);
+  g.fillStyle = color;
+  g.fill();
+}
+
+/** A VOR: hexagon (white inside) with its centre dot. */
+function vor(g: CanvasRenderingContext2D, s: number, r: number) {
+  const c = s / 2;
+  hexagon(g, c, c, r);
+  g.fillStyle = CHART.halo;
+  g.fill();
+  g.lineWidth = 1.5;
+  g.strokeStyle = CHART.navaid;
+  g.stroke();
+  dot(g, c, c, 1.5, CHART.navaid);
+}
+
+/** The three lobes of a VORTAC / TACAN on the top, lower-left and lower-right sides of the hexagon. */
+function lobes(g: CanvasRenderingContext2D, s: number, r: number, filled: boolean) {
+  const c = s / 2,
+    apo = (r * Math.sqrt(3)) / 2,
+    half = r / 2,
+    depth = r * 0.62;
+  for (const deg of [-90, 30, 150]) {
+    g.save();
+    g.translate(c, c);
+    g.rotate(((deg + 90) * Math.PI) / 180);
+    g.beginPath();
+    g.rect(-half, -apo - depth, 2 * half, depth);
+    if (filled) {
+      g.fillStyle = CHART.navaid;
+      g.fill();
+    } else {
+      g.fillStyle = CHART.halo;
+      g.fill();
+      g.lineWidth = 1.3;
+      g.strokeStyle = CHART.navaid;
+      g.stroke();
+    }
+    g.restore();
+  }
+}
+
+/** NDB / locator: centre dot, a ring and rings of dots around it. */
+function ndb(g: CanvasRenderingContext2D, s: number, rings: number[]) {
+  const c = s / 2;
+  g.beginPath();
+  g.arc(c, c, rings[rings.length - 1] + 1.6, 0, Math.PI * 2);
+  g.fillStyle = CHART.halo;
+  g.fill();
+  dot(g, c, c, 1.8, CHART.navaid);
+  for (const r of rings) {
+    const n = Math.round((2 * Math.PI * r) / 2.6);
+    for (let i = 0; i < n; i++) {
+      const a = (i * 2 * Math.PI) / n;
+      dot(g, c + r * Math.cos(a), c + r * Math.sin(a), 0.75, CHART.navaid);
+    }
+  }
 }
 
 export const SYMBOLS: Record<string, () => ImageData | null> = {
@@ -123,6 +200,42 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
       g.strokeStyle = CHART.paper;
       g.stroke();
     }),
+  'pgf-nav-vor': () => make(20, (g, s) => vor(g, s, 6.5)),
+  'pgf-nav-vordme': () =>
+    make(24, (g, s) => {
+      const c = s / 2,
+        w = 9.2,
+        h = 7.6;
+      g.fillStyle = CHART.halo;
+      g.fillRect(c - w - 1, c - h - 1, 2 * w + 2, 2 * h + 2);
+      g.lineWidth = 1.5;
+      g.strokeStyle = CHART.navaid;
+      g.strokeRect(c - w, c - h, 2 * w, 2 * h);
+      vor(g, s, 6.5);
+    }),
+  'pgf-nav-vortac': () =>
+    make(28, (g, s) => {
+      lobes(g, s, 6.5, true);
+      vor(g, s, 6.5);
+    }),
+  'pgf-nav-tacan': () =>
+    make(28, (g, s) => {
+      lobes(g, s, 6.5, false);
+      vor(g, s, 6.5);
+    }),
+  'pgf-nav-dme': () =>
+    make(18, (g, s) => {
+      const c = s / 2,
+        h = 6;
+      g.fillStyle = CHART.halo;
+      g.fillRect(c - h - 1, c - h - 1, 2 * h + 2, 2 * h + 2);
+      g.lineWidth = 1.5;
+      g.strokeStyle = CHART.navaid;
+      g.strokeRect(c - h, c - h, 2 * h, 2 * h);
+      dot(g, c, c, 1.5, CHART.navaid);
+    }),
+  'pgf-nav-ndb': () => make(26, (g, s) => ndb(g, s, [4.2, 7, 9.8])),
+  'pgf-nav-l': () => make(20, (g, s) => ndb(g, s, [3.8, 6.6])),
   // one-way arrow along a VFR route (points along the line direction = image +x)
   'pgf-arrow': () =>
     make(14, (g, s) => {

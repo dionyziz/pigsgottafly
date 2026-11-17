@@ -33,7 +33,7 @@ for s in ENR_2_1 ENR_4_1 GEN_2_7; do
   echo "   $s: $(grep -hoE 'AIRAC AMDT [0-9]+/[0-9]+' "$WORK/txt/LG_${s}_en.txt" | sort -u | tail -1)"
 done
 
-echo "== 4. aerodromes, airspace, sunset, AIP links, ENR 5 areas"
+echo "== 4. aerodromes, airspace, sunset, AIP links, ENR 5 areas, radio navaids"
 sed -i '' "s|^AIRAC = .*|AIRAC = '$LABEL'|" "$ROOT/tools/build_aip.py"
 # the online eAIP of this AIRAC (links to the AIP PDFs): .../aipgr_incl_amdt_1026_wef_26nov2026/cd/ais/
 AMDT=$(echo "$LABEL" | sed -E 's/.*AMDT ([0-9]{2})\/([0-9]{2}).*/\1\2/')
@@ -43,6 +43,7 @@ sed -i '' "s|^export const AIP_EAIP_BASE = .*|export const AIP_EAIP_BASE = 'http
 grep -n "^export const AIP_EAIP_BASE" "$ROOT/src/data/aipLinks.ts"
 (cd "$ROOT" && npx tsx tools/aip_files.ts "$WORK/iso/ais/side.htm" src/data/ref/aip-files.json)
 (cd "$ROOT" && npx tsx tools/parse_enr5.ts "$WORK/txt" tools/enr5_areas.json)   # ENR 5.1/5.2/5.3 areas: check what it flags
+(cd "$ROOT" && npx tsx tools/parse_navaids.ts "$WORK/txt" src/data/ref/navaids.json)   # ENR 4.1 + AD 2.19 / AD 1.6.N.19 radio navaids: check what it flags
 python3 -I "$ROOT/tools/parse_ad.py" "$WORK/txt" "$WORK/ad_raw.json"
 python3 -I "$ROOT/tools/build_aip.py" "$WORK/ad_raw.json" "$ROOT/data/aip.js"
 python3 -I "$ROOT/tools/parse_sun.py" "$WORK/txt/LG_GEN_2_7_en.txt" "$ROOT/data/sun.js"

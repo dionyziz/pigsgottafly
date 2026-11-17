@@ -9,6 +9,8 @@ import type { BaseMapId } from '../../../shared/mapLayers';
  *  built; these defaults are the same values (Node, unit tests). */
 const CHART_DEFAULTS = {
   aerodrome: '#1d3f8f',
+  /** Radio navaids (VOR, DME, NDB, locator symbols and their labels). */
+  navaid: '#0e5a78',
   tma: '#2f64c0',
   mtma: '#8a3b9c',
   zone: '#b4235a',
@@ -41,6 +43,7 @@ export type ChartColor = keyof typeof CHART_DEFAULTS;
 /** The design token of each chart colour. */
 export const CHART_TOKENS: Record<ChartColor, string> = {
   aerodrome: '--map-aerodrome',
+  navaid: '--map-navaid',
   tma: '--map-tma',
   mtma: '--map-mtma',
   zone: '--map-zone',
@@ -173,6 +176,7 @@ export const DATA_SOURCES = [
   'fir',
   'vfr-routes',
   'vfr-points',
+  'navaids',
   'aerodromes',
   'waypoints',
   'air-focus',
@@ -290,6 +294,7 @@ export const LAYER_GROUPS = {
   aerodromes: ['aerodrome-icon', 'aerodrome-label'],
   vfrPoints: ['vfr-point-icon', 'vfr-point-label'],
   vfrRoutes: ['vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt'],
+  navaids: ['navaid-icon', 'navaid-label'],
   waypoints: ['waypoint-icon', 'waypoint-label'],
 } as const satisfies Record<string, readonly string[]>;
 
@@ -603,6 +608,51 @@ function chartLayers(): LayerSpecification[] {
         'text-keep-upright': true,
       },
       paint: { 'text-color': CHART.vfr, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
+    },
+    // radio navaids: VORs and en-route NDBs from the FIR view, aerodrome locators once zoomed in
+    {
+      id: 'navaid-icon',
+      type: 'symbol',
+      source: 'navaids',
+      filter: ['any', ['==', ['get', 'rank'], 1], ['>=', ['zoom'], 7.5]],
+      layout: {
+        'icon-image': ['get', 'icon'],
+        'icon-allow-overlap': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.7, 9, 1],
+        'symbol-sort-key': ['get', 'rank'],
+      },
+    },
+    {
+      id: 'navaid-label',
+      type: 'symbol',
+      source: 'navaids',
+      minzoom: 7,
+      filter: ['any', ['==', ['get', 'rank'], 1], ['>=', ['zoom'], 8.5]],
+      layout: {
+        'text-field': [
+          'step',
+          ['zoom'],
+          ['get', 'label'],
+          9,
+          [
+            'format',
+            ['get', 'label'],
+            {},
+            ' ',
+            {},
+            ['get', 'freq'],
+            { 'font-scale': 0.85, 'text-font': ['literal', REG] },
+          ],
+        ],
+        'text-font': BOLD,
+        'text-size': 10.5,
+        'text-letter-spacing': 0.04,
+        'text-variable-anchor': ['bottom-left', 'top-left', 'bottom-right', 'top-right'],
+        'text-radial-offset': 0.9,
+        'text-justify': 'auto',
+        'symbol-sort-key': ['get', 'rank'],
+      },
+      paint: { 'text-color': CHART.navaid, 'text-halo-color': CHART.halo, 'text-halo-width': 1.5 },
     },
     {
       id: 'vfr-point-icon',

@@ -6,7 +6,8 @@
 //      vertical limits once), links to the AIP PDFs (areas, airspace, aerodromes);
 //   3. the flight panel collapses and expands (button, keyboard, dragging its edge; remembered);
 //   4. resizing the panels keeps the map canvas the size of its container in every painted frame;
-//   5. the layer toggles (kept per flight; the profile's choice for new flights), the FIR, tooltips inside
+//   5. the radio navaids (ENR 4.1, AD 2.19): ICAO symbols with ident labels, hover and click details, their toggle;
+//   6. the layer toggles (kept per flight; the profile's choice for new flights), the FIR, tooltips inside
 //      the map near its edges, the hint's close button.
 // Screenshots go to tests/e2e/artifacts/map-*.png.
 import assert from 'node:assert/strict';
@@ -30,7 +31,8 @@ const api = async (method, p, body) => {
 const ref = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref', f), 'utf8'));
 const AERODROMES = ref('aerodromes.json'),
   VFR = ref('vfr-points.json'),
-  AREAS = ref('areas.json');
+  AREAS = ref('areas.json'),
+  NAVAIDS = ref('navaids.json');
 const AD = (id) => AERODROMES.find((a) => a.id === id);
 const nm = (a, b) => {
   const r = Math.PI / 180,
@@ -532,6 +534,126 @@ test('the flight panel collapses and expands (button, keyboard, dragging its edg
     () => document.querySelector('[data-testid=editor-panel]').getBoundingClientRect().width,
   );
   assert.ok(Math.abs(wAgain - wOpen) <= 1, `${wAgain} vs ${wOpen}`);
+  assert.deepEqual(page.errors, []);
+});
+
+test('radio navaids: ICAO symbols labelled with their ident, hover and click details with the AIP source, a toggle kept per flight', async () => {
+  const ATV = NAVAIDS.find((n) => n.id === 'ATV VOR/DME');
+  const KOR = NAVAIDS.find((n) => n.id === 'KOR NDB');
+  assert.ok(ATV && KOR);
+  const rendered = (layer) =>
+    page.eval(
+      (layer) =>
+        document
+          .querySelector('.pgf-map-canvas')
+          .__pgfMap.queryRenderedFeatures({ layers: [layer] })
+          .map((f) => f.properties.id),
+      layer,
+    );
+  await page.goto(`${server.url}/flights/${flightId}`);
+  await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
+  await page.eval(() => {
+    const b = document.querySelector('[data-testid=map-draw]');
+    if (b.getAttribute('aria-pressed') === 'true') b.click();
+  });
+  // the Athens area: ATV VOR/DME and the KOR NDB drawn with their symbols and idents
+  await frame([
+    [KOR.lon - 0.1, KOR.lat - 0.25],
+    [ATV.lon + 0.25, ATV.lat + 0.25],
+  ]);
+  await page.waitFor(
+    () => {
+      const ids = document
+        .querySelector('.pgf-map-canvas')
+        .__pgfMap.queryRenderedFeatures({ layers: ['navaid-icon'] })
+        .map((f) => f.properties.id);
+      return ids.includes('ATV VOR/DME') && ids.includes('KOR NDB');
+    },
+    { timeout: 10000 },
+  );
+  const icons = await page.eval(() =>
+    Object.fromEntries(
+      document
+        .querySelector('.pgf-map-canvas')
+        .__pgfMap.queryRenderedFeatures({ layers: ['navaid-icon'] })
+        .map((f) => [f.properties.id, f.properties.icon]),
+    ),
+  );
+  assert.equal(icons['ATV VOR/DME'], 'pgf-nav-vordme');
+  assert.equal(icons['KOR NDB'], 'pgf-nav-ndb');
+  await shot('navaids-1');
+  // hover: type, ident, name, frequency; click: the details with the AIP sections
+  await jump(ATV.lat, ATV.lon, 9.5);
+  await sleep(500);
+  await page.waitFor(
+    () =>
+      document
+        .querySelector('.pgf-map-canvas')
+        .__pgfMap.queryRenderedFeatures({ layers: ['navaid-label'] })
+        .some((f) => f.properties.label === 'ATV'),
+    { timeout: 10000 },
+  );
+  await shot('navaids-2-zoomed');
+  const c = await mapPx(ATV.lat, ATV.lon);
+  await hover(c.x, c.y);
+  await page.waitFor(
+    () => /ATV · ATHINAI/.test(document.querySelector('[data-testid=navaid-tip]')?.textContent || ''),
+    {
+      timeout: 5000,
+    },
+  );
+  assert.match(await page.eval(() => document.querySelector('[data-testid=navaid-tip]').textContent), /114\.40 MHz/);
+  await clickAt(c.x, c.y);
+  await page.waitFor(() => !!document.querySelector('[data-testid=navaid-pop]'));
+  const pop = await page.eval(() => ({
+    text: document.querySelector('[data-testid=navaid-pop]').textContent,
+    links: [...document.querySelectorAll('[data-testid=navaid-pop] [data-testid=aip-link]')].map((a) => a.href),
+  }));
+  assert.match(pop.text, /VOR\/DME/);
+  assert.match(pop.text, /CH 91X/);
+  assert.match(pop.text, /AIP Greece ENR 4\.1/);
+  assert.ok(
+    pop.links.some((h) => /LG_ENR_4_1_en\.pdf$/.test(h)),
+    pop.links.join(' '),
+  );
+  await shot('navaids-3-pop');
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=navaid-pop]'));
+  // the toggle hides the layer and its tooltips, and is kept on the flight
+  await page.click('[data-testid=map-layers]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=map-navaids]'));
+  assert.ok(await page.eval(() => document.querySelector('[data-testid=map-navaids]').checked));
+  await page.click('[data-testid=map-navaids]');
+  await page.waitFor(
+    () => document.querySelector('.pgf-map-canvas').__pgfMap.getLayoutProperty('navaid-icon', 'visibility') === 'none',
+  );
+  assert.equal(
+    await page.eval(() =>
+      document.querySelector('.pgf-map-canvas').__pgfMap.getLayoutProperty('navaid-label', 'visibility'),
+    ),
+    'none',
+  );
+  await page.click('[data-testid=map-layers]');
+  await sleep(300);
+  assert.deepEqual(await rendered('navaid-icon'), []);
+  await hover(c.x + 2, c.y);
+  await hover(c.x, c.y);
+  assert.equal(await page.eval(() => !!document.querySelector('[data-testid=navaid-tip]')), false);
+  const navaidsOn = async () => (await api('GET', `flights/${flightId}`)).options.mapLayers?.navaids;
+  for (let i = 0; i < 100 && (await navaidsOn()) !== false; i++) await sleep(100);
+  assert.equal(await navaidsOn(), false);
+  // back on
+  await page.click('[data-testid=map-layers]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=map-navaids]'));
+  await page.click('[data-testid=map-navaids]');
+  await page.click('[data-testid=map-layers]');
+  await page.waitFor(
+    () =>
+      (document.querySelector('.pgf-map-canvas').__pgfMap.getLayoutProperty('navaid-icon', 'visibility') ??
+        'visible') === 'visible',
+  );
+  for (let i = 0; i < 100 && (await navaidsOn()) !== true; i++) await sleep(100);
+  assert.equal(await navaidsOn(), true);
   assert.deepEqual(page.errors, []);
 });
 

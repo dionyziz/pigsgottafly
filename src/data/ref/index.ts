@@ -9,6 +9,7 @@ import type {
   RefBundle,
   RefFir,
   RefFis,
+  RefNavaid,
   RefRunway,
   RefSunTable,
   RefVfrPoint,
@@ -24,6 +25,8 @@ import atcUnitsJson from './atc-units.json';
 // Not from build_ref.ts: tools/build_fir.ts (ENR 2.1 + OpenStreetMap land borders), client only.
 import firJson from './fir.json';
 import fisJson from './fis.json';
+// Not from build_ref.ts: tools/parse_navaids.ts (ENR 4.1, AD 2.19, AD 1.6.N.19), client only.
+import navaidsJson from './navaids.json';
 import runwaysJson from './runways.json';
 import sunJson from './sun.json';
 import vfrPointsJson from './vfr-points.json';
@@ -43,6 +46,8 @@ export const AD_AIRSPACES = adAirspacesJson as unknown as RefAdAirspace[];
 /** The LGGG FIR boundary and the ATHINAI / MAKEDONIA line. */
 export const FIR = firJson as unknown as RefFir;
 export const AREAS = areasJson as unknown as RefArea[];
+/** Radio navigation aids (VOR, VOR/DME, NDB, locators). */
+export const NAVAIDS = navaidsJson as unknown as RefNavaid[];
 /** AIP GEN 2.7 sunset tables keyed by ICAO. */
 export const SUN_TABLES = sunJson as unknown as Record<string, RefSunTable>;
 
@@ -58,6 +63,7 @@ export const REF: RefBundle = {
   adAirspaces: AD_AIRSPACES,
   areas: AREAS,
   fir: FIR,
+  navaids: NAVAIDS,
 };
 
 const byId = new Map(AERODROMES.map((a) => [a.id, a]));

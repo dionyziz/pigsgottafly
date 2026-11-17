@@ -5,11 +5,13 @@
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { NAVAIDS } from '../../../../data/ref';
 import { DEFAULT_MAP_LAYERS, type MapLayers } from '../../../../shared/mapLayers';
 import { SegmentedControl } from '../../../../ui';
 import { MapLayerToggles } from '../MapLayerToggles';
 import { MapPopover, MapTip, placeBeside, PopItem, useAccordion } from '../MapPopover';
 import { LayersControl, MapHint } from '../MapToolbar';
+import { NavaidPopover, NavaidTip } from '../NavaidPopover';
 import { PointMenu } from '../PointMenu';
 
 afterEach(cleanup);
@@ -155,12 +157,38 @@ describe('MapLayerToggles', () => {
       ['map-aerodromes', 'aerodromes'],
       ['map-vfr-points', 'vfrPoints'],
       ['map-vfr-routes', 'vfrRoutes'],
+      ['map-navaids', 'navaids'],
     ] as const) {
       fireEvent.click(r.getByTestId(id));
       expect(layers[key]).toBe(false);
       layers = { ...DEFAULT_MAP_LAYERS };
     }
     expect(r.getByRole('group', { name: 'Airspace' })).toBeTruthy();
+  });
+});
+
+describe('radio navaid tooltip and details', () => {
+  const atv = NAVAIDS.find((n) => n.id === 'ATV VOR/DME')!;
+  it('the tooltip shows type, ident, name and frequency', () => {
+    const r = render(<NavaidTip x={10} y={10} n={atv} />);
+    expect(r.getByTestId('navaid-tip').textContent).toBe('VOR/DMEATV · ATHINAI114.40 MHz');
+  });
+  it('the details add channel, hours, coverage and links to every AIP section that publishes it', () => {
+    const onClose = vi.fn();
+    const r = render(<NavaidPopover x={10} y={10} n={atv} airac="2609" onClose={onClose} />);
+    const text = r.getByTestId('navaid-detail').textContent;
+    expect(text).toContain('114.40 MHz · CH 91X');
+    expect(text).toContain('H24');
+    expect(text).toContain('FL 500 / 120 NM');
+    expect(text).toContain('2378 ft');
+    expect(text).toContain('5°E (2025) · declination 5°E');
+    const links = r.getAllByTestId('aip-link');
+    expect(links.map((a) => a.textContent)).toEqual(['AIP Greece ENR 4.1', 'AIP Greece LGAV AD 2.19']);
+    expect(links[0].getAttribute('href')).toMatch(/LG_ENR_4_1_en\.pdf$/);
+    expect(links[1].getAttribute('href')).toMatch(/LG_AD_2_LGAV_en\.pdf$/);
+    const loc = NAVAIDS.find((n) => n.type === 'L')!;
+    r.rerender(<NavaidPopover x={10} y={10} n={loc} airac="2609" onClose={onClose} />);
+    expect(r.getByTestId('navaid-detail').textContent).toMatch(/Locator \(L\).*\d+ kHz/);
   });
 });
 
