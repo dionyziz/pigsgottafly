@@ -1,8 +1,8 @@
 // A date 'YYYY-MM-DD', typed as digits (the dashes go in as the year and the month are complete:
 // '20261116' → '2026-11-16'), pasted ('2026-11-16', '2026/11/16', '20261116'), or picked on a small
-// month calendar (the button at the right; Alt+↓ from the input). A complete real date within
-// [min, max] is committed as it is typed; anything else turns the field red on blur or Enter and
-// leaves the value alone. Parsing: src/shared/typedInput.ts.
+// month calendar (the button at the right; Alt+↓ from the input; its title browses years, then
+// months). A complete real date within [min, max] is committed as it is typed; anything else turns
+// the field red on blur or Enter and leaves the value alone. Parsing: src/shared/typedInput.ts.
 import { type KeyboardEvent, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 
 import { localToday } from '../shared/date';
@@ -203,7 +203,26 @@ export function DateField({
   );
 }
 
-/** A month of days; the arrows move a day or a week, PageUp/PageDown a month, Enter picks, Escape closes. */
+type View = 'day' | 'month' | 'year';
+/** Years on one page of the year grid (5 rows of 4), starting at a multiple of it: 2000–2019. */
+const YEARS = 20;
+// Keyboard steps per view: [n] is n days, a plain n is n months.
+const STEPS: Record<View, Record<string, number | [number]>> = {
+  day: { ArrowLeft: [-1], ArrowRight: [1], ArrowUp: [-7], ArrowDown: [7], PageUp: -1, PageDown: 1 },
+  month: { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3, PageUp: -12, PageDown: 12 },
+  year: { ArrowLeft: -12, ArrowRight: 12, ArrowUp: -48, ArrowDown: 48, PageUp: -12 * YEARS, PageDown: 12 * YEARS },
+};
+const HEAD: Record<View, [prev: string, next: string, page: number]> = {
+  day: ['Previous month', 'Next month', 1],
+  month: ['Previous year', 'Next year', 12],
+  year: ['Previous years', 'Next years', 12 * YEARS],
+};
+
+/**
+ * A month of days; the arrows move a day or a week, PageUp/PageDown a month, Enter picks, Escape
+ * closes. The title opens a grid of years (PageUp/PageDown: twenty years), a year its twelve months,
+ * a month its days; Escape goes back a level.
+ */
 function Calendar({
   value,
   min,
@@ -218,44 +237,111 @@ function Calendar({
   onClose: () => void;
 }) {
   const [cursor, setCursor] = useState(() => value || localToday());
+  const [view, setView] = useState<View>('day');
   const grid = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const d = utc(cursor);
   const y = d.getUTCFullYear(),
     m = d.getUTCMonth();
-  const first = new Date(Date.UTC(y, m, 1));
-  const lead = (first.getUTCDay() + 6) % 7; // Monday first
-  const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  const cells: (string | null)[] = [
-    ...Array.from({ length: lead }, () => null),
-    ...Array.from({ length: days }, (_, i) => iso(new Date(Date.UTC(y, m, i + 1)))),
-  ];
-  const out = (s: string) => (min != null && s < min) || (max != null && s > max);
   const now = localToday();
+  /** The whole span [a, b] is outside [min, max]. */
+  const out = (a: string, b = a) => (min != null && b < min) || (max != null && a > max);
 
-  // The day under the keyboard cursor holds the focus (from the moment the calendar opens).
+  // The cell under the keyboard cursor holds the focus (from the moment the calendar opens).
   useEffect(() => {
-    grid.current?.querySelector<HTMLButtonElement>(`[data-day="${cursor}"]`)?.focus();
-  }, [cursor]);
+    const at = { day: cursor, month: cursor.slice(0, 7), year: cursor.slice(0, 4) }[view];
+    grid.current?.querySelector<HTMLButtonElement>(`[data-${view}="${at}"]`)?.focus();
+  }, [cursor, view]);
+
+  const move = (n: number | [number]) =>
+    setCursor(typeof n === 'number' ? addMonthsIso(cursor, n) : addDaysIso(cursor, n[0]));
 
   const onKey = (e: KeyboardEvent) => {
-    const step: Record<string, () => string> = {
-      ArrowLeft: () => addDaysIso(cursor, -1),
-      ArrowRight: () => addDaysIso(cursor, 1),
-      ArrowUp: () => addDaysIso(cursor, -7),
-      ArrowDown: () => addDaysIso(cursor, 7),
-      PageUp: () => addMonthsIso(cursor, -1),
-      PageDown: () => addMonthsIso(cursor, 1),
-    };
-    if (step[e.key]) {
+    const n = STEPS[view][e.key];
+    if (n !== undefined) {
       e.preventDefault();
-      setCursor(step[e.key]());
+      move(n);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      onClose();
+      if (view === 'year') setView('month');
+      else if (view === 'month') setView('day');
+      else onClose();
     }
   };
+
+  /** A month or a year cell: picking it narrows the cursor to it and opens the next level down. */
+  const cell = (k: string, label: string, text: string, span: [string, string], to: string, next: View) => (
+    <button
+      key={k}
+      type="button"
+      {...{ [`data-${view}`]: k }}
+      className={['ghost', value.startsWith(k) && 'sel', now.startsWith(k) && 'today'].filter(Boolean).join(' ')}
+      tabIndex={cursor.startsWith(k) ? 0 : -1}
+      disabled={out(...span)}
+      aria-label={label}
+      aria-pressed={value.startsWith(k)}
+      onClick={() => {
+        setCursor(to);
+        setView(next);
+      }}
+    >
+      {text}
+    </button>
+  );
+
+  const from = Math.floor(y / YEARS) * YEARS;
+  let title: string;
+  let cells;
+  if (view === 'day') {
+    title = `${MONTHS[m]} ${y}`;
+    const lead = (new Date(Date.UTC(y, m, 1)).getUTCDay() + 6) % 7; // Monday first
+    const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const list: (string | null)[] = [
+      ...Array.from({ length: lead }, () => null),
+      ...Array.from({ length: days }, (_, i) => iso(new Date(Date.UTC(y, m, i + 1)))),
+    ];
+    cells = [
+      ...WEEKDAYS.map((w) => (
+        <span key={w} className="datefield-wd" aria-hidden="true">
+          {w}
+        </span>
+      )),
+      ...list.map((c, i) =>
+        c == null ? (
+          <span key={`x${i}`} />
+        ) : (
+          <button
+            key={c}
+            type="button"
+            data-day={c}
+            className={['ghost', c === value && 'sel', c === now && 'today'].filter(Boolean).join(' ')}
+            tabIndex={c === cursor ? 0 : -1}
+            disabled={out(c)}
+            aria-label={c}
+            aria-pressed={c === value}
+            onClick={() => onPick(c)}
+          >
+            {+c.slice(8)}
+          </button>
+        ),
+      ),
+    ];
+  } else if (view === 'month') {
+    title = String(y);
+    cells = MONTHS.map((name, i) => {
+      const k = `${y}-${pad2(i + 1)}`;
+      const last = iso(new Date(Date.UTC(y, i + 1, 0)));
+      return cell(k, `${name} ${y}`, name.slice(0, 3), [`${k}-01`, last], addMonthsIso(cursor, i - m), 'day');
+    });
+  } else {
+    title = `${from} – ${from + YEARS - 1}`;
+    cells = Array.from({ length: YEARS }, (_, i) => {
+      const k = String(from + i);
+      return cell(k, k, k, [`${k}-01-01`, `${k}-12-31`], addMonthsIso(cursor, (from + i - y) * 12), 'month');
+    });
+  }
+  const [prevLabel, nextLabel, page] = HEAD[view];
 
   return (
     <div
@@ -267,51 +353,30 @@ function Calendar({
       onClick={(e) => e.preventDefault()}
     >
       <div className="datefield-head">
-        <button
-          type="button"
-          className="ghost sm"
-          aria-label="Previous month"
-          onClick={() => setCursor(addMonthsIso(cursor, -1))}
-        >
+        <button type="button" className="ghost sm" aria-label={prevLabel} onClick={() => move(-page)}>
           ‹
         </button>
-        <span id={titleId} aria-live="polite">
-          {MONTHS[m]} {y}
-        </span>
-        <button
-          type="button"
-          className="ghost sm"
-          aria-label="Next month"
-          onClick={() => setCursor(addMonthsIso(cursor, 1))}
-        >
+        {view === 'year' ? (
+          <span id={titleId} className="datefield-title" aria-live="polite">
+            {title}
+          </span>
+        ) : (
+          <button
+            type="button"
+            id={titleId}
+            className="ghost sm datefield-title"
+            aria-live="polite"
+            onClick={() => setView('year')}
+          >
+            {title}
+          </button>
+        )}
+        <button type="button" className="ghost sm" aria-label={nextLabel} onClick={() => move(page)}>
           ›
         </button>
       </div>
-      <div className="datefield-grid" ref={grid} role="group" aria-labelledby={titleId}>
-        {WEEKDAYS.map((w) => (
-          <span key={w} className="datefield-wd" aria-hidden="true">
-            {w}
-          </span>
-        ))}
-        {cells.map((c, i) =>
-          c == null ? (
-            <span key={`x${i}`} />
-          ) : (
-            <button
-              key={c}
-              type="button"
-              data-day={c}
-              className={['ghost', c === value && 'sel', c === now && 'today'].filter(Boolean).join(' ')}
-              tabIndex={c === cursor ? 0 : -1}
-              disabled={out(c)}
-              aria-label={c}
-              aria-pressed={c === value}
-              onClick={() => onPick(c)}
-            >
-              {+c.slice(8)}
-            </button>
-          ),
-        )}
+      <div className={`datefield-grid ${view}`} ref={grid} role="group" aria-labelledby={titleId}>
+        {cells}
       </div>
     </div>
   );
