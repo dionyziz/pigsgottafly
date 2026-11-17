@@ -1,6 +1,19 @@
 {
  "chart": "AD 2-LGAV-VFR, ATHINA TMA - VFR ROUTES (03 SEP 26, AIRAC AMDT 08/26)",
- "points": [],
+ "points": [
+  {
+   "name": "BIBEX",
+   "same_as": "LGPA"
+  },
+  {
+   "name": "ERAKIS",
+   "same_as": "LGPA"
+  },
+  {
+   "name": "EROTU",
+   "same_as": "LGPA"
+  }
+ ],
  "routes": [
   {
    "a": "PIKAD",
@@ -439,5 +452,5 @@
    "nm": 18
   }
  ],
- "notes": "Points from the chart's text coordinate table (tools/vfr_points.json). Omitted (ambiguous labels): STAVROS\u2013AGIOS THOMAS, HELLINIKON\u2013ILIOUP\u2013HOLARGOS. Helicopter routes omitted."
+ "notes": "Points from the chart's text coordinate table (tools/vfr_points.json). Omitted (ambiguous labels): STAVROS–AGIOS THOMAS, HELLINIKON–ILIOUP–HOLARGOS. Helicopter routes omitted."
 }

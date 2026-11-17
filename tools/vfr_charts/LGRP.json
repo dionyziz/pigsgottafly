@@ -58,6 +58,14 @@
    "name": "WHISKY",
    "dms": "35 34 30 N 028 08 20 E",
    "reviewed": "reviewed on the chart overlay: AIP coordinates fall beside the printed symbol (label box); AIP value used"
+  },
+  {
+   "name": "DELTAS",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "ABEAM MARATHOS",
+   "same_as": "LGKP"
   }
  ],
  "routes": [
@@ -238,5 +246,5 @@
    "oneway": true
   }
  ],
- "notes": "Altitudes are direction-specific (arrowed labels), so every route is two one-way segments. NISYROS\u2013TILLOS (10 NM) and CHALKI\u2013ALIMIA (10 NM) show no altitude; ALFA\u2013ABEAM MARATHOS/DELTAS are TO/FROM RODOS tracks without altitude."
+ "notes": "Altitudes are direction-specific (arrowed labels), so every route is two one-way segments. NISYROS–TILLOS (10 NM) and CHALKI–ALIMIA (10 NM) show no altitude; ALFA–ABEAM MARATHOS/DELTAS are TO/FROM RODOS tracks without altitude."
 }

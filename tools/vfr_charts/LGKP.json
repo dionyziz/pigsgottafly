@@ -64,6 +64,14 @@
   {
    "name": "MOKIS",
    "dms": "35 17 02 N 026 46 28 E"
+  },
+  {
+   "name": "DELAV",
+   "dms": "35 51 17 N 026 36 42 E"
+  },
+  {
+   "name": "ALFA",
+   "same_as": "LGRP"
   }
  ],
  "routes": [
@@ -187,5 +195,5 @@
    "nm": 18
   }
  ],
- "notes": "SKALOMA\u2013ABEAM RWY (5 NM) shows no altitude. ALFA/DELTAS\u2013ABEAM MARATHOS are TO/FROM RODOS tracks without altitude (Rodos routes are on the LGRP chart). Holdings 1000 at KASSONISIA, FINIKI, PATELA, SKROFA, ABEAM RWY, SKALOMA."
+ "notes": "SKALOMA–ABEAM RWY (5 NM) shows no altitude. ALFA/DELTAS–ABEAM MARATHOS are TO/FROM RODOS tracks without altitude (Rodos routes are on the LGRP chart). Holdings 1000 at KASSONISIA, FINIKI, PATELA, SKROFA, ABEAM RWY, SKALOMA."
 }

@@ -7,8 +7,8 @@ import glob, json, os, re, sys
 
 table_path, charts_dir, ofm_path, out = sys.argv[1:5]
 known = []
-for ch, pts in json.load(open(table_path)).items():
-    known += [dict(name=p['name'], lat=p['lat'], lon=p['lon'], src='table', chart=ch) for p in pts]
+for ch, t in json.load(open(table_path)).items():   # tools/parse_vfr.ts: {chart: {ref, points}}
+    known += [dict(name=p['name'], lat=p['lat'], lon=p['lon'], src='table', chart=ch) for p in t['points']]
 for f in (g for g in glob.glob(os.path.join(charts_dir, '*.json')) if not g.endswith('manifest.json')):
     ch = os.path.basename(f)[:-5]
     for p in json.load(open(f)).get('points', []):

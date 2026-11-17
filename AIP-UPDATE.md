@@ -18,7 +18,7 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `data/aip.js`: aerodromes (ARP, elevation, runways, frequencies) | AD 2, AD 1.6 | `parse_ad.py` → `build_aip.py` |
 | `data/aip.js`: TMAs / MTMAs / FIS | ENR 2.1, ENR 4.1 (**hand-transcribed** in `build_aip.py`) | `build_aip.py` |
 | `data/sun.js`: sunset | GEN 2.7 | `parse_sun.py` |
-| `data/vfr.js`: VFR points and route altitudes | VFR charts + open flightmaps | `parse_vfr.py`, `fetch_ofm.py`, `vfr_chart.py`, `build_vfr.py` |
+| `data/vfr.js`: VFR points (with their charts and AIP references) and route altitudes | the VFR charts (AD 2-LGxx-VFR, AD 1.6.N-LGxx-VFR) and their coordinate tables, the heliports' reporting points (AD 3.N.21), ENR 4.4 for IFR fixes a chart prints without coordinates, open flightmaps | `parse_vfr.ts`, `fetch_ofm.py`, `vfr_chart.py`, `build_vfr.py` |
 | `tools/runways.json`: runway bearings, lengths, surfaces, thresholds, declared distances, slopes | AD 2.12/2.13, AD 1.6.N.12/13 | `parse_runways.py` (corrections in its `OVR` table, e.g. LGBL TORA from the AD 2.13 remark) |
 | `src/data/ref/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
 | `tools/enr5_areas.json`: prohibited, restricted, danger, military training and local flying areas | ENR 5.1, 5.2, 5.3.1 | `parse_enr5.ts` (prints what it draws approximately; hand corrections in its `OVERRIDES` table) |
@@ -27,17 +27,31 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `tools/ad_hours.json`: operational hours, ATS, handling, customs and remarks as printed | AD 2.3, AD 1.6.N.3 (+ AD 1.6.N.4 handling) | `extract_ad_hours.ts`, run after `npm run ref`, then `npm run ref` again (parsed by `src/calc/adHours.ts` into `RefAerodrome.hours`) |
 
 Then it stops before the reference data: a new cycle's data goes into NEW migrations (never edit an applied
-one such as 002, 005 or 012). Point `MIGRATION` / `RUNWAY_MIGRATION` / `HOURS_MIGRATION` / `AREAS_MIGRATION` in `tools/build_ref.ts` at new files, register
-them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test:e2e`.
+one such as 002, 005 or 012). Point `MIGRATION` / `RUNWAY_MIGRATION` / `HOURS_MIGRATION` / `AREAS_MIGRATION` in `tools/build_ref.ts` at new files
+(set `MIGRATION_FROZEN = false` and `VFR_MIGRATION = null`: the new MIGRATION carries the VFR points), register
+them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test:e2e`. A correction to an applied AIRAC's
+data goes into its own migration (as 048 replaced 002's VFR points).
 
 ## 2. Check by hand what the script flags
 
 1. **VFR charts.** Step 3 of the script lists each chart as `CHANGED`, `NEW` or `REMOVED` (it compares PDF fingerprints in `tools/vfr_charts/manifest.json`).
    - For each one, open the chart and update `tools/vfr_charts/<ICAO>.json`:
-     - `points`: copy printed coordinates as `dms`; otherwise use `"from": "ofm"`, or `"from": "map"` with `near`;
+     - `points`: **every** named reporting point of the chart, including IFR fixes on the TMA boundary and points
+       of a neighbouring chart drawn at a route end. Copy printed coordinates as `dms`; a point another chart prints
+       with coordinates is `"same_as": "<ICAO>"`; an IFR fix printed without coordinates takes its ENR 4.4 position
+       as `dms` with `"ref": "ENR 4.4"`; otherwise `"from": "ofm"` (`ofm_name` when open flightmaps spells it
+       differently), or `"from": "map"` with `near`. Points of the chart's text table (tools/vfr_points.json) are
+       taken from the table, a spec entry for them only adds the open flightmaps check;
      - `routes`: a, b, altitude (`min`/`max`), the printed distance as `nm`, and `oneway` for arrowed per-direction altitudes;
      - `chart`: the edition date and AMDT.
-   - Rerun `build_vfr.py` (last command of step 5). It refuses to build if a route's printed distance disagrees with its coordinates, or if a printed position doesn't land on the chart's symbol / the open flightmaps point. That is how misreadings are caught.
+   - Rerun `build_vfr.py` (last command of step 5). It refuses to build if a route's printed distance disagrees with its coordinates, if a printed position doesn't land on the chart's symbol / the open flightmaps point, or if a point lies outside the FIR or more than 120 NM from its chart's aerodrome. That is how misreadings are caught.
+   - **Completeness.** `parse_vfr.ts` (step 5) prints the points read per chart and heliport and warns when a table
+     lists more positions than it read (a new layout, a new degree sign such as `º`); every warning needs a fix in
+     the parser and a fixture row in `tests/unit/data/vfrPoints.test.ts`. A chart with a table must show a count, and
+     `build_vfr.py` prints the points per chart: compare each with the triangles on the chart (a chart that shows
+     fewer is missing a spec entry). Expected (AIRAC 2609): LGAV 55, LGIR 37, LGKL 21, LGTG 23, LGLR 31, LGAD 12,
+     AD 3.19 / AD 3.70 9 each. Names printed in several places merge into one point when within 1 NM (`charts`,
+     `sources`); `tests/unit/data/vfrPoints.test.ts` checks known points (KALAMO on LGTG and others once missed).
    - Overlays for a visual check: `<work dir>/charts/overlay_*.png`, or `tools/vfr_verify.py <chart.png> tools/vfr_ocr/<ICAO>_p1-1.json out.png NAME=lat,lon …`.
 2. **Airspace (ENR 2.1).** If step 3 shows a newer AMDT for `ENR_2_1`, diff the TMA/MTMA tables against `build_aip.py` (polygons, lower/upper limits, units, frequencies). Arc centres come from ENR 4.1 VOR positions.
 3. **Aerodromes.** `parse_ad.py` handles the usual AD 2 / AD 1.6 layouts; a new layout shows up as a failing `tests/unit/aip.test.js` check or a missing frequency. Corrections go in the `OVR` table in `build_aip.py`.

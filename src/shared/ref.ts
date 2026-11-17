@@ -349,10 +349,17 @@ export interface RefVfrPoint {
   name: string;
   lat: number;
   lon: number;
-  /** Chart the point is printed on (ICAO of the VFR chart), or 'LGGG' for open flightmaps points. */
+  /**
+   * Chart the point is printed on (ICAO of the VFR chart whose routes use it), 'AD 3.N' for a heliport's
+   * reporting point, or the aerodrome / 'LGGG' for open flightmaps points.
+   */
   chart: string;
-  /** 'table' | 'chart' | 'map' | 'ofm' (open flightmaps). */
+  /** Where the position comes from: 'table' | 'chart' (printed coordinates) | 'map' | 'ofm' (open flightmaps). */
   src: string;
+  /** Every chart / heliport that publishes the point ('LGAV', 'LGTG', 'AD 3.19'); empty for open flightmaps points. */
+  charts?: string[];
+  /** AIP references of the pages that publish it ('AD 2-LGAV-VFR', 'AD 1.6.29-LGTG-VFR', 'AD 3.19', 'ENR 4.4'), for links. */
+  sources?: string[];
 }
 
 export interface RefVfrRoute {

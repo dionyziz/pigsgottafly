@@ -65,6 +65,26 @@
    "name": "ANL",
    "dms": "39 12 59.36 N 022 47 41.72 E",
    "no_symbol": true
+  },
+  {
+   "name": "IP 08",
+   "from": "ofm"
+  },
+  {
+   "name": "IP 26",
+   "from": "ofm"
+  },
+  {
+   "name": "MALESINA",
+   "same_as": "LGTG"
+  },
+  {
+   "name": "ORCHOMENOS",
+   "same_as": "LGTG"
+  },
+  {
+   "name": "SARAKINI",
+   "same_as": "LGTG"
   }
  ],
  "routes": [
@@ -149,5 +169,5 @@
    "oneway": true
   }
  ],
- "notes": "Dense chart with per-direction altitudes; only segments whose arrowed labels were read unambiguously are included. Not transcribed: CHALKI\u2013STEFANO, STEFANO\u2013VOLLOS, AGIA\u2013STEFANO, AGIA\u2013ZAGORA, ZAGORA/ARGA\u2013SKIATHOS, FARSALA\u2013PETROTO, PETROTO\u2013LAMIAS/PTELEOS/KARPENISI, VOLLOS\u2013ANL, ANL\u2013PTELEOS, PTELEOS\u2013OREI, OREI\u2013ARGA, OREI\u2013SARAKINI/ORCHOMENOS/MALESINA, LAMIAS\u2013MALESINA. Dashed routes (MIL only) omitted. ANL = ANCHIALOS VOR/DME."
+ "notes": "Dense chart with per-direction altitudes; only segments whose arrowed labels were read unambiguously are included. Not transcribed: CHALKI–STEFANO, STEFANO–VOLLOS, AGIA–STEFANO, AGIA–ZAGORA, ZAGORA/ARGA–SKIATHOS, FARSALA–PETROTO, PETROTO–LAMIAS/PTELEOS/KARPENISI, VOLLOS–ANL, ANL–PTELEOS, PTELEOS–OREI, OREI–ARGA, OREI–SARAKINI/ORCHOMENOS/MALESINA, LAMIAS–MALESINA. Dashed routes (MIL only) omitted. ANL = ANCHIALOS VOR/DME."
 }

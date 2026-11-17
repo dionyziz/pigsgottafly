@@ -92,6 +92,18 @@
   {
    "name": "XERIS",
    "dms": "41 09 14 N 024 08 25 E"
+  },
+  {
+   "name": "EVIVI",
+   "dms": "41 24 10 N 023 27 20 E"
+  },
+  {
+   "name": "ATFIR",
+   "dms": "41 24 06 N 023 46 29 E"
+  },
+  {
+   "name": "RODIP",
+   "dms": "41 25 15 N 024 42 04 E"
   }
  ],
  "routes": [
@@ -231,5 +243,5 @@
    "oneway": true
   }
  ],
- "notes": "No altitude shown: STRIMON\u2013LOUTRA, LOUTRA\u2013PEREN, PEREN\u2013ASKOS, SOSUS\u2013IDILO, FANARI\u2013IDILO, FANARI\u2013KOMOTINI, IASMOS\u2013KOMOTINI. Ambiguous labels, not transcribed: ROUPOL\u2013LOUTRA, SOSUS\u2013FANARI. Holdings: LOUTRA 5000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
+ "notes": "No altitude shown: STRIMON–LOUTRA, LOUTRA–PEREN, PEREN–ASKOS, SOSUS–IDILO, FANARI–IDILO, FANARI–KOMOTINI, IASMOS–KOMOTINI. Ambiguous labels, not transcribed: ROUPOL–LOUTRA, SOSUS–FANARI. Holdings: LOUTRA 5000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
 }

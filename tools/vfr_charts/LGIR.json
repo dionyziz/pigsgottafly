@@ -1,0 +1,103 @@
+{
+ "chart": "AD 2-LGIR-VFR, VFR routes IRAKLION TMA (page 1, and page 3 the enlarged western part). The reporting points of the text table (page 2) come from tools/vfr_points.json; these are the other points of the chart. Routes not transcribed yet.",
+ "points": [
+  {
+   "name": "EPALO",
+   "dms": "35 42 56 N 025 00 37 E",
+   "reviewed": "printed box agrees with ENR 4.4 (354256N 0250037E); the nearest detected chart symbol is 1.1 NM away"
+  },
+  {
+   "name": "NAVUS",
+   "dms": "35 41 57 N 025 17 07 E"
+  },
+  {
+   "name": "XAVIS",
+   "dms": "35 41 41 N 025 34 37 E"
+  },
+  {
+   "name": "BAVES",
+   "dms": "35 25 29 N 024 43 37 E"
+  },
+  {
+   "name": "OTREX",
+   "dms": "35 09 16 N 024 56 20 E"
+  },
+  {
+   "name": "TIMBAKI",
+   "same_as": "LGSA"
+  },
+  {
+   "name": "ALFA",
+   "same_as": "LGRP"
+  },
+  {
+   "name": "TRAPEZA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "SKALOMA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "ABEAM RWY",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "KASSONISIA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "AKTI",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "ABEAM PRIONIA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "FINIKI",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "MARATHOS",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "ABEAM MARATHOS",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "DELTAS",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "PIGADIA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "PATELA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "SKROFA",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "EIRINI",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "INATOS",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "DELAV",
+   "same_as": "LGKP"
+  },
+  {
+   "name": "MOKIS",
+   "same_as": "LGKP"
+  }
+ ],
+ "routes": []
+}
