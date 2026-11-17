@@ -6,8 +6,7 @@ import { useMemo, useState } from 'react';
 
 import { atcFreqText, atcInput, generateAtcList, regenerateAtcList } from '../../../data/atc';
 import { type AtcEntry, uid } from '../../../shared';
-import { moveAt } from '../../../shared/list';
-import { Chip, DragHandle, Icon, useSortable } from '../../../ui';
+import { Chip, Icon } from '../../../ui';
 import { useEditor } from '../state';
 import { Section } from './ui';
 
@@ -145,11 +144,6 @@ export function AtcSection() {
 
   /** Every edit materializes the list on the flight. */
   const edit = (fn: (l: AtcEntry[]) => AtcEntry[]) => update((d) => ({ ...d, atc: fn(d.atc ?? generated) }));
-  const sort = useSortable({
-    count: list.length,
-    onMove: (from, to) => edit((l) => moveAt(l, from, to)),
-    disabled: editing !== null,
-  });
   const regenerate = () =>
     update((d) => {
       const custom = (d.atc ?? []).filter((e) => e.sourceKey === null);
@@ -221,11 +215,11 @@ export function AtcSection() {
       )}
       {list.length === 0 && <p className="muted ep-note">No route.</p>}
       <ol className="ep-atc" data-testid="atc-list">
-        {list.map((e, i) => {
+        {list.map((e) => {
           const head = e.group !== lastGroup ? e.group : null;
           lastGroup = e.group;
           return (
-            <li key={e.id} {...sort.itemProps(i, 'ep-atc-item')}>
+            <li key={e.id} className="ep-atc-item">
               {head !== null && <div className="ep-atc-group">{head || 'Other'}</div>}
               {editing === e.id ? (
                 <EditRow
@@ -242,7 +236,6 @@ export function AtcSection() {
                 />
               ) : (
                 <div className="ep-atc-row" data-testid="atc-row">
-                  <DragHandle {...sort.handleProps(i)} label={`Move ${e.callsign || 'unit'}`} />
                   <div
                     className="ep-atc-main"
                     role="button"

@@ -104,14 +104,9 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-atc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .ep-atc-group { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 0 4px; }
 .ep-atc-item:first-child .ep-atc-group { padding-top: 0; }
-.ep-atc-row { display: flex; align-items: center; gap: var(--s2); padding: 4px 0 4px 2px; border-left: 2px solid var(--line); }
-.ep-atc-row .drag-handle { opacity: 0.4; }
-.ep-atc-row:hover .drag-handle, .ep-atc-row .drag-handle:focus-visible { opacity: 1; }
+.ep-atc-row { display: flex; align-items: center; gap: var(--s2); padding: 4px 0 4px var(--s2); border-left: 2px solid var(--line); }
 .ep-atc-main { cursor: pointer; border-radius: var(--r-sm); }
 .ep-atc-main:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.ep-atc-item.sort-dragging { opacity: 0.5; }
-.ep-atc-item.sort-over-before { box-shadow: inset 0 2px 0 var(--accent); }
-.ep-atc-item.sort-over-after { box-shadow: inset 0 -2px 0 var(--accent); }
 .ep-atc-row:hover { background: var(--surface-2); }
 .ep-atc-row .ep-row-actions { opacity: 0; transition: opacity 0.1s; }
 .ep-atc-row:hover .ep-row-actions, .ep-atc-row:focus-within .ep-row-actions { opacity: 1; }

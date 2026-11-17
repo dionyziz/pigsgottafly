@@ -29,7 +29,7 @@ import {
   wbStatus,
   weightAndBalance,
 } from '../../../calc';
-import { type AdNotamEffect, aerodromeNotamEffects, type Hazard, hazardWhere } from '../../../calc';
+import { type AdNotamEffect, aerodromeNotamEffects, type Hazard, hazardLines } from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
 import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
@@ -681,12 +681,12 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         add('info', 'weather', 'Block-off time not set: no weather hazard check along the route.');
       else if (hazardWeather && hazardWeather.status !== 'ok' && hazardWeather.message)
         add('info', 'weather', hazardWeather.message);
-      const legName = (i: number) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '');
+      const leg = (i: number) => (legs[i] ? { from: legs[i].from.name, to: legs[i].to.name } : null);
       const endName = (e: 'departure' | 'destination') => {
         const a = e === 'departure' ? dep : arr;
         return a ? a.icao || a.name : '';
       };
-      for (const h of hazards) add(h.level, 'weather', `${hazardWhere(h, legName, endName)}: ${h.text} (${h.source}).`);
+      for (const l of hazardLines(hazards, leg, endName)) add(l.level, 'weather', `${l.text}.`);
     }
     // aerodrome hours (AIP AD 2.3 / AD 1.6, NOTAMs) at the planned times
     for (const x of aerodromeWarnings(aerodromeChecks)) add(x.level, 'aerodrome', x.text);

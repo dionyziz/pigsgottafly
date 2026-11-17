@@ -169,7 +169,7 @@ function sampleHits(s: HazardSample, frac: number, altFt: number): Hit[] {
       rank: s.capeJkg,
       frac,
       timeMs: t,
-      text: `CAPE ${Math.round(s.capeJkg / 100) * 100} J/kg: thunderstorms possible`,
+      text: 'Thunderstorms possible',
     });
   }
   if (fin(wc) && (wc === 45 || wc === 48)) {
@@ -422,13 +422,39 @@ export function reportHazards(
   return out;
 }
 
-/** 'Leg 2 KOROPI → LGSO' / 'Departure LGTT' prefix for list displays (strip, export). */
-export function hazardWhere(
-  h: Hazard,
-  legName: (i: number) => string,
+const TIME_SUFFIX = /,\s*\d{2}:\d{2}(–\d{2}:\d{2})?Z$/;
+
+/**
+ * The hazards as list lines (strip, export): 'KOROPI → LGSO: Thunderstorms possible, 11:00–13:00Z',
+ * 'LGTT: Fog in METAR, 06:20Z'. The same hazard on consecutive legs is one line over the run of legs.
+ */
+export function hazardLines(
+  hazards: Hazard[],
+  leg: (i: number) => { from: string; to: string } | null,
   endName: (e: 'departure' | 'destination') => string,
-): string {
-  return h.scope.type === 'leg'
-    ? `Leg ${h.scope.legIndex + 1} ${legName(h.scope.legIndex)}`
-    : `${h.scope.type === 'departure' ? 'Departure' : 'Destination'} ${endName(h.scope.type)}`;
+): { level: HazardLevelName; text: string }[] {
+  const out: { level: HazardLevelName; text: string }[] = [];
+  type Run = { h: Hazard; what: string; first: number; last: number; from: number; to: number };
+  const runs: Run[] = [];
+  for (const h of hazards) {
+    const what = h.text.replace(TIME_SUFFIX, '');
+    if (h.scope.type !== 'leg') {
+      out.push({ level: h.level, text: `${endName(h.scope.type)}: ${h.text}` });
+      continue;
+    }
+    const i = h.scope.legIndex;
+    const r = runs.find((x) => x.last === i - 1 && x.h.kind === h.kind && x.h.level === h.level && x.what === what);
+    if (r) {
+      r.last = i;
+      r.from = Math.min(r.from, h.timeFromMs);
+      r.to = Math.max(r.to, h.timeToMs);
+    } else runs.push({ h, what, first: i, last: i, from: h.timeFromMs, to: h.timeToMs });
+  }
+  const legLines = runs.map((r) => {
+    const a = leg(r.first),
+      b = leg(r.last);
+    const where = a && b ? `${a.from} → ${b.to}` : '';
+    return { level: r.h.level, text: `${where}: ${r.what}, ${timeRange(r.from, r.to)}` };
+  });
+  return [...legLines, ...out];
 }

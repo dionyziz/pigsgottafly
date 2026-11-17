@@ -602,14 +602,9 @@ export function aerodromePerformance(input: AerodromePerfInput): AerodromePerf {
   } catch {
     warnings.push('No performance tables for this aircraft.');
   }
-  if (runway && runway.slopePct == null) {
-    const u = runway.slopeUnsignedPct;
-    if (u != null && u > 0)
-      warnings.push(
-        `Slope of runway ${runway.designator} published as ${u} % without direction: ${takeoff ? 'upslope' : 'downslope'} (adverse) assumed.`,
-      );
-    else warnings.push(`Slope of runway ${runway.designator} unknown: none assumed.`);
-  }
+  // A slope published without a direction is taken as adverse (upslope for take-off, downslope for landing) silently.
+  if (runway && runway.slopePct == null && !runway.slopeUnsignedPct)
+    warnings.push(`Slope of runway ${runway.designator} unknown: none assumed.`);
 
   let availableGroundM: number | null = null;
   let availableTotalM: number | null = null;

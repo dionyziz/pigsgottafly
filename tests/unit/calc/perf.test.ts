@@ -207,16 +207,14 @@ describe('aerodromePerformance (one MD 4.4 block)', () => {
     expect(q.warnings.join(' ')).toMatch(/Slope of runway 21 unknown/);
   });
 
-  test('slope published without a direction (slopeUnsignedPct) is adverse in both phases', () => {
+  test('slope published without a direction (slopeUnsignedPct) is adverse in both phases, without a warning', () => {
     const r = rwy('21', { slopePct: null, slopeUnsignedPct: 2 });
     const to = aerodromePerformance({ ...input, runways: [r] });
     expect(to.distances!.factors.slope).toBeCloseTo(1.1, 9); // 2 % upslope for take-off
-    expect(to.warnings.join(' ')).toMatch(
-      /Slope of runway 21 published as 2 % without direction: upslope \(adverse\) assumed/,
-    );
+    expect(to.warnings.join(' ')).not.toMatch(/Slope/);
     const ld = aerodromePerformance({ ...input, runways: [r], phase: 'landing' });
     expect(ld.distances!.factors.slope).toBeCloseTo(1.1, 9); // 2 % downslope for landing
-    expect(ld.warnings.join(' ')).toMatch(/downslope \(adverse\) assumed/);
+    expect(ld.warnings.join(' ')).not.toMatch(/Slope/);
     // a signed slope is used as published: no extra credit or penalty from slopeUnsignedPct
     const signed = aerodromePerformance({ ...input, runways: [rwy('21', { slopePct: -2, slopeUnsignedPct: 2 })] });
     expect(signed.distances!.factors.slope).toBe(1);

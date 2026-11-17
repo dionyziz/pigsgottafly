@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, test } from 'vitest';
 
 import {
   aerodromeModelHazards,
+  type Hazard,
+  hazardLines,
   type HazardSample,
   legHazards,
   modelCloudBase,
@@ -151,7 +153,7 @@ describe('leg hazards (model samples)', () => {
     expect(leg([{ frac: 0.2, samples: [sample({ capeJkg: 1480 })] }])[0]).toMatchObject({
       kind: 'ts',
       level: 'warn',
-      text: 'CAPE 1500 J/kg: thunderstorms possible, 07:00Z',
+      text: 'Thunderstorms possible, 07:00Z',
     });
     expect(leg([{ frac: 0.2, samples: [sample({ capeJkg: 600 })] }])).toEqual([]);
   });
@@ -347,4 +349,35 @@ describe('route wiring (corridor, cell cache, navlog times)', () => {
       }),
     ).toEqual([]);
   });
+});
+
+test('hazard lines: no leg numbers or source; the same hazard on consecutive legs is one line', () => {
+  const H = 3600e3;
+  const ts = (legIndex: number, from: number, to: number): Hazard => ({
+    kind: 'ts',
+    level: 'warn',
+    scope: { type: 'leg', legIndex },
+    fromFrac: 0,
+    toFrac: 1,
+    text: 'Thunderstorms possible, 11:00Z',
+    timeFromMs: from * H,
+    timeToMs: to * H,
+    source: 'ECMWF IFS 0.25°, run 16 Nov 06Z',
+  });
+  const names = ['A', 'B', 'C', 'D', 'E'];
+  const leg = (i: number) => ({ from: names[i], to: names[i + 1] });
+  const fog: Hazard = {
+    ...ts(0, 6, 6),
+    kind: 'vis',
+    level: 'danger',
+    scope: { type: 'destination' },
+    text: 'Fog in METAR, 06:00Z',
+    source: 'METAR LGMG 170600Z',
+  };
+  const lines = hazardLines([ts(0, 11, 12), ts(1, 11, 13), ts(3, 12, 14), fog], leg, () => 'LGMG');
+  expect(lines).toEqual([
+    { level: 'warn', text: 'A → C: Thunderstorms possible, 11:00–13:00Z' },
+    { level: 'warn', text: 'D → E: Thunderstorms possible, 12:00–14:00Z' },
+    { level: 'danger', text: 'LGMG: Fog in METAR, 06:00Z' },
+  ]);
 });
