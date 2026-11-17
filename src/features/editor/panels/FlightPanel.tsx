@@ -80,10 +80,10 @@ export function FlightPanel() {
     <div className="ep" data-testid="flight-panel">
       <RouteSection />
       <WhenSection />
-      <AerodromeSection />
       <AircraftSection />
       <ManifestSection />
       <FuelSection />
+      <AerodromeSection />
       <PerformanceSection />
       <NotamSection />
       <AtcSection />
