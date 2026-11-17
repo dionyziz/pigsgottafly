@@ -46,6 +46,7 @@ describe('form 731 model', () => {
         phone: '+30 699',
         idNumber: 'Z9',
         idType: 'ID' as const,
+        email: '',
         notes: '',
         created: 0,
         updated: 0,

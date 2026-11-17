@@ -86,6 +86,7 @@ const cols = (p: PassengerInput) => [
   p.nationality,
   p.relation,
   p.notes,
+  p.email || null,
 ];
 
 export const routes: Route[] = [
@@ -101,12 +102,12 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/passengers',
     async handler({ db, pilot, body }) {
-      const p = passengerInput(await body(), { ...EMPTY_PERSON, notes: '' });
+      const p = passengerInput(await body(), { ...EMPTY_PERSON, email: '', notes: '' });
       await checkCount(db, pilot.id, 'passengers');
       const now = Date.now();
       const [r] = await db.query(
-        `INSERT INTO passengers (id, pilot_id, full_name, phone, date_of_birth, weight_kg, id_number, id_type, nationality, relation, notes, created, updated)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$12) RETURNING *`,
+        `INSERT INTO passengers (id, pilot_id, full_name, phone, date_of_birth, weight_kg, id_number, id_type, nationality, relation, notes, email, created, updated)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13) RETURNING *`,
         [await newId('ps'), pilot.id, ...cols(p), now],
       );
       return reply(201, toPassenger(r));
@@ -120,7 +121,7 @@ export const routes: Route[] = [
       const { id: _i, created: _c, updated: _u, ...cur } = await get(db, pilot.id, params.id);
       const p = passengerInput(await body(), cur);
       const [r] = await db.query(
-        `UPDATE passengers SET full_name=$3, phone=$4, date_of_birth=$5, weight_kg=$6, id_number=$7, id_type=$8, nationality=$9, relation=$10, notes=$11, updated=$12
+        `UPDATE passengers SET full_name=$3, phone=$4, date_of_birth=$5, weight_kg=$6, id_number=$7, id_type=$8, nationality=$9, relation=$10, notes=$11, email=$12, updated=$13
          WHERE id=$1 AND pilot_id=$2 RETURNING *`,
         [params.id, pilot.id, ...cols(p), Date.now()],
       );

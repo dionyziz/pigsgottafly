@@ -107,7 +107,7 @@ export function PilotDetailsDialog({
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!d.issues.check(validatePerson(d.f, { pilot: true }))) return;
-    const { notes: _notes, ...person } = personInput(d.f);
+    const { notes: _notes, email: _email, ...person } = personInput(d.f);
     d.setBusy(true);
     d.setError(null);
     try {

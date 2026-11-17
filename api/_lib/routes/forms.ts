@@ -5,6 +5,10 @@
 //   POST /flights/:id/forms/731/links/:key/renew   a new link for that person (the old one stops working)
 //   POST /flights/:id/forms/731/links/:key/revoke  that person's link stops working
 //   POST /flights/:id/forms/731/send               PDF to 731@hcaa.gov.gr, cc/reply-to the pilot (409 until all signed)
+//   POST /flights/:id/forms/731/email/:key         that passenger (a saved one with an e-mail address) gets the
+//                                                  form as PDF (other people's ID and phone masked) and a new
+//                                                  signing link, cc/reply-to the pilot; capped per recipient
+//                                                  ('731-pax' in sendCaps.ts), no HCAA date window
 //   POST /flights/:id/forms/gendec/send            PDF to gendec@hcaa.gov.gr, cc/reply-to the pilot
 // Any signed-in pilot may send; the pilot is always cc'd. A version already sent is refused (409)
 // unless the body is {"resend": true}; concurrent sends of one form are refused (409). Sends and
@@ -48,7 +52,7 @@ import { hashToken } from '../auth.js';
 import type { Queryable, Row } from '../db.js';
 import { flightContext, loadRef } from '../flightContext.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
-import type { Route } from '../http.js';
+import type { Req, Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
 import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
@@ -84,6 +88,8 @@ interface Loaded {
   hashGendec: string;
   /** This pilot may not send forms by e-mail (no e-mail address to cc). */
   mailDenied: boolean;
+  /** Saved passengers' e-mail addresses, by passenger id (= their person key). */
+  emails: Map<string, string>;
 }
 
 async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDenied = true): Promise<Loaded> {
@@ -97,6 +103,7 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDeni
     : [];
   const aircraft = a ? toAircraft(a) : null;
   const passengers = (await db.query('SELECT * FROM passengers WHERE pilot_id = $1', [pilot.id])).map(toPassenger);
+  const emails = new Map(passengers.filter((p) => p.email).map((p) => [p.id, p.email]));
   const ref = await loadRef(db);
   const byId = new Map(ref.aerodromes.map((x) => [x.id.toUpperCase(), x]));
   const byIcao = new Map(ref.aerodromes.filter((x) => x.icao).map((x) => [x.icao!.toUpperCase(), x]));
@@ -112,6 +119,7 @@ async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDeni
     hash731: sha(form731SigningText(c731)),
     hashGendec: sha(genDecText(gendec)),
     mailDenied,
+    emails,
   };
 }
 
@@ -272,12 +280,19 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
     'SELECT * FROM form_links WHERE flight_id = $1 AND pilot_id = $2 ORDER BY created DESC',
     [L.flight.id, L.pilot.id],
   );
+  const emailed = await db.query(
+    `SELECT lower(recipient) AS recipient, max(at) AS at FROM mail_log
+     WHERE pilot_id = $1 AND flight_id = $2 AND form = '731-pax' AND result = 'sent' GROUP BY lower(recipient)`,
+    [L.pilot.id, L.flight.id],
+  );
   const signatures: SignatureState[] = L.c731.people.map((p) => {
     const s0 = sigs.find((x) => x.person_key === p.key);
     // a seat-keyed signature by whoever sat there before is not this person's
     const s = s0 && (!p.key.startsWith('seat:') || norm(s0.signer_name) === norm(p.name)) ? s0 : undefined;
     const l = linkRows.find((x) => x.person_key === p.key && holderOf(L, x) === p);
     const signed = !!s && s.text_hash === L.hash731;
+    const email = p.role === 'PAX' ? (L.emails.get(p.key) ?? '') : '';
+    const sent = email && emailed.find((x) => x.recipient === email.toLowerCase());
     return {
       key: p.key,
       role: p.role,
@@ -285,6 +300,8 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
       signed,
       signedAt: signed ? Number(s.signed_at) : null,
       needsResign: !!s && !signed,
+      email,
+      emailedAt: sent ? Number(sent.at) : null,
       link:
         p.role === 'PAX' && l
           ? {
@@ -491,6 +508,26 @@ async function sendForm(L: Loaded, m: FormMail, pdf: Buffer): Promise<{ id: stri
   }
 }
 
+/** The form as one person sees it: other people's ID and phone masked (the signing page does the same). */
+function maskOthers(c: Form731Content, me: string): Form731Content {
+  return {
+    ...c,
+    people: c.people.map((p) =>
+      p.key === me ? p : { ...p, idPassport: maskTail(p.idPassport), contact: maskTail(p.contact) },
+    ),
+  };
+}
+
+const HOST_RE = /^[a-z0-9.-]+(:\d{1,5})?$/i;
+const firstHeader = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : (v ?? '')).split(',')[0].trim();
+/** The app's origin as the pilot's browser reached it (for links in e-mails). */
+function appOrigin(req: Req, secure: boolean): string {
+  const host = firstHeader(req.headers['x-forwarded-host']) || firstHeader(req.headers.host);
+  const fwd = firstHeader(req.headers['x-forwarded-proto']);
+  const proto = fwd === 'https' || fwd === 'http' ? fwd : secure ? 'https' : 'http';
+  return HOST_RE.test(host) ? `${proto}://${host}` : 'https://pigsgottafly.com';
+}
+
 // ---------------------------------------------------------------- signing page (no sign-in)
 
 async function linkOf(db: Queryable, token: string) {
@@ -514,12 +551,7 @@ async function signingView(db: Queryable, L: Loaded, holder: Form731Person): Pro
   const sigs = await signatureRows(db, L.pilot.id, L.flight.id);
   const me = holder.key;
   return {
-    content: {
-      ...L.c731,
-      people: L.c731.people.map((p) =>
-        p.key === me ? p : { ...p, idPassport: maskTail(p.idPassport), contact: maskTail(p.contact) },
-      ),
-    },
+    content: maskOthers(L.c731, me),
     me,
     signatures: L.c731.people.map((p) => {
       const s = sigs.find((x) => x.person_key === p.key && x.text_hash === L.hash731);
@@ -590,6 +622,50 @@ export const routes: Route[] = [
         .filter((s) => s.person_key !== GENDEC_PIC_KEY && s.text_hash === L.hash731)
         .map((s) => ({ key: s.person_key as string, name: s.signer_name as string, signedAt: Number(s.signed_at) }));
       await sendOnce(db, L, '731', L.hash731, (await body()).resend === true, () => form731Pdf(L.c731, sigs));
+      return state(db, L);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/flights/:id/forms/731/email/:key',
+    async handler({ db, pilot, params, req, config, formsMailDenied }) {
+      const L = await loadForms(db, pilot, params.id, formsMailDenied);
+      const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
+      if (!person) throw notFound('no such passenger on this flight');
+      const to = L.emails.get(person.key);
+      if (!to) throw conflict(`${person.name || 'This passenger'} has no e-mail address`);
+      requireMail(L);
+      await checkLinkCap(db, pilot.id, L.flight.id, 1);
+      const m = formMail(L, '731');
+      const subject = m.subject;
+      const reservation = await reserveMail(db, {
+        pilotId: pilot.id,
+        flightId: L.flight.id,
+        form: '731-pax',
+        recipient: to,
+        subject,
+      });
+      try {
+        const link = `${appOrigin(req, config.secureCookie)}/sign/${await newLink(db, L, person)}`;
+        const sigs = (await signatureRows(db, pilot.id, L.flight.id))
+          .filter((s) => s.person_key !== GENDEC_PIC_KEY && s.text_hash === L.hash731)
+          .map((s) => ({ key: s.person_key as string, name: s.signer_name as string, signedAt: Number(s.signed_at) }));
+        const pdf = form731Pdf(maskOthers(L.c731, person.key), sigs);
+        const pic = L.c731.people.find((p) => p.role === 'PIC');
+        const text = [
+          `Form 731 (persons boarding) for the flight of ${L.c731.registration || 'the aircraft'} on ${L.c731.date || 'the date shown'}, route ${L.c731.route || '–'}, attached as PDF.`,
+          '',
+          `Please check your details and sign it here:`,
+          link,
+          '',
+          `Pilot in command: ${pic?.name || L.pilot.fullName}${pic?.contact ? `, ${pic.contact}` : ''}${L.pilot.email ? `, ${L.pilot.email}` : ''}.`,
+        ].join('\n');
+        const sent = await sendForm(L, { to, subject, text, filename: m.filename }, pdf);
+        await mailSent(db, reservation, sent.id);
+      } catch (e) {
+        await mailFailed(db, reservation, e);
+        throw e;
+      }
       return state(db, L);
     },
   },

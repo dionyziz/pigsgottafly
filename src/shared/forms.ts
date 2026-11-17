@@ -362,6 +362,7 @@ export function genDecText(c: GenDecContent): string {
 //   POST /flights/:id/forms/731/links/:key/renew    → FormsState (+ links: that person's new link; the old one stops working)
 //   POST /flights/:id/forms/731/links/:key/revoke   → FormsState
 //   POST /flights/:id/forms/731/send                → FormsState (e-mail to HCAA; 409 until everyone has signed)
+//   POST /flights/:id/forms/731/email/:key          → FormsState (e-mails that passenger the form and a new signing link)
 //   POST /flights/:id/forms/gendec/send             → FormsState
 //   POST /flights/:id/forms/gendec/handled         → FormsState; body {handled: true | false | null}: the flight's
 //                                                     override of who sends the GenDec (null = automatic)
@@ -380,6 +381,10 @@ export interface SignatureState {
   signedAt: number | null;
   /** Signed an earlier version of the form: has to sign again. */
   needsResign: boolean;
+  /** PAX with a saved record: their e-mail address ('' = none). */
+  email: string;
+  /** When the form was last e-mailed to them (epoch ms). */
+  emailedAt: number | null;
   /** Link state (PAX only). */
   link: {
     created: number;

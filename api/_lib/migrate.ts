@@ -31,6 +31,7 @@ import appErrors040 from './migrations/040_app_errors.js';
 import crewOverrides042 from './migrations/042_crew_overrides.js';
 import aircraftPlaceholder043 from './migrations/043_aircraft_placeholder.js';
 import weatherCache044 from './migrations/044_weather_cache.js';
+import passengerEmail045 from './migrations/045_passenger_email.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -68,6 +69,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '042_crew_overrides', sql: crewOverrides042 },
   { name: '043_aircraft_placeholder', sql: aircraftPlaceholder043 },
   { name: '044_weather_cache', sql: weatherCache044 },
+  { name: '045_passenger_email', sql: passengerEmail045 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

@@ -255,9 +255,16 @@ describe('profile form', () => {
 
 describe('passenger form', () => {
   it('normalises input and validates', () => {
-    const f = { ...personForm(null, 'Jane  Doe'), weightKg: 62.5, nationality: 'greek', dateOfBirth: '1990-01-02' };
+    const f = {
+      ...personForm(null, 'Jane  Doe'),
+      email: ' jane@example.com ',
+      weightKg: 62.5,
+      nationality: 'greek',
+      dateOfBirth: '1990-01-02',
+    };
     expect(passengerInputOf(f)).toMatchObject({
       fullName: 'Jane Doe',
+      email: 'jane@example.com',
       weightKg: 62.5,
       nationality: 'GREEK',
       dateOfBirth: '1990-01-02',
@@ -267,17 +274,21 @@ describe('passenger form', () => {
     expect(() => passengerInputOf({ ...f, fullName: '' })).toThrow(/name/);
     expect(() => passengerInputOf({ ...f, weightKg: 400 })).toThrow(/Weight/);
     expect(() => passengerInputOf({ ...f, dateOfBirth: '2999-01-01' })).toThrow(/future/);
+    expect(() => passengerInputOf({ ...f, email: '' })).toThrow(/e-mail/);
+    expect(() => passengerInputOf({ ...f, email: 'jane@' })).toThrow(/Not an e-mail/);
   });
   it('reports each problem under its field', () => {
     const f = { ...personForm(null), dateOfBirth: '2026-02-30', weightKg: 0 };
     expect(validatePerson(f, { today: '2026-11-16' })).toEqual([
       { field: 'fullName', message: 'Enter the full name' },
+      { field: 'email', message: 'Enter the e-mail address' },
       { field: 'dateOfBirth', message: 'Not a valid date' },
       { field: 'weightKg', message: 'Weight must be 1–300 kg' },
     ]);
-    // the pilot needs a phone too; a passenger does not
+    // the pilot needs a phone, a passenger an e-mail
     expect(validatePerson({ ...personForm(null, 'X') }, { pilot: true }).map((i) => i.field)).toEqual(['phone']);
-    expect(validatePerson({ ...personForm(null, 'X') })).toEqual([]);
+    expect(validatePerson({ ...personForm(null, 'X') }).map((i) => i.field)).toEqual(['email']);
+    expect(validatePerson({ ...personForm(null, 'X'), email: 'x@example.com' })).toEqual([]);
   });
 });
 

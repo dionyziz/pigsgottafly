@@ -20,16 +20,19 @@ import { matchesQuery } from '../lobby/format';
 import { PassengerDialog, PilotDetailsDialog } from './PassengerDialog';
 import type { PersonField } from './person';
 
-const searchText = (p: PersonDetails & { notes?: string }) =>
-  [p.fullName, p.phone, p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? ''].join(' ').toLowerCase();
+const searchText = (p: PersonDetails & { notes?: string; email?: string }) =>
+  [p.fullName, p.phone, p.email ?? '', p.idNumber, p.nationality, p.notes ?? '', p.dateOfBirth ?? '']
+    .join(' ')
+    .toLowerCase();
 
 /** What a person still lacks for the forms or W&B, with the field that takes it. */
-function missing(p: PersonDetails, pilot?: Pilot): [PersonField, string][] {
+function missing(p: PersonDetails & { email?: string }, pilot?: Pilot): [PersonField, string][] {
   const out: [PersonField, string | false][] = [
     ['weightKg', p.weightKg == null && 'weight'],
     ['idNumber', !p.idNumber && 'ID'],
     ['dateOfBirth', !p.dateOfBirth && 'date of birth'],
     ['phone', !p.phone && 'phone'],
+    ['email', !pilot && !p.email && 'e-mail'],
     ['nationality', !!pilot && !p.nationality && 'nationality'],
     ['licenceNo', !!pilot && !pilot.licenceNo && 'licence number'],
   ];
@@ -50,7 +53,7 @@ function PersonRow({
   testId,
   passengerId,
 }: {
-  person: PersonDetails;
+  person: PersonDetails & { email?: string };
   /** Set for the pilot's own row. */
   pilot?: Pilot;
   today: string;

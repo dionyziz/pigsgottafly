@@ -176,7 +176,7 @@ export interface AdminMail {
   /** null: the app's own message with no pilot. */
   pilotId: string | null;
   pilot: string;
-  /** '731', 'gendec', 'wbperf', 'signup', 'signup-more' */
+  /** '731', '731-pax', 'gendec', 'wbperf', 'signup', 'signup-more' */
   kind: string;
   flightId: string | null;
   recipient: string;

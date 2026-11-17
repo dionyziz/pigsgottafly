@@ -1,6 +1,7 @@
 // Database rows ↔ API entities, and input sanitising for writes.
 import { DEFAULT_FLIGHT_OPTIONS, DEFAULT_SETTINGS, EMPTY_SUMMARY } from '../../src/shared/constants.js';
 import { normalizeFuelSpec } from '../../src/shared/fuel.js';
+import { isEmail } from '../../src/shared/operators.js';
 import type {
   Aircraft,
   AircraftInput,
@@ -81,6 +82,7 @@ export function toPassenger(r: Row): Passenger {
     idType: r.id_type,
     nationality: r.nationality,
     relation: r.relation,
+    email: r.email ?? '',
     notes: r.notes,
     created: Number(r.created),
     updated: Number(r.updated),
@@ -188,6 +190,8 @@ export function personColumns(input: Partial<PersonDetails>, base: PersonDetails
 export function passengerInput(input: Partial<PassengerInput>, base: PassengerInput): PassengerInput {
   const p = { ...base, ...personColumns(input, base) };
   if ('notes' in input) p.notes = str(input.notes, 'notes', 2000);
+  if ('email' in input) p.email = str(input.email, 'email', 254);
+  if (p.email && !isEmail(p.email)) throw badRequest('email is not an e-mail address');
   if (!p.fullName) throw badRequest('fullName is required');
   return p;
 }

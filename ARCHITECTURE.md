@@ -230,9 +230,11 @@ api/
                            042_crew_overrides.ts (flight_crew.overrides: manifest fields edited on the flight),
                            043_aircraft_placeholder.ts (aircraft.placeholder 1–3: random at creation, backfilled),
                            044_weather_cache.ts (weather_cache: Open-Meteo data per model, endpoint, run, set, location and
-                           UTC day, with expiry; weather_budget: Open-Meteo calls per UTC day)
+                           UTC day, with expiry; weather_budget: Open-Meteo calls per UTC day),
+                           045_passenger_email.ts (passengers.email, NULL for existing passengers)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
-                           10 declarations/24 h to one address, 10 min between sends of a flight's form; HCAA_DAILY_CAP
+                           10 declarations/24 h to one address, 10 min between sends of a flight's form (Form 731 to a
+                           passenger, '731-pax': per flight and recipient); HCAA_DAILY_CAP
                            (default 200) for all pilots together; signing links 60/24 h and 20 per flight
   _lib/limits.ts           per-pilot counts (aircraft 50, operators 20, flights 2000, passengers 500, waypoints 1000, files
                            per parent 50), STORAGE_QUOTA_MB (300) over owned files, 3 unfinished uploads, the 1 h sweep,
