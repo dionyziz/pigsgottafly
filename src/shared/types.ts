@@ -596,6 +596,8 @@ export interface FlightOptions {
    * true = a handler submits it, false = the PIC sends it; null / missing = automatic.
    */
   genDecHandled?: boolean | null;
+  /** Start-up, taxi, take-off and landing fuel per take-off, L, overriding the aircraft's; null / missing = the aircraft's. */
+  taxiAllowanceL?: number | null;
   /** The map's layer selection for this flight; missing on older flights (the pilot's setting applies). */
   mapLayers?: MapLayers | null;
 }

@@ -48,7 +48,7 @@ import {
 } from '../../../data/weather';
 import type { MetarTafResult, ParsedMetar } from '../../../data/weatherMetar';
 import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { requestTiming } from '../../../shared';
+import { requestTiming, taxiAllowanceOf } from '../../../shared';
 import { fmtEte } from '../../../shared/format';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 
@@ -97,7 +97,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     typeof altOverrides[i] === 'number' && isFinite(altOverrides[i]) ? altOverrides[i] : d.altFt,
   );
   const ac = aircraft
-    ? navlogAircraft(aircraft, doc.options.compassCard)
+    ? navlogAircraft(aircraft, doc.options.compassCard, taxiAllowanceOf(aircraft.fuel, doc.options))
     : { cruiseTasKt: NaN, patternTasKt: NaN, burnLph: NaN, taxiAllowanceL: 0, card: null };
   const navlog = computeNavlog({
     date: doc.date,
@@ -119,7 +119,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     aircraft && legs.length
       ? planFuel({
           tripFuelL: navlog.totals.tripFuel,
-          taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+          taxiAllowanceL: taxiAllowanceOf(aircraft.fuel, doc.options),
           burnLph: aircraft.fuel.burnLph,
           finalReserveMin: settings?.finalReserveMin ?? 0,
           reserveMin: settings ? settings.reserveMin : null,

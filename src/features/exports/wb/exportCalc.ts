@@ -29,6 +29,7 @@ import {
   landingPointIndices,
   type RequestTiming,
   requestTiming,
+  taxiAllowanceOf,
 } from '../../../shared';
 import type { RefAerodrome, RefRunway, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import { computeFlightNavlog, type EndpointWeather, endpointWeather, type NavlogComputed } from '../navlog/model';
@@ -161,7 +162,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
           legs: navlog.legs,
           ...sectorTiming(requestTiming(doc.route, doc.options)),
           circuits: navlog.circuits,
-          taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+          taxiAllowanceL: taxiAllowanceOf(aircraft.fuel, doc.options),
           fobL: fuelTakeoffL,
         })
       : [];

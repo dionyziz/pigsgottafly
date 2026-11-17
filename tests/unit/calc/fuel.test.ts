@@ -2,6 +2,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { type FuelPlanInput, isLocalFlight, litresFor, minutesFor, planFuel } from '../../../src/calc';
+import { taxiAllowanceOf } from '../../../src/shared';
 
 const base: FuelPlanInput = {
   tripFuelL: 13,
@@ -36,6 +37,18 @@ test('required = allowance + trip (+ final reserve); default FOB = required + re
     reserveUnset: false,
   });
   expect(p.warnings).toEqual([]);
+});
+
+test('the taxi allowance is per take-off: the flight override replaces the aircraft value', () => {
+  expect(planFuel(base)).toMatchObject({ taxiL: 4, takeoffs: 1 });
+  expect(planFuel({ ...base, stops: 2 })).toMatchObject({ taxiL: 12, takeoffs: 3, requiredL: 25 });
+  const spec = { taxiAllowanceL: 4 };
+  expect(taxiAllowanceOf(spec, {})).toBe(4);
+  expect(taxiAllowanceOf(spec, { taxiAllowanceL: null })).toBe(4);
+  expect(taxiAllowanceOf(spec, null)).toBe(4);
+  expect(taxiAllowanceOf(spec, { taxiAllowanceL: 0 })).toBe(0);
+  const p = planFuel({ ...base, taxiAllowanceL: taxiAllowanceOf(spec, { taxiAllowanceL: 7 }), stops: 1 });
+  expect(p).toMatchObject({ taxiL: 14, requiredL: 27, defaultFobL: 57, landingFuelL: 30 });
 });
 
 test('final reserve inside required; reserve litres rounded up', () => {

@@ -138,3 +138,12 @@ export function fuelLoad(
     unapproved: parts.map((p) => p.type).filter((t) => !(spec.types ?? []).some((g) => g.type === t)),
   };
 }
+
+/** Start-up, taxi, take-off and landing fuel per take-off, L: the flight's override, else the aircraft's. */
+export function taxiAllowanceOf(
+  spec: Pick<FuelSpec, 'taxiAllowanceL'>,
+  options: { taxiAllowanceL?: number | null } | null | undefined,
+): number {
+  const o = options?.taxiAllowanceL;
+  return typeof o === 'number' && Number.isFinite(o) ? o : spec.taxiAllowanceL;
+}

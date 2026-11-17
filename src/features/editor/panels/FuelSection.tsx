@@ -64,11 +64,41 @@ export function FuelSection() {
       { coalesce: 'fob-' + t },
     );
   const load = fuelLoad(aircraft.fuel, fuel.fobL, doc.options.fuelL);
+  const allowanceSet = doc.options.taxiAllowanceL ?? null;
 
   return (
     <Section id="fuel" title="Fuel" badge={badge}>
       <div className="ep-kvs" data-testid="fuel-plan">
-        <KV k="Start-up, taxi, TO & landing" v={<span className="tnum">{fuel.taxiL} L</span>} sub={time(fuel.taxiL)} />
+        <KV
+          k="Start-up, taxi, TO & landing"
+          v={
+            <span className="tnum ep-allowance">
+              <NumberField
+                value={allowanceSet}
+                min={0}
+                max={1000}
+                width="5ch"
+                ariaLabel="Start-up, taxi, take-off and landing fuel per take-off, litres"
+                className={'ep-num ep-inline-num' + (allowanceSet != null ? ' is-set' : '')}
+                placeholder={String(aircraft.fuel.taxiAllowanceL)}
+                testId="taxi-allowance"
+                onChange={(v) =>
+                  update((d) => ({ ...d, options: { ...d.options, taxiAllowanceL: v } }), {
+                    coalesce: 'taxi-allowance',
+                  })
+                }
+              />{' '}
+              L
+              {fuel.takeoffs > 1 && (
+                <span data-testid="taxi-total" title={`${fuel.takeoffs} take-offs`}>
+                  {' '}
+                  × {fuel.takeoffs} = {fuel.taxiL} L
+                </span>
+              )}
+            </span>
+          }
+          sub={time(fuel.taxiL)}
+        />
         <KV
           k="Trip"
           v={<span className="tnum">{fuel.tripL} L</span>}

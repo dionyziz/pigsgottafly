@@ -368,6 +368,57 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   assert.deepEqual(page.errors, []);
 });
 
+test("the lobby names each flight's passengers, not the PIC", async () => {
+  const snap = (fullName) => ({
+    fullName,
+    phone: '',
+    dateOfBirth: null,
+    weightKg: 70,
+    idNumber: '',
+    idType: '',
+    nationality: '',
+    relation: '',
+  });
+  const f = await api('POST', 'flights', {
+    date: iso(new Date(Date.now() + 3 * 86400e3)),
+    title: 'Crowded trip',
+    crew: [
+      { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: snap('Test Pilot') },
+      { role: 'PAX', passengerId: null, seat: 'front-right', snapshot: snap('Jane Doe') },
+      { role: 'PAX', passengerId: null, seat: 'rear-left', snapshot: snap('Nikos P.') },
+    ],
+  });
+  await page.goto(server.url + '/');
+  await page.waitFor((id) => !!document.querySelector(`[data-flight-id="${id}"] [data-testid=flight-pax]`), {
+    args: [f.id],
+  });
+  assert.deepEqual(
+    await page.eval((id) => {
+      const c = document.querySelector(`[data-flight-id="${id}"] [data-testid=flight-pax]`);
+      return [c.textContent, c.title];
+    }, f.id),
+    ['Jane Doe, Nikos P.', 'Jane Doe, Nikos P.'],
+  );
+  // a flight without passengers shows a dash; the passengers' names find the flight
+  assert.ok(
+    await page.eval(() =>
+      [...document.querySelectorAll('[data-testid=flight-pax]')].some((c) => c.textContent === '—'),
+    ),
+  );
+  await page.type('[data-testid=flight-search]', 'nikos');
+  await page.waitFor(
+    (id) =>
+      document.querySelectorAll('[data-flight-id]').length === 1 &&
+      !!document.querySelector(`[data-flight-id="${id}"]`),
+    {
+      args: [f.id],
+    },
+  );
+  await page.type('[data-testid=flight-search]', '');
+  await page.key('Backspace');
+  assert.deepEqual(page.errors, []);
+});
+
 test('details saved in one tab show at once in the others (one pilot for the whole app)', async () => {
   // e.g. an export opened in a new tab links to "Add your ID number"; the editor's tab must not keep the old details
   await page.goto(server.url + '/passengers');

@@ -71,7 +71,7 @@ export interface FlightSectorsInput {
   touchAfterLeg?: readonly boolean[] | null;
   /** NavlogResult.circuits: a touch-and-go, then a circuit to the full stop at the same aerodrome. */
   circuits?: readonly NavlogCircuit[] | null;
-  /** Aircraft FuelSpec.taxiAllowanceL (per take-off). */
+  /** Per take-off: the flight's override, else the aircraft's (taxiAllowanceOf). */
   taxiAllowanceL: number;
   /** Fuel on board at block start, L. */
   fobL: number;

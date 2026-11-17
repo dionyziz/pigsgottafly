@@ -51,6 +51,7 @@ import {
   requestTiming,
   type RoutePoint,
   seatLayout,
+  taxiAllowanceOf,
   validateCrew,
 } from '../../../shared';
 import { todayUtc } from '../../../shared/date';
@@ -245,6 +246,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   // ---- navlog
   const overrides = useMemo(() => legs.map((l) => doc.legOverrides[l.key]), [legs, doc.legOverrides]);
   const timing = useMemo(() => requestTiming(doc.route, doc.options), [doc.route, doc.options]);
+  /** Start-up, taxi, take-off and landing fuel per take-off: the flight's, else the aircraft's. */
+  const taxiAllowanceL = aircraft ? taxiAllowanceOf(aircraft.fuel, doc.options) : 0;
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
   const navlog = useMemo(() => {
     if (!legs.length || !aircraft) return null;
@@ -259,7 +262,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         legs,
         altitudesFt,
         overrides,
-        aircraft: navlogAircraft(aircraft, doc.options.compassCard),
+        aircraft: navlogAircraft(aircraft, doc.options.compassCard, taxiAllowanceL),
         winds: haveAny ? windProviderFromLegs(perLeg) : null,
         sunTables: SUN_TABLES,
         patternLegs: timing.patternLegs,
@@ -278,6 +281,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     altitudesFt,
     overrides,
     doc.options.compassCard,
+    taxiAllowanceL,
     timing,
   ]);
 
@@ -287,7 +291,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     return safe(() =>
       planFuel({
         tripFuelL: navlog ? navlog.totals.tripFuel : 0,
-        taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+        taxiAllowanceL,
         burnLph: aircraft.fuel.burnLph,
         finalReserveMin: pilot.settings.finalReserveMin ?? 0,
         reserveMin: pilot.settings.reserveMin,
@@ -298,7 +302,16 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
       }),
     );
-  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL, doc.route, timing]);
+  }, [
+    aircraft,
+    navlog,
+    pilot.settings.finalReserveMin,
+    pilot.settings.reserveMin,
+    doc.fobL,
+    doc.route,
+    timing,
+    taxiAllowanceL,
+  ]);
 
   // ---- weight and balance
   const wbAll = useMemo(() => {
@@ -331,7 +344,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       groundAfterLegMin: timing.groundAfterLegMin,
       touchAfterLeg: timing.touchAfterLeg,
       circuits: navlog.circuits,
-      taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+      taxiAllowanceL,
       fobL: fuel.fobL,
     });
     if (sectors.length < 2) return { sectors, wbs: [] as WbResult[] };
@@ -351,7 +364,18 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         ),
       ) ?? [];
     return { sectors, wbs };
-  }, [aircraft, navlog, fuel, wb, timing, doc.crew, doc.baggageKg, doc.options.category, doc.options.fuelL]);
+  }, [
+    aircraft,
+    navlog,
+    fuel,
+    wb,
+    timing,
+    taxiAllowanceL,
+    doc.crew,
+    doc.baggageKg,
+    doc.options.category,
+    doc.options.fuelL,
+  ]);
   const wbMissingWeights = useMemo(() => wbAll?.missingWeights ?? [], [wbAll]);
   const wbOk = useMemo(() => {
     if (!wb) return null;

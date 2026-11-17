@@ -291,6 +291,49 @@ describe('flights', () => {
   });
 });
 
+describe('flight list and options', () => {
+  test("the list names each flight's passengers in manifest order, not the PIC, and only to its pilot", async () => {
+    const ac = aircraftBody('SX-PAX');
+    ac.massBalance.stations.push({
+      id: 'rear',
+      name: 'Rear',
+      kind: 'seat',
+      armM: 1.85,
+      seats: [
+        { id: 'rear-left', label: 'Rear left' },
+        { id: 'rear-right', label: 'Rear right' },
+      ],
+    });
+    const acId = (await a.call('POST', 'aircraft', ac)).body.id;
+    const pax = (await a.call('POST', 'passengers', { fullName: 'Jane Doe', weightKg: 60 })).body;
+    const f = (await a.call('POST', 'flights', { title: 'With passengers', aircraftId: acId })).body as Flight;
+    const crew = [
+      ...f.crew,
+      { role: 'PAX', passengerId: null, seat: 'rear-right', snapshot: { fullName: 'Nikos P.', weightKg: 80 } },
+      { role: 'PAX', passengerId: pax.id, seat: 'front-right', snapshot: { fullName: 'Jane Doe', weightKg: 60 } },
+      { role: 'PAX', passengerId: null, seat: 'rear-left', snapshot: { fullName: '  ', weightKg: 20 } },
+    ];
+    expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew }, version: f.version })).status).toBe(200);
+    const row = ((await a.call('GET', 'flights')).body as any[]).find((x) => x.id === f.id);
+    expect(row.passengers).toEqual(['Nikos P.', 'Jane Doe']);
+    const empty = (await a.call('POST', 'flights', { title: 'Solo' })).body as Flight;
+    expect(((await a.call('GET', 'flights')).body as any[]).find((x) => x.id === empty.id).passengers).toEqual([]);
+    expect(((await b.call('GET', 'flights')).body as any[]).some((x) => x.id === f.id)).toBe(false);
+  });
+  test('the taxi allowance override is kept with the flight; bad values are 400', async () => {
+    const f = (await a.call('POST', 'flights', { title: 'Allowance' })).body as Flight;
+    const put = (taxiAllowanceL: unknown, version: number) =>
+      a.call('PUT', `flights/${f.id}`, { flight: { options: { ...f.options, taxiAllowanceL } }, version });
+    expect((await put(6.5, f.version)).status).toBe(200);
+    let got = (await a.call('GET', `flights/${f.id}`)).body as Flight;
+    expect(got.options.taxiAllowanceL).toBe(6.5);
+    for (const bad of [-1, 1001, '6', {}]) expect((await put(bad, got.version)).status, String(bad)).toBe(400);
+    expect((await put(null, got.version)).status).toBe(200);
+    got = (await a.call('GET', `flights/${f.id}`)).body as Flight;
+    expect(got.options.taxiAllowanceL).toBeNull();
+  });
+});
+
 describe('reference data', () => {
   test('current AIRAC and records', async () => {
     const airac = (await a.call('GET', 'ref/airac')).body;

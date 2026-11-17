@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveAerodrome, searchAerodromes } from '../../../src/data/ref';
 import { alternateCode, alternatesFrom } from '../../../src/features/editor/panels/fplOptions';
 import { addPicToCrew, picSeat } from '../../../src/features/editor/panels/manifest';
-import { flightSearchText, matchesQuery, splitFlights } from '../../../src/features/lobby/format';
+import { flightSearchText, matchesQuery, passengerNames, splitFlights } from '../../../src/features/lobby/format';
 import { passengerInputOf, personForm, validatePerson } from '../../../src/features/passengers/person';
 import { formOf, type ProfileForm, toUpdate, validateProfile } from '../../../src/features/profile/ProfilePage';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
@@ -27,6 +27,7 @@ const item = (
   extra: Partial<FlightListItem['summary']> = {},
   updated = 0,
   points: string[] = [],
+  passengers: string[] = [],
 ): FlightListItem => ({
   id,
   date,
@@ -38,6 +39,7 @@ const item = (
   deleted: false,
   summary: { ...EMPTY_SUMMARY, date, ...extra },
   points,
+  passengers,
 });
 
 describe('lobby format', () => {
@@ -94,6 +96,13 @@ describe('lobby format', () => {
     expect(matchesQuery(t, 'LGSY')).toBe(true);
     expect(matchesQuery(t, 'zofri skyros')).toBe(true);
     expect(matchesQuery(t, 'LGMG')).toBe(false);
+  });
+  it('lists and searches the passengers', () => {
+    const r = item('a', '2026-11-15', { title: 'Skyros day trip' }, 0, [], ['Jane Doe', 'Nikos P.']);
+    expect(passengerNames(r)).toBe('Jane Doe, Nikos P.');
+    expect(passengerNames(item('b', '2026-11-15'))).toBe('');
+    expect(matchesQuery(flightSearchText(r), 'nikos')).toBe(true);
+    expect(matchesQuery(flightSearchText(r), 'maria')).toBe(false);
   });
   it('computes ages', () => {
     expect(ageOn('1990-11-16', '2026-11-15')).toBe(35);

@@ -15,7 +15,7 @@ import { REF, SUN_TABLES } from '../../../data/ref';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import { type RouteWeather, windProviderFromLegs } from '../../../data/weather';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
-import { requestTiming } from '../../../shared';
+import { requestTiming, taxiAllowanceOf } from '../../../shared';
 import { useFlightAircraft } from '../useExportData';
 
 export interface FplData {
@@ -59,6 +59,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
     return d.map((x, i) => ov[i] ?? x.altFt);
   }, [flight.route, overrides, timing]);
 
+  const taxiAllowanceL = aircraft ? taxiAllowanceOf(aircraft.fuel, flight.options) : 0;
   const navlog = useMemo(() => {
     if (!legs.length || !aircraft) return null;
     const perLeg = weather ? weather.legs : [];
@@ -71,7 +72,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         legs,
         altitudesFt,
         overrides,
-        aircraft: navlogAircraft(aircraft, flight.options.compassCard),
+        aircraft: navlogAircraft(aircraft, flight.options.compassCard, taxiAllowanceL),
         winds: perLeg.some(Boolean) ? windProviderFromLegs(perLeg) : null,
         sunTables: SUN_TABLES,
         patternLegs: timing.patternLegs,
@@ -90,6 +91,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
     altitudesFt,
     overrides,
     flight.options.compassCard,
+    taxiAllowanceL,
     timing,
   ]);
 
@@ -98,7 +100,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
     return safe(() =>
       planFuel({
         tripFuelL: navlog ? navlog.totals.tripFuel : 0,
-        taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
+        taxiAllowanceL,
         burnLph: aircraft.fuel.burnLph,
         finalReserveMin: pilot.settings.finalReserveMin ?? 0,
         reserveMin: pilot.settings.reserveMin,
@@ -108,7 +110,15 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
       }),
     );
-  }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, flight.fobL, timing]);
+  }, [
+    aircraft,
+    navlog,
+    pilot.settings.finalReserveMin,
+    pilot.settings.reserveMin,
+    flight.fobL,
+    timing,
+    taxiAllowanceL,
+  ]);
 
   return { aircraft, aircraftLoading, weather, weatherLoading, navlog, fuel };
 }
