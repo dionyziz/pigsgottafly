@@ -3,7 +3,7 @@
 // fuel gets one input per type (mixed tanks allowed): FOB is their sum, the W&B weighs each type.
 import { Link } from 'react-router';
 
-import { type FlightDoc, fuelByType, fuelLoad, type FuelType, fuelTypesLabel, primaryFuel } from '../../../shared';
+import { type FlightDoc, fuelByType, fuelLoad, type FuelType, primaryFuel } from '../../../shared';
 import { fmtDuration } from '../../../shared/format';
 import { Chip, NumberField } from '../../../ui';
 import { useEditor } from '../state';
@@ -193,9 +193,7 @@ export function FuelSection() {
         )}
         <div className="ep-gauge-legend muted">
           <span>0</span>
-          <span>
-            Capacity {aircraft.fuel.usableL} L ({fuelTypesLabel(aircraft.fuel)})
-          </span>
+          <span>Capacity {aircraft.fuel.usableL} L</span>
         </div>
       </div>
       <div className="ep-kvs">
