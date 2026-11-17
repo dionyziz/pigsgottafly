@@ -77,7 +77,7 @@ export function PersonFields({
             </Field>
             {pilot && (
               <Field label="Licence number" issues={issues('licenceNo')}>
-                <input {...text('licenceNo')} placeholder="e.g. GR.FCL.PPL.12345" />
+                <input {...text('licenceNo')} placeholder="e.g. EL.FCL.6094" />
               </Field>
             )}
           </div>

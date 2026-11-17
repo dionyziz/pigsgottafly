@@ -94,7 +94,7 @@ export interface Pilot extends PersonDetails {
   /** Google display name (not the form name: that is fullName). */
   name: string;
   picture: string;
-  /** Pilot licence number, e.g. 'GR.FCL.PPL.12345'. */
+  /** Pilot licence number, e.g. 'EL.FCL.6094'. */
   licenceNo: string;
   /** ICAO of the home aerodrome; new flights go home → home. null = not set (asked on first use). */
   homeAerodrome: string | null;
