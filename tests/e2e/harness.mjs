@@ -296,13 +296,22 @@ export class Page {
   }
   // Real mouse click at the element's centre.
   async click(selector) {
-    const box = await this.eval((s) => {
-      const e = document.querySelector(s);
-      if (!e) throw new Error('no element ' + s);
-      e.scrollIntoView({ block: 'center' });
-      const r = e.getBoundingClientRect();
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-    }, selector);
+    // the element must be the one under the pointer: a box that appears above it (data arriving)
+    // moves it, so measure again until it holds still
+    let box = null;
+    for (let i = 0; i < 30 && !box?.hit; i++) {
+      if (i) await new Promise((r) => setTimeout(r, 100));
+      box = await this.eval((s) => {
+        const e = document.querySelector(s);
+        if (!e) throw new Error('no element ' + s);
+        e.scrollIntoView({ block: 'center' });
+        const r = e.getBoundingClientRect();
+        const x = r.x + r.width / 2;
+        const y = r.y + r.height / 2;
+        const at = document.elementFromPoint(x, y);
+        return { x, y, hit: !!at && (e === at || e.contains(at)) };
+      }, selector);
+    }
     for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased'])
       await this.send('Input.dispatchMouseEvent', { type, x: box.x, y: box.y, button: 'left', clickCount: 1 });
   }
