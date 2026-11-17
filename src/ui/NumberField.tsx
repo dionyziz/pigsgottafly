@@ -41,14 +41,18 @@ export interface NumberFieldProps {
   className?: string;
   step?: number;
   style?: CSSProperties;
+  /** A heading: shown with three digits, 0 as 360 ('030', '360'). */
+  heading?: boolean;
 }
 
-const shown = (v: number | null | undefined, decimals?: number, zeroAsEmpty?: boolean) =>
-  v == null || !isFinite(v) || (zeroAsEmpty && v === 0)
-    ? ''
-    : decimals != null
-      ? String(+v.toFixed(decimals))
-      : String(v);
+const shown = (v: number | null | undefined, decimals?: number, zeroAsEmpty?: boolean, heading?: boolean) => {
+  if (v == null || !isFinite(v) || (zeroAsEmpty && v === 0)) return '';
+  const t = decimals != null ? String(+v.toFixed(decimals)) : String(v);
+  if (!heading) return t;
+  const h = ((v % 360) + 360) % 360 || 360;
+  const [i, f] = (decimals != null ? String(+h.toFixed(decimals)) : String(h)).split('.');
+  return i.padStart(3, '0') + (f ? `.${f}` : '');
+};
 
 /** The draft classified, with the empty field mapped to `emptyValue` when there is one. */
 function classify(
@@ -89,23 +93,24 @@ export function NumberField(props: NumberFieldProps) {
     style,
     min,
     integer,
+    heading,
   } = props;
-  const [draft, setDraft] = useState(() => shown(value, decimals, zeroAsEmpty));
+  const [draft, setDraft] = useState(() => shown(value, decimals, zeroAsEmpty, heading));
   const [focused, setFocused] = useState(false);
   // Edited since focus: only then does blur commit (focus and blur alone never change the value).
   const [dirty, setDirty] = useState(false);
   // Changed from outside while typing (undo, another input): show the new value unless it is what the draft says.
   const syncDraft = useEffectEvent(() => {
     const p = classify(draft, props);
-    if (!focused || !(p.kind === 'ok' && p.value === value)) setDraft(shown(value, decimals, zeroAsEmpty));
+    if (!focused || !(p.kind === 'ok' && p.value === value)) setDraft(shown(value, decimals, zeroAsEmpty, heading));
   });
-  useEffect(() => syncDraft(), [value, focused, decimals, zeroAsEmpty]);
+  useEffect(() => syncDraft(), [value, focused, decimals, zeroAsEmpty, heading]);
 
   const p = classify(draft, props);
   const settle = () => {
     const v = !dirty ? value : p.kind === 'ok' ? p.value : p.kind === 'range' ? p.clamped : value;
     if (v !== value) onChange(v);
-    setDraft(shown(v, decimals, zeroAsEmpty));
+    setDraft(shown(v, decimals, zeroAsEmpty, heading));
     setDirty(false);
   };
   const bad = p.kind !== 'ok';

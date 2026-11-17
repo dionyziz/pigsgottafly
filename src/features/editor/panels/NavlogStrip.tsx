@@ -275,7 +275,7 @@ export function NavlogStrip() {
                               : 'Forecast'
                         }
                       >
-                        {noWind ? '—' : `${String(Math.round(r.windDirDeg)).padStart(3, '0')}/${r.windKt}`}
+                        {noWind ? '—' : `${fmtHdg(r.windDirDeg)}/${r.windKt}`}
                         {r.windSource === 'override' ? '*' : ''}
                       </td>
                       <td className="num">{fin(r.tempC) ? `${r.tempC}°` : ''}</td>

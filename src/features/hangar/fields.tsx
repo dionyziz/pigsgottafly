@@ -1,6 +1,6 @@
 // Form controls of the aircraft page: an editable point table, NumInput (NumberField where an empty
 // field commits 0 unless optional) and Section (CardSection with the page's class).
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { moveAt } from '../../shared/list';
 import { CardSection, DragHandle, NumberField, RowRemove, useSortable } from '../../ui';
@@ -23,6 +23,8 @@ export interface NumInputProps {
   className?: string;
   /** 0 means "not set": show an empty field (with the placeholder) instead of 0. */
   zeroAsEmpty?: boolean;
+  /** A heading: three digits, 0 shown as 360. */
+  heading?: boolean;
 }
 
 /** The aircraft page's number input: src/ui/NumberField; an empty field commits 0 unless optional. */
@@ -60,8 +62,9 @@ export function Section({
 
 /**
  * Editable table of [x, y] points (envelope vertices, compass card rows). Rows can be added,
- * removed and reordered (drag handle, or Alt+↑/↓); `extra` renders an additional read-only cell per
- * row. `name` names the inputs `<name>.<row>.x` / `.y`, so the save bar's issues can focus them.
+ * removed and reordered (drag handle, or Alt+↑/↓), or, with `sortBy`, are always shown in that
+ * order (kept still while a field of the table has focus); `extra` renders an additional read-only
+ * cell per row. `name` names the inputs `<name>.<row>.x` / `.y`, so the save bar's issues can focus them.
  */
 export function PointTable({
   points,
@@ -78,6 +81,7 @@ export function PointTable({
   caption,
   minRows = 0,
   name,
+  sortBy,
 }: {
   points: [number, number][];
   onChange: (p: [number, number][]) => void;
@@ -93,23 +97,46 @@ export function PointTable({
   caption?: string;
   minRows?: number;
   name?: string;
+  /** Sort key of a point: rows shown in increasing order, not reorderable. */
+  sortBy?: (p: [number, number]) => number;
 }) {
   const id = useId();
   const set = (i: number, k: 0 | 1, v: number | null) =>
     onChange(points.map((p, j) => (j === i ? (k === 0 ? [v ?? 0, p[1]] : [p[0], v ?? 0]) : p)));
-  const sort = useSortable({ count: points.length, onMove: (from, to) => onChange(moveAt(points, from, to)) });
+  const sort = useSortable({
+    count: points.length,
+    onMove: (from, to) => onChange(moveAt(points, from, to)),
+    disabled: !!sortBy,
+  });
+  // sorted order, frozen while editing so a row does not move under the cursor
+  const [frozen, setFrozen] = useState<number[] | null>(null);
+  const sortedOrder = () =>
+    points.map((_, i) => i).sort((a, b) => (sortBy ? sortBy(points[a]) - sortBy(points[b]) : 0) || a - b);
+  const order = !sortBy
+    ? points.map((_, i) => i)
+    : frozen
+      ? [...frozen.filter((i) => i < points.length), ...points.map((_, i) => i).filter((i) => !frozen.includes(i))]
+      : sortedOrder();
   const add = () =>
     onChange([
       ...points,
       addPoint ? addPoint(points) : points.length ? ([...points[points.length - 1]] as [number, number]) : [0, 0],
     ]);
   return (
-    <div className="pt-table">
+    <div
+      className="pt-table"
+      onFocus={() => {
+        if (sortBy && !frozen) setFrozen(sortedOrder());
+      }}
+      onBlur={(e) => {
+        if (sortBy && !e.currentTarget.contains(e.relatedTarget)) setFrozen(null);
+      }}
+    >
       <table aria-describedby={caption ? id : undefined}>
         <thead>
           <tr>
-            <th className="drag" />
-            <th className="idx">#</th>
+            {!sortBy && <th className="drag" />}
+            {!sortBy && <th className="idx">#</th>}
             <th className="num">
               {xLabel}
               {xUnit && <span className="u"> {xUnit}</span>}
@@ -123,40 +150,45 @@ export function PointTable({
           </tr>
         </thead>
         <tbody>
-          {points.map((p, i) => (
-            <tr key={i} {...sort.itemProps(i)}>
-              <td className="drag">
-                <DragHandle {...sort.handleProps(i)} label={`Move point ${i + 1}`} />
-              </td>
-              <td className="muted idx">{i + 1}</td>
-              <td className="num">
-                <NumInput
-                  value={p[0]}
-                  onChange={(v) => set(i, 0, v)}
-                  ariaLabel={`${xLabel} ${i + 1}`}
-                  name={name && `${name}.${i}.x`}
-                  {...xProps}
-                />
-              </td>
-              <td className="num">
-                <NumInput
-                  value={p[1]}
-                  onChange={(v) => set(i, 1, v)}
-                  ariaLabel={`${yLabel} ${i + 1}`}
-                  name={name && `${name}.${i}.y`}
-                  {...yProps}
-                />
-              </td>
-              {extra && <td className="extra num">{extra(p, i)}</td>}
-              <td className="row-tools">
-                <RowRemove
-                  onClick={() => onChange(points.filter((_, j) => j !== i))}
-                  disabled={points.length <= minRows}
-                  label={`Remove point ${i + 1}`}
-                />
-              </td>
-            </tr>
-          ))}
+          {order.map((i, row) => {
+            const p = points[i];
+            return (
+              <tr key={i} {...(sortBy ? {} : sort.itemProps(i))}>
+                {!sortBy && (
+                  <td className="drag">
+                    <DragHandle {...sort.handleProps(i)} label={`Move point ${i + 1}`} />
+                  </td>
+                )}
+                {!sortBy && <td className="muted idx">{row + 1}</td>}
+                <td className="num">
+                  <NumInput
+                    value={p[0]}
+                    onChange={(v) => set(i, 0, v)}
+                    ariaLabel={`${xLabel} ${i + 1}`}
+                    name={name && `${name}.${i}.x`}
+                    {...xProps}
+                  />
+                </td>
+                <td className="num">
+                  <NumInput
+                    value={p[1]}
+                    onChange={(v) => set(i, 1, v)}
+                    ariaLabel={`${yLabel} ${i + 1}`}
+                    name={name && `${name}.${i}.y`}
+                    {...yProps}
+                  />
+                </td>
+                {extra && <td className="extra num">{extra(p, i)}</td>}
+                <td className="row-tools">
+                  <RowRemove
+                    onClick={() => onChange(points.filter((_, j) => j !== i))}
+                    disabled={points.length <= minRows}
+                    label={`Remove point ${i + 1}`}
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <div className="row pt-foot">

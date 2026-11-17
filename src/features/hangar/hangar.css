@@ -54,6 +54,8 @@
   .ac-nav { display: none !important; }
 }
 .ac-nav { position: sticky; top: calc(var(--topbar-h) + 16px); display: flex; flex-direction: column; gap: 2px; }
+.ac-nav-reg { padding: 0 10px 6px; font-weight: 600; font-size: var(--fs-md, 15px); color: var(--ink); opacity: 0; transition: opacity 0.15s; }
+.ac-nav-reg.shown { opacity: 1; }
 .ac-nav a { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: var(--r); color: var(--ink-2); font-size: var(--fs-sm); box-shadow: inset 2px 0 0 transparent; transition: background 0.12s, color 0.12s, box-shadow 0.12s; }
 .ac-nav a:hover { background: var(--hover); text-decoration: none; color: var(--ink); }
 .ac-nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; box-shadow: inset 2px 0 0 var(--accent); }

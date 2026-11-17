@@ -319,6 +319,40 @@ test('aircraft page: layout, autosave, item 18, fuels, photo and documents', asy
   await page.key('Escape');
   await page.waitFor(() => !document.querySelector('[data-testid=swing-report-viewer]'));
 
+  // compass points: no drag handles, shown in increasing heading order, three digits, 0 as 360
+  const forCol = () =>
+    page.eval(() =>
+      [...document.querySelectorAll('[data-testid=compass-card] .pt-table tbody tr')].map(
+        (tr) => tr.querySelectorAll('.numfield input')[0].value,
+      ),
+    );
+  assert.equal(
+    await page.eval(() => document.querySelectorAll('[data-testid=compass-card] .pt-table .drag-handle').length),
+    0,
+  );
+  const fors = await forCol();
+  assert.ok(fors.length > 1 && fors.every((v) => /^\d{3}(\.\d+)?$/.test(v)), fors.join(' '));
+  assert.deepEqual([...fors].sort(), fors);
+  assert.ok(!fors.includes('000'));
+  // a heading typed out of order moves into place once the field is left
+  const first = await page.eval(() =>
+    document.querySelector('[data-testid=compass-card] .pt-table tbody tr .numfield input').getAttribute('name'),
+  );
+  await page.eval((n) => {
+    const i = document.querySelector(`input[name="${n}"]`);
+    i.focus();
+    i.select();
+  }, first);
+  await page.type(`input[name="${first}"]`, '355');
+  assert.equal((await forCol())[0], '355');
+  await page.eval(() => document.activeElement.blur());
+  await page.waitFor(() => {
+    const v = [...document.querySelectorAll('[data-testid=compass-card] .pt-table tbody tr')].map(
+      (tr) => tr.querySelectorAll('.numfield input')[0].value,
+    );
+    return v[v.length - 1] === '360' || v[v.length - 1] === '355';
+  });
+
   // photo: a large PNG is resized to at most 1600 px and shown in the header and on the hangar card
   const png = await page.eval(async () => {
     const c = document.createElement('canvas');

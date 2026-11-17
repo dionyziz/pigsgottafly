@@ -260,7 +260,9 @@ export function fmtSurfaceWind(c: SurfaceConditions | null): string {
     w.dirTrueDeg === null
       ? 'VRB'
       : String(
-          c.source === 'forecast' ? (Math.round(w.dirTrueDeg / 10) * 10) % 360 || 360 : Math.round(w.dirTrueDeg),
+          c.source === 'forecast'
+            ? (Math.round(w.dirTrueDeg / 10) * 10) % 360 || 360
+            : Math.round(w.dirTrueDeg) % 360 || 360,
         ).padStart(3, '0');
   return `${dir}${String(spd).padStart(2, '0')}${g}KT`;
 }

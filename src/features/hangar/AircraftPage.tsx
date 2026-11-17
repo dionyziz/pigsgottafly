@@ -154,6 +154,18 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
   // ?focus=<field>: a warning elsewhere (an export) linked here
   useFocusParam(() => document.querySelector('[data-testid=aircraft-page]'));
   const spy = useScrollSpy(SECTION_IDS);
+  // the registration heads the section nav once the page title has scrolled away
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const [titleGone, setTitleGone] = useState(false);
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setTitleGone(!e.isIntersecting && e.boundingClientRect.top < 0), {
+      rootMargin: '-64px 0px 0px 0px',
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const edit = useCallback((fn: (d: AircraftInput) => void) => {
     setDraft((d) => {
@@ -254,7 +266,9 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             onChange={(p) => onSaved({ ...latestAircraft.current, photo: p })}
           />
           <div className="ac-title">
-            <h1 className="mono">{draft.registration || 'New aircraft'}</h1>
+            <h1 className="mono" ref={titleRef}>
+              {draft.registration || 'New aircraft'}
+            </h1>
             <span className="ac-sub">
               {[draft.makeModel, draft.icaoType && `${draft.icaoType}/${draft.wake}`, draft.operator]
                 .filter(Boolean)
@@ -314,6 +328,13 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
 
       <div className="ac-layout">
         <nav className="ac-nav" aria-label="Sections" data-testid="section-nav">
+          <div
+            className={'ac-nav-reg mono' + (titleGone ? ' shown' : '')}
+            aria-hidden={!titleGone}
+            data-testid="nav-registration"
+          >
+            {draft.registration || 'New aircraft'}
+          </div>
           {SECTIONS.map((s) => {
             const c = counts(s.id);
             const on = spy.active === s.id;

@@ -320,7 +320,7 @@ export function CompassSection({
                 placeholder="e.g. Magnetic compass"
               />
               {i === 0 && cards.length > 1 && <Chip>Default</Chip>}
-              <StatusChip card={c} today={today} />
+              {!c.expires && <StatusChip card={c} today={today} />}
               <span className="spacer" />
               {i > 0 && (
                 <button
@@ -355,6 +355,8 @@ export function CompassSection({
                   value={c.swung}
                   onChange={(v) => {
                     cc(i, (x) => {
+                      // a card is valid for two years from the swing unless another date is entered
+                      if (!x.expires || x.expires === addYears(x.swung, 2)) x.expires = v ? addYears(v, 2) : x.expires;
                       x.swung = v;
                     });
                   }}
@@ -363,21 +365,7 @@ export function CompassSection({
               <Field
                 label="Expires"
                 issues={issuesAt(issues, `${p}.expires`, true)}
-                hint={
-                  c.swung ? (
-                    <button
-                      type="button"
-                      className="linkish"
-                      onClick={() =>
-                        cc(i, (x) => {
-                          x.expires = addYears(x.swung, 2);
-                        })
-                      }
-                    >
-                      Swung + 2 years
-                    </button>
-                  ) : undefined
-                }
+                hint={c.expires ? <StatusChip card={c} today={today} /> : undefined}
               >
                 <DateField
                   name={`${p}.expires`}
@@ -425,8 +413,9 @@ export function CompassSection({
                 xUnit="°"
                 yLabel="Steer (CH)"
                 yUnit="°"
-                xProps={{ integer: false, min: 0, max: 359.9, width: 76 }}
-                yProps={{ min: 0, max: 359.9, width: 76 }}
+                xProps={{ integer: false, min: 0, max: 360, width: 76, heading: true }}
+                yProps={{ min: 0, max: 360, width: 76, heading: true }}
+                sortBy={(q) => ((q[0] % 360) + 360) % 360 || 360}
                 extra={(q) => {
                   const d = deviationOf(q[0], q[1]);
                   return (
@@ -438,8 +427,8 @@ export function CompassSection({
                 }}
                 extraLabel="Dev"
                 addPoint={(pts) => {
-                  const last = pts[pts.length - 1];
-                  const f = last ? (last[0] + 30) % 360 : 0;
+                  const top = pts.length ? Math.max(...pts.map((q) => ((q[0] % 360) + 360) % 360 || 360)) : 0;
+                  const f = (top + 30) % 360 || 360;
                   return [f, f];
                 }}
                 minRows={0}
