@@ -1,7 +1,7 @@
 // NOTAM decoding and relevance to a flight (pure; no I/O).
 //
 // Relevance (PLAN-v3 "NOTAMs relevant to the flight"): a NOTAM is shown when ALL of
-//   - time:     its validity [B, C] overlaps block-off − margin … block-on + margin (C = PERM: open);
+//   - time:     its validity [B, C] overlaps block start − margin … block stop + margin (C = PERM: open);
 //   - place:    item A is an aerodrome the flight uses (departure, destination, intermediate stop,
 //               alternate), or its Q-line circle (centre + radius) comes within the route corridor
 //               (radius 999 = the whole FIR; no coordinates = cannot tell, kept);

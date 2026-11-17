@@ -229,8 +229,8 @@ export async function submission(
 
 /**
  * Whether a handler submits the General Declaration at both ends (src/calc/aerodromeStatus.ts genDecHandling):
- * handling per the AIP (AD 2.3 item 9 / AD 1.6) at the departure at block-off and at the destination at
- * block-on, overlaid with the flight's last NOTAM briefing (flight_notams; none = AIP only). The flight's
+ * handling per the AIP (AD 2.3 item 9 / AD 1.6) at the departure at block start and at the destination at
+ * block stop, overlaid with the flight's last NOTAM briefing (flight_notams; none = AIP only). The flight's
  * options.genDecHandled overrides it. (The old profile setting handledAerodromes is no longer used.)
  */
 async function genDecDecision(db: Queryable, L: Loaded): Promise<GenDecHandling> {

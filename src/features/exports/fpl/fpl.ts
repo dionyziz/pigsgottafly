@@ -17,7 +17,7 @@
 //   - Item 9: one aircraft (the number is omitted), ICAO type designator (ZZZZ + TYP/ when the
 //     hangar has none), wake turbulence category.
 //   - Item 10: 10a/10b from the hangar.
-//   - Item 13: departure aerodrome + EOBT = block-off time UTC. ZZZZ + DEP/ when the departure is
+//   - Item 13: departure aerodrome + EOBT = block start time UTC. ZZZZ + DEP/ when the departure is
 //     not an aerodrome with an ICAO location indicator.
 //   - Item 15: cruising speed N + 4 digits (knots), level VFR, then the route as EuroFPL takes it
 //     for Greek VFR flights: the intermediate points by name, space-separated — VFR reporting
@@ -95,7 +95,7 @@ export interface FplInput {
 
   /** Flight date 'YYYY-MM-DD' (DOF/). */
   date: string;
-  /** EOBT = block-off 'HH:MM' UTC; '' = not set. */
+  /** EOBT = block start 'HH:MM' UTC; '' = not set. */
   eobt: string;
   departure: FplAerodrome | null;
   destination: FplAerodrome | null;
@@ -539,7 +539,7 @@ export function buildFpl(input: FplInput): FplResult {
   if (adep === MISSING)
     warn('Departure aerodrome unknown (item 13): the route must start at an aerodrome.', { kind: 'flight' });
   const eobt = eobtField(input.eobt);
-  if (eobt === MISSING) warn('Block-off time (EOBT) not set (item 13).', { kind: 'flight', focus: 'blockOff' });
+  if (eobt === MISSING) warn('Block start time (EOBT) not set (item 13).', { kind: 'flight', focus: 'blockOff' });
 
   // item 15
   const speed = speedField(input.cruiseTasKt);

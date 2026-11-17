@@ -119,7 +119,10 @@ describe('editorWarningFix', () => {
   it('a field of this flight is focused in place, in the section that holds it', () => {
     const seen: string[] = [];
     const off = onEditorFocus((k) => seen.push(k));
-    const f = editorWarningFix('Block-off time not set: take-off and landing distances use ISA and calm wind.', 'ac1');
+    const f = editorWarningFix(
+      'Block start time not set: take-off and landing distances use ISA and calm wind.',
+      'ac1',
+    );
     expect(f && 'onFix' in f).toBe(true);
     if (f && 'onFix' in f) f.onFix();
     off();

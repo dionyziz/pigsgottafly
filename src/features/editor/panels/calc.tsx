@@ -363,7 +363,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   }, [wb, doc.options.category]);
 
   // ---- surface conditions and performance at both ends
-  // Only with a block-off time: computeNavlog assumes 12:00 without one, and sampling the weather
+  // Only with a block start time: computeNavlog assumes 12:00 without one, and sampling the weather
   // at that made-up time would show distances for conditions nobody planned (the MD 4.4 export
   // likewise uses ISA and calm then).
   const times = navlog?.blockOffSet ? navlog.times : undefined;
@@ -679,10 +679,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       !navlog.blockOffSet &&
       (departure.perf || arrival.perf || stops.some((x) => x.landing.perf || x.takeoff.perf))
     )
-      add('info', 'performance', 'Block-off time not set: take-off and landing distances use ISA and calm wind.');
+      add('info', 'performance', 'Block start time not set: take-off and landing distances use ISA and calm wind.');
     if (navlog && navlog.legs.length) {
       if (!navlog.blockOffSet)
-        add('info', 'weather', 'Block-off time not set: no weather hazard check along the route.');
+        add('info', 'weather', 'Block start time not set: no weather hazard check along the route.');
       else if (hazardWeather && hazardWeather.status !== 'ok' && hazardWeather.message)
         add('info', 'weather', hazardWeather.message);
       const leg = (i: number) => (legs[i] ? { from: legs[i].from.name, to: legs[i].to.name } : null);

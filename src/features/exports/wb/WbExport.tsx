@@ -137,7 +137,7 @@ export function WbSheet({ m, signature }: { m: WbSheetModel; signature?: ShownSi
       </table>
       <p className="xp-small">
         Arm of a total = centre of gravity, m aft of the datum{m.datum ? ` (${m.datum.toLowerCase()})` : ''}. Take-off
-        with the fuel on board at block-off; landing after the taxi allowance and trip fuel
+        with the fuel on board at block start; landing after the taxi allowance and trip fuel
         {m.checks.some((c) => c.phase === 'stop')
           ? '; each stop: one more taxi allowance, no refuelling, the take-off there with the fuel it landed with'
           : ''}

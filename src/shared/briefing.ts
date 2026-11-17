@@ -62,7 +62,7 @@ export interface NotamBriefing {
   source: NotamSource | null;
   message: string | null;
   fetched: EpochMs | null;
-  /** Block-off − margin … block-on + margin, UTC. */
+  /** Block start − margin … block stop + margin, UTC. */
   window: { from: EpochMs; to: EpochMs };
   params: { maxAltFt: number; corridorNm: number; marginMin: number };
   /** Item A locations queried (route aerodromes, alternates, aerodromes near the route, FIR). */
@@ -147,6 +147,6 @@ export interface FileRequest {
   fpl: string;
   /** Reviewed AFTN addressees (8 letters each). */
   addresses: string[];
-  /** EOBT; default: the flight's date + block-off. */
+  /** EOBT; default: the flight's date + block start. */
   eobt?: EpochMs;
 }

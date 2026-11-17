@@ -114,7 +114,7 @@ export const routes: Route[] = [
         notams: assessed,
         relevantCount,
         hiddenCount: assessed.length - relevantCount,
-        message: ctx.timed ? null : 'Block-off time not set: NOTAMs for the whole day are shown.',
+        message: ctx.timed ? null : 'Block start time not set: NOTAMs for the whole day are shown.',
       };
       await db.query(
         `INSERT INTO flight_notams (flight_id, pilot_id, fetched, params, doc) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)

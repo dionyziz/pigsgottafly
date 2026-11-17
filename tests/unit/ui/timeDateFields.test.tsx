@@ -18,7 +18,7 @@ function TimeHarness({
   return (
     <>
       <label>
-        Block-off
+        Block start
         <TimeField
           {...p}
           value={v}

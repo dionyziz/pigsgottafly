@@ -337,7 +337,7 @@ describe('route wiring (corridor, cell cache, navlog times)', () => {
     // cells along the leg have 47–95 % low cloud (BKN/OVC) with 1.8–2.7 °C spreads
     expect(legCloud.text).toMatch(/^(BKN|OVC) \d+ ft · planned 1900 ft/);
     expect(hz.some((h) => h.scope.type === 'departure' && h.kind === 'cloud')).toBe(true);
-    // no block-off time: nothing is checked
+    // no block start time: nothing is checked
     expect(
       computeRouteHazards({
         hw,

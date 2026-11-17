@@ -1,5 +1,5 @@
 // Editor warnings for aerodrome hours (src/features/editor/panels/aerodromeChecks.ts): the departure
-// from block-off to take-off, the destination from landing to block-on, intermediate stops and
+// from block start to take-off, the destination from landing to block stop, intermediate stops and
 // touch-and-goes at their times, against the AIP and NOTAM fixtures; nothing alarming without NOTAMs.
 import { describe, expect, test } from 'vitest';
 
@@ -70,13 +70,13 @@ describe('aerodrome hours in the editor', () => {
   test('a daytime flight between HJ and H24 aerodromes: no warnings', () => {
     const c = aerodromeChecks(input({ route: [pt('LGTT', 'a'), pt('LGAV', 'b')] }));
     expect(c.map((x) => [x.role, x.aerodrome.id, x.ad.status, x.when])).toEqual([
-      ['departure', 'LGTT', 'open', 'block-off 08:00Z – take-off 08:10Z'],
-      ['destination', 'LGAV', 'open', 'landing 09:00Z – block-on 09:10Z'],
+      ['departure', 'LGTT', 'open', 'block start 08:00Z – take-off 08:10Z'],
+      ['destination', 'LGAV', 'open', 'landing 09:00Z – block stop 09:10Z'],
     ]);
     expect(aerodromeWarnings(c)).toEqual([]);
   });
 
-  test('departure closed at block-off (before sunrise at an HJ aerodrome); destination closed at landing (after sunset)', () => {
+  test('departure closed at block start (before sunrise at an HJ aerodrome); destination closed at landing (after sunset)', () => {
     const early = aerodromeChecks(
       input({
         route: [pt('LGTT', 'a'), pt('LGAV', 'b')],
@@ -87,7 +87,7 @@ describe('aerodrome hours in the editor', () => {
     expect(w).toHaveLength(1);
     expect(w[0]).toMatchObject({ level: 'danger' });
     expect(w[0].text).toMatch(
-      /^Departure LGTT closed at 03:00Z \(block-off 03:00Z – take-off 03:10Z\): HJ 0\d{3}-1\d{3}Z \(AIP AD 1\.6\.5\.3\)\.$/,
+      /^Departure LGTT closed at 03:00Z \(block start 03:00Z – take-off 03:10Z\): HJ 0\d{3}-1\d{3}Z \(AIP AD 1\.6\.5\.3\)\.$/,
     );
     const late = aerodromeChecks(
       input({
@@ -96,7 +96,7 @@ describe('aerodrome hours in the editor', () => {
       }),
     );
     expect(aerodromeWarnings(late).map((x) => x.text)).toEqual([
-      expect.stringMatching(/^Destination LGTT closed at 16:00Z \(landing 16:00Z – block-on 16:10Z\)/),
+      expect.stringMatching(/^Destination LGTT closed at 16:00Z \(landing 16:00Z – block stop 16:10Z\)/),
     ]);
   });
 
@@ -111,7 +111,7 @@ describe('aerodrome hours in the editor', () => {
     expect(w).toEqual([
       {
         level: 'danger',
-        text: 'Destination LGKC closed at 16:00Z (landing 16:00Z – block-on 16:10Z): 0600-1500Z (NOTAM A0400/26).',
+        text: 'Destination LGKC closed at 16:00Z (landing 16:00Z – block stop 16:10Z): 0600-1500Z (NOTAM A0400/26).',
       },
     ]);
   });
@@ -158,7 +158,7 @@ describe('aerodrome hours in the editor', () => {
     expect(w[1]).toBe('Touch-and-go LGKC closed at 10:00Z (touch-and-go 10:00Z): AD closed (NOTAM A0500/26).');
   });
 
-  test('no block-off time: one info, nothing checked; limits from NOTAMs are warnings', () => {
+  test('no block start time: one info, nothing checked; limits from NOTAMs are warnings', () => {
     const c = aerodromeChecks(input({ route: [pt('LGTT', 'a'), pt('LGAV', 'b')], times: undefined }));
     expect(aerodromeWarnings(c)).toEqual([]);
     const effects = aerodromeNotamEffects([

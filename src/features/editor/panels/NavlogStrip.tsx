@@ -308,7 +308,7 @@ export function NavlogStrip() {
                           data-testid="navlog-blockoff-fix"
                           onClick={() => focusInEditor('blockOff')}
                         >
-                          block-off not set: 12:00Z assumed
+                          block start not set: 12:00Z assumed
                         </button>
                       </>
                     )}

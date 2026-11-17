@@ -1,10 +1,10 @@
 // The route's aerodromes at their planned times against their hours (AIP AD 2.3 / AD 1.6 + the flight's
 // NOTAMs, src/calc/aerodromeStatus.ts), and the editor warnings they give. Pure (no React): wired in
 // calc.tsx, unit-tested in tests/unit/screens/aerodromeChecks.test.ts.
-//   departure      block-off … take-off
+//   departure      block start … take-off
 //   stop           landing there … take-off from there (an intermediate full stop)
 //   touch-and-go   when the aircraft gets there
-//   destination    landing … block-on
+//   destination    landing … block stop
 import { type AdNotamEffect, type AdStatus, aerodromeStatus, clockZ } from '../../../calc';
 import { activeRequests, type FlightOptions, type RoutePoint } from '../../../shared';
 import type { RefAerodrome, RefSunTable } from '../../../shared/ref';
@@ -13,10 +13,10 @@ export interface AdCheck {
   role: 'departure' | 'destination' | 'stop' | 'touch-and-go';
   pointIndex: number;
   aerodrome: RefAerodrome;
-  /** Epoch ms; NaN when the block-off time is not set. */
+  /** Epoch ms; NaN when the block start time is not set. */
   fromMs: number;
   toMs: number;
-  /** e.g. 'block-off 08:00Z – take-off 08:10Z', 'touch-and-go 09:12Z'. */
+  /** e.g. 'block start 08:00Z – take-off 08:10Z', 'touch-and-go 09:12Z'. */
   when: string;
   ad: AdStatus;
   ats: AdStatus | null;
@@ -39,7 +39,7 @@ export interface AdChecksInput {
   aerodromeOf: (p: RoutePoint) => RefAerodrome | null;
   /** 00:00 UTC of the flight date, epoch ms. */
   dayMs: number;
-  /** Navlog times, minutes after dayMs; undefined when the block-off time is not set. */
+  /** Navlog times, minutes after dayMs; undefined when the block start time is not set. */
   times?: { blockOffMin: number; takeoffMin: number; landingMin: number; blockOnMin: number };
   /** Navlog leg end times (minutes after dayMs), by leg. */
   legEndMin: number[];
@@ -81,7 +81,7 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
   if (!r.length) return out;
   const bo = ms(i.times?.blockOffMin),
     to = ms(i.times?.takeoffMin);
-  add('departure', 0, i.departure, bo, to, fin(bo) ? `block-off ${z(bo)} – take-off ${z(to)}` : 'departure');
+  add('departure', 0, i.departure, bo, to, fin(bo) ? `block start ${z(bo)} – take-off ${z(to)}` : 'departure');
   const tng = new Set(
     activeRequests(r, i.options)
       .filter((x) => x.request.kind === 'touch-and-go')
@@ -120,7 +120,7 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
       i.destination,
       ldg,
       bon,
-      fin(ldg) ? `landing ${z(ldg)} – block-on ${z(bon)}` : 'arrival',
+      fin(ldg) ? `landing ${z(ldg)} – block stop ${z(bon)}` : 'arrival',
     );
   }
   return out;

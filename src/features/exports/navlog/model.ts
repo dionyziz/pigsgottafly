@@ -13,7 +13,7 @@
 //     and rows whose legs are not known, go on every sheet.
 //   - Header TEMP / WIND / SKY / QNH / RUNWAY: the departure on the first sheet, the destination
 //     on the last sheet (a single sheet shows the departure, as v2), blank on middle sheets.
-//   - BLOCK START is the planned block-off; TAKE-OFF, BLOCK END, ATIS, ETA/ATA, actual GS, fuel
+//   - BLOCK START is the planned block start; TAKE-OFF, BLOCK END, ATIS, ETA/ATA, actual GS, fuel
 //     remaining, VOR and squawk columns are left blank for the pilot to write in flight.
 //   - Wind columns are blank for a leg without a forecast (calm wind was used: see the warnings);
 //     a wind typed in the editor (override) is printed.
@@ -483,7 +483,7 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const t = navlog.times;
 
   const wxOpts = { date: doc.date, aerodromes: input.aerodromes, weather, metar, nowMs };
-  // departure conditions at block-off (v2), destination at landing
+  // departure conditions at block start (v2), destination at landing
   const dep = endpointWeather(route[0], weather?.departure ?? null, t.blockOffMin, wxOpts);
   const arr = endpointWeather(
     route.length > 1 ? route[route.length - 1] : undefined,

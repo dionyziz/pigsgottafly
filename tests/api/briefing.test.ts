@@ -214,7 +214,7 @@ describe('NOTAM briefing route', () => {
       }),
       notam({ number: 2 }), // on the route
       notam({ number: 3, lat: Math.round(35.3 * G), lon: Math.round(25.1 * G) }), // Crete
-      notam({ number: 4, endvalidity: Math.floor(at('05:00') / 1000) }), // over before block-off − 1 h
+      notam({ number: 4, endvalidity: Math.floor(at('05:00') / 1000) }), // over before block start − 1 h
       notam({ number: 5, lower: 150, upper: 245 }), // above the planned altitudes
       notam({ number: 6, traffic: 'I', code23: 'PI', code45: 'AU' }), // IFR only, not at a used aerodrome
       notam({ number: 7, code23: 'KK', code45: 'KK' }), // checklist

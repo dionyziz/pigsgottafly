@@ -1,5 +1,5 @@
-// When: date, block-off (UTC, with local time), taxi out/in for this flight, and the computed
-// take-off, landing and block-on times.
+// When: date, block start (UTC, with local time), taxi out/in for this flight, and the computed
+// take-off, landing and block stop times.
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
 import { localOffsetLabel, utcToLocal } from '../../../shared/date';
@@ -14,18 +14,23 @@ function TimeRow({
   min,
   testId,
   tone,
+  dayMs,
 }: {
   label: string;
   min: number;
   testId: string;
   tone?: 'warn' | 'danger';
+  /** The flight's day (00:00Z), for the local time beside the UTC one. */
+  dayMs: number;
 }) {
   const nextDay = isFinite(min) && min >= 1440;
+  const ms = dayMs + min * 60000;
   return (
     <KV
       k={label}
       tone={tone}
       testId={testId}
+      sub={isFinite(ms) ? <span className="tnum">{fmtLocalClock(ms)}LT</span> : undefined}
       v={
         <>
           <span className="tnum">{fmtClock(min, { fallback: '--:--' })}Z</span>
@@ -43,7 +48,7 @@ export function WhenSection() {
   const bo = parseClock(doc.blockOff);
   const boMs = isFinite(dayMs) && isFinite(bo) ? dayMs + bo * 60000 : NaN;
   const taxiOut = doc.taxiOutMin ?? NaN;
-  // Times: from the navlog when there is one, else block-off + taxi.
+  // Times: from the navlog when there is one, else block start + taxi.
   const t = navlog?.blockOffSet
     ? navlog.times
     : isFinite(bo)
@@ -66,7 +71,7 @@ export function WhenSection() {
           />
         </label>
         <label className="field">
-          Block-off (UTC)
+          Block start (UTC)
           <TimeField
             value={doc.blockOff}
             testId="block-off"
@@ -109,10 +114,16 @@ export function WhenSection() {
       </div>
       {t && (
         <div className="ep-times">
-          <TimeRow label="Block-off" min={t.blockOffMin} testId="time-blockoff" />
-          <TimeRow label="Take-off" min={t.takeoffMin} testId="time-takeoff" />
-          <TimeRow label="Landing" min={t.landingMin} testId="time-landing" tone={late(t.landingMin)} />
-          <TimeRow label="Block-on" min={t.blockOnMin} testId="time-blockon" tone={late(t.blockOnMin)} />
+          <TimeRow label="Block start" min={t.blockOffMin} dayMs={dayMs} testId="time-blockoff" />
+          <TimeRow label="Take-off" min={t.takeoffMin} dayMs={dayMs} testId="time-takeoff" />
+          <TimeRow label="Landing" min={t.landingMin} dayMs={dayMs} testId="time-landing" tone={late(t.landingMin)} />
+          <TimeRow
+            label="Block stop"
+            min={t.blockOnMin}
+            dayMs={dayMs}
+            testId="time-blockon"
+            tone={late(t.blockOnMin)}
+          />
           {navlog && navlog.legs.length > 0 && (
             <KV
               k="Flight / block time"
@@ -124,7 +135,7 @@ export function WhenSection() {
               }
             />
           )}
-          {sunset != null && <TimeRow label="Sunset at destination" min={sunset} testId="time-sunset" />}
+          {sunset != null && <TimeRow label="Sunset at destination" min={sunset} dayMs={dayMs} testId="time-sunset" />}
         </div>
       )}
     </Section>

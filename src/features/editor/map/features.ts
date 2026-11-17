@@ -232,9 +232,14 @@ const mercLat = (y: number) => (Math.atan(Math.sinh(y)) * 180) / Math.PI;
 export const ARROW_AT = [0.3, 0.7] as const;
 
 /** Direction-of-flight arrowheads: points along each leg's drawn (Mercator-straight) line, `rot` = the
- *  line's direction in degrees clockwise from north (the icon points north). */
+ *  line's direction in degrees clockwise from north (the icon points north). A leg also flown the
+ *  other way keeps only its arrow near its end, so the shared line shows one arrow each way. */
 export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
   const out: Feature<Point, Record<string, unknown>>[] = [];
+  const key = (a: Pick<RoutePoint, 'lat' | 'lon'>, b: Pick<RoutePoint, 'lat' | 'lon'>) =>
+    `${a.lat.toFixed(6)},${a.lon.toFixed(6)}>${b.lat.toFixed(6)},${b.lon.toFixed(6)}`;
+  const legs = new Set<string>();
+  for (let i = 0; i + 1 < route.length; i++) legs.add(key(route[i], route[i + 1]));
   for (let i = 0; i + 1 < route.length; i++) {
     const a = route[i],
       b = route[i + 1];
@@ -244,7 +249,8 @@ export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC
       dy = yb - ya;
     if (Math.hypot(dx, dy) < 1e-9) continue;
     const rot = Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) * 10) / 10;
-    for (const t of ARROW_AT) {
+    const both = legs.has(key(b, a));
+    for (const t of both ? [ARROW_AT[1]] : ARROW_AT) {
       out.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [a.lon + (b.lon - a.lon) * t, mercLat(ya + dy * t)] },

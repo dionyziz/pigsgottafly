@@ -54,7 +54,7 @@ describe('lobby format', () => {
     expect(fmtDuration(10)).toBe('0h10');
     expect(fmtDuration(null)).toBe('');
   });
-  it('converts UTC block-off to a local clock time', () => {
+  it('converts UTC block start to a local clock time', () => {
     expect(utcToLocal('2026-07-01', '09:30', 'Europe/Athens')).toBe('12:30'); // EEST, UTC+3
     expect(utcToLocal('2026-12-01', '09:30', 'Europe/Athens')).toBe('11:30'); // EET, UTC+2
     expect(utcToLocal('2026-12-01', '', 'Europe/Athens')).toBe('');

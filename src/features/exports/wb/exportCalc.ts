@@ -101,7 +101,7 @@ export interface ExportCalc {
   missingWeights: string[];
   /** Fuel at take-off / landing used for the W&B, L. */
   fuelTakeoffL: number;
-  /** Fuel on board at block-off by type (litres, mass, the mix's density); null without an aircraft. */
+  /** Fuel on board at block start by type (litres, mass, the mix's density); null without an aircraft. */
   fuelLoad: FuelLoad | null;
   fuelLandingL: number;
   /** Fuel burnt between take-off and landing in the W&B (taxi allowance + trip), L. */
@@ -121,7 +121,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
   const computed = computeFlightNavlog({ doc, aircraft, settings, weather, ref });
   const { navlog, fuel } = computed;
 
-  // ---- W&B: take-off with the fuel on board at block-off, landing with FOB − (taxi + trip)
+  // ---- W&B: take-off with the fuel on board at block start, landing with FOB − (taxi + trip)
   //      (MD 4.3 and the club calculator: no taxi burn before take-off).
   let wb: WbResult | null = null;
   let wbLoadWarnings: string[] = [];

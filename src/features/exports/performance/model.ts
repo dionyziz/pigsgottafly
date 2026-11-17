@@ -412,7 +412,7 @@ function block(
     } else
       weatherSource = fin(e.timeMin)
         ? 'No surface weather for this time: ISA, calm and QNH 1013 assumed.'
-        : 'Block-off time not set: ISA, calm and QNH 1013 assumed.';
+        : 'Block start time not set: ISA, calm and QNH 1013 assumed.';
   }
 
   if (p) for (const t of p.warnings) if (!warnings.includes(t)) warnings.push(t);
@@ -514,7 +514,7 @@ export function perfSheetModel(input: PerfSheetInput): PerfSheetModel {
     per2 && per2 !== 1 ? `2.0 % adverse slope: × ${per2} (upslope for take-off, downslope for landing; linear)` : '';
   const warnings: string[] = [];
   if (!navReady(calc))
-    warnings.push('Block-off time not set: take-off and landing times, and so the weather, are unknown.');
+    warnings.push('Block start time not set: take-off and landing times, and so the weather, are unknown.');
   const allEnds = [calc.departure, ...calc.stops.flatMap((x) => [x.landing, x.takeoff]), calc.arrival];
   if (allEnds.some((e) => e.massSource === 'mtow'))
     warnings.push('Masses are not from the loading sheet (MTOW used): complete the manifest and the aircraft.');

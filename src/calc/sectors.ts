@@ -4,7 +4,7 @@
 //
 // Fuel through the sectors, with the same conventions as the single-sector W&B (MD 4.3 and the
 // club calculator, see wb.ts and fuel.ts):
-//   - sector 1 takes off with the fuel on board at block-off (no taxi burn before take-off);
+//   - sector 1 takes off with the fuel on board at block start (no taxi burn before take-off);
 //   - each sector lands with its take-off fuel − one start-up/taxi/take-off/landing allowance −
 //     the sector's trip fuel (Σ of its legs' whole litres, as the navlog);
 //   - the next sector takes off with the fuel it landed with (no refuelling at the stop; the
@@ -73,7 +73,7 @@ export interface FlightSectorsInput {
   circuits?: readonly NavlogCircuit[] | null;
   /** Aircraft FuelSpec.taxiAllowanceL (per take-off). */
   taxiAllowanceL: number;
-  /** Fuel on board at block-off, L. */
+  /** Fuel on board at block start, L. */
   fobL: number;
 }
 

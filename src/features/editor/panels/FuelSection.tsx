@@ -106,7 +106,7 @@ export function FuelSection() {
       <div className="ep-fob" data-focus="fob">
         {multi ? (
           <div className="field">
-            Fuel on board at block-off (L)
+            Fuel on board at block start (L)
             <span className="row ep-fob-types">
               {types.map((t) => (
                 <label key={t} className="ep-fob-type">
@@ -147,7 +147,7 @@ export function FuelSection() {
           </div>
         ) : (
           <label className="field">
-            Fuel on board at block-off (L)
+            Fuel on board at block start (L)
             <span className="row">
               <NumberField
                 value={doc.fobL}
@@ -197,7 +197,7 @@ export function FuelSection() {
         </div>
       </div>
       <div className="ep-kvs">
-        <KV k="Endurance at block-off" v={<span className="tnum">{fmtDur(fuel.enduranceMin)}</span>} />
+        <KV k="Endurance at block start" v={<span className="tnum">{fmtDur(fuel.enduranceMin)}</span>} />
         <KV
           k="Fuel at landing"
           tone={fuel.landingReserveShort ? 'danger' : undefined}

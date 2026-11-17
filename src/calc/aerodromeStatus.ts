@@ -362,7 +362,7 @@ export interface HandlingEndInput {
   role: 'departure' | 'destination';
   code: string;
   aerodrome: RefAerodrome | null | undefined;
-  /** When the aircraft is there (block-off … take-off, landing … block-on), epoch ms; NaN = time not set. */
+  /** When the aircraft is there (block start … take-off, landing … block stop), epoch ms; NaN = time not set. */
   fromMs: number;
   toMs: number;
   /** 00:00 UTC of the flight date (used when the time is not set: the whole day). */
@@ -385,7 +385,7 @@ export function handlingEnd(e: HandlingEndInput, opts: AdStatusOptions = {}): Ha
   const h = ad.hours.handling;
   // the AIP's own words ('H24', 'HO (by arrangement)', 'During summer only, on AD operating hours')
   const label = h.parsed.partial ? 'see AIP' : normalizeAipText(h.text).replace(/\.$/, '');
-  const when = timed ? ` at ${clockZ(v.at)}Z` : ' all day (block-off time not set)';
+  const when = timed ? ` at ${clockZ(v.at)}Z` : ' all day (block start time not set)';
   let reason: string;
   if (v.notam) {
     const eff = (opts.effects ?? []).find((x) => x.key === v.notam && x.icao === ad.icao);

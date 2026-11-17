@@ -88,7 +88,7 @@ export function wbPerfContent(wb: WbSheetModel, perf: PerfSheetModel): WbPerfCon
       },
       limits: wb.limits,
       weighing: wb.weighing,
-      note: `Arm of a total = centre of gravity, m aft of the datum${wb.datum ? ` (${wb.datum.toLowerCase()})` : ''}. Take-off with the fuel on board at block-off; landing after the taxi allowance and trip fuel${stops ? '; each stop: one more taxi allowance, no refuelling' : ''}.`,
+      note: `Arm of a total = centre of gravity, m aft of the datum${wb.datum ? ` (${wb.datum.toLowerCase()})` : ''}. Take-off with the fuel on board at block start; landing after the taxi allowance and trip fuel${stops ? '; each stop: one more taxi allowance, no refuelling' : ''}.`,
     },
     perf: {
       verdict: perf.verdict,

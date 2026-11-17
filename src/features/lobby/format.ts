@@ -30,7 +30,7 @@ export function matchesQuery(text: string, q: string): boolean {
 }
 
 /**
- * Splits rows into upcoming (date ≥ today, soonest first, then by block-off) and past (most
+ * Splits rows into upcoming (date ≥ today, soonest first, then by block start) and past (most
  * recent first). Rows without a date count as upcoming drafts and go last.
  */
 export function splitFlights(

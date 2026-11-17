@@ -257,7 +257,7 @@ describe('General Declaration: who sends it', () => {
     expect(genDecHandling([end('departure', 'LGEL', '2026-11-17T20:00:00Z')], null).ends[0].handled).toBe(false);
     const g = genDecHandling([end('departure', 'LGEL', null)], null).ends[0];
     expect(g.handled).toBe(false);
-    expect(g.reason).toContain('all day (block-off time not set)');
+    expect(g.reason).toContain('all day (block start time not set)');
   });
   test('a custom point is not handled; the override decides either way', () => {
     const custom: HandlingEndInput = {

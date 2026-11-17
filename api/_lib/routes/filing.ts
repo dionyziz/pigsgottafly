@@ -248,8 +248,8 @@ export const routes: Route[] = [
       let eobt: number;
       if (input.eobt !== undefined) eobt = checkEobt(input.eobt);
       else {
-        if (!ctx.timed) throw badRequest('set the block-off time first');
-        eobt = checkEobt(ctx.blockOff, 'the flight’s block-off time');
+        if (!ctx.timed) throw badRequest('set the block start time first');
+        eobt = checkEobt(ctx.blockOff, 'the flight’s block start time');
       }
       const cur = await record(db, pilot.id, params.id);
       if (cur && cur.providerId && !FINAL.has(cur.status))

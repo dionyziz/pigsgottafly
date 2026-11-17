@@ -5,7 +5,7 @@
 // Table order follows MD 4.3: corrected empty weight, (unusable fuel when the weighing excluded
 // it), fuel, then the loading stations in the aircraft's order (PIC and front passenger, rear
 // passengers, baggage areas), with the people of each seat station listed under it.
-// Take-off = fuel on board at block-off (no taxi burn, as MD 4.3 and the club calculator);
+// Take-off = fuel on board at block start (no taxi burn, as MD 4.3 and the club calculator);
 // landing = take-off − (taxi allowance + trip fuel) at the fuel arm. An intermediate full stop
 // adds a total at the stop (landing there, and the take-off from there with the same fuel: no
 // refuelling, no taxi burn before take-off) and its own check against MLW, MTOW and the envelope.

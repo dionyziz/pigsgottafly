@@ -363,7 +363,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.match(await text('[data-testid=aerodrome-tip-hours]'), /HO: hours published by NOTAM/);
   await hover(p.x + 200, p.y + 150);
 
-  // ---- 3. date and block-off, aircraft, fuel on board (PIC alone first: club case 60)
+  // ---- 3. date and block start, aircraft, fuel on board (PIC alone first: club case 60)
   await setValue('[data-testid=flight-date]', DATE);
   await page.type('[data-testid=block-off]', BLOCK_OFF);
   await page.blur();
@@ -526,7 +526,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   }));
   const card = O.CARDS['SX-ASV']['Magnetic compass'];
   const exp = O.navlog(legsIn, { variation: 5.2, card, flow: 30, extra: 4 });
-  // times: take-off = block-off + taxi; each leg's wind at its altitude and mid-leg time
+  // times: take-off = block start + taxi; each leg's wind at its altitude and mid-leg time
   const d0 = Date.parse(DATE + 'T00:00:00Z');
   let t = blockOffMs + 15 * 60000;
   for (let i = 0; i < 3; i++) {

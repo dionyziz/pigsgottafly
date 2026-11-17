@@ -25,9 +25,9 @@ describe('fix links', () => {
 
 describe('planning warnings from src/calc', () => {
   test.each([
-    ['Block-off time not set: 12:00Z assumed.', { kind: 'flight', focus: 'blockOff' }],
+    ['Block start time not set: 12:00Z assumed.', { kind: 'flight', focus: 'blockOff' }],
     [
-      'Performance: Block-off time not set: take-off and landing times, and so the weather, are unknown.',
+      'Performance: Block start time not set: take-off and landing times, and so the weather, are unknown.',
       { kind: 'flight', focus: 'blockOff' },
     ],
     ['Taxi-out time not set: 0 min used.', { kind: 'flight', focus: 'taxiOut' }],

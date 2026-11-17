@@ -1,7 +1,7 @@
 // The navlog: times, winds, WCA/TH/MH/DEV/CH/GS/ETE/fuel per leg.
 //
 // Rules (PLAN-v3 "Calculations", ported from the v2 app js/app.js calc()):
-//   - block-off + taxi out = take-off; legs flown in sequence; landing + taxi in = block-on.
+//   - block start + taxi out = take-off; legs flown in sequence; landing + taxi in = block stop.
 //   - first and last legs at pattern TAS, the others at cruise TAS (LegOverride.tasKt wins); a
 //     single-leg route is both first and last, so pattern TAS. Legs into and out of an
 //     intermediate aerodrome with a touch-and-go or stop request (NavlogInput.patternLegs) are at
@@ -16,7 +16,7 @@
 //   - rounding as on the paper sheet: nav.computeLeg(); totals with nav.summarize().
 //   - trip fuel = Σ leg fuel (each rounded up); fuel total on the sheet = trip + taxi allowance
 //     (× (1 + intermediate full stops): each stop is another start-up, taxi and take-off).
-//   - the timeline (leg start/end, landing, block-on) uses the unrounded leg minutes (as v2); the
+//   - the timeline (leg start/end, landing, block stop) uses the unrounded leg minutes (as v2); the
 //     written ETE column rounds each leg.
 //   - sunset at the destination (AIP GEN 2.7 tables when given, else NOAA).
 import type { RefSunTable } from '../shared/ref.js';
@@ -178,7 +178,7 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   const bo = parseClock(input.blockOff);
   const blockOffSet = isFinite(bo);
   const blockOffMin = blockOffSet ? bo : 12 * 60;
-  if (n && !blockOffSet) warnings.push('Block-off time not set: 12:00Z assumed.');
+  if (n && !blockOffSet) warnings.push('Block start time not set: 12:00Z assumed.');
   const taxiOut = fin(input.taxiOutMin) && input.taxiOutMin >= 0 ? input.taxiOutMin : 0;
   const taxiIn = fin(input.taxiInMin) && input.taxiInMin >= 0 ? input.taxiInMin : 0;
   if (n && !fin(input.taxiOutMin)) warnings.push('Taxi-out time not set: 0 min used.');

@@ -149,7 +149,7 @@ describe('against the independent reference', () => {
     }
   });
 
-  test('times: block-off + taxi out, legs in sequence (unrounded), + taxi in', () => {
+  test('times: block start + taxi out, legs in sequence (unrounded), + taxi in', () => {
     const flown = exp.rows.reduce((s, r) => s + r.min, 0);
     expect(res.times.blockOffMin).toBe(540);
     expect(res.times.takeoffMin).toBe(555);
@@ -312,7 +312,7 @@ test('missing data: warnings, calm wind, defaults', () => {
   );
   expect(noWinds.warnings).toEqual(
     expect.arrayContaining([
-      'Block-off time not set: 12:00Z assumed.',
+      'Block start time not set: 12:00Z assumed.',
       'Taxi-out time not set: 0 min used.',
       'Taxi-in time not set: 0 min used.',
       'No winds aloft forecast: calm wind assumed.',

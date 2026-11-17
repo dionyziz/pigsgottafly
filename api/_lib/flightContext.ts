@@ -1,6 +1,6 @@
 // What the NOTAM briefing and the filing routes need to know about a flight, computed on the server
 // from the stored flight and the current reference data: planned altitudes (the same defaults as the
-// editor: src/calc/altitudes.ts, overridden per leg), the block-off … block-on window, the
+// editor: src/calc/altitudes.ts, overridden per leg), the block start … block stop window, the
 // aerodromes the flight uses and the aerodromes near the route.
 import { defaultAltitudes } from '../../src/calc/altitudes.js';
 import { distanceNm, parseClock } from '../../src/calc/nav.js';
@@ -58,10 +58,10 @@ export interface FlightContext {
   alternates: string[];
   /** Effective altitude per leg, ft (NaN = no rule gave one). */
   altitudesFt: number[];
-  /** Block-off and block-on, UTC ms (whole day when block-off is not set). */
+  /** Block start and block stop, UTC ms (whole day when block start is not set). */
   blockOff: number;
   blockOn: number;
-  /** True when block-off is set (the window is the flight, not the whole day). */
+  /** True when block start is set (the window is the flight, not the whole day). */
   timed: boolean;
   /** Aerodromes used: ICAO → 'departure' | 'destination' | 'intermediate stop' | 'alternate'. */
   used: Map<string, string>;

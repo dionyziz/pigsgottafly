@@ -38,9 +38,9 @@ export type WindModel = 'ecmwf_ifs025' | 'gfs_seamless' | 'icon_seamless' | 'bes
  * Calculations treat null as "not set" and warn.
  */
 export interface PilotSettings {
-  /** Block-off → take-off, minutes. null = not set yet. Copied to new flights. */
+  /** Block start → take-off, minutes. null = not set yet. Copied to new flights. */
   taxiOutMin: number | null;
-  /** Landing → block-on, minutes. null = not set yet. Copied to new flights. */
+  /** Landing → block stop, minutes. null = not set yet. Copied to new flights. */
   taxiInMin: number | null;
   /** Fuel on board default = required + this many minutes at the planning burn. null = not set. */
   reserveMin: number | null;
@@ -578,7 +578,7 @@ export interface FlightOptions {
   /** Touch-and-go / intermediate-stop requests, at most one of each kind per point (missing on older flights = none). */
   aerodromeRequests?: AerodromeRequest[];
   /**
-   * Fuel on board at block-off per type, L, when the pilot gives it by type (aircraft with more
+   * Fuel on board at block start per type, L, when the pilot gives it by type (aircraft with more
    * than one approved fuel; the club W&B calculator takes MOGAS and AVGAS litres separately).
    * FlightDoc.fobL is then their sum. null / missing = all of fobL is the aircraft's first fuel.
    */
@@ -619,7 +619,7 @@ export interface FlightDoc {
   /** Copied from the profile at creation (null if the profile has none yet), editable per flight. */
   taxiOutMin: number | null;
   taxiInMin: number | null;
-  /** Fuel on board at block-off, L. null = default (required + reserve). */
+  /** Fuel on board at block start, L. null = default (required + reserve). */
   fobL: number | null;
   route: RoutePoint[];
   legOverrides: Record<LegKey, LegOverride>;

@@ -117,7 +117,7 @@ export function planningFix(text: string): Fix | null {
   const t = text.replace(prefix, '').replace(prefix, '');
   const flight = (focus?: EditorFocus): Fix => ({ kind: 'flight', focus });
   const aircraft = (focus?: AircraftFocus): Fix => ({ kind: 'aircraft', focus });
-  if (/block-off time not set|after sunset/i.test(t)) return flight('blockOff');
+  if (/block start time not set|after sunset/i.test(t)) return flight('blockOff');
   if (/taxi-out time not set/i.test(t)) return flight('taxiOut');
   if (/taxi-in time not set/i.test(t)) return flight('taxiIn');
   if (/flight date not set|has no date|no date/i.test(t)) return flight('date');

@@ -61,7 +61,7 @@ export interface FuelPlan {
   fobIsDefault: boolean;
   /** FOB − taxi − trip. */
   landingFuelL: number;
-  /** Endurance at block-off from FOB at the planning burn, whole minutes rounded down (FPL item 19 E/). */
+  /** Endurance at block start from FOB at the planning burn, whole minutes rounded down (FPL item 19 E/). */
   enduranceMin: number;
   /** Endurance of the fuel left on landing at the planning burn, whole minutes rounded down. */
   landingEnduranceMin: number;

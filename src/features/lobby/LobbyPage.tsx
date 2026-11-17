@@ -1,5 +1,5 @@
 // Lobby (Google Docs style): search by name/date/aircraft/route, upcoming flights first (soonest
-// first) then past ones (most recent first); each row has a route sketch, title, date, block-off,
+// first) then past ones (most recent first); each row has a route sketch, title, date, block start,
 // aircraft and totals, and a ⋮ menu: Open in new tab, Rename, Make a copy, Move to trash (with
 // Undo). A Trash view lists trashed flights with Restore. The header (h1, tabs, New flight) keeps
 // its layout in both views.
@@ -179,7 +179,7 @@ export function LobbyPage() {
           <span />
           <span>Flight</span>
           <span className="hide-sm">Date</span>
-          <span className="hide-sm">Block-off</span>
+          <span className="hide-sm">Block start</span>
           <span className="num hide-sm">Distance</span>
           <span className="num hide-sm">Time</span>
           <span className="num hide-sm">Fuel</span>

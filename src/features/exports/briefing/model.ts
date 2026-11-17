@@ -22,7 +22,7 @@ export interface BriefingModel {
   title: string;
   date: string;
   route: string;
-  /** Block-off − margin … block-on + margin. */
+  /** Block start − margin … block stop + margin. */
   window: string;
   /** 'below 4500 ft · 10 NM either side of the route'. */
   filter: string;
@@ -72,7 +72,7 @@ export function briefingModel(input: { doc: FlightDoc; title: string; briefing: 
       hidden: [],
     };
   }
-  const window = `${fmtNotamTime(b.window.from)} – ${fmtNotamTime(b.window.to)} (block-off − ${b.params.marginMin} min … block-on + ${b.params.marginMin} min)`;
+  const window = `${fmtNotamTime(b.window.from)} – ${fmtNotamTime(b.window.to)} (block start − ${b.params.marginMin} min … block stop + ${b.params.marginMin} min)`;
   const filter = `lower limit at or below ${Math.round(b.params.maxAltFt)} ft · within ${b.params.corridorNm} NM of the route`;
   const source =
     b.status === 'ok' && b.fetched

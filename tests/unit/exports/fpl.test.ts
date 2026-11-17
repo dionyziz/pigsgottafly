@@ -343,7 +343,7 @@ describe('the message', () => {
       }),
     );
     for (const w of r.warnings) expect(r.fixes[w], w).toBeTruthy();
-    expect(r.fixes['Block-off time (EOBT) not set (item 13).']).toEqual({ kind: 'flight', focus: 'blockOff' });
+    expect(r.fixes['Block start time (EOBT) not set (item 13).']).toEqual({ kind: 'flight', focus: 'blockOff' });
   });
 
   test('equipment rules: R needs PBN/, Z needs NAV/COM/DAT, N alone', () => {

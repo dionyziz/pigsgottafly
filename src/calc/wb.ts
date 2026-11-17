@@ -5,7 +5,7 @@
 //     mass × rounded arm (SX-ASV: 691.2 kg, 719.12 kg·m, while 691.2 × 1.0403 = 719.06).
 //   - Seats: each person sits in a seat (SeatPosition.id); the seat's station gives the arm.
 //   - Fuel: litres × the aircraft's fuel density, at the fuel station arm. The fuel given for
-//     take-off is the caller's choice; the club (and MD 4.3) use the fuel on board at block-off,
+//     take-off is the caller's choice; the club (and MD 4.3) use the fuel on board at block start,
 //     i.e. the start-up/taxi fuel is not subtracted before take-off (conservative mass).
 //   - Unusable fuel: added as its own row when the weighing report excludes it (SX-ASG was weighed
 //     with empty tanks). The club calculator does NOT add it for SX-ASG (see the club test).

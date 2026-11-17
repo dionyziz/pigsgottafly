@@ -27,7 +27,7 @@ describe('ExportWarnings', () => {
     const html = at(
       <ExportWarnings
         warnings={[
-          'Block-off time not set.',
+          'Block start time not set.',
           'Something about the weather',
           { text: 'Colours missing', fix: { kind: 'aircraft', focus: 'colours' } },
         ]}
@@ -43,7 +43,7 @@ describe('ExportWarnings', () => {
     expect(html).toContain('href="/hangar/ac1?focus=colours"');
     expect(html.match(/data-testid="warning-fix"/g)).toHaveLength(2);
 
-    const plain = at(<ExportWarnings warnings={['Block-off time not set.']} classify={false} level="danger" />);
+    const plain = at(<ExportWarnings warnings={['Block start time not set.']} classify={false} level="danger" />);
     expect(plain).toContain('export-warnings danger');
     expect(plain).toContain('<li class="danger">');
     expect(plain).not.toContain('warning-fix');
