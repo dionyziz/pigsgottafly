@@ -361,6 +361,12 @@ export function RouteMap(props: RouteMapProps) {
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     m.addControl(new maplibregl.ScaleControl({ unit: 'nautical', maxWidth: 120 }), 'bottom-right');
     m.on('styleimagemissing', () => addSymbols(m));
+    // the attribution starts collapsed to its (i) button
+    m.once('idle', () => {
+      const a = container.querySelector('.maplibregl-ctrl-attrib');
+      a?.classList.remove('maplibregl-compact-show');
+      a?.removeAttribute('open');
+    });
     m.on('load', () => {
       addSymbols(m);
       const { refData: r, waypoints: w } = live.current.props;

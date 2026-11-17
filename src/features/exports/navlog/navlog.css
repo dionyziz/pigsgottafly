@@ -30,12 +30,7 @@
 .md42 .fold-line { position: absolute; top: calc(30 * var(--u)); bottom: 0; left: calc(570.6 * var(--u)); width: 0; border-left: var(--hair) dashed var(--line); pointer-events: none; z-index: 2; }
 .md42 .date-top { position: absolute; right: 0; top: calc(3 * var(--u)); height: calc(24 * var(--u)); display: flex; align-items: center; gap: calc(6 * var(--u)); }
 .md42 .date-top .v { width: calc(200 * var(--u)); justify-content: flex-end; font-weight: 600; color: #000; }
-.md42 .md42-sig { display: inline-flex; align-items: center; gap: calc(6 * var(--u)); white-space: nowrap; }
-.md42 .md42-sig-lbl { font-size: calc(10 * var(--u)); font-weight: 700; }
-.md42 .md42-sig .pgf-signature { font-size: calc(17 * var(--u)) !important; }
-.md42 .md42-sig .pgf-signature-wrap { display: inline-flex; align-items: baseline; gap: calc(6 * var(--u)); }
-.md42 .md42-sig .pgf-signature-when { display: inline; font-size: calc(8 * var(--u)); }
-.md42 .pgno { display: inline-flex; align-items: center; justify-content: center; width: calc(21 * var(--u)); height: calc(21 * var(--u)); border: calc(1.4 * var(--u)) solid #000; border-radius: 50%; font-size: calc(12 * var(--u)); font-weight: 700; line-height: 1; flex: none; }
+.md42 .pgno { display: inline-flex; align-items: center; justify-content: center; width: calc(21 * var(--u)); height: calc(21 * var(--u)); border: calc(1.4 * var(--u)) solid #000; border-radius: 50%; font-size: calc(12 * var(--u)); font-weight: 700; line-height: 1; flex: none; margin-right: calc(4 * var(--u)); }
 
 .md42 .g { display: grid; border: var(--thick) solid var(--line); border-bottom: none; }
 .md42 .g > div { border-right: var(--hair) solid var(--line); border-bottom: var(--hair) solid var(--line); position: relative; min-width: 0; overflow: hidden; }

@@ -176,6 +176,11 @@ test('legs carry direction arrows; a route point under the cursor grows with a h
     [Math.max(...lons) + 0.05, Math.max(...lats) + 0.05],
   ]);
   await sleep(400);
+  // the map attribution is collapsed to its (i) button
+  await page.waitFor(() => {
+    const a = document.querySelector('.maplibregl-ctrl-attrib');
+    return a && !a.classList.contains('maplibregl-compact-show') && !a.hasAttribute('open');
+  });
   const arrows = await page.eval(() => {
     const m = document.querySelector('.pgf-map-canvas').__pgfMap;
     return {

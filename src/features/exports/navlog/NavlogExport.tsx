@@ -17,7 +17,6 @@ import { REF, SUN_TABLES } from '../../../data/ref';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { Flight } from '../../../shared';
 import { Loading, Panel } from '../../../ui';
-import { type ShownSignature, Signature } from '../form731/Form731';
 import { useFlightAircraft } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
 import { fitSheets, SHEET_UNITS } from './fit';
@@ -36,9 +35,6 @@ import {
 export function NavlogExport({ flight }: { flight: Flight }) {
   const pilot = usePilot();
   const ac = useFlightAircraft(flight.aircraftId);
-  // the PIC's e-signature on every sheet, dated when the log is generated
-  const [signedAt] = useState(() => Date.now());
-  const signature: ShownSignature | null = pilot.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
   const aircraft = ac.aircraft;
 
   // ---- weather: winds aloft at leg midpoints, surface at both ends and every stop (Open-Meteo), METAR/TAF
@@ -146,7 +142,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
         }}
       >
         {doc.sheets.map((s) => (
-          <Sheet key={s.index} sheet={s} signature={signature} />
+          <Sheet key={s.index} sheet={s} />
         ))}
       </div>
     </div>
@@ -259,7 +255,7 @@ function TerminalCells({ t, rowH }: { t: TerminalRow | undefined; rowH: number }
   );
 }
 
-function Sheet({ sheet, signature }: { sheet: NavlogSheet; signature: ShownSignature | null }) {
+function Sheet({ sheet }: { sheet: NavlogSheet }) {
   const h = sheet.header;
   const tr = 4 + 2 * LEGS_PER_SHEET;
   const rowsTpl = `calc(19*var(--u)) calc(19*var(--u)) calc(19*var(--u)) repeat(${2 * LEGS_PER_SHEET}, calc(27*var(--u))) calc(30*var(--u))`;
@@ -360,12 +356,6 @@ function Sheet({ sheet, signature }: { sheet: NavlogSheet; signature: ShownSigna
       aria-label={`Navigation log sheet ${sheet.index + 1} of ${sheet.count}`}
     >
       <div className="date-top">
-        {signature && (
-          <span className="md42-sig" data-testid="navlog-signature">
-            <span className="md42-sig-lbl">PIC</span>
-            <Signature s={signature} />
-          </span>
-        )}
         <V t={h.date} cap={16} cls="date" />
         <span className="pgno">{sheet.index + 1}</span>
       </div>
