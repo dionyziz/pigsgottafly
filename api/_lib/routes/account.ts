@@ -8,7 +8,8 @@
 // pilots row goes and its ON DELETE CASCADE foreign keys take the rest (sessions; aircraft →
 // shares granted, files and chunks; operators → operator shares granted, operator files and chunks; flights → manifest, forms, briefings, filings). The aircraft
 // the pilot owned are deleted even when shared: other pilots' flights lose them (aircraft_id SET
-// NULL, as when an owner deletes an aircraft). tests/api/account.test.ts checks that no column of
+// NULL, as when an owner deletes an aircraft). The e-mails of other pilots' shares with the pilot
+// stay in their log without the address. tests/api/account.test.ts checks that no column of
 // any table still holds the pilot's id or e-mail afterwards.
 import { sessionCookie } from '../auth.js';
 import type { Queryable } from '../db.js';
@@ -16,6 +17,7 @@ import type { Route } from '../http.js';
 import { badRequest, reply } from '../http.js';
 import { toOperator } from '../operators.js';
 import { toAircraft, toFlight, toPassenger, toPilot, toWaypoint } from '../rows.js';
+import { SHARE_FORMS } from '../sendCaps.js';
 import { toFile } from './files.js';
 
 const OWNER_COLUMNS = ['pilot_id', 'owner_id', 'owner_pilot_id'];
@@ -35,6 +37,13 @@ export async function deletePilotData(q: Queryable, pilotId: string): Promise<vo
   // the v2 flights kept by migration 001 (owner = the pilot id), where that table still exists
   const [legacy] = await q.query(`SELECT to_regclass('legacy_flights') IS NOT NULL AS ok`);
   if (legacy?.ok) await q.query('DELETE FROM legacy_flights WHERE owner = $1', [pilotId]);
+  // the notices of shares other pilots made with this one keep counting for them, without the address
+  const [me] = await q.query('SELECT email FROM pilots WHERE id = $1', [pilotId]);
+  if (me?.email)
+    await q.query(
+      `UPDATE mail_log SET recipient = 'deleted account' WHERE form = ANY($1::text[]) AND lower(recipient) = lower($2)`,
+      [SHARE_FORMS, me.email],
+    );
   await q.query('DELETE FROM pilots WHERE id = $1', [pilotId]);
 }
 

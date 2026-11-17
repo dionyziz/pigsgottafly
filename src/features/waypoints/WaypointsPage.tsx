@@ -1,18 +1,20 @@
 // My waypoints: the pilot's saved custom points (list, search, rename in place, edit position/notes,
 // delete) beside a small map. Points are usually saved from the flight editor; here a click on the
-// map, or typed coordinates, adds one too.
+// map, or typed coordinates, adds one too. An existing waypoint's dialog saves as it is edited
+// (useAutosave).
 import '../lobby/lists.css';
 
 import { useMemo, useRef, useState } from 'react';
 
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
-import { api } from '../../data/api';
+import { api, keepalivePut } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import type { LatLon, Waypoint } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import {
   AsyncView,
+  AutosaveFooter,
   ConfirmDialog,
   Dialog,
   DialogFooter,
@@ -21,6 +23,7 @@ import {
   KebabMenu,
   rowClick,
   SearchBox,
+  useAutosave,
 } from '../../ui';
 import { matchesQuery } from '../lobby/format';
 import { type FormIssue, useFormIssues } from '../passengers/formIssues';
@@ -195,9 +198,10 @@ export function WaypointsPage() {
           existing={all}
           onClose={() => setEditing(null)}
           onSaved={(w, created) => {
-            setEditing(null);
             setSelected(w.id);
-            toast(created ? `Saved ${w.name}` : `Updated ${w.name}`);
+            if (!created) return;
+            setEditing(null);
+            toast(`Saved ${w.name}`);
           }}
         />
       )}
@@ -236,6 +240,13 @@ export function validateWaypoint(
   return out;
 }
 
+/** The form of a waypoint: name, position and notes as typed. */
+interface WaypointForm {
+  name: string;
+  pos: string;
+  notes: string;
+}
+
 function WaypointDialog({
   waypoint,
   at,
@@ -247,27 +258,53 @@ function WaypointDialog({
   at: LatLon | null;
   existing: Waypoint[];
   onClose: () => void;
+  /** After adding (created) and after each save of an existing waypoint. */
   onSaved: (w: Waypoint, created: boolean) => void;
 }) {
   const start = waypoint ?? at;
   const form = useRef<HTMLFormElement>(null);
-  const [name, setName] = useState(waypoint?.name ?? '');
-  const [pos, setPos] = useState(start ? `${start.lat.toFixed(6)}, ${start.lon.toFixed(6)}` : '');
-  const [notes, setNotes] = useState(waypoint?.notes ?? '');
+  const [f, setF] = useState<WaypointForm>({
+    name: waypoint?.name ?? '',
+    pos: start ? `${start.lat.toFixed(6)}, ${start.lon.toFixed(6)}` : '',
+    notes: waypoint?.notes ?? '',
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const issues = useFormIssues<WaypointField>(form);
-  const parsed = parseLatLon(pos);
+  const parsed = parseLatLon(f.pos);
+  const set = (k: keyof WaypointForm, v: string) => {
+    setF((x) => ({ ...x, [k]: v }));
+    if (k !== 'notes') issues.clear(k === 'pos' ? 'position' : k);
+  };
+
+  // an existing waypoint saves on its own; its problems show as they arise
+  const live = validateWaypoint(f.name, f.pos, existing, waypoint?.id);
+  const input = (x: WaypointForm) => {
+    const p = parseLatLon(x.pos)!;
+    return { name: normaliseWaypointName(x.name), lat: p.lat, lon: p.lon, notes: x.notes.trim() };
+  };
+  const autosave = useAutosave({
+    value: f,
+    enabled: !!waypoint && live.length === 0,
+    save: async (x) => onSaved(await api.waypoints.update(waypoint!.id, input(x)), false),
+    keepalive: (x) => waypoint && keepalivePut(`waypoints/${encodeURIComponent(waypoint.id)}`, input(x)),
+  });
+  const blocked = autosave.dirty && live.length > 0;
+  const issuesOf = (k: WaypointField) =>
+    waypoint ? live.filter((i) => i.field === k).map((i) => i.message) : issues.of(k);
 
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!issues.check(validateWaypoint(name, pos, existing, waypoint?.id)) || !parsed) return;
+    if (waypoint) {
+      if (blocked) issues.check(live);
+      else if (await autosave.settle()) onClose();
+      return;
+    }
+    if (!issues.check(live) || !parsed) return;
     setBusy(true);
     setError(null);
     try {
-      const input = { name: normaliseWaypointName(name), lat: parsed.lat, lon: parsed.lon, notes: notes.trim() };
-      const w = waypoint ? await api.waypoints.update(waypoint.id, input) : await api.waypoints.create(input);
-      onSaved(w, !waypoint);
+      onSaved(await api.waypoints.create(input(f)), true);
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
@@ -281,23 +318,30 @@ function WaypointDialog({
       busy={busy}
       testId="waypoint-dialog"
       footer={
-        <DialogFooter
-          onCancel={onClose}
-          busy={busy}
-          error={error}
-          primary={{ label: 'Save', onClick: () => void submit() }}
-        />
+        waypoint ? (
+          <AutosaveFooter autosave={autosave} blocked={blocked} onDone={() => void submit()} />
+        ) : (
+          <DialogFooter
+            onCancel={onClose}
+            busy={busy}
+            error={error}
+            primary={{ label: 'Add waypoint', onClick: () => void submit() }}
+          />
+        )
       }
     >
-      <form className="stack" onSubmit={submit} ref={form} noValidate>
-        <Field label="Name" issues={issues.of('name')}>
+      <form
+        className="stack"
+        onSubmit={submit}
+        onBlur={waypoint ? () => autosave.flush() : undefined}
+        ref={form}
+        noValidate
+      >
+        <Field label="Name" issues={issuesOf('name')}>
           <input
             name="name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              issues.clear('name');
-            }}
+            value={f.name}
+            onChange={(e) => set('name', e.target.value)}
             data-autofocus
             maxLength={40}
             placeholder="e.g. ZOFRI"
@@ -306,22 +350,19 @@ function WaypointDialog({
         </Field>
         <Field
           label="Position"
-          issues={issues.of('position')}
+          issues={issuesOf('position')}
           hint={parsed ? <span className="mono">{formatDms(parsed)}</span> : undefined}
         >
           <input
             name="position"
-            value={pos}
-            onChange={(e) => {
-              setPos(e.target.value);
-              issues.clear('position');
-            }}
+            value={f.pos}
+            onChange={(e) => set('pos', e.target.value)}
             placeholder="37.9083, 23.7261 or 375430N 0234334E"
-            className={pos.trim() && !parsed ? 'invalid' : undefined}
+            className={f.pos.trim() && !parsed ? 'invalid' : undefined}
           />
         </Field>
         <Field label="Notes">
-          <textarea name="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <textarea name="notes" rows={2} value={f.notes} onChange={(e) => set('notes', e.target.value)} />
         </Field>
         <button type="submit" hidden />
       </form>

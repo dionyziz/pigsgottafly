@@ -126,7 +126,7 @@ test('share an aircraft, and fly one shared with you', { timeout: 120000 }, asyn
   await page.goto(`${url}/hangar/ac-fran`);
   await page.waitFor(() => !!document.querySelector('[data-testid=aircraft-viewonly]'));
   assert.equal(await page.eval(() => document.querySelector('.ac-fieldset').disabled), true);
-  assert.equal(await page.eval(() => !!document.querySelector('.ac-savebar')), false);
+  assert.equal(await page.eval(() => !!document.querySelector('[data-testid=save-status]')), false);
   await shot('sharing-viewonly');
 
   // a flight can use it

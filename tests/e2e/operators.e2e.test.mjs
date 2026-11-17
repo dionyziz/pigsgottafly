@@ -84,12 +84,47 @@ test(
         !!document.querySelector('[data-testid=operator-page] input[name=phone]'),
     );
     const opId = await page.eval(() => location.pathname.split('/').pop());
+    // Share sits at the right of the title row, a plain button as on the aircraft page
+    const share = await page.eval(() => {
+      const h = document.querySelector('[data-testid=operator-page] h1').getBoundingClientRect();
+      const b = document.querySelector('[data-testid=share-operator]').getBoundingClientRect();
+      return {
+        hTop: h.top,
+        hBottom: h.bottom,
+        hRight: h.right,
+        top: b.top,
+        bottom: b.bottom,
+        left: b.left,
+        w: b.width,
+      };
+    });
+    assert.ok(share.left > share.hRight, 'Share is right of the title');
+    assert.ok(share.top < share.hBottom && share.bottom > share.hTop, 'Share is on the title row');
+    assert.ok(share.w < 150, `Share is a button, not a bar (${share.w}px)`);
+    // no Save button: edits save on their own
+    assert.equal(await page.eval(() => !!document.querySelector('[data-testid=operator-save], .ac-savebar')), false);
     await page.type('input[name=phone]', '+30 210 000 0000');
+    await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved', {
+      timeout: 10000,
+    });
+    assert.equal((await api('GET', `operators/${opId}`)).phone, '+30 210 000 0000');
+    // asking for the sheets without an address: held back, the field says why
     await page.click('[data-testid=operator-requires]');
     await page.waitFor(() => !!document.querySelector('input[name=declarationsEmail]'));
+    await page.waitFor(
+      () =>
+        document.querySelector('[data-testid=save-status]')?.textContent === 'Not saved' &&
+        !!document.querySelector('.field.invalid input[name=declarationsEmail]'),
+    );
+    await page.idle(1200);
+    assert.equal((await api('GET', `operators/${opId}`)).requiresWbPerf, false);
     await page.type('input[name=declarationsEmail]', 'ops@club.example');
-    await page.click('[data-testid=operator-save]');
-    await page.waitFor(() => /All changes saved/.test(document.querySelector('.ac-savebar')?.textContent || ''));
+    await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved', {
+      timeout: 10000,
+    });
+    // kept across a reload
+    await page.reload();
+    await page.waitFor(() => document.querySelector('input[name=declarationsEmail]')?.value === 'ops@club.example');
     const op = await api('GET', `operators/${opId}`);
     assert.deepEqual(
       [op.name, op.phone, op.requiresWbPerf, op.declarationsEmail],

@@ -15,7 +15,7 @@ import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { aircraftScope } from '../../data/aircraftFiles';
-import { api, ApiRequestError } from '../../data/api';
+import { api, ApiRequestError, keepalivePut } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { localToday } from '../../shared/date';
@@ -23,7 +23,7 @@ import { errorMessage } from '../../shared/format';
 import { standardFuelTypes } from '../../shared/fuel';
 import type { HangarAircraft } from '../../shared/sharing';
 import type { Aircraft, AircraftInput } from '../../shared/types';
-import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading } from '../../ui';
+import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading, SaveStatus, useAutosave } from '../../ui';
 import { DocumentsSection, PhotoControl } from './AircraftFiles';
 import { CompassSection } from './CompassSection';
 import { MassBalanceSection } from './MassBalanceSection';
@@ -31,7 +31,6 @@ import { type Issue, type SectionId, validateAircraft } from './model';
 import { PerformanceSection } from './PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from './sections';
 import { SharedChip, ShareDialog } from './ShareDialog';
-import { type AutosaveStatus, useAutosave } from './useAutosave';
 import { useScrollSpy } from './useScrollSpy';
 
 const SECTIONS: { id: SectionId; label: string }[] = [
@@ -98,43 +97,6 @@ export function AircraftPage() {
   );
 }
 
-/** Header status of the autosave: "Saving…", "Saved", or "Not saved" (the problem bar says why). */
-function SaveStatus({ status, blocked }: { status: AutosaveStatus; blocked: boolean }) {
-  const [text, cls] =
-    blocked || status === 'failed'
-      ? ['Not saved', 'danger-text']
-      : status === 'pending' || status === 'saving'
-        ? ['Saving…', 'muted']
-        : status === 'saved'
-          ? ['Saved', 'muted']
-          : ['', ''];
-  return (
-    <span
-      className={'ac-save-status ' + cls}
-      data-testid="save-status"
-      data-status={blocked ? 'blocked' : status}
-      aria-live="polite"
-    >
-      {text}
-    </span>
-  );
-}
-
-/** The edits as they will be sent on unload (fetch keepalive survives the page). */
-function keepaliveSave(id: string, input: AircraftInput) {
-  try {
-    void fetch(`/api/aircraft/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      keepalive: true,
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    }).catch(() => undefined);
-  } catch {
-    /* the body is over the keepalive limit: the page is going anyway */
-  }
-}
-
 function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSaved: (a: HangarAircraft) => void }) {
   const { pilot, setPilot } = useSession();
   const toast = useToast();
@@ -190,7 +152,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
     value: draft,
     enabled: !readOnly && errors.length === 0,
     save,
-    keepalive: (v) => keepaliveSave(aircraft.id, v),
+    keepalive: (v) => keepalivePut(`aircraft/${encodeURIComponent(aircraft.id)}`, v),
   });
   const blocked = autosave.dirty && errors.length > 0;
 

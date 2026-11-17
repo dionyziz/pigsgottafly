@@ -66,7 +66,6 @@ test('a profile edit in one tab clears the warning in another', async () => {
   await b.goto(server.url + '/profile');
   await b.waitFor(() => !!document.querySelector('input[name=licenceNo]'));
   await b.type('input[name=licenceNo]', 'GR.FCL.PPL.12345');
-  await b.click('[data-testid=profile-form] button[type=submit]');
   await b.waitFor(() =>
     fetch('/api/me')
       .then((r) => r.json())

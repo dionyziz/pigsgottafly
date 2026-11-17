@@ -129,6 +129,12 @@ src/
                            remembered), useSortable + DragHandle (pointer, Alt+↑/↓; shared/list.ts moveAt), CardSection, Panel,
                            WarningList (level + link or in-place fix), useHighlightFields, FilePicker, PdfViewer (Blob or URL),
                            SegmentedControl (one of a few options; one outer border, even dividers; ←/→).
+                           useAutosave (debounced save of a form value, on blur, Ctrl+S, leaving and tab close via
+                           keepalivePut; settle() for a dialog's Done, adopt() for a copy from another tab) +
+                           SaveStatus ("Saving…/Saved/Not saved") + AutosaveFooter (Delete · status · Done): every
+                           editor of an existing record autosaves (aircraft, operator, profile, passenger, pilot's
+                           details, waypoint); invalid fields hold the save back and say why under themselves; only
+                           dialogs that create a record keep a button (Add passenger, Add waypoint, Add aircraft…).
                            TimeField ('HH:MM' typed with or without the colon, or picked from a 15-minute listbox that
                            opens on focus; optionNote, e.g. the local time) and DateField ('YYYY-MM-DD', dashes put in as
                            digits are typed, paste, min/max, a month calendar popover); parsing in shared/typedInput.ts.
@@ -138,7 +144,8 @@ src/
     lobby/                 LobbyPage (fixed header: h1 Flights, fixed-width tabs, New flight kept hidden in Trash),
                            NewFlightPage (AerodromeTextInput status lines say why Create is disabled; aerodromePoint),
                            RouteThumb, format.ts (flight search and split), lists.css (lobby rows, list tables, form cards)
-    profile/               ProfilePage (?welcome=1 = first-use onboarding; embeds PersonFields; follows the pilot until edited),
+    profile/               ProfilePage (?welcome=1 = first-use onboarding with Continue, then on to ?next=; afterwards
+                           autosaves; embeds PersonFields; follows the pilot while nothing is unsaved),
                            AccountSection (download my data, delete account with a typed confirmation)
     legal/                 /privacy and /terms (public, no sign-in; linked from the sign-in screen and the account menu)
     hangar/                HangarPage, AircraftPage (autosave: useAutosave, debounced PUT of the whole aircraft, on blur,
@@ -147,8 +154,8 @@ src/
                            useScrollSpy: the section nav follows the scroll); stations, envelope points, compass cards
                            and their points reorder by drag handle; AircraftFiles (photo, else the aircraft's placeholder
                            picture public/aircraft/placeholder-N.webp; DocumentsSection for any FileScope), ShareDialog
-    operators/             OperatorsPage (useEntity('operators')), OperatorPage (details, W&B/performance requirement,
-                           documents, aircraft, who has access), OperatorPicker (the aircraft page's operator dropdown
+    operators/             OperatorsPage (useEntity('operators')), OperatorPage (autosaves; header as the aircraft
+                           page's; details, W&B/performance requirement, documents, aircraft, who has access), OperatorPicker (the aircraft page's operator dropdown
                            with "New operator…")
     admin/                 AdminNav (tabs Pilots | Errors | E-mails), AdminPage (/admin: every pilot), ErrorsPage
                            (/admin/errors: grouped errors, stack, resolve), MailPage (/admin/mail: the e-mail action
@@ -206,7 +213,8 @@ api/
   _lib/pgErrors.ts         database errors by SQLSTATE (unique / FK / check → 400 or 409), never by message text
   _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql, AIRCRAFT_FROM
   _lib/operators.ts        operator access (owner / shared edit / view / view through an aircraft): operatorFor, listOperators
-  _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices, error alerts)
+  _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices, error alerts, share notices)
+  _lib/shareMail.ts        the e-mail to a person an aircraft or an operator is shared with (who, what, access, link); logged, capped, never fails the share
   _lib/monitor.ts          error monitoring: recordError (app_errors, grouped by fingerprint) + throttled alert e-mails,
                            migrateReporting (a failed migration is recorded and e-mailed, then rethrown), client report rate limit
   _lib/declarationPdf.ts   the W&B and performance sheets as PDF (pdf.ts writer), from the client's WbPerfContent
@@ -234,7 +242,8 @@ api/
                            045_passenger_email.ts (passengers.email, NULL for existing passengers)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form (Form 731 to a
-                           passenger, '731-pax': per flight and recipient); HCAA_DAILY_CAP
+                           passenger, '731-pax': per flight and recipient; share notices, 'share-aircraft' and
+                           'share-operator', 20/24 h counted apart from the forms and 10/24 h to one person); HCAA_DAILY_CAP
                            (default 200) for all pilots together; signing links 60/24 h and 20 per flight
   _lib/limits.ts           per-pilot counts (aircraft 50, operators 20, flights 2000, passengers 500, waypoints 1000, files
                            per parent 50), STORAGE_QUOTA_MB (300) over owned files, 3 unfinished uploads, the 1 h sweep,

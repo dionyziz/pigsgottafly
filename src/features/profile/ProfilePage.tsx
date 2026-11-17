@@ -3,17 +3,19 @@
 // reserve, final reserve, ATC list radius) and the map layers of new flights. With ?welcome=1 (or while name, phone or home is
 // missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
 // Nothing pilot-specific is prefilled: unset values show neutral placeholders.
-// The form follows the pilot (another tab, a dialog) until it is edited.
+// The first-use form is sent with Continue (then to ?next=, the page the pilot was opening); after
+// that, edits save on their own (useAutosave, PUT /api/me) and invalid fields say why under
+// themselves. The form follows the pilot (another tab, a dialog) while it has nothing unsaved.
 import '../lobby/lists.css';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
-import { api } from '../../data/api';
+import { api, ApiRequestError, keepalivePut } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { resolveAerodrome } from '../../data/ref';
 import {
@@ -26,7 +28,7 @@ import {
   SETTING_SUGGESTIONS,
 } from '../../shared';
 import { errorMessage } from '../../shared/format';
-import { AerodromeTextInput, CardSection, Field, NumberField } from '../../ui';
+import { AerodromeTextInput, CardSection, Field, NumberField, SaveStatus, useAutosave } from '../../ui';
 import { MapLayerToggles } from '../editor/map/MapLayerToggles';
 import { type FormIssue, useFormIssues } from '../passengers/formIssues';
 import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from '../passengers/person';
@@ -153,7 +155,10 @@ export function toUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
   return profileUpdate(f, welcome);
 }
 
-const sameForm = (a: ProfileForm, b: ProfileForm) => JSON.stringify(a) === JSON.stringify(b);
+/** An in-app path to go on to after the first-use form (?next=), else '/'. */
+export function nextPath(next: string | null): string {
+  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/profile') ? next : '/';
+}
 
 export function ProfilePage() {
   const { pilot } = useSession();
@@ -161,64 +166,88 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const toast = useToast();
   const welcome = params.get('welcome') === '1' || profileMissing(pilot).length > 0;
-  // The pilot the form was filled from; the form follows a newer pilot unless it has been edited.
-  const [base, setBase] = useState<Pilot>(pilot);
-  const initial = useMemo(() => formOf(base), [base]);
-  const [f, setF] = useState<ProfileForm>(initial);
+  const [f, setF] = useState<ProfileForm>(() => formOf(pilot));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { data: hangar } = useEntity('aircraft');
   const formRef = useRef<HTMLFormElement>(null);
-  const issues = useFormIssues<ProfileField>(formRef);
-  const dirty = !sameForm(f, initial);
+  // first use: the problems show on Continue; afterwards they show as they arise and hold the save back
+  const checked = useFormIssues<ProfileField>(formRef);
+  const live = validateProfile(f, welcome);
+  const issuesOf = (k: ProfileField) =>
+    welcome ? checked.of(k) : live.filter((i) => i.field === k).map((i) => i.message);
   // ?focus=<input name>: a warning elsewhere (an export) linked here
   useFocusParam(() => document.querySelector('main') ?? document);
 
-  useEffect(() => {
-    if (pilot === base || dirty) return;
-    setBase(pilot);
-    setF(formOf(pilot));
-  }, [pilot, base, dirty]);
+  // the pilots this page saved: they are not news to follow
+  const ours = useRef<Pilot | null>(null);
+  const save = useCallback(async (v: ProfileForm) => {
+    // api.me.update stores the pilot for every page and tab.
+    ours.current = await api.me.update(profileUpdate(v, false));
+  }, []);
+  const autosave = useAutosave({
+    value: f,
+    enabled: !welcome && live.length === 0,
+    save,
+    keepalive: (v) => keepalivePut('me', profileUpdate(v, false)),
+  });
+  const blocked = !welcome && autosave.dirty && live.length > 0;
+  const saveError = autosave.status === 'failed' ? autosave.error : null;
+
+  // a newer pilot from elsewhere: the form takes it unless it has unsaved edits
+  const { dirty, adopt, flush } = autosave;
+  const [seen, setSeen] = useState(pilot);
+  if (seen !== pilot) {
+    setSeen(pilot);
+    if (pilot !== ours.current && !dirty && !busy) {
+      const next = formOf(pilot);
+      adopt(next);
+      setF(next);
+    }
+  }
 
   useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
+    if (welcome) return;
+    const key = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        flush();
+      }
     };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [flush, welcome]);
 
   const put = <K extends keyof ProfileForm>(k: K, v: ProfileForm[K]) => {
     setF((x) => ({ ...x, [k]: v }));
-    issues.clear(k as ProfileField);
+    checked.clear(k as ProfileField);
   };
   const setPerson: SetPerson = (k, v) => put(k, v as ProfileForm[typeof k]);
   const text = (k: 'defaultAircraftId') => (e: { target: { value: string } }) => put(k, e.target.value);
 
-  const save = async (e: React.FormEvent) => {
+  /** First use: Continue. */
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!issues.check(validateProfile(f, welcome))) {
+    if (!welcome) {
+      flush();
+      return;
+    }
+    if (!checked.check(validateProfile(f, true))) {
       setError(null);
       return;
     }
     setBusy(true);
     try {
-      // api.me.update stores the pilot for every page and tab.
-      const p = await api.me.update(profileUpdate(f, welcome));
-      setBase(p);
-      setF(formOf(p));
+      const p = await api.me.update(profileUpdate(f, true));
       setError(null);
-      if (welcome && !profileMissing(p).length) {
-        void navigate('/', { replace: true });
+      if (!profileMissing(p).length) {
+        void navigate(nextPath(params.get('next')), { replace: true });
         if (hangar && hangar.length === 0)
           toast('Welcome aboard. Add your aircraft next.', {
             label: 'Open hangar',
             onClick: () => void navigate('/hangar'),
           });
         else toast('Welcome aboard.');
-      } else {
-        toast('Profile saved');
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -245,11 +274,13 @@ export function ProfilePage() {
     <Shell>
       <div className="page-head">
         <h1>Profile</h1>
+        {!welcome && <SaveStatus status={autosave.status} blocked={blocked} />}
       </div>
       <form
         className="card"
         style={{ maxWidth: 760 }}
-        onSubmit={save}
+        onSubmit={submit}
+        onBlur={welcome ? undefined : () => flush()}
         data-testid="profile-form"
         noValidate
         ref={formRef}
@@ -258,7 +289,7 @@ export function ProfilePage() {
           <PersonFields
             f={f}
             set={setPerson}
-            issues={issues.of}
+            issues={issuesOf}
             pilot
             minimal={welcome}
             autoFocus={welcome && !f.fullName}
@@ -267,13 +298,13 @@ export function ProfilePage() {
 
         <CardSection id="home" title="Home aerodrome" plain>
           <div className="grid2">
-            <Field label="Aerodrome" req issues={f.homeAerodrome.trim() ? [] : issues.of('homeAerodrome')}>
+            <Field label="Aerodrome" req issues={f.homeAerodrome.trim() ? [] : issuesOf('homeAerodrome')}>
               <AerodromeTextInput
                 name="homeAerodrome"
                 value={f.homeAerodrome}
                 onChange={(t) => put('homeAerodrome', t)}
                 required
-                invalid={issues.of('homeAerodrome').length > 0}
+                invalid={issuesOf('homeAerodrome').length > 0}
               />
             </Field>
             {!welcome && (
@@ -302,7 +333,7 @@ export function ProfilePage() {
                   value={f.defaultAlternate}
                   onChange={(t) => put('defaultAlternate', t)}
                   placeholder="Optional"
-                  invalid={issues.of('defaultAlternate').length > 0}
+                  invalid={issuesOf('defaultAlternate').length > 0}
                 />
               </Field>
             )}
@@ -311,22 +342,22 @@ export function ProfilePage() {
 
         <CardSection id="planning" title="Planning defaults" plain>
           <div className="grid3">
-            <Field label={<>Taxi out {notSet(f.taxiOutMin)}</>} issues={issues.of('taxiOutMin')}>
+            <Field label={<>Taxi out {notSet(f.taxiOutMin)}</>} issues={issuesOf('taxiOutMin')}>
               {minutes('taxiOutMin', `e.g. ${SETTING_SUGGESTIONS.taxiOutMin}`)}
             </Field>
-            <Field label={<>Taxi in {notSet(f.taxiInMin)}</>} issues={issues.of('taxiInMin')}>
+            <Field label={<>Taxi in {notSet(f.taxiInMin)}</>} issues={issuesOf('taxiInMin')}>
               {minutes('taxiInMin', `e.g. ${SETTING_SUGGESTIONS.taxiInMin}`)}
             </Field>
-            <Field label={<>Fuel reserve {notSet(f.reserveMin)}</>} issues={issues.of('reserveMin')}>
+            <Field label={<>Fuel reserve {notSet(f.reserveMin)}</>} issues={issuesOf('reserveMin')}>
               {minutes('reserveMin', `e.g. ${SETTING_SUGGESTIONS.reserveMin}`)}
             </Field>
           </div>
           {!welcome && (
             <div className="grid3">
-              <Field label="Final reserve in required fuel" issues={issues.of('finalReserveMin')}>
+              <Field label="Final reserve in required fuel" issues={issuesOf('finalReserveMin')}>
                 {minutes('finalReserveMin', '0')}
               </Field>
-              <Field label="ATC list: aerodromes within" issues={issues.of('enrouteAerodromeRadiusNm')}>
+              <Field label="ATC list: aerodromes within" issues={issuesOf('enrouteAerodromeRadiusNm')}>
                 <NumberField
                   name="enrouteAerodromeRadiusNm"
                   value={f.enrouteAerodromeRadiusNm}
@@ -349,37 +380,38 @@ export function ProfilePage() {
           </CardSection>
         )}
 
-        <div className="form-actions">
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          {issues.issues.length > 0 && !error && (
-            <p className="form-error" role="alert">
-              {issues.issues.length === 1 ? '1 field to fix' : `${issues.issues.length} fields to fix`}
-            </p>
-          )}
-          <span className="spacer" />
-          {!welcome && dirty && (
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => {
-                setBase(pilot);
-                setF(formOf(pilot));
-                issues.check([]);
-                setError(null);
-              }}
-              disabled={busy}
-            >
-              Discard
+        {welcome ? (
+          <div className="form-actions">
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            {checked.issues.length > 0 && !error && (
+              <p className="form-error" role="alert">
+                {checked.issues.length === 1 ? '1 field to fix' : `${checked.issues.length} fields to fix`}
+              </p>
+            )}
+            <span className="spacer" />
+            <button className="primary" type="submit" disabled={busy}>
+              Continue
             </button>
-          )}
-          <button className="primary" type="submit" disabled={busy || (!welcome && !dirty)}>
-            {welcome ? 'Continue' : busy ? 'Saving…' : 'Save'}
-          </button>
-        </div>
+          </div>
+        ) : saveError ? (
+          <div className="form-actions" role="alert" data-testid="problem-bar">
+            <p className="form-error">
+              {saveError instanceof ApiRequestError && saveError.offline
+                ? 'Offline: changes not saved yet'
+                : `Not saved: ${errorMessage(saveError)}`}
+            </p>
+            <span className="spacer" />
+            <button type="button" className="sm" onClick={autosave.retry} data-testid="save-retry">
+              Retry
+            </button>
+          </div>
+        ) : (
+          <button type="submit" hidden />
+        )}
       </form>
       {!welcome && <AccountSection />}
     </Shell>

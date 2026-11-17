@@ -68,11 +68,13 @@ export interface DialogAction {
 }
 
 /**
- * The footer of a form dialog: the danger action (Delete) on the left, the error message, then
- * Cancel and the primary action on the right. Put it in <Dialog footer={…}>.
+ * The footer of a form dialog: the danger action (Delete) on the left, the error message (else the
+ * status, e.g. <SaveStatus>), then Cancel (when onCancel is given) and the primary action on the
+ * right. Put it in <Dialog footer={…}>.
  */
 export function DialogFooter({
   error,
+  status,
   onCancel,
   cancelLabel = 'Cancel',
   primary,
@@ -80,7 +82,8 @@ export function DialogFooter({
   busy,
 }: {
   error?: ReactNode;
-  onCancel: () => void;
+  status?: ReactNode;
+  onCancel?: () => void;
   cancelLabel?: string;
   primary?: DialogAction & { danger?: boolean };
   danger?: DialogAction;
@@ -104,11 +107,15 @@ export function DialogFooter({
           <span className="form-error" role="alert">
             {error}
           </span>
-        ) : null}
+        ) : (
+          (status ?? null)
+        )}
       </span>
-      <button type="button" className="ghost" onClick={onCancel} disabled={busy}>
-        {cancelLabel}
-      </button>
+      {onCancel && (
+        <button type="button" className="ghost" onClick={onCancel} disabled={busy}>
+          {cancelLabel}
+        </button>
+      )}
       {primary && (
         <button
           type="button"

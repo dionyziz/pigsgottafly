@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-// The aircraft page's autosave: edits within the delay coalesce into one save, edits made while a
+// The autosave of every editor (aircraft, operator, profile, passengers, waypoints): edits within the delay coalesce into one save, edits made while a
 // save is in flight go in the next one, nothing is saved while disabled (errors), a failure waits for
-// retry, and leaving the page saves what is pending.
+// retry, leaving the page saves what is pending, settle() saves now and waits (Done of a dialog),
+// and a copy adopted from elsewhere is not an edit.
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { useAutosave } from '../../../src/features/hangar/useAutosave';
+import { useAutosave } from '../../../src/ui/useAutosave';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -135,5 +136,58 @@ describe('useAutosave', () => {
       await Promise.resolve();
     });
     expect(calls).toEqual(['b']);
+  });
+
+  test('settle saves now and waits for it', async () => {
+    const { calls, pending, hook } = setup({ v: 'a' });
+    hook.rerender({ v: 'b' });
+    let done: boolean | undefined;
+    act(() => {
+      void hook.result.current.settle().then((x) => (done = x));
+    });
+    expect(calls).toEqual(['b']);
+    expect(done).toBeUndefined();
+    await act(async () => {
+      pending[0].resolve();
+    });
+    expect(done).toBe(true);
+    // nothing to save: at once
+    let again: boolean | undefined;
+    await act(async () => {
+      again = await hook.result.current.settle();
+    });
+    expect(again).toBe(true);
+    expect(calls).toEqual(['b']);
+  });
+
+  test('settle is false while the value cannot be saved, or when the save fails', async () => {
+    const { calls, pending, hook } = setup({ v: 'a' });
+    hook.rerender({ v: 'b', enabled: false });
+    let r: boolean | undefined;
+    await act(async () => {
+      r = await hook.result.current.settle();
+    });
+    expect(r).toBe(false);
+    expect(calls).toEqual([]);
+    hook.rerender({ v: 'b', enabled: true });
+    act(() => {
+      void hook.result.current.settle().then((x) => (r = x));
+    });
+    await act(async () => {
+      pending[0].reject(new Error('down'));
+    });
+    expect(r).toBe(false);
+    expect(hook.result.current.status).toBe('failed');
+  });
+
+  test('an adopted copy is not an edit', () => {
+    const { calls, hook } = setup({ v: 'a' });
+    hook.result.current.adopt('from another tab');
+    hook.rerender({ v: 'from another tab' });
+    expect(hook.result.current.dirty).toBe(false);
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(calls).toEqual([]);
   });
 });

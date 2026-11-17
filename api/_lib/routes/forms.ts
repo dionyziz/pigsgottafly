@@ -52,8 +52,8 @@ import { hashToken } from '../auth.js';
 import type { Queryable, Row } from '../db.js';
 import { flightContext, loadRef } from '../flightContext.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
-import type { Req, Route } from '../http.js';
-import { badRequest, conflict, HttpError, newId, notFound } from '../http.js';
+import type { Route } from '../http.js';
+import { appOrigin, badRequest, conflict, HttpError, newId, notFound } from '../http.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
 import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
 import { checkLinkCap, mailFailed, mailSent, reserveMail } from '../sendCaps.js';
@@ -516,16 +516,6 @@ function maskOthers(c: Form731Content, me: string): Form731Content {
       p.key === me ? p : { ...p, idPassport: maskTail(p.idPassport), contact: maskTail(p.contact) },
     ),
   };
-}
-
-const HOST_RE = /^[a-z0-9.-]+(:\d{1,5})?$/i;
-const firstHeader = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : (v ?? '')).split(',')[0].trim();
-/** The app's origin as the pilot's browser reached it (for links in e-mails). */
-function appOrigin(req: Req, secure: boolean): string {
-  const host = firstHeader(req.headers['x-forwarded-host']) || firstHeader(req.headers.host);
-  const fwd = firstHeader(req.headers['x-forwarded-proto']);
-  const proto = fwd === 'https' || fwd === 'http' ? fwd : secure ? 'https' : 'http';
-  return HOST_RE.test(host) ? `${proto}://${host}` : 'https://pigsgottafly.com';
 }
 
 // ---------------------------------------------------------------- signing page (no sign-in)

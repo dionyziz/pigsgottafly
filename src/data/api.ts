@@ -104,6 +104,21 @@ interface AlsoChanges {
 }
 
 /** List/get/create/update/remove of one entity; every mutation invalidates `key` (plus `also`). */
+/** A PUT that outlives the page (fetch keepalive): an editor's autosave when the tab closes. Best effort. */
+export function keepalivePut(path: string, body: unknown): void {
+  try {
+    void fetch('/api/' + path, {
+      method: 'PUT',
+      keepalive: true,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).catch(() => undefined);
+  } catch {
+    /* the body is over the keepalive limit: the page is going anyway */
+  }
+}
+
 function crud<T, I>(base: string, key: EntityKey, also: AlsoChanges = {}) {
   return {
     list: () => request<T[]>('GET', base),

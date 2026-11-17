@@ -30,6 +30,8 @@ const KINDS: [string, string][] = [
   ['731-pax', 'Form 731 to passenger'],
   ['gendec', 'General Declaration'],
   ['wbperf', 'W&B / performance'],
+  ['share-aircraft', 'Aircraft shared'],
+  ['share-operator', 'Operator shared'],
   ['signup', 'Signup notice'],
   ['signup-more', 'More signups'],
 ];
