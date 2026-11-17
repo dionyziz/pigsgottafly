@@ -76,6 +76,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         sunTables: SUN_TABLES,
         patternLegs: timing.patternLegs,
         groundAfterLegMin: timing.groundAfterLegMin,
+        circuitAfterLegMin: timing.circuitAfterLegMin,
       }),
     );
   }, [

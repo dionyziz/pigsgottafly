@@ -573,7 +573,7 @@ export interface FlightOptions {
   /** Key of PerformanceFactors.runwayCondition; null = paved, dry. */
   departureSurface: string | null;
   arrivalSurface: string | null;
-  /** Touch-and-go / intermediate-stop requests (missing on older flights = none). */
+  /** Touch-and-go / intermediate-stop requests, at most one of each kind per point (missing on older flights = none). */
   aerodromeRequests?: AerodromeRequest[];
   /**
    * Fuel on board at block-off per type, L, when the pilot gives it by type (aircraft with more

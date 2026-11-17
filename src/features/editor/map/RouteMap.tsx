@@ -134,9 +134,9 @@ export interface RouteMapProps {
   selectedNotam?: string | null;
   onNotamSelect?: (key: string | null) => void;
   /** Touch-and-go / stop request per route point uid (FlightOptions.aerodromeRequests). */
-  requests?: Record<string, AerodromeRequest>;
+  requests?: Record<string, Partial<Record<AerodromeRequest['kind'], AerodromeRequest>>>;
   /** Sets (kind) or removes (null) the request on an aerodrome point of the route. */
-  onRequest?: (uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) => void;
+  onRequest?: (uid: string, kind: AerodromeRequest['kind'], on: boolean, stopMin?: number) => void;
   /** An aerodrome's hours on the flight's date (AIP + NOTAMs), for its tooltip and details. */
   aerodromeInfo?: (a: RefAerodrome) => AdDayInfo;
   /** The layers shown (the flight's selection); the route is always drawn. */
@@ -1451,31 +1451,36 @@ export function RouteMap(props: RouteMapProps) {
     if (p.kind === 'aerodrome' && props.onRequest) {
       const onRequest = props.onRequest;
       const idx = route.findIndex((q) => q.uid === p.uid);
-      const cur = props.requests?.[p.uid];
-      const set = (kind: AerodromeRequest['kind'] | null, stopMin?: number) => {
-        onRequest(p.uid, kind, stopMin);
+      const tng = props.requests?.[p.uid]?.['touch-and-go'];
+      const stop = props.requests?.[p.uid]?.stop;
+      const set = (kind: AerodromeRequest['kind'], on: boolean, stopMin?: number) => {
+        onRequest(p.uid, kind, on, stopMin);
         setMenu(null);
       };
       const askStop = () => {
         const v = window.prompt(
           `Intermediate stop at ${p.name}: minutes on the ground`,
-          String(cur?.stopMin ?? DEFAULT_STOP_MIN),
+          String(stop?.stopMin ?? DEFAULT_STOP_MIN),
         );
         const n = v == null ? NaN : Math.round(Number(v));
-        if (isFinite(n) && n > 0) set('stop', n);
+        if (isFinite(n) && n > 0) set('stop', true, n);
       };
-      if (cur?.kind === 'touch-and-go')
-        items.push({ label: 'Remove touch-and-go request', onSelect: () => set(null), testId: 'menu-tng-remove' });
+      if (tng)
+        items.push({
+          label: 'Remove touch-and-go request',
+          onSelect: () => set('touch-and-go', false),
+          testId: 'menu-tng-remove',
+        });
       else if (requestAllowed(route, idx, 'touch-and-go')) {
         items.push({
           label: idx === 0 ? 'Request touch-and-go before leaving' : 'Request touch-and-go',
-          onSelect: () => set('touch-and-go'),
+          onSelect: () => set('touch-and-go', true),
           testId: 'menu-tng',
         });
       }
-      if (cur?.kind === 'stop') {
-        items.push({ label: `Change stop (${cur.stopMin ?? DEFAULT_STOP_MIN} min)…`, onSelect: askStop });
-        items.push({ label: 'Remove stop request', onSelect: () => set(null), testId: 'menu-stop-remove' });
+      if (stop) {
+        items.push({ label: `Change stop (${stop.stopMin ?? DEFAULT_STOP_MIN} min)…`, onSelect: askStop });
+        items.push({ label: 'Remove stop request', onSelect: () => set('stop', false), testId: 'menu-stop-remove' });
       } else if (requestAllowed(route, idx, 'stop'))
         items.push({ label: 'Request intermediate stop…', onSelect: askStop, testId: 'menu-stop' });
     }

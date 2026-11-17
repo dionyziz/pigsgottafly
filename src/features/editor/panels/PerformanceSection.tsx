@@ -5,7 +5,7 @@
 import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
 import type { Aircraft } from '../../../shared';
-import { type FlightOptions, setStopChoice } from '../../../shared';
+import { type FlightOptions, requestOf, setStopChoice } from '../../../shared';
 import { fmtClock } from '../../../shared/format';
 import { Chip, Collapsible } from '../../../ui';
 import { useEditor } from '../state';
@@ -73,8 +73,9 @@ function Endpoint({ e }: { e: EndpointCalc }) {
   const ad = e.aerodrome;
   const rwKey: keyof FlightOptions = to ? 'departureRunway' : 'arrivalRunway';
   const sfKey: keyof FlightOptions = to ? 'departureSurface' : 'arrivalSurface';
-  // A stop keeps its runway (landing / take-off) and surface on its AerodromeRequest.
-  const stopReq = e.stopUid ? (doc.options.aerodromeRequests ?? []).find((r) => r.pointUid === e.stopUid) : undefined;
+  // A stop or touch-and-go keeps its runway (landing / take-off) and surface on its AerodromeRequest.
+  const stopKind = e.stopKind ?? 'stop';
+  const stopReq = e.stopUid ? requestOf(doc.options.aerodromeRequests, e.stopUid, stopKind) : undefined;
   const runwayValue = e.stopUid ? ((to ? stopReq?.takeoffRunway : stopReq?.landingRunway) ?? null) : doc.options[rwKey];
   const surfaceValue = e.stopUid ? (stopReq?.surface ?? null) : doc.options[sfKey];
   const setRunway = (v: string | null) =>
@@ -86,6 +87,7 @@ function Endpoint({ e }: { e: EndpointCalc }) {
             aerodromeRequests: setStopChoice(
               d.options.aerodromeRequests,
               e.stopUid,
+              stopKind,
               to ? 'takeoffRunway' : 'landingRunway',
               v,
             ),
@@ -96,10 +98,13 @@ function Endpoint({ e }: { e: EndpointCalc }) {
     update((d) => ({
       ...d,
       options: e.stopUid
-        ? { ...d.options, aerodromeRequests: setStopChoice(d.options.aerodromeRequests, e.stopUid, 'surface', v) }
+        ? {
+            ...d.options,
+            aerodromeRequests: setStopChoice(d.options.aerodromeRequests, e.stopUid, stopKind, 'surface', v),
+          }
         : { ...d.options, [sfKey]: v },
     }));
-  const tid = e.stopUid ? `stop-${e.phase}` : e.phase;
+  const tid = e.stopUid ? `${stopKind === 'touch-and-go' ? 'tng' : 'stop'}-${e.phase}` : e.phase;
   const runways = ad ? runwaysOf(ad.id) : [];
   const conditions = Object.keys(aircraft?.performance.factors.runwayCondition ?? {});
   const p = e.perf;
@@ -327,7 +332,7 @@ export function PerformanceSection() {
         {stops.map(
           (x) =>
             x.aerodrome && (
-              <div key={x.point.uid} className="ep-stop" data-testid="perf-stop">
+              <div key={`${x.point.uid}-${x.kind}`} className="ep-stop" data-testid="perf-stop">
                 <Endpoint e={x.landing} />
                 <Endpoint e={x.takeoff} />
               </div>

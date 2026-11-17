@@ -190,13 +190,13 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-table tr.is-notam td { background: var(--accent-soft); }
 
 /* touch-and-go / stop requests (Flight plan section) */
-.ep-requests ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
-.ep-requests li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: var(--fs-sm); }
-.ep-requests .ep-req-name { font-weight: 600; min-width: 4.5em; }
+.ep-requests ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, max-content) max-content max-content; gap: 6px 12px; }
+.ep-requests li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; min-height: 28px; font-size: var(--fs-sm); }
+.ep-requests .ep-req-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ep-requests label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
 .ep-req-stop { display: inline-flex; align-items: center; gap: 6px; }
 .ep-req-stop .numfield input { padding-top: 3px; padding-bottom: 3px; text-align: right; }
-.ep-req-rmk { flex-basis: 100%; font-size: var(--fs-xs); color: var(--ink-2); }
+.ep-req-off { visibility: hidden; }
 
 /* aerodrome hours (AerodromeSection) */
 .ep-ad-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }

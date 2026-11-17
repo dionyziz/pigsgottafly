@@ -160,6 +160,7 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
       ? flightSectors({
           legs: navlog.legs,
           ...sectorTiming(requestTiming(doc.route, doc.options)),
+          circuits: navlog.circuits,
           taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
           fobL: fuelTakeoffL,
         })
@@ -277,12 +278,12 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     o.arrivalRunway,
     o.arrivalSurface,
   );
-  const reqs = new Map(activeRequests(route, o).map((r) => [r.index, r.request]));
+  const reqs = new Map(activeRequests(route, o).map((r) => [`${r.request.kind}|${r.index}`, r.request]));
   // weather.stops is fetched for landingPointIndices() (useExportCalc), the same points the sectors end at.
   const wxStops = landingPointIndices(route, o);
   const stops: ExportStop[] = stopsOf(sectors).map((s) => {
     const point = route[s.pointIndex];
-    const req = reqs.get(s.pointIndex);
+    const req = reqs.get(`${s.kind}|${s.pointIndex}`);
     const k = wxStops.indexOf(s.pointIndex);
     const loc = k >= 0 ? (weather?.stops?.[k] ?? null) : null;
     const wbBefore = sectorWb[s.before.index] ?? null;

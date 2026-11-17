@@ -112,6 +112,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     sunTables: ref.sunTables,
     patternLegs: timing.patternLegs,
     groundAfterLegMin: timing.groundAfterLegMin,
+    circuitAfterLegMin: timing.circuitAfterLegMin,
   });
   if (!aircraft) navlog.warnings.unshift('No aircraft selected: speeds, fuel and deviation are missing.');
   const fuel =

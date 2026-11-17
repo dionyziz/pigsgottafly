@@ -87,7 +87,12 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
       .filter((x) => x.request.kind === 'touch-and-go')
       .map((x) => x.index),
   );
-  const stopAt = new Map(i.stops.map((x) => [x.pointIndex, x]));
+  // A touch-and-go then a full stop at one aerodrome: from the first landing to the last take-off there.
+  const stopAt = new Map<number, AdChecksInput['stops'][number]>();
+  for (const x of i.stops) {
+    const prev = stopAt.get(x.pointIndex);
+    stopAt.set(x.pointIndex, prev ? { ...prev, takeoffMs: x.takeoffMs } : x);
+  }
   for (let k = 1; k < r.length - 1; k++) {
     const st = stopAt.get(k);
     if (st) {

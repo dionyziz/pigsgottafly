@@ -382,8 +382,8 @@ export function ManifestSection() {
                   .filter((x) => x.wb)
                   .map((x) => (
                     <KV
-                      key={x.point.uid}
-                      k={`Stop ${stopName(x)}`}
+                      key={`${x.point.uid}-${x.kind}`}
+                      k={`${x.kind === 'touch-and-go' ? 'Touch-and-go' : 'Stop'} ${stopName(x)}`}
                       testId="wb-stop"
                       tone={x.wbOk === false ? 'danger' : undefined}
                       v={<span className="tnum">{x.wb!.massKg.toFixed(1)} kg</span>}

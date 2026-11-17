@@ -4,32 +4,59 @@
 //
 //   - A request is keyed by the route point's uid, so it follows the point when the route is
 //     edited and is dropped when the point is removed or stops being an aerodrome.
+//   - A point carries at most one request of each kind. An intermediate aerodrome may have both:
+//     a touch-and-go, a circuit (CIRCUIT_MIN), then a full-stop landing, n minutes on the ground
+//     and a take-off.
 //   - Touch-and-go: any aerodrome point. At the departure it is a circuit before leaving
 //     ('INITIALLY REQUEST TOUCH N GO AT LGTT').
 //   - Intermediate stop (n minutes): an aerodrome point between the departure and the destination.
-//   - Item 18: each request becomes one remark in the club's format; several are joined in the one
-//     RMK/ field: 'REQUEST TOUCH N GO AT LGMG', 'REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN'.
+//   - Item 18: each request becomes one remark in the club's format (a point's touch-and-go before
+//     its stop); several are joined in the one RMK/ field: 'REQUEST TOUCH N GO AT LGMG',
+//     'REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN'.
 //   - Timing: an intermediate aerodrome with a request is passed at pattern TAS (the legs into and
-//     out of it), and a stop adds its minutes between landing and the next take-off.
+//     out of it), a stop adds its minutes between landing and the next take-off, and a touch-and-go
+//     followed by a stop there adds the circuit between them (airborne).
 import type { AerodromeRequest, FlightOptions, RoutePoint } from './types.js';
 
 export const MAX_STOP_MIN = 600;
 export const DEFAULT_STOP_MIN = 10;
+/** Minutes of the circuit flown between a touch-and-go and the full-stop landing at the same aerodrome. */
+export const CIRCUIT_MIN = 6;
 
-/** The request on each route point that can carry one, in route order (invalid ones dropped). */
+type Kind = AerodromeRequest['kind'];
+const KINDS: readonly Kind[] = ['touch-and-go', 'stop'];
+const same = (r: AerodromeRequest, pointUid: string, kind?: Kind) =>
+  r.pointUid === pointUid && (!kind || r.kind === kind);
+
+/** The request of a kind on a point, if any (the last one wins, as in activeRequests). */
+export function requestOf(
+  list: readonly AerodromeRequest[] | null | undefined,
+  pointUid: string,
+  kind: Kind,
+): AerodromeRequest | undefined {
+  const l = list ?? [];
+  for (let i = l.length - 1; i >= 0; i--) if (same(l[i], pointUid, kind)) return l[i];
+  return undefined;
+}
+
+/**
+ * The requests on the route points that can carry them, in route order, a point's touch-and-go
+ * before its stop (invalid ones dropped).
+ */
 export function activeRequests(
   route: RoutePoint[],
   options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,
 ): { index: number; point: RoutePoint; request: AerodromeRequest }[] {
   const reqs = options?.aerodromeRequests ?? [];
   if (!reqs.length) return [];
-  const byUid = new Map<string, AerodromeRequest>();
-  for (const r of reqs) byUid.set(r.pointUid, r); // the last one for a point wins
+  const byKey = new Map<string, AerodromeRequest>();
+  for (const r of reqs) byKey.set(`${r.kind}|${r.pointUid}`, r); // the last one of a kind for a point wins
   const out: { index: number; point: RoutePoint; request: AerodromeRequest }[] = [];
   route.forEach((p, index) => {
-    const r = byUid.get(p.uid);
-    if (!r || !requestAllowed(route, index, r.kind)) return;
-    out.push({ index, point: p, request: r });
+    for (const kind of KINDS) {
+      const r = byKey.get(`${kind}|${p.uid}`);
+      if (r && requestAllowed(route, index, kind)) out.push({ index, point: p, request: r });
+    }
   });
   return out;
 }
@@ -72,6 +99,11 @@ export interface RequestTiming {
   groundAfterLegMin: number[];
   /** Per leg: a touch-and-go at an intermediate aerodrome at the leg's end (a landing and a take-off there). */
   touchAfterLeg: boolean[];
+  /**
+   * Per leg: minutes of the circuit flown after a touch-and-go at the leg's end before the
+   * full-stop landing there (both requested at that aerodrome); 0 otherwise.
+   */
+  circuitAfterLegMin: number[];
 }
 
 /** Timing effects of the requests on a route of route.length − 1 legs. */
@@ -84,6 +116,7 @@ export function requestTiming(
   const patternPoints = new Array<boolean>(route.length).fill(false);
   const groundAfterLegMin = new Array<number>(n).fill(0);
   const touchAfterLeg = new Array<boolean>(n).fill(false);
+  const circuitAfterLegMin = new Array<number>(n).fill(0);
   for (const { index, request } of activeRequests(route, options)) {
     if (index === 0 || index === route.length - 1) continue; // the first and last legs are at pattern TAS anyway
     patternPoints[index] = true;
@@ -93,46 +126,60 @@ export function requestTiming(
       groundAfterLegMin[index - 1] += Math.max(0, Math.min(MAX_STOP_MIN, request.stopMin ?? DEFAULT_STOP_MIN));
     else touchAfterLeg[index - 1] = true;
   }
-  return { patternLegs, patternPoints, groundAfterLegMin, touchAfterLeg };
+  for (let i = 0; i < n; i++) if (touchAfterLeg[i] && groundAfterLegMin[i] > 0) circuitAfterLegMin[i] = CIRCUIT_MIN;
+  return { patternLegs, patternPoints, groundAfterLegMin, touchAfterLeg, circuitAfterLegMin };
 }
 
-/** Sets (or, with kind null, removes) the request on a point; returns the new list. */
+/** Sets the request of a kind on a point (its request of the other kind stays); returns the new list. */
 export function setRequest(
   list: AerodromeRequest[] | undefined,
   pointUid: string,
-  kind: AerodromeRequest['kind'] | null,
+  kind: Kind,
   stopMin?: number,
 ): AerodromeRequest[] {
-  const prev = (list ?? []).find((r) => r.pointUid === pointUid);
-  const rest = (list ?? []).filter((r) => r.pointUid !== pointUid);
-  if (!kind) return rest;
-  if (kind !== 'stop') return [...rest, { pointUid, kind }];
-  // A stop keeps the runway / surface chosen for it when only its minutes change.
-  const keep = prev?.kind === 'stop' ? stopChoices(prev) : {};
-  return [
-    ...rest,
-    { pointUid, kind, stopMin: Math.max(1, Math.min(MAX_STOP_MIN, Math.round(stopMin ?? DEFAULT_STOP_MIN))), ...keep },
-  ];
+  const prev = requestOf(list, pointUid, kind);
+  const rest = (list ?? []).filter((r) => !same(r, pointUid, kind));
+  // A request keeps the runway / surface chosen for it (a stop when only its minutes change).
+  const keep = prev ? choices(prev) : {};
+  const next: AerodromeRequest =
+    kind === 'stop'
+      ? {
+          pointUid,
+          kind,
+          stopMin: Math.max(1, Math.min(MAX_STOP_MIN, Math.round(stopMin ?? DEFAULT_STOP_MIN))),
+          ...keep,
+        }
+      : { pointUid, kind, ...keep };
+  return [...rest, next];
 }
 
-type StopChoices = Pick<AerodromeRequest, 'landingRunway' | 'takeoffRunway' | 'surface'>;
-const stopChoices = (r: AerodromeRequest): StopChoices => {
-  const o: StopChoices = {};
+/** Removes the request of a kind on a point, or all of the point's requests without a kind; returns the new list. */
+export function removeRequest(list: AerodromeRequest[] | undefined, pointUid: string, kind?: Kind): AerodromeRequest[] {
+  return (list ?? []).filter((r) => !same(r, pointUid, kind));
+}
+
+type Choices = Pick<AerodromeRequest, 'landingRunway' | 'takeoffRunway' | 'surface'>;
+const choices = (r: AerodromeRequest): Choices => {
+  const o: Choices = {};
   if (r.landingRunway) o.landingRunway = r.landingRunway;
   if (r.takeoffRunway) o.takeoffRunway = r.takeoffRunway;
   if (r.surface) o.surface = r.surface;
   return o;
 };
 
-/** Sets the runway (landing / take-off) or surface chosen at a stop or touch-and-go; null = automatic / paved, dry. */
+/**
+ * Sets the runway (landing / take-off) or surface chosen at a stop or touch-and-go (each request
+ * keeps its own); null = automatic / paved, dry.
+ */
 export function setStopChoice(
   list: AerodromeRequest[] | undefined,
   pointUid: string,
-  key: keyof StopChoices,
+  kind: Kind,
+  key: keyof Choices,
   value: string | null,
 ): AerodromeRequest[] {
   return (list ?? []).map((r) => {
-    if (r.pointUid !== pointUid) return r;
+    if (!same(r, pointUid, kind)) return r;
     const next: AerodromeRequest = { ...r };
     if (value) next[key] = value;
     else delete next[key];

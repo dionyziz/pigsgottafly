@@ -168,7 +168,8 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
   for (const k of ['departureSurface', 'arrivalSurface'] as const) if (k in i) o[k] = optText(i[k], `options.${k}`, 60);
   if ('aerodromeRequests' in i) {
     const list = i.aerodromeRequests === null ? [] : arr<unknown>(i.aerodromeRequests, 'options.aerodromeRequests');
-    if (list.length > MAX_ROUTE_POINTS) throw badRequest('options.aerodromeRequests has too many entries');
+    // at most one touch-and-go and one stop per route point
+    if (list.length > 2 * MAX_ROUTE_POINTS) throw badRequest('options.aerodromeRequests has too many entries');
     o.aerodromeRequests = list.map((v, j): AerodromeRequest => {
       const r = obj<Record<string, unknown>>(v, `options.aerodromeRequests[${j}]`);
       const pointUid = text(r.pointUid, `options.aerodromeRequests[${j}].pointUid`, 64);

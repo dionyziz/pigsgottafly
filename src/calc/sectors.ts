@@ -11,9 +11,13 @@
 //     stop's start-up/taxi allowance is charged to the sector that follows, as at the departure).
 //   - a touch-and-go at an intermediate aerodrome also ends a sector (a landing and a take-off with
 //     their own performance), but the aircraft never stops: no allowance for the next sector.
+//   - a touch-and-go followed by a full stop at the same aerodrome: the sector ends at the
+//     touch-and-go, then a circuit sector (no legs; NavlogResult.circuits gives its times and fuel)
+//     ends at the full-stop landing there.
 // So the last sector lands with FOB − allowance × (1 + stops) − trip = FuelPlan.landingFuelL, and a
 // flight without stops is one sector equal to the plain take-off / landing figures.
 // Pure: no I/O, no DOM.
+import type { NavlogCircuit } from './navlog.js';
 import type { WbInput, WbResult } from './wb.js';
 import { weightAndBalance } from './wb.js';
 
@@ -27,10 +31,10 @@ export interface SectorLeg {
 
 export interface FlightSector {
   index: number;
-  /** Route point indices of the take-off and the landing aerodrome. */
+  /** Route point indices of the take-off and the landing aerodrome (the same for a circuit). */
   fromPoint: number;
   toPoint: number;
-  /** Leg indices of the sector, inclusive. */
+  /** Leg indices of the sector, inclusive (a circuit has none: lastLeg = firstLeg − 1). */
   firstLeg: number;
   lastLeg: number;
   /** Minutes after 00:00 UTC of the flight date. */
@@ -65,6 +69,8 @@ export interface FlightSectorsInput {
   groundAfterLegMin?: readonly number[] | null;
   /** RequestTiming.touchAfterLeg: intermediate touch-and-goes end sectors too. */
   touchAfterLeg?: readonly boolean[] | null;
+  /** NavlogResult.circuits: a touch-and-go, then a circuit to the full stop at the same aerodrome. */
+  circuits?: readonly NavlogCircuit[] | null;
   /** Aircraft FuelSpec.taxiAllowanceL (per take-off). */
   taxiAllowanceL: number;
   /** Fuel on board at block-off, L. */
@@ -85,6 +91,7 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
   let fuel = fin(input.fobL) ? input.fobL : 0;
   let charge = allowance;
   for (const last of ends) {
+    const circuit = stops.includes(last) ? input.circuits?.find((c) => c.afterLeg === last) : undefined;
     let trip = 0;
     for (let i = first; i <= last; i++) {
       const f = input.legs[i].fuel;
@@ -92,7 +99,11 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
     }
     const landing = fuel - charge - trip;
     const kind =
-      last === n - 1 ? ('destination' as const) : stops.includes(last) ? ('stop' as const) : ('touch-and-go' as const);
+      last === n - 1
+        ? ('destination' as const)
+        : stops.includes(last) && !circuit
+          ? ('stop' as const)
+          : ('touch-and-go' as const);
     out.push({
       index: out.length,
       fromPoint: first,
@@ -112,6 +123,26 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
     fuel = Math.max(0, landing);
     charge = kind === 'touch-and-go' ? 0 : allowance;
     first = last + 1;
+    if (circuit) {
+      const trip = fin(circuit.fuel) ? circuit.fuel : 0;
+      const landing = fuel - trip;
+      out.push({
+        index: out.length,
+        fromPoint: first,
+        toPoint: first,
+        firstLeg: first,
+        lastLeg: last,
+        takeoffMin: circuit.startMin,
+        landingMin: circuit.endMin,
+        tripFuelL: trip,
+        allowanceL: 0,
+        fuelTakeoffL: fuel,
+        fuelLandingL: landing,
+        ends: 'stop',
+      });
+      fuel = Math.max(0, landing);
+      charge = allowance;
+    }
   }
   return out;
 }

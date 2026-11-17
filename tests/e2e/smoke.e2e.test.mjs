@@ -237,3 +237,76 @@ test('new flight asks for the ends: an unknown aerodrome says so and blocks Crea
     () => document.querySelector('[data-testid=about-weather-model]')?.textContent === 'ECMWF IFS 0.25°',
   );
 });
+
+test('flight plan requests: a touch-and-go and a stop at one aerodrome, both remarks; ticking moves no row', async () => {
+  const ads = await (await fetch(`${server.url}/api/ref/aerodromes`)).json();
+  const at = (icao, uid) => {
+    const a = ads.find((x) => x.icao === icao);
+    return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };
+  };
+  const f0 = await postFlight({ route: [at('LGTT', 'r-a'), at('LGMG', 'r-b'), at('LGTT', 'r-c')], blockOff: '09:00' });
+  await page.goto(`${server.url}/flights/${f0.id}`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=fpl-request-2]'));
+  const box = (sel) =>
+    page.eval((s) => {
+      const r = document.querySelector(s).getBoundingClientRect();
+      return { top: r.top, left: r.left, height: r.height };
+    }, sel);
+  const click = (sel) => page.eval((s) => document.querySelector(s).click(), sel);
+
+  // the columns line up across the rows (the departure's "Touch-and-go first" included)
+  const tngLeft = [];
+  for (const i of [0, 1, 2]) tngLeft.push((await box(`[data-testid=fpl-tng-${i}]`)).left);
+  assert.ok(
+    tngLeft.every((x) => Math.abs(x - tngLeft[0]) < 0.5),
+    `touch-and-go column ${tngLeft}`,
+  );
+  // the minutes field keeps its place while Stop is off, so ticking Stop moves nothing
+  const minVisibility = () =>
+    page.eval(() => getComputedStyle(document.querySelector('[data-testid=fpl-stop-min-1]')).visibility);
+  assert.equal(await minVisibility(), 'hidden');
+  await page.eval(() => document.querySelector('[data-testid=fpl-requests]').scrollIntoView({ block: 'center' }));
+  const rowBefore = await box('[data-testid=fpl-request-2]');
+  const remarksBefore = await box('[data-testid=fpl-remarks]');
+  await click('[data-testid=fpl-tng-1]');
+  await click('[data-testid=fpl-stop-1]');
+  await page.waitFor(
+    () => getComputedStyle(document.querySelector('[data-testid=fpl-stop-min-1]')).visibility === 'visible',
+  );
+  // (the boxes above that grow with the requests are absorbed by the panel's scroll anchoring)
+  for (const [sel, was] of [
+    ['[data-testid=fpl-request-2]', rowBefore],
+    ['[data-testid=fpl-remarks]', remarksBefore],
+  ]) {
+    const now = await box(sel);
+    assert.ok(Math.abs(now.top - was.top) < 1 && now.height === was.height, `${sel} moved: ${was.top} → ${now.top}`);
+  }
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=fpl-tng-1]').checked), true);
+  if (process.env.SHOTS) await page.screenshot('smoke-fpl-requests', { fullPage: false });
+  assert.doesNotMatch(await page.eval(() => document.querySelector('[data-testid=fpl-requests]').textContent), /RMK/);
+
+  await page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', {
+    timeout: 10000,
+  });
+  const f = await (await fetch(`${server.url}/api/flights/${f0.id}`)).json();
+  assert.deepEqual(
+    f.options.aerodromeRequests.map((r) => [r.pointUid, r.kind, r.stopMin ?? null]),
+    [
+      ['r-b', 'touch-and-go', null],
+      ['r-b', 'stop', 10],
+    ],
+  );
+
+  // item 18: both remarks in the one RMK/, the touch-and-go first
+  await page.goto(`${server.url}/flights/${f0.id}/export/fpl`);
+  await page.waitFor(
+    () => !!document.querySelector('[data-testid=fpl-message]') && !document.querySelector('.fpl-loading'),
+    { timeout: 20000 },
+  );
+  const msg = await page.eval(() => document.querySelector('[data-testid=fpl-message]').textContent);
+  assert.match(
+    msg.replace(/\s+/g, ' '),
+    /RMK\/REQUEST TOUCH N GO AT LGMG REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN/,
+  );
+  assert.deepEqual(page.errors, []);
+});
