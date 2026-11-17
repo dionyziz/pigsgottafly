@@ -355,8 +355,6 @@ export function CompassSection({
                   value={c.swung}
                   onChange={(v) => {
                     cc(i, (x) => {
-                      // a card is valid for two years from the swing unless another date is entered
-                      if (!x.expires || x.expires === addYears(x.swung, 2)) x.expires = v ? addYears(v, 2) : x.expires;
                       x.swung = v;
                     });
                   }}
