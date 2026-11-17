@@ -14,6 +14,10 @@
 //   - a touch-and-go followed by a full stop at the same aerodrome: the sector ends at the
 //     touch-and-go, then a circuit sector (no legs; NavlogResult.circuits gives its times and fuel)
 //     ends at the full-stop landing there.
+//   - a stop at the departure: circuit sector(s) from the departure back to it first (a
+//     touch-and-go then a full stop with 'Touch-and-go first'); a stop at the destination: the
+//     route's last sector lands there (at a touch-and-go when one is requested too, then a circuit
+//     sector to the full stop), and a final circuit sector after the ground time lands there again.
 // So the last sector lands with FOB − allowance × (1 + stops) − trip = FuelPlan.landingFuelL, and a
 // flight without stops is one sector equal to the plain take-off / landing figures.
 // Pure: no I/O, no DOM.
@@ -82,67 +86,64 @@ export function flightSectors(input: FlightSectorsInput): FlightSector[] {
   const n = input.legs.length;
   if (!n) return [];
   const allowance = fin(input.taxiAllowanceL) ? Math.max(0, input.taxiAllowanceL) : 0;
-  const stops = stopLegs(input.groundAfterLegMin, n);
-  const touches: number[] = [];
-  for (let i = 0; i < n - 1; i++) if (input.touchAfterLeg?.[i] && !stops.includes(i)) touches.push(i);
-  const ends = [...new Set([...stops, ...touches, n - 1])].sort((a, b) => a - b);
+  const circuits = input.circuits ?? [];
+  const after = (i: number) => circuits.filter((c) => c.afterLeg === i);
+  const ground = (i: number) => {
+    const m = input.groundAfterLegMin?.[i];
+    return fin(m) && m > 0;
+  };
+  // How the aircraft comes down at the end of leg i (null: it flies on).
+  const legEnd = (i: number): FlightSector['ends'] | null => {
+    if (after(i).length) return input.touchAfterLeg?.[i] ? 'touch-and-go' : 'stop';
+    if (i === n - 1) return 'destination';
+    if (ground(i)) return 'stop';
+    return input.touchAfterLeg?.[i] ? 'touch-and-go' : null;
+  };
   const out: FlightSector[] = [];
-  let first = 0;
   let fuel = fin(input.fobL) ? input.fobL : 0;
   let charge = allowance;
-  for (const last of ends) {
-    const circuit = stops.includes(last) ? input.circuits?.find((c) => c.afterLeg === last) : undefined;
-    let trip = 0;
-    for (let i = first; i <= last; i++) {
-      const f = input.legs[i].fuel;
-      trip += fin(f) ? f : 0;
-    }
-    const landing = fuel - charge - trip;
-    const kind =
-      last === n - 1
-        ? ('destination' as const)
-        : stops.includes(last) && !circuit
-          ? ('stop' as const)
-          : ('touch-and-go' as const);
-    out.push({
-      index: out.length,
-      fromPoint: first,
-      toPoint: last + 1,
-      firstLeg: first,
-      lastLeg: last,
-      takeoffMin: input.legs[first].startMin,
-      landingMin: input.legs[last].endMin,
-      tripFuelL: trip,
-      allowanceL: charge,
-      fuelTakeoffL: fuel,
-      fuelLandingL: landing,
-      ends: kind,
-    });
+  const push = (s: Omit<FlightSector, 'index' | 'allowanceL' | 'fuelTakeoffL' | 'fuelLandingL'>) => {
+    const landing = fuel - charge - s.tripFuelL;
+    out.push({ ...s, index: out.length, allowanceL: charge, fuelTakeoffL: fuel, fuelLandingL: landing });
     // No refuelling: the next sector starts with what is left (never below empty tanks); after a
     // touch-and-go there is no new start-up and taxi.
     fuel = Math.max(0, landing);
-    charge = kind === 'touch-and-go' ? 0 : allowance;
-    first = last + 1;
-    if (circuit) {
-      const trip = fin(circuit.fuel) ? circuit.fuel : 0;
-      const landing = fuel - trip;
-      out.push({
-        index: out.length,
-        fromPoint: first,
-        toPoint: first,
-        firstLeg: first,
-        lastLeg: last,
-        takeoffMin: circuit.startMin,
-        landingMin: circuit.endMin,
-        tripFuelL: trip,
-        allowanceL: 0,
-        fuelTakeoffL: fuel,
-        fuelLandingL: landing,
-        ends: 'stop',
-      });
-      fuel = Math.max(0, landing);
-      charge = allowance;
-    }
+    charge = s.ends === 'touch-and-go' ? 0 : allowance;
+  };
+  const circuitSector = (c: NavlogCircuit) => {
+    const point = c.afterLeg + 1;
+    push({
+      fromPoint: point,
+      toPoint: point,
+      firstLeg: point,
+      lastLeg: c.afterLeg,
+      takeoffMin: c.startMin,
+      landingMin: c.endMin,
+      tripFuelL: fin(c.fuel) ? c.fuel : 0,
+      ends: c.ends,
+    });
+  };
+  for (const c of after(-1)) circuitSector(c);
+  let first = 0;
+  let trip = 0;
+  for (let i = 0; i < n; i++) {
+    const f = input.legs[i].fuel;
+    trip += fin(f) ? f : 0;
+    const ends = legEnd(i);
+    if (!ends) continue;
+    push({
+      fromPoint: first,
+      toPoint: i + 1,
+      firstLeg: first,
+      lastLeg: i,
+      takeoffMin: input.legs[first].startMin,
+      landingMin: input.legs[i].endMin,
+      tripFuelL: trip,
+      ends,
+    });
+    for (const c of after(i)) circuitSector(c);
+    first = i + 1;
+    trip = 0;
   }
   return out;
 }

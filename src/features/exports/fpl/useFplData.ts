@@ -15,7 +15,7 @@ import { REF, SUN_TABLES } from '../../../data/ref';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import { type RouteWeather, windProviderFromLegs } from '../../../data/weather';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
-import { requestTiming, taxiAllowanceOf } from '../../../shared';
+import { navlogTiming, requestTiming, taxiAllowanceOf } from '../../../shared';
 import { useFlightAircraft } from '../useExportData';
 
 export interface FplData {
@@ -75,9 +75,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         aircraft: navlogAircraft(aircraft, flight.options.compassCard, taxiAllowanceL),
         winds: perLeg.some(Boolean) ? windProviderFromLegs(perLeg) : null,
         sunTables: SUN_TABLES,
-        patternLegs: timing.patternLegs,
-        groundAfterLegMin: timing.groundAfterLegMin,
-        circuitAfterLegMin: timing.circuitAfterLegMin,
+        ...navlogTiming(timing),
       }),
     );
   }, [
@@ -107,7 +105,7 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         fobL: flight.fobL,
         usableL: aircraft.fuel.usableL,
         tripMin: navlog ? navlog.flightMin : 0,
-        stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
+        stops: timing.stops,
       }),
     );
   }, [

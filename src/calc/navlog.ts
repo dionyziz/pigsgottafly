@@ -8,6 +8,11 @@
 //     pattern TAS too, and a stop's minutes on the ground (groundAfterLegMin) are added to the
 //     timeline after the leg that lands there; so is the circuit between a touch-and-go and a full
 //     stop at the same aerodrome (circuitAfterLegMin), whose fuel is added to the trip fuel.
+//     A stop at the departure flies its circuit(s) (departureCircuitsMin) and spends its ground
+//     time (departureGroundMin) between the take-off and the first leg; a stop at the destination
+//     spends its ground time (groundAfterLegMin of the last leg, after the touch-and-go circuit if
+//     any) and flies the final circuit (finalCircuitMin) between the last leg and the landing.
+//     Circuits are flown at the burn rate and their fuel added to the trip fuel.
 //   - wind/temperature per leg sampled at the leg midpoint, leg altitude and mid-leg time; since GS
 //     depends on the wind and the mid-leg time on GS, iterate (4 passes, as v2). The sampled wind
 //     is rounded as written on the sheet (direction 1..360, speed kt) before the wind triangle.
@@ -83,12 +88,25 @@ export interface NavlogInput {
   groundAfterLegMin?: number[];
   /** Per leg: minutes of the circuit after a touch-and-go at the leg's end, before the full-stop landing there. */
   circuitAfterLegMin?: number[];
+  /** A stop at the departure: the circuits before its full-stop landing (requestTiming()). */
+  departureCircuitsMin?: number[];
+  /** A stop at the departure: minutes on the ground there before the take-off for the route. */
+  departureGroundMin?: number;
+  /** A stop at the destination: the circuit after the new take-off there, before the final landing. */
+  finalCircuitMin?: number;
 }
 
-/** The circuit between a touch-and-go and the full-stop landing at the end of leg `afterLeg`. */
+/**
+ * A circuit flown at one aerodrome: between a touch-and-go and the full-stop landing at the end of
+ * leg `afterLeg`; at the departure before its full stop (afterLeg −1); at the destination after its
+ * stop, before the final landing.
+ */
 export interface NavlogCircuit {
+  /** The leg it follows; −1 = at the departure, before the first leg. */
   afterLeg: number;
-  /** Minutes after 00:00 UTC of the flight date: the touch-and-go and the full-stop landing. */
+  /** How it ends: at a touch-and-go, a full stop, or the final landing at the destination. */
+  ends: 'touch-and-go' | 'stop' | 'destination';
+  /** Minutes after 00:00 UTC of the flight date: its take-off (or touch-and-go) and its landing. */
   startMin: number;
   endMin: number;
   /** Whole litres (rounded up, as a leg). */
@@ -124,7 +142,7 @@ export interface NavlogResult {
   times: { blockOffMin: number; takeoffMin: number; landingMin: number; blockOnMin: number };
   /** Unrounded flight time, take-off → landing, minutes. */
   flightMin: number;
-  /** Circuits after a touch-and-go before a full stop at the same aerodrome (their fuel is in totals.tripFuel). */
+  /** Circuits in flight order (their fuel is in totals.tripFuel). */
   circuits: NavlogCircuit[];
   blockOffSet: boolean;
   /** Sunset at the destination, minutes after 00:00 UTC of the flight date; null if unknown. */
@@ -199,9 +217,20 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   });
   const alt = legs.map((_, i) => (fin(input.altitudesFt[i]) ? input.altitudesFt[i] : NaN));
 
+  const posMin = (x: unknown) => (fin(x) && x > 0 ? x : 0);
+  const depCircuits = n ? (input.departureCircuitsMin ?? []).map(posMin).filter((m) => m > 0) : [];
+  const depGround = n ? posMin(input.departureGroundMin) : 0;
+  const finalCircuit = n ? posMin(input.finalCircuitMin) : 0;
+  // The ground time and the circuit before it after leg i (the last leg's only with a stop at the destination).
+  const afterLeg = (i: number) =>
+    i < n - 1 || finalCircuit > 0
+      ? { circuit: posMin(input.circuitAfterLegMin?.[i]), ground: posMin(input.groundAfterLegMin?.[i]) }
+      : { circuit: 0, ground: 0 };
+  const firstLegMin = takeoffMin + depCircuits.reduce((s, m) => s + m, 0) + depGround;
+
   let rows: NavlogLeg[] = [];
   for (let pass = 0; pass < PASSES; pass++) {
-    let t = takeoffMin;
+    let t = firstLegMin;
     const prev = rows;
     rows = legs.map((L, i) => {
       const o = input.overrides[i] ?? {};
@@ -227,10 +256,8 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
       const flown = fin(r.minutesExact) ? r.minutesExact : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
       t = startMin + flown;
       const endMin = t;
-      const circuit = input.circuitAfterLegMin?.[i];
-      if (fin(circuit) && circuit > 0 && i < n - 1) t += circuit;
-      const ground = input.groundAfterLegMin?.[i];
-      if (fin(ground) && ground > 0 && i < n - 1) t += ground;
+      const { circuit, ground } = afterLeg(i);
+      t += circuit + ground;
       return {
         ...r,
         index: i,
@@ -249,25 +276,34 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
     });
   }
 
-  // One start-up/taxi/take-off/landing allowance, plus one per intermediate full stop (a leg
-  // followed by ground time), as planFuel({ stops }).
-  const stops = n ? (input.groundAfterLegMin ?? []).slice(0, n - 1).filter((m) => fin(m) && m > 0).length : 0;
+  // One start-up/taxi/take-off/landing allowance, plus one per full stop (a leg followed by ground
+  // time, a stop at the departure), as planFuel({ stops }).
+  let stops = depGround > 0 ? 1 : 0;
+  for (let i = 0; i < n; i++) if (afterLeg(i).ground > 0) stops++;
   const circuits: NavlogCircuit[] = [];
+  const circuitFuelOf = (min: number) => (ac.burnLph > 0 ? Math.ceil((ac.burnLph * min) / 60) : 0);
+  const addCircuit = (afterLeg: number, ends: NavlogCircuit['ends'], startMin: number, min: number) =>
+    circuits.push({ afterLeg, ends, startMin, endMin: startMin + min, fuel: circuitFuelOf(min) });
+  let tc = takeoffMin;
+  depCircuits.forEach((m, k) => {
+    addCircuit(-1, k < depCircuits.length - 1 ? 'touch-and-go' : 'stop', tc, m);
+    tc += m;
+  });
   rows.forEach((r, i) => {
-    const c = input.circuitAfterLegMin?.[i];
-    if (fin(c) && c > 0 && i < n - 1)
-      circuits.push({
-        afterLeg: i,
-        startMin: r.endMin,
-        endMin: r.endMin + c,
-        fuel: ac.burnLph > 0 ? Math.ceil((ac.burnLph * c) / 60) : 0,
-      });
+    const { circuit: c, ground } = afterLeg(i);
+    if (c > 0) addCircuit(i, 'stop', r.endMin, c);
+    if (i === n - 1 && finalCircuit > 0) addCircuit(i, 'destination', r.endMin + c + ground, finalCircuit);
   });
   const circuitFuel = circuits.reduce((s, c) => s + c.fuel, 0);
   const totals = summarize(rows, (ac.taxiAllowanceL || 0) * (1 + stops));
   totals.tripFuel += circuitFuel;
   totals.fuel += circuitFuel;
-  const landingMin = n ? rows[n - 1].endMin : takeoffMin;
+  const lastCircuit = circuits[circuits.length - 1];
+  const landingMin = !n
+    ? takeoffMin
+    : lastCircuit && lastCircuit.ends === 'destination'
+      ? lastCircuit.endMin
+      : rows[n - 1].endMin;
   const blockOnMin = landingMin + taxiIn;
 
   const legWarnings: NavlogResult['legWarnings'] = [];

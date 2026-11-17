@@ -1,10 +1,10 @@
 // The route's aerodromes at their planned times against their hours (AIP AD 2.3 / AD 1.6 + the flight's
 // NOTAMs, src/calc/aerodromeStatus.ts), and the editor warnings they give. Pure (no React): wired in
 // calc.tsx, unit-tested in tests/unit/screens/aerodromeChecks.test.ts.
-//   departure      block start … take-off
+//   departure      block start … take-off (with a stop there: … the last take-off from there)
 //   stop           landing there … take-off from there (an intermediate full stop)
 //   touch-and-go   when the aircraft gets there
-//   destination    landing … block stop
+//   destination    landing … block stop (with a stop there: from the first landing there)
 import { type AdNotamEffect, type AdStatus, aerodromeStatus, clockZ } from '../../../calc';
 import { activeRequests, type FlightOptions, type RoutePoint } from '../../../shared';
 import type { RefAerodrome, RefSunTable } from '../../../shared/ref';
@@ -43,7 +43,7 @@ export interface AdChecksInput {
   times?: { blockOffMin: number; takeoffMin: number; landingMin: number; blockOnMin: number };
   /** Navlog leg end times (minutes after dayMs), by leg. */
   legEndMin: number[];
-  /** Intermediate full stops with their landing / take-off times (epoch ms). */
+  /** Full stops and touch-and-goes with their landing / take-off times (epoch ms), the route's ends included. */
   stops: { pointIndex: number; aerodrome: RefAerodrome | null; landingMs: number; takeoffMs: number }[];
   effects: readonly AdNotamEffect[];
   sunTables?: Record<string, RefSunTable>;
@@ -79,9 +79,6 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
   };
   const r = i.route;
   if (!r.length) return out;
-  const bo = ms(i.times?.blockOffMin),
-    to = ms(i.times?.takeoffMin);
-  add('departure', 0, i.departure, bo, to, fin(bo) ? `block start ${z(bo)} – take-off ${z(to)}` : 'departure');
   const tng = new Set(
     activeRequests(r, i.options)
       .filter((x) => x.request.kind === 'touch-and-go')
@@ -93,6 +90,10 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
     const prev = stopAt.get(x.pointIndex);
     stopAt.set(x.pointIndex, prev ? { ...prev, takeoffMs: x.takeoffMs } : x);
   }
+  // A stop at the departure keeps the aircraft there until its last take-off.
+  const bo = ms(i.times?.blockOffMin),
+    to = stopAt.get(0)?.takeoffMs ?? ms(i.times?.takeoffMin);
+  add('departure', 0, i.departure, bo, to, fin(bo) ? `block start ${z(bo)} – take-off ${z(to)}` : 'departure');
   for (let k = 1; k < r.length - 1; k++) {
     const st = stopAt.get(k);
     if (st) {
@@ -112,7 +113,8 @@ export function aerodromeChecks(i: AdChecksInput): AdCheck[] {
     }
   }
   if (r.length > 1) {
-    const ldg = ms(i.times?.landingMin),
+    // A stop at the destination: from the first landing there.
+    const ldg = stopAt.get(r.length - 1)?.landingMs ?? ms(i.times?.landingMin),
       bon = ms(i.times?.blockOnMin);
     add(
       'destination',

@@ -1,5 +1,5 @@
 // Flight plan: what only the pilot can say for the ICAO FPL: up to two alternate aerodromes
-// (item 16), touch-and-go / intermediate-stop requests at the route's aerodromes (item 18 RMK/,
+// (item 16), touch-and-go / full-stop requests at the route's aerodromes (item 18 RMK/,
 // timed at pattern speed) and free-text remarks (item 18). Everything else in the FPL comes from the
 // aircraft, the profile, the manifest, the route and the navlog.
 import { useEffect, useEffectEvent, useState } from 'react';
@@ -84,8 +84,9 @@ export function FplSection() {
 
 /**
  * The route's aerodromes, each with "Touch-and-go" and "Stop n min" (the same requests as the map
- * point menu); an intermediate aerodrome may have both. Columns line up across the rows, and the
- * minutes field keeps its place while Stop is off, so ticking a box moves nothing.
+ * point menu); any aerodrome may have both, the departure and the destination too. Columns line
+ * up across the rows, and the minutes field keeps its place while Stop is off, so ticking a box
+ * moves nothing.
  */
 function RequestsList() {
   const { doc, update } = useEditor();

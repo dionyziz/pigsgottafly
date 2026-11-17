@@ -286,7 +286,15 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     const point = route[s.pointIndex];
     const req = reqs.get(`${s.kind}|${s.pointIndex}`);
     const k = wxStops.indexOf(s.pointIndex);
-    const loc = k >= 0 ? (weather?.stops?.[k] ?? null) : null;
+    // A stop at the departure or the destination: that end's surface forecast.
+    const loc =
+      k >= 0
+        ? (weather?.stops?.[k] ?? null)
+        : s.pointIndex === 0
+          ? (weather?.departure ?? null)
+          : s.pointIndex === route.length - 1
+            ? (weather?.destination ?? null)
+            : null;
     const wbBefore = sectorWb[s.before.index] ?? null;
     const wbAfter = sectorWb[s.after.index] ?? null;
     return {
