@@ -1,0 +1,55 @@
+{
+ "chart": "AD 2-LGAD-VFR, VFR routes ANDRAVIDA MTMA (page 1 chart, page 3 table \"COORDINATES (IN WGS-84) OF REPORTING POINTS ON ANDRAVIDA VFR ROUTES\", printed as an image). Routes not transcribed yet.",
+ "points": [
+  {
+   "name": "RION",
+   "dms": "38 16 18 N 021 48 18 E",
+   "note": "RIO in the table, RION on the chart"
+  },
+  {
+   "name": "OXIA",
+   "dms": "38 15 16 N 021 07 36 E"
+  },
+  {
+   "name": "MOUNDA",
+   "dms": "38 02 03 N 020 48 10 E"
+  },
+  {
+   "name": "YERAKI",
+   "dms": "37 43 20 N 020 58 41 E"
+  },
+  {
+   "name": "KILLINI",
+   "dms": "37 56 14 N 021 08 27 E"
+  },
+  {
+   "name": "KALOGRIA",
+   "dms": "38 08 16 N 021 17 36 E"
+  },
+  {
+   "name": "VARDA",
+   "dms": "37 57 55 N 021 23 07 E"
+  },
+  {
+   "name": "ACHAIA",
+   "dms": "38 06 47 N 021 35 13 E"
+  },
+  {
+   "name": "PAPPAS",
+   "dms": "38 09 47 N 021 26 43 E"
+  },
+  {
+   "name": "KALAVRITA",
+   "dms": "38 02 00 N 022 06 37 E"
+  },
+  {
+   "name": "ELLINIKO",
+   "dms": "38 03 12 N 021 48 21 E"
+  },
+  {
+   "name": "CHAVARI",
+   "dms": "37 50 51 N 021 23 00 E"
+  }
+ ],
+ "routes": []
+}

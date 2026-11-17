@@ -1,0 +1,135 @@
+{
+ "chart": "AD 1.6.15-LGLR-VFR, VFR routes LARISSA MTMA. The chart prints no coordinates: positions from open flightmaps (renamed points GONNOI, NIKEAS, PLATAS under their former names) or from the chart that shares the point. Routes not transcribed yet.",
+ "points": [
+  {
+   "name": "GALATINI",
+   "from": "ofm"
+  },
+  {
+   "name": "GREVENA",
+   "from": "ofm"
+  },
+  {
+   "name": "SARANTAPORO",
+   "from": "ofm",
+   "ofm_name": "SARANTOPORO"
+  },
+  {
+   "name": "KARPERO",
+   "from": "ofm"
+  },
+  {
+   "name": "FLABOURO",
+   "from": "ofm",
+   "ofm_name": "A/F FLABOURO"
+  },
+  {
+   "name": "ELASONA",
+   "from": "ofm"
+  },
+  {
+   "name": "GONNOI",
+   "from": "ofm",
+   "ofm_name": "GONNI"
+  },
+  {
+   "name": "DELERIA",
+   "from": "ofm"
+  },
+  {
+   "name": "KISA",
+   "from": "ofm"
+  },
+  {
+   "name": "VERDIKOUSA",
+   "from": "ofm"
+  },
+  {
+   "name": "KALABAKA",
+   "from": "ofm"
+  },
+  {
+   "name": "TIRNAVOS",
+   "from": "ofm"
+  },
+  {
+   "name": "SIKOURIO",
+   "from": "ofm"
+  },
+  {
+   "name": "AGISA",
+   "from": "ofm"
+  },
+  {
+   "name": "GEDIKI",
+   "from": "ofm"
+  },
+  {
+   "name": "PLATAS",
+   "from": "ofm",
+   "ofm_name": "PLATA"
+  },
+  {
+   "name": "NIAMATA",
+   "from": "ofm"
+  },
+  {
+   "name": "NIOCHORI",
+   "from": "ofm"
+  },
+  {
+   "name": "TRIKALA",
+   "from": "ofm"
+  },
+  {
+   "name": "MESORACHI",
+   "from": "ofm"
+  },
+  {
+   "name": "NIKEAS",
+   "from": "ofm",
+   "ofm_name": "NIKEA"
+  },
+  {
+   "name": "MATA",
+   "from": "ofm"
+  },
+  {
+   "name": "PLATAMON",
+   "from": "ofm"
+  },
+  {
+   "name": "KATERO",
+   "same_as": "LGTS"
+  },
+  {
+   "name": "AGIA",
+   "same_as": "LGBL"
+  },
+  {
+   "name": "CHALKI",
+   "same_as": "LGBL"
+  },
+  {
+   "name": "STEFANO",
+   "same_as": "LGBL"
+  },
+  {
+   "name": "ZAGORA",
+   "same_as": "LGBL"
+  },
+  {
+   "name": "VOLLOS",
+   "same_as": "LGBL"
+  },
+  {
+   "name": "FARSALA",
+   "same_as": "LGBL"
+  },
+  {
+   "name": "PETROTO",
+   "same_as": "LGBL"
+  }
+ ],
+ "routes": []
+}

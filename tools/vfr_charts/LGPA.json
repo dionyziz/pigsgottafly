@@ -36,6 +36,30 @@
   {
    "name": "NAKSOS",
    "dms": "37 05 00 N 025 18 19 E"
+  },
+  {
+   "name": "SOREV",
+   "same_as": "LGAV"
+  },
+  {
+   "name": "NITSA",
+   "same_as": "LGMK"
+  },
+  {
+   "name": "PIDAX",
+   "same_as": "LGMK"
+  },
+  {
+   "name": "GENDO",
+   "dms": "36 55 17 N 024 47 41 E",
+   "ref": "ENR 4.4",
+   "note": "no coordinates on the chart: ENR 4.4 significant point"
+  },
+  {
+   "name": "PEROK",
+   "dms": "37 12 16 N 025 27 06 E",
+   "ref": "ENR 4.4",
+   "note": "no coordinates on the chart: ENR 4.4 significant point"
   }
  ],
  "routes": [
@@ -110,5 +134,5 @@
    "nm": 7
   }
  ],
- "notes": "SOREV\u2013ERAKIS (19, not to scale) and EROTU\u2013GENDO\u2013MIL (R32) show no altitude. Holdings 1000 at ANTIPAROS, MAISTROS, NAKSOS, FANNOS, KOTOMERI."
+ "notes": "SOREV–ERAKIS (19, not to scale) and EROTU–GENDO–MIL (R32) show no altitude. Holdings 1000 at ANTIPAROS, MAISTROS, NAKSOS, FANNOS, KOTOMERI."
 }

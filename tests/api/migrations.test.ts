@@ -15,6 +15,7 @@ import {
 } from '../../api/_lib/migrations/011_fleet_fpl_equipment';
 import { iasKt, performanceKt } from '../../api/_lib/migrations/046_performance_speeds_kt';
 import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
+import VFR_POINTS_JSON from '../../src/data/ref/vfr-points.json';
 import type { AtcEntry } from '../../src/shared/types';
 import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
 import { CID, JWK } from './helpers';
@@ -637,6 +638,7 @@ describe('migrations', () => {
       '045_passenger_email',
       '046_performance_speeds_kt',
       '047_pilot_files',
+      '048_ref_vfr_points_2609',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -668,6 +670,7 @@ describe('migrations', () => {
       '045_passenger_email',
       '046_performance_speeds_kt',
       '047_pilot_files',
+      '048_ref_vfr_points_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -763,7 +766,11 @@ describe('migrations', () => {
     );
     const before = await db.query(`SELECT * FROM aircraft ORDER BY id`);
 
-    expect(await migrate(db, withOwner(OWNER))).toEqual(['046_performance_speeds_kt', '047_pilot_files']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual([
+      '046_performance_speeds_kt',
+      '047_pilot_files',
+      '048_ref_vfr_points_2609',
+    ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
     expect(after.map(({ performance: _p, ...r }) => r)).toEqual(before.map(({ performance: _p, ...r }) => r));
@@ -805,6 +812,11 @@ describe('migrations', () => {
     );
     for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
     expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
+    // 048: the AIRAC's complete VFR reporting points (002's list replaced), exactly as shipped to the client
+    const waypoints = await db.query<{ doc: any }>(`SELECT doc FROM ref_waypoints WHERE airac = '2609'`);
+    const byId = (a: any, b: any) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    expect(waypoints.map((r) => r.doc).sort(byId)).toEqual([...(VFR_POINTS_JSON as any[])].sort(byId));
+    expect(waypoints.some((r) => r.doc.id === 'LGTG/KALAMO')).toBe(true);
     expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(
       MIGRATIONS.map((m) => m.name).sort(),
     );
@@ -828,7 +840,7 @@ describe('migrations', () => {
         )
       ).length,
     ).toBe(1);
-    expect(MIGRATIONS.map((m) => m.name).slice(-10)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-11)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -839,6 +851,7 @@ describe('migrations', () => {
       '045_passenger_email',
       '046_performance_speeds_kt',
       '047_pilot_files',
+      '048_ref_vfr_points_2609',
     ]);
     await db.close();
   });

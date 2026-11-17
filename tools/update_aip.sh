@@ -20,7 +20,7 @@ bsdtar -xf "$WORK"/zip/*.iso -C "$WORK/iso"
 PDF="$WORK/iso/ais/eaip/pdf"
 
 echo "== 2. text of the sections we use"
-for f in "$PDF"/AD\ 2/AD2-*/LG_AD_2_LG??_en.pdf "$PDF/AD 1/AD 1.6 CAT B AERODROMES/catb"/*.pdf "$PDF/ENR 2"/*.pdf "$PDF/ENR 4"/*.pdf "$PDF/ENR 5"/*.pdf "$PDF/GEN 2"/*.pdf; do
+for f in "$PDF"/AD\ 2/AD2-*/LG_AD_2_LG??_en.pdf "$PDF/AD 1/AD 1.6 CAT B AERODROMES/catb"/*.pdf "$PDF/AD 3"/*/*.pdf "$PDF/ENR 2"/*.pdf "$PDF/ENR 4"/*.pdf "$PDF/ENR 5"/*.pdf "$PDF/GEN 2"/*.pdf; do
   pdftotext -layout "$f" "$WORK/txt/$(basename "$f" .pdf).txt"
 done
 for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
@@ -50,7 +50,9 @@ python3 -I "$ROOT/tools/parse_sun.py" "$WORK/txt/LG_GEN_2_7_en.txt" "$ROOT/data/
 python3 -I "$ROOT/tools/parse_runways.py" "$WORK/txt" "$ROOT/tools/runways.json"   # AD 2.12/2.13, AD 1.6.N.12/13 (+ OVR corrections)
 
 echo "== 5. VFR points and routes"
-python3 -I "$ROOT/tools/parse_vfr.py" "$WORK/vfr" "$ROOT/tools/vfr_points.json"
+# coordinate tables of the VFR charts (LGAV, LGIR, LGKL, LGTG) and the heliports' AD 3.N.21 reporting points;
+# it warns when a table lists more positions than it read
+(cd "$ROOT" && npx tsx tools/parse_vfr.ts "$WORK/vfr" "$WORK/txt" tools/vfr_points.json)
 python3 -I "$ROOT/tools/fetch_ofm.py" "$CYCLE" "$ROOT/tools/ofm_points.json"
 python3 -I "$ROOT/tools/known_points.py" "$ROOT/tools/vfr_points.json" "$ROOT/tools/vfr_charts" "$ROOT/tools/ofm_points.json" "$WORK/known.json"
 for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
