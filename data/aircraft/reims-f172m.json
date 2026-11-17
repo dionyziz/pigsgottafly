@@ -38,15 +38,15 @@
     "altitudesFt": [0, 2500, 5000, 7500],
     "standardTempC": [15, 10, 5, 0],
     "rows": [
-      { "massKg": 750,  "liftoffIas": "50 kt / 92 km/h / 57 MPH", "headwindKt": [0, 10, 20], "distances": [
+      { "massKg": 750,  "liftoffIasKt": 50, "headwindKt": [0, 10, 20], "distances": [
         [[125, 224], [149, 264], [178, 314], [218, 390]],
         [[84, 163],  [101, 195], [122, 233], [152, 294]],
         [[49, 110],  [61, 133],  [76, 163],  [98, 209]] ] },
-      { "massKg": 900,  "liftoffIas": "55 kt / 101 km/h / 63 MPH", "headwindKt": [0, 10, 20], "distances": [
+      { "massKg": 900,  "liftoffIasKt": 55, "headwindKt": [0, 10, 20], "distances": [
         [[189, 328], [226, 396], [271, 485], [334, 640]],
         [[130, 245], [158, 300], [192, 372], [241, 500]],
         [[82, 172],  [102, 215], [126, 271], [163, 372]] ] },
-      { "massKg": 1043, "liftoffIas": "59 kt / 109 km/h / 68 MPH", "headwindKt": [0, 10, 20], "distances": [
+      { "massKg": 1043, "liftoffIasKt": 59, "headwindKt": [0, 10, 20], "distances": [
         [[263, 465], [317, 582], [383, 756], [477, 1175]],
         [[187, 357], [229, 453], [280, 596], [354, 948]],
         [[123, 259], [154, 335], [192, 451], [247, 739]] ] }
@@ -61,7 +61,7 @@
     "source": "AFM 5-9 Table 6: landing distance, flaps 40°, power off, zero wind, hard surface runway",
     "flaps": "40°",
     "massKg": 1043,
-    "approachIas": "60 kt / 111 km/h / 69 MPH",
+    "approachIasKt": 60,
     "altitudesFt": [0, 2500, 5000, 7500],
     "standardTempC": [15, 10, 5, 0],
     "distances": [[158, 381], [170, 400], [184, 422], [200, 445]],

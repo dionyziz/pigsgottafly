@@ -231,7 +231,8 @@ export type DistancePair = [number, number];
 
 export interface TakeoffTableRow {
   massKg: number;
-  liftoffIas: string;
+  /** Lift-off IAS, kt. */
+  liftoffIasKt: number | null;
   /** Headwind columns, kt (e.g. [0, 10, 20]). */
   headwindKt: number[];
   /** distances[headwindIndex][altitudeIndex] */
@@ -257,7 +258,8 @@ export interface LandingTable {
   source: string;
   flaps: string;
   massKg: number;
-  approachIas: string;
+  /** Approach IAS, kt. */
+  approachIasKt: number | null;
   altitudesFt: number[];
   standardTempC: number[];
   /** distances[altitudeIndex], zero wind. */

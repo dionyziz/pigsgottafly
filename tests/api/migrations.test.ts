@@ -13,6 +13,7 @@ import {
   colours as FLEET_COLOURS_011,
   equipment as FLEET_EQUIPMENT_011,
 } from '../../api/_lib/migrations/011_fleet_fpl_equipment';
+import { iasKt, performanceKt } from '../../api/_lib/migrations/045_performance_speeds_kt';
 import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
 import type { AtcEntry } from '../../src/shared/types';
 import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
@@ -633,6 +634,7 @@ describe('migrations', () => {
       '042_crew_overrides',
       '043_aircraft_placeholder',
       '044_weather_cache',
+      '045_performance_speeds_kt',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -661,6 +663,7 @@ describe('migrations', () => {
       '042_crew_overrides',
       '043_aircraft_placeholder',
       '044_weather_cache',
+      '045_performance_speeds_kt',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -707,6 +710,81 @@ describe('migrations', () => {
     }
   });
 
+  test('045: AFM speed texts become knots', () => {
+    expect(iasKt('60 kt / 111 km/h / 69 MPH')).toBe(60);
+    expect(iasKt('59 kts')).toBe(59);
+    expect(iasKt('50 knots')).toBe(50);
+    expect(iasKt('92 km/h / 57 MPH')).toBe(50);
+    expect(iasKt('111 km/h')).toBe(60);
+    expect(iasKt('69 MPH')).toBe(60);
+    expect(iasKt('62.5')).toBe(63);
+    expect(iasKt(55)).toBe(55);
+    for (const v of ['', 'fast', 'Vr', null, undefined, '0 kt', '9999 kt', {}]) expect(iasKt(v), String(v)).toBeNull();
+    expect(
+      performanceKt({
+        takeoff: { flaps: '0°', rows: [{ massKg: 750, liftoffIas: '50 kt / 92 km/h / 57 MPH', headwindKt: [0] }] },
+        landing: { massKg: 1043, approachIas: 'about sixty' },
+        factors: { source: '' },
+        stallIasKt: null,
+      }),
+    ).toEqual({
+      takeoff: { flaps: '0°', rows: [{ massKg: 750, liftoffIasKt: 50, headwindKt: [0] }] },
+      landing: { massKg: 1043, approachIasKt: null },
+      factors: { source: '' },
+      stallIasKt: null,
+    });
+  });
+
+  test('045 on a database at 044: the speed texts of every aircraft become knots, the rest unchanged', async () => {
+    const db = await connect('memory://');
+    await db.exec(V2);
+    await db.query(`INSERT INTO users VALUES ('u1', 'g-sub-1', $1, 'Real Pilot', '', 1, 2)`, [OWNER]);
+    await migrate(db, withOwner(OWNER, upTo('044_weather_cache')));
+    // a second aircraft, made before 045 with its own texts
+    const [asv] = await db.query<{ id: string; performance: any }>(
+      `SELECT id, performance FROM aircraft WHERE registration = 'SX-ASV'`,
+    );
+    expect(asv.performance.landing.approachIas).toBe('60 kt / 111 km/h / 69 MPH');
+    const other = structuredClone(asv.performance);
+    other.takeoff.rows[0].liftoffIas = '100 km/h';
+    other.takeoff.rows[1].liftoffIas = '';
+    other.landing.approachIas = '70 MPH';
+    await db.query(
+      `INSERT INTO aircraft (id, pilot_id, registration, make_model, icao_type, wake, serial, operator, home_base, colours,
+         cruise_tas_kt, pattern_tas_kt, climb_tas_kt, fuel, mass_balance, performance, equipment, compass_cards, notes, created, updated)
+       SELECT 'other', pilot_id, 'SX-XXX', make_model, icao_type, wake, serial, operator, home_base, colours,
+         cruise_tas_kt, pattern_tas_kt, climb_tas_kt, fuel, mass_balance, $1::jsonb, equipment, compass_cards, notes, 1, 2
+       FROM aircraft WHERE id = $2`,
+      [JSON.stringify(other), asv.id],
+    );
+    const before = await db.query(`SELECT * FROM aircraft ORDER BY id`);
+
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['045_performance_speeds_kt']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual([]);
+    const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
+    expect(after.map(({ performance: _p, ...r }) => r)).toEqual(before.map(({ performance: _p, ...r }) => r));
+    const perf = Object.fromEntries(after.map((r) => [r.registration, r.performance]));
+    for (const reg of ['SX-ASV', 'SX-ASG']) {
+      expect(perf[reg].takeoff.rows.map((r: any) => r.liftoffIasKt)).toEqual([50, 55, 59]);
+      expect(perf[reg].landing.approachIasKt).toBe(60);
+      expect(JSON.stringify(perf[reg])).not.toMatch(/liftoffIas"|approachIas"/);
+    }
+    expect(perf['SX-XXX'].takeoff.rows.map((r: any) => r.liftoffIasKt)).toEqual([54, null, 59]);
+    expect(perf['SX-XXX'].landing.approachIasKt).toBe(61);
+    // all else as it was
+    const strip = (p: any) => ({
+      ...p,
+      takeoff: { ...p.takeoff, rows: p.takeoff.rows.map(({ liftoffIas: _a, liftoffIasKt: _b, ...r }: any) => r) },
+      landing: (({ approachIas: _a, approachIasKt: _b, ...r }: any) => r)(p.landing),
+    });
+    expect(after.map((r) => strip(r.performance))).toEqual(before.map((r) => strip(r.performance)));
+    // the converted aircraft load through the API's checks unchanged
+    const { toAircraft } = await import('../../api/_lib/rows');
+    const { checkPerformance } = await import('../../api/_lib/aircraftDoc');
+    for (const r of after) expect(checkPerformance(toAircraft(r).performance)).toEqual(r.performance);
+    await db.close();
+  });
+
   test('a fresh database migrates cleanly and pilots signing up later get no seed', async () => {
     const db = await connect('memory://');
     await migrate(db);
@@ -746,7 +824,7 @@ describe('migrations', () => {
         )
       ).length,
     ).toBe(1);
-    expect(MIGRATIONS.map((m) => m.name).slice(-8)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-9)).toEqual([
       '018_operators',
       '030_mail_log',
       '031_mail_log_details',
@@ -755,6 +833,7 @@ describe('migrations', () => {
       '042_crew_overrides',
       '043_aircraft_placeholder',
       '044_weather_cache',
+      '045_performance_speeds_kt',
     ]);
     await db.close();
   });

@@ -117,7 +117,12 @@ export function aircraftFromTypeJson(type: AircraftTypeJson): AircraftInput {
         flaps: type.takeoff.flaps,
         altitudesFt: type.takeoff.altitudesFt,
         standardTempC: type.takeoff.standardTempC,
-        rows: type.takeoff.rows,
+        rows: type.takeoff.rows.map((r: AircraftTypeJson) => ({
+          massKg: r.massKg,
+          liftoffIasKt: r.liftoffIasKt ?? null,
+          headwindKt: r.headwindKt,
+          distances: r.distances,
+        })),
         tempIncreasePer15C: 0.1,
         grassAddFractionOfTotal: 0.07,
         notes: type.takeoff.notes ?? [],
@@ -126,7 +131,7 @@ export function aircraftFromTypeJson(type: AircraftTypeJson): AircraftInput {
         source: type.landing.source ?? '',
         flaps: type.landing.flaps,
         massKg: type.landing.massKg,
-        approachIas: type.landing.approachIas,
+        approachIasKt: type.landing.approachIasKt ?? null,
         altitudesFt: type.landing.altitudesFt,
         standardTempC: type.landing.standardTempC,
         distances: type.landing.distances,
@@ -179,7 +184,15 @@ export function blankAircraft(): AircraftInput {
       envelopes: { normal: { maxKg: 0, polygon: [] }, utility: null },
     },
     takeoff: { source: '', flaps: '', altitudesFt: [], standardTempC: [], rows: [] },
-    landing: { source: '', flaps: '', massKg: 0, approachIas: '', altitudesFt: [], standardTempC: [], distances: [] },
+    landing: {
+      source: '',
+      flaps: '',
+      massKg: 0,
+      approachIasKt: null,
+      altitudesFt: [],
+      standardTempC: [],
+      distances: [],
+    },
   });
   return a;
 }

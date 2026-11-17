@@ -39,12 +39,6 @@ export function typeSpeeds(a: Pick<Aircraft, 'makeModel' | 'icaoType'>): TypeSpe
   return null;
 }
 
-/** First "NN kt" in an AFM IAS string ('59 kt / 109 km/h / 68 MPH' → 59). */
-export function ktOf(s: string | null | undefined): number | null {
-  const m = /(\d+(?:\.\d+)?)\s*kts?\b/i.exec(s || '');
-  return m ? parseFloat(m[1]) : null;
-}
-
 export interface PerfSpeeds {
   vrKt: number | null;
   vrNote: string;
@@ -85,7 +79,7 @@ export function perfSpeeds(a: Aircraft | null, takeoffMassKg: number | null, pre
   if (!a) return out;
   const p = a.performance;
   const rows = [...(p?.takeoff?.rows || [])]
-    .map((r) => ({ m: r.massKg, kt: ktOf(r.liftoffIas) }))
+    .map((r) => ({ m: r.massKg, kt: r.liftoffIasKt }))
     .filter((r): r is { m: number; kt: number } => r.kt != null && r.m > 0)
     .sort((x, y) => x.m - y.m);
   if (rows.length) {
@@ -102,7 +96,7 @@ export function perfSpeeds(a: Aircraft | null, takeoffMassKg: number | null, pre
     out.vrKt = Math.round(kt);
     out.vrNote = `AFM lift-off IAS at ${Math.round(m)} kg`;
   }
-  out.vappKt = ktOf(p?.landing?.approachIas);
+  out.vappKt = p?.landing?.approachIasKt ?? null;
   if (out.vappKt != null)
     out.vappNote = `AFM short-field approach${p.landing.flaps ? `, flaps ${p.landing.flaps}` : ''}`;
   out.flapsTakeoff = p?.takeoff?.flaps || '';

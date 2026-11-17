@@ -145,7 +145,7 @@ function buildFromScratch(target: AircraftInput): AircraftInput {
   to.rows.forEach((r, ri) => {
     const tr = tp.takeoff.rows[ri];
     r.massKg = tr.massKg;
-    r.liftoffIas = tr.liftoffIas;
+    r.liftoffIasKt = tr.liftoffIasKt;
     r.headwindKt = [...tr.headwindKt];
     r.distances.forEach((hw, h) =>
       hw.forEach((_, al) => {
@@ -167,7 +167,7 @@ function buildFromScratch(target: AircraftInput): AircraftInput {
   ld.source = tp.landing.source;
   ld.flaps = tp.landing.flaps;
   ld.massKg = tp.landing.massKg;
-  ld.approachIas = tp.landing.approachIas;
+  ld.approachIasKt = tp.landing.approachIasKt;
   ld.headwindDecreasePer5Kt = tp.landing.headwindDecreasePer5Kt;
   ld.tempIncreasePer15C = tp.landing.tempIncreasePer15C;
   ld.grassAddFractionOfTotal = tp.landing.grassAddFractionOfTotal;
