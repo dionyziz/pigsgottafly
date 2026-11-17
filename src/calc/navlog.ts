@@ -131,6 +131,8 @@ export interface NavlogResult {
   sunsetMin: number | null;
   /** Human-readable warnings: missing winds, crosswind > TAS, unknown altitude… */
   warnings: string[];
+  /** The warnings about one leg ('A → B: TAS not set.'): their leg and their text without 'A → B: '. */
+  legWarnings: { legIndex: number; text: string; detail: string }[];
 }
 
 /** The card a flight uses: FlightOptions.compassCard by name, else the aircraft's first card. */
@@ -267,14 +269,20 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   const landingMin = n ? rows[n - 1].endMin : takeoffMin;
   const blockOnMin = landingMin + taxiIn;
 
+  const legWarnings: NavlogResult['legWarnings'] = [];
   rows.forEach((r, i) => {
     const name = `${legs[i].from.name || '?'} → ${legs[i].to.name || '?'}`;
-    if (!isFinite(r.altFt)) warnings.push(`${name}: altitude unknown (enter one).`);
-    if (r.wca === undefined) warnings.push(`${name}: crosswind exceeds TAS; leg cannot be flown as planned.`);
-    else if (!(fin(r.gs) && r.gs > 0)) warnings.push(`${name}: ground speed is zero or negative.`);
+    const warn = (detail: string) => {
+      const text = `${name}: ${detail}`;
+      warnings.push(text);
+      legWarnings.push({ legIndex: i, text, detail });
+    };
+    if (!isFinite(r.altFt)) warn('altitude unknown (enter one).');
+    if (r.wca === undefined) warn('crosswind exceeds TAS; leg cannot be flown as planned.');
+    else if (!(fin(r.gs) && r.gs > 0)) warn('ground speed is zero or negative.');
     if (input.winds && r.windMissing && isFinite(r.altFt) && isFinite(dayMs))
-      warnings.push(`${name}: no wind forecast; calm wind assumed.`);
-    if (!(r.tasKt > 0)) warnings.push(`${name}: TAS not set.`);
+      warn('no wind forecast; calm wind assumed.');
+    if (!(r.tasKt > 0)) warn('TAS not set.');
   });
 
   let sunsetMin: number | null = null;
@@ -299,5 +307,6 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
     blockOffSet,
     sunsetMin,
     warnings,
+    legWarnings,
   };
 }

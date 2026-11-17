@@ -1,5 +1,5 @@
 // /about: where the data comes from. The weather model and the data sources are named here only;
-// the rest of the app shows the data without its provenance (e.g. the navlog strip shows "06Z run").
+// the rest of the app shows the data without its provenance.
 /* eslint-disable @eslint-react/no-missing-key -- the rows are [label, value] tuples, not rendered lists */
 import './about.css';
 

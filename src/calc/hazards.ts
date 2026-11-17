@@ -424,37 +424,59 @@ export function reportHazards(
 
 const TIME_SUFFIX = /,\s*\d{2}:\d{2}(–\d{2}:\d{2})?Z$/;
 
+/** One hazard list line; a line about one leg or one aerodrome also says which, and its text without the place. */
+export interface HazardLine {
+  level: HazardLevelName;
+  text: string;
+  /** The line is about this one leg (per-leg lines, or a run of a single leg). */
+  legIndex?: number;
+  /** The line is about the departure or the destination. */
+  end?: 'departure' | 'destination';
+  /** The text without its 'A → B: ' / 'LGTT: ' prefix. */
+  detail: string;
+}
+
 /**
  * The hazards as list lines (strip, export): 'KOROPI → LGSO: Thunderstorms possible, 11:00–13:00Z',
- * 'LGTT: Fog in METAR, 06:20Z'. The same hazard on consecutive legs is one line over the run of legs.
+ * 'LGTT: Fog in METAR, 06:20Z'. The same hazard on consecutive legs is one line over the run of legs,
+ * unless `perLeg` (a line per leg, each with its legIndex: the strip shows them under their leg).
  */
 export function hazardLines(
   hazards: Hazard[],
   leg: (i: number) => { from: string; to: string } | null,
   endName: (e: 'departure' | 'destination') => string,
-): { level: HazardLevelName; text: string }[] {
-  const out: { level: HazardLevelName; text: string }[] = [];
+  opts: { perLeg?: boolean } = {},
+): HazardLine[] {
+  const out: HazardLine[] = [];
   type Run = { h: Hazard; what: string; first: number; last: number; from: number; to: number };
   const runs: Run[] = [];
   for (const h of hazards) {
     const what = h.text.replace(TIME_SUFFIX, '');
     if (h.scope.type !== 'leg') {
-      out.push({ level: h.level, text: `${endName(h.scope.type)}: ${h.text}` });
+      out.push({ level: h.level, text: `${endName(h.scope.type)}: ${h.text}`, end: h.scope.type, detail: h.text });
       continue;
     }
     const i = h.scope.legIndex;
-    const r = runs.find((x) => x.last === i - 1 && x.h.kind === h.kind && x.h.level === h.level && x.what === what);
+    const r = opts.perLeg
+      ? undefined
+      : runs.find((x) => x.last === i - 1 && x.h.kind === h.kind && x.h.level === h.level && x.what === what);
     if (r) {
       r.last = i;
       r.from = Math.min(r.from, h.timeFromMs);
       r.to = Math.max(r.to, h.timeToMs);
     } else runs.push({ h, what, first: i, last: i, from: h.timeFromMs, to: h.timeToMs });
   }
-  const legLines = runs.map((r) => {
+  const legLines = runs.map((r): HazardLine => {
     const a = leg(r.first),
       b = leg(r.last);
     const where = a && b ? `${a.from} → ${b.to}` : '';
-    return { level: r.h.level, text: `${where}: ${r.what}, ${timeRange(r.from, r.to)}` };
+    const detail = `${r.what}, ${timeRange(r.from, r.to)}`;
+    return {
+      level: r.h.level,
+      text: `${where}: ${detail}`,
+      detail,
+      ...(r.first === r.last ? { legIndex: r.first } : {}),
+    };
   });
   return [...legLines, ...out];
 }

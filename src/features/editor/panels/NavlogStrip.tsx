@@ -1,16 +1,18 @@
-// Collapsible navlog strip under the map: live legs (altitude, TC/MC, wind, WCA, MH, DEV/CH, GS,
-// ETE, ETA, fuel) from computeNavlog(), the forecast run with a refresh, and every warning of the
-// flight (winds, compass card, W&B, performance, crosswind, fuel, manifest), each with its fix.
+// Collapsible navlog strip under the map: live legs (altitude, editable in place; TC/MC, wind, WCA,
+// MH, DEV/CH, GS, ETE, ETA, fuel) from computeNavlog(), a winds refresh, and every warning of the
+// flight (winds, compass card, W&B, performance, crosswind, fuel, manifest), each with its fix: the
+// ones about one leg (hazards, crosswind, altitude…) under that leg's row, the rest in the list.
 // A click anywhere on the header (not on its buttons) opens or closes it.
-import { type KeyboardEvent, type MouseEvent, useState } from 'react';
+import { Fragment, type KeyboardEvent, type MouseEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 import { AipRefText } from '../../../app/AipLink';
 import { fmtAltitude, fmtHdg } from '../../../calc';
 import type { RouteWeather } from '../../../data/weather';
 import { fmtClock, fmtDuration, fmtEte } from '../../../shared/format';
-import { Icon } from '../../../ui';
+import { Icon, NumberField } from '../../../ui';
 import { editorWarningFix, focusInEditor } from '../focus';
+import { setAltitudeOverride } from '../map/routeEdit';
 import { useNotams } from '../notams';
 import { useResizable } from '../resizable';
 import { useEditor } from '../state';
@@ -40,8 +42,8 @@ const fmtMin = (min: number) => fmtClock(min, { fallback: '--:--' });
 const fmtDur = (min: number) => fmtDuration(min, { fallback: '–' });
 const fmtLegTime = (min: number) => fmtEte(min, { fallback: '–' });
 
-/** The forecast in a few characters: the model run ('06Z run'), or why there is none. */
-export function weatherRunText(
+/** The winds aloft when they are not simply there: being fetched, or missing (and why). */
+export function windsStatusText(
   weather: RouteWeather | null,
   loading: boolean,
   hasLegs: boolean,
@@ -49,48 +51,123 @@ export function weatherRunText(
   if (loading) return { text: 'Fetching winds…' };
   if (!weather) return { text: hasLegs ? 'No winds' : '' };
   if (weather.status !== 'ok') return { text: 'No winds', title: weather.message, tone: 'warn' };
-  const run = weather.source?.run?.runMs;
-  if (run != null && Number.isFinite(run))
-    return { text: `${String(new Date(run).getUTCHours()).padStart(2, '0')}Z run`, title: weather.message };
-  return { text: weather.source?.endpoint === 'historical' ? 'Archived forecast' : 'Forecast', title: weather.message };
+  return { text: '' };
+}
+
+/** The warnings about one leg, by leg (shown under its row), and the rest (the list). */
+export function splitWarnings(
+  list: CalcWarning[],
+  legCount: number,
+): { general: CalcWarning[]; byLeg: CalcWarning[][] } {
+  const byLeg: CalcWarning[][] = Array.from({ length: legCount }, () => []);
+  const general: CalcWarning[] = [];
+  for (const w of list) {
+    if (w.leg && w.leg.index >= 0 && w.leg.index < legCount) byLeg[w.leg.index].push(w);
+    else general.push(w);
+  }
+  return { general, byLeg };
+}
+
+const ORDER = { danger: 0, warn: 1, info: 2 } as const;
+const byLevel = (list: CalcWarning[]) => [...list].sort((a, b) => ORDER[a.level] - ORDER[b.level]);
+
+function WarningFix({ text, aircraftId }: { text: string; aircraftId: string | null }) {
+  const f = editorWarningFix(text, aircraftId);
+  if (!f) return null;
+  return 'to' in f ? (
+    <Link to={f.to} className="warning-fix" data-testid="warning-fix">
+      {f.label} →
+    </Link>
+  ) : (
+    <button type="button" className="linkish warning-fix" data-testid="warning-fix" onClick={f.onFix}>
+      {f.label} →
+    </button>
+  );
 }
 
 const NOT_TOGGLE = 'button, a, input, select, textarea, label, [data-no-toggle]';
 
-function Warnings({ list, aircraftId }: { list: CalcWarning[]; aircraftId: string | null }) {
-  if (!list.length) return <p className="muted ns-empty">No warnings.</p>;
-  const order = { danger: 0, warn: 1, info: 2 } as const;
+function WarningItem({
+  w,
+  text,
+  aircraftId,
+  size,
+}: {
+  w: CalcWarning;
+  text: string;
+  aircraftId: string | null;
+  size: number;
+}) {
   return (
-    <ul className="warnings ns-warnings" data-testid="navlog-warnings">
-      {[...list]
-        .sort((a, b) => order[a.level] - order[b.level])
-        .map((w) => {
-          const f = editorWarningFix(w.text, aircraftId);
-          return (
-            <li key={w.text} className={w.level}>
-              <Icon name={w.level === 'info' ? 'info' : 'warn'} size={14} />
-              <span className="warning-text">
-                <AipRefText text={w.text} />
-              </span>
-              {f &&
-                ('to' in f ? (
-                  <Link to={f.to} className="warning-fix" data-testid="warning-fix">
-                    {f.label} →
-                  </Link>
-                ) : (
-                  <button type="button" className="linkish warning-fix" data-testid="warning-fix" onClick={f.onFix}>
-                    {f.label} →
-                  </button>
-                ))}
-            </li>
-          );
-        })}
-    </ul>
+    <li className={w.level}>
+      <Icon name={w.level === 'info' ? 'info' : 'warn'} size={size} />
+      <span className="warning-text">
+        <AipRefText text={text} />
+      </span>
+      <WarningFix text={w.text} aircraftId={aircraftId} />
+    </li>
+  );
+}
+
+/** The flight's warnings: the general ones, then the legs' own (in leg order, each named by its leg). */
+function Warnings({
+  list,
+  ofLegs,
+  aircraftId,
+}: {
+  list: CalcWarning[];
+  ofLegs: CalcWarning[];
+  aircraftId: string | null;
+}) {
+  if (!list.length && !ofLegs.length) return <p className="muted ns-empty">No warnings.</p>;
+  return (
+    <>
+      {list.length > 0 && (
+        <ul className="warnings ns-warnings" data-testid="navlog-warnings">
+          {byLevel(list).map((w) => (
+            <WarningItem key={w.text} w={w} text={w.text} aircraftId={aircraftId} size={14} />
+          ))}
+        </ul>
+      )}
+      {ofLegs.length > 0 && (
+        <ul className="warnings ns-warnings" data-testid="navlog-warnings-legs">
+          {ofLegs.map((w) => (
+            <WarningItem key={`${w.leg?.index}|${w.text}`} w={w} text={w.text} aircraftId={aircraftId} size={14} />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** A leg's own warnings, in a row under the leg's row (without the 'A → B: ' of the list). */
+function LegWarnings({
+  list,
+  index,
+  colSpan,
+  aircraftId,
+}: {
+  list: CalcWarning[];
+  index: number;
+  colSpan: number;
+  aircraftId: string | null;
+}) {
+  if (!list.length) return null;
+  return (
+    <tr className="ns-leg-warn" data-testid="navlog-leg-warnings" data-leg={index}>
+      <td colSpan={colSpan}>
+        <ul className="warnings">
+          {byLevel(list).map((w) => (
+            <WarningItem key={w.text} w={w} text={w.leg?.detail ?? w.text} aircraftId={aircraftId} size={12} />
+          ))}
+        </ul>
+      </td>
+    </tr>
   );
 }
 
 export function NavlogStrip() {
-  const { doc, legs, aircraft } = useEditor();
+  const { doc, legs, aircraft, altitudeDefaults, update } = useEditor();
   const { navlog, weather, weatherLoading, refreshWeather, warnings, dayMs } = useFlightCalc();
   const { selectedNotam } = useNotams();
   const notamLeg = selectedNotam?.legIndex ?? null;
@@ -108,10 +185,31 @@ export function NavlogStrip() {
     max: () => Math.round(window.innerHeight * 0.8),
     initial: null,
   });
+  // The open strip's height, for the flight panel's collapse tab to centre itself on the map above it.
+  useEffect(() => {
+    const el = r.panelRef.current;
+    const host = el?.closest<HTMLElement>('.editor-body');
+    if (!el || !host || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => host.style.setProperty('--ns-h', `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      host.style.removeProperty('--ns-h');
+    };
+  }, [r.panelRef]);
+  const { general, byLeg } = splitWarnings(warnings, legs.length);
+  const setAlt = (key: string, altFt: number | null) =>
+    update(
+      (d) => {
+        const legOverrides = setAltitudeOverride(d.legOverrides, key, altFt);
+        return legOverrides === d.legOverrides ? d : { ...d, legOverrides };
+      },
+      { coalesce: `alt:${key}` },
+    );
   const danger = warnings.filter((w) => w.level === 'danger').length;
   const warn = warnings.filter((w) => w.level === 'warn').length;
 
-  const wx = weatherRunText(weather, weatherLoading, legs.length > 0);
+  const wx = windsStatusText(weather, weatherLoading, legs.length > 0);
   const t = navlog?.times;
   const toggle = () => set(state === 'closed' ? 'open' : 'closed');
   const onHeadClick = (e: MouseEvent<HTMLElement>) => {
@@ -176,9 +274,11 @@ export function NavlogStrip() {
           <Icon name="warn" size={14} />{' '}
           {danger + warn > 0 ? `${danger + warn} warning${danger + warn > 1 ? 's' : ''}` : 'No warnings'}
         </button>
-        <span className={'ns-wx tnum' + (wx.tone ? ' ' + wx.tone : '')} title={wx.title} data-testid="weather-run">
-          {wx.text}
-        </span>
+        {wx.text && (
+          <span className={'ns-wx' + (wx.tone ? ' ' + wx.tone : '')} title={wx.title} data-testid="winds-status">
+            {wx.text}
+          </span>
+        )}
         <button
           type="button"
           className="icon"
@@ -193,7 +293,7 @@ export function NavlogStrip() {
       </header>
       {state === 'warnings' && (
         <div className="ns-body">
-          <Warnings list={warnings} aircraftId={doc.aircraftId} />
+          <Warnings list={general} ofLegs={byLeg.flat()} aircraftId={doc.aircraftId} />
         </div>
       )}
       {state === 'open' && (
@@ -210,14 +310,17 @@ export function NavlogStrip() {
                 </tr>
               </thead>
               <tbody>
-                {legs.map((l) => (
-                  <tr key={l.key}>
-                    <td>
-                      {l.from.name} → {l.to.name}
-                    </td>
-                    <td className="num">{fmtHdg(l.mcMag)}°</td>
-                    <td className="num">{Math.round(l.distNm)}</td>
-                  </tr>
+                {legs.map((l, i) => (
+                  <Fragment key={l.key}>
+                    <tr>
+                      <td>
+                        {l.from.name} → {l.to.name}
+                      </td>
+                      <td className="num">{fmtHdg(l.mcMag)}°</td>
+                      <td className="num">{Math.round(l.distNm)}</td>
+                    </tr>
+                    <LegWarnings list={byLeg[i] ?? []} index={i} colSpan={3} aircraftId={doc.aircraftId} />
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -247,50 +350,72 @@ export function NavlogStrip() {
                 {navlog.legs.map((r, i) => {
                   const L = legs[i];
                   const noWind = r.windMissing;
+                  const override = L ? doc.legOverrides[L.key]?.altFt : undefined;
+                  const dflt = altitudeDefaults[i]?.altFt;
                   return (
-                    <tr
-                      key={L?.key ?? i}
-                      data-testid="navlog-row"
-                      className={notamLeg === i ? 'is-notam' : undefined}
-                      title={notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined}
-                    >
-                      <td className="ns-leg">
-                        <span>{L?.from.name}</span>
-                        <span className="muted"> → </span>
-                        <span>{L?.to.name}</span>
-                      </td>
-                      <td className={'num' + (fin(r.altFt) ? '' : ' warn')}>
-                        {fin(r.altFt) ? fmtAltitude(r.altFt) : '?'}
-                      </td>
-                      <td className="num">{r.tasKt}</td>
-                      <td className="num">{hdg(r.tc)}</td>
-                      <td className="num">{hdg(r.mc)}</td>
-                      <td
-                        className={'num' + (noWind ? ' warn' : '')}
-                        title={
-                          noWind
-                            ? 'No forecast: calm assumed'
-                            : r.windSource === 'override'
-                              ? 'Wind typed by hand'
-                              : 'Forecast'
-                        }
+                    <Fragment key={L?.key ?? i}>
+                      <tr
+                        data-testid="navlog-row"
+                        className={notamLeg === i ? 'is-notam' : undefined}
+                        title={notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined}
                       >
-                        {noWind ? '—' : `${fmtHdg(r.windDirDeg)}/${r.windKt}`}
-                        {r.windSource === 'override' ? '*' : ''}
-                      </td>
-                      <td className="num">{fin(r.tempC) ? `${r.tempC}°` : ''}</td>
-                      <td className="num">{signed(r.wca)}</td>
-                      <td className="num">{hdg(r.mh)}</td>
-                      <td className="num">{signed(r.dev)}</td>
-                      <td className="num">
-                        <b>{hdg(r.ch ?? r.mh)}</b>
-                      </td>
-                      <td className="num">{fin(r.gs) ? r.gs : ''}</td>
-                      <td className="num">{r.dist}</td>
-                      <td className="num">{fin(r.ete) ? fmtLegTime(r.ete) : ''}</td>
-                      <td className="num">{fin(r.endMin) && fin(dayMs) ? fmtMin(r.endMin) : ''}</td>
-                      <td className="num">{fin(r.fuel) ? r.fuel : ''}</td>
-                    </tr>
+                        <td className="ns-leg">
+                          <span>{L?.from.name}</span>
+                          <span className="muted"> → </span>
+                          <span>{L?.to.name}</span>
+                        </td>
+                        <td className={'num ns-alt' + (fin(r.altFt) ? '' : ' warn')}>
+                          {L ? (
+                            <NumberField
+                              value={override ?? null}
+                              onChange={(v) => setAlt(L.key, v)}
+                              integer
+                              min={0}
+                              max={20000}
+                              step={100}
+                              placeholder={fin(dflt) ? fmtAltitude(dflt) : '?'}
+                              className={override != null ? 'is-set' : undefined}
+                              ariaLabel={`Altitude ${L.from.name} → ${L.to.name}, feet`}
+                              testId="navlog-alt"
+                              showLimit={false}
+                            />
+                          ) : fin(r.altFt) ? (
+                            fmtAltitude(r.altFt)
+                          ) : (
+                            '?'
+                          )}
+                        </td>
+                        <td className="num">{r.tasKt}</td>
+                        <td className="num">{hdg(r.tc)}</td>
+                        <td className="num">{hdg(r.mc)}</td>
+                        <td
+                          className={'num' + (noWind ? ' warn' : '')}
+                          title={
+                            noWind
+                              ? 'No forecast: calm assumed'
+                              : r.windSource === 'override'
+                                ? 'Wind typed by hand'
+                                : 'Forecast'
+                          }
+                        >
+                          {noWind ? '—' : `${fmtHdg(r.windDirDeg)}/${r.windKt}`}
+                          {r.windSource === 'override' ? '*' : ''}
+                        </td>
+                        <td className="num">{fin(r.tempC) ? `${r.tempC}°` : ''}</td>
+                        <td className="num">{signed(r.wca)}</td>
+                        <td className="num">{hdg(r.mh)}</td>
+                        <td className="num">{signed(r.dev)}</td>
+                        <td className="num">
+                          <b>{hdg(r.ch ?? r.mh)}</b>
+                        </td>
+                        <td className="num">{fin(r.gs) ? r.gs : ''}</td>
+                        <td className="num">{r.dist}</td>
+                        <td className="num">{fin(r.ete) ? fmtLegTime(r.ete) : ''}</td>
+                        <td className="num">{fin(r.endMin) && fin(dayMs) ? fmtMin(r.endMin) : ''}</td>
+                        <td className="num">{fin(r.fuel) ? r.fuel : ''}</td>
+                      </tr>
+                      <LegWarnings list={byLeg[i] ?? []} index={i} colSpan={16} aircraftId={doc.aircraftId} />
+                    </Fragment>
                   );
                 })}
               </tbody>

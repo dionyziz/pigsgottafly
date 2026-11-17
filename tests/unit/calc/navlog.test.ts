@@ -321,6 +321,15 @@ test('missing data: warnings, calm wind, defaults', () => {
   const someNull = computeNavlog(setup(route, (q) => (q.legIndex === 1 ? null : { dirDeg: 10, speedKt: 5, tempC: 0 })));
   expect(someNull.legs.map((r) => r.windMissing)).toEqual([false, true, false]);
   expect(someNull.warnings).toEqual(['DAPORI → KORINTHOS: no wind forecast; calm wind assumed.']);
+  // a leg's own warning says which leg it is about (the strip shows it under that leg)
+  expect(someNull.legWarnings).toEqual([
+    {
+      legIndex: 1,
+      text: 'DAPORI → KORINTHOS: no wind forecast; calm wind assumed.',
+      detail: 'no wind forecast; calm wind assumed.',
+    },
+  ]);
+  expect(noWinds.legWarnings).toEqual([]);
   // unknown altitude: no wind lookup, flagged
   const seen: number[] = [];
   const unk = computeNavlog(
@@ -335,6 +344,7 @@ test('missing data: warnings, calm wind, defaults', () => {
   );
   expect(seen.includes(0)).toBe(false);
   expect(unk.warnings[0]).toMatch(/altitude unknown/);
+  expect(unk.legWarnings.map((x) => [x.legIndex, x.detail])).toEqual([[0, 'altitude unknown (enter one).']]);
   expect(unk.legs[0].altFt).toBeNaN();
 });
 

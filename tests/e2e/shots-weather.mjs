@@ -70,7 +70,13 @@ async function scene(name, openMeteo, check) {
 }
 
 const om = fakeOpenMeteo();
-await scene('1-winds-and-hazards', { fetch: om.fetch }, () => /Z run/.test(document.body.innerText));
+await scene(
+  '1-winds-and-hazards',
+  { fetch: om.fetch },
+  () =>
+    document.querySelectorAll('[data-testid=navlog-row]').length > 0 &&
+    !document.querySelector('[data-testid=winds-status]'),
+);
 console.log('Open-Meteo requests by the API:', om.calls.length, 'locations:', om.locations());
 await scene('2-budget-used-up', { fetch: fakeOpenMeteo().fetch, dailyBudget: 0 }, () =>
   /No winds/.test(document.body.innerText),
