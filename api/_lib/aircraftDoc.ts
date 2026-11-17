@@ -257,7 +257,7 @@ function checkTakeoff(v: unknown): TakeoffTable {
       throw badRequest(`${q}.distances must have one pair per altitude`);
     return {
       massKg: num(r.massKg, `${q}.massKg`, ...L.massKg),
-      liftoffIas: text(r.liftoffIas, `${q}.liftoffIas`, 100),
+      liftoffIasKt: optNumber(r.liftoffIasKt, `${q}.liftoffIasKt`, ...L.iasKt),
       headwindKt,
       distances,
     };
@@ -289,7 +289,7 @@ function checkLanding(v: unknown): LandingTable {
     source: text(t.source, `${p}.source`, 2000),
     flaps: text(t.flaps, `${p}.flaps`, 50),
     massKg: num(t.massKg, `${p}.massKg`, ...L.massKg),
-    approachIas: text(t.approachIas, `${p}.approachIas`, 100),
+    approachIasKt: optNumber(t.approachIasKt, `${p}.approachIasKt`, ...L.iasKt),
     altitudesFt,
     standardTempC,
     distances,

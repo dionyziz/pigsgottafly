@@ -478,7 +478,7 @@ export function addTakeoffMassRow(t: TakeoffTable): TakeoffTable {
       ...t.rows,
       {
         massKg: prev ? prev.massKg + 100 : 0,
-        liftoffIas: '',
+        liftoffIasKt: null,
         headwindKt,
         distances: prev ? prev.distances.map((hw) => hw.map((p) => [...p] as [number, number])) : blank,
       },

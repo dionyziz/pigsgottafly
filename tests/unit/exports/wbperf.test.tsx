@@ -25,7 +25,7 @@ import { REF, runwaysOf, SUN_TABLES } from '../../../src/data/ref';
 import type { MetarTafResult, ParsedMetar } from '../../../src/data/weatherMetar';
 import { perfSheetModel } from '../../../src/features/exports/performance/model';
 import { PerfSheet } from '../../../src/features/exports/performance/PerformanceExport';
-import { ktOf, perfSpeeds } from '../../../src/features/exports/performance/speeds';
+import { perfSpeeds } from '../../../src/features/exports/performance/speeds';
 import { computeExportCalc, type ExportCalcInput } from '../../../src/features/exports/wb/exportCalc';
 import { cgToMomentOutline, chartDomain, fmtArm, wbSheetModel } from '../../../src/features/exports/wb/model';
 import { WbSheet } from '../../../src/features/exports/wb/WbExport';
@@ -342,7 +342,6 @@ describe('performance sheet (MD 4.4)', () => {
   });
 
   test('speeds and flaps from the AFM data', () => {
-    expect(ktOf('59 kt / 109 km/h / 68 MPH')).toBe(59);
     const s = perfSpeeds(ASV, 1043, 0);
     expect([s.vrKt, s.vxKt, s.vyKt, s.glideKt, s.vappKt]).toEqual([59, 65, 78, 70, 60]);
     expect(perfSpeeds(ASV, 975, 0).vrKt).toBe(57); // 55 + 4 × 75/143

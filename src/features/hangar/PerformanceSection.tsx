@@ -141,8 +141,15 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
           <table className="perf">
             <thead>
               <tr>
-                <th rowSpan={2}>Mass</th>
-                <th rowSpan={2}>Head&shy;wind</th>
+                <th rowSpan={2}>
+                  Mass<span className="u">kg</span>
+                </th>
+                <th rowSpan={2}>
+                  Lift-off<span className="u">kt</span>
+                </th>
+                <th rowSpan={2}>
+                  Head&shy;wind<span className="u">kt</span>
+                </th>
                 {t.altitudesFt.map((alt, i) => (
                   <th key={i} className="alt">
                     {editing ? (
@@ -152,8 +159,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                           integer
                           min={-2000}
                           max={20000}
-                          width={70}
-                          unit="ft"
+                          width={64}
                           ariaLabel={`Pressure altitude column ${i + 1}`}
                           onChange={(v) =>
                             pe((q) => {
@@ -161,6 +167,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                             })
                           }
                         />
+                        <span className="u">ft</span>
                         <RowRemove
                           label={`Remove ${alt} ft column`}
                           onClick={() =>
@@ -195,19 +202,21 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                 {t.altitudesFt.map((_, i) => (
                   <th key={i} className="sub">
                     {editing ? (
-                      <NumInput
-                        value={t.standardTempC[i] ?? null}
-                        min={-60}
-                        max={60}
-                        width={70}
-                        unit="°C"
-                        ariaLabel={`Standard temperature column ${i + 1}`}
-                        onChange={(v) =>
-                          pe((q) => {
-                            q.takeoff.standardTempC[i] = v ?? 0;
-                          })
-                        }
-                      />
+                      <span className="alt-ed">
+                        <NumInput
+                          value={t.standardTempC[i] ?? null}
+                          min={-60}
+                          max={60}
+                          width={52}
+                          ariaLabel={`Standard temperature column ${i + 1}`}
+                          onChange={(v) =>
+                            pe((q) => {
+                              q.takeoff.standardTempC[i] = v ?? 0;
+                            })
+                          }
+                        />
+                        <span className="u">°C</span>
+                      </span>
                     ) : (
                       <>
                         {t.standardTempC[i]} °C · <span className="g">gnd</span> <span className="t">50 ft</span>
@@ -229,26 +238,13 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                               value={r.massKg}
                               min={0}
                               max={1e6}
-                              width={86}
-                              unit="kg"
+                              width={72}
                               ariaLabel="Mass"
                               onChange={(v) =>
                                 pe((q) => {
                                   q.takeoff.rows[ri].massKg = v ?? 0;
                                 })
                               }
-                            />
-                            <input
-                              value={r.liftoffIas}
-                              placeholder="Lift-off IAS"
-                              aria-label="Lift-off IAS"
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                pe((q) => {
-                                  q.takeoff.rows[ri].liftoffIas = v;
-                                });
-                              }}
-                              style={{ width: 120 }}
                             />
                             <button
                               type="button"
@@ -263,12 +259,31 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                             </button>
                           </div>
                         ) : (
-                          <>
-                            <b>{r.massKg} kg</b>
-                            {r.liftoffIas && <div className="hint">lift-off {r.liftoffIas}</div>}
-                          </>
+                          <b>{r.massKg}</b>
                         )}
                       </th>
+                    )}
+                    {hi === 0 && (
+                      <td rowSpan={r.headwindKt.length + (editing ? 1 : 0)} className="ias">
+                        {editing ? (
+                          <NumInput
+                            value={r.liftoffIasKt}
+                            optional
+                            integer
+                            min={0}
+                            max={500}
+                            width={52}
+                            ariaLabel="Lift-off IAS"
+                            onChange={(v) =>
+                              pe((q) => {
+                                q.takeoff.rows[ri].liftoffIasKt = v;
+                              })
+                            }
+                          />
+                        ) : (
+                          (r.liftoffIasKt ?? '—')
+                        )}
+                      </td>
                     )}
                     <td className="hw">
                       {editing ? (
@@ -277,8 +292,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                             value={hw}
                             min={0}
                             max={100}
-                            width={64}
-                            unit="kt"
+                            width={48}
                             ariaLabel="Headwind"
                             onChange={(v) =>
                               pe((q) => {
@@ -297,7 +311,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                           />
                         </span>
                       ) : (
-                        `${hw} kt`
+                        hw
                       )}
                     </td>
                     {t.altitudesFt.map((alt, ai) => (
@@ -418,15 +432,19 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
           />
         </Field>
         <Field label="Approach IAS">
-          <input
-            value={l.approachIas}
-            placeholder="e.g. 60 kt"
-            onChange={(e) => {
-              const v = e.target.value;
+          <NumInput
+            name="performance.landing.approachIasKt"
+            value={l.approachIasKt}
+            optional
+            integer
+            min={0}
+            max={500}
+            unit="kt"
+            onChange={(v) =>
               pe((q) => {
-                q.landing.approachIas = v;
-              });
-            }}
+                q.landing.approachIasKt = v;
+              })
+            }
           />
         </Field>
       </div>
@@ -450,7 +468,9 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
           <table className="perf">
             <thead>
               <tr>
-                <th>Mass</th>
+                <th>
+                  Mass<span className="u">kg</span>
+                </th>
                 {l.altitudesFt.map((alt, i) => (
                   <th key={i} className="alt">
                     {editing ? (
@@ -460,8 +480,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                           integer
                           min={-2000}
                           max={20000}
-                          width={70}
-                          unit="ft"
+                          width={64}
                           ariaLabel={`Landing pressure altitude ${i + 1}`}
                           onChange={(v) =>
                             pe((q) => {
@@ -469,6 +488,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                             })
                           }
                         />
+                        <span className="u">ft</span>
                         <RowRemove
                           label={`Remove ${alt} ft column`}
                           onClick={() =>
@@ -504,19 +524,21 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                 {l.altitudesFt.map((_, i) => (
                   <th key={i} className="sub">
                     {editing ? (
-                      <NumInput
-                        value={l.standardTempC[i] ?? null}
-                        min={-60}
-                        max={60}
-                        width={70}
-                        unit="°C"
-                        ariaLabel={`Landing standard temperature ${i + 1}`}
-                        onChange={(v) =>
-                          pe((q) => {
-                            q.landing.standardTempC[i] = v ?? 0;
-                          })
-                        }
-                      />
+                      <span className="alt-ed">
+                        <NumInput
+                          value={l.standardTempC[i] ?? null}
+                          min={-60}
+                          max={60}
+                          width={52}
+                          ariaLabel={`Landing standard temperature ${i + 1}`}
+                          onChange={(v) =>
+                            pe((q) => {
+                              q.landing.standardTempC[i] = v ?? 0;
+                            })
+                          }
+                        />
+                        <span className="u">°C</span>
+                      </span>
                     ) : (
                       <>
                         {l.standardTempC[i]} °C · <span className="g">gnd</span> <span className="t">50 ft</span>
@@ -534,8 +556,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                       value={l.massKg}
                       min={0}
                       max={1e6}
-                      width={86}
-                      unit="kg"
+                      width={72}
                       ariaLabel="Landing mass"
                       onChange={(v) =>
                         pe((q) => {
@@ -544,7 +565,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
                       }
                     />
                   ) : (
-                    <b>{l.massKg} kg</b>
+                    <b>{l.massKg}</b>
                   )}
                 </th>
                 {l.altitudesFt.map((alt, i) => (
@@ -774,8 +795,7 @@ function Factors({ a, edit, at }: SectionProps & { at: (p: string) => ReturnType
                     value={v}
                     min={0}
                     max={5}
-                    width={90}
-                    unit="×"
+                    width={72}
                     ariaLabel={`Factor for ${k}`}
                     onChange={(x) => setConds(conds.map((c, j) => (j === i ? [c[0], x ?? 0] : c)))}
                   />

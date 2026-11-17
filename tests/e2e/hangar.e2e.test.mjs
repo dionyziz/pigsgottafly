@@ -3,7 +3,7 @@
 // scroll, the stations grid lines up, the envelope charts scroll with their tables (not sticky), the
 // item 18 field warns only about indicators the flight plan drops, the approved fuels, the placeholder
 // picture and the photo, and documents (chunked upload through the file inputs, the PDF opened in the
-// in-app viewer).
+// in-app viewer). The performance tables: units in the headers, speeds in knots, no unit over a value.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -460,5 +460,98 @@ test('aircraft page: layout, autosave, item 18, fuels, photo and documents', asy
   assert.ok(await page.eval(() => document.documentElement.scrollWidth <= window.innerWidth), 'no horizontal scroll');
   await shot('aircraft-phone');
   await page.viewport(1400, 1000);
+  assert.deepEqual(page.errors, []);
+});
+
+test('performance tables: units in the headers, speeds in knots, no unit over a value', async () => {
+  const [asv] = fleetSeed();
+  const ac = await api('POST', 'aircraft', { ...asv, registration: 'SX-PRF' });
+  await page.viewport(1400, 1000);
+  await page.goto(`${server.url}/hangar/${ac.id}#performance`);
+  await page.waitFor(() => !!document.querySelector('#performance table.perf'));
+  const TO = '#performance [data-path="performance.takeoff"]';
+  assert.deepEqual(
+    await page.eval(
+      (to) =>
+        [...document.querySelectorAll(`${to} thead tr:first-child th`)]
+          .slice(0, 3)
+          .map((th) => th.textContent.replace(/­/g, '')),
+      TO,
+    ),
+    ['Masskg', 'Lift-offkt', 'Headwindkt'],
+  );
+  // read view: plain numbers under the headers
+  assert.deepEqual(
+    await page.eval(
+      (to) =>
+        [...document.querySelectorAll(`${to} tbody`)].map((tb) => [
+          tb.querySelector('th.mass').textContent,
+          tb.querySelector('td.ias').textContent,
+          tb.querySelector('td.hw').textContent,
+        ]),
+      TO,
+    ),
+    [
+      ['750', '50', '0'],
+      ['900', '55', '0'],
+      ['1043', '59', '0'],
+    ],
+  );
+  const APP = 'input[name="performance.landing.approachIasKt"]';
+  assert.equal(await page.eval((s) => document.querySelector(s).value, APP), '60');
+
+  await page.eval(() =>
+    [...document.querySelectorAll('#performance button')].find((b) => b.textContent === 'Edit tables').click(),
+  );
+  await page.waitFor(() => !!document.querySelector('#performance table.perf input[aria-label="Lift-off IAS"]'));
+  await shot('aircraft-performance-edit');
+  // no unit drawn inside a table field; units beside their fields; no field's text under its unit
+  const layout = await page.eval(() => {
+    const sec = document.getElementById('performance');
+    const ctx = document.createElement('canvas').getContext('2d');
+    const overlaps = [];
+    for (const f of sec.querySelectorAll('.numfield.unit-input')) {
+      const i = f.querySelector('input');
+      const u = f.querySelector(':scope > span');
+      const cs = getComputedStyle(i);
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const w = ctx.measureText(i.value).width;
+      const ir = i.getBoundingClientRect();
+      const left =
+        cs.textAlign === 'right'
+          ? ir.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth) - w
+          : ir.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth);
+      const ur = u.getBoundingClientRect();
+      if (i.value && left + w > ur.left && left < ur.right) overlaps.push(`${i.name || i.ariaLabel}: ${i.value}`);
+    }
+    for (const u of sec.querySelectorAll('table.perf .u')) {
+      const ur = u.getBoundingClientRect();
+      for (const i of u.closest('th, td').querySelectorAll('input')) {
+        const ir = i.getBoundingClientRect();
+        if (ir.right > ur.left && ir.left < ur.right && ir.bottom > ur.top && ir.top < ur.bottom)
+          overlaps.push(`${i.ariaLabel} under ${u.textContent}`);
+      }
+    }
+    return { inTables: sec.querySelectorAll('table .unit-input').length, overlaps };
+  });
+  assert.deepEqual(layout, { inTables: 0, overlaps: [] });
+  assert.deepEqual(
+    await page.eval((to) => [...document.querySelectorAll(`${to} thead .alt-ed .u`)].map((u) => u.textContent), TO),
+    ['ft', 'ft', 'ft', 'ft', '°C', '°C', '°C', '°C'],
+  );
+
+  // speeds are knots only: numbers, saved as such; a unit typed after the number is not taken
+  await page.type('#performance input[aria-label="Lift-off IAS"]', '52');
+  await page.type(APP, '63');
+  await page.blur();
+  await until(async () => {
+    const p = (await api('GET', `aircraft/${ac.id}`)).performance;
+    return p.takeoff.rows[0].liftoffIasKt === 52 && p.landing.approachIasKt === 63;
+  });
+  await page.type(APP, '60 kt');
+  await page.waitFor((s) => document.querySelector(s).getAttribute('aria-invalid') === 'true', { args: [APP] });
+  await page.blur();
+  await page.waitFor((s) => document.querySelector(s).value === '60', { args: [APP] });
+  await until(async () => (await api('GET', `aircraft/${ac.id}`)).performance.landing.approachIasKt === 60);
   assert.deepEqual(page.errors, []);
 });

@@ -191,6 +191,8 @@ table.perf thead th.sub { font-weight: 400; color: var(--muted); }
 table.perf th.mass { text-align: left; background: var(--surface-2); font-weight: 400; vertical-align: top; }
 table.perf th.mass b { font-weight: 600; }
 table.perf td.hw { color: var(--ink-2); }
+table.perf th .u { margin-left: 4px; color: var(--muted); font-weight: 400; }
+table.perf td.ias { vertical-align: top; }
 table.perf td.pair { min-width: 92px; }
 table.perf .g { color: var(--ink-2); }
 table.perf .t { font-weight: 600; margin-left: 10px; }
