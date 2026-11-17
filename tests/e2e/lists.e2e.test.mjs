@@ -219,9 +219,33 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.waitFor(() => !!document.querySelector('[data-testid=passenger-dialog]'));
   await shot('lists-passenger-dialog');
   await page.type('[data-testid=passenger-dialog] input[name=phone]', '+30 210 000');
+  // date of birth on the calendar: its title opens the years, PageUp goes back twenty at a time,
+  // a year opens its months, a month its days
+  const pop = '[data-testid=passenger-dialog] .datefield-pop';
+  await page.click('[data-testid=passenger-dialog] .datefield-cal');
+  await page.waitFor((p) => !!document.querySelector(`${p} [data-day]`), { args: [pop] });
+  await page.click(`${pop} button.datefield-title`);
+  await page.waitFor((p) => document.activeElement?.matches(`${p} [data-year]`), { args: [pop] });
+  await page.key('PageUp');
+  await page.key('PageUp');
+  await page.waitFor((p) => !!document.querySelector(`${p} [data-year="1984"]`), { args: [pop] });
+  await shot('lists-date-years');
+  await page.click(`${pop} [data-year="1984"]`);
+  await page.waitFor((p) => document.querySelector(`${p} .datefield-title`)?.textContent === '1984', { args: [pop] });
+  await page.click(`${pop} [data-month="1984-03"]`);
+  await page.waitFor((p) => document.querySelector(`${p} .datefield-title`)?.textContent === 'March 1984', {
+    args: [pop],
+  });
+  await page.click(`${pop} [data-day="1984-03-07"]`);
+  await page.waitFor(
+    () =>
+      !document.querySelector('.datefield-pop') &&
+      document.querySelector('[data-testid=passenger-dialog] input[name=dateOfBirth]').value === '1984-03-07',
+  );
   await clickText('[data-testid=passenger-dialog] button', 'Save');
   await page.waitFor(() => !document.querySelector('[data-testid=passenger-dialog]'));
-  assert.equal((await api('GET', `passengers/${pax.id}`)).phone, '+30 210 000');
+  const edited = await api('GET', `passengers/${pax.id}`);
+  assert.deepEqual([edited.phone, edited.dateOfBirth], ['+30 210 000', '1984-03-07']);
   // delete from the dialog (confirmed), then Undo brings the details back as a new record
   await page.click(`[data-passenger-id="${pax.id}"] .nm`);
   await page.waitFor(() => !!document.querySelector('[data-testid=passenger-delete]'));

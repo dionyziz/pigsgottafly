@@ -360,6 +360,77 @@ describe('DateField', () => {
     expect(stored()).toBe('2026-11-16');
   });
 
+  test('calendar: the title browses years, a year its months, a month its days', () => {
+    const { r, stored } = setupDate({ initial: '2026-11-16' });
+    fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
+    fireEvent.click(r.getByRole('button', { name: 'November 2026' }));
+    const dlg = r.getByRole('dialog');
+    expect(dlg.textContent).toContain('2020 – 2039');
+    expect(r.getByRole('button', { name: '2026' }).getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('2026');
+    // two pages back: 1980 – 1999
+    fireEvent.click(r.getByRole('button', { name: 'Previous years' }));
+    fireEvent.click(r.getByRole('button', { name: 'Previous years' }));
+    expect(dlg.textContent).toContain('1980 – 1999');
+    fireEvent.click(r.getByRole('button', { name: '1984' }));
+    expect(dlg.textContent).toContain('1984');
+    expect(r.getAllByRole('button', { name: /^\w+ 1984$/ })).toHaveLength(12);
+    fireEvent.click(r.getByRole('button', { name: 'March 1984' }));
+    expect(dlg.textContent).toContain('March 1984');
+    fireEvent.click(r.getByRole('button', { name: '1984-03-07' }));
+    expect(stored()).toBe('1984-03-07');
+    expect(r.queryByRole('dialog')).toBeNull();
+  });
+
+  test('calendar keys in the year and month grids; Escape goes back a level', () => {
+    const { r, stored } = setupDate({ initial: '2026-11-16' });
+    fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
+    const dlg = r.getByRole('dialog');
+    fireEvent.click(r.getByRole('button', { name: 'November 2026' }));
+    const focused = () => document.activeElement?.getAttribute('aria-label');
+    fireEvent.keyDown(dlg, { key: 'PageUp' });
+    expect(focused()).toBe('2006');
+    fireEvent.keyDown(dlg, { key: 'ArrowUp' });
+    expect(focused()).toBe('2002');
+    fireEvent.keyDown(dlg, { key: 'ArrowLeft' });
+    expect(focused()).toBe('2001');
+    fireEvent.keyDown(dlg, { key: 'ArrowLeft' });
+    expect(focused()).toBe('2000');
+    fireEvent.keyDown(dlg, { key: 'ArrowLeft' });
+    expect(dlg.textContent).toContain('1980 – 1999');
+    expect(focused()).toBe('1999');
+    fireEvent.click(document.activeElement!);
+    expect(focused()).toBe('November 1999');
+    fireEvent.keyDown(dlg, { key: 'ArrowDown' });
+    expect(focused()).toBe('February 2000');
+    // Escape: from the years to the months, to the days, then closed
+    fireEvent.keyDown(dlg, { key: 'Escape' });
+    expect(dlg.textContent).toContain('February 2000');
+    expect(focused()).toBe('2000-02-16');
+    fireEvent.click(r.getByRole('button', { name: 'February 2000' }));
+    expect(dlg.textContent).toContain('2000 – 2019');
+    fireEvent.keyDown(dlg, { key: 'Escape' });
+    expect(focused()).toBe('February 2000');
+    fireEvent.keyDown(dlg, { key: 'Escape' });
+    expect(focused()).toBe('2000-02-16');
+    fireEvent.keyDown(dlg, { key: 'Escape' });
+    expect(r.queryByRole('dialog')).toBeNull();
+    expect(stored()).toBe('2026-11-16');
+  });
+
+  test('calendar: years and months wholly outside min / max are disabled', () => {
+    const { r } = setupDate({ initial: '2026-11-16', min: '1990-06-15', max: '2026-11-20' });
+    fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
+    fireEvent.click(r.getByRole('button', { name: 'November 2026' }));
+    const off = (name: string) => (r.getByRole('button', { name }) as HTMLButtonElement).disabled;
+    expect([off('2026'), off('2027')]).toEqual([false, true]);
+    fireEvent.click(r.getByRole('button', { name: 'Previous years' }));
+    fireEvent.click(r.getByRole('button', { name: 'Previous years' }));
+    expect([off('1989'), off('1990')]).toEqual([true, false]);
+    fireEvent.click(r.getByRole('button', { name: '1990' }));
+    expect([off('May 1990'), off('June 1990')]).toEqual([true, false]);
+  });
+
   test('calendar: days outside min / max are disabled', () => {
     const { r } = setupDate({ initial: '2026-11-16', max: '2026-11-20' });
     fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
