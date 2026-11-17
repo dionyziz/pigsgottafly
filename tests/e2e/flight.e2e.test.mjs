@@ -501,7 +501,10 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   // ---- 4. navlog: the editor's strip and the MD 4.2 sheet against the independent oracle
   const strip = await page.eval(() =>
     [...document.querySelectorAll('[data-testid=navlog-row]')].map((r) =>
-      [...r.cells].map((c) => c.textContent.trim()),
+      [...r.cells].map((c) => {
+        const i = c.querySelector('input');
+        return i ? i.value || i.placeholder : c.textContent.trim();
+      }),
     ),
   );
   const num = (t) => +t.replace('\u2212', '-').replace('+', '');
