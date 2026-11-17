@@ -48,6 +48,7 @@ import {
   activeRequests,
   CARD_EXPIRY_WARN_DAYS,
   fuelLoad,
+  navlogTiming,
   requestTiming,
   type RoutePoint,
   seatLayout,
@@ -262,9 +263,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         aircraft: navlogAircraft(aircraft, doc.options.compassCard),
         winds: haveAny ? windProviderFromLegs(perLeg) : null,
         sunTables: SUN_TABLES,
-        patternLegs: timing.patternLegs,
-        groundAfterLegMin: timing.groundAfterLegMin,
-        circuitAfterLegMin: timing.circuitAfterLegMin,
+        ...navlogTiming(timing),
       }),
     );
   }, [
@@ -295,7 +294,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         usableL: aircraft.fuel.usableL,
         tripMin: navlog ? navlog.flightMin : 0,
         localFlight: isLocalFlight(doc.route),
-        stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
+        stops: timing.stops,
       }),
     );
   }, [aircraft, navlog, pilot.settings.finalReserveMin, pilot.settings.reserveMin, doc.fobL, doc.route, timing]);
@@ -447,7 +446,15 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       const point = doc.route[x.pointIndex];
       const k = stopIdx.indexOf(x.pointIndex);
       const ad = k >= 0 ? stopAds[k] : endpointOf(point);
-      const loc = k >= 0 ? (weather?.stops?.[k] ?? null) : null;
+      // A stop at the departure or the destination: that end's surface forecast.
+      const loc =
+        k >= 0
+          ? (weather?.stops?.[k] ?? null)
+          : x.pointIndex === 0
+            ? (weather?.departure ?? null)
+            : x.pointIndex === doc.route.length - 1
+              ? (weather?.destination ?? null)
+              : null;
       const req = reqs.get(`${x.kind}|${x.pointIndex}`);
       const before = sectorCalc.wbs[x.before.index] ?? null;
       const after = sectorCalc.wbs[x.after.index] ?? null;

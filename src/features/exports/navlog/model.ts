@@ -48,7 +48,7 @@ import {
 } from '../../../data/weather';
 import type { MetarTafResult, ParsedMetar } from '../../../data/weatherMetar';
 import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { requestTiming } from '../../../shared';
+import { navlogTiming, requestTiming } from '../../../shared';
 import { fmtEte } from '../../../shared/format';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 
@@ -110,9 +110,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     aircraft: ac,
     winds: weather && weather.status === 'ok' ? windProviderFromLegs(weather.legs) : null,
     sunTables: ref.sunTables,
-    patternLegs: timing.patternLegs,
-    groundAfterLegMin: timing.groundAfterLegMin,
-    circuitAfterLegMin: timing.circuitAfterLegMin,
+    ...navlogTiming(timing),
   });
   if (!aircraft) navlog.warnings.unshift('No aircraft selected: speeds, fuel and deviation are missing.');
   const fuel =
@@ -127,7 +125,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
           usableL: aircraft.fuel.usableL,
           tripMin: navlog.flightMin,
           localFlight: isLocalFlight(doc.route),
-          stops: timing.groundAfterLegMin.filter((m) => m > 0).length,
+          stops: timing.stops,
         })
       : null;
   return { legs, altitudesFt, navlog, fuel };

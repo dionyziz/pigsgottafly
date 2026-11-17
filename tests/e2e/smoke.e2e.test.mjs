@@ -238,7 +238,7 @@ test('new flight asks for the ends: an unknown aerodrome says so and blocks Crea
   );
 });
 
-test('flight plan requests: a touch-and-go and a stop at one aerodrome, both remarks; ticking moves no row', async () => {
+test('flight plan requests: a touch-and-go and a stop at one aerodrome, stops at both ends, their remarks; ticking moves no row', async () => {
   const ads = await (await fetch(`${server.url}/api/ref/aerodromes`)).json();
   const at = (icao, uid) => {
     const a = ads.find((x) => x.icao === icao);
@@ -261,6 +261,13 @@ test('flight plan requests: a touch-and-go and a stop at one aerodrome, both rem
     tngLeft.every((x) => Math.abs(x - tngLeft[0]) < 0.5),
     `touch-and-go column ${tngLeft}`,
   );
+  // Stop at the departure and the destination too, in one column
+  const stopLeft = [];
+  for (const i of [0, 1, 2]) stopLeft.push((await box(`[data-testid=fpl-stop-${i}]`)).left);
+  assert.ok(
+    stopLeft.every((x) => Math.abs(x - stopLeft[0]) < 0.5),
+    `stop column ${stopLeft}`,
+  );
   // the minutes field keeps its place while Stop is off, so ticking Stop moves nothing
   const minVisibility = () =>
     page.eval(() => getComputedStyle(document.querySelector('[data-testid=fpl-stop-min-1]')).visibility);
@@ -270,8 +277,12 @@ test('flight plan requests: a touch-and-go and a stop at one aerodrome, both rem
   const remarksBefore = await box('[data-testid=fpl-remarks]');
   await click('[data-testid=fpl-tng-1]');
   await click('[data-testid=fpl-stop-1]');
-  await page.waitFor(
-    () => getComputedStyle(document.querySelector('[data-testid=fpl-stop-min-1]')).visibility === 'visible',
+  await click('[data-testid=fpl-stop-0]');
+  await click('[data-testid=fpl-stop-2]');
+  await page.waitFor(() =>
+    [0, 1, 2].every(
+      (i) => getComputedStyle(document.querySelector(`[data-testid=fpl-stop-min-${i}]`)).visibility === 'visible',
+    ),
   );
   // (the boxes above that grow with the requests are absorbed by the panel's scroll anchoring)
   for (const [sel, was] of [
@@ -294,10 +305,12 @@ test('flight plan requests: a touch-and-go and a stop at one aerodrome, both rem
     [
       ['r-b', 'touch-and-go', null],
       ['r-b', 'stop', 10],
+      ['r-a', 'stop', 10],
+      ['r-c', 'stop', 10],
     ],
   );
 
-  // item 18: both remarks in the one RMK/, the touch-and-go first
+  // item 18: every remark in the one RMK/, in route order, a point's touch-and-go before its stop
   await page.goto(`${server.url}/flights/${f0.id}/export/fpl`);
   await page.waitFor(
     () => !!document.querySelector('[data-testid=fpl-message]') && !document.querySelector('.fpl-loading'),
@@ -306,7 +319,7 @@ test('flight plan requests: a touch-and-go and a stop at one aerodrome, both rem
   const msg = await page.eval(() => document.querySelector('[data-testid=fpl-message]').textContent);
   assert.match(
     msg.replace(/\s+/g, ' '),
-    /RMK\/REQUEST TOUCH N GO AT LGMG REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN/,
+    /RMK\/INITIALLY REQUEST FULL STOP AT LGTT FOR 10 MIN REQUEST TOUCH N GO AT LGMG REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN REQUEST FULL STOP AT LGTT FOR 10 MIN THEN CIRCUIT/,
   );
   assert.deepEqual(page.errors, []);
 });

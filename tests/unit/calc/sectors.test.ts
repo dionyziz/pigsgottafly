@@ -16,8 +16,10 @@ import {
 import {
   CIRCUIT_MIN,
   landingPointIndices,
+  navlogTiming,
   removeRequest,
   requestOf,
+  requestRemarks,
   requestTiming,
   type RoutePoint,
   setRequest,
@@ -246,7 +248,13 @@ test('a touch-and-go then a stop at B: the circuit between them, then the ground
   // 6 min at 30 L/h = 3 L, on top of the legs' 4 × 18 L
   const circuitL = Math.ceil((30 * CIRCUIT_MIN) / 60);
   expect(nav.circuits).toEqual([
-    { afterLeg: 1, startMin: nav.legs[1].endMin, endMin: nav.legs[1].endMin + CIRCUIT_MIN, fuel: circuitL },
+    {
+      afterLeg: 1,
+      ends: 'stop',
+      startMin: nav.legs[1].endMin,
+      endMin: nav.legs[1].endMin + CIRCUIT_MIN,
+      fuel: circuitL,
+    },
   ]);
   expect(nav.totals.tripFuel).toBe(72 + circuitL);
   expect(nav.legs[2].startMin).toBeCloseTo(nav.legs[1].endMin + CIRCUIT_MIN + 20, 9);
@@ -332,4 +340,172 @@ test("the API keeps a stop's runway and surface choices and validates them", asy
     { pointUid: 'B', kind: 'touch-and-go' },
     { pointUid: 'B', kind: 'stop', stopMin: 15 },
   ]);
+});
+
+// A → P → B → Q → A2 without requests at B: legs 0 and 3 at pattern TAS (34.5 min, 18 L), legs 1
+// and 2 at cruise (30 min, 15 L): 66 L; take-off at 09:15 = 555.
+const legsL = 18 + 15 + 15 + 18;
+const routeMin = 2 * 34.5 + 2 * 30;
+const circuitL = Math.ceil((30 * CIRCUIT_MIN) / 60);
+const fly = (opts: Parameters<typeof requestTiming>[1]) => {
+  const t = requestTiming(route, opts);
+  const nav = computeNavlog({ ...base, ...navlogTiming(t) });
+  const s = flightSectors({
+    legs: nav.legs,
+    groundAfterLegMin: t.groundAfterLegMin,
+    touchAfterLeg: t.touchAfterLeg,
+    circuits: nav.circuits,
+    taxiAllowanceL: 4,
+    fobL: 100,
+  });
+  const fuel = planFuel({
+    tripFuelL: nav.totals.tripFuel,
+    taxiAllowanceL: 4,
+    burnLph: 30,
+    finalReserveMin: 0,
+    reserveMin: 60,
+    fobL: 100,
+    usableL: 144,
+    tripMin: nav.flightMin,
+    stops: t.stops,
+  });
+  return { t, nav, s, fuel };
+};
+
+test('a stop at the departure: a circuit, the full stop, the ground time, then the route; two sectors', () => {
+  const DEP = { aerodromeRequests: [{ pointUid: 'A', kind: 'stop' as const, stopMin: 10 }] };
+  const { t, nav, s, fuel } = fly(DEP);
+  expect(t).toMatchObject({
+    departureCircuitsMin: [CIRCUIT_MIN],
+    departureGroundMin: 10,
+    finalCircuitMin: 0,
+    stops: 1,
+  });
+  expect(t.groundAfterLegMin).toEqual([0, 0, 0, 0]);
+  expect(t.patternLegs).toEqual([false, false, false, false]);
+  expect(nav.times.takeoffMin).toBe(555);
+  expect(nav.circuits).toEqual([
+    { afterLeg: -1, ends: 'stop', startMin: 555, endMin: 555 + CIRCUIT_MIN, fuel: circuitL },
+  ]);
+  expect(nav.legs[0].startMin).toBeCloseTo(555 + CIRCUIT_MIN + 10, 9);
+  expect(nav.times.landingMin).toBeCloseTo(555 + CIRCUIT_MIN + 10 + routeMin, 9);
+  // the circuit's fuel and one more taxi allowance (a second take-off)
+  expect(nav.totals.tripFuel).toBe(legsL + circuitL);
+  expect(nav.totals.fuel).toBe(legsL + circuitL + 2 * 4);
+  expect(s.map((x) => x.ends)).toEqual(['stop', 'destination']);
+  expect(s[0]).toMatchObject({
+    fromPoint: 0,
+    toPoint: 0,
+    firstLeg: 0,
+    lastLeg: -1,
+    takeoffMin: 555,
+    landingMin: 555 + CIRCUIT_MIN,
+    tripFuelL: circuitL,
+    allowanceL: 4,
+    fuelTakeoffL: 100,
+    fuelLandingL: 100 - 4 - circuitL,
+  });
+  expect(s[1]).toMatchObject({ fromPoint: 0, toPoint: 4, firstLeg: 0, lastLeg: 3, allowanceL: 4, tripFuelL: legsL });
+  expect(s[1].takeoffMin).toBeCloseTo(555 + CIRCUIT_MIN + 10, 9);
+  expect(s[1].fuelLandingL).toBe(fuel.landingFuelL);
+  expect(stopsOf(s).map((x) => [x.pointIndex, x.kind])).toEqual([[0, 'stop']]);
+  expect(requestRemarks(route, DEP, () => null)).toEqual(['INITIALLY REQUEST FULL STOP AT A FOR 10 MIN']);
+});
+
+test('touch-and-go first and a stop at the departure: two circuits (touch-and-go, then full stop)', () => {
+  const DEP = {
+    aerodromeRequests: [
+      { pointUid: 'A', kind: 'touch-and-go' as const },
+      { pointUid: 'A', kind: 'stop' as const, stopMin: 10 },
+    ],
+  };
+  const { t, nav, s, fuel } = fly(DEP);
+  expect(t.departureCircuitsMin).toEqual([CIRCUIT_MIN, CIRCUIT_MIN]);
+  expect(nav.circuits.map((c) => [c.afterLeg, c.ends, c.startMin, c.endMin])).toEqual([
+    [-1, 'touch-and-go', 555, 555 + CIRCUIT_MIN],
+    [-1, 'stop', 555 + CIRCUIT_MIN, 555 + 2 * CIRCUIT_MIN],
+  ]);
+  expect(nav.legs[0].startMin).toBeCloseTo(555 + 2 * CIRCUIT_MIN + 10, 9);
+  expect(nav.totals.tripFuel).toBe(legsL + 2 * circuitL);
+  expect(s.map((x) => [x.ends, x.allowanceL])).toEqual([
+    ['touch-and-go', 4],
+    ['stop', 0],
+    ['destination', 4],
+  ]);
+  expect(s[2].fuelLandingL).toBe(fuel.landingFuelL);
+  expect(stopsOf(s).map((x) => [x.pointIndex, x.kind])).toEqual([
+    [0, 'touch-and-go'],
+    [0, 'stop'],
+  ]);
+  expect(requestRemarks(route, DEP, () => null)).toEqual([
+    'INITIALLY REQUEST TOUCH N GO AT A',
+    'INITIALLY REQUEST FULL STOP AT A FOR 10 MIN',
+  ]);
+});
+
+test('a stop at the destination: the landing, the ground time, a new take-off, a circuit and the final landing', () => {
+  const DEST = { aerodromeRequests: [{ pointUid: 'A2', kind: 'stop' as const, stopMin: 10 }] };
+  const { t, nav, s, fuel } = fly(DEST);
+  expect(t).toMatchObject({ departureCircuitsMin: [], departureGroundMin: 0, finalCircuitMin: CIRCUIT_MIN, stops: 1 });
+  expect(t.groundAfterLegMin).toEqual([0, 0, 0, 10]);
+  // the weather's landing points are intermediate only (the destination has its own)
+  expect(landingPointIndices(route, DEST)).toEqual([]);
+  const arrive = 555 + routeMin;
+  expect(nav.legs[3].endMin).toBeCloseTo(arrive, 9);
+  expect(nav.circuits).toHaveLength(1);
+  expect(nav.circuits[0]).toMatchObject({ afterLeg: 3, ends: 'destination', fuel: circuitL });
+  expect(nav.circuits[0].startMin).toBeCloseTo(arrive + 10, 9);
+  expect(nav.times.landingMin).toBeCloseTo(arrive + 10 + CIRCUIT_MIN, 9);
+  expect(nav.times.blockOnMin).toBeCloseTo(arrive + 10 + CIRCUIT_MIN + 15, 9);
+  expect(nav.totals.fuel).toBe(legsL + circuitL + 2 * 4);
+  expect(s.map((x) => x.ends)).toEqual(['stop', 'destination']);
+  expect(s[0]).toMatchObject({ fromPoint: 0, toPoint: 4, allowanceL: 4, fuelLandingL: 100 - 4 - legsL });
+  expect(s[1]).toMatchObject({ fromPoint: 4, toPoint: 4, firstLeg: 4, lastLeg: 3, allowanceL: 4, tripFuelL: circuitL });
+  expect(s[1].fuelLandingL).toBe(fuel.landingFuelL);
+  expect(stopsOf(s).map((x) => [x.pointIndex, x.kind])).toEqual([[4, 'stop']]);
+  expect(requestRemarks(route, DEST, () => null)).toEqual(['REQUEST FULL STOP AT A2 FOR 10 MIN THEN CIRCUIT']);
+});
+
+test('a touch-and-go and a stop at the destination: touch-and-go, circuit, full stop, circuit, landing', () => {
+  const DEST = {
+    aerodromeRequests: [
+      { pointUid: 'A2', kind: 'stop' as const, stopMin: 10 },
+      { pointUid: 'A2', kind: 'touch-and-go' as const },
+    ],
+  };
+  const { t, nav, s, fuel } = fly(DEST);
+  expect(t.touchAfterLeg).toEqual([false, false, false, true]);
+  expect(t.circuitAfterLegMin).toEqual([0, 0, 0, CIRCUIT_MIN]);
+  const arrive = 555 + routeMin;
+  expect(nav.circuits.map((c) => [c.afterLeg, c.ends])).toEqual([
+    [3, 'stop'],
+    [3, 'destination'],
+  ]);
+  expect(nav.circuits[1].startMin).toBeCloseTo(arrive + CIRCUIT_MIN + 10, 9);
+  expect(nav.times.landingMin).toBeCloseTo(arrive + 2 * CIRCUIT_MIN + 10, 9);
+  expect(s.map((x) => [x.ends, x.allowanceL])).toEqual([
+    ['touch-and-go', 4],
+    ['stop', 0],
+    ['destination', 4],
+  ]);
+  expect(s[2].fuelLandingL).toBe(fuel.landingFuelL);
+  expect(stopsOf(s).map((x) => [x.pointIndex, x.kind])).toEqual([
+    [4, 'touch-and-go'],
+    [4, 'stop'],
+  ]);
+  expect(requestRemarks(route, DEST, () => null)).toEqual([
+    'REQUEST TOUCH N GO AT A2',
+    'REQUEST FULL STOP AT A2 FOR 10 MIN THEN CIRCUIT',
+  ]);
+  // a touch-and-go alone at either end adds no time
+  const tg = fly({
+    aerodromeRequests: [
+      { pointUid: 'A', kind: 'touch-and-go' as const },
+      { pointUid: 'A2', kind: 'touch-and-go' as const },
+    ],
+  });
+  expect(tg.nav.circuits).toEqual([]);
+  expect(tg.nav.times.landingMin).toBeCloseTo(arrive, 9);
+  expect(tg.t.stops).toBe(0);
+  expect(tg.s).toHaveLength(1);
 });

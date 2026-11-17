@@ -239,6 +239,57 @@ describe('intermediate stop at LGSY', () => {
     expect(m.pages.map((p) => p.label)).toEqual(['LGTT → LGSY', 'LGSY → LGSY', 'LGSY → LGTT']);
   });
 
+  test('a stop at the departure and at the destination: circuit sectors at both ends, each end with its performance and W&B', () => {
+    const base = flight();
+    const doc = flight({
+      route: [ad('LGTT', 'a'), ad('LGSY', 'sky')],
+      options: {
+        ...base.options,
+        aerodromeRequests: [
+          { pointUid: 'a', kind: 'stop', stopMin: 10 },
+          { pointUid: 'sky', kind: 'stop', stopMin: 20 },
+        ],
+      },
+    });
+    const c = calcOf(doc);
+    const nav = c.computed.navlog;
+    const leg = nav.legs[0];
+    expect(nav.times.takeoffMin).toBe(9 * 60 + 15);
+    expect(leg.startMin).toBeCloseTo(9 * 60 + 15 + CIRCUIT_MIN + 10, 9);
+    expect(nav.times.landingMin).toBeCloseTo(leg.endMin + 20 + CIRCUIT_MIN, 9);
+    expect(c.sectors.map((x) => [x.fromPoint, x.toPoint, x.ends])).toEqual([
+      [0, 0, 'stop'],
+      [0, 1, 'stop'],
+      [1, 1, 'destination'],
+    ]);
+    expect(c.stops.map((x) => [x.pointIndex, x.kind])).toEqual([
+      [0, 'stop'],
+      [1, 'stop'],
+    ]);
+    const [dep, dest] = c.stops;
+    expect(dep.landing.timeMin).toBeCloseTo(9 * 60 + 15 + CIRCUIT_MIN, 9);
+    expect(dep.takeoff.timeMin).toBeCloseTo(leg.startMin, 9);
+    expect(dest.landing.timeMin).toBeCloseTo(leg.endMin, 9);
+    expect(dest.takeoff.timeMin).toBeCloseTo(leg.endMin + 20, 9);
+    expect(dep.landing.aerodrome!.icao).toBe('LGTT');
+    expect(dest.takeoff.aerodrome!.icao).toBe('LGSY');
+    expect(dest.takeoff.perf!.runway!.designator).toBe('35');
+    // three take-offs: three allowances, plus both circuits
+    const circuitsL = nav.circuits.reduce((s, x) => s + x.fuel, 0);
+    expect(nav.circuits).toHaveLength(2);
+    expect(c.fuelLandingL).toBe(120 - 3 * 4 - (leg.fuel ?? 0) - circuitsL);
+    expect(c.sectors[2].fuelLandingL).toBe(c.fuelLandingL);
+    const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: c });
+    expect(m.pages.map((p) => p.label)).toEqual(['LGTT → LGTT', 'LGTT → LGSY', 'LGSY → LGSY']);
+    const wb = wbSheetModel({ doc, aircraft: ASV, pilot, calc: c, route: 'LGTT – LGSY' });
+    expect(wb.checks.map((x) => [x.phase, x.label])).toEqual([
+      ['takeoff', 'Take-off'],
+      ['stop', 'Stop LGTT'],
+      ['stop', 'Stop LGSY'],
+      ['landing', 'Landing'],
+    ]);
+  });
+
   test('performance export: one page per sector, the Skyros landing and take-off in their own blocks', () => {
     const doc = flight();
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc) });

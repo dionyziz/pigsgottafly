@@ -1515,9 +1515,10 @@ export function RouteMap(props: RouteMapProps) {
         onRequest(p.uid, kind, on, stopMin);
         setMenu(null);
       };
+      const end = idx === 0 ? 'departure' : idx === route.length - 1 ? 'destination' : null;
       const askStop = () => {
         const v = window.prompt(
-          `Intermediate stop at ${p.name}: minutes on the ground`,
+          `${end ? 'Full stop' : 'Intermediate stop'} at ${p.name}: minutes on the ground`,
           String(stop?.stopMin ?? DEFAULT_STOP_MIN),
         );
         const n = v == null ? NaN : Math.round(Number(v));
@@ -1540,7 +1541,16 @@ export function RouteMap(props: RouteMapProps) {
         items.push({ label: `Change stop (${stop.stopMin ?? DEFAULT_STOP_MIN} min)…`, onSelect: askStop });
         items.push({ label: 'Remove stop request', onSelect: () => set('stop', false), testId: 'menu-stop-remove' });
       } else if (requestAllowed(route, idx, 'stop'))
-        items.push({ label: 'Request intermediate stop…', onSelect: askStop, testId: 'menu-stop' });
+        items.push({
+          label:
+            end === 'departure'
+              ? 'Request full stop before leaving…'
+              : end === 'destination'
+                ? 'Request full stop, then a circuit…'
+                : 'Request intermediate stop…',
+          onSelect: askStop,
+          testId: 'menu-stop',
+        });
     }
     const ad =
       p.kind === 'aerodrome' && props.aerodromeInfo ? refData.aerodromes.find((x) => x.id === p.refId) : undefined;

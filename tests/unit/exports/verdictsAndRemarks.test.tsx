@@ -322,14 +322,35 @@ describe('touch-and-go and intermediate-stop requests', () => {
     expect(removeRequest(reqs, mg.uid)).toHaveLength(1);
   });
 
-  test('requests on removed points, VFR points, or stops at the route ends are dropped', () => {
+  test('requests on removed points or VFR points are dropped; stops at the route ends are kept', () => {
     const reqs = [
       { pointUid: 'gone', kind: 'touch-and-go' as const },
       { pointUid: kor.uid, kind: 'touch-and-go' as const },
       { pointUid: tt.uid, kind: 'stop' as const, stopMin: 5 },
       { pointUid: tt2.uid, kind: 'stop' as const, stopMin: 5 },
     ];
-    expect(activeRequests(route, { aerodromeRequests: reqs })).toEqual([]);
+    expect(activeRequests(route, { aerodromeRequests: reqs }).map((x) => [x.index, x.request.kind])).toEqual([
+      [0, 'stop'],
+      [3, 'stop'],
+    ]);
+    // a single point is no flight to stop on
+    expect(activeRequests(route.slice(0, 1), { aerodromeRequests: reqs })).toEqual([]);
+  });
+
+  test('a full stop at the departure and at the destination: their remarks', () => {
+    let reqs = setRequest([], tt.uid, 'touch-and-go');
+    reqs = setRequest(reqs, tt.uid, 'stop', 10);
+    reqs = setRequest(reqs, tt2.uid, 'stop', 15);
+    expect(requestRemarks(route, { aerodromeRequests: reqs }, icao)).toEqual([
+      'INITIALLY REQUEST TOUCH N GO AT LGTT',
+      'INITIALLY REQUEST FULL STOP AT LGTT FOR 10 MIN',
+      'REQUEST FULL STOP AT LGTT FOR 15 MIN THEN CIRCUIT',
+    ]);
+    reqs = setRequest(reqs, tt2.uid, 'touch-and-go');
+    expect(requestRemarks(route, { aerodromeRequests: removeRequest(reqs, tt.uid) }, icao)).toEqual([
+      'REQUEST TOUCH N GO AT LGTT',
+      'REQUEST FULL STOP AT LGTT FOR 15 MIN THEN CIRCUIT',
+    ]);
   });
 
   test('joined in one RMK/ field, first', () => {

@@ -174,4 +174,41 @@ describe('aerodrome hours in the editor', () => {
       { level: 'warn', text: 'Destination LGAV: NOTAM A0600/26: AD available, prior permission required.' },
     ]);
   });
+
+  test('a stop at the departure and at the destination: the ground time there is checked too', () => {
+    const route = [pt('LGTT', 'a'), pt('LGAV', 'b')];
+    const at = (h: number, m: number) => day + hm(h, m) * 60000;
+    const c = aerodromeChecks(
+      input({
+        route,
+        options: {
+          aerodromeRequests: [
+            { pointUid: 'a', kind: 'stop', stopMin: 10 },
+            { pointUid: 'b', kind: 'stop', stopMin: 10 },
+          ],
+        },
+        times: { blockOffMin: hm(8), takeoffMin: hm(8, 10), landingMin: hm(9, 16), blockOnMin: hm(9, 26) },
+        stops: [
+          { pointIndex: 0, aerodrome: ad('LGTT'), landingMs: at(8, 16), takeoffMs: at(8, 26) },
+          { pointIndex: 1, aerodrome: ad('LGAV'), landingMs: at(9, 0), takeoffMs: at(9, 10) },
+        ],
+        // LGAV closed from 09:05 to 09:08: during the ground time, before the final landing
+        effects: aerodromeNotamEffects([
+          notam({
+            key: 'A0700/26',
+            itemA: ['LGAV'],
+            qcode: 'QFALC',
+            text: 'AD CLSD',
+            from: at(9, 5),
+            to: at(9, 8),
+          }),
+        ]),
+      }),
+    );
+    expect(c.map((x) => [x.role, x.when])).toEqual([
+      ['departure', 'block start 08:00Z – take-off 08:26Z'],
+      ['destination', 'landing 09:00Z – block stop 09:26Z'],
+    ]);
+    expect(c[1].ad.status).toBe('closed');
+  });
 });
