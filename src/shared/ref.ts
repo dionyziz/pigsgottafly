@@ -306,6 +306,43 @@ export interface RefFir {
   source: string;
 }
 
+/** Kinds of radio navigation aid, as the AIP names them ('L' is a locator). */
+export type NavaidType = 'VOR' | 'VOR/DME' | 'VORTAC' | 'DME' | 'TACAN' | 'NDB' | 'NDB/DME' | 'L';
+
+/**
+ * A radio navigation aid from AIP ENR 4.1 (en-route) and AD 2.19 / AD 1.6.N.19 (aerodrome aids): client map
+ * layer, src/data/ref/navaids.json from tools/parse_navaids.ts; not in the ref_* tables. ILS components are not
+ * included.
+ */
+export interface RefNavaid {
+  /** '<ident> <type>', e.g. 'ATV VOR/DME' (one ident can name an L and a VOR/DME). */
+  id: string;
+  ident: string;
+  /** Station name as printed, e.g. 'ATHINAI'. */
+  name: string;
+  type: NavaidType;
+  /** MHz for VOR / DME / TACAN (the paired VHF frequency), kHz for NDB / L; null for a DME or TACAN without one. */
+  freq: number | null;
+  unit: 'MHz' | 'kHz';
+  /** DME / TACAN channel, e.g. '91X'. */
+  channel: string | null;
+  lat: number;
+  lon: number;
+  /** Elevation of the DME transmitting antenna, ft. */
+  elevFt: number | null;
+  /** Magnetic variation at the station, degrees east (+) / west (−), and its year. */
+  variation: number | null;
+  variationYear: number | null;
+  /** VOR declination (the alignment of radial 360 to true north), degrees east (+) / west (−). */
+  declination: number | null;
+  /** 'H24', 'HJ', 'HS', 'HX'. */
+  hours: string;
+  /** e.g. 'FL 500 / 120 NM' or '50 NM'. */
+  coverage: string;
+  /** Where it is published, ENR 4.1 first, e.g. ['ENR 4.1', 'LGAV AD 2.19']. */
+  sources: string[];
+}
+
 export interface RefVfrPoint {
   /** '<chart>/<NAME>' (with '#2' etc. for repeated names on one chart). */
   id: string;
@@ -367,4 +404,6 @@ export interface RefBundle {
   areas?: RefArea[];
   /** The FIR boundary (client map layer). */
   fir?: RefFir;
+  /** Radio navigation aids (client map layer; not in the ref_* tables). */
+  navaids?: RefNavaid[];
 }

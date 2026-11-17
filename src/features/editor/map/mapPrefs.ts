@@ -45,6 +45,7 @@ export function legacyLayers(): MapLayers | null {
       'aerodromes',
       'vfrPoints',
       'vfrRoutes',
+      'navaids',
       'waypoints',
       'prd',
       'mil',

@@ -3,7 +3,7 @@
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 
 import type { RoutePoint, Waypoint } from '../../../shared';
-import type { RefAerodrome, RefFir, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
+import type { NavaidType, RefAerodrome, RefFir, RefNavaid, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import { type AirspaceInfo, airspaceLabel, type AirspaceType, fmtVertical, isArea } from './airspace';
 import { mercatorMid } from './routeEdit';
 import { aerodromeName } from './snap';
@@ -151,6 +151,46 @@ export function vfrPointFeatures(points: RefVfrPoint[]): FC<Point> {
           label: v.name,
           icon: v.src === 'ofm' ? 'pgf-vfr-ofm' : 'pgf-vfr',
           rank: v.src === 'ofm' ? 2 : 1,
+        },
+      })),
+  );
+}
+
+const NAVAID_ICON: Record<NavaidType, string> = {
+  VOR: 'pgf-nav-vor',
+  'VOR/DME': 'pgf-nav-vordme',
+  VORTAC: 'pgf-nav-vortac',
+  TACAN: 'pgf-nav-tacan',
+  DME: 'pgf-nav-dme',
+  NDB: 'pgf-nav-ndb',
+  'NDB/DME': 'pgf-nav-ndb',
+  L: 'pgf-nav-l',
+};
+
+/** A navaid's frequency as charted: '114.40' (MHz), '382' (kHz), 'CH 91X' (a DME or TACAN without a paired frequency). */
+export function navaidFreq(n: Pick<RefNavaid, 'freq' | 'unit' | 'channel'>): string {
+  if (n.freq === null) return n.channel ? `CH ${n.channel}` : '';
+  return n.unit === 'kHz' ? String(Math.round(n.freq)) : n.freq.toFixed(2);
+}
+
+/**
+ * Radio navaid symbols: properties id, label (ident), freq (as charted), icon (ICAO symbol by type) and
+ * rank (1: VORs and DMEs, and NDBs listed en-route in ENR 4.1; 2: the other NDBs and locators, shown zoomed in).
+ */
+export function navaidFeatures(navaids: RefNavaid[]): FC<Point> {
+  return fc(
+    navaids
+      .filter((n) => isFinite(n.lat) && isFinite(n.lon))
+      .map((n) => ({
+        type: 'Feature',
+        id: n.id,
+        geometry: { type: 'Point', coordinates: [n.lon, n.lat] },
+        properties: {
+          id: n.id,
+          label: n.ident,
+          freq: navaidFreq(n),
+          icon: NAVAID_ICON[n.type],
+          rank: n.unit === 'MHz' || n.sources.includes('ENR 4.1') ? 1 : 2,
         },
       })),
   );

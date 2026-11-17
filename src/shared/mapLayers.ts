@@ -18,6 +18,8 @@ export interface MapLayers {
   /** VFR reporting points. */
   vfrPoints: boolean;
   vfrRoutes: boolean;
+  /** Radio navigation aids: VOR, VOR/DME, NDB, locators (ENR 4.1, AD 2.19). */
+  navaids: boolean;
   /** The pilot's saved waypoints. */
   waypoints: boolean;
   /** ENR 5 areas: prohibited / restricted / danger, military, local flying. */
@@ -35,6 +37,7 @@ export const MAP_LAYER_TOGGLES: readonly MapLayerToggle[] = [
   'aerodromes',
   'vfrPoints',
   'vfrRoutes',
+  'navaids',
   'waypoints',
   'prd',
   'mil',
@@ -52,6 +55,7 @@ export const DEFAULT_MAP_LAYERS: MapLayers = {
   aerodromes: true,
   vfrPoints: true,
   vfrRoutes: true,
+  navaids: true,
   waypoints: true,
   prd: true,
   mil: true,

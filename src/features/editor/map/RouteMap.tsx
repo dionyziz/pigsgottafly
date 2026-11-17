@@ -34,7 +34,7 @@ import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
 import { type AerodromeRequest, DEFAULT_STOP_MIN, requestAllowed, uid as newUid } from '../../../shared';
 import type { Notam } from '../../../shared/briefing';
 import type { MapLayers } from '../../../shared/mapLayers';
-import type { RefAerodrome, RefBundle } from '../../../shared/ref';
+import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
 import type { MenuItem } from '../../../ui';
 import type { AdDayInfo } from '../AerodromeHours';
 import { AerodromePopover, AerodromeTip } from './AerodromePopover';
@@ -47,6 +47,7 @@ import {
   firFeatures,
   focusFeatures,
   midpointFeatures,
+  navaidFeatures,
   routeArrowFeatures,
   routeLineFeatures,
   routePointFeatures,
@@ -60,6 +61,7 @@ import { fmtAltitude, fmtCourse, fmtDistance, labelMode, parseAltitudeInput, pla
 import { MapTip } from './MapPopover';
 import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
 import { type DrawMode, LayersControl, MapHint, MapToolbar } from './MapToolbar';
+import { NavaidPopover, NavaidTip } from './NavaidPopover';
 import { type MapNotam, mapNotams, notamKeysAt, setNotamLayer } from './notamLayer';
 import { NotamPopover, NotamTip } from './NotamPopover';
 import { NameBox, type NamePrompt, PointMenu } from './PointMenu';
@@ -243,6 +245,9 @@ export function RouteMap(props: RouteMapProps) {
   /** Aerodrome under the cursor (idle mode) and the aerodrome details opened by a click. */
   const [adTip, setAdTip] = useState<{ x: number; y: number; a: RefAerodrome } | null>(null);
   const [adPop, setAdPop] = useState<{ x: number; y: number; a: RefAerodrome } | null>(null);
+  /** Radio navaid under the cursor (idle mode) and the navaid details opened by a click. */
+  const [navTip, setNavTip] = useState<{ x: number; y: number; n: RefNavaid } | null>(null);
+  const [navPop, setNavPop] = useState<{ x: number; y: number; n: RefNavaid } | null>(null);
   const [editingLeg, setEditingLeg] = useState<string | null>(null);
   /** The cursor is near the hint bubble: it fades out so it never hides what the pilot points at. */
   const hintEl = useRef<HTMLDivElement>(null);
@@ -288,6 +293,7 @@ export function RouteMap(props: RouteMapProps) {
     layers,
     airPop,
     adPop,
+    navPop,
   });
   live.current = {
     props,
@@ -305,6 +311,7 @@ export function RouteMap(props: RouteMapProps) {
     layers,
     airPop,
     adPop,
+    navPop,
   };
   const drag = useRef<Drag | null>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
@@ -377,6 +384,7 @@ export function RouteMap(props: RouteMapProps) {
       setData(m, 'fir', firFeatures(r.fir));
       setData(m, 'vfr-routes', vfrRouteFeatures(r.vfrRoutes, r.vfrPoints));
       setData(m, 'vfr-points', vfrPointFeatures(r.vfrPoints));
+      setData(m, 'navaids', navaidFeatures(r.navaids ?? []));
       setData(m, 'aerodromes', aerodromeFeatures(r.aerodromes, variation));
       setData(m, 'waypoints', waypointFeatures(w));
       fitInitial(m);
@@ -554,6 +562,8 @@ export function RouteMap(props: RouteMapProps) {
       setNotamPop(null);
       setAdTip(null);
       setAdPop(null);
+      setNavTip(null);
+      setNavPop(null);
       setAirTip(null);
       setAirPop(null);
     }
@@ -565,6 +575,12 @@ export function RouteMap(props: RouteMapProps) {
   useEffect(() => {
     if (!layers.aerodromes) setAdTip(null);
   }, [layers.aerodromes]);
+  useEffect(() => {
+    if (!layers.navaids) {
+      setNavTip(null);
+      setNavPop(null);
+    }
+  }, [layers.navaids]);
   useEffect(() => {
     if (!layers.notams) {
       setNotamTip(null);
@@ -970,6 +986,26 @@ export function RouteMap(props: RouteMapProps) {
       return best;
     };
 
+    /** The radio navaid drawn nearest to p (within 9 px), when the layer is shown. */
+    const navAt = (p: { x: number; y: number }): RefNavaid | null => {
+      const L = live.current;
+      if (!L.layers.navaids) return null;
+      const z = m.getZoom();
+      let best: RefNavaid | null = null,
+        bd = 9;
+      for (const n of L.props.refData.navaids ?? []) {
+        // locators and aerodrome NDBs are drawn from zoom 7.5 (style.ts navaid-icon)
+        if (z < 7.5 && n.unit === 'kHz' && !n.sources.includes('ENR 4.1')) continue;
+        const q = m.project([n.lon, n.lat]);
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (d < bd) {
+          bd = d;
+          best = n;
+        }
+      }
+      return best;
+    };
+
     const onMove = (e: MapMouseEvent) => {
       lastMove = e;
       if (!raf)
@@ -1074,22 +1110,28 @@ export function RouteMap(props: RouteMapProps) {
       }
       m.getCanvas().style.cursor = pt !== null ? 'grab' : mid !== null ? 'copy' : '';
       // an aerodrome under the cursor: its hours on the flight's date
-      const ad = mid === null && !L.airPop && !L.adPop && !notamLive.current.pop ? adAt(e.point, pt) : null;
+      const quiet = !L.airPop && !L.adPop && !L.navPop && !notamLive.current.pop;
+      const ad = mid === null && quiet ? adAt(e.point, pt) : null;
       setAdTip(ad ? { x: e.point.x, y: e.point.y, a: ad } : null);
-      if (ad && pt === null) m.getCanvas().style.cursor = 'pointer';
+      // a radio navaid under the cursor: ident, type and frequency
+      const nav = pt === null && mid === null && !ad && quiet ? navAt(e.point) : null;
+      setNavTip(nav ? { x: e.point.x, y: e.point.y, n: nav } : null);
+      if ((ad || nav) && pt === null) m.getCanvas().style.cursor = 'pointer';
       // weather hazard bands/rings under the cursor: their texts (they are not printed on the chart)
       const wx =
-        pt === null && mid === null && !L.airPop && !ad ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
+        pt === null && mid === null && !L.airPop && !ad && !nav
+          ? hazardLabelsAt(m, e.point, L.props.hazards ?? [])
+          : [];
       setWxTip(wx.length ? { x: e.point.x, y: e.point.y, items: wx } : null);
       // NOTAM areas under the cursor: ID, validity and limits
       const nk =
-        pt === null && mid === null && !ad && !wx.length && !L.airPop && !notamLive.current.pop
+        pt === null && mid === null && !ad && !nav && !wx.length && !L.airPop && !notamLive.current.pop
           ? notamKeysAt(m, e.point, notamLive.current.marks)
           : [];
       setNotamTip(nk.length ? { x: e.point.x, y: e.point.y, keys: nk } : null);
       // airspace under the cursor: name, class and limits; the smallest one is highlighted
       const air =
-        pt === null && mid === null && !ad && !wx.length && !nk.length && !L.airPop
+        pt === null && mid === null && !ad && !nav && !wx.length && !nk.length && !L.airPop
           ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat)
           : [];
       highlightAirspace(air[0] ?? null);
@@ -1235,9 +1277,23 @@ export function RouteMap(props: RouteMapProps) {
           setAdPop(null);
           return;
         }
+        setNavTip(null);
+        if (L.navPop) {
+          setNavPop(null);
+          return;
+        }
         const ad = i === null && !L.airPop && !notamLive.current.pop ? adAt(e.point, null) : null;
         if (ad) {
           setAdPop({ x: e.point.x, y: e.point.y, a: ad });
+          setNotamTip(null);
+          setAirTip(null);
+          highlightAirspace(null);
+          return;
+        }
+        // a click on a radio navaid opens its details (a second click closes them)
+        const nav = i === null && !L.airPop && !notamLive.current.pop ? navAt(e.point) : null;
+        if (nav) {
+          setNavPop({ x: e.point.x, y: e.point.y, n: nav });
           setNotamTip(null);
           setAirTip(null);
           highlightAirspace(null);
@@ -1318,6 +1374,7 @@ export function RouteMap(props: RouteMapProps) {
       setWxTip(null);
       setNotamTip(null);
       setAdTip(null);
+      setNavTip(null);
       setHintAway(false);
       if (!live.current.airPop) highlightAirspace(null);
       if (!drag.current) {
@@ -1365,6 +1422,7 @@ export function RouteMap(props: RouteMapProps) {
       if (e.key === 'Escape') {
         if (drag.current) cancelDragRef.current?.();
         else if (L.adPop) setAdPop(null);
+        else if (L.navPop) setNavPop(null);
         else if (notamLive.current.pop) setNotamPop(null);
         else if (L.airPop) setAirPop(null);
         else if (L.layersOpen) setLayersOpen(false);
@@ -1608,6 +1666,18 @@ export function RouteMap(props: RouteMapProps) {
           info={props.aerodromeInfo(adPop.a)}
           airac={refData.airac.id}
           onClose={() => setAdPop(null)}
+        />
+      )}
+      {navTip && !navPop && !adPop && !airPop && !notamPop && !hover && !menu && mode === 'idle' && (
+        <NavaidTip x={navTip.x} y={navTip.y} n={navTip.n} />
+      )}
+      {navPop && (
+        <NavaidPopover
+          x={navPop.x}
+          y={navPop.y}
+          n={navPop.n}
+          airac={refData.airac.id}
+          onClose={() => setNavPop(null)}
         />
       )}
       {airPop && (

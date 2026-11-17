@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { distanceNm } from '../../../../calc';
-import { AD_AIRSPACES, AERODROMES, AIRSPACES, FIR, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
+import { AD_AIRSPACES, AERODROMES, AIRSPACES, FIR, NAVAIDS, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import type { RoutePoint, Waypoint } from '../../../../shared';
 import { legKey } from '../../../../shared';
 import {
@@ -27,6 +27,8 @@ import {
   fmtLimit,
   fmtRouteAltitude,
   midpointFeatures,
+  navaidFeatures,
+  navaidFreq,
   runwayHeading,
   vfrRouteFeatures,
   zoneFeatures,
@@ -376,6 +378,39 @@ describe('map GeoJSON', () => {
     const pikad = f.features.find((x) => x.properties.id === 'LGAV:PIKAD>KIATON');
     expect(pikad?.properties.alt).toBe('6000');
     expect(fmtRouteAltitude({ minFt: 2000, maxFt: 3000 })).toBe('2000–3000');
+  });
+  it('radio navaids: ICAO symbol per type, ident label, frequency as charted', () => {
+    const f = navaidFeatures(NAVAIDS);
+    expect(f.features).toHaveLength(NAVAIDS.length);
+    const at = (id: string) => f.features.find((x) => x.properties.id === id)!;
+    const atv = at('ATV VOR/DME');
+    expect(atv.geometry.coordinates).toEqual([23.804497, 37.888678]); // lon first
+    expect(atv.properties).toMatchObject({ label: 'ATV', freq: '114.40', icon: 'pgf-nav-vordme', rank: 1 });
+    expect(at('AXE VOR').properties).toMatchObject({ icon: 'pgf-nav-vor', freq: '110.60' });
+    // an en-route NDB is drawn from the FIR view, an aerodrome locator once zoomed in
+    expect(at('KOR NDB').properties).toMatchObject({ icon: 'pgf-nav-ndb', freq: '392', rank: 1 });
+    expect(at('HER L').properties).toMatchObject({ icon: 'pgf-nav-l', freq: '431', rank: 2 });
+    // one ident for a locator and a VOR/DME: two features
+    expect(f.features.filter((x) => x.properties.label === 'SUD').map((x) => x.properties.icon)).toEqual([
+      'pgf-nav-l',
+      'pgf-nav-vordme',
+    ]);
+    const vortac = { id: 'X', ident: 'X', type: 'VORTAC', lat: 38, lon: 23 } as const;
+    expect(
+      navaidFeatures([{ ...vortac, unit: 'MHz', freq: 113.1, channel: '78X', sources: [] } as never]).features[0]
+        .properties.icon,
+    ).toBe('pgf-nav-vortac');
+    expect(navaidFreq({ freq: null, unit: 'MHz', channel: '48X' })).toBe('CH 48X');
+    expect(navaidFreq({ freq: 109.85, unit: 'MHz', channel: '35Y' })).toBe('109.85');
+  });
+  it('every navaid type has its symbol', async () => {
+    const { SYMBOLS } = await import('../symbols');
+    for (const t of ['VOR', 'VOR/DME', 'VORTAC', 'TACAN', 'DME', 'NDB', 'NDB/DME', 'L']) {
+      const icon = navaidFeatures([
+        { id: t, ident: 'X', type: t, freq: 1, unit: 'MHz', channel: null, lat: 38, lon: 23, sources: [] } as never,
+      ]).features[0].properties.icon as string;
+      expect(SYMBOLS[icon], t).toBeDefined();
+    }
   });
   it('one midpoint handle per leg', () => {
     expect(midpointFeatures([pt('a'), pt('b', 39, 24), pt('c', 40, 25)]).features).toHaveLength(2);

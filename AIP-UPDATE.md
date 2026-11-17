@@ -23,6 +23,7 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `src/data/ref/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
 | `tools/enr5_areas.json`: prohibited, restricted, danger, military training and local flying areas | ENR 5.1, 5.2, 5.3.1 | `parse_enr5.ts` (prints what it draws approximately; hand corrections in its `OVERRIDES` table) |
 | `src/data/ref/aip-files.json` + `AIP_EAIP_BASE` in `src/data/aipLinks.ts`: links to the AIP PDFs | the eAIP's `side.htm`, the AIRAC label | `aip_files.ts`, `sed` in the script |
+| `src/data/ref/navaids.json`: radio navaids (VOR, VOR/DME, NDB, locators: ident, frequency, channel, position, DME elevation, variation, declination; map layer, client only) | ENR 4.1, AD 2.19, AD 1.6.N.19 | `parse_navaids.ts` |
 | `tools/ad_hours.json`: operational hours, ATS, handling, customs and remarks as printed | AD 2.3, AD 1.6.N.3 (+ AD 1.6.N.4 handling) | `extract_ad_hours.ts`, run after `npm run ref`, then `npm run ref` again (parsed by `src/calc/adHours.ts` into `RefAerodrome.hours`) |
 
 Then it stops before the reference data: a new cycle's data goes into NEW migrations (never edit an applied
@@ -45,8 +46,9 @@ them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test
 6. **Runways.** `tools/build_ref.ts` prints a warning for each slope it cannot sign (same unsigned value both ways and no threshold elevations). Spot-check a few aerodromes' declared distances against the PDFs; `tests/unit/data/runways.test.ts` checks bearings, reciprocals, thresholds and distances for consistency.
 7. **Operational hours.** `tests/unit/calc/adHours.test.ts` lists what every aerodrome's AD 2.3 / AD 1.6 text parses to (AD hours, ATS, handling, customs). A changed text shows up there: check the new parse against the AIP and update the table. Text the parser cannot represent exactly is marked partial (shown as the AIP text, evaluated as unknown); keep that list short and deliberate.
 8. **ENR 5 areas.** `parse_enr5.ts` prints each area it draws approximately (e.g. "excluding … ATZ" not cut out) or cannot draw; `tests/unit/data/enr5.test.ts` holds verbatim pages and the expected parse, and minimum counts per kind. A new layout or a new kind of lateral limit shows up there.
-9. **AIP links.** The script points `AIP_EAIP_BASE` at `https://aisgr.hasp.gov.gr/aipgr_incl_amdt_<NNYY>_wef_<ddmonyyyy>/cd/ais/`; open one link to check HASP kept that pattern (`tests/unit/data/aipLinks.test.ts` checks it matches the AIRAC).
-10. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
+9. **Radio navaids.** `parse_navaids.ts` prints a warning for each table where it read fewer stations than there are frequencies, and for a station printed with a different frequency in ENR 4.1 and an AD 2.19. `tests/unit/data/navaids.test.ts` holds verbatim station rows and the expected parse, and checks the shipped list (known stations, positions inside the FIR).
+10. **AIP links.** The script points `AIP_EAIP_BASE` at `https://aisgr.hasp.gov.gr/aipgr_incl_amdt_<NNYY>_wef_<ddmonyyyy>/cd/ais/`; open one link to check HASP kept that pattern (`tests/unit/data/aipLinks.test.ts` checks it matches the AIRAC).
+11. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
 
 ## 3. Ship
 
