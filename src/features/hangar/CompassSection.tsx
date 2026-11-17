@@ -27,7 +27,7 @@ import {
   useSortable,
 } from '../../ui';
 import { PointTable, Section } from './fields';
-import { addCompassCard, addYears, cardStatus, deviationOf, issuesAt } from './model';
+import { addCompassCard, cardStatus, deviationOf, issuesAt } from './model';
 import type { SectionProps } from './sections';
 
 export function StatusChip({ card, today }: { card: Pick<CompassCard, 'expires'>; today: string }) {
