@@ -175,6 +175,7 @@ export const DATA_SOURCES = [
   'areas',
   'fir',
   'vfr-routes',
+  'vfr-route-arrows',
   'vfr-points',
   'navaids',
   'aerodromes',
@@ -581,15 +582,15 @@ function chartLayers(): LayerSpecification[] {
       },
     },
     {
+      // one arrow per direction of a one-way segment (features.ts vfrRouteArrowFeatures); the icon
+      // points east, `rot` is clockwise from north
       id: 'vfr-route-arrow',
       type: 'symbol',
-      source: 'vfr-routes',
+      source: 'vfr-route-arrows',
       minzoom: 9,
-      filter: ['==', ['get', 'oneway'], true],
       layout: {
-        'symbol-placement': 'line',
-        'symbol-spacing': 90,
         'icon-image': 'pgf-arrow',
+        'icon-rotate': ['-', ['get', 'rot'], 90],
         'icon-allow-overlap': true,
         'icon-rotation-alignment': 'map',
       },

@@ -1,5 +1,5 @@
 // An AIP reference ('AD 2 LGAV', 'ENR 5.1', 'LGAV AD 2.3') as a link to the official AIP Greece PDF of that
-// section (src/data/aipLinks.ts), opening in a new tab.
+// section (src/data/aipLinks.ts), opening in a new tab; links to AIP VFR charts.
 import { Fragment, type ReactNode } from 'react';
 
 import { aipUrl } from '../data/aipLinks';
@@ -23,17 +23,45 @@ export function AipLink({
       title={`Open AIP Greece ${refText} (PDF)`}
     >
       {children ?? <>AIP {refText}</>}
-      <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" className="aip-link-ext">
-        <path
-          d="M4 1.5H1.5v7h7V6M6 1.5h2.5V4M8.5 1.5 4.5 5.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <ExtIcon />
     </a>
+  );
+}
+
+const ExtIcon = () => (
+  <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" className="aip-link-ext">
+    <path
+      d="M4 1.5H1.5v7h7V6M6 1.5h2.5V4M8.5 1.5 4.5 5.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Links to AIP VFR charts (src/features/editor/map/vfrCharts.ts), 'VFR chart LGAV', comma-separated. */
+export function VfrChartLinks({ charts }: { charts: { icao: string; url: string }[] }) {
+  return (
+    <>
+      {charts.map((c, i) => (
+        <Fragment key={c.icao}>
+          {i > 0 && ', '}
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="aip-link"
+            data-testid="vfr-chart-link"
+            title={`Open the AIP VFR chart of ${c.icao} (PDF)`}
+          >
+            VFR chart {c.icao}
+            <ExtIcon />
+          </a>
+        </Fragment>
+      ))}
+    </>
   );
 }
 

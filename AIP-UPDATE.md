@@ -22,7 +22,7 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `tools/runways.json`: runway bearings, lengths, surfaces, thresholds, declared distances, slopes | AD 2.12/2.13, AD 1.6.N.12/13 | `parse_runways.py` (corrections in its `OVR` table, e.g. LGBL TORA from the AD 2.13 remark) |
 | `src/data/ref/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
 | `tools/enr5_areas.json`: prohibited, restricted, danger, military training and local flying areas | ENR 5.1, 5.2, 5.3.1 | `parse_enr5.ts` (prints what it draws approximately; hand corrections in its `OVERRIDES` table) |
-| `src/data/ref/aip-files.json` + `AIP_EAIP_BASE` in `src/data/aipLinks.ts`: links to the AIP PDFs | the eAIP's `side.htm`, the AIRAC label | `aip_files.ts`, `sed` in the script |
+| `src/data/ref/aip-files.json` + `AIP_EAIP_BASE` in `src/data/aipLinks.ts`: links to the AIP PDFs, and to each aerodrome VFR chart (`VFR LGxx`: AD 2.24 / AD 1.6.N.24 `…_VFR_en.pdf`, linked from the map info boxes) | the eAIP's `side.htm`, the AIRAC label | `aip_files.ts`, `sed` in the script |
 | `src/data/ref/navaids.json`: radio navaids (VOR, VOR/DME, NDB, locators: ident, frequency, channel, position, DME elevation, variation, declination; map layer, client only) | ENR 4.1, AD 2.19, AD 1.6.N.19 | `parse_navaids.ts` |
 | `tools/ad_hours.json`: operational hours, ATS, handling, customs and remarks as printed | AD 2.3, AD 1.6.N.3 (+ AD 1.6.N.4 handling) | `extract_ad_hours.ts`, run after `npm run ref`, then `npm run ref` again (parsed by `src/calc/adHours.ts` into `RefAerodrome.hours`) |
 

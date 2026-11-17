@@ -38,3 +38,9 @@ export function hasAipPdf(ref: string): boolean {
   const k = aipSection(ref);
   return !!(k && FILES[k]);
 }
+
+/** URL of an aerodrome's AIP VFR chart (AD 2.24 / AD 1.6.N.24, by its ICAO: 'LGAV'), or null when it has none. */
+export function vfrChartUrl(icao: string): string | null {
+  const f = FILES[`VFR ${icao.toUpperCase()}`];
+  return f ? AIP_EAIP_BASE + encodeURI(f) : null;
+}

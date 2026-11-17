@@ -201,17 +201,23 @@ export function fmtRouteAltitude(r: Pick<RefVfrRoute, 'minFt' | 'maxFt'>): strin
   return r.minFt === r.maxFt || !isFinite(r.minFt) ? `${r.maxFt}` : `${r.minFt}–${r.maxFt}`;
 }
 
+/** The VFR points by chart and name ('<chart>/<NAME>'), the charted/table point preferred over an
+ *  open-flightmaps duplicate of the same name. */
+function vfrPointsByChart(points: RefVfrPoint[]): Map<string, RefVfrPoint> {
+  const byChart = new Map<string, RefVfrPoint>();
+  for (const p of points) {
+    const k = `${p.chart}/${p.name}`;
+    if (!byChart.has(k) || (byChart.get(k)!.src === 'ofm' && p.src !== 'ofm')) byChart.set(k, p);
+  }
+  return byChart;
+}
+
 /**
  * VFR route segments as lines between their two reporting points (resolved by chart + name; segments
  * whose points are missing are skipped). One-way segments are drawn a → b and flagged.
  */
 export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): FC<LineString> {
-  const byChart = new Map<string, RefVfrPoint>();
-  for (const p of points) {
-    const k = `${p.chart}/${p.name}`;
-    // prefer the charted/table point over an open-flightmaps duplicate of the same name
-    if (!byChart.has(k) || (byChart.get(k)!.src === 'ofm' && p.src !== 'ofm')) byChart.set(k, p);
-  }
+  const byChart = vfrPointsByChart(points);
   const out: Feature<LineString, Record<string, unknown>>[] = [];
   const seen = new Set<string>();
   for (const r of routes) {
@@ -234,6 +240,37 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
         ],
       },
       properties: { id: r.id, alt: fmtRouteAltitude(r), oneway: r.oneway },
+    });
+  }
+  return fc(out);
+}
+
+/** Where a one-way VFR route's arrow sits, as a fraction of the segment from its start: toward its own
+ *  end, so a segment published one way in each direction shows its two arrows apart. */
+export const VFR_ARROW_AT = 0.75;
+
+/**
+ * Arrowheads of the one-way VFR route segments: one per direction per segment (the same direction
+ * published again, e.g. on another chart, is merged), each at VFR_ARROW_AT of its own direction;
+ * `rot` = the direction in degrees clockwise from north.
+ */
+export function vfrRouteArrowFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): FC<Point> {
+  const byChart = vfrPointsByChart(points);
+  const out: Feature<Point, Record<string, unknown>>[] = [];
+  const pos = (p: RefVfrPoint) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
+  const seen = new Set<string>();
+  for (const r of routes) {
+    if (!r.oneway) continue;
+    const a = byChart.get(`${r.chart}/${r.a}`),
+      b = byChart.get(`${r.chart}/${r.b}`);
+    if (!a || !b || pos(a) === pos(b)) continue;
+    const key = `${pos(a)}>${pos(b)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: mercatorAt(a, b, VFR_ARROW_AT) },
+      properties: { id: r.id, rot: mercatorBearing(a, b) },
     });
   }
   return fc(out);
@@ -267,6 +304,18 @@ export function routeLineFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
 const mercLat = (y: number) => (Math.atan(Math.sinh(y)) * 180) / Math.PI;
 
+/** The point a fraction t along the drawn (Mercator-straight) line a → b, [lon, lat]. */
+function mercatorAt(a: { lat: number; lon: number }, b: { lat: number; lon: number }, t: number): [number, number] {
+  return [a.lon + (b.lon - a.lon) * t, mercLat(mercY(a.lat) + (mercY(b.lat) - mercY(a.lat)) * t)];
+}
+
+/** Direction of the drawn line a → b, degrees clockwise from north (to 0.1°). */
+function mercatorBearing(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const dx = ((b.lon - a.lon) * Math.PI) / 180,
+    dy = mercY(b.lat) - mercY(a.lat);
+  return Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) * 10) / 10;
+}
+
 /** Where the direction arrows of a leg sit, as fractions of its drawn length (the middle has the
  *  insert handle and the leg label). */
 export const ARROW_AT = [0.3, 0.7] as const;
@@ -288,12 +337,12 @@ export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC
     const dx = ((b.lon - a.lon) * Math.PI) / 180,
       dy = yb - ya;
     if (Math.hypot(dx, dy) < 1e-9) continue;
-    const rot = Math.round((((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360) * 10) / 10;
+    const rot = mercatorBearing(a, b);
     const both = legs.has(key(b, a));
     for (const t of both ? [ARROW_AT[1]] : ARROW_AT) {
       out.push({
         type: 'Feature',
-        geometry: { type: 'Point', coordinates: [a.lon + (b.lon - a.lon) * t, mercLat(ya + dy * t)] },
+        geometry: { type: 'Point', coordinates: mercatorAt(a, b, t) },
         properties: { leg: i, rot },
       });
     }

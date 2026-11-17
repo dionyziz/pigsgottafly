@@ -1,12 +1,13 @@
 // Radio navaid hover tooltip and click popover on the route map: type, ident, name and frequency on
 // hover; on click also the channel, hours, coverage, DME elevation, variation / declination and links to
-// the AIP sections that publish it (ENR 4.1, the aerodromes' AD 2.19).
+// the AIP sections that publish it (ENR 4.1, the aerodromes' AD 2.19) and the AIP VFR chart showing it.
 import { Fragment } from 'react';
 
-import { AipLink } from '../../../app/AipLink';
+import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefNavaid } from '../../../shared/ref';
 import { navaidFreq } from './features';
 import { MapPopover, MapTip, PopItem } from './MapPopover';
+import type { VfrChart } from './vfrCharts';
 
 const TYPE_NAME: Record<RefNavaid['type'], string> = {
   VOR: 'VOR',
@@ -54,12 +55,15 @@ export function NavaidPopover({
   y,
   n,
   airac,
+  charts = [],
   onClose,
 }: {
   x: number;
   y: number;
   n: RefNavaid;
   airac: string;
+  /** The AIP VFR chart showing the navaid. */
+  charts?: VfrChart[];
   onClose: () => void;
 }) {
   return (
@@ -104,7 +108,13 @@ export function NavaidPopover({
               {i > 0 && ', '}
               <AipLink refText={s}>AIP Greece {s}</AipLink>
             </Fragment>
-          ))}{' '}
+          ))}
+          {charts.length > 0 && (
+            <>
+              {' · '}
+              <VfrChartLinks charts={charts} />
+            </>
+          )}{' '}
           <span className="muted">· AIRAC {airac}</span>
         </div>
       </PopItem>

@@ -1,12 +1,13 @@
 // Airspace hover tooltip and click popover on the route map (PLAN-v3 "Airspace on the map"): what the
 // airspace or area is, independent of the route: name, class and vertical limits on hover; on click its
-// type, limits, lateral limits in short, activity, units and frequencies, remarks and the AIP section
-// (a link to the AIP PDF).
+// type, limits, lateral limits in short, activity, units and frequencies, remarks, the AIP VFR chart(s)
+// showing it and the AIP section (links to the AIP PDFs).
 import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
-import { AipLink } from '../../../app/AipLink';
+import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import { type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
 import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
+import type { VfrChart } from './vfrCharts';
 
 const TYPE_LABEL: Record<AirspaceInfo['type'], string> = {
   TMA: 'TMA',
@@ -55,6 +56,7 @@ export function AirspacePopover({
   y,
   items,
   airac,
+  chartsFor,
   onClose,
   onFocus,
 }: {
@@ -62,6 +64,8 @@ export function AirspacePopover({
   y: number;
   items: AirspaceInfo[];
   airac: string;
+  /** The AIP VFR charts showing an airspace. */
+  chartsFor?: (a: AirspaceInfo) => VfrChart[];
   onClose: () => void;
   /** The airspace to outline on the map: the one under the pointer, else the open one. */
   onFocus?: (id: string | null) => void;
@@ -76,6 +80,7 @@ export function AirspacePopover({
       {items.map((a) => {
         const isOpen = acc.isOpen(a.id);
         const area = isArea(a.type);
+        const charts = isOpen ? (chartsFor?.(a) ?? []) : [];
         return (
           <PopItem
             key={a.id}
@@ -143,6 +148,14 @@ export function AirspacePopover({
                 <>
                   <dt>Remarks</dt>
                   <dd className="pgf-air-text pgf-air-pre">{a.remarks}</dd>
+                </>
+              )}
+              {charts.length > 0 && (
+                <>
+                  <dt>{charts.length > 1 ? 'Charts' : 'Chart'}</dt>
+                  <dd>
+                    <VfrChartLinks charts={charts} />
+                  </dd>
                 </>
               )}
               <dt>Source</dt>
