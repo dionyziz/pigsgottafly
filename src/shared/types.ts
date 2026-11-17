@@ -359,6 +359,9 @@ export interface Attachment extends AttachmentRef {
 // serverless request and response limits (~4.5 MB): the client uploads and downloads it chunk by
 // chunk (AIRCRAFT_FILE_CHUNK_BYTES each, base64 in JSON) and assembles a Blob to view or save.
 export type AircraftFileKind = 'photo' | 'document';
+/** The pilot's own documents (profile): licence and medical certificate, one PDF each (migration 047). */
+export type PilotFileKind = 'licence' | 'medical';
+export type FileKind = AircraftFileKind | PilotFileKind;
 export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const DOCUMENT_TYPES = ['application/pdf'] as const;
 /** Bytes per chunk (2 MiB: 2.8 MB as base64, well within the request/response limits). */
@@ -371,7 +374,7 @@ export const DOCUMENT_MAX_BYTES = 80 * 1024 * 1024;
 /** A photo or document of an aircraft (metadata; the content comes chunk by chunk). */
 export interface AircraftFile {
   id: Id;
-  kind: AircraftFileKind;
+  kind: FileKind;
   /** Shown name, e.g. 'POH', 'Weighing report 2024' ('' for the photo). */
   title: string;
   /** Original file name. */
@@ -385,11 +388,16 @@ export interface AircraftFile {
 }
 /** POST /api/aircraft/:id/files: starts an upload; the file appears once all chunks are in (POST …/complete). */
 export interface AircraftFileStart {
-  kind: AircraftFileKind;
+  kind: FileKind;
   name: string;
   title: string;
   mime: string;
   size: number;
+}
+/** GET /api/pilots/:id/files (only your own id): your licence and medical certificate. */
+export interface PilotFiles {
+  licence: AircraftFile | null;
+  medical: AircraftFile | null;
 }
 /** GET /api/aircraft/:id/files */
 export interface AircraftFiles {

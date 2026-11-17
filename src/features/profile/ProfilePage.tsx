@@ -6,6 +6,7 @@
 // The first-use form is sent with Continue (then to ?next=, the page the pilot was opening); after
 // that, edits save on their own (useAutosave, PUT /api/me) and invalid fields say why under
 // themselves. The form follows the pilot (another tab, a dialog) while it has nothing unsaved.
+// Below it: the licence and medical PDFs (PilotDocuments), then the account (AccountSection).
 import '../lobby/lists.css';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -34,6 +35,7 @@ import { type FormIssue, useFormIssues } from '../passengers/formIssues';
 import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from '../passengers/person';
 import { PersonFields, type SetPerson } from '../passengers/PersonFields';
 import { AccountSection } from './AccountSection';
+import { PilotDocuments } from './PilotDocuments';
 
 export interface ProfileForm extends PersonForm {
   licenceNo: string;
@@ -413,6 +415,7 @@ export function ProfilePage() {
           <button type="submit" hidden />
         )}
       </form>
+      {!welcome && <PilotDocuments />}
       {!welcome && <AccountSection />}
     </Shell>
   );

@@ -636,6 +636,7 @@ describe('migrations', () => {
       '044_weather_cache',
       '045_passenger_email',
       '046_performance_speeds_kt',
+      '047_pilot_files',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -666,6 +667,7 @@ describe('migrations', () => {
       '044_weather_cache',
       '045_passenger_email',
       '046_performance_speeds_kt',
+      '047_pilot_files',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -761,7 +763,7 @@ describe('migrations', () => {
     );
     const before = await db.query(`SELECT * FROM aircraft ORDER BY id`);
 
-    expect(await migrate(db, withOwner(OWNER))).toEqual(['046_performance_speeds_kt']);
+    expect(await migrate(db, withOwner(OWNER))).toEqual(['046_performance_speeds_kt', '047_pilot_files']);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
     expect(after.map(({ performance: _p, ...r }) => r)).toEqual(before.map(({ performance: _p, ...r }) => r));
@@ -827,7 +829,6 @@ describe('migrations', () => {
       ).length,
     ).toBe(1);
     expect(MIGRATIONS.map((m) => m.name).slice(-10)).toEqual([
-      '018_operators',
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -837,6 +838,7 @@ describe('migrations', () => {
       '044_weather_cache',
       '045_passenger_email',
       '046_performance_speeds_kt',
+      '047_pilot_files',
     ]);
     await db.close();
   });

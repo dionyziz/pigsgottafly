@@ -12,19 +12,23 @@
 //   DELETE /aircraft/:id/files/:fileId             → 204
 // The same scheme serves an operator's documents (operations manual) under /operators/:id/files,
 // stored in operator_files / operator_file_chunks (migration 018) with the operator's access
-// (../operators.ts): fileRoutes() builds the routes of either from a FileScope.
+// (../operators.ts), and the pilot's own licence and medical certificate under /pilots/:id/files
+// (pilot_files / pilot_file_chunks, migration 047; only your own id, 404 for any other):
+// fileRoutes() builds the routes of each from a FileScope. A kind listed in FileScope.single keeps
+// one file per parent: a new one replaces the old when it completes.
 // Limits (../limits.ts): the owner's storage quota (checked at the start and at every chunk), at most
 // 3 unfinished uploads per owner, 50 files per aircraft or operator; unfinished uploads older than an
 // hour are swept at every start; the first chunk must be of the declared type (magic bytes).
 import {
   AIRCRAFT_FILE_CHUNK_BYTES,
   type AircraftFile,
-  type AircraftFileKind,
   type AircraftFiles,
   DOCUMENT_MAX_BYTES,
   DOCUMENT_TYPES,
+  type FileKind,
   PHOTO_MAX_BYTES,
   PHOTO_TYPES,
+  type PilotFiles,
 } from '../../../src/shared/types.js';
 import { aircraftFor } from '../access.js';
 import type { Queryable, Row } from '../db.js';
@@ -80,7 +84,11 @@ interface FileScope {
   chunks: string;
   /** Column of the files table holding the parent's id. */
   parent: string;
-  kinds: readonly AircraftFileKind[];
+  kinds: readonly FileKind[];
+  /** Kinds kept one per parent (a new file replaces the old when it completes). */
+  single?: readonly FileKind[];
+  /** The listing (GET) of the complete files; by default { photo?, documents }. */
+  list?: (files: AircraftFile[]) => unknown;
   /** Checks the pilot's access to parent `id` (404 / 403); returns the parent's owner (whose storage
    * the files use) and extra columns for a new file row. */
   access: (
@@ -115,6 +123,7 @@ export function fileRoutes(scope: FileScope): Route[] {
           [params.id],
         );
         const all = rows.map(toFile);
+        if (scope.list) return scope.list(all);
         const documents = all.filter((f) => f.kind === 'document');
         if (!scope.kinds.includes('photo')) return { documents };
         const photos = all.filter((f) => f.kind === 'photo');
@@ -127,7 +136,7 @@ export function fileRoutes(scope: FileScope): Route[] {
       async handler({ db, pilot, params, body }) {
         const { owner, extra } = await scope.access(db, pilot.id, params.id, 'edit');
         const v = (await body()) as Record<string, unknown>;
-        const kind = v.kind as AircraftFileKind;
+        const kind = v.kind as FileKind;
         if (!scope.kinds.includes(kind)) throw badRequest(`kind must be ${scope.kinds.join(' or ')}`);
         const types: readonly string[] = kind === 'photo' ? PHOTO_TYPES : DOCUMENT_TYPES;
         if (typeof v.mime !== 'string' || !types.includes(v.mime))
@@ -203,10 +212,11 @@ export function fileRoutes(scope: FileScope): Route[] {
           throw badRequest(`the upload is incomplete (${n} of ${f.chunks} chunks)`);
         return db.transaction(async (tx) => {
           await tx.query(`UPDATE ${files} SET complete = TRUE WHERE id = $1`, [f.id]);
-          // one photo per aircraft: the new one replaces the old
-          if (f.kind === 'photo')
-            await tx.query(`DELETE FROM ${files} WHERE ${parent} = $1 AND kind = 'photo' AND id <> $2`, [
+          // one photo per aircraft (one licence, one medical per pilot): the new one replaces the old
+          if (scope.single?.includes(f.kind))
+            await tx.query(`DELETE FROM ${files} WHERE ${parent} = $1 AND kind = $2 AND id <> $3`, [
               params.id,
+              f.kind,
               f.id,
             ]);
           await scope.completed?.(tx, params.id);
@@ -266,6 +276,7 @@ export const routes: Route[] = [
     chunks: 'aircraft_attachment_chunks',
     parent: 'aircraft_id',
     kinds: ['photo', 'document'],
+    single: ['photo'],
     access: async (db, pilotId, id, need) => {
       const owner = (await aircraftFor(db, pilotId, id, need)).pilot_id as string;
       return { owner, extra: { pilot_id: owner, data: '' } };
@@ -282,5 +293,22 @@ export const routes: Route[] = [
     parent: 'operator_id',
     kinds: ['document'],
     access: async (db, pilotId, id, need) => ({ owner: (await operatorFor(db, pilotId, id, need))._owner, extra: {} }),
+  }),
+  // the pilot's licence and medical certificate: their own only
+  ...fileRoutes({
+    path: '/pilots/:id/files',
+    files: 'pilot_files',
+    chunks: 'pilot_file_chunks',
+    parent: 'pilot_id',
+    kinds: ['licence', 'medical'],
+    single: ['licence', 'medical'],
+    list: (all): PilotFiles => ({
+      licence: all.findLast((f) => f.kind === 'licence') ?? null,
+      medical: all.findLast((f) => f.kind === 'medical') ?? null,
+    }),
+    access: async (_db, pilotId, id) => {
+      if (id !== pilotId) throw notFound('no such pilot');
+      return { owner: pilotId, extra: {} };
+    },
   }),
 ];

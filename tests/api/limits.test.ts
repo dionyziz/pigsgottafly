@@ -40,9 +40,7 @@ describe('storage', () => {
       expect((await start(3 * 1048576)).status).toBe(201);
       const r = await start(3 * 1048576, `operators/${op.id}`);
       expect(r.status).toBe(413);
-      expect(r.body.error).toMatch(
-        /Not enough storage: the files of your aircraft and operators use 3 MB of 5 MB, and this file needs 3 MB/,
-      );
+      expect(r.body.error).toMatch(/Not enough storage: your files use 3 MB of 5 MB, and this file needs 3 MB/);
       expect((await start(1048576, `operators/${op.id}`)).status).toBe(201);
     } finally {
       if (prev === undefined) delete process.env.STORAGE_QUOTA_MB;

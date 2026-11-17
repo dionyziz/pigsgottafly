@@ -1,8 +1,8 @@
-// Aircraft photo and documents, and an operator's documents: chunked upload and download
-// (api.files / api.operatorFiles, api/_lib/routes/files.ts),
+// Aircraft photo and documents, an operator's documents and the pilot's own (licence, medical):
+// chunked upload and download (api.files / api.operatorFiles / api.pilotFiles, api/_lib/routes/files.ts),
 // the photo's resize in the browser, and a per-session cache of downloaded content (a file id's
 // content never changes: a replaced photo or document gets a new id).
-import { AIRCRAFT_FILE_CHUNK_BYTES, type AircraftFile, type AircraftFileKind, PHOTO_MAX_PX } from '../shared/types';
+import { AIRCRAFT_FILE_CHUNK_BYTES, type AircraftFile, type FileKind, PHOTO_MAX_PX } from '../shared/types';
 import { api, type FilesApi } from './api';
 
 function toBase64(bytes: Uint8Array): string {
@@ -17,13 +17,14 @@ function fromBase64(data: string): Uint8Array {
   return out;
 }
 
-/** Whose files: the aircraft's (api.files) or an operator's (api.operatorFiles), by id. */
+/** Whose files: the aircraft's (api.files), an operator's (api.operatorFiles) or the pilot's (api.pilotFiles), by id. */
 export interface FileScope {
   files: FilesApi;
   id: string;
 }
 export const aircraftScope = (aircraftId: string): FileScope => ({ files: api.files, id: aircraftId });
 export const operatorScope = (operatorId: string): FileScope => ({ files: api.operatorFiles, id: operatorId });
+export const pilotScope = (pilotId: string): FileScope => ({ files: api.pilotFiles, id: pilotId });
 
 /**
  * Uploads `blob` as the aircraft's photo or a document, chunk by chunk; `onProgress` gets 0…1.
@@ -32,7 +33,7 @@ export const operatorScope = (operatorId: string): FileScope => ({ files: api.op
 export async function uploadFile(
   scope: FileScope,
   blob: Blob,
-  meta: { kind: AircraftFileKind; name: string; title?: string },
+  meta: { kind: FileKind; name: string; title?: string },
   onProgress?: (f: number) => void,
 ): Promise<AircraftFile> {
   const { files, id } = scope;

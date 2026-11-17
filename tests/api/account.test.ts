@@ -169,6 +169,24 @@ beforeAll(async () => {
   expect(
     (await A.call('POST', `operators/${op.id}/shares`, { email: 'staying@example.com', role: 'view' })).status,
   ).toBe(201);
+  // A's licence (a pilot file)
+  const lic = (
+    await A.call('POST', `pilots/${ids.a}/files`, {
+      kind: 'licence',
+      name: 'licence-lena.pdf',
+      mime: 'application/pdf',
+      size: 10,
+    })
+  ).body;
+  ids.licence = lic.id;
+  expect(
+    (
+      await A.call('PUT', `pilots/${ids.a}/files/${lic.id}/chunks/0`, {
+        data: Buffer.from('%PDF-1.4 z').toString('base64'),
+      })
+    ).status,
+  ).toBe(204);
+  expect((await A.call('POST', `pilots/${ids.a}/files/${lic.id}/complete`)).status).toBe(200);
   const bop = (await B.call('POST', 'operators', { name: 'Staying Club' })).body;
   ids.bop = bop.id;
   expect(
@@ -198,6 +216,7 @@ describe('GET /me/export', () => {
     expect(x.aircraftSharedWithMe).toEqual([
       expect.objectContaining({ registration: 'SX-STY', owner: 'staying@example.com', role: 'view' }),
     ]);
+    expect(x.documents).toEqual([expect.objectContaining({ kind: 'licence', name: 'licence-lena.pdf', size: 10 })]);
     expect(x.operators.map((o: any) => o.name)).toEqual(['Leaving Aviation']);
     expect(x.operators[0].files.map((f: any) => f.name)).toEqual(['om.pdf']);
     expect(x.operators[0].sharedWith).toEqual([
@@ -253,6 +272,8 @@ describe('DELETE /me', () => {
       ids.flight,
       ids.op,
       ids.opFile,
+      ids.licence,
+      'licence-lena.pdf',
       'Leaving Aviation',
       'Lena ops',
       'Lena Leaving',

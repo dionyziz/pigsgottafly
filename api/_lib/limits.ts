@@ -2,7 +2,8 @@
 //   counts     aircraft 50, operators 20 (owned), flights 2000 (trash included), passengers 500,
 //              waypoints 1000, files per aircraft or operator 50
 //   storage    STORAGE_QUOTA_MB (default 300) over every file the pilot owns: the files of their
-//              aircraft (photo, documents, compass swing reports) and of their operators, incomplete
+//              aircraft (photo, documents, compass swing reports), of their operators and their own
+//              (licence, medical), incomplete
 //              uploads included (an upload counts with its declared size from its start)
 //   uploads    at most MAX_OPEN_UPLOADS incomplete uploads per pilot at a time; incomplete uploads
 //              older than STALE_UPLOAD_MS are swept (all pilots) whenever an upload starts
@@ -53,11 +54,12 @@ export async function checkCount(
     throw new HttpError(409, `You have reached the limit of ${LIMITS[kind]} ${WHAT[kind]}.`);
 }
 
-/** Bytes of every file the pilot owns (aircraft and operator files, incomplete uploads included). */
+/** Bytes of every file the pilot owns (aircraft, operator and own files, incomplete uploads included). */
 export async function storageUsed(db: Queryable, pilotId: string): Promise<number> {
   const [r] = await db.query(
     `SELECT (SELECT COALESCE(sum(size), 0) FROM aircraft_attachments WHERE pilot_id = $1)
-          + (SELECT COALESCE(sum(f.size), 0) FROM operator_files f JOIN operators o ON o.id = f.operator_id WHERE o.pilot_id = $1) AS bytes`,
+          + (SELECT COALESCE(sum(f.size), 0) FROM operator_files f JOIN operators o ON o.id = f.operator_id WHERE o.pilot_id = $1)
+          + (SELECT COALESCE(sum(size), 0) FROM pilot_files WHERE pilot_id = $1) AS bytes`,
     [pilotId],
   );
   return Number(r.bytes);
@@ -72,7 +74,7 @@ export async function checkQuota(db: Queryable, pilotId: string, adding: number)
   if (used + adding > quota) {
     throw new HttpError(
       413,
-      `Not enough storage: the files of your aircraft and operators use ${mb(used)} of ${mb(quota)}${adding ? `, and this file needs ${mb(adding)}` : ''}. Delete some files first.`,
+      `Not enough storage: your files use ${mb(used)} of ${mb(quota)}${adding ? `, and this file needs ${mb(adding)}` : ''}. Delete some files first.`,
     );
   }
 }
@@ -81,13 +83,15 @@ export async function checkQuota(db: Queryable, pilotId: string, adding: number)
 export async function sweepStaleUploads(db: Queryable, now = Date.now()): Promise<void> {
   await db.query(`DELETE FROM aircraft_attachments WHERE NOT complete AND created < $1`, [now - STALE_UPLOAD_MS]);
   await db.query(`DELETE FROM operator_files WHERE NOT complete AND created < $1`, [now - STALE_UPLOAD_MS]);
+  await db.query(`DELETE FROM pilot_files WHERE NOT complete AND created < $1`, [now - STALE_UPLOAD_MS]);
 }
 
 /** 429 when the pilot already has MAX_OPEN_UPLOADS incomplete uploads. */
 export async function checkOpenUploads(db: Queryable, pilotId: string): Promise<void> {
   const [r] = await db.query(
     `SELECT (SELECT count(*) FROM aircraft_attachments WHERE pilot_id = $1 AND NOT complete)
-          + (SELECT count(*) FROM operator_files f JOIN operators o ON o.id = f.operator_id WHERE o.pilot_id = $1 AND NOT f.complete) AS n`,
+          + (SELECT count(*) FROM operator_files f JOIN operators o ON o.id = f.operator_id WHERE o.pilot_id = $1 AND NOT f.complete)
+          + (SELECT count(*) FROM pilot_files WHERE pilot_id = $1 AND NOT complete) AS n`,
     [pilotId],
   );
   if (Number(r.n) >= MAX_OPEN_UPLOADS) {

@@ -164,7 +164,7 @@ label.field > .timefield { display: flex; width: 100%; }
 .datefield > input { flex: 1; min-width: 0; padding-right: 30px; }
 .datefield-cal { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; border: 0; background: transparent; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .datefield-cal:hover { color: var(--ink); }
-.datefield-pop { position: absolute; left: 0; top: calc(100% + 4px); z-index: 60; width: 248px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); color: var(--ink); font-size: var(--fs-sm); }
+.datefield-pop { position: fixed; left: 0; top: 0; z-index: 120; width: 248px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); color: var(--ink); font-size: var(--fs-sm); }
 .datefield-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-weight: 600; }
 .datefield-head button { min-width: 28px; font-size: var(--fs); }
 .datefield-head .datefield-title { font-size: var(--fs-sm); font-weight: 600; padding: 0 8px; }

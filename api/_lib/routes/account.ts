@@ -6,7 +6,8 @@
 // Deletion is generic: every table with a pilot_id column loses the pilot's rows (owned rows,
 // shares received, and the files of the pilot's aircraft, whose pilot_id is the owner), then the
 // pilots row goes and its ON DELETE CASCADE foreign keys take the rest (sessions; aircraft →
-// shares granted, files and chunks; operators → operator shares granted, operator files and chunks; flights → manifest, forms, briefings, filings). The aircraft
+// shares granted, files and chunks; operators → operator shares granted, operator files and chunks;
+// the pilot's own files (licence, medical) → their chunks; flights → manifest, forms, briefings, filings). The aircraft
 // the pilot owned are deleted even when shared: other pilots' flights lose them (aircraft_id SET
 // NULL, as when an owner deletes an aircraft). The e-mails of other pilots' shares with the pilot
 // stay in their log without the address. tests/api/account.test.ts checks that no column of
@@ -85,6 +86,10 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
      JOIN operators o ON o.id = s.operator_id JOIN pilots w ON w.id = o.pilot_id WHERE s.pilot_id = $1 ORDER BY lower(o.name)`,
     [pilotId],
   );
+  const ownFiles = await q.query(
+    `SELECT id, kind, title, name, mime, size, chunks, created, complete FROM pilot_files WHERE pilot_id = $1 ORDER BY created`,
+    [pilotId],
+  );
   const passengers = await q.query('SELECT * FROM passengers WHERE pilot_id = $1 ORDER BY full_name', [pilotId]);
   const waypoints = await q.query('SELECT * FROM waypoints WHERE pilot_id = $1 ORDER BY name', [pilotId]);
   const flights = await q.query('SELECT * FROM flights WHERE pilot_id = $1 ORDER BY date, created', [pilotId]);
@@ -123,6 +128,8 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
       sessions: sessions.map((s) => ({ created: num(s.created) })),
     },
     profile: toPilot(p),
+    /** Licence and medical certificate (listed, as the other files). */
+    documents: ownFiles.map((f) => ({ ...toFile(f), complete: !!f.complete })),
     aircraft: owned.map((a) => ({
       ...toAircraft(a),
       files: files.filter((f) => f.aircraft_id === a.id).map((f) => ({ ...toFile(f), complete: !!f.complete })),

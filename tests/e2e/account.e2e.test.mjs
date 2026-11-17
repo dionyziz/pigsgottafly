@@ -1,14 +1,19 @@
 // End-to-end: the public legal pages (/privacy, /terms: no sign-in), their links on the sign-in
-// screen and in the account menu, and the profile's "Your data" / "Delete account" section
+// screen and in the account menu, the profile's licence and medical PDFs (upload, view, replace,
+// remove), and its "Your data" / "Delete account" section
 // (download, typed confirmation, deletion back to a fresh account). Google's sign-in script is
 // stubbed: nothing is fetched from Google.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test, { after, before } from 'node:test';
 
 import { launch, startServer } from './harness.mjs';
 
-let local, google, browser, page;
+let local, google, browser, page, tmp;
 before(async () => {
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pgf-account-'));
   local = await startServer();
   google = await startServer({ googleClientId: 'e2e.apps.googleusercontent.com', googleKeys: async () => [] });
   browser = await launch();
@@ -19,7 +24,27 @@ after(async () => {
   await browser?.close();
   await local?.close();
   await google?.close();
+  fs.rmSync(tmp, { recursive: true, force: true });
 });
+/** Puts a file on disk into an <input type=file> (CDP) and fires change. */
+async function setFile(selector, file) {
+  const { root } = await page.send('DOM.getDocument', {});
+  const { nodeId } = await page.send('DOM.querySelector', { nodeId: root.nodeId, selector });
+  await page.send('DOM.setFileInputFiles', { nodeId, files: [file] });
+}
+/** A valid one-page PDF on disk, padded to about `bytes`. */
+function pdfFile(name, bytes) {
+  const head =
+    '%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] >> endobj\n';
+  const buf = Buffer.concat([
+    Buffer.from(head, 'latin1'),
+    Buffer.alloc(bytes, 0x25),
+    Buffer.from('\ntrailer << /Root 1 0 R >>\n%%EOF\n', 'latin1'),
+  ]);
+  const f = path.join(tmp, name);
+  fs.writeFileSync(f, buf);
+  return { f, buf };
+}
 const shot = async (name, o) => {
   if (process.env.SHOTS) await page.screenshot(name, o);
 };
@@ -115,6 +140,53 @@ test('profile: download my data, then delete the account with a typed confirmati
   );
   await page.click('[data-testid=account-button]');
 
+  // licence and medical: optional PDFs, uploaded, opened in the viewer, replaced and removed
+  const me = await api('GET', 'me');
+  await page.waitFor(() => !!document.querySelector('[data-testid=licence-pick]'));
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=licence-pick]').textContent), 'Add PDF');
+  const lic = pdfFile('licence.pdf', 2 * 1024 * 1024 + 500);
+  await setFile('[data-testid=licence-file]', lic.f);
+  await page.waitFor(
+    () => document.querySelector('[data-testid=pilot-doc-licence] [data-testid=pilot-doc-name]')?.textContent,
+    { timeout: 20000 },
+  );
+  assert.match(
+    await page.eval(
+      () => document.querySelector('[data-testid=pilot-doc-licence] [data-testid=pilot-doc-name]').textContent,
+    ),
+    /^licence\.pdf · /,
+  );
+  await setFile('[data-testid=medical-file]', pdfFile('medical.pdf', 1000).f);
+  await page.waitFor(() => !!document.querySelector('[data-testid=pilot-doc-medical] [data-testid=pilot-doc-name]'), {
+    timeout: 20000,
+  });
+  await page.eval(() => document.querySelector('[data-testid=pilot-documents]').scrollIntoView({ block: 'center' }));
+  await shot('account-licence-medical', { fullPage: false });
+  await page.click('[data-testid=pilot-doc-licence] [data-testid=pilot-doc-open]');
+  await page.waitFor(() => /^blob:/.test(document.querySelector('[data-testid=pdf-frame]')?.src || ''), {
+    timeout: 15000,
+  });
+  const first = await api('GET', `pilots/${me.id}/files`);
+  assert.deepEqual([first.licence.size, first.licence.chunks], [lic.buf.length, 2]);
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=pdf-viewer]'));
+  // replace the licence: the new one is the only one kept
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=licence-pick]').textContent), 'Replace');
+  await setFile('[data-testid=licence-file]', pdfFile('licence-2027.pdf', 800).f);
+  await page.waitFor(
+    () =>
+      /^licence-2027\.pdf/.test(
+        document.querySelector('[data-testid=pilot-doc-licence] [data-testid=pilot-doc-name]')?.textContent || '',
+      ),
+    { timeout: 20000 },
+  );
+  // remove the medical
+  await page.click('[data-testid=pilot-doc-medical] button[aria-label="Remove medical certificate"]');
+  await page.waitFor(() => !document.querySelector('[data-testid=pilot-doc-medical] [data-testid=pilot-doc-name]'));
+  const stored = await api('GET', `pilots/${me.id}/files`);
+  assert.equal(stored.licence.name, 'licence-2027.pdf');
+  assert.equal(stored.medical, null);
+
   // the download link serves the JSON export
   assert.equal(
     await page.eval(() => document.querySelector('[data-testid=export-data]').getAttribute('href')),
@@ -132,6 +204,10 @@ test('profile: download my data, then delete the account with a typed confirmati
   assert.deepEqual(
     x.body.aircraft.map((a) => a.registration),
     ['SX-BYE'],
+  );
+  assert.deepEqual(
+    x.body.documents.map((f) => [f.kind, f.name]),
+    [['licence', 'licence-2027.pdf']],
   );
 
   await page.click('[data-testid=delete-account]');
@@ -156,5 +232,7 @@ test('profile: download my data, then delete the account with a typed confirmati
   assert.equal(await page.eval(() => localStorage.getItem('pgf-e2e-marker')), null);
   assert.deepEqual(await api('GET', 'passengers'), []);
   assert.deepEqual(await api('GET', 'aircraft'), []);
+  const fresh = await api('GET', 'me');
+  assert.deepEqual(await api('GET', `pilots/${fresh.id}/files`), { licence: null, medical: null });
   assert.deepEqual(page.errors, []);
 });
