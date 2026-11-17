@@ -30,14 +30,14 @@ const p = (lat: number, lon: number): RoutePoint => ({
 describe('route arrows', () => {
   it('puts two arrowheads on each leg, pointing along it (degrees clockwise from north)', () => {
     const fc = routeArrowFeatures([p(38, 23), p(38, 24), p(39, 24), p(38, 24)]);
-    // legs 1 and 2 are the same line flown both ways: one arrow each, near each one's end
+    // legs 1 and 2 are the same line flown both ways: one arrow each, near each one's start (by its label box)
     expect(fc.features).toHaveLength(ARROW_AT.length + 2);
     expect(fc.features.map((f) => f.properties.rot)).toEqual([90, 90, 0, 180]);
     expect(fc.features.map((f) => f.properties.leg)).toEqual([0, 0, 1, 2]);
     const [, latUp] = fc.features[2].geometry.coordinates;
     const [, latDown] = fc.features[3].geometry.coordinates;
-    expect(latUp).toBeGreaterThan(38.69);
-    expect(latDown).toBeLessThan(38.31);
+    expect(latUp).toBeLessThan(38.31);
+    expect(latDown).toBeGreaterThan(38.69);
     // along the drawn (Mercator-straight) line, clear of the middle where the insert handle is
     const [lon, lat] = fc.features[0].geometry.coordinates;
     expect(lon).toBeCloseTo(23.3, 6);

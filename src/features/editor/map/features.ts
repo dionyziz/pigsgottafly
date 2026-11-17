@@ -322,7 +322,8 @@ export const ARROW_AT = [0.3, 0.7] as const;
 
 /** Direction-of-flight arrowheads: points along each leg's drawn (Mercator-straight) line, `rot` = the
  *  line's direction in degrees clockwise from north (the icon points north). A leg also flown the
- *  other way keeps only its arrow near its end, so the shared line shows one arrow each way. */
+ *  other way keeps only its arrow near its start, beside its label box (legLabelSlots), so the
+ *  shared line shows one arrow each way. */
 export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
   const out: Feature<Point, Record<string, unknown>>[] = [];
   const key = (a: Pick<RoutePoint, 'lat' | 'lon'>, b: Pick<RoutePoint, 'lat' | 'lon'>) =>
@@ -339,7 +340,7 @@ export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC
     if (Math.hypot(dx, dy) < 1e-9) continue;
     const rot = mercatorBearing(a, b);
     const both = legs.has(key(b, a));
-    for (const t of both ? [ARROW_AT[1]] : ARROW_AT) {
+    for (const t of both ? [ARROW_AT[0]] : ARROW_AT) {
       out.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: mercatorAt(a, b, t) },
