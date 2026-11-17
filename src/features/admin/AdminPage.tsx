@@ -27,6 +27,7 @@ const shareText = (s: AdminShare) =>
 const KINDS: [string, string][] = [
   ['', 'All kinds'],
   ['731', 'Form 731'],
+  ['731-pax', 'Form 731 to passenger'],
   ['gendec', 'General Declaration'],
   ['wbperf', 'W&B / performance'],
   ['signup', 'Signup notice'],

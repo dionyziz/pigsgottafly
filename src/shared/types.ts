@@ -437,6 +437,8 @@ export type AircraftInput = Omit<Aircraft, 'id' | 'created' | 'updated'>;
 
 export interface Passenger extends PersonDetails {
   id: Id;
+  /** Where their Form 731 is e-mailed ('' = none yet). */
+  email: string;
   notes: string;
   created: EpochMs;
   updated: EpochMs;

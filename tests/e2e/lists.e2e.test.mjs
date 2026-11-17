@@ -1,8 +1,10 @@
 // End-to-end test of the lobby and the account list pages: onboarding, lobby order/search/⋮ menu
-// (rename, copy, trash + undo, trash view + restore), passengers, saved waypoints, profile.
+// (rename, copy, trash + undo, trash view + restore), passengers, saved waypoints, profile; Form 731
+// e-mailed to each passenger from the export (mail transport MOCKED: nothing is sent for real).
 import assert from 'node:assert/strict';
 import test, { after, before } from 'node:test';
 
+import { setMailTransport } from '../../api/_lib/mail.ts';
 import { launch, startServer } from './harness.mjs';
 
 let server, browser, page;
@@ -12,6 +14,7 @@ before(async () => {
   page = await browser.newPage();
 });
 after(async () => {
+  setMailTransport(null);
   await page?.close();
   await browser?.close();
   await server?.close();
@@ -171,18 +174,33 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
         ?.closest('.field.invalid')
         ?.textContent.includes('Enter the full name') && document.activeElement?.name === 'fullName',
   );
+  // a passenger needs an e-mail address too (their Form 731 is sent there): its message stays
+  const invalid = () =>
+    page.eval(() =>
+      [...document.querySelectorAll('[data-testid=passenger-dialog] .field.invalid input')].map((e) => e.name),
+    );
+  assert.deepEqual(await invalid(), ['fullName', 'email']);
   await page.type('[data-testid=passenger-dialog] input[name=fullName]', 'Jane Doe');
-  assert.equal(
-    await page.eval(() => document.querySelectorAll('[data-testid=passenger-dialog] .field.invalid').length),
-    0,
-  );
+  assert.deepEqual(await invalid(), ['email']);
   await page.type('[data-testid=passenger-dialog] input[name=weightKg]', '62.5');
   await page.type('[data-testid=passenger-dialog] input[name=idNumber]', 'AB123456');
+  await clickText('[data-testid=passenger-dialog] button', 'Add passenger');
+  await page.waitFor(
+    () =>
+      document
+        .querySelector('[data-testid=passenger-dialog] input[name=email]')
+        ?.closest('.field.invalid')
+        ?.textContent.includes('Enter the e-mail address') && document.activeElement?.name === 'email',
+  );
+  await page.type('[data-testid=passenger-dialog] input[name=email]', 'jane@example.com');
   await clickText('[data-testid=passenger-dialog] button', 'Add passenger');
   await page.waitFor(() => document.querySelectorAll('[data-passenger-id]').length === 1);
   await shot('lists-passengers');
   const [pax] = await api('GET', 'passengers');
-  assert.deepEqual([pax.fullName, pax.weightKg, pax.idNumber], ['Jane Doe', 62.5, 'AB123456']);
+  assert.deepEqual(
+    [pax.fullName, pax.weightKg, pax.idNumber, pax.email],
+    ['Jane Doe', 62.5, 'AB123456', 'jane@example.com'],
+  );
   // "Missing … date of birth" opens the dialog at that field
   await clickText(`[data-passenger-id="${pax.id}"] .hint button`, 'date of birth');
   await page.waitFor(
@@ -214,7 +232,10 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await clickText('.toast button', 'Undo');
   await page.waitFor(() => document.querySelectorAll('[data-passenger-id]').length === 1);
   const [back] = await api('GET', 'passengers');
-  assert.deepEqual([back.fullName, back.phone, back.weightKg], ['Jane Doe', '+30 210 000', 62.5]);
+  assert.deepEqual(
+    [back.fullName, back.phone, back.weightKg, back.email],
+    ['Jane Doe', '+30 210 000', 62.5, 'jane@example.com'],
+  );
   // and with the row's bin; a link to the deleted passenger says so
   await page.click(`[data-passenger-id="${back.id}"] [data-testid=passenger-row-delete]`);
   await clickText('.dlg button', 'Delete');
@@ -278,5 +299,83 @@ test('details saved in one tab show at once in the others (one pilot for the who
   } finally {
     await other.close();
   }
+  assert.deepEqual(page.errors, []);
+});
+
+test('Form 731 e-mailed to each passenger from the export', async () => {
+  const sent = [];
+  setMailTransport(async (m) => {
+    sent.push(m);
+    return { id: `m-${sent.length}` };
+  });
+  // the local pilot has no e-mail; the forms copy the pilot, so give it one
+  await server.db.query(`UPDATE pilots SET email = 'pilot@example.com' WHERE id = 'local'`);
+  const person = (fullName, idNumber, email) => ({
+    fullName,
+    phone: '+30 690 000 0001',
+    dateOfBirth: null,
+    weightKg: 70,
+    idNumber,
+    idType: 'ID',
+    nationality: 'GR',
+    relation: '',
+    ...(email != null ? { email } : {}),
+  });
+  const ana = await api('POST', 'passengers', person('Ana Email', 'AE1', 'ana@example.com'));
+  const bo = await api('POST', 'passengers', person('Bo Email', 'BE2', 'bo@example.com'));
+  const cy = await api('POST', 'passengers', person('Cy Noemail', 'CN3'));
+  assert.equal(cy.email, '');
+  const date = iso(new Date(Date.now() + 86400e3));
+  const ad = (icao, uid, lat, lon) => ({ uid, kind: 'aerodrome', refId: icao, name: icao, lat, lon });
+  const crew = (p, seat) => ({ role: 'PAX', passengerId: p.id, seat, snapshot: person(p.fullName, p.idNumber) });
+  const f = await api('POST', 'flights', {
+    date,
+    blockOff: '08:00',
+    route: [ad('LGTT', 'a', 38.109, 23.784), ad('LGMG', 'b', 37.981, 23.365)],
+    crew: [
+      { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: person('', '') },
+      crew(ana, 'front-right'),
+      crew(bo, 'rear-left'),
+      crew(cy, 'rear-right'),
+    ],
+  });
+  // a passenger without an address shows as missing it in the list
+  await page.goto(server.url + '/passengers');
+  await page.waitFor(
+    (id) => /e-mail/.test(document.querySelector(`[data-passenger-id="${id}"] .hint`)?.textContent || ''),
+    { args: [cy.id] },
+  );
+
+  await page.goto(`${server.url}/flights/${f.id}/export/form731`);
+  await page.waitFor(() => document.querySelectorAll('[data-testid=f731-email]').length === 2);
+  // the one without an address links to adding it
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=f731-add-email]')?.getAttribute('href')),
+    `/passengers?edit=${cy.id}&fields=email`,
+  );
+  // one passenger
+  await page.click('[data-testid=f731-email]');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=f731-emailed]').length === 1);
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].to, ['ana@example.com']);
+  assert.deepEqual(sent[0].cc, ['pilot@example.com']);
+  assert.match(sent[0].text, /\/sign\/[A-Za-z0-9_-]{20,}/);
+  assert.equal(sent[0].attachments[0].contentType, 'application/pdf');
+  await shot('lists-form731-emailed');
+  // everyone who has not signed: Ana again is held back (10 minutes per recipient), Bo gets it
+  await page.click('[data-testid=f731-email-all]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=f731-signatures] .form-error'));
+  assert.match(
+    await page.eval(() => document.querySelector('[data-testid=f731-signatures] .form-error').textContent),
+    /ana@example\.com/,
+  );
+  assert.equal(sent.length, 1);
+  await server.db.query(`UPDATE mail_log SET at = at - 660000 WHERE flight_id = $1`, [f.id]);
+  await page.click('[data-testid=f731-email-all]');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=f731-emailed]').length === 2);
+  assert.deepEqual(
+    sent.slice(1).map((m) => m.to[0]),
+    ['ana@example.com', 'bo@example.com'],
+  );
   assert.deepEqual(page.errors, []);
 });

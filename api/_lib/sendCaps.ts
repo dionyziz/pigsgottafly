@@ -3,6 +3,7 @@
 // hours (429 beyond):
 //   e-mails         MAIL_DAILY_CAP per pilot, MAIL_FLIGHT_FORM_CAP per flight and form (re-sends included),
 //                   MAIL_RECIPIENT_CAP per pilot to any one operator declarations address,
+//                   (Form 731 to a passenger, '731-pax': the per-flight cap and the pause are per recipient)
 //                   and a global cap on everything sent to HCAA by all pilots together (hcaaDailyCap():
 //                   HCAA_DAILY_CAP, default 200)
 //   re-sends        a flight's form goes out at most once every RESEND_MIN_MS (10 min)
@@ -23,6 +24,8 @@ export const RESEND_MIN_MS = 10 * 60e3;
 export const LINK_DAILY_CAP = 60;
 export const LINK_FLIGHT_CAP = 20;
 export const HCAA_FORMS = ['731', 'gendec'];
+/** Forms sent to each person on a flight separately: the per-flight cap and pause count per recipient. */
+const PER_RECIPIENT_FORMS = ['731-pax'];
 
 /** All pilots together, per 24 hours, to the HCAA mailboxes (env HCAA_DAILY_CAP, default 200). */
 export function hcaaDailyCap(env: NodeJS.ProcessEnv = process.env): number {
@@ -42,7 +45,7 @@ export interface MailEntry {
   /** The pilot it is sent for (null: the app's own message with no pilot). */
   pilotId: string | null;
   flightId: string | null;
-  /** '731', 'gendec', 'wbperf', 'signup', 'signup-more' */
+  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'signup', 'signup-more' */
   form: string;
   /** The To addresses, comma-separated. */
   recipient: string;
@@ -68,25 +71,28 @@ export async function reserveMail(db: Queryable, e: MailEntry & { pilotId: strin
   const id = await logMail(db, e);
   const now = Date.now();
   const since = now - CAP_WINDOW_MS;
+  const perRecipient = PER_RECIPIENT_FORMS.includes(e.form);
+  const same = `flight_id IS NOT DISTINCT FROM $3 AND form = $4${perRecipient ? ' AND lower(recipient) = lower($5)' : ''}`;
   const [c] = await db.query(
     `SELECT count(*)::int AS total, min(at) AS oldest,
-       count(*) FILTER (WHERE flight_id IS NOT DISTINCT FROM $3 AND form = $4)::int AS same,
-       min(at) FILTER (WHERE flight_id IS NOT DISTINCT FROM $3 AND form = $4) AS same_oldest,
+       count(*) FILTER (WHERE ${same})::int AS same,
+       min(at) FILTER (WHERE ${same}) AS same_oldest,
        count(*) FILTER (WHERE lower(recipient) = lower($5) AND form = $4)::int AS addr,
        min(at) FILTER (WHERE lower(recipient) = lower($5) AND form = $4) AS addr_oldest,
-       max(at) FILTER (WHERE flight_id IS NOT DISTINCT FROM $3 AND form = $4 AND result = 'sent') AS last_sent
+       max(at) FILTER (WHERE ${same} AND result = 'sent') AS last_sent
      FROM mail_log WHERE pilot_id = $1 AND at > $2 AND ${COUNTED}`,
     [e.pilotId, since, e.flightId, e.form, e.recipient],
   );
+  const toWhom = perRecipient ? ` to ${e.recipient}` : '';
   let err: HttpError | null = null;
   if (e.flightId && c.last_sent != null && Number(c.last_sent) > now - RESEND_MIN_MS) {
     err = tooMany(
-      `This form was e-mailed for this flight less than ${RESEND_MIN_MS / 60e3} minutes ago.`,
+      `This form was e-mailed${toWhom} for this flight less than ${RESEND_MIN_MS / 60e3} minutes ago.`,
       Number(c.last_sent) + RESEND_MIN_MS,
     );
   } else if (e.flightId && c.same > MAIL_FLIGHT_FORM_CAP) {
     err = tooMany(
-      `This form was already e-mailed ${MAIL_FLIGHT_FORM_CAP} times for this flight in the last 24 hours.`,
+      `This form was already e-mailed${toWhom} ${MAIL_FLIGHT_FORM_CAP} times for this flight in the last 24 hours.`,
       Number(c.same_oldest) + CAP_WINDOW_MS,
     );
   } else if (e.form === 'wbperf' && c.addr > MAIL_RECIPIENT_CAP) {

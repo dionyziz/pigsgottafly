@@ -4,10 +4,13 @@
 //     signatures"), sent with the phone's share sheet or copied; per person: link created, opened,
 //     signed, with renew (a new link; the old one stops working) and revoke;
 //   - "2 of 3 signed · Maria opened 10:42, not signed"; after a change to the form, who must sign again;
+//   - "E-mail" sends a passenger (a saved one with an address) the form as PDF and a new signing link;
+//     "E-mail all" does so for everyone who has not signed yet;
 //   - when everyone has signed, "Send to HCAA" e-mails the signed PDF to 731@hcaa.gov.gr (cc and
 //     reply-to the pilot); sent time, and "Re-send" after changes.
 // The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router';
 
 import { api, ApiRequestError } from '../../../data/api';
 import { fmtLocalClock, fmtLocalDayTime } from '../../../shared/format';
@@ -79,13 +82,15 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
   const [busy, setBusy] = useState('');
   const [links, setLinks] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState('');
-  const run = async (what: string, fn: () => Promise<FormsState>) => {
+  const run = async (what: string, ...fns: (() => Promise<FormsState>)[]) => {
     setBusy(what);
     setErr(null);
     try {
-      const s = await fn();
-      if (s.links) setLinks((l) => ({ ...l, ...s.links }));
-      setSt(s);
+      for (const fn of fns) {
+        const s = await fn();
+        if (s.links) setLinks((l) => ({ ...l, ...s.links }));
+        setSt(s);
+      }
     } catch (e) {
       setErr(errText(e));
     } finally {
@@ -130,6 +135,8 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
   const sub = f.submission;
   const pax = f.signatures.filter((s) => s.role === 'PAX');
   const needLinks = pax.some((s) => !s.signed && (!s.link || s.link.revoked || s.link.expires < Date.now()));
+  const toEmail = pax.filter((s) => s.email && !s.signed);
+  const email = (key: string) => () => api.forms.email731(flightId, key);
 
   return (
     <Panel
@@ -149,6 +156,16 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
               data-testid="f731-request"
             >
               {busy === 'links' ? 'Creating links…' : 'Request signatures'}
+            </button>
+          )}
+          {pax.some((s) => s.email) && (
+            <button
+              onClick={() => run('email-all', ...toEmail.map((s) => email(s.key)))}
+              disabled={!!busy || !toEmail.length || !st.emailEnabled}
+              title={!st.emailEnabled ? (st.emailReason ?? '') : undefined}
+              data-testid="f731-email-all"
+            >
+              {busy === 'email-all' ? 'E-mailing…' : 'E-mail all'}
             </button>
           )}
           <button
@@ -193,7 +210,10 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
           return (
             <li key={s.key} className="pgf-person" data-testid={`f731-person-${s.role}`}>
               <span className="pgf-person-name">{s.name || '(no name)'}</span>
-              <span className={s.signed ? '' : 'muted'}>{status}</span>
+              <span className={`pgf-person-status${s.signed ? '' : ' muted'}`}>
+                {status}
+                {s.emailedAt != null && <span data-testid="f731-emailed"> · e-mailed {dayHm(s.emailedAt)}</span>}
+              </span>
               {s.role === 'PAX' && l && !l.revoked && (
                 <>
                   <button
@@ -220,6 +240,26 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
                 >
                   New link
                 </button>
+              )}
+              {s.role === 'PAX' && s.email && (
+                <button
+                  className="ghost"
+                  disabled={!!busy || !st.emailEnabled}
+                  title={s.email}
+                  onClick={() => run(`email-${s.key}`, email(s.key))}
+                  data-testid="f731-email"
+                >
+                  {busy === `email-${s.key}` ? 'E-mailing…' : 'E-mail'}
+                </button>
+              )}
+              {s.role === 'PAX' && !s.email && !s.key.startsWith('seat:') && (
+                <Link
+                  className="btn ghost"
+                  to={`/passengers?edit=${encodeURIComponent(s.key)}&fields=email`}
+                  data-testid="f731-add-email"
+                >
+                  Add e-mail
+                </Link>
               )}
               {token && (
                 <span className="pgf-link">

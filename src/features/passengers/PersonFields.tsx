@@ -24,7 +24,7 @@ export function PersonFields({
   /** Focus the name when shown. */
   autoFocus?: boolean;
 }) {
-  const text = (k: 'fullName' | 'phone' | 'nationality' | 'idNumber' | 'licenceNo') => ({
+  const text = (k: 'fullName' | 'phone' | 'email' | 'nationality' | 'idNumber' | 'licenceNo') => ({
     name: k,
     value: f[k] ?? '',
     onChange: (e: { target: { value: string } }) => set(k, e.target.value),
@@ -46,6 +46,11 @@ export function PersonFields({
           <input {...text('phone')} type="tel" autoComplete={pilot ? 'tel' : 'off'} placeholder="+30 …" />
         </Field>
       </div>
+      {!pilot && (
+        <Field label="E-mail" req issues={issues('email')}>
+          <input {...text('email')} type="email" required autoComplete="off" />
+        </Field>
+      )}
       {!minimal && (
         <>
           <div className="grid3">
