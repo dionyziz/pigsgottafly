@@ -11,5 +11,6 @@ export * from './navlog.js';
 export * from './performance.js';
 export * from './sectors.js';
 export * from './sun.js';
+export * from './terrain.js';
 export * from './wb.js';
 export * from './wmm.js';

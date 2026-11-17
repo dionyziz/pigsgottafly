@@ -69,7 +69,8 @@ const METARS = {
 };
 
 before(async () => {
-  const forecast = O.openMeteoResponder(windFn);
+  // hours counted from the flight's day, whatever window the app asks for
+  const forecast = O.openMeteoResponder(windFn, { epochMs: Date.parse(DATE + 'T00:00:00Z') });
   server = await startServer({
     openMeteo: {
       fetch: openMeteoFetch((u) => {

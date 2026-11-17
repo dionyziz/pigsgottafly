@@ -29,10 +29,18 @@ import {
   wbStatus,
   weightAndBalance,
 } from '../../../calc';
-import { type AdNotamEffect, aerodromeNotamEffects, type Hazard, hazardLines } from '../../../calc';
+import {
+  type AdNotamEffect,
+  aerodromeNotamEffects,
+  type Hazard,
+  hazardLines,
+  lowLegs,
+  TERRAIN_CLEARANCE_FT,
+} from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
 import { computeRouteHazards, fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
 import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
+import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import {
   chooseSurface,
@@ -585,6 +593,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   );
 
   // ---- warnings
+  const terrain = useTerrain();
   const warnings = useMemo(() => {
     const w: CalcWarning[] = [];
     const add = (level: WarningLevel, area: WarningArea, text: string, leg?: CalcWarning['leg']) => {
@@ -738,6 +747,18 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
           l.legIndex != null ? { index: l.legIndex, detail: `${l.detail}.` } : undefined,
         );
     }
+    // height above the ground, away from the aerodromes
+    if (terrain)
+      for (const x of lowLegs(terrain, legs, altitudesFt)) {
+        const l = legs[x.legIndex];
+        const detail = x.below
+          ? `At or below the ground (terrain up to ${x.terrainFt} ft).`
+          : `Less than ${TERRAIN_CLEARANCE_FT} ft above the ground (terrain up to ${x.terrainFt} ft).`;
+        add(x.below ? 'danger' : 'warn', 'navlog', `${l.from.name} → ${l.to.name}: ${detail}`, {
+          index: x.legIndex,
+          detail,
+        });
+      }
     // aerodrome hours (AIP AD 2.3 / AD 1.6, NOTAMs) at the planned times
     for (const x of aerodromeWarnings(aerodromeChecks)) add(x.level, 'aerodrome', x.text);
     if (fin(dayMs) && navlog && (fin(takeoffMs) ? takeoffMs : dayMs + DAY) < Date.now() - DAY)
@@ -767,6 +788,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     dep,
     arr,
     aerodromeChecks,
+    terrain,
+    altitudesFt,
   ]);
 
   // ---- lobby summary: ETE and fuel come from the navlog (setDerived: no undo step).

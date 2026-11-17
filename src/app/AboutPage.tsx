@@ -84,6 +84,13 @@ export function AboutPage() {
             rows={[
               ['Magnetic variation', 'World Magnetic Model WMM2025'],
               ['Sunset', 'AIP GEN 2.7 tables, else the NOAA solar calculation'],
+              [
+                'Terrain',
+                <>
+                  {ext('https://registry.opendata.aws/terrain-tiles/', 'Terrain Tiles')} (SRTM and others): the highest
+                  ground in each 0.01° cell, against each leg’s altitude
+                </>,
+              ],
             ]}
           />
         </CardSection>

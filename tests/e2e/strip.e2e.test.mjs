@@ -1,6 +1,7 @@
 // The navlog strip: a leg's warnings under its row (not in the list), the flight panel's collapse tab
 // clear of the strip, a leg's altitude edited in the strip (saved; the map label follows), and the
-// flight's start-up/taxi fuel edited in the Fuel section (required fuel follows; saved).
+// flight's start-up/taxi fuel edited in the Fuel section (required fuel follows; saved), and a leg
+// too close to the ground flagged under its row.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test, { after, before } from 'node:test';
@@ -232,5 +233,46 @@ test('the start-up, taxi, take-off and landing fuel is edited per flight in the 
     timeout: 10000,
   });
   assert.equal((await api('GET', `flights/${flightId}`)).options.taxiAllowanceL, null);
+  assert.deepEqual(page.errors, []);
+});
+
+test('a leg flown less than 1000 ft above the ground is flagged under its row; not the legs to and from aerodromes', async () => {
+  const ac = (await api('GET', 'aircraft'))[0];
+  const custom = (uid, lat, lon) => ({ uid, kind: 'custom', name: uid, lat, lon });
+  // P1 → P2 crosses Parnitha (1413 m, 4636 ft)
+  const f = await api('POST', 'flights', {
+    route: [ad('LGTT'), custom('P1', 38.17, 23.6), custom('P2', 38.17, 23.85), ad('LGTT')],
+    date,
+    blockOff: '09:00',
+    aircraftId: ac.id,
+  });
+  const terrainRows = () =>
+    page.eval(() =>
+      [...document.querySelectorAll('[data-testid=navlog-leg-warnings]')]
+        .filter((r) => /above the ground|below the ground/.test(r.textContent))
+        .map((r) => Number(r.dataset.leg)),
+    );
+  await page.goto(`${server.url}/flights/${f.id}`);
+  await page.waitFor(() => document.querySelectorAll('[data-testid=navlog-alt]').length === 3, { timeout: 20000 });
+  const mid = 'tr[data-testid=navlog-row] ~ tr[data-testid=navlog-row] [data-testid=navlog-alt]';
+  await page.type(mid, '5500');
+  await page.key('Enter');
+  await page.waitFor(
+    () =>
+      [...document.querySelectorAll('[data-testid=navlog-leg-warnings]')].some((r) =>
+        /Less than 1000 ft above the ground \(terrain up to 4\d{3} ft\)/.test(r.textContent),
+      ),
+    { timeout: 20000 },
+  );
+  assert.deepEqual(await terrainRows(), [1]);
+  // high enough: gone
+  await page.type(mid, '6500');
+  await page.key('Enter');
+  await page.waitFor(
+    () =>
+      ![...document.querySelectorAll('[data-testid=navlog-leg-warnings]')].some((r) =>
+        /above the ground/.test(r.textContent),
+      ),
+  );
   assert.deepEqual(page.errors, []);
 });

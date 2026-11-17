@@ -153,21 +153,26 @@ export function sunsetMinutes(dateIso, lat, lon) {
 }
 
 // ---------------------------------------------------------------- Open-Meteo mock
-// windFn({level, z, hourIndex, dayIndex, lat, lon}) -> {dir, spd, temp}
+// windFn({level, z, hour, lat, lon}) -> {dir, spd, temp}; `hour`: hours since `epochMs` (default: 00:00Z of
+// the request's start_date, which the app may set a day early)
 export const LEVELS = { 1000: 110, 925: 760, 850: 1460, 700: 3010, 600: 4200 };
 export const SURFACE_DEFAULT = { qnh: 1013.4, temp: 15, dew: 8, dir: 200, spd: 7, low: 0, mid: 0, high: 0 };
-export function openMeteoResponder(windFn, { nullAll = false, status = 200, reason = '', surfaceFn = null } = {}) {
+export function openMeteoResponder(
+  windFn,
+  { nullAll = false, status = 200, reason = '', surfaceFn = null, epochMs = null } = {},
+) {
   return (url) => {
     if (status !== 200) return { status, body: { error: true, reason } };
     const q = url.searchParams;
     const lats = q.get('latitude').split(',').map(Number),
       lons = q.get('longitude').split(',').map(Number);
-    const d0 = Date.parse(q.get('start_date') + 'T00:00:00Z'),
+    const start = Date.parse(q.get('start_date') + 'T00:00:00Z'),
       d1 = Date.parse(q.get('end_date') + 'T00:00:00Z');
+    const d0 = epochMs ?? start;
     const vars = q.get('hourly').split(',');
     const out = lats.map((lat, li) => {
       const time = [];
-      for (let t = d0; t < d1 + 86400000; t += 3600000) time.push(new Date(t).toISOString().slice(0, 16));
+      for (let t = start; t < d1 + 86400000; t += 3600000) time.push(new Date(t).toISOString().slice(0, 16));
       const hourly = { time };
       for (const v of vars) {
         const m = v.match(/^(wind_speed|wind_direction|temperature|geopotential_height)_(\d+)hPa$/);
