@@ -160,6 +160,19 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-warnings li { gap: 8px; padding: 5px 8px; border-radius: var(--r-sm); }
 .ns-warnings li.danger { background: var(--danger-soft); }
 .ns-warnings li.warn { background: var(--warn-soft); }
+.ns-table tr:has(+ tr.ns-leg-warn) td { border-bottom: 0; }
+.ns-table tr.ns-leg-warn td { padding: 0 8px 4px; white-space: normal; }
+.ns-leg-warn .warnings { gap: 1px; }
+.ns-leg-warn .warnings li { font-size: var(--fs-xs); }
+.ns-leg-warn .warnings .warning-text { flex: 0 1 auto; }
+.ns-leg-warn .warnings .warning-fix { margin-left: 0; font-size: var(--fs-xs); }
+.ns-table td.ns-alt { padding: 1px 4px; }
+.ns-alt input { width: 7ch; padding: 2px 4px; text-align: right; font: inherit; border: 1px solid transparent; background: transparent; }
+.ns-alt input::placeholder { color: var(--ink-2); opacity: 1; }
+.ns-alt input:hover { border-color: var(--line-strong); }
+.ns-alt input:focus { border-color: var(--accent); background: var(--surface); }
+.ns-alt input.is-set { color: var(--accent); }
+.ns-table td.ns-alt.warn input::placeholder { color: var(--warn); }
 
 @media (max-width: 900px) {
   .ns-wx { display: none; }

@@ -1,10 +1,10 @@
 // Editor panel helpers: the manifest following the passenger list, the take-off/landing weather
-// line, the navlog strip's forecast run, and the in-place fixes of warnings.
+// line, the navlog strip's winds status and its warnings by leg, and the in-place fixes of warnings.
 import { describe, expect, it } from 'vitest';
 
 import { editorWarningFix, onEditorFocus, sectionOf } from '../../../src/features/editor/focus';
 import { applyPerson, editCrewField, followPerson, resetCrew } from '../../../src/features/editor/panels/manifest';
-import { weatherRunText } from '../../../src/features/editor/panels/NavlogStrip';
+import { splitWarnings, windsStatusText } from '../../../src/features/editor/panels/NavlogStrip';
 import { weatherText } from '../../../src/features/editor/panels/PerformanceSection';
 import type { FlightCrew, PersonDetails } from '../../../src/shared';
 
@@ -90,28 +90,41 @@ describe('weatherText', () => {
   });
 });
 
-describe('weatherRunText', () => {
-  const ok = (runMs: number | null) =>
-    ({
-      status: 'ok',
-      message: 'ECMWF IFS 0.25°, run 2026-11-16 06Z, fetched 08:00Z',
-      legs: [],
-      departure: null,
-      destination: null,
-      source: { run: runMs == null ? null : { runMs, availableMs: null }, endpoint: 'forecast' },
-    }) as never;
-  it('the model run hour', () => {
-    expect(weatherRunText(ok(Date.UTC(2026, 10, 16, 6)), false, true)).toMatchObject({ text: '06Z run' });
+describe('windsStatusText', () => {
+  const ok = { status: 'ok', message: 'ECMWF IFS 0.25°', legs: [], departure: null, destination: null } as never;
+  it('says nothing when the winds are there', () => {
+    expect(windsStatusText(ok, false, true)).toEqual({ text: '' });
   });
-  it('loading, failed, no run', () => {
-    expect(weatherRunText(null, true, true).text).toBe('Fetching winds…');
-    expect(weatherRunText({ status: 'error', message: 'Winds unavailable: x' } as never, false, true)).toEqual({
+  it('loading, failed, none', () => {
+    expect(windsStatusText(null, true, true).text).toBe('Fetching winds…');
+    expect(windsStatusText({ status: 'error', message: 'Winds unavailable: x' } as never, false, true)).toEqual({
       text: 'No winds',
       title: 'Winds unavailable: x',
       tone: 'warn',
     });
-    expect(weatherRunText(ok(null), false, true).text).toBe('Forecast');
-    expect(weatherRunText(null, false, false).text).toBe('');
+    expect(windsStatusText(null, false, true).text).toBe('No winds');
+    expect(windsStatusText(null, false, false).text).toBe('');
+  });
+});
+
+describe('splitWarnings', () => {
+  it("a leg's warnings go under that leg, the rest (and a stale leg index) to the list", () => {
+    const leg = (index: number, text: string) => ({
+      level: 'warn' as const,
+      area: 'weather' as const,
+      text: `A → B: ${text}`,
+      leg: { index, detail: text },
+    });
+    const general = { level: 'danger' as const, area: 'fuel' as const, text: 'Fuel on board does not cover the trip.' };
+    const { general: g, byLeg } = splitWarnings(
+      [general, leg(1, 'Thunderstorms possible, 11:00Z.'), leg(0, 'TAS not set.'), leg(5, 'stale')],
+      2,
+    );
+    expect(byLeg.map((l) => l.map((w) => w.leg?.detail))).toEqual([
+      ['TAS not set.'],
+      ['Thunderstorms possible, 11:00Z.'],
+    ]);
+    expect(g.map((w) => w.text)).toEqual([general.text, 'A → B: stale']);
   });
 });
 

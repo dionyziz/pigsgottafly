@@ -67,6 +67,8 @@ export interface CalcWarning {
   level: WarningLevel;
   area: WarningArea;
   text: string;
+  /** About this leg only: the strip shows it under the leg's row, as `detail` (the text without 'A → B: '). */
+  leg?: { index: number; detail: string };
 }
 
 export interface EndpointCalc {
@@ -553,18 +555,24 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   // ---- warnings
   const warnings = useMemo(() => {
     const w: CalcWarning[] = [];
-    const add = (level: WarningLevel, area: WarningArea, text: string) => {
-      if (!w.some((x) => x.text === text)) w.push({ level, area, text });
+    const add = (level: WarningLevel, area: WarningArea, text: string, leg?: CalcWarning['leg']) => {
+      if (w.some((x) => x.text === text && x.leg?.index === leg?.index)) return;
+      w.push(leg ? { level, area, text, leg } : { level, area, text });
     };
     if (!aircraft) add('warn', 'aircraft', 'No aircraft chosen.');
     for (const e of crewErrors) add('danger', 'manifest', `Manifest: ${e}.`);
     if (weather && (weather.status === 'unavailable' || weather.status === 'error'))
       add('warn', 'weather', weather.message);
     if (navlog) {
+      const ofLeg = new Set(navlog.legWarnings.map((x) => x.text));
+      const level = (t: string): WarningLevel => (/exceed|cannot/i.test(t) ? 'danger' : 'warn');
+      const area = (t: string): WarningArea => (/wind/i.test(t) ? 'weather' : 'navlog');
       for (const t of navlog.warnings) {
-        if (/No winds aloft/i.test(t) && (weatherLoading || !weather)) continue;
-        add(/exceed|cannot/i.test(t) ? 'danger' : 'warn', /wind/i.test(t) ? 'weather' : 'navlog', t);
+        if (ofLeg.has(t) || (/No winds aloft/i.test(t) && (weatherLoading || !weather))) continue;
+        add(level(t), area(t), t);
       }
+      for (const x of navlog.legWarnings)
+        add(level(x.text), area(x.text), x.text, { index: x.legIndex, detail: x.detail });
       const missing = navlog.legs.filter((l) => l.windMissing).length;
       if (missing && missing < navlog.legs.length && !weatherLoading)
         add(
@@ -690,7 +698,13 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         const a = e === 'departure' ? dep : arr;
         return a ? a.icao || a.name : '';
       };
-      for (const l of hazardLines(hazards, leg, endName)) add(l.level, 'weather', `${l.text}.`);
+      for (const l of hazardLines(hazards, leg, endName, { perLeg: true }))
+        add(
+          l.level,
+          'weather',
+          `${l.text}.`,
+          l.legIndex != null ? { index: l.legIndex, detail: `${l.detail}.` } : undefined,
+        );
     }
     // aerodrome hours (AIP AD 2.3 / AD 1.6, NOTAMs) at the planned times
     for (const x of aerodromeWarnings(aerodromeChecks)) add(x.level, 'aerodrome', x.text);

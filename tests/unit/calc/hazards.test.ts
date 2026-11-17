@@ -376,8 +376,26 @@ test('hazard lines: no leg numbers or source; the same hazard on consecutive leg
   };
   const lines = hazardLines([ts(0, 11, 12), ts(1, 11, 13), ts(3, 12, 14), fog], leg, () => 'LGMG');
   expect(lines).toEqual([
-    { level: 'warn', text: 'A → C: Thunderstorms possible, 11:00–13:00Z' },
-    { level: 'warn', text: 'D → E: Thunderstorms possible, 12:00–14:00Z' },
-    { level: 'danger', text: 'LGMG: Fog in METAR, 06:00Z' },
+    {
+      level: 'warn',
+      text: 'A → C: Thunderstorms possible, 11:00–13:00Z',
+      detail: 'Thunderstorms possible, 11:00–13:00Z',
+    },
+    {
+      level: 'warn',
+      text: 'D → E: Thunderstorms possible, 12:00–14:00Z',
+      detail: 'Thunderstorms possible, 12:00–14:00Z',
+      legIndex: 3,
+    },
+    { level: 'danger', text: 'LGMG: Fog in METAR, 06:00Z', detail: 'Fog in METAR, 06:00Z', end: 'destination' },
   ]);
+  // per leg (under each leg in the strip): one line per leg with its own times, nothing merged
+  const perLeg = hazardLines([ts(0, 11, 12), ts(1, 11, 13), ts(3, 12, 14), fog], leg, () => 'LGMG', { perLeg: true });
+  expect(perLeg.map((l) => [l.legIndex ?? l.end, l.detail])).toEqual([
+    [0, 'Thunderstorms possible, 11:00–12:00Z'],
+    [1, 'Thunderstorms possible, 11:00–13:00Z'],
+    [3, 'Thunderstorms possible, 12:00–14:00Z'],
+    ['destination', 'Fog in METAR, 06:00Z'],
+  ]);
+  expect(perLeg[1].text).toBe('B → C: Thunderstorms possible, 11:00–13:00Z');
 });
