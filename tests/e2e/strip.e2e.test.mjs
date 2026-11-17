@@ -9,6 +9,8 @@ import { fleetSeed } from '../../tools/build_seed.ts';
 import { fakeOpenMeteo } from '../helpers/openMeteoGrid.ts';
 import { launch, startServer } from './harness.mjs';
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const AD = JSON.parse(fs.readFileSync('src/data/ref/aerodromes.json', 'utf8'));
 const ad = (id) => {
   const a = AD.find((x) => x.id === id);
@@ -127,8 +129,10 @@ test("a leg's altitude edited in the strip is saved; the map label and the navlo
   await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
   const before = await page.eval(() => document.querySelectorAll('[data-testid=navlog-alt]')[1].placeholder);
   assert.ok(before && before !== '6500', before);
+  // typing alone changes nothing; Enter applies
   await page.type('tr[data-testid=navlog-row] ~ tr[data-testid=navlog-row] [data-testid=navlog-alt]', '6500');
-  await page.blur();
+  assert.ok(!Object.values((await api('GET', `flights/${flightId}`)).legOverrides || {}).some((o) => o.altFt === 6500));
+  await page.key('Enter');
   await page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', {
     timeout: 10000,
   });
@@ -140,6 +144,39 @@ test("a leg's altitude edited in the strip is saved; the map label and the navlo
     await page.eval(() => document.querySelectorAll('[data-testid=navlog-alt]')[1].classList.contains('is-set')),
     true,
   );
+  // Escape puts the applied value back
+  await page.type('tr[data-testid=navlog-row] ~ tr[data-testid=navlog-row] [data-testid=navlog-alt]', '7000');
+  await page.key('Escape');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=navlog-alt]')[1].value === '6500');
+  await sleep(700);
+  assert.ok(!Object.values((await api('GET', `flights/${flightId}`)).legOverrides).some((o) => o.altFt === 7000));
+  // an empty field offers its default to edit: focusing puts it in, selected; left unchanged it stays default
+  const firstAlt = 'tr[data-testid=navlog-row] [data-testid=navlog-alt]';
+  const dflt0 = await page.eval((s) => document.querySelector(s).placeholder, firstAlt);
+  await page.eval((s) => document.querySelector(s).focus(), firstAlt);
+  await page.waitFor(
+    (s, d) => {
+      const i = document.querySelector(s);
+      return i.value === d.replace(/\D/g, '') || i.value === d;
+    },
+    { args: [firstAlt, dflt0] },
+  );
+  await page.key('Enter');
+  await page.blur();
+  // TAS: Enter applies a per-leg TAS
+  const tas = 'tr[data-testid=navlog-row] [data-testid=navlog-tas]';
+  await page.type(tas, '77');
+  await page.key('Enter');
+  await page.waitFor(async () => true);
+  for (let i = 0; ; i++) {
+    const f2 = await api('GET', `flights/${flightId}`);
+    if (Object.values(f2.legOverrides).some((o) => o.tasKt === 77)) {
+      assert.ok(!Object.values(f2.legOverrides).some((o) => o.altFt != null && o.altFt !== 6500));
+      break;
+    }
+    assert.ok(i < 50, 'TAS saved');
+    await sleep(200);
+  }
   // cleared: back to the default
   await page.type('tr[data-testid=navlog-row] ~ tr[data-testid=navlog-row] [data-testid=navlog-alt]', '');
   await page.blur();

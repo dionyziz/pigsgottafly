@@ -183,12 +183,7 @@ export function uid(n = 8): string {
   return s;
 }
 
-/** Automatic flight title: the route's distinct consecutive names joined by arrows. */
-export function autoTitle(route: Pick<RoutePoint, 'name'>[]): string {
-  const names = route.map((p) => p.name).filter((n, i, a) => n && n !== a[i - 1]);
-  if (names.length > 1) return names.join(' → ');
-  // a local flight from and to the same field: 'LGTT → LGTT'
-  if (names.length === 1 && route.length > 1 && route[0].name === route[route.length - 1].name)
-    return `${names[0]} → ${names[0]}`;
-  return 'Untitled flight';
+/** Automatic flight title: the flight's date (ISO), else 'Untitled flight'. */
+export function autoTitle(f: { date?: string | null }): string {
+  return f.date || 'Untitled flight';
 }

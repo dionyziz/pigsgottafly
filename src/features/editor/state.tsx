@@ -69,7 +69,7 @@ export function summaryOf(
 ) {
   return {
     ...EMPTY_SUMMARY,
-    title: doc.title.trim() || autoTitle(doc.route),
+    title: doc.title.trim() || autoTitle(doc),
     date: doc.date,
     blockOff: doc.blockOff,
     aircraft: aircraft?.registration ?? '',

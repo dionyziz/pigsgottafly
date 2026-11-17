@@ -38,7 +38,6 @@
 //     (3 digits), R/ S/ J/ D/ from the hangar's emergency and survival equipment (only what is
 //     carried), A/ colours and markings, N/ the aircraft's remarks (e.g. OPR TEL …), C/ the pilot in
 //     command as SURNAME INITIAL then the phone with its country code (ZINDROS D +30 6942462092).
-//     options.includeItem19 = false leaves it out; the PIC phone then goes to RMK/.
 //   - Free text (names, remarks, colours) is transliterated from Greek (ELOT 743, digraphs and
 //     diphthongs included: see transliterate), upper-cased and reduced to the characters allowed in
 //     ATS messages, without the field separators: hyphens, parentheses and oblique strokes become
@@ -128,8 +127,6 @@ export interface FplInput {
 }
 
 export interface FplOptions {
-  /** Item 19 at the end of the message (default true, as EuroFPL files it). Without it the PIC phone goes to RMK/. */
-  includeItem19?: boolean;
   /** Write REG/ in item 18 even though it equals the item 7 identification (default false). */
   regInItem18?: boolean;
 }
@@ -491,7 +488,7 @@ export function buildFpl(input: FplInput): FplResult {
     if (!warnings.includes(text)) warnings.push(text);
     if (fix && !fixes[text]) fixes[text] = fix;
   };
-  const opts = { includeItem19: true, regInItem18: false, ...(input.options || {}) };
+  const opts = { regInItem18: false, ...(input.options || {}) };
   const ac = (focus: AircraftFocus): Fix => ({ kind: 'aircraft', focus });
 
   // item 7
@@ -618,8 +615,6 @@ export function buildFpl(input: FplInput): FplResult {
   for (const t of [...flightRmk, ...hangarRmk]) if (t && !rmk.includes(t)) rmk.push(t);
   const phone = cleanPhone(input.pic.phone);
   if (!phone) warn('Pilot phone number not set in the profile (item 19 C/).', { kind: 'profile', focus: 'phone' });
-  // The phone follows the PIC name in item 19 C/; without item 19, RMK/ carries it.
-  if (phone && !opts.includeItem19) rmk.push(`PIC TEL ${phone}`);
   if (rmk.length) add('RMK', rmk.join(' '));
 
   const order = [...ITEM18_ORDER] as string[];
@@ -658,7 +653,7 @@ export function buildFpl(input: FplInput): FplResult {
     `-${[ades + eet, ...altn].join(' ')}`,
     `-${item18}`,
   ];
-  if (opts.includeItem19) raw.push(`-${item19.text}`);
+  raw.push(`-${item19.text}`);
   raw[raw.length - 1] += ')';
   const lines = raw.flatMap((l) => wrapLine(l));
   const message = lines.join('\n');

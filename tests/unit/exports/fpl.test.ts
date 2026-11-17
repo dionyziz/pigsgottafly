@@ -395,12 +395,9 @@ describe('the message', () => {
     expect(jk.fields.item19.text).toContain('N/LIFE JACKETS');
   });
 
-  test('item 19 is in the message by default; without it the PIC phone goes to RMK/', () => {
+  test('item 19 is always in the message', () => {
     const r = buildFpl(base());
     expect(r.lines[r.lines.length - 1]).toBe('-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/ZINDROS D +30 6940000000)');
-    const no19 = buildFpl(base({ options: { includeItem19: false } }));
-    expect(no19.message).not.toContain('E/');
-    expect(no19.lines[no19.lines.length - 1]).toBe('-RMK/PIC TEL 00306940000000 DOF/261120)');
   });
 
   test('REG/ only on request: it would repeat the item 7 registration', () => {

@@ -26,7 +26,7 @@ async function renameFlight(id: string, title: string): Promise<void> {
   for (let attempt = 0; ; attempt++) {
     const f: Flight = await api.flights.get(id);
     const { id: _i, version, created: _c, updated: _u, opened: _o, deleted: _d, ...doc } = f;
-    const auto = autoTitle(doc.route);
+    const auto = autoTitle(doc);
     // typing back exactly the automatic name keeps the title automatic (it follows route edits)
     const stored = title === auto ? '' : title;
     try {
@@ -295,8 +295,8 @@ function RenameDialog({
   onClose: () => void;
   onDone: () => Promise<void>;
 }) {
-  // the automatic name (from the route) is the placeholder; an automatic title starts empty
-  const auto = autoTitle((row.points ?? []).map((name) => ({ name })));
+  // the automatic name (the date) is the placeholder; an automatic title starts empty
+  const auto = autoTitle({ date: row.date || row.summary.date });
   const [title, setTitle] = useState(row.summary.title === auto ? '' : row.summary.title);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -286,7 +286,7 @@ export const routes: Route[] = [
           : [];
         d.summary = {
           ...EMPTY_SUMMARY,
-          title: d.title || autoTitle(d.route),
+          title: d.title || autoTitle(d),
           date: d.date,
           blockOff: d.blockOff,
           aircraft: ac?.registration ?? '',

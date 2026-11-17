@@ -285,9 +285,7 @@ describe('ELOT 743 transliteration', () => {
     ['SX-ASV Αθήνα', 'SX-ASV ATHINA'],
   ])('%s → %s', (g, l) => expect(transliterate(g)).toBe(l));
   test('colours in item 19 A/', () => {
-    expect(buildFpl(fplBase({ colours: 'Λευκό/μπλε', options: { includeItem19: true } })).message).toContain(
-      'A/LEFKO BLE',
-    );
+    expect(buildFpl(fplBase({ colours: 'Λευκό/μπλε' })).message).toContain('A/LEFKO BLE');
   });
 });
 

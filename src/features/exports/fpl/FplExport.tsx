@@ -45,7 +45,7 @@ async function copyText(text: string): Promise<boolean> {
 export function FplExport({ flight }: { flight: Flight }) {
   const pilot = usePilot();
   const data = useFplData(flight, pilot);
-  const [opts, setOpts] = useState<Required<FplOptions>>({ includeItem19: true, regInItem18: false });
+  const [opts, setOpts] = useState<Required<FplOptions>>({ regInItem18: false });
   const fpl = useMemo(
     () =>
       buildFpl(
@@ -96,15 +96,6 @@ export function FplExport({ flight }: { flight: Flight }) {
           {fpl.message}
         </pre>
         <div className="fpl-options">
-          <label>
-            <input
-              type="checkbox"
-              checked={opts.includeItem19}
-              onChange={(e) => setOpts({ ...opts, includeItem19: e.target.checked })}
-              data-testid="fpl-opt-item19"
-            />{' '}
-            Item 19
-          </label>
           <label>
             <input
               type="checkbox"

@@ -6,6 +6,8 @@
 // record uses it (aircraft, operator, profile, passengers, waypoints), with <SaveStatus>.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const SAVE_TIMEOUT_MS = 20000;
+
 export type AutosaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'failed';
 
 export interface Autosave {
@@ -54,7 +56,14 @@ export function useAutosave<T>({
     if (inFlight.current || !cur.enabled) return false;
     setStatus('saving');
     let ok = false;
-    const p = cur.save(cur.value);
+    // a request that never answers must not leave the form "Saving…" for good
+    let giveUp: number | undefined;
+    const p = Promise.race([
+      cur.save(cur.value),
+      new Promise<never>((_, reject) => {
+        giveUp = window.setTimeout(() => reject(new Error('The server did not answer')), SAVE_TIMEOUT_MS);
+      }),
+    ]).finally(() => window.clearTimeout(giveUp));
     inFlight.current = p.catch(() => undefined);
     try {
       await p;

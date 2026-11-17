@@ -29,11 +29,22 @@
 import type { Queryable } from '../db.js';
 import type { AtcEntry, FlightDoc, FlightOptions, LegOverride, PersonDetails, RoutePoint, WindModel } from '../../../src/shared/types.js';
 import type { RefAerodrome, RefAirspace, RefFis, RefVfrPoint, RefVfrRoute } from '../../../src/shared/ref.js';
-import { DEFAULT_FLIGHT_OPTIONS, DEFAULT_SETTINGS, EMPTY_SUMMARY, autoTitle } from '../../../src/shared/constants.js';
+import { DEFAULT_FLIGHT_OPTIONS, DEFAULT_SETTINGS, EMPTY_SUMMARY } from '../../../src/shared/constants.js';
+
 import { distanceNm, parseClock, fmtClock } from '../../../src/calc/nav.js';
 import { defaultAltitudes } from '../../../src/calc/altitudes.js';
 import { atcInput, generateAtcList } from '../../../src/data/atc.js';
 import { LEG_OVERRIDE_LIMITS, MAX_ROUTE_POINTS, checkAtc, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
+
+/** The automatic title of the time: the route's distinct consecutive names joined by arrows. */
+function legacyTitle(route: { name: string }[]): string {
+  const names = route.map((p) => p.name).filter((n, i, a) => n && n !== a[i - 1]);
+  if (names.length > 1) return names.join(' → ');
+  if (names.length === 1 && route.length > 1 && route[0].name === route[route.length - 1].name)
+    return `${names[0]} → ${names[0]}`;
+  return 'Untitled flight';
+}
+
 
 const FREQ = /\b1[1-3]\d\.\d{1,3}\b/g;
 const TERM_CELL = /^T\.(.+)\.(field|elev|rwy|freq)$/;
@@ -282,7 +293,7 @@ export async function convertLegacyFlights(q: Queryable): Promise<void> {
     const s = (r.summary || {}) as Record<string, any>;
     const summary = {
       ...EMPTY_SUMMARY,
-      title: (d.title || '').trim() || s.title || autoTitle(route),
+      title: (d.title || '').trim() || s.title || legacyTitle(route),
       date,
       blockOff: isFinite(block) ? fmtClock(block) : '',
       aircraft: reg,

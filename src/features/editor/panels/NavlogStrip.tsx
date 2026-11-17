@@ -206,6 +206,20 @@ export function NavlogStrip() {
       },
       { coalesce: `alt:${key}` },
     );
+  const setTas = (key: string, tasKt: number | null) =>
+    update(
+      (d) => {
+        const cur = d.legOverrides[key] ?? {};
+        if ((cur.tasKt ?? null) === tasKt) return d;
+        const { tasKt: _drop, ...rest } = cur;
+        const next = tasKt == null ? rest : { ...rest, tasKt };
+        const legOverrides = { ...d.legOverrides };
+        if (Object.keys(next).length) legOverrides[key] = next;
+        else delete legOverrides[key];
+        return { ...d, legOverrides };
+      },
+      { coalesce: `tas:${key}` },
+    );
   const danger = warnings.filter((w) => w.level === 'danger').length;
   const warn = warnings.filter((w) => w.level === 'warn').length;
 
@@ -352,6 +366,7 @@ export function NavlogStrip() {
                   const noWind = r.windMissing;
                   const override = L ? doc.legOverrides[L.key]?.altFt : undefined;
                   const dflt = altitudeDefaults[i]?.altFt;
+                  const tasSet = L ? doc.legOverrides[L.key]?.tasKt : undefined;
                   return (
                     <Fragment key={L?.key ?? i}>
                       <tr
@@ -378,6 +393,8 @@ export function NavlogStrip() {
                               ariaLabel={`Altitude ${L.from.name} → ${L.to.name}, feet`}
                               testId="navlog-alt"
                               showLimit={false}
+                              commitOnEnter
+                              fillValue={fin(dflt) ? dflt : null}
                             />
                           ) : fin(r.altFt) ? (
                             fmtAltitude(r.altFt)
@@ -385,7 +402,26 @@ export function NavlogStrip() {
                             '?'
                           )}
                         </td>
-                        <td className="num">{r.tasKt}</td>
+                        <td className="num ns-tas">
+                          {L ? (
+                            <NumberField
+                              value={tasSet ?? null}
+                              onChange={(v) => setTas(L.key, v)}
+                              integer
+                              min={20}
+                              max={300}
+                              placeholder={tasSet == null && fin(r.tasKt) ? String(r.tasKt) : '?'}
+                              className={tasSet != null ? 'is-set' : undefined}
+                              ariaLabel={`TAS ${L.from.name} → ${L.to.name}, knots`}
+                              testId="navlog-tas"
+                              showLimit={false}
+                              commitOnEnter
+                              fillValue={tasSet == null && fin(r.tasKt) ? r.tasKt : null}
+                            />
+                          ) : (
+                            r.tasKt
+                          )}
+                        </td>
                         <td className="num">{hdg(r.tc)}</td>
                         <td className="num">{hdg(r.mc)}</td>
                         <td

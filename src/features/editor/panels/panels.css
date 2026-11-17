@@ -155,7 +155,7 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-body { overflow: auto; min-height: 0; }
 .ns-empty { margin: 0; padding: var(--s3) var(--s4); font-size: var(--fs-sm); }
 .ns-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
-.ns-table th { position: sticky; top: 0; background: var(--surface-2); color: var(--muted); font-weight: 500; font-size: var(--fs-xs); text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ns-table th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--muted); font-weight: 500; font-size: var(--fs-xs); text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .ns-table td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .ns-table .num { text-align: right; }
 .ns-table td.warn { color: var(--warn); background: var(--warn-soft); }
@@ -172,12 +172,12 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-leg-warn .warnings li { font-size: var(--fs-xs); }
 .ns-leg-warn .warnings .warning-text { flex: 0 1 auto; }
 .ns-leg-warn .warnings .warning-fix { margin-left: 0; font-size: var(--fs-xs); }
-.ns-table td.ns-alt { padding: 1px 4px; }
-.ns-alt input { width: 7ch; padding: 2px 4px; text-align: right; font: inherit; border: 1px solid transparent; background: transparent; }
-.ns-alt input::placeholder { color: var(--ink-2); opacity: 1; }
-.ns-alt input:hover { border-color: var(--line-strong); }
-.ns-alt input:focus { border-color: var(--accent); background: var(--surface); }
-.ns-alt input.is-set { color: var(--accent); }
+.ns-table td.ns-alt, .ns-table td.ns-tas { padding: 1px 4px; }
+.ns-alt input, .ns-tas input { width: 7ch; padding: 2px 4px; text-align: right; font: inherit; border: 1px solid transparent; background: transparent; }
+.ns-alt input::placeholder, .ns-tas input::placeholder { color: var(--ink-2); opacity: 1; }
+.ns-alt input:hover, .ns-tas input:hover { border-color: var(--line-strong); }
+.ns-alt input:focus, .ns-tas input:focus { border-color: var(--accent); background: var(--surface); }
+.ns-alt input.is-set, .ns-tas input.is-set { color: var(--accent); }
 .ns-table td.ns-alt.warn input::placeholder { color: var(--warn); }
 
 @media (max-width: 900px) {
@@ -234,3 +234,4 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-fob-types { gap: 10px; align-items: flex-end; }
 .ep-fob-type { display: inline-flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); }
 .ep-fob-total { padding-bottom: 6px; }
+.ns-tas input { width: 5ch; }

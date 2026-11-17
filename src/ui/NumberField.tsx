@@ -4,7 +4,7 @@
 // field turns red with the limit shown under it and, on blur or Enter, the value is clamped to the
 // limit and committed, so the stored value always matches the field. Anything else that is not a
 // number goes back to the stored value on blur. Parsing: src/shared/number.ts.
-import { type CSSProperties, type ReactNode, useEffect, useEffectEvent, useState } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { type NumberDraft, parseNumber } from '../shared/number';
 
@@ -43,6 +43,11 @@ export interface NumberFieldProps {
   style?: CSSProperties;
   /** A heading: shown with three digits, 0 as 360 ('030', '360'). */
   heading?: boolean;
+  /** Commit on Enter or leaving the field only (not while typing); Escape puts the stored value back. */
+  commitOnEnter?: boolean;
+  /** The value that applies while the field is empty (shown as the placeholder): focusing the empty
+   *  field puts it in as text to edit or copy; leaving it unchanged keeps the field empty. */
+  fillValue?: number | null;
 }
 
 const shown = (v: number | null | undefined, decimals?: number, zeroAsEmpty?: boolean, heading?: boolean) => {
@@ -94,6 +99,8 @@ export function NumberField(props: NumberFieldProps) {
     min,
     integer,
     heading,
+    commitOnEnter,
+    fillValue,
   } = props;
   const [draft, setDraft] = useState(() => shown(value, decimals, zeroAsEmpty, heading));
   const [focused, setFocused] = useState(false);
@@ -102,13 +109,22 @@ export function NumberField(props: NumberFieldProps) {
   // Changed from outside while typing (undo, another input): show the new value unless it is what the draft says.
   const syncDraft = useEffectEvent(() => {
     const p = classify(draft, props);
-    if (!focused || !(p.kind === 'ok' && p.value === value)) setDraft(shown(value, decimals, zeroAsEmpty, heading));
+    const filled = value == null && fillValue != null && p.kind === 'ok' && p.value === fillValue;
+    if (!focused || !(filled || (p.kind === 'ok' && p.value === value)))
+      setDraft(shown(value, decimals, zeroAsEmpty, heading));
   });
   useEffect(() => syncDraft(), [value, focused, decimals, zeroAsEmpty, heading]);
 
   const p = classify(draft, props);
+  // Escape (commitOnEnter): the blur that follows must not commit the draft it just dropped
+  const cancelled = useRef(false);
   const settle = () => {
-    const v = !dirty ? value : p.kind === 'ok' ? p.value : p.kind === 'range' ? p.clamped : value;
+    if (cancelled.current) {
+      cancelled.current = false;
+      return;
+    }
+    let v = !dirty ? value : p.kind === 'ok' ? p.value : p.kind === 'range' ? p.clamped : value;
+    if (value == null && fillValue != null && v === fillValue) v = null;
     if (v !== value) onChange(v);
     setDraft(shown(v, decimals, zeroAsEmpty, heading));
     setDirty(false);
@@ -134,17 +150,31 @@ export function NumberField(props: NumberFieldProps) {
         data-testid={testId}
         disabled={disabled}
         autoFocus={autoFocus}
-        onFocus={() => setFocused(true)}
+        onFocus={(e) => {
+          setFocused(true);
+          if (value == null && fillValue != null && !draft) {
+            const t = e.currentTarget;
+            setDraft(String(fillValue));
+            requestAnimationFrame(() => t.select());
+          }
+        }}
         onBlur={() => {
           settle();
           setFocused(false);
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') settle();
+          if (e.key === 'Escape' && commitOnEnter) {
+            setDraft(shown(value, decimals, zeroAsEmpty, heading));
+            setDirty(false);
+            cancelled.current = true;
+            e.currentTarget.blur();
+          }
         }}
         onChange={(e) => {
           setDraft(e.target.value);
           setDirty(true);
+          if (commitOnEnter) return;
           const r = classify(e.target.value, props);
           if (r.kind === 'ok' && r.value !== value) onChange(r.value);
         }}

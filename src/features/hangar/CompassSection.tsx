@@ -3,6 +3,7 @@
 // warning. The first card is the flights' default.
 import { useState } from 'react';
 
+import { deviation, fmtHdg } from '../../calc';
 import { saveBlob } from '../../data/aircraftFiles';
 import { api } from '../../data/api';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
@@ -39,6 +40,7 @@ export function StatusChip({ card, today }: { card: Pick<CompassCard, 'expires'>
 }
 
 function DeviationCurve({ points }: { points: [number, number][] }) {
+  const [hover, setHover] = useState<{ mh: number; dev: number } | null>(null);
   const pts = points
     .filter(([f, s]) => isFinite(f) && isFinite(s))
     .map(([f, s]) => [f, deviationOf(f, s)] as const)
@@ -86,6 +88,31 @@ function DeviationCurve({ points }: { points: [number, number][] }) {
       {pts.map(([x, y]) => (
         <circle key={x} cx={sx(x)} cy={sy(y)} r={2.4} className="dev-pt" />
       ))}
+      {hover && (
+        <g className="dev-hover" data-testid="dev-hover">
+          <line x1={sx(hover.mh)} x2={sx(hover.mh)} y1={T} y2={H - B} />
+          <circle cx={sx(hover.mh)} cy={sy(hover.dev)} r={3} />
+          <text x={Math.min(Math.max(sx(hover.mh), L + 40), W - R - 40)} y={T + 10} textAnchor="middle">
+            {fmtHdg(hover.mh)}° {hover.dev > 0 ? '+' : hover.dev < 0 ? '−' : ''}
+            {Math.abs(Math.round(hover.dev * 10) / 10)}°
+          </text>
+        </g>
+      )}
+      <rect
+        x={L}
+        y={T}
+        width={W - L - R}
+        height={H - T - B}
+        fill="transparent"
+        onPointerMove={(e) => {
+          if (pts.length < 2) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          const mh = Math.min(360, Math.max(0, ((e.clientX - r.left) / r.width) * 360));
+          const dev = deviation(points, Math.round(mh) || 360);
+          if (dev != null) setHover({ mh: Math.round(mh) || 360, dev });
+        }}
+        onPointerLeave={() => setHover(null)}
+      />
     </svg>
   );
 }

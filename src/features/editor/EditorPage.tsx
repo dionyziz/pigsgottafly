@@ -60,7 +60,7 @@ function SaveState() {
 function Title() {
   const { doc, update } = useEditor();
   const [editing, setEditing] = useState(false);
-  const auto = autoTitle(doc.route);
+  const auto = autoTitle(doc);
   if (!editing) {
     return (
       <button
