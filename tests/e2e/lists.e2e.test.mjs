@@ -221,7 +221,7 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.type('[data-testid=passenger-dialog] input[name=phone]', '+30 210 000');
   // date of birth on the calendar: its title opens the years, PageUp goes back twenty at a time,
   // a year opens its months, a month its days
-  const pop = '[data-testid=passenger-dialog] .datefield-pop';
+  const pop = '.datefield-pop';
   await page.click('[data-testid=passenger-dialog] .datefield-cal');
   await page.waitFor((p) => !!document.querySelector(`${p} [data-day]`), { args: [pop] });
   await page.click(`${pop} button.datefield-title`);
@@ -230,6 +230,31 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.key('PageUp');
   await page.waitFor((p) => !!document.querySelector(`${p} [data-year="1984"]`), { args: [pop] });
   await shot('lists-date-years');
+  // the calendar is not clipped by the dialog's body: its last row is within the window and on top
+  const shown = (p) => {
+    const el = document.querySelector(p);
+    const cells = el.querySelectorAll('.datefield-grid button');
+    const last = cells[cells.length - 1].getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const x = last.left + last.width / 2,
+      y = last.top + last.height / 2;
+    return (
+      r.top >= 0 &&
+      r.bottom <= innerHeight &&
+      r.left >= 0 &&
+      r.right <= innerWidth &&
+      el.contains(document.elementFromPoint(x, y))
+    );
+  };
+  assert.equal(await page.eval(shown, pop), true);
+  // a short window (no room below the field): still whole, over the dialog
+  await page.viewport(1600, 460);
+  await page.waitFor(`innerHeight === 460 && (${shown})(${JSON.stringify(pop)})`);
+  assert.equal(await page.eval(shown, pop), true);
+  await page.viewport(1600, 1300);
+  await page.waitFor(`innerHeight === 1300 && (${shown})(${JSON.stringify(pop)})`);
+  // (the input events find the new layout a couple of frames later)
+  await page.eval(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   await page.click(`${pop} [data-year="1984"]`);
   await page.waitFor((p) => document.querySelector(`${p} .datefield-title`)?.textContent === '1984', { args: [pop] });
   await page.click(`${pop} [data-month="1984-03"]`);

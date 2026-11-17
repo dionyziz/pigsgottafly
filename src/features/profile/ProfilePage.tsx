@@ -3,7 +3,8 @@
 // reserve, final reserve, ATC list radius) and the map layers of new flights. With ?welcome=1 (or while name, phone or home is
 // missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
 // Nothing pilot-specific is prefilled: unset values show neutral placeholders.
-// The form follows the pilot (another tab, a dialog) until it is edited.
+// The form follows the pilot (another tab, a dialog) until it is edited. Below it: the licence and
+// medical PDFs (PilotDocuments), then the account (AccountSection).
 import '../lobby/lists.css';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -32,6 +33,7 @@ import { type FormIssue, useFormIssues } from '../passengers/formIssues';
 import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from '../passengers/person';
 import { PersonFields, type SetPerson } from '../passengers/PersonFields';
 import { AccountSection } from './AccountSection';
+import { PilotDocuments } from './PilotDocuments';
 
 export interface ProfileForm extends PersonForm {
   licenceNo: string;
@@ -381,6 +383,7 @@ export function ProfilePage() {
           </button>
         </div>
       </form>
+      {!welcome && <PilotDocuments />}
       {!welcome && <AccountSection />}
     </Shell>
   );

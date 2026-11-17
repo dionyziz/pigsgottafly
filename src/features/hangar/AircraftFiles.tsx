@@ -192,7 +192,15 @@ export function PhotoControl({
 }
 
 /** A document in the full-screen PDF viewer (src/ui PdfViewer), with download. */
-function DocumentViewer({ scope, file, onClose }: { scope: FileScope; file: AircraftFile; onClose: () => void }) {
+export function DocumentViewer({
+  scope,
+  file,
+  onClose,
+}: {
+  scope: FileScope;
+  file: AircraftFile;
+  onClose: () => void;
+}) {
   const [progress, setProgress] = useState(0);
   const { blob, error } = useFileBlob(scope, file, setProgress);
   return (
@@ -207,6 +215,23 @@ function DocumentViewer({ scope, file, onClose }: { scope: FileScope; file: Airc
         if (blob) saveBlob(blob, file.name);
       }}
     />
+  );
+}
+
+/** A document's icon in a .doc-list row. */
+export function PdfIcon() {
+  return (
+    <svg viewBox="0 0 20 24" className="doc-ico" aria-hidden="true">
+      <path
+        d="M3 1h10l5 5v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <text x="10" y="18" textAnchor="middle" fontSize="6" fill="currentColor">
+        PDF
+      </text>
+    </svg>
   );
 }
 
@@ -303,17 +328,7 @@ export function DocumentsSection({
         <ul className="doc-list" data-testid="documents">
           {docs.map((f) => (
             <li key={f.id}>
-              <svg viewBox="0 0 20 24" className="doc-ico" aria-hidden="true">
-                <path
-                  d="M3 1h10l5 5v16a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                />
-                <text x="10" y="18" textAnchor="middle" fontSize="6" fill="currentColor">
-                  PDF
-                </text>
-              </svg>
+              <PdfIcon />
               <div className="doc-main">
                 {canEdit ? (
                   <input

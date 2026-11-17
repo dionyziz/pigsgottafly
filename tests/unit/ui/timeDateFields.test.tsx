@@ -3,7 +3,7 @@
 // paste, validation, min/max, the month calendar).
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { useState } from 'react';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { DateField, type DateFieldProps, Dialog, TimeField, type TimeFieldProps } from '../../../src/ui';
 
@@ -436,5 +436,67 @@ describe('DateField', () => {
     fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
     expect((r.getByRole('button', { name: '2026-11-21' }) as HTMLButtonElement).disabled).toBe(true);
     expect((r.getByRole('button', { name: '2026-11-20' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  test('the calendar floats above the page (not inside the field), below the field or above it when there is no room below', () => {
+    const rect = (top: number, left = 100) =>
+      ({ top, bottom: top + 30, left, right: left + 180, width: 180, height: 30, x: left, y: top }) as DOMRect;
+    const h = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(260);
+    const w = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(248);
+    const at = { top: 100, left: 100 };
+    const r = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('datefield') ? rect(at.top, at.left) : rect(0);
+    });
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    try {
+      Object.assign(window, { innerHeight: 700, innerWidth: 1000 });
+      const open = () => {
+        const s = setupDate({ initial: '2026-11-16' });
+        fireEvent.click(s.r.getByRole('button', { name: 'Choose a date' }));
+        const pop = s.r.getByRole('dialog');
+        const style = { top: pop.style.top, left: pop.style.left };
+        expect(s.el.closest('.datefield')!.contains(pop)).toBe(false);
+        cleanup();
+        return style;
+      };
+      // room below: just under the field
+      expect(open()).toEqual({ top: '134px', left: '100px' });
+      // no room below: above it
+      at.top = 600;
+      expect(open()).toEqual({ top: '336px', left: '100px' });
+      // room on neither side: as low as it fits; and kept inside the window on the right
+      Object.assign(window, { innerHeight: 300 });
+      at.top = 150;
+      at.left = 900;
+      expect(open()).toEqual({ top: '32px', left: '744px' });
+    } finally {
+      Object.assign(window, { innerHeight: vh, innerWidth: vw });
+      h.mockRestore();
+      w.mockRestore();
+      r.mockRestore();
+    }
+  });
+
+  test('in a dialog: clicks and Escape in the calendar do not close the dialog', () => {
+    let closed = 0;
+    const r = render(
+      <Dialog title="Passenger" onClose={() => closed++}>
+        <DateHarness initial="2026-11-16" log={[]} />
+      </Dialog>,
+    );
+    fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
+    const pop = r.getAllByRole('dialog').find((d) => d.classList.contains('datefield-pop'))!;
+    fireEvent.mouseDown(r.getByRole('button', { name: '2026-11-20' }));
+    fireEvent.click(r.getByRole('button', { name: '2026-11-20' }));
+    expect(r.getByTestId('stored').textContent).toBe('2026-11-20');
+    fireEvent.click(r.getByRole('button', { name: 'Choose a date' }));
+    fireEvent.keyDown(
+      r.getAllByRole('dialog').find((d) => d.classList.contains('datefield-pop'))!,
+      { key: 'Escape' },
+    );
+    expect(r.queryAllByRole('dialog').some((d) => d.classList.contains('datefield-pop'))).toBe(false);
+    expect(pop.isConnected).toBe(false);
+    expect(closed).toBe(0);
   });
 });

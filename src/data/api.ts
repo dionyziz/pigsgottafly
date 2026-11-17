@@ -29,6 +29,7 @@ import type {
   Passenger,
   PassengerInput,
   Pilot,
+  PilotFiles,
   PilotUpdate,
   RefAirac,
   RefBundle,
@@ -135,9 +136,9 @@ function sharesOf<S>(base: string, keys: EntityKey[], removeAlso: EntityKey[]) {
   };
 }
 
-/** Chunked files of a record ('aircraft' or 'operators'): /<base>/:id/files… (src/data/aircraftFiles.ts).
+/** Chunked files of a record ('aircraft', 'operators' or 'pilots'): /<base>/:id/files… (src/data/aircraftFiles.ts).
  * Completing or removing a file invalidates `key` (the aircraft list carries the photo). */
-function filesOf<L>(base: string, key: EntityKey) {
+function filesOf<L>(base: string, key: EntityKey | EntityKey[]) {
   const at = (id: string) => `${base}/${encodeURIComponent(id)}/files`;
   return {
     list: (id: string) => request<L>('GET', at(id)),
@@ -205,6 +206,8 @@ export const api = {
   }),
   operatorShares: sharesOf<OperatorSharing>('operators', ['operators'], ['aircraft']),
   operatorFiles: filesOf<OperatorFiles>('operators', 'operators'),
+  /** The pilot's licence and medical certificate (their own id only). */
+  pilotFiles: filesOf<PilotFiles>('pilots', []),
   passengers: crud<Passenger, PassengerInput>('passengers', 'passengers', { remove: ['flights'] }),
   waypoints: crud<Waypoint, WaypointInput>('waypoints', 'waypoints'),
 

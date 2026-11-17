@@ -1,9 +1,20 @@
 // A date 'YYYY-MM-DD', typed as digits (the dashes go in as the year and the month are complete:
 // '20261116' → '2026-11-16'), pasted ('2026-11-16', '2026/11/16', '20261116'), or picked on a small
 // month calendar (the button at the right; Alt+↓ from the input; its title browses years, then
-// months). A complete real date within [min, max] is committed as it is typed; anything else turns
+// months; it floats above the page, below the field or above it when there is no room below, so a
+// dialog's scrolling body never clips it). A complete real date within [min, max] is committed as it is typed; anything else turns
 // the field red on blur or Enter and leaves the value alone. Parsing: src/shared/typedInput.ts.
-import { type KeyboardEvent, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type RefObject,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { createPortal } from 'react-dom';
 
 import { localToday } from '../shared/date';
 import { dateProblem, isRealDate, maskDate, parseDate } from '../shared/typedInput';
@@ -76,6 +87,7 @@ export function DateField({
   const [calendar, setCalendar] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLSpanElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
 
   const syncDraft = useEffectEvent(() => {
     if (!focused || parseDate(draft) !== value) {
@@ -89,7 +101,8 @@ export function DateField({
   useEffect(() => {
     if (!calendar) return;
     const away = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setCalendar(false);
+      const t = e.target as Node;
+      if (box.current && !box.current.contains(t) && !pop.current?.contains(t)) setCalendar(false);
     };
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
@@ -183,22 +196,26 @@ export function DateField({
           <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" />
         </svg>
       </button>
-      {calendar && (
-        <Calendar
-          value={isRealDate(value) ? value : ''}
-          min={min}
-          max={max}
-          onPick={(v) => {
-            commit(v);
-            setCalendar(false);
-            input.current?.focus();
-          }}
-          onClose={() => {
-            setCalendar(false);
-            input.current?.focus();
-          }}
-        />
-      )}
+      {calendar &&
+        createPortal(
+          <Calendar
+            anchor={box}
+            pop={pop}
+            value={isRealDate(value) ? value : ''}
+            min={min}
+            max={max}
+            onPick={(v) => {
+              commit(v);
+              setCalendar(false);
+              input.current?.focus();
+            }}
+            onClose={() => {
+              setCalendar(false);
+              input.current?.focus();
+            }}
+          />,
+          document.body,
+        )}
     </span>
   );
 }
@@ -223,13 +240,38 @@ const HEAD: Record<View, [prev: string, next: string, page: number]> = {
  * closes. The title opens a grid of years (PageUp/PageDown: twenty years), a year its twelve months,
  * a month its days; Escape goes back a level.
  */
+/** Places the fixed popover at its field: below it, or above it when only there it fits; within the window. */
+function place(anchor: HTMLElement, el: HTMLElement) {
+  const GAP = 4,
+    EDGE = 8;
+  const r = anchor.getBoundingClientRect();
+  const h = el.offsetHeight,
+    w = el.offsetWidth;
+  const vh = window.innerHeight,
+    vw = window.innerWidth;
+  let top = r.bottom + GAP;
+  if (top + h > vh - EDGE) {
+    const above = r.top - GAP - h;
+    top = above >= EDGE ? above : Math.max(EDGE, vh - EDGE - h);
+  }
+  const left = Math.max(EDGE, Math.min(r.left, vw - EDGE - w));
+  const t = `${Math.round(top)}px`,
+    l = `${Math.round(left)}px`;
+  if (el.style.top !== t) el.style.top = t;
+  if (el.style.left !== l) el.style.left = l;
+}
+
 function Calendar({
+  anchor,
+  pop,
   value,
   min,
   max,
   onPick,
   onClose,
 }: {
+  anchor: RefObject<HTMLElement | null>;
+  pop: RefObject<HTMLDivElement | null>;
   value: string;
   min?: string;
   max?: string;
@@ -246,6 +288,21 @@ function Calendar({
   const now = localToday();
   /** The whole span [a, b] is outside [min, max]. */
   const out = (a: string, b = a) => (min != null && b < min) || (max != null && a > max);
+
+  // Placed before paint, and again on every frame while open: the field moves as the page or a
+  // dialog's body scrolls, the window resizes or the content around it changes.
+  useLayoutEffect(() => {
+    if (anchor.current && pop.current) place(anchor.current, pop.current);
+  });
+  useEffect(() => {
+    let frame = 0;
+    const again = () => {
+      if (anchor.current && pop.current) place(anchor.current, pop.current);
+      frame = requestAnimationFrame(again);
+    };
+    frame = requestAnimationFrame(again);
+    return () => cancelAnimationFrame(frame);
+  }, [anchor, pop]);
 
   // The cell under the keyboard cursor holds the focus (from the moment the calendar opens).
   useEffect(() => {
@@ -345,11 +402,12 @@ function Calendar({
 
   return (
     <div
+      ref={pop}
       className="datefield-pop"
       role="dialog"
       aria-labelledby={titleId}
       onKeyDown={onKey}
-      // inside the field's <label>: a click here must not go on to the input
+      // the field's <label> is its React parent: a click here must not go on to the input
       onClick={(e) => e.preventDefault()}
     >
       <div className="datefield-head">
