@@ -4,15 +4,13 @@
 // aircraft, the profile, the manifest, the route and the navlog.
 import { useEffect, useEffectEvent, useState } from 'react';
 
-import { endpointAerodrome } from '../../../data/atc';
-import { REF } from '../../../data/ref';
 import {
   activeRequests,
   type AerodromeRequest,
   DEFAULT_STOP_MIN,
   MAX_STOP_MIN,
+  removeRequest,
   requestAllowed,
-  requestRemark,
   setRequest,
 } from '../../../shared';
 import { AerodromeTextInput, Check, NumberField } from '../../../ui';
@@ -86,7 +84,8 @@ export function FplSection() {
 
 /**
  * The route's aerodromes, each with "Touch-and-go" and "Stop n min" (the same requests as the map
- * point menu); a request made shows its RMK/ text.
+ * point menu); an intermediate aerodrome may have both. Columns line up across the rows, and the
+ * minutes field keeps its place while Stop is off, so ticking a box moves nothing.
  */
 function RequestsList() {
   const { doc, update } = useEditor();
@@ -94,61 +93,67 @@ function RequestsList() {
   const ads = route.map((p, index) => ({ p, index })).filter(({ p }) => p.kind === 'aerodrome');
   if (!ads.length) return null;
   const active = activeRequests(route, doc.options);
-  const byUid = new Map(active.map((a) => [a.point.uid, a.request]));
-  const set = (uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) =>
+  const reqOf = (uid: string, kind: AerodromeRequest['kind']) =>
+    active.find((a) => a.point.uid === uid && a.request.kind === kind)?.request;
+  const set = (uid: string, kind: AerodromeRequest['kind'], on: boolean, stopMin?: number) =>
     update(
       (d) => ({
         ...d,
-        options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) },
+        options: {
+          ...d.options,
+          aerodromeRequests: on
+            ? setRequest(d.options.aerodromeRequests, uid, kind, stopMin)
+            : removeRequest(d.options.aerodromeRequests, uid, kind),
+        },
       }),
-      kind === 'stop' ? { coalesce: `fpl-stop-${uid}` } : undefined,
+      kind === 'stop' && on ? { coalesce: `fpl-stop-${uid}` } : undefined,
     );
-  const icao = (i: number) => (endpointAerodrome(route[i], REF.aerodromes)?.icao || route[i].name).toUpperCase();
   return (
     <div className="field ep-requests" data-testid="fpl-requests" data-focus="requests">
       <span>Touch-and-go and stops</span>
       <ul>
         {ads.map(({ p, index }) => {
-          const r = byUid.get(p.uid);
+          const tng = reqOf(p.uid, 'touch-and-go');
+          const stop = reqOf(p.uid, 'stop');
           return (
             <li key={p.uid} data-testid={`fpl-request-${index}`}>
               <span className="ep-req-name">{p.name}</span>
-              {requestAllowed(route, index, 'touch-and-go') && (
-                <Check checked={r?.kind === 'touch-and-go'} onChange={(on) => set(p.uid, on ? 'touch-and-go' : null)}>
+              {requestAllowed(route, index, 'touch-and-go') ? (
+                <Check checked={!!tng} testId={`fpl-tng-${index}`} onChange={(on) => set(p.uid, 'touch-and-go', on)}>
                   {index === 0 ? 'Touch-and-go first' : 'Touch-and-go'}
                 </Check>
+              ) : (
+                <span />
               )}
-              {requestAllowed(route, index, 'stop') && (
+              {requestAllowed(route, index, 'stop') ? (
                 <span className="ep-req-stop">
                   <Check
-                    checked={r?.kind === 'stop'}
-                    onChange={(on) => set(p.uid, on ? 'stop' : null, r?.stopMin ?? DEFAULT_STOP_MIN)}
+                    checked={!!stop}
+                    testId={`fpl-stop-${index}`}
+                    onChange={(on) => set(p.uid, 'stop', on, stop?.stopMin ?? DEFAULT_STOP_MIN)}
                   >
                     Stop
                   </Check>
-                  {r?.kind === 'stop' && (
+                  <span className={stop ? undefined : 'ep-req-off'}>
                     <NumberField
-                      value={r.stopMin ?? DEFAULT_STOP_MIN}
+                      value={stop?.stopMin ?? DEFAULT_STOP_MIN}
                       min={1}
                       max={MAX_STOP_MIN}
                       integer
                       optional={false}
-                      width={72}
+                      width={80}
                       unit="min"
                       ariaLabel={`Stop at ${p.name}, minutes`}
                       className="ep-num"
                       testId={`fpl-stop-min-${index}`}
                       onChange={(n) => {
-                        if (n != null && n > 0) set(p.uid, 'stop', n);
+                        if (stop && n != null && n > 0) set(p.uid, 'stop', true, n);
                       }}
                     />
-                  )}
+                  </span>
                 </span>
-              )}
-              {r && (
-                <span className="ep-req-rmk mono" data-testid="fpl-request-rmk">
-                  RMK/{requestRemark(r, icao(index), index)}
-                </span>
+              ) : (
+                <span />
               )}
             </li>
           );

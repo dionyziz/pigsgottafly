@@ -6,7 +6,7 @@ import { clockZ } from '../../../calc';
 import { api } from '../../../data/api';
 import { visibleNotams } from '../../../data/notams';
 import { aerodrome } from '../../../data/ref';
-import { type AerodromeRequest, type RoutePoint, setRequest } from '../../../shared';
+import { type AerodromeRequest, removeRequest, type RoutePoint, setRequest } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { adDayInfo } from '../AerodromeHours';
 import { useNotams } from '../notams';
@@ -66,15 +66,20 @@ export function MapView() {
   const notams = useMemo(() => visibleNotams(briefing, showAll), [briefing, showAll]);
 
   const requests = useMemo(() => {
-    const out: Record<string, AerodromeRequest> = {};
-    for (const r of doc.options.aerodromeRequests ?? []) out[r.pointUid] = r;
+    const out: Record<string, Partial<Record<AerodromeRequest['kind'], AerodromeRequest>>> = {};
+    for (const r of doc.options.aerodromeRequests ?? []) (out[r.pointUid] ??= {})[r.kind] = r;
     return out;
   }, [doc.options.aerodromeRequests]);
   const onRequest = useCallback(
-    (uid: string, kind: AerodromeRequest['kind'] | null, stopMin?: number) => {
+    (uid: string, kind: AerodromeRequest['kind'], on: boolean, stopMin?: number) => {
       update((d) => ({
         ...d,
-        options: { ...d.options, aerodromeRequests: setRequest(d.options.aerodromeRequests, uid, kind, stopMin) },
+        options: {
+          ...d.options,
+          aerodromeRequests: on
+            ? setRequest(d.options.aerodromeRequests, uid, kind, stopMin)
+            : removeRequest(d.options.aerodromeRequests, uid, kind),
+        },
       }));
     },
     [update],

@@ -6,7 +6,8 @@
 //     single-leg route is both first and last, so pattern TAS. Legs into and out of an
 //     intermediate aerodrome with a touch-and-go or stop request (NavlogInput.patternLegs) are at
 //     pattern TAS too, and a stop's minutes on the ground (groundAfterLegMin) are added to the
-//     timeline after the leg that lands there.
+//     timeline after the leg that lands there; so is the circuit between a touch-and-go and a full
+//     stop at the same aerodrome (circuitAfterLegMin), whose fuel is added to the trip fuel.
 //   - wind/temperature per leg sampled at the leg midpoint, leg altitude and mid-leg time; since GS
 //     depends on the wind and the mid-leg time on GS, iterate (4 passes, as v2). The sampled wind
 //     is rounded as written on the sheet (direction 1..360, speed kt) before the wind triangle.
@@ -80,6 +81,18 @@ export interface NavlogInput {
   patternLegs?: boolean[];
   /** Per leg: minutes on the ground after the leg (intermediate stops). */
   groundAfterLegMin?: number[];
+  /** Per leg: minutes of the circuit after a touch-and-go at the leg's end, before the full-stop landing there. */
+  circuitAfterLegMin?: number[];
+}
+
+/** The circuit between a touch-and-go and the full-stop landing at the end of leg `afterLeg`. */
+export interface NavlogCircuit {
+  afterLeg: number;
+  /** Minutes after 00:00 UTC of the flight date: the touch-and-go and the full-stop landing. */
+  startMin: number;
+  endMin: number;
+  /** Whole litres (rounded up, as a leg). */
+  fuel: number;
 }
 
 export interface NavlogLeg extends ComputedLeg {
@@ -111,6 +124,8 @@ export interface NavlogResult {
   times: { blockOffMin: number; takeoffMin: number; landingMin: number; blockOnMin: number };
   /** Unrounded flight time, take-off → landing, minutes. */
   flightMin: number;
+  /** Circuits after a touch-and-go before a full stop at the same aerodrome (their fuel is in totals.tripFuel). */
+  circuits: NavlogCircuit[];
   blockOffSet: boolean;
   /** Sunset at the destination, minutes after 00:00 UTC of the flight date; null if unknown. */
   sunsetMin: number | null;
@@ -209,6 +224,8 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
       const flown = fin(r.minutesExact) ? r.minutesExact : tas[i] > 0 ? (L.distNm / tas[i]) * 60 : 0;
       t = startMin + flown;
       const endMin = t;
+      const circuit = input.circuitAfterLegMin?.[i];
+      if (fin(circuit) && circuit > 0 && i < n - 1) t += circuit;
       const ground = input.groundAfterLegMin?.[i];
       if (fin(ground) && ground > 0 && i < n - 1) t += ground;
       return {
@@ -232,7 +249,21 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   // One start-up/taxi/take-off/landing allowance, plus one per intermediate full stop (a leg
   // followed by ground time), as planFuel({ stops }).
   const stops = n ? (input.groundAfterLegMin ?? []).slice(0, n - 1).filter((m) => fin(m) && m > 0).length : 0;
+  const circuits: NavlogCircuit[] = [];
+  rows.forEach((r, i) => {
+    const c = input.circuitAfterLegMin?.[i];
+    if (fin(c) && c > 0 && i < n - 1)
+      circuits.push({
+        afterLeg: i,
+        startMin: r.endMin,
+        endMin: r.endMin + c,
+        fuel: ac.burnLph > 0 ? Math.ceil((ac.burnLph * c) / 60) : 0,
+      });
+  });
+  const circuitFuel = circuits.reduce((s, c) => s + c.fuel, 0);
   const totals = summarize(rows, (ac.taxiAllowanceL || 0) * (1 + stops));
+  totals.tripFuel += circuitFuel;
+  totals.fuel += circuitFuel;
   const landingMin = n ? rows[n - 1].endMin : takeoffMin;
   const blockOnMin = landingMin + taxiIn;
 
@@ -264,6 +295,7 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
     totals,
     times: { blockOffMin, takeoffMin, landingMin, blockOnMin },
     flightMin: landingMin - takeoffMin,
+    circuits,
     blockOffSet,
     sunsetMin,
     warnings,

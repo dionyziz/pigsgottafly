@@ -262,6 +262,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         sunTables: SUN_TABLES,
         patternLegs: timing.patternLegs,
         groundAfterLegMin: timing.groundAfterLegMin,
+        circuitAfterLegMin: timing.circuitAfterLegMin,
       }),
     );
   }, [
@@ -327,6 +328,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       legs: navlog.legs,
       groundAfterLegMin: timing.groundAfterLegMin,
       touchAfterLeg: timing.touchAfterLeg,
+      circuits: navlog.circuits,
       taxiAllowanceL: aircraft.fuel.taxiAllowanceL,
       fobL: fuel.fobL,
     });
@@ -435,14 +437,16 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   );
   const stops = useMemo((): StopCalc[] => {
     if (!sectorCalc || sectorCalc.sectors.length < 2) return [];
-    const reqs = new Map(activeRequests(doc.route, doc.options).map((r) => [r.index, r.request]));
+    const reqs = new Map(
+      activeRequests(doc.route, doc.options).map((r) => [`${r.request.kind}|${r.index}`, r.request]),
+    );
     const cat = doc.options.category === 'utility' ? 'utility' : 'normal';
     return stopsOf(sectorCalc.sectors).map((x): StopCalc => {
       const point = doc.route[x.pointIndex];
       const k = stopIdx.indexOf(x.pointIndex);
       const ad = k >= 0 ? stopAds[k] : endpointOf(point);
       const loc = k >= 0 ? (weather?.stops?.[k] ?? null) : null;
-      const req = reqs.get(x.pointIndex);
+      const req = reqs.get(`${x.kind}|${x.pointIndex}`);
       const before = sectorCalc.wbs[x.before.index] ?? null;
       const after = sectorCalc.wbs[x.after.index] ?? null;
       const ms = (min: number) => (fin(dayMs) && times ? dayMs + min * 60000 : NaN);
@@ -635,7 +639,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       add(
         'danger',
         'wb',
-        `Stop ${where}: mass/CG outside limits (${cat} category, MLW/MTOW) at ${x.wb.massKg.toFixed(1)} kg, CG ${x.wb.armM.toFixed(3)} m.`,
+        `${x.kind === 'touch-and-go' ? 'Touch-and-go' : 'Stop'} ${where}: mass/CG outside limits (${cat} category, MLW/MTOW) at ${x.wb.massKg.toFixed(1)} kg, CG ${x.wb.armM.toFixed(3)} m.`,
       );
     }
     for (const e of [departure, ...stops.flatMap((x) => [x.landing, x.takeoff]), arrival]) {

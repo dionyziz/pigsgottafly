@@ -14,7 +14,10 @@ import {
   weightAndBalance,
 } from '../../../src/calc';
 import {
+  CIRCUIT_MIN,
   landingPointIndices,
+  removeRequest,
+  requestOf,
   requestTiming,
   type RoutePoint,
   setRequest,
@@ -202,14 +205,93 @@ test('W&B per sector: the stop point is the zero-fuel point plus the fuel left t
 
 test('a stop keeps its runway and surface choices when its minutes change; removing it drops them', () => {
   let list = setRequest([], 'B', 'stop', 10);
-  list = setStopChoice(list, 'B', 'landingRunway', '35');
-  list = setStopChoice(list, 'B', 'surface', 'short dry grass');
+  list = setStopChoice(list, 'B', 'stop', 'landingRunway', '35');
+  list = setStopChoice(list, 'B', 'stop', 'surface', 'short dry grass');
   list = setRequest(list, 'B', 'stop', 25);
   expect(list).toEqual([{ pointUid: 'B', kind: 'stop', stopMin: 25, landingRunway: '35', surface: 'short dry grass' }]);
-  list = setStopChoice(list, 'B', 'landingRunway', null);
+  list = setStopChoice(list, 'B', 'stop', 'landingRunway', null);
   expect(list).toEqual([{ pointUid: 'B', kind: 'stop', stopMin: 25, surface: 'short dry grass' }]);
-  expect(setRequest(list, 'B', 'touch-and-go')).toEqual([{ pointUid: 'B', kind: 'touch-and-go' }]);
-  expect(setRequest(list, 'B', null)).toEqual([]);
+  // a touch-and-go at the same point is added beside the stop, with its own choices
+  let both = setRequest(list, 'B', 'touch-and-go');
+  both = setStopChoice(both, 'B', 'touch-and-go', 'takeoffRunway', '17');
+  expect(both).toEqual([
+    { pointUid: 'B', kind: 'stop', stopMin: 25, surface: 'short dry grass' },
+    { pointUid: 'B', kind: 'touch-and-go', takeoffRunway: '17' },
+  ]);
+  expect(requestOf(both, 'B', 'stop')?.surface).toBe('short dry grass');
+  expect(requestOf(both, 'B', 'touch-and-go')?.takeoffRunway).toBe('17');
+  expect(removeRequest(both, 'B', 'stop')).toEqual([{ pointUid: 'B', kind: 'touch-and-go', takeoffRunway: '17' }]);
+  expect(removeRequest(both, 'B')).toEqual([]);
+});
+
+test('a touch-and-go then a stop at B: the circuit between them, then the ground time; three sectors', () => {
+  const BOTH = {
+    aerodromeRequests: [
+      { pointUid: 'B', kind: 'stop' as const, stopMin: 20 },
+      { pointUid: 'B', kind: 'touch-and-go' as const },
+    ],
+  };
+  const t = requestTiming(route, BOTH);
+  expect(t.touchAfterLeg).toEqual([false, true, false, false]);
+  expect(t.groundAfterLegMin).toEqual([0, 20, 0, 0]);
+  expect(t.circuitAfterLegMin).toEqual([0, CIRCUIT_MIN, 0, 0]);
+  expect(stopPointIndices(route, BOTH)).toEqual([2]);
+  expect(landingPointIndices(route, BOTH)).toEqual([2]);
+  const nav = computeNavlog({
+    ...base,
+    patternLegs: t.patternLegs,
+    groundAfterLegMin: t.groundAfterLegMin,
+    circuitAfterLegMin: t.circuitAfterLegMin,
+  });
+  // 6 min at 30 L/h = 3 L, on top of the legs' 4 × 18 L
+  const circuitL = Math.ceil((30 * CIRCUIT_MIN) / 60);
+  expect(nav.circuits).toEqual([
+    { afterLeg: 1, startMin: nav.legs[1].endMin, endMin: nav.legs[1].endMin + CIRCUIT_MIN, fuel: circuitL },
+  ]);
+  expect(nav.totals.tripFuel).toBe(72 + circuitL);
+  expect(nav.legs[2].startMin).toBeCloseTo(nav.legs[1].endMin + CIRCUIT_MIN + 20, 9);
+  expect(nav.times.landingMin).toBeCloseTo(555 + 4 * 34.5 + CIRCUIT_MIN + 20, 9);
+  const fuel = planFuel({
+    tripFuelL: nav.totals.tripFuel,
+    taxiAllowanceL: 4,
+    burnLph: 30,
+    finalReserveMin: 0,
+    reserveMin: 60,
+    fobL: 110,
+    usableL: 144,
+    tripMin: nav.flightMin,
+    stops: 1,
+  });
+  const s = flightSectors({
+    legs: nav.legs,
+    groundAfterLegMin: t.groundAfterLegMin,
+    touchAfterLeg: t.touchAfterLeg,
+    circuits: nav.circuits,
+    taxiAllowanceL: 4,
+    fobL: 110,
+  });
+  expect(s.map((x) => x.ends)).toEqual(['touch-and-go', 'stop', 'destination']);
+  expect(s[0]).toMatchObject({ fromPoint: 0, toPoint: 2, allowanceL: 4, fuelTakeoffL: 110, fuelLandingL: 70 });
+  // the circuit: from B to B, no legs, its own fuel, no start-up
+  expect(s[1]).toMatchObject({
+    fromPoint: 2,
+    toPoint: 2,
+    firstLeg: 2,
+    lastLeg: 1,
+    tripFuelL: circuitL,
+    allowanceL: 0,
+    fuelTakeoffL: 70,
+    fuelLandingL: 70 - circuitL,
+  });
+  expect(s[1].takeoffMin).toBeCloseTo(s[0].landingMin, 9);
+  expect(s[1].landingMin).toBeCloseTo(s[0].landingMin + CIRCUIT_MIN, 9);
+  expect(s[2]).toMatchObject({ fromPoint: 2, toPoint: 4, allowanceL: 4, fuelTakeoffL: 70 - circuitL });
+  expect(s[2].takeoffMin).toBeCloseTo(s[1].landingMin + 20, 9);
+  expect(s[2].fuelLandingL).toBe(fuel.landingFuelL);
+  expect(stopsOf(s).map((x) => [x.pointIndex, x.kind])).toEqual([
+    [2, 'touch-and-go'],
+    [2, 'stop'],
+  ]);
 });
 
 test("the API keeps a stop's runway and surface choices and validates them", async () => {
@@ -238,4 +320,16 @@ test("the API keeps a stop's runway and surface choices and validates them", asy
     checkOptions({ aerodromeRequests: [{ pointUid: 'B', kind: 'touch-and-go', landingRunway: '35' }] })
       .aerodromeRequests,
   ).toEqual([{ pointUid: 'B', kind: 'touch-and-go', landingRunway: '35' }]);
+  // a touch-and-go and a stop on one point
+  expect(
+    checkOptions({
+      aerodromeRequests: [
+        { pointUid: 'B', kind: 'touch-and-go' },
+        { pointUid: 'B', kind: 'stop', stopMin: 15 },
+      ],
+    }).aerodromeRequests,
+  ).toEqual([
+    { pointUid: 'B', kind: 'touch-and-go' },
+    { pointUid: 'B', kind: 'stop', stopMin: 15 },
+  ]);
 });

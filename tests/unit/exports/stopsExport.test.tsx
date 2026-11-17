@@ -16,6 +16,7 @@ import { wbSheetModel } from '../../../src/features/exports/wb/model';
 import { WbSheet } from '../../../src/features/exports/wb/WbExport';
 import {
   type Aircraft,
+  CIRCUIT_MIN,
   emptyFlightDoc,
   type FlightCrew,
   type FlightDoc,
@@ -199,6 +200,43 @@ describe('intermediate stop at LGSY', () => {
     expect(st.landing.surface).toBe('short dry grass');
     expect(st.landing.perf!.distances!.factors.surface).toBeGreaterThan(1);
     expect(calcOf(doc).departure.surface).toBeNull();
+  });
+
+  test('a touch-and-go then a stop at Skyros: each with its runway, the circuit between them; a page per sector', () => {
+    const base = flight();
+    const doc = flight({
+      options: {
+        ...base.options,
+        aerodromeRequests: [
+          { pointUid: 'sky', kind: 'touch-and-go', landingRunway: '17' },
+          { pointUid: 'sky', kind: 'stop', stopMin: 10, takeoffRunway: '17' },
+        ],
+      },
+    });
+    const c = calcOf(doc);
+    const legs = c.computed.navlog.legs;
+    const circuit = c.computed.navlog.circuits[0];
+    expect(circuit).toMatchObject({ afterLeg: 0, startMin: legs[0].endMin, endMin: legs[0].endMin + CIRCUIT_MIN });
+    expect(c.sectors.map((x) => x.ends)).toEqual(['touch-and-go', 'stop', 'destination']);
+    expect(c.stops.map((x) => [x.pointIndex, x.kind])).toEqual([
+      [1, 'touch-and-go'],
+      [1, 'stop'],
+    ]);
+    const [tg, st] = c.stops;
+    expect(tg.landing.timeMin).toBeCloseTo(legs[0].endMin, 9);
+    expect(tg.takeoff.timeMin).toBeCloseTo(legs[0].endMin, 9);
+    expect(st.landing.timeMin).toBeCloseTo(legs[0].endMin + CIRCUIT_MIN, 9);
+    expect(st.takeoff.timeMin).toBeCloseTo(legs[0].endMin + CIRCUIT_MIN + 10, 9);
+    // each request's runway choice applies to its own landing / take-off
+    expect(tg.landing.perf!.runway!.designator).toBe('17');
+    expect(tg.takeoff.perf!.runway!.designator).toBe('35');
+    expect(st.landing.perf!.runway!.designator).toBe('35');
+    expect(st.takeoff.perf!.runway!.designator).toBe('17');
+    // fuel: an allowance at the departure and one after the stop, plus the circuit
+    expect(st.before.fuelLandingL).toBe(120 - 4 - (legs[0].fuel ?? 0) - circuit.fuel);
+    expect(c.fuelLandingL).toBe(120 - 8 - (legs[0].fuel ?? 0) - (legs[1].fuel ?? 0) - circuit.fuel);
+    const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: c });
+    expect(m.pages.map((p) => p.label)).toEqual(['LGTT → LGSY', 'LGSY → LGSY', 'LGSY → LGTT']);
   });
 
   test('performance export: one page per sector, the Skyros landing and take-off in their own blocks', () => {

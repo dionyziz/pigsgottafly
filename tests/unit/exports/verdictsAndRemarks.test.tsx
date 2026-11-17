@@ -24,6 +24,7 @@ import {
   legKey,
   type PersonDetails,
   type Pilot,
+  removeRequest,
   requestRemarks,
   requestTiming,
   type RoutePoint,
@@ -307,12 +308,18 @@ describe('touch-and-go and intermediate-stop requests', () => {
       'INITIALLY REQUEST TOUCH N GO AT LGTT',
       'REQUEST TOUCH N GO AT LGMG',
     ]);
+    // a touch-and-go and a stop at LGMG: both remarks, the touch-and-go first
     reqs = setRequest(reqs, mg.uid, 'stop', 10);
     expect(requestRemarks(route, { aerodromeRequests: reqs }, icao)).toEqual([
       'INITIALLY REQUEST TOUCH N GO AT LGTT',
+      'REQUEST TOUCH N GO AT LGMG',
       'REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN',
     ]);
-    expect(setRequest(reqs, mg.uid, null)).toHaveLength(1);
+    expect(requestRemarks(route, { aerodromeRequests: removeRequest(reqs, mg.uid, 'touch-and-go') }, icao)).toEqual([
+      'INITIALLY REQUEST TOUCH N GO AT LGTT',
+      'REQUEST INTERMEDIATE STOP AT LGMG FOR 10 MIN',
+    ]);
+    expect(removeRequest(reqs, mg.uid)).toHaveLength(1);
   });
 
   test('requests on removed points, VFR points, or stops at the route ends are dropped', () => {
