@@ -609,7 +609,9 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       const level = (t: string): WarningLevel => (/exceed|cannot/i.test(t) ? 'danger' : 'warn');
       const area = (t: string): WarningArea => (/wind/i.test(t) ? 'weather' : 'navlog');
       for (const t of navlog.warnings) {
-        if (ofLeg.has(t) || (/No winds aloft/i.test(t) && (weatherLoading || !weather))) continue;
+        // sunset: the editor's own warning below (with the 30-minute margin) stands for it
+        if (ofLeg.has(t) || /after sunset/i.test(t) || (/No winds aloft/i.test(t) && (weatherLoading || !weather)))
+          continue;
         add(level(t), area(t), t);
       }
       for (const x of navlog.legWarnings)
