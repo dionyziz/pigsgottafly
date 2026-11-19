@@ -678,6 +678,12 @@ describe('autorouter account allow-list', () => {
     expect(r.file.status).toBe(200);
     expect(r.notams.status).toBe('ok');
   });
+  test("'*': every signed-in pilot may file", async () => {
+    const r = await attempt(['*'], 'anyone@example.com');
+    expect(r.state.enabled).toBe(true);
+    expect(r.file.status).toBe(200);
+    expect(r.notams.status).toBe('ok');
+  });
 });
 
 describe('configFromEnv: AUTOROUTER_PILOTS', () => {
@@ -687,6 +693,7 @@ describe('configFromEnv: AUTOROUTER_PILOTS', () => {
       configFromEnv({ AUTOROUTER_PILOTS: ' Pilot@Example.com , b@y.gr,', ALLOWED_EMAILS: 'x@y.z' }).autorouterPilots,
     ).toEqual(['pilot@example.com', 'b@y.gr']);
     expect(configFromEnv({ AUTOROUTER_PILOTS: '' }).autorouterPilots).toEqual([]);
+    expect(configFromEnv({ AUTOROUTER_PILOTS: '*' }).autorouterPilots).toEqual(['*']);
     expect('autorouterPilots' in configFromEnv({ ALLOWED_EMAILS: 'x@y.z' })).toBe(false);
   });
 });

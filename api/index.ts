@@ -2,7 +2,7 @@
 // Environment: DATABASE_URL (Neon Postgres), GOOGLE_CLIENT_ID (required), optional ALLOWED_EMAILS
 // (checked at sign-in and on every request), optional AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD (NOTAM
 // briefing) and AUTOROUTER_FILING=1 (flight-plan filing).
-// The autorouter account is used only for the pilots on AUTOROUTER_PILOTS (default ALLOWED_EMAILS;
+// The autorouter account is used only for the pilots on AUTOROUTER_PILOTS ('*' = every pilot; default ALLOWED_EMAILS;
 // both empty = nobody).
 // Optional RESEND_API_KEY / FORMS_FROM e-mail forms to HCAA for any signed-in pilot, who is cc'd.
 // Pending migrations run on cold start, before the first request is served. A failed migration is

@@ -75,7 +75,7 @@ vercel deploy --prod
   - `GOOGLE_CLIENT_ID`: required. The function refuses to serve without it.
   - `ALLOWED_EMAILS`: optional, comma-separated. Limits who can sign in.
   - `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD`: optional, for the NOTAM briefing. Add `AUTOROUTER_FILING=1` for flight-plan filing.
-    - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it. With both lists empty, nobody can.
+    - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it; `*` lets every signed-in pilot use it. With both lists empty, nobody can.
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
   - `RESEND_API_KEY`: optional. E-mails Form 731 and the GenDec to HCAA, and the W&B and performance sheets to an operator that asks for them, with `FORMS_FROM` as the sender (default `Pig's Gotta Fly <noreply@pigsgottafly.com>`).
     - Any signed-in pilot may send. The pilot is cc'd on every e-mail and is its reply-to address.

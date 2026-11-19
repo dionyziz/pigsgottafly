@@ -63,7 +63,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiCon
     ...(env.OPEN_METEO_DAILY_BUDGET
       ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } }
       : {}),
-    // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots; unset → ALLOWED_EMAILS.
+    // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots ('*': every signed-in
+    // pilot); unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
   };
 }
@@ -98,8 +99,9 @@ export function createApi(
           .trim()
           .toLowerCase(),
       ));
-  /** The shared autorouter account is for the listed pilots only (local mode: the local pilot). */
-  const autorouterFor = (p: Pilot | null): boolean => listed(config.autorouterPilots!, p);
+  /** The shared autorouter account is for the listed pilots ('*': all of them; local mode: the local pilot). */
+  const autorouterFor = (p: Pilot | null): boolean =>
+    config.autorouterPilots!.includes('*') ? !!p : listed(config.autorouterPilots!, p);
   /** Any signed-in pilot may e-mail forms; the pilot is cc'd, so an e-mail address is needed. */
   const formsMailFor = (p: Pilot | null): boolean => !!p && !!String(p.email || '').trim();
   const db = opts.db;

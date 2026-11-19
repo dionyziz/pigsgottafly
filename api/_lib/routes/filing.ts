@@ -9,7 +9,7 @@
 // AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD and AUTOROUTER_FILING=1. Every action, refused or not, is
 // logged for the pilot.
 // The autorouter account is the deployment's own and filing sends real ATC messages, so:
-//   - only the pilots on AUTOROUTER_PILOTS (default ALLOWED_EMAILS; empty = nobody in Google mode)
+//   - only the pilots on AUTOROUTER_PILOTS ('*' = all; default ALLOWED_EMAILS; empty = nobody in Google mode)
 //     get the client (ctx.autorouter; app.ts), everyone else is refused like "not enabled";
 //   - the plan's aircraft identification (item 7) and REG/ (item 18) must be the registration of
 //     the flight's aircraft, which is in the pilot's own hangar.
