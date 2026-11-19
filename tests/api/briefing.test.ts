@@ -301,7 +301,7 @@ describe('without autorouter', () => {
   test('NOTAMs: not-configured, with a message', async () => {
     const r = (await a.call('GET', `flights/${fid}/notams`)).body;
     expect(r).toMatchObject({ status: 'not-configured', source: null, notams: [] });
-    expect(r.message).toMatch(/not available yet/);
+    expect(r.message).toMatch(/NOTAM source is not configured/);
   });
   test('filing: "not enabled yet", actions refused with 503 and logged; addressees still proposed', async () => {
     const s = (await a.call('GET', `flights/${fid}/filing`)).body;
