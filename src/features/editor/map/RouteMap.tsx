@@ -146,6 +146,8 @@ export interface RouteMapProps {
   /** The NOTAM picked in the panel or on the map (highlighted). */
   selectedNotam?: string | null;
   onNotamSelect?: (key: string | null) => void;
+  /** The leg hovered in the navlog (highlighted with marching dashes), null = none. */
+  focusLeg?: { from: { lat: number; lon: number }; to: { lat: number; lon: number } } | null;
   /** Touch-and-go / stop request per route point uid (FlightOptions.aerodromeRequests). */
   requests?: Record<string, Partial<Record<AerodromeRequest['kind'], AerodromeRequest>>>;
   /** Sets (kind) or removes (null) the request on an aerodrome point of the route. */
@@ -220,6 +222,22 @@ function labelKey(
   return `${fmtCourse(leg.mcMag)}|${fmtDistance(leg.distNm)}|${fmtAltitude(altFt)}|${alt?.overridden ? 1 : 0}|${alt?.source ?? ''}|${haz ? haz.level + ':' + haz.labels.join(';') : ''}`;
 }
 
+/** Walks the dashes of a line layer along it until the returned stop is called (still when motion is reduced). */
+function marchDashes(m: MlMap, layerId: string): (() => void) | undefined {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let frame = 0,
+    last = -1;
+  const tick = (now: number) => {
+    const phase = Math.floor(now / 60) % FOCUS_DASHES.length;
+    if (phase !== last && m.getLayer(layerId)) {
+      m.setPaintProperty(layerId, 'line-dasharray', ['literal', FOCUS_DASHES[phase]]);
+      last = phase;
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(frame);
+}
 export function RouteMap(props: RouteMapProps) {
   const { route, date, altitudes, refData, waypoints } = props;
   const el = useRef<HTMLDivElement>(null);
@@ -463,20 +481,16 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (!m || !loaded) return;
     setData(m, 'air-focus', focusFeatures(focusInfo));
-    if (!focusInfo || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let frame = 0,
-      last = -1;
-    const tick = (now: number) => {
-      const phase = Math.floor(now / 60) % FOCUS_DASHES.length;
-      if (phase !== last && m.getLayer('air-focus-line')) {
-        m.setPaintProperty('air-focus-line', 'line-dasharray', ['literal', FOCUS_DASHES[phase]]);
-        last = phase;
-      }
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return focusInfo ? marchDashes(m, 'air-focus-line') : undefined;
   }, [focusInfo, loaded]);
+  // The leg hovered in the navlog, the same way.
+  const focusLeg = props.focusLeg ?? null;
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !loaded) return;
+    setData(m, 'leg-focus', routeLineFeatures(focusLeg ? [focusLeg.from, focusLeg.to] : []));
+    return focusLeg ? marchDashes(m, 'leg-focus-line') : undefined;
+  }, [focusLeg, loaded]);
 
   // Panels resized (dragging the flight panel's edge or the navlog's top, collapsing the panel): resize
   // the canvas and redraw in the same frame, before it is painted. MapLibre's own observer is throttled

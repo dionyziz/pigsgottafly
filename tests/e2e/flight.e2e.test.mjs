@@ -409,6 +409,43 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     [['PIC', f.crew[0].seat, 'Test Pilot', 80]],
   );
   await page.waitFor(() => document.querySelectorAll('[data-testid=navlog-row]').length === 3, { timeout: 15000 });
+  // hovering a navlog leg outlines it on the map with marching dashes; leaving it clears the outline
+  const legFocus = () =>
+    page.eval(() => {
+      const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+      return {
+        coords: m
+          .getSource('leg-focus')
+          .serialize()
+          .data.features.map((f) => f.geometry.coordinates),
+        dash: JSON.stringify(m.getPaintProperty('leg-focus-line', 'line-dasharray')),
+      };
+    });
+  const mouseTo = async (x, y) => page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+  const row2 = await page.eval(() => {
+    const r = document.querySelectorAll('[data-testid=navlog-row] .ns-leg')[1].getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  });
+  await mouseTo(row2.x, row2.y);
+  await page.waitFor(() => {
+    const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+    return m.getSource('leg-focus').serialize().data.features.length === 1;
+  });
+  const leg2 = await legFocus();
+  const pts = f.route;
+  assert.deepEqual(leg2.coords, [
+    [
+      [pts[1].lon, pts[1].lat],
+      [pts[2].lon, pts[2].lat],
+    ],
+  ]);
+  await sleep(250);
+  assert.notEqual((await legFocus()).dash, leg2.dash, 'the dashes move');
+  await mouseTo(5, 5);
+  await page.waitFor(() => {
+    const m = document.querySelector('.pgf-map-canvas').__pgfMap;
+    return m.getSource('leg-focus').serialize().data.features.length === 0;
+  });
   // aerodrome hours on the flight's date: LGTT HJ (AIP AD 1.6.5.3), no handling
   await page.waitFor(() => document.querySelectorAll('[data-testid=aerodrome-hours-item]').length === 2);
   assert.deepEqual(

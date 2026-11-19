@@ -12,6 +12,7 @@ import type { RouteWeather } from '../../../data/weather';
 import { fmtClock, fmtDuration, fmtEte } from '../../../shared/format';
 import { Icon, NumberField } from '../../../ui';
 import { editorWarningFix, focusInEditor } from '../focus';
+import { useSetHoveredLeg } from '../legHover';
 import { setAltitudeOverride } from '../map/routeEdit';
 import { useNotams } from '../notams';
 import { useResizable } from '../resizable';
@@ -168,6 +169,7 @@ function LegWarnings({
 
 export function NavlogStrip() {
   const { doc, legs, aircraft, altitudeDefaults, update } = useEditor();
+  const setHoveredLeg = useSetHoveredLeg();
   const { navlog, weather, weatherLoading, refreshWeather, warnings, dayMs } = useFlightCalc();
   const { selectedNotam } = useNotams();
   const notamLeg = selectedNotam?.legIndex ?? null;
@@ -371,6 +373,8 @@ export function NavlogStrip() {
                     <Fragment key={L?.key ?? i}>
                       <tr
                         data-testid="navlog-row"
+                        onMouseEnter={() => setHoveredLeg(i)}
+                        onMouseLeave={() => setHoveredLeg(null)}
                         className={notamLeg === i ? 'is-notam' : undefined}
                         title={notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined}
                       >

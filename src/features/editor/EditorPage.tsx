@@ -18,6 +18,7 @@ import { flightStore } from '../../data/flightStore';
 import { autoTitle, type Flight, type FlightDoc } from '../../shared';
 import { Icon, Loading } from '../../ui';
 import { onEditorFocus } from './focus';
+import { LegHoverProvider } from './legHover';
 import { MapView } from './map';
 import { NotamProvider } from './notams';
 import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
@@ -224,32 +225,34 @@ export function EditorPage() {
     >
       <NotamProvider>
         <FlightCalcProvider>
-          <Keys />
-          <div className="editor" data-testid="editor">
-            <header className="editor-top">
-              <Link to="/" className="brand" title="All flights">
-                <img src="/icon.svg" alt="All flights" />
-              </Link>
-              <Title />
-              <SaveState />
-              <span className="spacer" />
-              <UndoRedo />
-              <AccountMenu />
-            </header>
-            <div className="editor-body">
-              <ResizablePanel />
-              <div className="editor-main">
-                <div className="editor-map">
-                  <ErrorBoundary label="The map failed">
-                    <MapView />
+          <LegHoverProvider>
+            <Keys />
+            <div className="editor" data-testid="editor">
+              <header className="editor-top">
+                <Link to="/" className="brand" title="All flights">
+                  <img src="/icon.svg" alt="All flights" />
+                </Link>
+                <Title />
+                <SaveState />
+                <span className="spacer" />
+                <UndoRedo />
+                <AccountMenu />
+              </header>
+              <div className="editor-body">
+                <ResizablePanel />
+                <div className="editor-main">
+                  <div className="editor-map">
+                    <ErrorBoundary label="The map failed">
+                      <MapView />
+                    </ErrorBoundary>
+                  </div>
+                  <ErrorBoundary label="The navlog failed">
+                    <NavlogStrip />
                   </ErrorBoundary>
                 </div>
-                <ErrorBoundary label="The navlog failed">
-                  <NavlogStrip />
-                </ErrorBoundary>
               </div>
             </div>
-          </div>
+          </LegHoverProvider>
         </FlightCalcProvider>
       </NotamProvider>
     </EditorProvider>

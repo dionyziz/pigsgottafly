@@ -182,6 +182,7 @@ export const DATA_SOURCES = [
   'waypoints',
   'air-focus',
   'route-line',
+  'leg-focus',
   'route-arrows',
   'route-band',
   'route-mid',
@@ -756,7 +757,7 @@ function chartLayers(): LayerSpecification[] {
 /** Feature-state `hover` (route points and midpoint handles under the cursor). */
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false];
 
-/** Dash phases of the focused airspace's outline: stepping through them walks the dashes around it. */
+/** Dash phases of a focused outline (airspace, leg): stepping through them walks the dashes along it. */
 export const FOCUS_DASHES: number[][] = (() => {
   // dash ON, gap OFF (line widths), shifted forward by STEP each phase; one cycle is ON + OFF
   const [on, off, step] = [3, 2, 0.5];
@@ -798,6 +799,21 @@ function routeLayers(): LayerSpecification[] {
       source: 'route-line',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': CHART.route, 'line-width': 3.5 },
+    },
+    // the leg hovered in the navlog: drawn wider, with marching dashes along it
+    {
+      id: 'leg-focus-casing',
+      type: 'line',
+      source: 'leg-focus',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': CHART.route, 'line-width': 8 },
+    },
+    {
+      id: 'leg-focus-line',
+      type: 'line',
+      source: 'leg-focus',
+      layout: { 'line-join': 'round' },
+      paint: { 'line-color': CHART.paper, 'line-width': 2.5, 'line-dasharray': ['literal', FOCUS_DASHES[0]] },
     },
     {
       // direction of flight: arrowheads on each leg (features.ts routeArrowFeatures)

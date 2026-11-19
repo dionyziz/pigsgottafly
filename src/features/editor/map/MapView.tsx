@@ -9,6 +9,7 @@ import { aerodrome } from '../../../data/ref';
 import { type AerodromeRequest, removeRequest, type RoutePoint, setRequest } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { adDayInfo } from '../AerodromeHours';
+import { useHoveredLeg } from '../legHover';
 import { useNotams } from '../notams';
 import { AD_ROLE, useFlightCalc } from '../panels/calc';
 import { useEditor } from '../state';
@@ -63,6 +64,10 @@ export function MapView() {
     };
   }, [doc.date, adEffects]);
   const { briefing, showAll, selected: selectedNotam, select: selectNotam } = useNotams();
+  const hoveredLeg = useHoveredLeg();
+  const hovered = hoveredLeg !== null ? doc.route.slice(hoveredLeg, hoveredLeg + 2) : [];
+  const [legFrom, legTo] = hovered.length === 2 ? hovered : [null, null];
+  const focusLeg = useMemo(() => (legFrom && legTo ? { from: legFrom, to: legTo } : null), [legFrom, legTo]);
   const notams = useMemo(() => visibleNotams(briefing, showAll), [briefing, showAll]);
 
   const requests = useMemo(() => {
@@ -159,6 +164,7 @@ export function MapView() {
       notams={notams}
       selectedNotam={selectedNotam}
       onNotamSelect={selectNotam}
+      focusLeg={focusLeg}
       requests={requests}
       onRequest={onRequest}
       aerodromeInfo={aerodromeInfo}

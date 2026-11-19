@@ -56,10 +56,15 @@ describe('route arrows', () => {
 });
 
 describe('route layers', () => {
-  it('draws the arrows over the line and the hover halo under the points, with hover ids on the points', () => {
+  it('draws the hovered leg over the line, the arrows over both, the hover halo under the points', () => {
     const { style } = buildStyle('light', false, null);
     const ids = style.layers.map((l) => l.id);
-    expect(ids.indexOf('route-arrows')).toBe(ids.indexOf('route-line') + 1);
+    expect(ids.slice(ids.indexOf('route-line'), ids.indexOf('route-arrows') + 1)).toEqual([
+      'route-line',
+      'leg-focus-casing',
+      'leg-focus-line',
+      'route-arrows',
+    ]);
     expect(ids.indexOf('route-point-halo')).toBe(ids.indexOf('route-points') - 1);
     expect((style.sources['route-points'] as { generateId?: boolean }).generateId).toBe(true);
     expect(style.sources['route-arrows']).toBeDefined();
