@@ -12,6 +12,7 @@ import type { Route } from '../http.js';
 import { badRequest } from '../http.js';
 import { assessNotams, normalizeNotam } from '../notams.js';
 import { rateLimit } from '../rateLimit.js';
+import { serverTerrain } from '../terrain.js';
 
 export const NOTAM_TTL_MS = 10 * 60e3;
 export const DEFAULT_CORRIDOR_NM = 10;
@@ -111,6 +112,7 @@ export const routes: Route[] = [
         corridorNm,
         legAltFt: ctx.altitudesFt,
         fields: ctx.route.filter((p) => p.kind === 'aerodrome'),
+        terrain: serverTerrain(),
       });
       const relevantCount = assessed.filter((n) => n.relevant).length;
       const fetched = Date.now();

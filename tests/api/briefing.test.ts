@@ -8,8 +8,9 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { generateAddressees, northOfBoundary } from '../../api/_lib/addressees';
 import type { AutorouterSettings } from '../../api/_lib/autorouter';
-import { assessNotams, normalizeNotam } from '../../api/_lib/notams';
+import { assessNotams, normalizeNotam, parseLimit, upperAmslFt } from '../../api/_lib/notams';
 import { createServer } from '../../server/server';
+import { TERRAIN_GRID } from '../../src/calc/terrain';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import airspaces from '../../src/data/ref/airspaces.json';
 import fis from '../../src/data/ref/fis.json';
@@ -205,6 +206,8 @@ describe('NOTAM relevance: areas far below the leg', () => {
         lon: Math.round(lon * G),
         radius: 1,
         upper: 4,
+        itemf: null,
+        itemg: null,
         iteme: `UAV AREA: ${dms(lat, 'N')} ${dms(lon, 'E')} - ${dms(lat + 0.01, 'N')} ${dms(lon, 'E')} - ${dms(lat + 0.01, 'N')} ${dms(lon + 0.01, 'E')}`,
       }),
     )!;
@@ -229,6 +232,39 @@ describe('NOTAM relevance: areas far below the leg', () => {
     expect(far.relevant).toBe(false);
     expect(far.reasons[0]).toMatch(/^below the planned altitude/);
     expect(near.relevant).toBe(true);
+  });
+  test('item G when it reads: AGL over the highest ground under the area; else the Q line', () => {
+    expect(parseLimit('250FT AGL')).toEqual({ ft: 250, agl: true });
+    expect(parseLimit('GND')).toEqual({ ft: 0, agl: true });
+    expect(parseLimit('FL095')).toEqual({ ft: 9500, agl: false });
+    expect(parseLimit('3000FT AMSL')).toEqual({ ft: 3000, agl: false });
+    expect(parseLimit('150M AGL')!.ft).toBeCloseTo(492, 0);
+    expect(parseLimit('UNL')).toBeNull();
+    const route = [
+      { lat: 37.9, lon: 23.6 },
+      { lat: 37.7, lon: 23.6 },
+    ];
+    // Q line up to FL020, item G 250 ft AGL, under a 2500 ft leg
+    const n = () => {
+      const x = box(37.8, 23.62);
+      x.upperFt = 2000;
+      x.upperText = '250FT AGL';
+      return x;
+    };
+    const flat = new Uint8Array(TERRAIN_GRID.rows * TERRAIN_GRID.cols).fill(10); // 120 m everywhere
+    const inp = {
+      route,
+      aerodromes: new Map(),
+      window: { from: at('06:00'), to: at('12:00') },
+      maxAltFt: 2500,
+      corridorNm: 10,
+      legAltFt: [2500],
+      fields: [],
+    };
+    expect(upperAmslFt(n(), flat)).toBeCloseTo(250 + 120 / 0.3048, 0);
+    expect(assessNotams([n()], { ...inp, terrain: flat })[0].relevant).toBe(false);
+    // no terrain: the Q line (2000 ft) is not 1000 ft under the leg
+    expect(assessNotams([n()], { ...inp, terrain: null })[0].relevant).toBe(true);
   });
 });
 

@@ -8,15 +8,18 @@
 //               FIR_WIDE_NM or more = the whole FIR; no coordinates = cannot tell, kept);
 //   - vertical: its Q-line lower limit is not above the highest planned altitude, and its upper
 //               limit is not BELOW_LEG_FT or more under the nearest leg's planned altitude (unless
-//               it is within TERMINAL_NM of an aerodrome of the route: climb-out and approach);
+//               it is within TERMINAL_NM of an aerodrome of the route: climb-out and approach). The
+//               upper limit is item G when it reads (FL, ft or m AMSL; AGL over the highest ground
+//               under the area, from the terrain grid), else the Q line;
 //   - type:     not a checklist (QKKKK), a cancellation, a FIR-wide notice (QAFXX: statements on
 //               other NOTAMs, sanctions, entry rules for foreign operators) or an AIP change trigger
 //               (QAFTT), and not IFR-only (Q traffic 'I') unless it concerns an aerodrome the flight
 //               uses.
 // Everything else is returned with relevant = false and the reasons, for "show all".
 import { distanceNm, pointSegDistNm } from '../../src/calc/nav.js';
+import { TERRAIN_GRID } from '../../src/calc/terrain.js';
 import type { Notam } from '../../src/shared/briefing.js';
-import { areasToRoute, FIR_WIDE_NM, parseNotamAreas } from '../../src/shared/notamAreas.js';
+import { areasToRoute, FIR_WIDE_NM, type NotamArea, parseNotamAreas } from '../../src/shared/notamAreas.js';
 import type { LatLon } from '../../src/shared/types.js';
 import type { AutorouterNotamRow } from './autorouter.js';
 
@@ -373,6 +376,61 @@ export interface RelevanceInput {
   legAltFt?: number[];
   /** The route's aerodromes (departure, stops, destination). */
   fields?: LatLon[];
+  /** Terrain grid (src/calc/terrain.ts), for limits given above the ground. */
+  terrain?: Uint8Array | null;
+}
+
+const M_TO_FT = 1 / 0.3048;
+
+/** A vertical limit as items F/G write it ('GND', 'FL095', '2500FT AMSL', '250FT AGL', '150M AGL'); null when unreadable. */
+export function parseLimit(s: string | null): { ft: number; agl: boolean } | null {
+  const t = (s ?? '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (/^(SFC|GND)$/.test(t)) return { ft: 0, agl: true };
+  const fl = /^FL ?(\d{2,3})$/.exec(t);
+  if (fl) return { ft: +fl[1] * 100, agl: false };
+  const m = /^(\d+(?:[.,]\d+)?) ?(FT|M)\b ?(AMSL|MSL|AGL|SFC|GND)$/.exec(t);
+  if (!m) return null;
+  return { ft: Number(m[1].replace(',', '.')) * (m[2] === 'M' ? M_TO_FT : 1), agl: !/MSL/.test(m[3]) };
+}
+
+/** Highest ground (ft) in the box around the areas (or the Q-line circle); NaN outside the grid. */
+function groundUnderFt(
+  grid: Uint8Array,
+  areas: NotamArea[],
+  q: { center: LatLon | null; radiusNm: number | null },
+): number {
+  const box = { s: Infinity, n: -Infinity, w: Infinity, e: -Infinity };
+  const add = (p: LatLon, rNm: number) => {
+    const dLat = rNm / 60,
+      dLon = rNm / 60 / Math.cos((p.lat * Math.PI) / 180);
+    box.s = Math.min(box.s, p.lat - dLat);
+    box.n = Math.max(box.n, p.lat + dLat);
+    box.w = Math.min(box.w, p.lon - dLon);
+    box.e = Math.max(box.e, p.lon + dLon);
+  };
+  for (const a of areas) {
+    if (a.kind === 'circle') add(a.center, a.radiusNm);
+    else for (const p of a.points) add(p, a.kind === 'line' ? a.halfWidthNm : 0);
+  }
+  if (!areas.length && q.center && q.radiusNm !== null) add(q.center, q.radiusNm);
+  const g = TERRAIN_GRID;
+  const r0 = Math.floor((box.s - g.south) / g.step),
+    r1 = Math.floor((box.n - g.south) / g.step);
+  const c0 = Math.floor((box.w - g.west) / g.step),
+    c1 = Math.floor((box.e - g.west) / g.step);
+  if (!(r0 >= 0 && r1 < g.rows && c0 >= 0 && c1 < g.cols)) return NaN;
+  let max = 0;
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) max = Math.max(max, grid[r * g.cols + c]);
+  return max * g.unitM * M_TO_FT;
+}
+
+/** The NOTAM's upper limit, ft AMSL: item G when it reads (AGL needs the terrain), else the Q line. */
+export function upperAmslFt(n: Notam, terrain: Uint8Array | null | undefined): number {
+  const g = parseLimit(n.upperText);
+  if (!g) return n.upperFt;
+  if (!g.agl) return g.ft;
+  const ground = terrain ? groundUnderFt(terrain, n.areas ?? [], n) : NaN;
+  return Number.isFinite(ground) ? g.ft + ground : n.upperFt;
 }
 
 /** An area this far under the leg's planned altitude is not in the way… */
@@ -413,7 +471,7 @@ export function assessNotams(list: Notam[], inp: RelevanceInput): Notam[] {
           areas.length ? areasToRoute(areas, [f]).dist : distanceNm(n.center!, f) - n.radiusNm!;
         const terminal = (inp.fields ?? []).some((f) => toField(f) <= TERMINAL_NM);
         if (gap > inp.corridorNm) hide.push(`${Math.round(gap)} NM from the route`);
-        else if (n.upperFt <= legAlt - BELOW_LEG_FT && !terminal)
+        else if (upperAmslFt(n, inp.terrain) <= legAlt - BELOW_LEG_FT && !terminal)
           hide.push(`below the planned altitude (up to ${n.upperText ?? `FL${pad(n.upperFt / 100, 3)}`})`);
         else
           show.push(
