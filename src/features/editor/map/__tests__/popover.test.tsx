@@ -11,7 +11,7 @@ import { SegmentedControl } from '../../../../ui';
 import { MapLayerToggles } from '../MapLayerToggles';
 import { MapPopover, MapTip, placeBeside, PopItem, useAccordion } from '../MapPopover';
 import { LayersControl, MapHint } from '../MapToolbar';
-import { NavaidPopover, NavaidTip } from '../NavaidPopover';
+import { NavaidPopover, NavaidTipRows } from '../NavaidPopover';
 import { PointMenu } from '../PointMenu';
 
 afterEach(cleanup);
@@ -170,7 +170,7 @@ describe('MapLayerToggles', () => {
 describe('radio navaid tooltip and details', () => {
   const atv = NAVAIDS.find((n) => n.id === 'ATV VOR/DME')!;
   it('the tooltip shows type, ident, name and frequency', () => {
-    const r = render(<NavaidTip x={10} y={10} n={atv} />);
+    const r = render(<NavaidTipRows n={atv} />);
     expect(r.getByTestId('navaid-tip').textContent).toBe('VOR/DMEATV · ATHINAI114.40 MHz');
   });
   it('the details add channel, hours, coverage and links to every AIP section that publishes it', () => {

@@ -6,7 +6,7 @@ import { Fragment } from 'react';
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefNavaid } from '../../../shared/ref';
 import { navaidFreq } from './features';
-import { MapPopover, MapTip, PopItem } from './MapPopover';
+import { MapPopover, PopItem } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 
 const TYPE_NAME: Record<RefNavaid['type'], string> = {
@@ -40,13 +40,14 @@ function Head({ n, tip }: { n: RefNavaid; tip?: boolean }) {
   );
 }
 
-export function NavaidTip({ x, y, n }: { x: number; y: number; n: RefNavaid }) {
+/** The radio navaid under the pointer, in the map's hover box (MapHoverTip). */
+export function NavaidTipRows({ n }: { n: RefNavaid }) {
   return (
-    <MapTip x={x} y={y} testId="navaid-tip">
+    <div className="pgf-tip-section" data-testid="navaid-tip">
       <div className="pgf-air-tip-row">
         <Head n={n} tip />
       </div>
-    </MapTip>
+    </div>
   );
 }
 

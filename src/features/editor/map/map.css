@@ -104,6 +104,9 @@
   background: var(--hover); color: var(--ink);
 }
 .pgf-air-tip-more { color: var(--muted); font-size: 11px; }
+/* the hover box: a section per kind of thing under the pointer, divided by a rule */
+.pgf-tip-section { display: flex; flex-direction: column; gap: 3px; }
+.pgf-tip-section + .pgf-tip-section { margin-top: 2px; padding-top: 5px; border-top: 1px solid var(--line); }
 .pgf-air-type {
   flex: none; min-width: 34px; padding: 1px 4px; border-radius: 3px; text-align: center;
   font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--on-accent); background: var(--map-zone);

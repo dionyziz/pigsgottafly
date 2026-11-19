@@ -37,9 +37,9 @@ import type { MapLayers } from '../../../shared/mapLayers';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
 import type { MenuItem } from '../../../ui';
 import type { AdDayInfo } from '../AerodromeHours';
-import { AerodromePopover, AerodromeTip } from './AerodromePopover';
+import { AerodromePopover, AerodromeTipRows } from './AerodromePopover';
 import { type AirspaceInfo, airspaceInfos, airspacesAt, isArea } from './airspace';
-import { AirspacePopover, AirspaceTip } from './AirspacePopover';
+import { AirspacePopover, AirspaceTipRows } from './AirspacePopover';
 import {
   aerodromeFeatures,
   airspaceFeatures,
@@ -71,9 +71,9 @@ import {
 import { MapTip } from './MapPopover';
 import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
 import { type DrawMode, LayersControl, MapHint, MapToolbar } from './MapToolbar';
-import { NavaidPopover, NavaidTip } from './NavaidPopover';
+import { NavaidPopover, NavaidTipRows } from './NavaidPopover';
 import { type MapNotam, mapNotams, notamKeysAt, setNotamLayer } from './notamLayer';
-import { NotamPopover, NotamTip } from './NotamPopover';
+import { NotamPopover, NotamTipRows } from './NotamPopover';
 import { NameBox, type NamePrompt, PointMenu } from './PointMenu';
 import {
   addDrawnPoint,
@@ -1160,26 +1160,21 @@ export function RouteMap(props: RouteMapProps) {
       const ad = mid === null && quiet ? adAt(e.point, pt) : null;
       setAdTip(ad ? { x: e.point.x, y: e.point.y, a: ad } : null);
       // a radio navaid under the cursor: ident, type and frequency
-      const nav = pt === null && mid === null && !ad && quiet ? navAt(e.point) : null;
+      const nav = pt === null && mid === null && quiet ? navAt(e.point) : null;
       setNavTip(nav ? { x: e.point.x, y: e.point.y, n: nav } : null);
       if ((ad || nav) && pt === null) m.getCanvas().style.cursor = 'pointer';
-      // weather hazard bands/rings under the cursor: their texts (they are not printed on the chart)
-      const wx =
-        pt === null && mid === null && !L.airPop && !ad && !nav
-          ? hazardLabelsAt(m, e.point, L.props.hazards ?? [])
-          : [];
+      // everything else under the cursor goes in the same hover box (MapHoverTip):
+      // weather hazard bands/rings (their texts are not printed on the chart)
+      const wx = pt === null && mid === null && !L.airPop ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
       setWxTip(wx.length ? { x: e.point.x, y: e.point.y, items: wx } : null);
       // NOTAM areas under the cursor: ID, validity and limits
       const nk =
-        pt === null && mid === null && !ad && !nav && !wx.length && !L.airPop && !notamLive.current.pop
+        pt === null && mid === null && !L.airPop && !notamLive.current.pop
           ? notamKeysAt(m, e.point, notamLive.current.marks)
           : [];
       setNotamTip(nk.length ? { x: e.point.x, y: e.point.y, keys: nk } : null);
       // airspace under the cursor: name, class and limits; the smallest one is highlighted
-      const air =
-        pt === null && mid === null && !ad && !nav && !wx.length && !nk.length && !L.airPop
-          ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat)
-          : [];
+      const air = pt === null && mid === null && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
       highlightAirspace(air[0] ?? null);
       setAirTip(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
     };
@@ -1701,18 +1696,31 @@ export function RouteMap(props: RouteMapProps) {
         </MapTip>
       )}
 
-      {wxTip && !airPop && !hover && mode === 'idle' && (
-        <MapTip x={wxTip.x} y={wxTip.y} className="pgf-snap-tip pgf-wx-tip" testId="hazard-tip">
-          {wxTip.items.map((h) => (
-            <span key={h.label} className={'is-' + h.level}>
-              {h.label}
-            </span>
-          ))}
-        </MapTip>
-      )}
-      {notamTip && !notamPop && !airPop && !hover && mode === 'idle' && (
-        <NotamTip x={notamTip.x} y={notamTip.y} items={notamsOf(notamTip.keys)} />
-      )}
+      {(() => {
+        // one hover box with everything under the pointer: aerodrome, navaid, airspaces, NOTAMs, weather
+        const at = adTip ?? navTip ?? airTip ?? notamTip ?? wxTip;
+        if (!at || hover || menu || mode !== 'idle' || airPop || notamPop || adPop || navPop) return null;
+        const notams = notamTip ? notamsOf(notamTip.keys) : [];
+        const ad = adTip && props.aerodromeInfo ? adTip : null;
+        return (
+          <MapTip x={at.x} y={at.y} testId="map-tip">
+            {ad && <AerodromeTipRows a={ad.a} info={props.aerodromeInfo!(ad.a)} />}
+            {navTip && <NavaidTipRows n={navTip.n} />}
+            {airTip && <AirspaceTipRows items={airTip.items} />}
+            {notams.length > 0 && <NotamTipRows items={notams} />}
+            {wxTip && (
+              <div className="pgf-tip-section pgf-wx-tip" data-testid="hazard-tip">
+                {wxTip.items.map((h) => (
+                  <span key={h.label} className={'is-' + h.level}>
+                    {h.label}
+                  </span>
+                ))}
+              </div>
+            )}
+            {(ad || navTip || airTip || notams.length > 0) && <div className="pgf-air-tip-more">Click for details</div>}
+          </MapTip>
+        );
+      })()}
       {notamPop && notamsOf(notamPop.keys).length > 0 && (
         <NotamPopover
           x={notamPop.x}
@@ -1722,10 +1730,6 @@ export function RouteMap(props: RouteMapProps) {
           onOpen={(k) => props.onNotamSelect?.(k)}
           onClose={() => setNotamPop(null)}
         />
-      )}
-      {airTip && !airPop && !hover && mode === 'idle' && <AirspaceTip x={airTip.x} y={airTip.y} items={airTip.items} />}
-      {adTip && !adPop && !airPop && !notamPop && !hover && !menu && mode === 'idle' && props.aerodromeInfo && (
-        <AerodromeTip x={adTip.x} y={adTip.y} a={adTip.a} info={props.aerodromeInfo(adTip.a)} />
       )}
       {adPop && props.aerodromeInfo && (
         <AerodromePopover
@@ -1737,9 +1741,6 @@ export function RouteMap(props: RouteMapProps) {
           charts={aerodromeVfrCharts(chartIdx, adPop.a)}
           onClose={() => setAdPop(null)}
         />
-      )}
-      {navTip && !navPop && !adPop && !airPop && !notamPop && !hover && !menu && mode === 'idle' && (
-        <NavaidTip x={navTip.x} y={navTip.y} n={navTip.n} />
       )}
       {navPop && (
         <NavaidPopover

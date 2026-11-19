@@ -5,15 +5,16 @@
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefAerodrome } from '../../../shared/ref';
 import { type AdDayInfo, adHandlingLine, AdHoursDetail, adHoursLine } from '../AerodromeHours';
-import { MapPopover, MapTip, PopItem } from './MapPopover';
+import { MapPopover, PopItem } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 
 const title = (a: RefAerodrome) => (a.icao ? `${a.icao} · ${a.name}` : a.name);
 
-export function AerodromeTip({ x, y, a, info }: { x: number; y: number; a: RefAerodrome; info: AdDayInfo }) {
+/** The aerodrome under the pointer and its hours that day, in the map's hover box (MapHoverTip). */
+export function AerodromeTipRows({ a, info }: { a: RefAerodrome; info: AdDayInfo }) {
   const closed = info.ad?.runs.every((r) => r.status === 'closed');
   return (
-    <MapTip x={x} y={y} testId="aerodrome-tip">
+    <div className="pgf-tip-section" data-testid="aerodrome-tip">
       <div className="pgf-air-tip-row">
         <b className="pgf-air-type t-ad">AD</b>
         <span className="pgf-air-tip-name">{title(a)}</span>
@@ -23,8 +24,7 @@ export function AerodromeTip({ x, y, a, info }: { x: number; y: number; a: RefAe
         {adHoursLine(info)}
       </span>
       {info.handling && <span className="pgf-ad-tip-line">{adHandlingLine(info)}</span>}
-      <div className="pgf-air-tip-more">Click for details</div>
-    </MapTip>
+    </div>
   );
 }
 

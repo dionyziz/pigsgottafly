@@ -375,6 +375,25 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   });
   assert.match(await text('[data-testid=aerodrome-tip-hours]'), /HO: hours published by NOTAM/);
   await hover(p.x + 200, p.y + 150);
+  // one hover box with everything under the pointer: an aerodrome off the route and the airspaces it sits in
+  const el = AD('LGEL');
+  const pe = await mapPx(el.lat, el.lon);
+  await hover(pe.x, pe.y);
+  await page.waitFor(() => /LGEL/.test(document.querySelector('[data-testid=aerodrome-tip]')?.textContent || ''), {
+    timeout: 5000,
+  });
+  assert.deepEqual(
+    await page.eval(() => {
+      const tips = document.querySelectorAll('[data-testid=map-tip]');
+      return [
+        tips.length,
+        !!tips[0]?.querySelector('[data-testid=aerodrome-tip]'),
+        !!tips[0]?.querySelector('[data-testid=airspace-tip]'),
+      ];
+    }),
+    [1, true, true],
+  );
+  await hover(p.x + 200, p.y + 150);
 
   // ---- 3. date and block start, aircraft, fuel on board (PIC alone first: club case 60)
   await setValue('[data-testid=flight-date]', DATE);

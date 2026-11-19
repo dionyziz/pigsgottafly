@@ -6,7 +6,7 @@ import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import { type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
-import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
+import { MapPopover, PopItem, useAccordion } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 
 const TYPE_LABEL: Record<AirspaceInfo['type'], string> = {
@@ -32,10 +32,11 @@ const Limits = ({ a }: { a: AirspaceInfo }) => (
   </>
 );
 
-export function AirspaceTip({ x, y, items }: { x: number; y: number; items: AirspaceInfo[] }) {
+/** The airspaces under the pointer, in the map's hover box (MapHoverTip). */
+export function AirspaceTipRows({ items }: { items: AirspaceInfo[] }) {
   const shown = items.slice(0, 4);
   return (
-    <MapTip x={x} y={y} testId="airspace-tip">
+    <div className="pgf-tip-section" data-testid="airspace-tip">
       {shown.map((a) => (
         <div key={a.id} className="pgf-air-tip-row">
           <b className={'pgf-air-type t-' + a.type.toLowerCase()}>{a.type}</b>
@@ -46,8 +47,7 @@ export function AirspaceTip({ x, y, items }: { x: number; y: number; items: Airs
         </div>
       ))}
       {items.length > shown.length && <div className="pgf-air-tip-more">+{items.length - shown.length} more</div>}
-      <div className="pgf-air-tip-more">Click for details</div>
-    </MapTip>
+    </div>
   );
 }
 

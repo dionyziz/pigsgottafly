@@ -1,37 +1,35 @@
 // NOTAM hover tooltip and click popover on the route map (PLAN-v3 "Map interaction for weather and
 // NOTAMs"): ID, validity and limits on hover; on click the decoded content, the affected leg and the
 // raw ICAO text.
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 
 import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
-import { MapPopover, MapTip, PopItem, useAccordion } from './MapPopover';
+import { MapPopover, PopItem, useAccordion } from './MapPopover';
 
 const Badge = ({ n }: { n: Notam }) => (
   <b className={'pgf-air-type t-notam' + (n.relevant ? '' : ' is-hidden')}>NOTAM</b>
 );
 
-export function NotamTip({ x, y, items }: { x: number; y: number; items: Notam[] }) {
+/** The NOTAM areas under the pointer, in the map's hover box (MapHoverTip). */
+export function NotamTipRows({ items }: { items: Notam[] }) {
   const shown = items.slice(0, 4);
   return (
-    <MapTip x={x} y={y} testId="notam-tip">
+    <div className="pgf-tip-section" data-testid="notam-tip">
       {shown.map((n) => (
-        <div key={n.key} className="pgf-air-tip-row">
-          <Badge n={n} />
-          <span className="pgf-air-tip-name">
-            {n.key} · {notamSubject(n)}
-          </span>
-          <span className="pgf-air-tip-lim">{notamLimits(n)}</span>
-        </div>
-      ))}
-      {shown.map((n) => (
-        <div key={n.key + 'v'} className="pgf-air-tip-more">
-          {n.key}: {notamValidity(n)}
-        </div>
+        <Fragment key={n.key}>
+          <div className="pgf-air-tip-row">
+            <Badge n={n} />
+            <span className="pgf-air-tip-name">
+              {n.key} · {notamSubject(n)}
+            </span>
+            <span className="pgf-air-tip-lim">{notamLimits(n)}</span>
+          </div>
+          <div className="pgf-air-tip-more">{notamValidity(n)}</div>
+        </Fragment>
       ))}
       {items.length > shown.length && <div className="pgf-air-tip-more">+{items.length - shown.length} more</div>}
-      <div className="pgf-air-tip-more">Click for details</div>
-    </MapTip>
+    </div>
   );
 }
 
