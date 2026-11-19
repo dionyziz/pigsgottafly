@@ -6,7 +6,9 @@ import { distanceNm } from '../../../src/calc';
 import {
   circleRing,
   fmtNotamLevel,
+  groupNotams,
   hasNotamArea,
+  isAerodromeNotam,
   notamLimits,
   notamRings,
   notamsPath,
@@ -125,6 +127,21 @@ describe('NOTAM areas on the map', () => {
       ['C/26', false, 1],
     ]);
     expect(marks[1].sizeNm).toBeLessThan(marks[0].sizeNm);
+  });
+  test('aerodrome NOTAMs are not drawn; the list groups them by aerodrome, then the airspace ones', () => {
+    const ad = (key: string, icao: string) => notam({ key, itemA: [icao], radiusNm: 5 });
+    const list = [ad('A1/26', 'LGTT'), notam({ key: 'A2/26' }), ad('A3/26', 'LGMG'), ad('A4/26', 'LGTT')];
+    list.push(notam({ key: 'A5/26', itemA: ['LTBB', 'LGGG'] }));
+    expect(isAerodromeNotam(list[0])).toBe(true);
+    expect(isAerodromeNotam(list[1])).toBe(false);
+    expect(isAerodromeNotam(list[4])).toBe(false);
+    expect(mapNotams(list).map((m) => m.key)).toEqual(['A2/26', 'A5/26']);
+    expect(groupNotams(list).map((g) => [g.icao, g.notams.map((n) => n.key)])).toEqual([
+      ['LGTT', ['A1/26', 'A4/26']],
+      ['LGMG', ['A3/26']],
+      [null, ['A2/26', 'A5/26']],
+    ]);
+    expect(groupNotams([])).toEqual([]);
   });
   test('the areas the text describes replace the Q-line circle', () => {
     const square = notamRings(

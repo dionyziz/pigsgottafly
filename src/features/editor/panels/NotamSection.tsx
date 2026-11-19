@@ -4,7 +4,16 @@
 // and its leg in the navlog strip.
 import { useEffect, useRef, useState } from 'react';
 
-import { type Notam, notamLimits, notamSubject, notamValidity, notamWhere, visibleNotams } from '../../../data/notams';
+import {
+  groupNotams,
+  type Notam,
+  notamLimits,
+  notamSubject,
+  notamValidity,
+  notamWhere,
+  visibleNotams,
+} from '../../../data/notams';
+import { aerodrome } from '../../../data/ref';
 import { fmtClockMs } from '../../../shared/format';
 import { Chip, Icon } from '../../../ui';
 import { useNotams } from '../notams';
@@ -111,16 +120,31 @@ export function NotamSection() {
             </p>
             {briefing.message && <p className="ep-note warn-text">{briefing.message}</p>}
             {list.length > 0 ? (
-              <ul className="ep-notam-list">
-                {list.map((n) => (
-                  <NotamItem
-                    key={n.key}
-                    n={n}
-                    selected={selected === n.key}
-                    onSelect={() => select(selected === n.key ? null : n.key)}
-                  />
-                ))}
-              </ul>
+              groupNotams(list).map((g) => (
+                <div key={g.icao ?? ''} className="ep-notam-group" data-testid="notam-group" data-icao={g.icao ?? ''}>
+                  <h4 className="ep-notam-group-head">
+                    {g.icao ? (
+                      <>
+                        <span className="mono">{g.icao}</span>
+                        <span className="muted">{aerodrome(g.icao)?.name ?? ''}</span>
+                      </>
+                    ) : (
+                      'Airspace'
+                    )}
+                    <span className="muted tnum">{g.notams.length}</span>
+                  </h4>
+                  <ul className="ep-notam-list">
+                    {g.notams.map((n) => (
+                      <NotamItem
+                        key={n.key}
+                        n={n}
+                        selected={selected === n.key}
+                        onSelect={() => select(selected === n.key ? null : n.key)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))
             ) : (
               <p className="ep-note muted">No NOTAM concerns this flight.</p>
             )}

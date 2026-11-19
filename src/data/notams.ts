@@ -150,6 +150,29 @@ export function circleRing(center: { lat: number; lon: number }, radiusNm: numbe
   return out;
 }
 
+/** An aerodrome's NOTAM (item A is one aerodrome), as opposed to an airspace one (item A a FIR). */
+export function isAerodromeNotam(n: Pick<Notam, 'itemA' | 'fir'>): boolean {
+  return n.itemA.length === 1 && n.itemA[0] !== n.fir;
+}
+
+export interface NotamGroup {
+  /** The aerodrome's ICAO, or null for the airspace group. */
+  icao: string | null;
+  notams: Notam[];
+}
+
+/** NOTAMs by aerodrome, in the order the list has them, then the airspace ones. */
+export function groupNotams(list: Notam[]): NotamGroup[] {
+  const ads = new Map<string, Notam[]>();
+  const air: Notam[] = [];
+  for (const n of list) {
+    if (!isAerodromeNotam(n)) air.push(n);
+    else ads.set(n.itemA[0], [...(ads.get(n.itemA[0]) ?? []), n]);
+  }
+  const out: NotamGroup[] = [...ads].map(([icao, notams]) => ({ icao, notams }));
+  return air.length ? [...out, { icao: null, notams: air }] : out;
+}
+
 /** The NOTAMs a list shows: relevant ones, or all of them with "show all". */
 export function visibleNotams(b: NotamBriefing | null, showAll: boolean): Notam[] {
   if (!b) return [];

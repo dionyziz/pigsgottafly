@@ -1,11 +1,11 @@
 // NOTAM areas on the map: the areas each NOTAM's text describes (polygons, circles, corridors),
 // else its Q-line circle, drawn translucent with a dashed outline (relevant: amber; hidden ones,
 // with "show all": grey; the one picked in the panel or on the map: accent). FIR-wide NOTAMs and
-// those without a position have no area. Hovering shows the NOTAM's ID, validity and limits; a click opens the
+// those without a position have no area; aerodrome NOTAMs are not drawn (the panel lists them). Hovering shows the NOTAM's ID, validity and limits; a click opens the
 // details (NotamPopover). Self-contained: adds its own source and layers on demand.
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 
-import { notamRings, ringsSizeNm } from '../../../data/notams';
+import { isAerodromeNotam, notamRings, ringsSizeNm } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
 import { CHART } from './style';
 
@@ -25,6 +25,7 @@ export const NOTAM_LAYER_IDS = ['notam-fill', 'notam-line'] as const;
 export function mapNotams(list: Notam[]): MapNotam[] {
   const out: MapNotam[] = [];
   for (const n of list) {
+    if (isAerodromeNotam(n)) continue;
     const rings = notamRings(n);
     if (rings.length) out.push({ key: n.key, relevant: n.relevant, rings, sizeNm: ringsSizeNm(rings) });
   }
