@@ -3,14 +3,20 @@
 // Relevance (PLAN-v3 "NOTAMs relevant to the flight"): a NOTAM is shown when ALL of
 //   - time:     its validity [B, C] overlaps block start − margin … block stop + margin (C = PERM: open);
 //   - place:    item A is an aerodrome the flight uses (departure, destination, intermediate stop,
-//               alternate), or its Q-line circle (centre + radius) comes within the route corridor
-//               (radius 999 = the whole FIR; no coordinates = cannot tell, kept);
-//   - vertical: its Q-line lower limit is not above the highest planned altitude;
-//   - type:     not a checklist (QKKKK) or a cancellation, and not IFR-only (Q traffic 'I') unless it
-//               concerns an aerodrome the flight uses.
+//               alternate), or its area comes within the route corridor: the areas item E
+//               describes (src/shared/notamAreas.ts), else the Q-line circle (centre + radius;
+//               FIR_WIDE_NM or more = the whole FIR; no coordinates = cannot tell, kept);
+//   - vertical: its Q-line lower limit is not above the highest planned altitude, and its upper
+//               limit is not BELOW_LEG_FT or more under the nearest leg's planned altitude (unless
+//               it is within TERMINAL_NM of an aerodrome of the route: climb-out and approach);
+//   - type:     not a checklist (QKKKK), a cancellation, a FIR-wide notice (QAFXX: statements on
+//               other NOTAMs, sanctions, entry rules for foreign operators) or an AIP change trigger
+//               (QAFTT), and not IFR-only (Q traffic 'I') unless it concerns an aerodrome the flight
+//               uses.
 // Everything else is returned with relevant = false and the reasons, for "show all".
 import { distanceNm, pointSegDistNm } from '../../src/calc/nav.js';
 import type { Notam } from '../../src/shared/briefing.js';
+import { areasToRoute, FIR_WIDE_NM, parseNotamAreas } from '../../src/shared/notamAreas.js';
 import type { LatLon } from '../../src/shared/types.js';
 import type { AutorouterNotamRow } from './autorouter.js';
 
@@ -328,6 +334,7 @@ export function normalizeNotam(r: AutorouterNotamRow): Notam | null {
     upperFt,
     center,
     radiusNm,
+    areas: parseNotamAreas(text, { center, radiusNm }),
     from,
     to,
     estimated,
@@ -362,7 +369,16 @@ export interface RelevanceInput {
   window: { from: number; to: number };
   maxAltFt: number;
   corridorNm: number;
+  /** Planned altitude per leg, ft (NaN: unknown); with the route's aerodromes, for areas far below. */
+  legAltFt?: number[];
+  /** The route's aerodromes (departure, stops, destination). */
+  fields?: LatLon[];
 }
+
+/** An area this far under the leg's planned altitude is not in the way… */
+export const BELOW_LEG_FT = 1000;
+/** …unless it is this close to an aerodrome of the route. */
+export const TERMINAL_NM = 5;
 
 /** Distance (NM) from a point to the route polyline and the index of the nearest leg. */
 export function distanceToRoute(p: LatLon, route: LatLon[]): { dist: number; leg: number | null } {
@@ -386,11 +402,19 @@ export function assessNotams(list: Notam[], inp: RelevanceInput): Notam[] {
     const used = n.itemA.filter((a) => inp.aerodromes.has(a));
     for (const a of used) show.push(`${inp.aerodromes.get(a)} ${a}`);
     if (!used.length) {
-      if (n.center && n.radiusNm !== null && n.radiusNm < 999) {
-        const { dist, leg } = distanceToRoute(n.center, inp.route);
-        const gap = dist - n.radiusNm;
+      const areas = n.areas ?? [];
+      if (areas.length || (n.center && n.radiusNm !== null && n.radiusNm < FIR_WIDE_NM)) {
+        const near = areas.length ? areasToRoute(areas, inp.route) : null;
+        const { dist, leg } = near ?? distanceToRoute(n.center!, inp.route);
+        const gap = near ? dist : dist - n.radiusNm!;
         n.legIndex = leg;
+        const legAlt = leg !== null ? (inp.legAltFt?.[leg] ?? NaN) : NaN;
+        const toField = (f: LatLon) =>
+          areas.length ? areasToRoute(areas, [f]).dist : distanceNm(n.center!, f) - n.radiusNm!;
+        const terminal = (inp.fields ?? []).some((f) => toField(f) <= TERMINAL_NM);
         if (gap > inp.corridorNm) hide.push(`${Math.round(gap)} NM from the route`);
+        else if (n.upperFt <= legAlt - BELOW_LEG_FT && !terminal)
+          hide.push(`below the planned altitude (up to ${n.upperText ?? `FL${pad(n.upperFt / 100, 3)}`})`);
         else
           show.push(
             gap <= 0
@@ -403,6 +427,8 @@ export function assessNotams(list: Notam[], inp: RelevanceInput): Notam[] {
     }
     if (n.lowerFt > inp.maxAltFt) hide.push(`above the planned altitudes (from FL${pad(n.lowerFt / 100, 3)})`);
     if (n.qcode.startsWith('QKK')) hide.push('checklist');
+    if (n.qcode === 'QAFXX') hide.push('FIR-wide notice');
+    if (n.qcode === 'QAFTT') hide.push('AIP change notice');
     if (n.type === 'C') hide.push(`cancels ${n.refers ?? 'a NOTAM'}`);
     if (n.traffic === 'I' && !used.length) hide.push('IFR only');
     n.relevant = hide.length === 0;

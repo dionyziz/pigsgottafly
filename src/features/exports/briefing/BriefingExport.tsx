@@ -1,5 +1,5 @@
-// Briefing export: the NOTAMs relevant to the flight (decoded, with the ICAO text), then the hidden
-// ones in one line each with the reason. A4 portrait sheets (named page "xp"); a long list flows on
+// Briefing export: the NOTAMs relevant to the flight (decoded, with the ICAO text); the ones
+// filtered out are only counted. A4 portrait sheets (named page "xp"); a long list flows on
 // to further pages.
 //
 // Usage (ExportPage): <BriefingExport flight={flight} />. Loads the briefing itself.
@@ -71,7 +71,7 @@ export function BriefingExport({ flight }: { flight: Flight }) {
             {busy
               ? 'Loading…'
               : m.status === 'ok'
-                ? `${m.relevant.length} relevant, ${m.hidden.length} hidden`
+                ? `${m.relevant.length} relevant, ${m.hiddenCount} hidden`
                 : 'Not loaded'}
           </Chip>
         }
@@ -96,7 +96,7 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
       <header className="xp-head">
         <h1>NOTAM briefing</h1>
         <span className="brief-count">
-          {m.status === 'ok' ? `${m.relevant.length} relevant · ${m.hidden.length} not relevant` : ''}
+          {m.status === 'ok' ? `${m.relevant.length} relevant · ${m.hiddenCount} filtered out` : ''}
         </span>
       </header>
       <dl className="xp-fields">
@@ -161,24 +161,6 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
               <pre className="brief-raw">{r.raw}</pre>
             </article>
           ))}
-
-          {m.hidden.length > 0 && (
-            <>
-              <h2 className="brief-h">Not relevant (filtered out)</h2>
-              <table className="brief-hidden">
-                <tbody>
-                  {m.hidden.map((r) => (
-                    <tr key={r.key}>
-                      <td className="brief-key">{r.key}</td>
-                      <td>{r.where}</td>
-                      <td>{r.subject}</td>
-                      <td>{r.reasons}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
         </>
       )}
       <footer className="xp-sign brief-sign" data-testid="briefing-ack">

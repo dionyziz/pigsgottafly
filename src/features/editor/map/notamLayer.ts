@@ -1,20 +1,21 @@
-// NOTAM areas on the map: each NOTAM with a Q-line circle (centre + radius below 999 NM) is drawn
-// as a translucent circle with a dashed outline (relevant: amber; hidden ones, with "show all":
-// grey; the one picked in the panel or on the map: accent). FIR-wide NOTAMs and those without a
-// position have no area. Hovering shows the NOTAM's ID, validity and limits; a click opens the
+// NOTAM areas on the map: the areas each NOTAM's text describes (polygons, circles, corridors),
+// else its Q-line circle, drawn translucent with a dashed outline (relevant: amber; hidden ones,
+// with "show all": grey; the one picked in the panel or on the map: accent). FIR-wide NOTAMs and
+// those without a position have no area. Hovering shows the NOTAM's ID, validity and limits; a click opens the
 // details (NotamPopover). Self-contained: adds its own source and layers on demand.
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 
-import { circleRing, hasNotamArea } from '../../../data/notams';
+import { notamRings, ringsSizeNm } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
 import { CHART } from './style';
 
 export interface MapNotam {
   key: string;
   relevant: boolean;
-  ring: [number, number][];
-  /** Radius, NM (smaller areas sort first under the cursor). */
-  radiusNm: number;
+  /** Outline rings, [lon, lat], closed. */
+  rings: [number, number][][];
+  /** Size, NM (smaller areas sort first under the cursor). */
+  sizeNm: number;
 }
 
 const SRC = 'notam-areas';
@@ -24,8 +25,8 @@ export const NOTAM_LAYER_IDS = ['notam-fill', 'notam-line'] as const;
 export function mapNotams(list: Notam[]): MapNotam[] {
   const out: MapNotam[] = [];
   for (const n of list) {
-    if (!hasNotamArea(n)) continue;
-    out.push({ key: n.key, relevant: n.relevant, ring: circleRing(n.center!, n.radiusNm!), radiusNm: n.radiusNm! });
+    const rings = notamRings(n);
+    if (rings.length) out.push({ key: n.key, relevant: n.relevant, rings, sizeNm: ringsSizeNm(rings) });
   }
   return out;
 }
@@ -37,7 +38,7 @@ function featureCollection(list: MapNotam[], selected: string | null) {
       type: 'Feature',
       id: i,
       properties: { key: n.key, relevant: n.relevant ? 1 : 0, selected: n.key === selected ? 1 : 0 },
-      geometry: { type: 'Polygon', coordinates: [n.ring] },
+      geometry: { type: 'MultiPolygon', coordinates: n.rings.map((r) => [r]) },
     })),
   };
 }
@@ -118,5 +119,5 @@ export function notamKeysAt(m: MlMap, point: { x: number; y: number }, list: Map
     const n = typeof f.id === 'number' ? list[f.id] : undefined;
     if (n) hits.set(n.key, n);
   }
-  return [...hits.values()].sort((a, b) => a.radiusNm - b.radiusNm).map((n) => n.key);
+  return [...hits.values()].sort((a, b) => a.sizeNm - b.sizeNm).map((n) => n.key);
 }

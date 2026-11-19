@@ -8,6 +8,7 @@ import {
   fmtNotamLevel,
   hasNotamArea,
   notamLimits,
+  notamRings,
   notamsPath,
   notamSubject,
   notamValidity,
@@ -108,9 +109,10 @@ describe('NOTAM areas on the map', () => {
     expect(ring[0][0]).toBeCloseTo(23.9, 5);
     expect(ring[0][1]).toBeGreaterThan(38.2);
   });
-  test('only Q-line circles below 999 NM get an area', () => {
+  test('only Q-line circles below FIR size get an area', () => {
     expect(hasNotamArea(notam())).toBe(true);
     expect(hasNotamArea(notam({ radiusNm: 999 }))).toBe(false);
+    expect(hasNotamArea(notam({ radiusNm: 341 }))).toBe(false);
     expect(hasNotamArea(notam({ center: null }))).toBe(false);
     expect(hasNotamArea(notam({ radiusNm: null }))).toBe(false);
     const marks = mapNotams([
@@ -118,10 +120,54 @@ describe('NOTAM areas on the map', () => {
       notam({ key: 'B/26', radiusNm: 999 }),
       notam({ key: 'C/26', relevant: false, radiusNm: 2 }),
     ]);
-    expect(marks.map((m) => [m.key, m.relevant, m.radiusNm])).toEqual([
-      ['A1234/26', true, 5],
-      ['C/26', false, 2],
+    expect(marks.map((m) => [m.key, m.relevant, m.rings.length])).toEqual([
+      ['A1234/26', true, 1],
+      ['C/26', false, 1],
     ]);
+    expect(marks[1].sizeNm).toBeLessThan(marks[0].sizeNm);
+  });
+  test('the areas the text describes replace the Q-line circle', () => {
+    const square = notamRings(
+      notam({
+        radiusNm: 300,
+        areas: [
+          {
+            kind: 'polygon',
+            points: [
+              { lat: 38, lon: 23 },
+              { lat: 38.1, lon: 23 },
+              { lat: 38.1, lon: 23.1 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(square).toEqual([
+      [
+        [23, 38],
+        [23, 38.1],
+        [23.1, 38.1],
+        [23, 38],
+      ],
+    ]);
+    // a corridor: a disc per point and a band per segment
+    const line = notamRings(
+      notam({
+        areas: [
+          {
+            kind: 'line',
+            points: [
+              { lat: 36, lon: 27 },
+              { lat: 36.5, lon: 27 },
+            ],
+            halfWidthNm: 1,
+          },
+        ],
+      }),
+    );
+    expect(line).toHaveLength(3);
+    expect(line[2][0][1]).toBeCloseTo(36, 5);
+    expect(Math.abs(line[2][0][0] - 27) * 60 * Math.cos((36 * Math.PI) / 180)).toBeCloseTo(1, 2);
   });
 });
 
@@ -151,7 +197,7 @@ describe('briefing export model', () => {
       leg: 'leg 1 LGTT – LGMG',
     });
     expect(m.relevant[0].raw).toContain('Q) LGGG/QRTCA');
-    expect(m.hidden).toEqual([expect.objectContaining({ key: 'A2/26', reasons: 'IFR only', leg: null })]);
+    expect(m.hiddenCount).toBe(1);
     expect(m.filter).toBe('lower limit at or below 4500 ft · within 10 NM of the route');
     expect(m.source).toBe('autorouter (EAD), fetched 2026-11-16 08:50Z');
   });

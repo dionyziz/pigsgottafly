@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { generateAddressees, northOfBoundary } from '../../api/_lib/addressees';
 import type { AutorouterSettings } from '../../api/_lib/autorouter';
-import { normalizeNotam } from '../../api/_lib/notams';
+import { assessNotams, normalizeNotam } from '../../api/_lib/notams';
 import { createServer } from '../../server/server';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import airspaces from '../../src/data/ref/airspaces.json';
@@ -197,6 +197,41 @@ describe('NOTAM decoding', () => {
   });
 });
 
+describe('NOTAM relevance: areas far below the leg', () => {
+  const box = (lat: number, lon: number) =>
+    normalizeNotam(
+      notam({
+        lat: Math.round(lat * G),
+        lon: Math.round(lon * G),
+        radius: 1,
+        upper: 4,
+        iteme: `UAV AREA: ${dms(lat, 'N')} ${dms(lon, 'E')} - ${dms(lat + 0.01, 'N')} ${dms(lon, 'E')} - ${dms(lat + 0.01, 'N')} ${dms(lon + 0.01, 'E')}`,
+      }),
+    )!;
+  const dms = (v: number, h: string) => {
+    const d = Math.floor(v),
+      m = Math.floor((v - d) * 60),
+      s = Math.round(((v - d) * 60 - m) * 60);
+    return `${String(d).padStart(h === 'E' ? 3 : 2, '0')}${String(m).padStart(2, '0')}${String(s).padStart(2, '0')}${h}`;
+  };
+  test('SFC–400 ft under a 4500 ft leg: hidden, unless near an aerodrome of the route', () => {
+    const field = { lat: 38.11, lon: 23.78 };
+    const route = [field, { lat: 37.75, lon: 23.55 }, { lat: 37.5, lon: 23.5 }];
+    const [far, near] = assessNotams([box(37.8, 23.6), box(38.12, 23.79)], {
+      route,
+      aerodromes: new Map(),
+      window: { from: at('06:00'), to: at('12:00') },
+      maxAltFt: 4500,
+      corridorNm: 10,
+      legAltFt: [4500, 4500],
+      fields: [field],
+    }).sort((a, b) => a.center!.lat - b.center!.lat);
+    expect(far.relevant).toBe(false);
+    expect(far.reasons[0]).toMatch(/^below the planned altitude/);
+    expect(near.relevant).toBe(true);
+  });
+});
+
 describe('NOTAM briefing route', () => {
   const ar = mockAutorouter();
   let api: Awaited<ReturnType<typeof start>>;
@@ -228,6 +263,17 @@ describe('NOTAM briefing route', () => {
       notam({ number: 7, code23: 'KK', code45: 'KK' }), // checklist
       notam({ number: 8, itema: ['LGMG'], traffic: 'I', code23: 'IC', code45: 'AS', lat: 0, lon: 0 }), // IFR, but at the destination
       notam({ number: 9, itema: ['LGSR'], lat: Math.round(36.4 * G), lon: Math.round(25.48 * G) }), // not queried
+      // a statement about another NOTAM, its Q-line circle covering the FIR
+      notam({ number: 10, code23: 'AF', code45: 'XX', radius: 341, iteme: 'NAVIGATIONAL WARNING TO ALL CONCERNED: …' }),
+      // a wide Q-line circle over the route; the area itself, in item E, is off Crete
+      notam({
+        number: 11,
+        code23: 'WE',
+        code45: 'LW',
+        radius: 150,
+        iteme:
+          'EXER WILL TAKE PLACE WI AREA AS FLW: 350000N 0250000E - 350000N 0251000E - 345000N 0251000E - 350000N 0250000E.',
+      }),
     ];
   });
   afterAll(() => api.close());
@@ -236,7 +282,7 @@ describe('NOTAM briefing route', () => {
     const r = await a.call('GET', `flights/${fid}/notams`);
     expect(r.status).toBe(200);
     const br = r.body;
-    expect(br).toMatchObject({ status: 'ok', source: 'autorouter', relevantCount: 3, hiddenCount: 5 });
+    expect(br).toMatchObject({ status: 'ok', source: 'autorouter', relevantCount: 3, hiddenCount: 7 });
     expect(br.locations).toEqual(expect.arrayContaining(['LGTT', 'LGMG', 'LGGG', 'LGEL']));
     expect(br.locations).not.toContain('LGSR');
     const by = Object.fromEntries(br.notams.map((n: any) => [n.key, n]));
@@ -255,6 +301,9 @@ describe('NOTAM briefing route', () => {
     expect(by['A0005/26'].reasons[0]).toMatch(/above the planned altitudes/);
     expect(by['A0006/26'].reasons).toContain('IFR only');
     expect(by['A0007/26'].reasons).toContain('checklist');
+    expect(by['A0010/26'].reasons).toContain('FIR-wide notice');
+    expect(by['A0011/26'].areas).toEqual([{ kind: 'polygon', points: expect.any(Array) }]);
+    expect(by['A0011/26'].reasons[0]).toMatch(/^\d+ NM from the route/);
     expect(br.window.from).toBe(at('07:00'));
     expect(br.window.to).toBeGreaterThan(at('09:00'));
     // the query sent: validity window in seconds, item A list as JSON

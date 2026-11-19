@@ -46,7 +46,13 @@ export const routes: Route[] = [
       );
       const p = { maxAltFt, corridorNm, marginMin: MARGIN_MIN };
       // compared as a string: JSONB does not keep key order
-      const paramsKey = JSON.stringify({ ...p, window, locations, route: ctx.route.map((r) => [r.lat, r.lon]) });
+      const paramsKey = JSON.stringify({
+        ...p,
+        window,
+        locations,
+        route: ctx.route.map((r) => [r.lat, r.lon]),
+        alts: ctx.altitudesFt,
+      });
       const base = { window, params: p, locations };
 
       const [cached] = await db.query<{ fetched: string; params: { key?: string }; doc: NotamBriefing }>(
@@ -103,6 +109,8 @@ export const routes: Route[] = [
         window,
         maxAltFt,
         corridorNm,
+        legAltFt: ctx.altitudesFt,
+        fields: ctx.route.filter((p) => p.kind === 'aerodrome'),
       });
       const relevantCount = assessed.filter((n) => n.relevant).length;
       const fetched = Date.now();

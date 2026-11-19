@@ -1,9 +1,10 @@
 // NOTAM briefing on the client: GET /api/flights/:id/notams (the server fetches, decodes and
 // assesses relevance, see api/_lib/notams.ts) and pure helpers that turn a Notam into the texts
-// the editor panel, the map and the briefing export show, plus the map geometry of its Q-line
-// circle. No DOM here; unit-tested in tests/unit/data/notams.test.ts.
+// the editor panel, the map and the briefing export show, plus its map geometry (the areas its
+// text describes, else its Q-line circle). No DOM here; unit-tested in tests/unit/data/notams.test.ts.
 import type { Notam, NotamBriefing } from '../shared/briefing';
 import { fmtAltitude, fmtDateTimeMs } from '../shared/format';
+import { FIR_WIDE_NM, type NotamArea } from '../shared/notamAreas';
 import { request } from './api';
 
 export type { Notam, NotamBriefing };
@@ -67,9 +68,65 @@ export function notamWhere(n: Pick<Notam, 'itemA' | 'fir'>): string {
   return n.itemA.length ? n.itemA.join(' ') : n.fir;
 }
 
-/** The NOTAM's area on the map: a Q-line circle that is not FIR-wide (radius < 999 NM). */
+/** The NOTAM has a Q-line circle that is not FIR-wide (radius under FIR_WIDE_NM). */
 export function hasNotamArea(n: Pick<Notam, 'center' | 'radiusNm'>): boolean {
-  return !!n.center && n.radiusNm !== null && n.radiusNm > 0 && n.radiusNm < 999;
+  return !!n.center && n.radiusNm !== null && n.radiusNm > 0 && n.radiusNm < FIR_WIDE_NM;
+}
+
+type Ring = [number, number][];
+const lonLat = (p: { lat: number; lon: number }): [number, number] => [p.lon, p.lat];
+
+/** A corridor of halfWidthNm either side of a line: a quadrilateral per segment and a disc per point. */
+function corridorRings(points: { lat: number; lon: number }[], halfWidthNm: number): Ring[] {
+  const w = Math.max(halfWidthNm, 0.2);
+  const out: Ring[] = points.map((p) => circleRing(p, w, 24));
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i],
+      b = points[i + 1];
+    const k = Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180);
+    const dx = (b.lon - a.lon) * k,
+      dy = b.lat - a.lat;
+    const len = Math.hypot(dx, dy) || 1;
+    // the normal, w NM long, in degrees
+    const nLat = ((dx / len) * w) / 60,
+      nLon = ((-dy / len) * w) / 60 / k;
+    const off = (p: typeof a, s: number): [number, number] => [p.lon + s * nLon, p.lat + s * nLat];
+    out.push([off(a, 1), off(b, 1), off(b, -1), off(a, -1), off(a, 1)]);
+  }
+  return out;
+}
+
+function areaRings(a: NotamArea): Ring[] {
+  if (a.kind === 'circle') return [circleRing(a.center, a.radiusNm, 48)];
+  if (a.kind === 'line') return corridorRings(a.points, a.halfWidthNm);
+  const ring = a.points.map(lonLat);
+  return [[...ring, ring[0]]];
+}
+
+/**
+ * The NOTAM's outline on the map as GeoJSON rings ([lon, lat], closed): the areas its text
+ * describes, else its Q-line circle; [] when it has neither (FIR-wide, no position).
+ */
+export function notamRings(n: Pick<Notam, 'center' | 'radiusNm' | 'areas'>): Ring[] {
+  if (n.areas?.length) return n.areas.flatMap(areaRings);
+  return hasNotamArea(n) ? [circleRing(n.center!, n.radiusNm!)] : [];
+}
+
+/** Rough size of the outline, NM (√ of the bounding box area): smaller ones are picked first. */
+export function ringsSizeNm(rings: Ring[]): number {
+  let w = Infinity,
+    s = Infinity,
+    e = -Infinity,
+    no = -Infinity;
+  for (const r of rings)
+    for (const [lon, lat] of r) {
+      w = Math.min(w, lon);
+      e = Math.max(e, lon);
+      s = Math.min(s, lat);
+      no = Math.max(no, lat);
+    }
+  if (!Number.isFinite(w)) return 0;
+  return Math.sqrt((e - w) * 60 * Math.cos((((s + no) / 2) * Math.PI) / 180) * (no - s) * 60);
 }
 
 const R_NM = 3440.065;

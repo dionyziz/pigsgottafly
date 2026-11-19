@@ -526,9 +526,9 @@ export function RouteMap(props: RouteMapProps) {
     const mk = key && layers.notams ? notamMarks.find((n) => n.key === key) : undefined;
     if (!m || !loaded || !mk) return;
     const view = m.getBounds();
-    if (mk.ring.some((c) => view.contains(c))) return;
+    if (mk.rings.some((r) => r.some((c) => view.contains(c)))) return;
     const b = new maplibregl.LngLatBounds();
-    for (const c of mk.ring) b.extend(c);
+    for (const c of mk.rings.flat()) b.extend(c);
     m.fitBounds(b, { padding: 80, maxZoom: Math.max(m.getZoom(), 8) });
   });
   useEffect(() => showNotam(selectedNotam), [selectedNotam, loaded]);

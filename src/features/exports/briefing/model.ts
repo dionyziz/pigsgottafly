@@ -32,7 +32,8 @@ export interface BriefingModel {
   status: NotamBriefing['status'] | 'loading';
   message: string | null;
   relevant: BriefingRow[];
-  hidden: BriefingRow[];
+  /** NOTAMs filtered out (not listed). */
+  hiddenCount: number;
 }
 
 function row(n: Notam, legName: (i: number) => string): BriefingRow {
@@ -69,7 +70,7 @@ export function briefingModel(input: { doc: FlightDoc; title: string; briefing: 
       status: 'loading',
       message: null,
       relevant: [],
-      hidden: [],
+      hiddenCount: 0,
     };
   }
   const window = `${fmtNotamTime(b.window.from)} – ${fmtNotamTime(b.window.to)} (block start − ${b.params.marginMin} min … block stop + ${b.params.marginMin} min)`;
@@ -88,6 +89,6 @@ export function briefingModel(input: { doc: FlightDoc; title: string; briefing: 
     status: b.status,
     message: b.message,
     relevant: ok ? b.notams.filter((n) => n.relevant).map((n) => row(n, legName)) : [],
-    hidden: ok ? b.notams.filter((n) => !n.relevant).map((n) => row(n, legName)) : [],
+    hiddenCount: ok ? b.notams.filter((n) => !n.relevant).length : 0,
   };
 }

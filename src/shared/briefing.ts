@@ -1,6 +1,7 @@
 // NOTAM briefing and flight-plan filing: the bodies of the /api routes that serve them
 // (api/_lib/routes/notams.ts, api/_lib/routes/filing.ts). See PLAN-v3.md "NOTAMs relevant to the
 // flight" and "Filing the flight plan via autorouter".
+import type { NotamArea } from './notamAreas.js';
 import type { EpochMs, Id } from './types.js';
 
 // ---------------------------------------------------------------- NOTAMs
@@ -36,6 +37,8 @@ export interface Notam {
   /** Q line centre and radius; null when not given. */
   center: { lat: number; lon: number } | null;
   radiusNm: number | null;
+  /** The areas item E describes (src/shared/notamAreas.ts); empty: the Q-line circle stands in. */
+  areas?: NotamArea[];
   /** Items B and C; to = null: permanent. */
   from: EpochMs;
   to: EpochMs | null;
