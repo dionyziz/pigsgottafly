@@ -47,6 +47,7 @@ function mockAutorouter() {
     rejectTokenOnce: false,
     status: 'filed',
     fileError: '',
+    parseError: false,
   };
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -80,8 +81,15 @@ function mockAutorouter() {
         lim = +url.searchParams.get('limit')!;
       return json(200, { total: rows.length, rows: rows.slice(off, off + lim) });
     }
-    if (path === '/flightplan/file' && init?.method === 'POST') {
+    if (path === '/router' && init?.method === 'POST') return new Response('LGTT-LGMG-6aff6ee6fbb39', { status: 200 });
+    if (path === '/flightplan/file/LGTT-LGMG-6aff6ee6fbb39' && init?.method === 'POST') {
       if (state.fileError) return json(200, { error: state.fileError });
+      if (state.parseError)
+        return json(502, {
+          error: 'flight plan parsing failed',
+          code: 'PARSE_FAILED',
+          data: { error2: [{ errorcode: 'FPLAN_ITEM7_INVALIDCALLSIGN', text: 'invalid callsign' }] },
+        });
       return json(200, { flightid: 2763, trackingkey: 'L5ZS', queued: false });
     }
     let m = /^\/flightplan\/file\/(\d+)$/.exec(path);
@@ -303,10 +311,10 @@ describe('without autorouter', () => {
     expect(r).toMatchObject({ status: 'not-configured', source: null, notams: [] });
     expect(r.message).toMatch(/NOTAM source is not configured/);
   });
-  test('filing: "not enabled yet", actions refused with 503 and logged; addressees still proposed', async () => {
+  test('filing disabled: actions refused with 503 and logged; addressees still proposed', async () => {
     const s = (await a.call('GET', `flights/${fid}/filing`)).body;
     expect(s.enabled).toBe(false);
-    expect(s.reason).toMatch(/not enabled yet/);
+    expect(s.reason).toMatch(/not available|not enabled/);
     expect(s.filing).toBeNull();
     expect(s.addressees.map((x: any) => x.address)).toEqual(
       expect.arrayContaining(['LGMDZFZX', 'LGMDYXYK', 'LGTTZTZX', 'LGMGZPZX']),
@@ -361,7 +369,7 @@ describe('filing via autorouter (mocked)', () => {
       eobt: at('08:00'),
       addresses: ['LGGGZFZX', 'LGTTZTZX'],
     });
-    const sent = ar.calls.find((c) => c.path === '/flightplan/file')!;
+    const sent = ar.calls.find((c) => c.path === '/flightplan/file/LGTT-LGMG-6aff6ee6fbb39')!;
     expect(sent.body).toMatchObject({ fpl: FPL, addresses: ['LGGGZFZX', 'LGTTZTZX'], force: false });
     // filing twice is refused while the plan is open
     expect((await a.call('POST', `flights/${fid}/filing`, { fpl: FPL, addresses: [] })).status).toBe(409);
@@ -386,10 +394,15 @@ describe('filing via autorouter (mocked)', () => {
     expect(s.filing).toBeNull();
     expect(s.log[0]).toMatchObject({ action: 'file', ok: false });
     ar.state.fileError = '';
+    ar.state.parseError = true;
+    const p = await a.call('POST', `flights/${f2}/filing`, { fpl: FPL, addresses: [] });
+    expect(p.status).toBe(400);
+    expect(p.body.error).toMatch(/parsing failed: invalid callsign/);
+    ar.state.parseError = false;
   });
   test('the plan must be for the flight’s aircraft (item 7 and REG/)', async () => {
     const f2 = await newFlight(a);
-    const sent = () => ar.calls.filter((c) => c.path === '/flightplan/file').length;
+    const sent = () => ar.calls.filter((c) => c.path === '/flightplan/file/LGTT-LGMG-6aff6ee6fbb39').length;
     const before = sent();
     for (const fpl of [
       FPL.replace('FPL-SXASV', 'FPL-SXABC'),

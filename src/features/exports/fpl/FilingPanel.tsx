@@ -3,8 +3,8 @@
 //   - the AFTN addressees the server proposes from AIP Greece ENR 1.11 (api/_lib/addressees.ts),
 //     each with why it is there, for review: untick to leave one out, add one by hand;
 //   - File / Delay / Cancel / Refresh status, with the plan's status and this flight's filing log;
-//   - while the server has no autorouter API access, a clear "filing not enabled yet" state (the
-//     buttons stay disabled; the addressees are still shown, for filing by other means).
+//   - when the server cannot file, why not (the buttons stay disabled; the addressees are still
+//     shown, for filing by other means).
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
 import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 

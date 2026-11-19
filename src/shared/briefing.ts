@@ -132,7 +132,7 @@ export interface FilingLogEntry {
 }
 
 export interface FilingState {
-  /** False until autorouter API access is granted and configured: show "filing not enabled yet". */
+  /** False when the server cannot file (no autorouter account, filing off, pilot not listed). */
   enabled: boolean;
   /** Why filing is disabled (null when enabled). */
   reason: string | null;

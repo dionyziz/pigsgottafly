@@ -5,9 +5,9 @@
 //   POST /flights/:id/filing/cancel          { reason }
 //   POST /flights/:id/filing/refresh         poll the status
 //   GET  /filing/log                         the pilot's filing actions
-// Filing stays disabled ("filing not enabled yet", 503 on the actions) until the deployment sets
-// AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD and AUTOROUTER_FILING=1 (API access granted). Every action,
-// refused or not, is logged for the pilot.
+// Filing is disabled (503 on the actions, with the reason) unless the deployment sets
+// AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD and AUTOROUTER_FILING=1. Every action, refused or not, is
+// logged for the pilot.
 // The autorouter account is the deployment's own and filing sends real ATC messages, so:
 //   - only the pilots on AUTOROUTER_PILOTS (default ALLOWED_EMAILS; empty = nobody in Google mode)
 //     get the client (ctx.autorouter; app.ts), everyone else is refused like "not enabled";
@@ -60,13 +60,12 @@ export function filingAvailability(
   if (!ar)
     return {
       enabled: false,
-      reason:
-        'Filing is not enabled yet: autorouter API access has been requested and is not configured on this server.',
+      reason: 'Filing is not available: the autorouter account is not configured on this server.',
     };
   if (!ar.filingEnabled)
     return {
       enabled: false,
-      reason: 'Filing is not enabled yet: waiting for autorouter to grant API access for filing.',
+      reason: 'Filing is not enabled on this server.',
     };
   return { enabled: true, reason: null };
 }

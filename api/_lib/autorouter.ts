@@ -7,13 +7,41 @@
 // Endpoints (wiki: authentication, notams, flightplan):
 //   POST /oauth2/token                    grant_type=client_credentials, client_id=email, client_secret=password
 //   GET  /notam?itemas=[…]&offset&limit&startvalidity&endvalidity
-//   POST /flightplan/file                 { fpl, addresses, skipdefaultaddresses, briefing } → { flightid, queued } | { error }
+//   POST /router                          { aircraftid: 0, fpl } → route id (plain text): the plan stored as a route,
+//                                         no route search (wiki: routes, "Use external route")
+//   POST /flightplan/file/<route id>      { fpl, addresses, skipdefaultaddresses, briefing } → { flightid, queued } | { error }
 //   GET  /flightplan/file/<id>            → { status, eobt, … }
 //   POST /flightplan/file/<id>/delay      { neweobt }  → { status: 'success' } | { error }
 //   POST /flightplan/file/<id>/cancel     { reason }   → { status: 'success' } | { error }
-// The wiki documents filing against a stored route (/flightplan/file/<routeid>); filing an ad-hoc
-// ICAO message without a route id is assumed to work at /flightplan/file and must be confirmed once
-// API access is granted (filing is disabled until then: AUTOROUTER_FILING=1).
+// Filing goes through a route: the plan is stored as one, then filed against it with the same plan
+// (the fpl given when filing is what is sent, not the route's copy with the built-in aircraft's
+// details). Filing is enabled with AUTOROUTER_FILING=1.
+
+/** A JSON body, or the text itself (the route id comes back as plain text). */
+function parseBody(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+/** Per-item parse errors (data.error2[].text), as autorouter reports a plan it cannot read. */
+function details(out: unknown): string[] {
+  const list = (out as { data?: { error2?: unknown } } | null)?.data?.error2;
+  return Array.isArray(list)
+    ? list.map((e: { text?: unknown }) => (typeof e?.text === 'string' ? e.text : '')).filter(Boolean)
+    : [];
+}
+const hasDetails = (out: unknown) => details(out).length > 0;
+
+/** The error an answer carries, with its details, or ''. */
+function errorText(out: unknown): string {
+  const e = out && typeof out === 'object' && 'error' in out ? out.error : null;
+  if (typeof e !== 'string' || !e) return '';
+  const d = details(out);
+  return d.length ? `${e}: ${d.join('; ')}` : e;
+}
 
 export const AUTOROUTER_BASE = 'https://api.autorouter.aero/v1.0';
 const TIMEOUT_MS = 15000;
@@ -23,7 +51,7 @@ const NOTAM_PAGE_ROWS = 100;
 export interface AutorouterSettings {
   email: string;
   password: string;
-  /** Filing enabled (API access granted and tested). NOTAMs only need the credentials. */
+  /** Filing enabled (AUTOROUTER_FILING=1). NOTAMs only need the credentials. */
   filing: boolean;
   /** Injectable for tests (nothing is ever sent to autorouter in tests). */
   fetch?: typeof fetch;
@@ -146,14 +174,15 @@ export class AutorouterClient {
         this.token = null;
         continue;
       }
-      const out: unknown = await res.json().catch(() => null);
-      const error = out && typeof out === 'object' && 'error' in out ? out.error : null;
+      const out = parseBody(await res.text());
+      const error = errorText(out);
+      // A plan autorouter cannot parse comes back as a 5xx with the reasons: the pilot's to fix.
       if (!res.ok)
         throw new AutorouterError(
-          `autorouter: ${typeof error === 'string' && error ? error : `HTTP ${res.status}`}`,
-          res.status >= 500 ? 502 : 400,
+          `autorouter: ${error || `HTTP ${res.status}`}`,
+          res.status >= 500 && !hasDetails(out) ? 502 : 400,
         );
-      if (typeof error === 'string' && error) throw new AutorouterError(`autorouter: ${error}`, 400);
+      if (error) throw new AutorouterError(`autorouter: ${error}`, 400);
       return out as T;
     }
   }
@@ -178,7 +207,11 @@ export class AutorouterClient {
   }
 
   async file(fpl: string, addresses: string[]): Promise<FiledPlan> {
-    const r = await this.call<{ flightid?: number | string; queued?: boolean }>('POST', '/flightplan/file', {
+    const routeId = await this.call<unknown>('POST', '/router', { aircraftid: 0, fpl });
+    if (typeof routeId !== 'string' || !routeId.trim())
+      throw new AutorouterError('autorouter: no route id in the answer');
+    const path = `/flightplan/file/${encodeURIComponent(routeId.trim())}`;
+    const r = await this.call<{ flightid?: number | string; queued?: boolean }>('POST', path, {
       fpl,
       addresses,
       skipdefaultaddresses: false,
