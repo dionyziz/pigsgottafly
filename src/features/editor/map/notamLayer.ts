@@ -60,7 +60,7 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
       id: 'notam-fill',
       type: 'fill',
       source: SRC,
-      paint: { 'fill-color': color, 'fill-opacity': ['case', ['==', ['get', 'selected'], 1], 0.2, 0.1] as never },
+      paint: { 'fill-color': color, 'fill-opacity': ['case', ['==', ['get', 'selected'], 1], 0.18, 0.04] as never },
     },
     before,
   );
@@ -71,9 +71,9 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
       source: SRC,
       paint: {
         'line-color': color,
-        'line-width': ['case', ['==', ['get', 'selected'], 1], 2.4, 1.4] as never,
+        'line-width': ['case', ['==', ['get', 'selected'], 1], 2.4, 1] as never,
         'line-dasharray': [3, 2],
-        'line-opacity': 0.9,
+        'line-opacity': ['case', ['==', ['get', 'selected'], 1], 0.9, 0.55] as never,
       },
     },
     before,

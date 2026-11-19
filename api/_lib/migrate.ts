@@ -35,6 +35,7 @@ import passengerEmail045 from './migrations/045_passenger_email.js';
 import { run as performanceSpeedsKt046 } from './migrations/046_performance_speeds_kt.js';
 import pilotFiles047 from './migrations/047_pilot_files.js';
 import refVfrPoints048 from './migrations/048_ref_vfr_points_2609.js';
+import fplCopies049 from './migrations/049_fpl_copies.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -76,6 +77,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '046_performance_speeds_kt', run: performanceSpeedsKt046 },
   { name: '047_pilot_files', sql: pilotFiles047 },
   { name: '048_ref_vfr_points_2609', sql: refVfrPoints048 },
+  { name: '049_fpl_copies', sql: fplCopies049 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

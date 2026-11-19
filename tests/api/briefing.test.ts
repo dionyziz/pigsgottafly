@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { generateAddressees, northOfBoundary } from '../../api/_lib/addressees';
 import type { AutorouterSettings } from '../../api/_lib/autorouter';
+import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { assessNotams, normalizeNotam, parseLimit, upperAmslFt } from '../../api/_lib/notams';
 import { createServer } from '../../server/server';
 import { TERRAIN_GRID } from '../../src/calc/terrain';
@@ -49,7 +50,15 @@ function mockAutorouter() {
     status: 'filed',
     fileError: '',
     parseError: false,
+    /** The message queue: what autorouter sent over AFTN. */
+    queue: [] as any[],
   };
+  let seq = 100;
+  const aftn = (message: string, recipients: string[]) => ({
+    id: ++seq,
+    type: 'fplan_aftn_out',
+    message: { fplid: 2763, message, priority: 'FF', recipients },
+  });
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -91,12 +100,28 @@ function mockAutorouter() {
           code: 'PARSE_FAILED',
           data: { error2: [{ errorcode: 'FPLAN_ITEM7_INVALIDCALLSIGN', text: 'invalid callsign' }] },
         });
+      const body = JSON.parse(String(init.body));
+      state.queue.push(
+        { id: 1, type: 'fplan_filed', message: { fplid: 2763 } },
+        aftn(body.fpl.replace(/\n-E\/[\s\S]*\)$/, ')'), ['LGMGZTZX']), // the alternate: without item 19
+        aftn(body.fpl.replace('REG/SXASV', 'REG/SXASV ORGN/KSTPXAAP'), [...body.addresses, 'LGTTYXYX']),
+        { id: 4, type: 'fplan_aftn_out', message: { fplid: 999, message: '(FPL-OTHER)', recipients: [] } },
+      );
       return json(200, { flightid: 2763, trackingkey: 'L5ZS', queued: false });
     }
     let m = /^\/flightplan\/file\/(\d+)$/.exec(path);
     if (m) return json(200, { flightplanid: +m[1], status: state.status, eobt: Math.floor(Date.now() / 1000) + 3600 });
     m = /^\/flightplan\/file\/(\d+)\/(delay|cancel)$/.exec(path);
-    if (m) return json(200, { status: 'success' });
+    if (m) {
+      if (m[2] === 'cancel') state.queue.push(aftn('(CNL-SXASV-LGTT0900-LGMG-DOF/261116)', ['LGGGZFZX', 'LGTTZTZX']));
+      return json(200, { status: 'success' });
+    }
+    if (path === '/message') return json(200, state.queue);
+    if (path === '/message/acknowledge') {
+      const ids = new Set(JSON.parse(String(init!.body)));
+      state.queue = state.queue.filter((x) => !ids.has(x.id));
+      return json(200, []);
+    }
     return json(404, { error: 'no such endpoint' });
   }) as typeof globalThis.fetch;
   return { calls, state, fetch };
@@ -301,6 +326,8 @@ describe('NOTAM briefing route', () => {
       notam({ number: 9, itema: ['LGSR'], lat: Math.round(36.4 * G), lon: Math.round(25.48 * G) }), // not queried
       // a statement about another NOTAM, its Q-line circle covering the FIR
       notam({ number: 10, code23: 'AF', code45: 'XX', radius: 341, iteme: 'NAVIGATIONAL WARNING TO ALL CONCERNED: …' }),
+      // an aerodrome-only NOTAM for an aerodrome near the route the flight does not use
+      notam({ number: 12, itema: ['LGEL'], scope: 'A', code23: 'MR', code45: 'LC', iteme: 'RWY CLOSED' }),
       // a wide Q-line circle over the route; the area itself, in item E, is off Crete
       notam({
         number: 11,
@@ -318,7 +345,7 @@ describe('NOTAM briefing route', () => {
     const r = await a.call('GET', `flights/${fid}/notams`);
     expect(r.status).toBe(200);
     const br = r.body;
-    expect(br).toMatchObject({ status: 'ok', source: 'autorouter', relevantCount: 3, hiddenCount: 7 });
+    expect(br).toMatchObject({ status: 'ok', source: 'autorouter', relevantCount: 3, hiddenCount: 8 });
     expect(br.locations).toEqual(expect.arrayContaining(['LGTT', 'LGMG', 'LGGG', 'LGEL']));
     expect(br.locations).not.toContain('LGSR');
     const by = Object.fromEntries(br.notams.map((n: any) => [n.key, n]));
@@ -338,6 +365,7 @@ describe('NOTAM briefing route', () => {
     expect(by['A0006/26'].reasons).toContain('IFR only');
     expect(by['A0007/26'].reasons).toContain('checklist');
     expect(by['A0010/26'].reasons).toContain('FIR-wide notice');
+    expect(by['A0012/26'].reasons).toContain('for LGEL, not used by the flight');
     expect(by['A0011/26'].areas).toEqual([{ kind: 'polygon', points: expect.any(Array) }]);
     expect(by['A0011/26'].reasons[0]).toMatch(/^\d+ NM from the route/);
     expect(br.window.from).toBe(at('07:00'));
@@ -421,8 +449,19 @@ describe('filing via autorouter (mocked)', () => {
   let a: Client, b: Client, fid: string;
   const FPL =
     '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030\n-DOF/261116 REG/SXASV\n-E/0400 P/2 A/WHITE C/PILOT +3069000000)';
+  const mails: SentMail[] = [];
   beforeAll(async () => {
-    api = await start({ email: 'app@example.com', password: 's3cret', filing: true, fetch: ar.fetch });
+    setMailTransport(async (m) => {
+      mails.push(m);
+      return { id: `msg-${mails.length}` };
+    });
+    api = await start({
+      email: 'app@example.com',
+      password: 's3cret',
+      filing: true,
+      fetch: ar.fetch,
+      sleep: async () => {},
+    });
     a = client(api.base);
     b = client(api.base);
     await a.login('f-a', 'fa@example.com');
@@ -431,7 +470,10 @@ describe('filing via autorouter (mocked)', () => {
     expect((await a.call('POST', 'aircraft', { registration: 'SX-ASV' })).status).toBe(201);
     fid = await newFlight(a);
   });
-  afterAll(() => api.close());
+  afterAll(() => {
+    setMailTransport(null);
+    return api.close();
+  });
 
   test('input is validated', async () => {
     expect((await a.call('POST', `flights/${fid}/filing`, { fpl: 'hello', addresses: [] })).status).toBe(400);
@@ -466,8 +508,23 @@ describe('filing via autorouter (mocked)', () => {
     const c = (await a.call('POST', `flights/${fid}/filing/cancel`, { reason: 'Weather' })).body;
     expect(c.filing.status).toBe('cancelled');
     expect((await a.call('POST', `flights/${fid}/filing/cancel`, {})).status).toBe(409);
-    expect(c.log.map((l: any) => l.action)).toEqual(['cancel', 'delay', 'refresh', 'file']);
+    expect(c.log.map((l: any) => l.action)).toEqual(['copy', 'cancel', 'copy', 'delay', 'refresh', 'copy', 'file']);
     expect(c.log.every((l: any) => l.ok)).toBe(true);
+    // LGTT asks for a copy of every plan (ref_aerodrome_contacts): what autorouter sent, the pilot in cc
+    expect(c.copyTo).toEqual([{ email: 'lgttatc@gmail.com', for: 'LGTT' }]);
+    expect(mails.map((m) => m.to)).toEqual([['lgttatc@gmail.com'], ['lgttatc@gmail.com'], ['lgttatc@gmail.com']]);
+    expect(mails[0].cc).toEqual(['fa@example.com']);
+    expect(mails[0].subject).toMatch(
+      /^-TITLE ACK -MSGTYP VFPL SXASV LGTT0800 LGMG autorouter MSG -FILTIM \d{6} -ORIGINDT \d{10} \(PILOT \+3069000000\)$/,
+    );
+    expect(mails[0].text).toContain('-BEGIN ADDR\n     -FAC KSTPXAAP\n-END ADDR\n-IFPLID VFR\n-MSGTXT (FPL-SXASV-VG\n');
+    expect(mails[0].text).toContain('-E/0400 P/2 A/WHITE C/PILOT +3069000000)');
+    expect(mails[0].text).toContain('Original message addressees...\n\nFF LGMGZTZX LGGGZFZX LGTTZTZX LGTTYXYX\n');
+    expect(mails[0].text).not.toContain('OTHER');
+    expect(mails[2].subject).toMatch(/^-TITLE ACK -MSGTYP CNL SXASV LGTT0900 LGMG autorouter MSG /);
+    expect(mails[2].text).toMatch(/cancellation confirmation[\s\S]*-MSGTXT \(CNL-SXASV-LGTT0900-LGMG-DOF\/261116\)/);
+    // everything read from the queue is acknowledged
+    expect(ar.state.queue).toEqual([]);
   });
   test('provider errors are shown and logged', async () => {
     const f2 = await newFlight(a);

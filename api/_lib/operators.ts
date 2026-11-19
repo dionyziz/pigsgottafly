@@ -35,6 +35,8 @@ export function toOperator(r: Row): Operator {
     notes: r.notes ?? '',
     requiresWbPerf: !!r.requires_wb_perf,
     declarationsEmail: r.declarations_email ?? '',
+    requiresFplCopy: !!r.requires_fpl_copy,
+    fplCopyEmail: r.fpl_copy_email ?? '',
     created: Number(r.created),
     updated: Number(r.updated),
   };

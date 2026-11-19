@@ -13,6 +13,9 @@
 //   GET  /flightplan/file/<id>            → { status, eobt, … }
 //   POST /flightplan/file/<id>/delay      { neweobt }  → { status: 'success' } | { error }
 //   POST /flightplan/file/<id>/cancel     { reason }   → { status: 'success' } | { error }
+//   GET  /message?limit&timeout=0         the account's message queue (wiki: message-queue), e.g.
+//                                         { id, type: 'fplan_aftn_out', message: { fplid, message, priority, recipients } }
+//   POST /message/acknowledge             [ids]: removes them from the queue
 // Filing goes through a route: the plan is stored as one, then filed against it with the same plan
 // (the fpl given when filing is what is sent, not the route's copy with the built-in aircraft's
 // details). Filing is enabled with AUTOROUTER_FILING=1.
@@ -57,7 +60,21 @@ export interface AutorouterSettings {
   fetch?: typeof fetch;
   baseUrl?: string;
   now?: () => number;
+  /** Waits between message-queue polls (tests: instant). */
+  sleep?: (ms: number) => Promise<void>;
 }
+
+/** An AFTN message autorouter sent for a plan (FPL, DLA, CNL), as transmitted. */
+export interface AftnMessage {
+  text: string;
+  /** 'FF', 'DD', … */
+  priority: string;
+  recipients: string[];
+}
+
+/** How long to wait for a plan's AFTN messages to reach the queue (they come within a second or two). */
+const AFTN_WAIT_MS = 5000;
+const AFTN_POLL_MS = 1000;
 
 export class AutorouterError extends Error {
   constructor(
@@ -110,11 +127,13 @@ export class AutorouterClient {
   private readonly base: string;
   private readonly doFetch: typeof fetch;
   private readonly now: () => number;
+  private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(private readonly s: AutorouterSettings) {
     this.base = (s.baseUrl || AUTOROUTER_BASE).replace(/\/+$/, '');
     this.doFetch = s.fetch || fetch;
     this.now = s.now || Date.now;
+    this.sleep = s.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
   get filingEnabled(): boolean {
@@ -240,6 +259,38 @@ export class AutorouterClient {
 
   async cancel(providerId: string, reason: string): Promise<void> {
     await this.call('POST', `/flightplan/file/${encodeURIComponent(providerId)}/cancel`, { reason });
+  }
+
+  /**
+   * The AFTN messages autorouter has just sent for a plan, from the message queue: waits up to
+   * AFTN_WAIT_MS for the first, then one more poll for the rest of the batch. Everything read is
+   * acknowledged (the app polls plan status itself and reads the queue for nothing else).
+   */
+  async aftnOut(providerId: string, waitMs = AFTN_WAIT_MS): Promise<AftnMessage[]> {
+    const out: AftnMessage[] = [];
+    const until = this.now() + waitMs;
+    for (let settled = false; ;) {
+      const rows = await this.call<unknown>('GET', '/message?limit=100&timeout=0');
+      const list = (Array.isArray(rows) ? rows : []) as {
+        id?: number;
+        type?: string;
+        message?: { fplid?: unknown; message?: unknown; priority?: unknown; recipients?: unknown };
+      }[];
+      const ids = list.map((m) => m.id).filter((id) => id != null);
+      if (ids.length) await this.call('POST', '/message/acknowledge', ids);
+      for (const m of list) {
+        const b = m.message;
+        if (m.type !== 'fplan_aftn_out' || String(b?.fplid) !== providerId || typeof b?.message !== 'string') continue;
+        out.push({
+          text: b.message,
+          priority: typeof b.priority === 'string' ? b.priority : 'FF',
+          recipients: Array.isArray(b.recipients) ? b.recipients.map(String) : [],
+        });
+      }
+      if (out.length ? settled : this.now() >= until) return out;
+      if (out.length) settled = true;
+      await this.sleep(AFTN_POLL_MS);
+    }
   }
 }
 

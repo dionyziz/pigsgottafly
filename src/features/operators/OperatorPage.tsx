@@ -51,9 +51,22 @@ const inputOf = ({
   notes,
   requiresWbPerf,
   declarationsEmail,
-}: OperatorItem): OperatorInput => ({ name, phone, email, address, aftn, notes, requiresWbPerf, declarationsEmail });
+  requiresFplCopy,
+  fplCopyEmail,
+}: OperatorItem): OperatorInput => ({
+  name,
+  phone,
+  email,
+  address,
+  aftn,
+  notes,
+  requiresWbPerf,
+  declarationsEmail,
+  requiresFplCopy,
+  fplCopyEmail,
+});
 
-type OperatorField = 'name' | 'email' | 'declarationsEmail';
+type OperatorField = 'name' | 'email' | 'declarationsEmail' | 'fplCopyEmail';
 
 /** What holds the save back, field by field (empty: it can be saved). */
 export function validateOperator(d: OperatorInput): FormIssue<OperatorField>[] {
@@ -63,6 +76,9 @@ export function validateOperator(d: OperatorInput): FormIssue<OperatorField>[] {
   if (d.requiresWbPerf)
     if (!d.declarationsEmail.trim()) out.push({ field: 'declarationsEmail', message: 'Enter the e-mail address' });
     else if (!isEmail(d.declarationsEmail)) out.push({ field: 'declarationsEmail', message: 'Not an e-mail address' });
+  if (d.requiresFplCopy)
+    if (!d.fplCopyEmail.trim()) out.push({ field: 'fplCopyEmail', message: 'Enter the e-mail address' });
+    else if (!isEmail(d.fplCopyEmail)) out.push({ field: 'fplCopyEmail', message: 'Not an e-mail address' });
   return out;
 }
 
@@ -72,6 +88,7 @@ const normalized = (d: OperatorInput): OperatorInput => ({
   name: d.name.trim(),
   email: d.email.trim(),
   declarationsEmail: d.declarationsEmail.trim(),
+  fplCopyEmail: d.fplCopyEmail.trim(),
 });
 
 export function OperatorPage() {
@@ -242,6 +259,21 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
                   type="email"
                   value={draft.declarationsEmail}
                   onChange={(e) => set('declarationsEmail', e.target.value)}
+                  maxLength={320}
+                  placeholder="ops@example.com"
+                />
+              </Field>
+            )}
+            <Check checked={draft.requiresFplCopy} onChange={(v) => set('requiresFplCopy', v)}>
+              <span data-testid="operator-requires-fpl">Wants a copy of each filed flight plan by e-mail</span>
+            </Check>
+            {draft.requiresFplCopy && (
+              <Field focus="fplCopyEmail" label="Send it to" req issues={issuesOf('fplCopyEmail')}>
+                <input
+                  name="fplCopyEmail"
+                  type="email"
+                  value={draft.fplCopyEmail}
+                  onChange={(e) => set('fplCopyEmail', e.target.value)}
                   maxLength={320}
                   placeholder="ops@example.com"
                 />

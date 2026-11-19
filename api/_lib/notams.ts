@@ -11,6 +11,7 @@
 //               it is within TERMINAL_NM of an aerodrome of the route: climb-out and approach). The
 //               upper limit is item G when it reads (FL, ft or m AMSL; AGL over the highest ground
 //               under the area, from the terrain grid), else the Q line;
+//   - scope:    not an aerodrome-only NOTAM (Q scope A) for an aerodrome the flight does not use;
 //   - type:     not a checklist (QKKKK), a cancellation, a FIR-wide notice (QAFXX: statements on
 //               other NOTAMs, sanctions, entry rules for foreign operators) or an AIP change trigger
 //               (QAFTT), and not IFR-only (Q traffic 'I') unless it concerns an aerodrome the flight
@@ -485,6 +486,9 @@ export function assessNotams(list: Notam[], inp: RelevanceInput): Notam[] {
     }
     if (n.lowerFt > inp.maxAltFt) hide.push(`above the planned altitudes (from FL${pad(n.lowerFt / 100, 3)})`);
     if (n.qcode.startsWith('QKK')) hide.push('checklist');
+    const otherAd = n.itemA.filter((a) => a !== n.fir && !inp.aerodromes.has(a));
+    if (!used.length && n.scope === 'A' && otherAd.length)
+      hide.push(`for ${otherAd.join(' ')}, not used by the flight`);
     if (n.qcode === 'QAFXX') hide.push('FIR-wide notice');
     if (n.qcode === 'QAFTT') hide.push('AIP change notice');
     if (n.type === 'C') hide.push(`cancels ${n.refers ?? 'a NOTAM'}`);

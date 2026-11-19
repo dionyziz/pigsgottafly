@@ -76,13 +76,17 @@ export function OperatorsPage() {
                     <td className="hide-sm mono">{o.aircraft.map((a) => a.registration).join(', ') || none}</td>
                     <td className="hide-sm">{[o.phone, o.email].filter(Boolean).join(' · ') || none}</td>
                     <td>
-                      {o.requiresWbPerf ? (
+                      {o.requiresWbPerf && (
                         <Chip tone="warn" title={`W&B and performance to ${o.declarationsEmail} before each flight`}>
                           W&amp;B + performance
                         </Chip>
-                      ) : (
-                        none
+                      )}{' '}
+                      {o.requiresFplCopy && (
+                        <Chip tone="warn" title={`A copy of each filed flight plan to ${o.fplCopyEmail}`}>
+                          Flight plan copy
+                        </Chip>
                       )}
+                      {!o.requiresWbPerf && !o.requiresFplCopy && none}
                     </td>
                   </tr>
                 ))}

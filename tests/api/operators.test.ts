@@ -80,6 +80,15 @@ describe('operators', () => {
     expect((await owner.call('POST', 'operators', { name: 'X', declarationsEmail: 'not an address' })).status).toBe(
       400,
     );
+    expect((await owner.call('POST', 'operators', { name: 'X', requiresFplCopy: true })).status).toBe(400);
+    expect((await owner.call('POST', 'operators', { name: 'X', requiresFplCopy: 'yes' })).status).toBe(400);
+    const r = await owner.call('POST', 'operators', {
+      name: 'Copies Club',
+      requiresFplCopy: true,
+      fplCopyEmail: 'ops@copies.example',
+    });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ requiresFplCopy: true, fplCopyEmail: 'ops@copies.example' });
   });
 
   test('access matrix', async () => {

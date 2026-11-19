@@ -18,18 +18,25 @@ import { notifyShare } from '../shareMail.js';
 export function operatorInput(input: Record<string, unknown>, base: OperatorInput): OperatorInput {
   const o = { ...base };
   if ('name' in input) o.name = str(input.name, 'name', 200);
-  for (const k of ['phone', 'email', 'address', 'aftn', 'declarationsEmail'] as const)
+  for (const k of ['phone', 'email', 'address', 'aftn', 'declarationsEmail', 'fplCopyEmail'] as const)
     if (k in input) o[k] = str(input[k], k, 320);
   if ('notes' in input) o.notes = str(input.notes, 'notes', 5000);
   if ('requiresWbPerf' in input) {
     if (typeof input.requiresWbPerf !== 'boolean') throw badRequest('requiresWbPerf must be true or false');
     o.requiresWbPerf = input.requiresWbPerf;
   }
+  if ('requiresFplCopy' in input) {
+    if (typeof input.requiresFplCopy !== 'boolean') throw badRequest('requiresFplCopy must be true or false');
+    o.requiresFplCopy = input.requiresFplCopy;
+  }
   if (!o.name) throw badRequest('name is required');
   if (o.email && !isEmail(o.email)) throw badRequest('email is not an e-mail address');
   if (o.declarationsEmail && !isEmail(o.declarationsEmail))
     throw badRequest('declarationsEmail is not an e-mail address');
   if (o.requiresWbPerf && !o.declarationsEmail) throw badRequest('an e-mail address for the declarations is required');
+  if (o.fplCopyEmail && !isEmail(o.fplCopyEmail)) throw badRequest('fplCopyEmail is not an e-mail address');
+  if (o.requiresFplCopy && !o.fplCopyEmail)
+    throw badRequest('an e-mail address for the flight plan copies is required');
   return o;
 }
 
@@ -42,6 +49,8 @@ const cols = (o: OperatorInput) => [
   o.notes,
   o.requiresWbPerf,
   o.declarationsEmail,
+  o.requiresFplCopy,
+  o.fplCopyEmail,
 ];
 
 function shareRole(v: unknown): ShareRole {
@@ -123,8 +132,8 @@ export const routes: Route[] = [
       const id = await newId('op');
       const now = Date.now();
       await db.query(
-        `INSERT INTO operators (id, pilot_id, name, phone, email, address, aftn, notes, requires_wb_perf, declarations_email, created, updated)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11)`,
+        `INSERT INTO operators (id, pilot_id, name, phone, email, address, aftn, notes, requires_wb_perf, declarations_email, requires_fpl_copy, fpl_copy_email, created, updated)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13)`,
         [id, pilot.id, ...cols(o), now],
       );
       return reply(201, operatorItem(await operatorFor(db, pilot.id, id)));
@@ -151,7 +160,7 @@ export const routes: Route[] = [
       const o = operatorInput(await body(), base);
       const now = Date.now();
       await db.query(
-        `UPDATE operators SET name=$2, phone=$3, email=$4, address=$5, aftn=$6, notes=$7, requires_wb_perf=$8, declarations_email=$9, updated=$10 WHERE id=$1`,
+        `UPDATE operators SET name=$2, phone=$3, email=$4, address=$5, aftn=$6, notes=$7, requires_wb_perf=$8, declarations_email=$9, requires_fpl_copy=$10, fpl_copy_email=$11, updated=$12 WHERE id=$1`,
         [params.id, ...cols(o), now],
       );
       // the fallback text of its aircraft follows the name

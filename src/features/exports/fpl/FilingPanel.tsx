@@ -6,7 +6,7 @@
 //   - when the server cannot file, why not (the buttons stay disabled; the addressees are still
 //     shown, for filing by other means).
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
-import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { api, ApiRequestError } from '../../../data/api';
 import type { Flight } from '../../../shared';
@@ -204,6 +204,20 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
           {filing.eobt != null && <span>EOBT {clockZ(filing.eobt)}</span>}
           {filing.polled != null && <span className="muted">checked {dateTimeZ(filing.polled)}</span>}
           {filing.message && <span>{filing.message}</span>}
+        </div>
+      )}
+
+      {st && st.copyTo.length > 0 && (
+        <div className="fpl-filing-record" data-testid="fpl-copy-to">
+          <span>
+            Copy by e-mail to{' '}
+            {st.copyTo.map((r, i) => (
+              <Fragment key={r.email}>
+                {i > 0 && ', '}
+                {r.email} <span className="muted">({r.for})</span>
+              </Fragment>
+            ))}
+          </span>
         </div>
       )}
 

@@ -26,6 +26,10 @@ export interface Operator {
   requiresWbPerf: boolean;
   /** Where those declarations go (required when requiresWbPerf). */
   declarationsEmail: string;
+  /** The operator wants an e-mail copy of each flight plan filed (and its delays, cancellation). */
+  requiresFplCopy: boolean;
+  /** Where the copies go (required when requiresFplCopy). */
+  fplCopyEmail: string;
   created: EpochMs;
   updated: EpochMs;
 }
@@ -83,6 +87,8 @@ export const EMPTY_OPERATOR: OperatorInput = {
   notes: '',
   requiresWbPerf: false,
   declarationsEmail: '',
+  requiresFplCopy: false,
+  fplCopyEmail: '',
 };
 
 /** A plausible single e-mail address. */

@@ -129,9 +129,16 @@ export interface FilingLogEntry {
   id: Id;
   flightId: Id | null;
   at: EpochMs;
-  action: 'file' | 'delay' | 'cancel' | 'refresh';
+  /** copy: the e-mail copy of what was sent (api/_lib/fplCopy.ts). */
+  action: 'file' | 'delay' | 'cancel' | 'refresh' | 'copy';
   ok: boolean;
   message: string;
+}
+
+export interface FplCopyRecipient {
+  email: string;
+  /** Who asks for it: the operator's name, the aerodrome's ICAO. */
+  for: string;
 }
 
 export interface FilingState {
@@ -140,6 +147,8 @@ export interface FilingState {
   /** Why filing is disabled (null when enabled). */
   reason: string | null;
   addressees: Addressee[];
+  /** Who gets an e-mail copy of the plan (its operator, the route's aerodromes that ask for one). */
+  copyTo: FplCopyRecipient[];
   filing: FilingRecord | null;
   /** This flight's actions, newest first. */
   log: FilingLogEntry[];

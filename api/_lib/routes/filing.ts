@@ -13,14 +13,24 @@
 //     get the client (ctx.autorouter; app.ts), everyone else is refused like "not enabled";
 //   - the plan's aircraft identification (item 7) and REG/ (item 18) must be the registration of
 //     the flight's aircraft, which is in the pilot's own hangar.
-import type { FilingLogEntry, FilingRecord, FilingState, FilingStatus } from '../../../src/shared/briefing.js';
+import type {
+  FilingLogEntry,
+  FilingRecord,
+  FilingState,
+  FilingStatus,
+  FplCopyRecipient,
+} from '../../../src/shared/briefing.js';
+import type { Pilot } from '../../../src/shared/types.js';
 import { generateAddressees } from '../addressees.js';
 import type { AutorouterClient } from '../autorouter.js';
 import { AutorouterError } from '../autorouter.js';
 import type { Queryable, Row } from '../db.js';
-import { flightContext } from '../flightContext.js';
+import { type FlightContext, flightContext } from '../flightContext.js';
+import { type CopyKind, copyRecipients, fplCopyMail } from '../fplCopy.js';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, newId } from '../http.js';
+import { mailAvailability, sendMail, sendSystemMail } from '../mail.js';
+import { sendLogged } from '../sendCaps.js';
 
 /** Longest FPL message accepted (an AFTN message is far shorter). */
 const MAX_FPL_CHARS = 4000;
@@ -118,6 +128,53 @@ async function record(db: Queryable, pilotId: string, flightId: string): Promise
   return r ? toRecord(r) : null;
 }
 
+/** The aerodromes of the route (departure, stops, destination), not the alternates. */
+const routeIcaos = (ctx: FlightContext) =>
+  [...ctx.used].filter(([, role]) => role !== 'alternate').map(([icao]) => icao);
+
+const copyTo = (db: Queryable, pilotId: string, flightId: string, ctx: FlightContext): Promise<FplCopyRecipient[]> =>
+  copyRecipients(db, pilotId, flightId, routeIcaos(ctx));
+
+/**
+ * E-mails a copy of what autorouter just transmitted (the plan, its delay or cancellation): to those
+ * who ask for one with the pilot in cc, else to the pilot alone (autorouter's own notices go to the
+ * app's account, not to the pilot). Logged as 'copy'; a failure never undoes the action.
+ */
+async function sendCopy(
+  db: Queryable,
+  ar: AutorouterClient,
+  pilot: Pilot,
+  flightId: string,
+  kind: CopyKind,
+  plan: { providerId: string; fpl: string; addresses: string[] },
+): Promise<void> {
+  const ctx = await flightContext(db, pilot.id, flightId);
+  const pilotEmail = String(pilot.email || '').trim();
+  const others = (await copyTo(db, pilot.id, flightId, ctx)).map((r) => r.email);
+  const emails = others.length ? others : pilotEmail ? [pilotEmail] : [];
+  const at = Date.now();
+  const sent = await ar.aftnOut(plan.providerId).catch(() => []);
+  if (!emails.length) return;
+  const { subject, text } = fplCopyMail({ kind, sent, fpl: plan.fpl, addresses: plan.addresses, at });
+  const mail = mailAvailability();
+  const refused = !mail.enabled ? mail.reason! : !pilotEmail ? 'your account has no e-mail address to copy' : null;
+  if (refused) return log(db, pilot.id, flightId, 'copy', false, `Copy not e-mailed: ${refused}`, { to: emails });
+  try {
+    await sendLogged(
+      db,
+      { pilotId: pilot.id, flightId, form: 'fpl-copy', recipient: emails.join(', '), subject },
+      () =>
+        others.length
+          ? sendMail({ to: emails, pilotEmail, subject, text })
+          : sendSystemMail({ to: emails, subject, text }),
+    );
+    await log(db, pilot.id, flightId, 'copy', true, `Copy e-mailed to ${emails.join(', ')}`, { to: emails });
+  } catch (e) {
+    const msg = String(((e as { cause?: Error })?.cause ?? (e as Error))?.message || e);
+    await log(db, pilot.id, flightId, 'copy', false, `Copy not e-mailed: ${msg}`, { to: emails });
+  }
+}
+
 async function state(
   db: Queryable,
   pilotId: string,
@@ -141,6 +198,7 @@ async function state(
   return {
     ...filingAvailability(ar, denied),
     addressees,
+    copyTo: await copyTo(db, pilotId, flightId, ctx),
     filing: await record(db, pilotId, flightId),
     log: rows.map(toLog),
   };
@@ -280,6 +338,7 @@ export const routes: Route[] = [
           now,
         ],
       );
+      await sendCopy(db, ar, pilot, params.id, 'file', { providerId: filed.providerId, fpl, addresses });
       return state(db, pilot.id, params.id, autorouter, autorouterDenied);
     },
   },
@@ -304,6 +363,11 @@ export const routes: Route[] = [
         "UPDATE flight_filings SET eobt = $3, message = '', updated = $4 WHERE flight_id = $1 AND pilot_id = $2",
         [params.id, pilot.id, eobt, Date.now()],
       );
+      await sendCopy(db, ar, pilot, params.id, 'delay', {
+        providerId: cur.providerId,
+        fpl: cur.fpl,
+        addresses: cur.addresses,
+      });
       return state(db, pilot.id, params.id, autorouter, autorouterDenied);
     },
   },
@@ -332,6 +396,11 @@ export const routes: Route[] = [
         "UPDATE flight_filings SET status = 'cancelled', message = $3, updated = $4 WHERE flight_id = $1 AND pilot_id = $2",
         [params.id, pilot.id, reason, Date.now()],
       );
+      await sendCopy(db, ar, pilot, params.id, 'cancel', {
+        providerId: cur.providerId,
+        fpl: cur.fpl,
+        addresses: cur.addresses,
+      });
       return state(db, pilot.id, params.id, autorouter, autorouterDenied);
     },
   },
