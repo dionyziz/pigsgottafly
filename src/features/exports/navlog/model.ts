@@ -71,6 +71,8 @@ export interface NavlogComputeInput {
     vfrPoints: RefVfrPoint[];
     vfrRoutes: RefVfrRoute[];
     sunTables: Record<string, RefSunTable>;
+    /** Terrain grid, for the default altitude of uncharted legs (src/calc/altitudes.ts). */
+    terrain?: Uint8Array | null;
   };
 }
 
@@ -89,7 +91,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
   const timing = requestTiming(doc.route, doc.options, settings?.circuitMin);
   const defaults = defaultAltitudes(
     doc.route,
-    { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes },
+    { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes, terrain: ref.terrain },
     altOverrides,
     timing.patternPoints,
   );

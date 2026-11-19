@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { usePilot } from '../../../app/session';
 import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
+import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { RouteWeather } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
@@ -36,6 +37,7 @@ export function useExportCalc(flight: Flight): ExportCalcState {
     model: flight.options.windModel || pilot.settings.windModel,
   });
   const { weather, metar } = wx;
+  const terrain = useTerrain();
 
   const loading = ac.loading;
   const [nowMs] = useState(() => Date.now());
@@ -54,9 +56,10 @@ export function useExportCalc(flight: Flight): ExportCalcState {
         vfrRoutes: REF.vfrRoutes,
         sunTables: SUN_TABLES,
         runwaysOf,
+        terrain,
       },
     });
-  }, [loading, flight, aircraft, pilot, weather, metar]);
+  }, [loading, flight, aircraft, pilot, weather, metar, terrain]);
 
   return {
     loading,

@@ -150,6 +150,12 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ns-warn-btn { border: 0; padding: 4px 10px; font-size: var(--fs-sm); border-radius: var(--r-pill); background: var(--ok-soft); color: var(--ok); white-space: nowrap; }
 .ns-warn-btn.warn { background: var(--warn-soft); color: var(--warn); }
 .ns-warn-btn.danger { background: var(--danger-soft); color: var(--danger); }
+/* the warnings page is open: the button is filled in its tone, with an X to go back to the navlog */
+.ns-warn-btn { display: inline-flex; align-items: center; gap: 4px; }
+.ns-warn-btn.active { background: var(--ok); color: var(--surface); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ok); }
+.ns-warn-btn.warn.active { background: var(--warn); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--warn); }
+.ns-warn-btn.danger.active { background: var(--danger); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--danger); }
+.ns-warn-close { margin-left: 2px; opacity: 0.9; }
 .ns-wx { flex: 0 1 auto; min-width: 0; font-size: var(--fs-xs); color: var(--muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ns-wx.warn { color: var(--warn); }
 .ns-body { overflow: auto; min-height: 0; }

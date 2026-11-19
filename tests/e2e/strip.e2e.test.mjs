@@ -97,12 +97,25 @@ test("a leg's hazard shows under its row, not in the list; the collapse tab stay
   // the list: the leg hazards are not among the general warnings, but the count has them all
   await page.click('[data-testid=navlog-warn-toggle]');
   await page.waitFor(() => !document.querySelector('[data-testid=navlog-table]'));
+  // the open warnings page shows on the button: pressed, filled, with an X back to the navlog
+  assert.deepEqual(
+    await page.eval(() => {
+      const b = document.querySelector('[data-testid=navlog-warn-toggle]');
+      return [b.getAttribute('aria-pressed'), b.classList.contains('active'), !!b.querySelector('.ns-warn-close')];
+    }),
+    ['true', true, true],
+  );
+  if (process.env.SHOTS) await page.screenshot('strip-warnings-open', { fullPage: false });
   const general = await page.eval(() =>
     [...document.querySelectorAll('[data-testid=navlog-warnings] li')].map((li) => li.textContent),
   );
   assert.ok(!general.some((t) => /LGTT → LGSR: Thunderstorm|LGSR → LGIR: Thunderstorm/.test(t)), general.join('\n'));
   await page.click('[data-testid=navlog-warn-toggle]');
   await page.waitFor(() => !!document.querySelector('[data-testid=navlog-table]'));
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=navlog-warn-toggle]').getAttribute('aria-pressed')),
+    'false',
+  );
 
   // the flight panel's collapse tab never sits over the strip's table, even with a tall strip
   await page.eval(() => localStorage.setItem('pgf.editor.stripHeight', String(Math.round(innerHeight * 0.7))));

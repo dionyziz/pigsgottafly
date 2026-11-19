@@ -12,6 +12,7 @@ import {
   planFuel,
 } from '../../../calc';
 import { REF, SUN_TABLES } from '../../../data/ref';
+import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import { type RouteWeather, windProviderFromLegs } from '../../../data/weather';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
@@ -52,16 +53,17 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
     () => requestTiming(flight.route, flight.options, circuitMin),
     [flight.route, flight.options, circuitMin],
   );
+  const terrain = useTerrain();
   const altitudesFt = useMemo(() => {
     const ov = overrides.map((o) => o?.altFt);
     const d = defaultAltitudes(
       flight.route,
-      { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes },
+      { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, terrain },
       ov,
       timing.patternPoints,
     );
     return d.map((x, i) => ov[i] ?? x.altFt);
-  }, [flight.route, overrides, timing]);
+  }, [flight.route, overrides, timing, terrain]);
 
   const taxiAllowanceL = aircraft ? taxiAllowanceOf(aircraft.fuel, flight.options) : 0;
   const navlog = useMemo(() => {

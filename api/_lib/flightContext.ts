@@ -12,6 +12,7 @@ import { accessibleSql } from './access.js';
 import type { Queryable } from './db.js';
 import { notFound } from './http.js';
 import { distanceToRoute } from './notams.js';
+import { serverTerrain } from './terrain.js';
 
 export interface RefDocs {
   airac: string;
@@ -87,9 +88,12 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
   const typed = route.slice(1).map((_, i) => overrides[`${route[i].uid}>${route[i + 1].uid}`]?.altFt);
   const altitudesFt =
     route.length > 1
-      ? defaultAltitudes(route, ref, typed, requestTiming(route, f.options).patternPoints).map((d, i) =>
-          Number.isFinite(typed[i]) ? (typed[i] as number) : d.altFt,
-        )
+      ? defaultAltitudes(
+          route,
+          { ...ref, terrain: serverTerrain() },
+          typed,
+          requestTiming(route, f.options).patternPoints,
+        ).map((d, i) => (Number.isFinite(typed[i]) ? (typed[i] as number) : d.altFt))
       : [];
   const options = { ...DEFAULT_FLIGHT_OPTIONS, ...(f.options || {}) };
   const alternates: string[] = (Array.isArray(options.alternates) ? options.alternates : []).filter(

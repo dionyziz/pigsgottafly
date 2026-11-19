@@ -1,5 +1,7 @@
 // Default leg altitudes: charted VFR routes (direction-specific, one-way), the v2 pattern/previous
 // rules, and the closest-charted-leg rule for custom points, checked against a brute-force reference.
+import fs from 'node:fs';
+
 import { expect, test } from 'vitest';
 
 import {
@@ -8,6 +10,8 @@ import {
   closestVfrRoute,
   defaultAltitudes,
   patternAltitudeFt,
+  TERRAIN_CLEARANCE_FT,
+  terrainMaxFt,
   vfrRouteBetween,
 } from '../../../src/calc';
 import { aerodrome, REF, vfrPoint } from '../../../src/data/ref';
@@ -174,4 +178,21 @@ test('a custom last leg into an aerodrome flies the pattern altitude', () => {
   const d = defaultAltitudes([ad('LGMG'), z, ad('LGTT')], ctx);
   expect(d[0].source).toBe('closest-route');
   expect(d[1]).toMatchObject({ source: 'pattern', altFt: 1900 });
+});
+
+test('an uncharted leg touching no aerodrome: 1000 ft above the highest ground along it, rounded up to 500 ft', () => {
+  const grid = new Uint8Array(fs.readFileSync('public/terrain/greece.bin'));
+  const id = (name: string) => REF.vfrPoints.find((p) => p.name === name && p.chart === 'LGAV')!.id;
+  // Tatoi – Holargos – Hellinikon – Kastella – Tatoi: Hellinikon–Kastella is charted at 1500 ft
+  const route = [ad('LGTT'), vfr(id('HOLARGOS')), vfr(id('HELLINIKON')), vfr(id('KASTELLA')), ad('LGTT')];
+  const d = defaultAltitudes(route, { ...ctx, terrain: grid });
+  expect(d.map((x) => [x.altFt, x.source])).toEqual([
+    [1900, 'pattern'],
+    [2500, 'terrain'], // the west slope of Hymettus, up to ~1460 ft
+    [1500, 'vfr-route'],
+    [1900, 'pattern'],
+  ]);
+  expect(terrainMaxFt(grid, route[1], route[2]) + TERRAIN_CLEARANCE_FT).toBeLessThanOrEqual(2500);
+  // without the grid: the previous leg's altitude, as before
+  expect(defaultAltitudes(route, ctx)[1]).toMatchObject({ altFt: 1900, source: 'previous' });
 });

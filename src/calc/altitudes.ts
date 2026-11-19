@@ -10,24 +10,32 @@
 //      direction-specific pair), the one flown in the leg's direction wins.
 //   2b. An intermediate aerodrome with a touch-and-go or stop request (patternPoints) is passed at
 //      its pattern altitude: the legs into and out of it take it, as the last and first legs do.
-//   4. Otherwise (v2): the first leg flies the departure's pattern altitude; other legs keep the
+//   4. A leg with no charted altitude that touches no aerodrome, with the terrain grid at hand:
+//      TERRAIN_CLEARANCE_FT above the highest ground along it, rounded up to TERRAIN_ROUND_FT.
+//   5. Otherwise (v2): the first leg flies the departure's pattern altitude; other legs keep the
 //      previous leg's effective (possibly overridden) altitude.
 // Every default can be overridden per leg (LegOverride.altFt).
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../shared/ref.js';
 import type { LatLon, RoutePoint } from '../shared/types.js';
 import { distanceNm, midpoint, norm180, pointSegDistNm, trueCourse } from './nav.js';
+import { TERRAIN_CLEARANCE_FT, terrainMaxFt } from './terrain.js';
 
 export interface AltitudeContext {
   aerodromes: RefAerodrome[];
   vfrPoints: RefVfrPoint[];
   vfrRoutes: RefVfrRoute[];
+  /** Terrain grid (src/calc/terrain.ts); without it, rule 4 does not apply. */
+  terrain?: Uint8Array | null;
 }
+
+/** Terrain-based defaults are rounded up to this. */
+export const TERRAIN_ROUND_FT = 500;
 
 export interface AltitudeDefault {
   /** Default altitude, ft; NaN when no rule gives one. */
   altFt: number;
   /** Which rule produced it. */
-  source: 'vfr-route' | 'pattern' | 'previous' | 'closest-route' | 'none';
+  source: 'vfr-route' | 'pattern' | 'previous' | 'closest-route' | 'terrain' | 'none';
   /** The charted route used (source 'vfr-route' / 'closest-route'). */
   route: RefVfrRoute | null;
 }
@@ -180,6 +188,15 @@ export function defaultAltitudes(
       const ref = isCustom(a) && isCustom(b) ? midpoint(a, b) : isCustom(a) ? a : b;
       const c = closestVfrRoute(ref, ctx, trueCourse(a, b));
       if (c) d = { altFt: c.route.maxFt, source: 'closest-route', route: c.route };
+    }
+    if (!d && ctx.terrain && a.kind !== 'aerodrome' && b.kind !== 'aerodrome') {
+      const ground = terrainMaxFt(ctx.terrain, a, b);
+      if (Number.isFinite(ground))
+        d = {
+          altFt: Math.ceil((ground + TERRAIN_CLEARANCE_FT) / TERRAIN_ROUND_FT) * TERRAIN_ROUND_FT,
+          source: 'terrain',
+          route: null,
+        };
     }
     if (!d) {
       if (i > 0) d = { altFt: effective[i - 1], source: isFinite(effective[i - 1]) ? 'previous' : 'none', route: null };

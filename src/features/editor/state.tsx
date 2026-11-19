@@ -8,6 +8,7 @@ import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, us
 import { type AltitudeDefault, buildLegs, defaultAltitudes, type LegGeometry } from '../../calc';
 import { flightStore, type SaveStatus } from '../../data/flightStore';
 import { REF } from '../../data/ref';
+import { useTerrain } from '../../data/terrain';
 import type { Aircraft, Flight, FlightDoc, MapLayers, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
 import { autoTitle, EMPTY_SUMMARY, requestTiming } from '../../shared';
 
@@ -119,15 +120,16 @@ export function EditorProvider({
     () => requestTiming(doc.route, doc.options, circuitMin),
     [doc.route, doc.options, circuitMin],
   );
+  const terrain = useTerrain();
   const altitudeDefaults = useMemo(
     () =>
       defaultAltitudes(
         doc.route,
-        { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes },
+        { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, terrain },
         overrides,
         requestTimes.patternPoints,
       ),
-    [doc.route, overrides, requestTimes],
+    [doc.route, overrides, requestTimes, terrain],
   );
   const altitudesFt = useMemo(
     () => altitudeDefaults.map((d, i) => overrides[i] ?? d.altFt),

@@ -49,6 +49,7 @@ export interface ExportCalcInput {
     vfrRoutes: RefVfrRoute[];
     sunTables: Record<string, RefSunTable>;
     runwaysOf: (aerodromeId: string) => RefRunway[];
+    terrain?: Uint8Array | null;
   };
 }
 

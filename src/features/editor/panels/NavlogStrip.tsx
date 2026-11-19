@@ -282,13 +282,17 @@ export function NavlogStrip() {
         <span className="spacer" />
         <button
           type="button"
-          className={'ns-warn-btn' + (danger ? ' danger' : warn ? ' warn' : '')}
+          className={
+            'ns-warn-btn' + (danger ? ' danger' : warn ? ' warn' : '') + (state === 'warnings' ? ' active' : '')
+          }
           onClick={() => set(state === 'warnings' ? 'open' : 'warnings')}
           data-testid="navlog-warn-toggle"
-          title="Warnings"
+          aria-pressed={state === 'warnings'}
+          title={state === 'warnings' ? 'Back to the navlog' : 'Show the warnings'}
         >
           <Icon name="warn" size={14} />{' '}
           {danger + warn > 0 ? `${danger + warn} warning${danger + warn > 1 ? 's' : ''}` : 'No warnings'}
+          {state === 'warnings' && <Icon name="x" size={12} className="ns-warn-close" />}
         </button>
         {wx.text && (
           <span className={'ns-wx' + (wx.tone ? ' ' + wx.tone : '')} title={wx.title} data-testid="winds-status">

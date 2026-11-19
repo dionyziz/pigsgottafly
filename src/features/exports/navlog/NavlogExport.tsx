@@ -14,6 +14,7 @@ import { Fragment, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, 
 import { usePilot } from '../../../app/session';
 import { atcInput, atcLegRelevance, generateAtcList } from '../../../data/atc';
 import { REF, SUN_TABLES } from '../../../data/ref';
+import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { Flight } from '../../../shared';
 import { Loading, Panel } from '../../../ui';
@@ -45,6 +46,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
     model: flight.options.windModel || pilot.settings.windModel,
   });
   const { weather, metar, legs } = wx;
+  const terrain = useTerrain();
 
   // ---- the document
   const doc: NavlogDocument | null = useMemo(() => {
@@ -54,7 +56,13 @@ export function NavlogExport({ flight }: { flight: Flight }) {
       aircraft,
       settings: pilot.settings,
       weather,
-      ref: { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES },
+      ref: {
+        aerodromes: REF.aerodromes,
+        vfrPoints: REF.vfrPoints,
+        vfrRoutes: REF.vfrRoutes,
+        sunTables: SUN_TABLES,
+        terrain,
+      },
     });
     const gen = atcInput(flight.route, computed.altitudesFt, REF, pilot.settings.enrouteAerodromeRadiusNm ?? 2);
     const atc = flight.atc ?? generateAtcList(gen);
@@ -69,7 +77,7 @@ export function NavlogExport({ flight }: { flight: Flight }) {
       metar,
       nowMs: Date.now(),
     });
-  }, [ac.loading, flight, aircraft, pilot, weather, metar]);
+  }, [ac.loading, flight, aircraft, pilot, weather, metar, terrain]);
 
   // ---- scale to the container on screen; fit text after every render
   const host = useRef<HTMLDivElement>(null);
