@@ -1,4 +1,4 @@
-// Test helpers: an API server on in-memory PGlite with Google sign-in faked by a local RSA key.
+// Test helpers: an API server on in-memory PGlite with Google (and Apple) sign-in faked by a local RSA key.
 import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 
@@ -23,14 +23,28 @@ export const googleClaims = (sub: string, email: string) => ({
   exp: Math.floor(Date.now() / 1000) + 600,
 });
 
+/** The Sign in with Apple Services ID of the test server (startApi({ apple: true })). */
+export const APPLE_CID = 'com.example.pigsgottafly.web';
+export const appleClaims = (sub: string, email: string, extra: Record<string, unknown> = {}) => ({
+  iss: 'https://appleid.apple.com',
+  aud: APPLE_CID,
+  sub,
+  email,
+  email_verified: 'true',
+  exp: Math.floor(Date.now() / 1000) + 600,
+  ...extra,
+});
+
 export async function startApi(
-  opts: { google?: boolean; allowedEmails?: string[]; adminEmails?: string[]; db?: string } = {},
+  opts: { google?: boolean; apple?: boolean; allowedEmails?: string[]; adminEmails?: string[]; db?: string } = {},
 ) {
   const google = opts.google ?? true;
   const s = createServer({
     db: opts.db ?? 'memory://',
     googleClientId: google ? CID : '',
     googleKeys: async () => [JWK],
+    appleClientId: opts.apple ? APPLE_CID : '',
+    appleKeys: async () => [JWK],
     allowedEmails: opts.allowedEmails,
     adminEmails: opts.adminEmails,
     client: (_req, res) => {

@@ -9,6 +9,7 @@ import type {
   AircraftFileStart,
   AircraftInput,
   AircraftSharing,
+  AppleLoginRequest,
   Attachment,
   AttachmentInput,
   AttachmentRef,
@@ -196,6 +197,7 @@ export type FilesApi = ReturnType<typeof filesOf<unknown>>;
 export const api = {
   session: () => request<SessionResponse>('GET', 'session'),
   login: (credential: string) => request<LoginResponse>('POST', 'login', { credential }),
+  loginApple: (body: AppleLoginRequest) => request<LoginResponse>('POST', 'login/apple', body),
   /** A one-time code that signs the iOS app in (api/_lib/routes/appLogin.ts). */
   appCode: () => request<{ code: string }>('POST', 'app-code'),
   logout: () => request<{ ok: true }>('POST', 'logout'),

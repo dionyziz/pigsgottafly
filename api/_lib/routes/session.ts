@@ -1,4 +1,4 @@
-// GET /session, POST /login, POST /logout, POST /session/revoke-all (sign out everywhere)
+// GET /session, POST /login (Google), POST /login/apple (Sign in with Apple), POST /logout, POST /session/revoke-all (sign out everywhere)
 import { randomBytes } from 'node:crypto';
 
 import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
@@ -6,17 +6,19 @@ import {
   createSession,
   emailAllowed,
   hashToken,
+  isAppleRelay,
   localPilotRow,
   purgeExpiredSessions,
   SESSION_MS,
   sessionCookie,
   sessionPilotRow,
   tokenFrom,
+  verifyAppleToken,
   verifyGoogleToken,
 } from '../auth.js';
 import { isAdmin } from '../auth.js';
-import type { Queryable } from '../db.js';
-import type { Route } from '../http.js';
+import type { Queryable, Row } from '../db.js';
+import type { ApiConfig, Route } from '../http.js';
 import { HttpError, newId, reply } from '../http.js';
 import { mailAvailability, sendSystemMail } from '../mail.js';
 import { rateLimit } from '../rateLimit.js';
@@ -104,6 +106,32 @@ export async function notifySignup(
   clearTimeout(timer);
 }
 
+const newPilotId = () => `pl_${randomBytes(9).toString('base64url')}`;
+
+/** After a sign-in: tells the admins about a new pilot, then answers with a new session cookie. */
+async function signedIn(db: Queryable, config: ApiConfig, row: Row, isNew: boolean, at: number) {
+  // a new account: tell the admins (never blocks or fails the sign-in)
+  if (isNew)
+    await notifySignup(db, config.adminEmails ?? [], { pilotId: row.id, name: row.name || '', email: row.email, at });
+  await purgeExpiredSessions(db);
+  const tok = await createSession(db, row.id);
+  const out: LoginResponse = { ok: true, pilot: toPilot(row) };
+  return reply(200, out, { 'Set-Cookie': sessionCookie(tok, SESSION_MS / 1000, config.secureCookie) });
+}
+
+/** The name Apple gives on the first sign-in only: a string, or Apple JS's { firstName, lastName }. */
+function appleName(v: unknown): string {
+  const n =
+    typeof v === 'string'
+      ? v
+      : v && typeof v === 'object'
+        ? [(v as { firstName?: unknown }).firstName, (v as { lastName?: unknown }).lastName]
+            .filter((x) => typeof x === 'string')
+            .join(' ')
+        : '';
+  return n.replace(/\s+/g, ' ').trim().slice(0, 100);
+}
+
 export const routes: Route[] = [
   {
     method: 'GET',
@@ -116,6 +144,7 @@ export const routes: Route[] = [
         authed: !!row,
         mode: google ? 'google' : 'local',
         googleClientId: config.googleClientId || null,
+        appleClientId: (google && config.appleClientId) || null,
         pilot: row ? toPilot(row) : null,
         admin: isAdmin(config, row),
       };
@@ -145,15 +174,58 @@ export const routes: Route[] = [
         `INSERT INTO pilots (id, google_sub, email, name, picture, created, last_login, seeded_at) VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
          ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, picture = EXCLUDED.picture, last_login = EXCLUDED.last_login
          RETURNING *, (xmax = 0) AS inserted`,
-        [`pl_${randomBytes(9).toString('base64url')}`, sub, email, claims.name || '', claims.picture || '', now],
+        [newPilotId(), sub, email, claims.name || '', claims.picture || '', now],
       );
-      // a new account: tell the admins (never blocks or fails the sign-in)
-      if (row.inserted === true)
-        await notifySignup(db, config.adminEmails ?? [], { pilotId: row.id, name: claims.name || '', email, at: now });
-      await purgeExpiredSessions(db);
-      const tok = await createSession(db, row.id);
-      const out: LoginResponse = { ok: true, pilot: toPilot(row) };
-      return reply(200, out, { 'Set-Cookie': sessionCookie(tok, SESSION_MS / 1000, config.secureCookie) });
+      return signedIn(db, config, row, row.inserted === true, now);
+    },
+  },
+  {
+    // Sign in with Apple (JS, popup): the identity token, and the name on the very first sign-in only.
+    // The pilot is found by Apple's sub; else a pilot with the same verified e-mail (never a Hide My
+    // Email relay address) gets this Apple ID linked; else a new pilot.
+    method: 'POST',
+    path: '/login/apple',
+    auth: false,
+    async handler({ db, config, body, req }) {
+      if (!config.appleClientId) throw new HttpError(404, 'Sign in with Apple is not enabled');
+      await rateLimit(db, 'login', { req });
+      const { idToken, name } = await body();
+      if (typeof idToken !== 'string' || !idToken) throw new HttpError(400, 'idToken is required');
+      let claims;
+      try {
+        claims = await verifyAppleToken(idToken, config.appleClientId, config.appleKeys);
+      } catch {
+        throw new HttpError(401, 'sign-in failed');
+      }
+      const email = String(claims.email).trim();
+      if (!emailAllowed(email, config.allowedEmails)) throw new HttpError(403, `${email} is not allowed`);
+      const now = Date.now();
+      // known Apple ID: the e-mail follows Apple's unless Google's sign-in keeps it
+      const [known] = await db.query(
+        `UPDATE pilots SET last_login = $2, email = CASE WHEN google_sub IS NULL THEN $3 ELSE email END,
+           name = CASE WHEN name = '' THEN $4 ELSE name END
+         WHERE apple_sub = $1 RETURNING *`,
+        [claims.sub, now, email, appleName(name)],
+      );
+      if (known) return signedIn(db, config, known, false, now);
+      if (!isAppleRelay(claims)) {
+        const [linked] = await db.query(
+          `UPDATE pilots SET apple_sub = $1, last_login = $2
+           WHERE id = (SELECT id FROM pilots WHERE apple_sub IS NULL AND id <> 'local' AND email <> '' AND lower(email) = lower($3)
+                       ORDER BY (google_sub IS NULL), created LIMIT 1)
+           RETURNING *`,
+          [claims.sub, now, email],
+        );
+        if (linked) return signedIn(db, config, linked, false, now);
+      }
+      // a new pilot (a race with another sign-in of the same Apple ID finds that one)
+      const [row] = await db.query(
+        `INSERT INTO pilots (id, apple_sub, email, name, picture, created, last_login, seeded_at) VALUES ($1, $2, $3, $4, '', $5, $5, $5)
+         ON CONFLICT (apple_sub) DO UPDATE SET last_login = EXCLUDED.last_login
+         RETURNING *, (xmax = 0) AS inserted`,
+        [newPilotId(), claims.sub, email, appleName(name), now],
+      );
+      return signedIn(db, config, row, row.inserted === true, now);
     },
   },
   {

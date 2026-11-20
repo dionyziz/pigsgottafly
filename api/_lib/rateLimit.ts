@@ -14,7 +14,7 @@ export interface Rate {
 const MIN = 60e3;
 const HOUR = 3600e3;
 export const RATES = {
-  /** POST /login, per IP */
+  /** POST /login and POST /login/apple, per IP */
   login: { burst: 60, windowMs: 10 * MIN },
   /** GET /weather/metar, per pilot */
   metar: { burst: 120, windowMs: 10 * MIN },

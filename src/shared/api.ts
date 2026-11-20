@@ -42,6 +42,8 @@ export interface SessionResponse {
   /** 'google': sign in with Google Identity Services using googleClientId; 'local': no sign-in. */
   mode: 'google' | 'local';
   googleClientId: string | null;
+  /** Sign in with Apple's Services ID (Apple JS clientId); null = no Apple sign-in. */
+  appleClientId?: string | null;
   pilot: Pilot | null;
   /** The pilot is an admin (ADMIN_EMAILS): the admin page is theirs. */
   admin?: boolean;
@@ -49,6 +51,11 @@ export interface SessionResponse {
 /** POST /api/login (Google ID token from GIS). 401 bad token, 403 email not allowed. */
 export interface LoginRequest {
   credential: string;
+}
+/** POST /api/login/apple (Sign in with Apple JS); name only on the first sign-in. 401 / 403 / 404 (off). */
+export interface AppleLoginRequest {
+  idToken: string;
+  name?: string;
 }
 export interface LoginResponse {
   ok: true;

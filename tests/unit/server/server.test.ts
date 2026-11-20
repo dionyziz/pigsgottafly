@@ -42,12 +42,19 @@ describe('production security headers (vercel.json)', () => {
     expect(headers['X-Frame-Options']).toBe('DENY');
     expect(directives.get('frame-ancestors')).toEqual(["'none'"]);
   });
-  test('scripts only from the app and Google sign-in; no inline script, no eval', () => {
-    expect(directives.get('script-src')).toEqual(["'self'", 'https://accounts.google.com/gsi/']);
+  test('scripts only from the app, Google sign-in and Sign in with Apple; no inline script, no eval', () => {
+    expect(directives.get('script-src')).toEqual([
+      "'self'",
+      'https://accounts.google.com/gsi/',
+      'https://appleid.cdn-apple.com/appleauth/',
+    ]);
     expect(csp).not.toMatch(/unsafe-eval/);
     expect(directives.get('object-src')).toEqual(["'none'"]);
     expect(directives.get('base-uri')).toEqual(["'self'"]);
     expect(allows('script-src', 'https://accounts.google.com/gsi/client')).toBe(true);
+    expect(
+      allows('script-src', 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js'),
+    ).toBe(true);
     expect(allows('script-src', 'https://evil.example.com/x.js')).toBe(false);
   });
   test('every external origin the client talks to is allowed', () => {
@@ -72,6 +79,9 @@ describe('production security headers (vercel.json)', () => {
     }
     expect(directives.get('worker-src')).toContain('blob:');
     expect(allows('frame-src', 'https://accounts.google.com/gsi/iframe/select')).toBe(true);
+    // Sign in with Apple JS: its popup and frames on appleid.apple.com
+    expect(allows('frame-src', 'https://appleid.apple.com/auth/authorize')).toBe(true);
+    expect(allows('connect-src', 'https://appleid.apple.com/auth/authorize')).toBe(true);
     expect(allows('img-src', 'https://lh3.googleusercontent.com/a/photo')).toBe(true);
   });
   test('the local server sends the same headers with the built client', async () => {

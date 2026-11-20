@@ -39,6 +39,7 @@ import fplCopies049 from './migrations/049_fpl_copies.js';
 import autorouterToken050 from './migrations/050_autorouter_token.js';
 import appLoginCodes051 from './migrations/051_app_login_codes.js';
 import autorouterRefused052 from './migrations/052_autorouter_refused.js';
+import appleSignIn053 from './migrations/053_apple_sign_in.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -84,6 +85,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '050_autorouter_token', sql: autorouterToken050 },
   { name: '051_app_login_codes', sql: appLoginCodes051 },
   { name: '052_autorouter_refused', sql: autorouterRefused052 },
+  { name: '053_apple_sign_in', sql: appleSignIn053 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

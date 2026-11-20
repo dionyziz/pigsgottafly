@@ -120,6 +120,7 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     account: {
       id: p.id,
       googleSubject: p.google_sub ?? null,
+      appleSubject: p.apple_sub ?? null,
       email: p.email,
       googleName: p.name,
       picture: p.picture,

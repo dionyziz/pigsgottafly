@@ -28,6 +28,10 @@ export interface ApiConfig {
   allowedEmails: string[];
   /** Fetches Google's signing keys (JWKs); injectable for tests. */
   googleKeys: () => Promise<JsonWebKey[]>;
+  /** Sign in with Apple Services ID (APPLE_CLIENT_ID); '' = no Apple sign-in. Needs Google mode. */
+  appleClientId?: string;
+  /** Fetches Apple's signing keys (JWKs); injectable for tests. */
+  appleKeys?: () => Promise<JsonWebKey[]>;
   secureCookie: boolean;
   /** autorouter account (NOTAMs, filing); null/undefined = not configured. Tests inject a mocked fetch. */
   autorouter?: AutorouterSettings | null;

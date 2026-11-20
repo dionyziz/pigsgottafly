@@ -27,8 +27,8 @@ const sections: LegalSection[] = [
     body: (
       <ul>
         <li>
-          You sign in with your own Google account. Keep it secure: whoever can use it can use your Pig's Gotta Fly
-          account.
+          You sign in with your own Google account or Apple ID. Keep it secure: whoever can use it can use your Pig's
+          Gotta Fly account.
         </li>
         <li>You must be at least 16 years old.</li>
         <li>One person per account. Do not sign in as, or create documents in the name of, someone else.</li>

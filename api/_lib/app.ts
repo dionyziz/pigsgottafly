@@ -2,7 +2,7 @@
 // (api/index.ts). Matches /api/<path> against the route registry, resolves the session pilot,
 // and turns handler results/errors into JSON responses.
 import type { Pilot } from '../../src/shared/types.js';
-import { googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
+import { appleKeys, googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
 import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
 import type { Db } from './db.js';
 import type { ApiConfig, Ctx, JsonBody, Req, Res, Route } from './http.js';
@@ -54,9 +54,12 @@ const emailList = (v: string | undefined) =>
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiConfig, 'googleKeys' | 'secureCookie'> {
+export function configFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): Omit<ApiConfig, 'googleKeys' | 'appleKeys' | 'secureCookie'> {
   return {
     googleClientId: env.GOOGLE_CLIENT_ID || '',
+    appleClientId: env.APPLE_CLIENT_ID || '',
     allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
     adminEmails: emailList(env.ADMIN_EMAILS),
@@ -110,6 +113,9 @@ export function createApi(
     allowedEmails,
     autorouterPilots: (opts.autorouterPilots ?? allowedEmails).map((e) => e.trim().toLowerCase()).filter(Boolean),
     googleKeys: opts.googleKeys || googleKeys,
+    // Apple sign-in only next to Google's (sessions exist only in Google mode)
+    appleClientId: opts.googleClientId ? opts.appleClientId || '' : '',
+    appleKeys: opts.appleKeys || appleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
     adminEmails: (opts.adminEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),

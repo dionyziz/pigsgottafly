@@ -6,7 +6,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
 
 ## Features
 
-- **Accounts.** Sign in with Google. Every pilot has their own profile, hangar, passengers, saved waypoints and flights; the API scopes every query to the signed-in pilot. A new pilot starts empty and is asked for name, phone and home aerodrome on first use.
+- **Accounts.** Sign in with Google or with Apple. Every pilot has their own profile, hangar, passengers, saved waypoints and flights; the API scopes every query to the signed-in pilot. A new pilot starts empty and is asked for name, phone and home aerodrome on first use.
 - **Lobby.** Works like Google Docs: search, upcoming flights first, and a ⋮ menu to open, rename, copy, or move to trash (with undo and restore).
 - **Flight editor.** A full-window MapLibre map with layers drawn from the AIP in VFR-chart style:
   - aerodromes (hover or click one for its hours and handling on the flight's date), TMA/CTR/ATZ sectors with class and vertical limits, VFR reporting points, and VFR routes with their charted altitudes;
@@ -73,7 +73,8 @@ vercel deploy --prod
 - Environment variables (Vercel project settings):
   - `DATABASE_URL`: required, set by the Neon integration.
   - `GOOGLE_CLIENT_ID`: required. The function refuses to serve without it.
-  - `ALLOWED_EMAILS`: optional, comma-separated. Limits who can sign in.
+  - `APPLE_CLIENT_ID`: optional. The Services ID for **Sign in with Apple** (e.g. `com.pigsgottafly.web`); unset, the Apple button is not shown and `POST /api/login/apple` answers 404. The App Store requires it next to Google's sign-in (guideline 4.8). See *Sign in with Apple* below.
+  - `ALLOWED_EMAILS`: optional, comma-separated. Limits who can sign in (Google and Apple).
   - `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD`: optional, for the NOTAM briefing. Add `AUTOROUTER_FILING=1` for flight-plan filing.
     - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it; `*` lets every signed-in pilot use it. With both lists empty, nobody can.
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
@@ -82,6 +83,27 @@ vercel deploy --prod
     - A form version that was already sent goes again only on an explicit re-send.
     - SPF/DKIM must be set up for the sender domain.
   - `ADMIN_EMAILS`: optional, comma-separated (default: nobody). These pilots see the admin page (`/admin`: every pilot, their counts and shares) and get an e-mail for each new signup (sent through Resend, no cc; a failed e-mail never blocks the sign-in).
+
+### Sign in with Apple
+
+The sign-in screen shows Apple's button under Google's when `APPLE_CLIENT_ID` is set. It uses Apple's JS
+(popup), and the server checks Apple's identity token against Apple's keys (`POST /api/login/apple`,
+`api/_lib/routes/session.ts`). A pilot is found by Apple's user id (`pilots.apple_sub`). The first time,
+an existing pilot with the same verified e-mail is linked, but never through a Hide My Email relay address.
+Anyone else gets a new account.
+
+What the owner sets up in the Apple Developer account (Certificates, Identifiers & Profiles):
+
+1. **Identifiers → App IDs**: the App ID (`com.pigsgottafly.app`) with the *Sign in with Apple* capability
+   enabled, as the primary App ID.
+2. **Identifiers → Services IDs → +**: a Services ID, e.g. `com.pigsgottafly.web` (description "Pig's Gotta Fly").
+   Enable *Sign in with Apple* → *Configure*: primary App ID `com.pigsgottafly.app`, **Domains and
+   Subdomains** `pigsgottafly.com`, **Return URLs** `https://pigsgottafly.com/`. Save, then Continue → Register.
+3. In Vercel: `APPLE_CLIENT_ID` = that Services ID (Production), then redeploy.
+
+No private key or client secret is needed: the app only verifies the identity token, it never calls Apple's
+token endpoint. For a local test, add the local origin to the Services ID's domains (Apple accepts only
+HTTPS origins, so use a tunnel) and run with `APPLE_CLIENT_ID` set.
 
 ## iPhone and iPad app
 
@@ -92,8 +114,8 @@ bundled as the start-up fallback. App Store updates are only needed when the nat
 - Native code: `ios/App/App/PgfNativePlugin.swift` (Apple's sign-in sheet; AirPrint) and
   `MainViewController.swift` (registers it; swipe back). The web side of it is `src/app/native.ts`:
   printing, exports opening in place, and the sign-in button. Everything there is a no-op in a browser.
-- Sign-in: Google refuses sign-in inside an app's web view. The app opens `/app-login` in Apple's sign-in
-  sheet (Safari's cookies), and the page hands a one-time code back (`POST /api/app-code`,
+- Sign-in: Google refuses sign-in inside an app's web view. The app's single *Sign in* button opens `/app-login`
+  in Apple's sign-in sheet (Safari's cookies), which offers both Google and Apple, and the page hands a one-time code back (`POST /api/app-code`,
   `GET /api/app-session`, `api/_lib/routes/appLogin.ts`).
 - Touch: the map editor takes the same gestures by finger. Drag a point or a leg's middle dot, press and
   hold a point for its menu.

@@ -28,12 +28,17 @@ const sections: LegalSection[] = [
     title: 'What we collect',
     body: (
       <>
-        <h3>Your Google account</h3>
+        <h3>Your Google account or Apple ID</h3>
         <p>
-          You sign in with Google. We receive and store your Google account's <b>name</b>, <b>e-mail address</b>,{' '}
-          <b>profile picture address</b> and its unique <b>Google account identifier</b>, plus when your account was
-          created and when you last signed in. We ask Google for nothing else: no contacts, no Drive, no Gmail. When a
-          new account is created, the administrator receives an e-mail with its name and e-mail address.
+          You sign in with Google or with Apple. With Google, we receive and store your Google account's <b>name</b>,{' '}
+          <b>e-mail address</b>, <b>profile picture address</b> and its unique <b>Google account identifier</b>. With
+          Apple, we receive and store your <b>e-mail address</b> (your own, or the private relay address Apple makes for
+          you if you choose <i>Hide My Email</i>), your unique <b>Apple user identifier</b>, and the <b>name</b> you
+          choose to share, which Apple sends only the first time you sign in. We also store when your account was
+          created and when you last signed in. We ask Google and Apple for nothing else: no contacts, no Drive, no
+          Gmail, no iCloud data. If you sign in with Apple using the same, verified e-mail address as an existing
+          account here (not a private relay address), that account is the one you sign in to. When a new account is
+          created, the administrator receives an e-mail with its name and e-mail address.
         </p>
         <h3>Your session</h3>
         <p>
@@ -163,6 +168,10 @@ const sections: LegalSection[] = [
               <td>Google</td>
               <td>Sign-in (Google Identity Services). Your profile picture is loaded from Google's servers.</td>
             </tr>
+            <tr>
+              <td>Apple</td>
+              <td>Sign in with Apple. Its sign-in script and window are loaded from Apple's servers.</td>
+            </tr>
           </tbody>
         </table>
         <p>These services receive only what they need to do their job, and only from your use of the app:</p>
@@ -243,7 +252,7 @@ const sections: LegalSection[] = [
     title: 'International transfers',
     body: (
       <p>
-        Vercel, Neon, Resend and Google are based in the United States and may process data outside the European
+        Vercel, Neon, Resend, Google and Apple are based in the United States and may process data outside the European
         Economic Area. Where they do, the transfer is covered by the EU–US Data Privacy Framework or by the European
         Commission's Standard Contractual Clauses in their data processing terms.
       </p>
@@ -342,7 +351,8 @@ const sections: LegalSection[] = [
         <p>
           We use <b>one cookie</b>: <code>pgf_session</code>, which keeps you signed in. It is strictly necessary,
           HttpOnly (scripts cannot read it), sent only to this site, and lasts until you sign out or 90 days after you
-          last used the app. Google's sign-in button may set its own cookies on Google's domain when you use it.
+          last used the app. Google's and Apple's sign-in may set their own cookies on their own domains when you use
+          them.
         </p>
         <p>
           The app keeps some things in your browser's local storage: layout preferences (panel sizes, map layers,
@@ -351,8 +361,8 @@ const sections: LegalSection[] = [
           that browser.
         </p>
         <p>
-          There is <b>no analytics, no tracking, no advertising</b> and no third-party script other than Google's
-          sign-in.
+          There is <b>no analytics, no tracking, no advertising</b> and no third-party script other than Google's and
+          Apple's sign-in.
         </p>
       </>
     ),
