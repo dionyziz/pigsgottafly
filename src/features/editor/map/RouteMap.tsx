@@ -17,7 +17,7 @@
 //   Leg labels: magnetic course and distance (read-only), altitude (click to edit; Enter/Esc).
 import './map.css';
 
-import type { GeoJSONSource, Map as MlMap, MapMouseEvent, MapTouchEvent } from 'maplibre-gl';
+import type { ExpressionSpecification, GeoJSONSource, Map as MlMap, MapMouseEvent, MapTouchEvent } from 'maplibre-gl';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { maplibregl } from '../../../app/maplibre';
@@ -34,6 +34,7 @@ import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
 import { type AerodromeRequest, DEFAULT_STOP_MIN, requestAllowed, uid as newUid } from '../../../shared';
 import type { Notam } from '../../../shared/briefing';
 import type { MapLayers } from '../../../shared/mapLayers';
+import { areasToRoute } from '../../../shared/notamAreas';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
 import type { MenuItem } from '../../../ui';
 import type { AdDayInfo } from '../AerodromeHours';
@@ -240,6 +241,11 @@ function marchDashes(m: MlMap, layerId: string): (() => void) | undefined {
   return () => cancelAnimationFrame(frame);
 }
 
+/** Airspaces further than this from the route are drawn faint… */
+const FAR_NM = 10;
+/** …at this share of their opacity. */
+const FAR_OPACITY = 0.3;
+const AIR_SOURCES = ['airspaces', 'zones', 'areas'];
 /** A press this long on a route point, without moving, opens its menu (touch). */
 const LONG_PRESS_MS = 550;
 export function RouteMap(props: RouteMapProps) {
@@ -539,6 +545,43 @@ export function RouteMap(props: RouteMapProps) {
   // ---------------------------------------------------------------------------------- NOTAMs
   const notamList = props.notams;
   const notamMarks = useMemo(() => mapNotams(notamList ?? []), [notamList]);
+  // Airspaces and areas more than FAR_NM from the route are drawn faint (UX-PLAN.md step 6): what the
+  // route goes through stands out. Their layers' opacities are scaled by the feature state 'far'.
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !loaded) return;
+    const far: ExpressionSpecification = ['case', ['boolean', ['feature-state', 'far'], false], FAR_OPACITY, 1];
+    const OPACITY: Record<string, 'fill-opacity' | 'line-opacity' | 'text-opacity'> = {
+      fill: 'fill-opacity',
+      line: 'line-opacity',
+      symbol: 'text-opacity',
+    };
+    for (const l of m.getStyle().layers) {
+      const prop = OPACITY[l.type];
+      if (!prop || !('source' in l) || !AIR_SOURCES.includes(l.source)) continue;
+      const v = (m.getPaintProperty(l.id, prop) as ExpressionSpecification | number | undefined) ?? 1;
+      m.setPaintProperty(l.id, prop, ['*', v, far]);
+    }
+  }, [loaded]);
+  const routeLatLon = useMemo(() => route.map((p) => ({ lat: p.lat, lon: p.lon })), [route]);
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !loaded) return;
+    const src = (x: AirspaceInfo) =>
+      x.type === 'CTR' || x.type === 'ATZ' ? 'zones' : isArea(x.type) ? 'areas' : 'airspaces';
+    for (const a of allInfos) {
+      const isFar =
+        routeLatLon.length >= 2 &&
+        areasToRoute([{ kind: 'polygon', points: a.ring.map(([lon, lat]) => ({ lat, lon })) }], routeLatLon).dist >
+          FAR_NM;
+      try {
+        m.setFeatureState({ source: src(a), id: a.id }, { far: isFar });
+      } catch {
+        /* a source not drawn yet */
+      }
+    }
+  }, [allInfos, routeLatLon, loaded]);
+
   // The focused airspace or NOTAM area: its outline with dashes walking around it (still when motion is reduced).
   const focusData = useMemo(() => {
     if (mapFocus?.kind === 'air' && airPop) {

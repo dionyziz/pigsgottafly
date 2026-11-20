@@ -205,8 +205,10 @@ export const routes: Route[] = [
     async handler({ db, pilot, query }): Promise<FlightListItem[]> {
       const trash = query.get('trash') === '1';
       const rows = await db.query(
-        `SELECT id, summary, route, date, aircraft_id, version, created, updated, opened, deleted FROM flights
-         WHERE pilot_id = $1 AND deleted = $2 ORDER BY GREATEST(updated, opened) DESC`,
+        `SELECT f.id, f.summary, f.route, f.date, f.aircraft_id, f.version, f.created, f.updated, f.opened, f.deleted,
+           ff.status AS filing_status
+         FROM flights f LEFT JOIN flight_filings ff ON ff.flight_id = f.id AND ff.pilot_id = f.pilot_id
+         WHERE f.pilot_id = $1 AND f.deleted = $2 ORDER BY GREATEST(f.updated, f.opened) DESC`,
         [pilot.id, trash],
       );
       // Passengers' names per flight, in manifest order (the pilot's own manifest rows only).
@@ -239,6 +241,7 @@ export const routes: Route[] = [
         updated: Number(r.updated),
         opened: Number(r.opened),
         deleted: !!r.deleted,
+        filingStatus: r.filing_status ?? null,
       }));
     },
   },
@@ -367,13 +370,27 @@ export const routes: Route[] = [
     path: '/flights/:id/copy',
     async handler({ db, pilot, params, body }) {
       const cur = await load(db, pilot.id, params.id);
-      const { title } = await body();
+      const { title, date } = await body();
       const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...doc } = cur;
-      const name =
-        typeof title === 'string' && title.trim()
+      // "Fly again" (title '' and a date): the same trip on another day, named after its route
+      const again = title === '' && typeof date === 'string';
+      if (date !== undefined && (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)))
+        throw badRequest('date must be YYYY-MM-DD');
+      const name = again
+        ? ''
+        : typeof title === 'string' && title.trim()
           ? title.trim()
           : `Copy of ${cur.title || cur.summary.title || 'flight'}`;
-      const d: FlightDoc = { ...doc, title: name, summary: { ...doc.summary, title: name } };
+      const d: FlightDoc = {
+        ...doc,
+        title: name,
+        ...(typeof date === 'string' ? { date } : {}),
+        summary: {
+          ...doc.summary,
+          title: again ? doc.summary.title : name,
+          ...(typeof date === 'string' ? { date } : {}),
+        },
+      };
       const id = await insertFlight(db, pilot.id, d);
       return reply(201, await load(db, pilot.id, id));
     },

@@ -5,14 +5,21 @@ import type { WarningFix } from '../../ui';
 import { EDITOR_FOCUS_SECTION, type EditorFocus, fixLink, planningFix } from '../exports/fix';
 
 /** A focus key, or 'route' (the route ends) for a flight fix without a field. */
-export type EditorFocusKey = EditorFocus | 'route';
+/** A field to focus, or a whole section to open and scroll to ('section:notams'). */
+export type EditorFocusKey = EditorFocus | 'route' | `section:${string}`;
 
 /** The panel section (Section id) holding a focus key. */
 export function sectionOf(key: string): string | undefined {
+  if (key.startsWith('section:')) return key.slice('section:'.length);
   return key === 'route' ? 'route' : EDITOR_FOCUS_SECTION[key as EditorFocus];
 }
 
 const listeners = new Set<(key: EditorFocusKey) => void>();
+
+/** Opens a panel section and scrolls to it. */
+export function focusSection(id: string): void {
+  focusInEditor(`section:${id}`);
+}
 
 /** Open the section holding `key` and focus its field. */
 export function focusInEditor(key: EditorFocusKey): void {

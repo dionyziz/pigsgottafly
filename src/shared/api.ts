@@ -1,6 +1,7 @@
 // HTTP API contract: request and response bodies of /api/… (see ARCHITECTURE.md for the route list).
 // Every route except session/login/logout requires a session (or local mode) and is scoped to the
 // session's pilot: another pilot's records answer 404, never 403.
+import type { FilingStatus } from './briefing.js';
 import type {
   RefAerodrome,
   RefAirac,
@@ -96,6 +97,8 @@ export interface FlightListItem {
   updated: EpochMs;
   opened: EpochMs;
   deleted: boolean;
+  /** The flight plan's filing status (autorouter), null when never filed. */
+  filingStatus: FilingStatus | null;
 }
 
 /**
@@ -125,7 +128,10 @@ export interface FlightUpdateResponse {
 /** DELETE /api/flights/:id → 204 (moves to trash). POST /api/flights/:id/restore → Flight. */
 /** POST /api/flights/:id/copy (FlightCopyRequest) → 201 Flight (a new flight, title 'Copy of …'). */
 export interface FlightCopyRequest {
+  /** '' with a date: "Fly again", named after the route. */
   title?: string;
+  /** The copy's date (YYYY-MM-DD); default the original's. */
+  date?: string;
 }
 /** POST /api/flights/:id/opened → 204 (bumps `opened` for the lobby order). */
 

@@ -37,6 +37,7 @@ const item = (
   updated,
   opened: 0,
   deleted: false,
+  filingStatus: null,
   summary: { ...EMPTY_SUMMARY, date, ...extra },
   points,
   passengers,

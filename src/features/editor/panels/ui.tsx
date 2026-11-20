@@ -29,6 +29,12 @@ export function useFocusRequest(matches: (key: string) => boolean) {
     let timer = 0;
     // the box opens on this render; its body (and data still loading) may take a moment
     const attempt = () => {
+      // a whole section: open, and scrolled to
+      if (req.key.startsWith('section:') && ref.current) {
+        ref.current.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        setReq(null);
+        return;
+      }
       const el = ref.current ? findFocusTarget(ref.current, req.key) : null;
       if (el) {
         focusAndHighlight(el);

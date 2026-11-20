@@ -287,6 +287,14 @@ describe('flights', () => {
     expect(c.body.title).toBe('Copy of Trip');
     expect(c.body.crew.length).toBe(2);
     expect(c.body.crew[1].overrides).toEqual(['weightKg']);
+    // "Fly again": the same trip on another day, named after its route, nothing filed
+    const again = await a.call('POST', `flights/${f.id}/copy`, { title: '', date: '2027-01-09' });
+    expect(again.status).toBe(201);
+    expect([again.body.title, again.body.date, again.body.summary.date]).toEqual(['', '2027-01-09', '2027-01-09']);
+    expect(again.body.crew.length).toBe(2);
+    const listed = (await a.call('GET', 'flights')).body.find((x: any) => x.id === again.body.id);
+    expect(listed.filingStatus).toBeNull();
+    expect((await a.call('POST', `flights/${f.id}/copy`, { date: '9 Jan' })).status).toBe(400);
     expect((await a.call('POST', `flights/${f.id}/opened`)).status).toBe(204);
   });
 });

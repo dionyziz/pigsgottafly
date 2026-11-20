@@ -100,6 +100,23 @@ export type FilingStatus =
   | 'rejected'
   | 'unknown';
 
+/** How a filing status reads (the editor, the export, the flight list). */
+export const FILING_STATUS_LABEL: Record<FilingStatus, string> = {
+  'not-filed': 'Not filed',
+  created: 'Created',
+  filed: 'Filed',
+  manual_correction: 'Queued for manual correction',
+  suspended: 'Suspended',
+  departed: 'Departed',
+  terminated: 'Terminated',
+  arriving: 'Arriving',
+  arrived: 'Arrived',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+  rejected: 'Rejected',
+  unknown: 'Unknown',
+};
+
 /** One AFTN addressee proposed for the plan (AIP Greece ENR 1.11), for the pilot to review. */
 export interface Addressee {
   /** 8 letters, e.g. 'LGGGZFZX'. */

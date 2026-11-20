@@ -9,27 +9,13 @@
 import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { api, ApiRequestError, peekGet } from '../../../data/api';
+import { invalidate } from '../../../data/entities';
 import type { Flight } from '../../../shared';
-import type { FilingState, FilingStatus } from '../../../shared/briefing';
+import { FILING_STATUS_LABEL, type FilingState, type FilingStatus } from '../../../shared/briefing';
 import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
 import { Chip, Loading, Panel, TimeField } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
 
-const STATUS_LABEL: Record<FilingStatus, string> = {
-  'not-filed': 'Not filed',
-  created: 'Created',
-  filed: 'Filed',
-  manual_correction: 'Queued for manual correction',
-  suspended: 'Suspended',
-  departed: 'Departed',
-  terminated: 'Terminated',
-  arriving: 'Arriving',
-  arrived: 'Arrived',
-  closed: 'Closed',
-  cancelled: 'Cancelled',
-  rejected: 'Rejected',
-  unknown: 'Unknown',
-};
 const OPEN = new Set<FilingStatus>([
   'created',
   'filed',
@@ -98,6 +84,8 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
     setActionErr(null);
     try {
       setSt(await fn());
+      // the flight's filing status shows elsewhere too (the editor's checklist and top bar, the lobby)
+      invalidate('flights');
     } catch (e) {
       setActionErr(
         e instanceof ApiRequestError ? (e.offline ? 'Offline: nothing was sent.' : e.message) : 'The request failed.',
@@ -139,7 +127,7 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
             tone={filing ? (filing.status === 'rejected' ? 'danger' : open ? 'ok' : undefined) : undefined}
             testId="fpl-filing-status"
           >
-            {filing ? STATUS_LABEL[filing.status] : 'Not filed'}
+            {filing ? FILING_STATUS_LABEL[filing.status] : 'Not filed'}
           </Chip>
         )
       }

@@ -13,9 +13,10 @@ import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { autoTitle, type Flight, type FlightListItem } from '../../shared';
+import { FILING_STATUS_LABEL } from '../../shared/briefing';
 import { fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
 import { errorMessage, fmtDuration } from '../../shared/format';
-import { AsyncView, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, rowClick, SearchBox } from '../../ui';
+import { AsyncView, Chip, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, rowClick, SearchBox } from '../../ui';
 import { flightSearchText, matchesQuery, passengerNames, splitFlights } from './format';
 import { RouteThumb } from './RouteThumb';
 
@@ -99,6 +100,15 @@ export function LobbyPage() {
       fail('Could not copy')(e);
     }
   };
+  // the same trip on a new day (the next one from today; nothing filed or signed yet), opened at once
+  const flyAgain = async (r: FlightListItem) => {
+    try {
+      const c = await api.flights.copy(r.id, { title: '', date: today });
+      void navigate(`/flights/${c.id}`);
+    } catch (e) {
+      fail('Could not copy')(e);
+    }
+  };
   const openNewTab = (r: FlightListItem) => window.open(`/flights/${r.id}`, '_blank', 'noopener');
 
   const onRowClick = (r: FlightListItem) =>
@@ -119,7 +129,8 @@ export function LobbyPage() {
     const items = trashView
       ? [{ label: 'Restore', onSelect: () => void restore(r) }]
       : [
-          { label: 'Open in new tab', onSelect: () => openNewTab(r) },
+          { label: 'Fly again', onSelect: () => void flyAgain(r) },
+          { label: 'Open in new tab', onSelect: () => openNewTab(r), separator: true },
           { label: 'Rename', onSelect: () => setRenaming(r), separator: true },
           { label: 'Make a copy', onSelect: () => void copy(r) },
           { label: 'Move to trash', onSelect: () => void trash(r), danger: true, separator: true },
@@ -141,7 +152,21 @@ export function LobbyPage() {
               {titleOf(r)}
             </Link>
           )}
-          <div className="sub">{[route, s.aircraft].filter(Boolean).join(' · ') || 'No route yet'}</div>
+          <div className="sub">
+            {[route, s.aircraft].filter(Boolean).join(' · ') || 'No route yet'}
+            {r.filingStatus && (
+              <>
+                {' '}
+                <Chip
+                  sm
+                  tone={r.filingStatus === 'rejected' ? 'danger' : r.filingStatus === 'cancelled' ? undefined : 'ok'}
+                  testId="flight-filing"
+                >
+                  {FILING_STATUS_LABEL[r.filingStatus]}
+                </Chip>
+              </>
+            )}
+          </div>
         </div>
         <div className="cell pax hide-sm" data-testid="flight-pax" title={pax || undefined}>
           {pax || dash}

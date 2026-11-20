@@ -251,3 +251,35 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-metar-head { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--fs-xs); margin-bottom: 2px; min-width: 0; }
 .ep-metar-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ep-metar-age { flex: none; }
+
+/* "Ready to fly" and the stages (ReadinessBar.tsx) */
+.rd { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--line); padding: var(--s3) var(--s4) var(--s2); display: flex; flex-direction: column; gap: var(--s2); }
+.rd-head { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--fs-sm); }
+.rd-head.is-ok { color: var(--ok); }
+.rd-head.is-todo { color: var(--warn); }
+.rd-head.is-danger { color: var(--danger); }
+.rd-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; border-radius: var(--r); background: var(--surface-2); }
+.rd-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 4px 8px; border: 0; border-radius: calc(var(--r) - 2px); background: none; color: var(--ink-2); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
+.rd-tab:hover { background: var(--hover); }
+.rd-tab[aria-selected='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); font-weight: 600; }
+.rd-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.rd-tab.is-todo .rd-dot { background: var(--line-strong); }
+.rd-tab.is-warn .rd-dot { background: var(--warn); }
+.rd-tab.is-danger .rd-dot { background: var(--danger); }
+.rd-count { font-size: 11px; min-width: 16px; padding: 0 4px; border-radius: var(--r-pill); background: var(--hover); color: var(--ink-2); }
+.rd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rd-row { display: grid; grid-template-columns: 16px 1fr auto; align-items: baseline; gap: 8px; padding: 4px 0; font-size: var(--fs-sm); }
+.rd-row + .rd-row { border-top: 1px solid var(--line); }
+.rd-icon { position: relative; top: 2px; }
+.rd-row.is-ok .rd-icon { color: var(--ok); }
+.rd-row.is-todo .rd-icon { color: var(--ink-2); }
+.rd-row.is-warn .rd-icon { color: var(--warn); }
+.rd-row.is-danger .rd-icon { color: var(--danger); }
+.rd-main { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; border: 0; padding: 0; background: none; text-align: left; color: var(--ink); font-size: var(--fs-sm); cursor: pointer; }
+.rd-main:hover .rd-label { text-decoration: underline; }
+.rd-label { font-weight: 500; }
+.rd-text { color: var(--ink-2); font-size: var(--fs-xs); }
+.rd-row.is-warn .rd-text { color: var(--warn); }
+.rd-row.is-danger .rd-text { color: var(--danger); }
+.rd-act { font-size: var(--fs-xs); white-space: nowrap; }
+.ep-print-navlog { margin-bottom: var(--s3); align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }

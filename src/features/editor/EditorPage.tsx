@@ -12,18 +12,42 @@ import { Link, useParams } from 'react-router';
 import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
 import { useSession } from '../../app/session';
-import { ApiRequestError } from '../../data/api';
+import { api, ApiRequestError } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { flightStore } from '../../data/flightStore';
+import { useAsync } from '../../data/useAsync';
 import { autoTitle, type Flight, type FlightDoc } from '../../shared';
-import { Icon, Loading } from '../../ui';
-import { onEditorFocus } from './focus';
+import { FILING_STATUS_LABEL } from '../../shared/briefing';
+import { fmtClockMs } from '../../shared/format';
+import { Chip, Icon, Loading } from '../../ui';
+import { focusSection, onEditorFocus } from './focus';
 import { LegHoverProvider } from './legHover';
 import { MapView } from './map';
 import { NotamProvider } from './notams';
 import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
 import { useResizable } from './resizable';
 import { EditorProvider, useEditor } from './state';
+
+/** The flight plan's filing status, in the top bar once it is filed; a click opens the Filing section. */
+function FilingChip() {
+  const { flight } = useEditor();
+  const q = useAsync(() => api.filing.get(flight.id), [flight.id], {
+    cache: `filing:${flight.id}`,
+    refetchOnFocus: true,
+    invalidatedBy: 'flights',
+  });
+  const f = q.data?.filing;
+  if (!f) return null;
+  const tone = f.status === 'rejected' ? 'danger' : f.status === 'cancelled' ? undefined : 'ok';
+  return (
+    <button type="button" className="ep-chip-btn" onClick={() => focusSection('filing')} data-testid="filing-chip">
+      <Chip tone={tone}>
+        {FILING_STATUS_LABEL[f.status]}
+        {f.eobt != null && f.status !== 'cancelled' ? ` ${fmtClockMs(f.eobt, { z: true })}` : ''}
+      </Chip>
+    </button>
+  );
+}
 
 function SaveState() {
   const { saveStatus } = useEditor();
@@ -246,6 +270,7 @@ export function EditorPage() {
                 </Link>
                 <Title />
                 <SaveState />
+                <FilingChip />
                 <span className="spacer" />
                 <UndoRedo />
                 <AccountMenu />
