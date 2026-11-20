@@ -177,6 +177,8 @@ export type FilesApi = ReturnType<typeof filesOf<unknown>>;
 export const api = {
   session: () => request<SessionResponse>('GET', 'session'),
   login: (credential: string) => request<LoginResponse>('POST', 'login', { credential }),
+  /** A one-time code that signs the iOS app in (api/_lib/routes/appLogin.ts). */
+  appCode: () => request<{ code: string }>('POST', 'app-code'),
   logout: () => request<{ ok: true }>('POST', 'logout'),
   revokeAllSessions: () => request<{ ok: true }>('POST', 'session/revoke-all'),
 

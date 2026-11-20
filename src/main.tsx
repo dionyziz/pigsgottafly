@@ -7,10 +7,12 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
 import { installErrorReporting } from './app/errorReporter';
+import { installNativeShell } from './app/native';
 import { installStaleBuildReload } from './app/staleBuild';
 
 installStaleBuildReload();
 installErrorReporting();
+installNativeShell();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

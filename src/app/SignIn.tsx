@@ -1,8 +1,10 @@
-// Sign in with Google (Google Identity Services); the server verifies the ID token.
+// Sign in with Google (Google Identity Services); the server verifies the ID token. In the iOS app,
+// the button opens Apple's sign-in sheet instead (src/app/native.ts), where Google sign-in works.
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { api, ApiRequestError } from '../data/api';
+import { isNativeApp, nativeSignIn } from './native';
 
 /** The part of Google Identity Services (accounts.google.com/gsi/client) this app uses. */
 interface GoogleIdentity {
@@ -28,10 +30,19 @@ declare global {
 
 export function SignIn({ clientId, onSignedIn }: { clientId: string | null; onSignedIn: () => void }) {
   const button = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const app = isNativeApp();
+  const [error, setError] = useState<string | null>(() =>
+    new URLSearchParams(location.search).get('signin') === 'failed' ? 'Sign-in failed. Try again.' : null,
+  );
+  const appSignIn = () => {
+    setError(null);
+    nativeSignIn().catch((e: { code?: string }) => {
+      if (e?.code !== 'cancelled') setError('Sign-in failed. Try again.');
+    });
+  };
 
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId || app) return;
     const signIn = async (credential: string) => {
       try {
         await api.login(credential);
@@ -71,7 +82,7 @@ export function SignIn({ clientId, onSignedIn }: { clientId: string | null; onSi
     sc.async = true;
     sc.onload = init;
     document.head.appendChild(sc);
-  }, [clientId, onSignedIn]);
+  }, [clientId, onSignedIn, app]);
 
   return (
     <div className="center-screen">
@@ -85,7 +96,13 @@ export function SignIn({ clientId, onSignedIn }: { clientId: string | null; onSi
           <p className="muted" style={{ margin: 0 }}>
             VFR flight planning for the Athinai FIR.
           </p>
-          <div ref={button} style={{ minHeight: 44 }} />
+          {app ? (
+            <button type="button" className="primary" onClick={appSignIn} data-testid="app-signin">
+              Sign in with Google
+            </button>
+          ) : (
+            <div ref={button} style={{ minHeight: 44 }} />
+          )}
           <p className="muted" style={{ margin: 0, fontSize: 'var(--fs-xs)' }} data-testid="signin-consent">
             By signing in you agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
           </p>

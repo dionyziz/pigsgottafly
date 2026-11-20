@@ -4,6 +4,7 @@ import type { Route } from '../http.js';
 import { routes as account } from './account.js';
 import { routes as admin } from './admin.js';
 import { routes as aircraft } from './aircraft.js';
+import { routes as appLogin } from './appLogin.js';
 import { routes as attachments } from './attachments.js';
 import { routes as declarations } from './declarations.js';
 import { routes as files } from './files.js';
@@ -24,6 +25,7 @@ import { routes as weatherGrid } from './weatherGrid.js';
 
 export const ROUTES: Route[] = [
   ...session,
+  ...appLogin,
   ...me,
   ...account,
   ...aircraft,

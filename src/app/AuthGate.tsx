@@ -9,6 +9,7 @@ import { api, ApiRequestError } from '../data/api';
 import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/entities';
 import type { Pilot, SessionResponse } from '../shared';
 import { Loading } from '../ui';
+import { APP_LOGIN_PATH, handBackToApp } from './native';
 import { SessionContext, type SessionValue } from './session';
 import { SignIn } from './SignIn';
 
@@ -97,5 +98,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   if (!session) return <Loading variant="screen" />;
   if (!value) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
+  // the iOS app's sign-in sheet, signed in: hand the sign-in back to the app
+  if (location.pathname === APP_LOGIN_PATH) return <AppHandoff />;
   return <SessionContext value={value}>{children}</SessionContext>;
+}
+
+/** /app-login once signed in: a one-time code for the app, which closes this sheet. */
+function AppHandoff() {
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    handBackToApp().catch(() => setError(true));
+  }, []);
+  return error ? (
+    <div className="center-screen">
+      <p className="form-error" role="alert">
+        Could not return to the app. Close this window and try again.
+      </p>
+    </div>
+  ) : (
+    <Loading variant="screen" />
+  );
 }
