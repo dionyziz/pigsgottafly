@@ -1,0 +1,1 @@
+VFR,flight plan,navlog,pilot,aviation,Greece,weight and balance,METAR,NOTAM,Cessna,aeroclub,PPL,AIP

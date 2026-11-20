@@ -1,7 +1,8 @@
 // The app's native parts, called from the web app (src/app/native.ts):
 //   signIn({ url })   opens url in Apple's sign-in sheet (Safari's cookies, where Google sign-in
 //                     works) and resolves with the pigsgottafly:// URL the page ends on;
-//   print({ title })  prints the page with AirPrint (iOS web views ignore window.print()).
+//   print({ title })  prints the page with AirPrint (iOS web views ignore window.print());
+//   reload()          loads the live site again (the offline page's "Try again", public/offline.html).
 import AuthenticationServices
 import Capacitor
 import UIKit
@@ -13,9 +14,11 @@ public class PgfNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPr
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "signIn", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "print", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "reload", returnType: CAPPluginReturnPromise),
     ]
 
-    /** The scheme the sign-in page hands the code back on (Info.plist registers it too). */
+    /** The scheme the sign-in page hands the code back on (only the sign-in sheet listens for it;
+     *  ASWebAuthenticationSession needs no CFBundleURLTypes entry). */
     static let callbackScheme = "pigsgottafly"
     private var session: ASWebAuthenticationSession?
 
@@ -71,6 +74,17 @@ public class PgfNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPr
             } else {
                 printer.present(animated: true, completionHandler: done)
             }
+        }
+    }
+
+    @objc func reload(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard let bridge = self.bridge, let web = bridge.webView else {
+                call.reject("no web view")
+                return
+            }
+            web.load(URLRequest(url: bridge.config.appStartServerURL))
+            call.resolve()
         }
     }
 }
