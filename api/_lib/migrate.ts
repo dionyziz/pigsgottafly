@@ -38,6 +38,7 @@ import refVfrPoints048 from './migrations/048_ref_vfr_points_2609.js';
 import fplCopies049 from './migrations/049_fpl_copies.js';
 import autorouterToken050 from './migrations/050_autorouter_token.js';
 import appLoginCodes051 from './migrations/051_app_login_codes.js';
+import autorouterRefused052 from './migrations/052_autorouter_refused.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -82,6 +83,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '049_fpl_copies', sql: fplCopies049 },
   { name: '050_autorouter_token', sql: autorouterToken050 },
   { name: '051_app_login_codes', sql: appLoginCodes051 },
+  { name: '052_autorouter_refused', sql: autorouterRefused052 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

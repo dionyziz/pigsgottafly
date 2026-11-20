@@ -77,7 +77,13 @@ export interface TokenStore {
   set: (t: AutorouterToken) => Promise<void>;
   /** Forgets the token if it is still this one (refused by autorouter). */
   drop: (value: string) => Promise<void>;
+  /** Until when sign-in is not to be tried again (autorouter refused a new token), epoch ms; 0 = no wait. */
+  refusedUntil: () => Promise<number>;
+  refuse: (until: number) => Promise<void>;
 }
+
+/** After autorouter refuses a new token (too many live ones), no instance asks again for this long. */
+export const REFUSED_WAIT_MS = 15 * 60e3;
 
 /** A token this close to expiring is not used. */
 const TOKEN_MARGIN_MS = 60e3;
@@ -142,6 +148,8 @@ export interface FiledPlan {
 export class AutorouterClient {
   private token: { value: string; expires: number } | null = null;
   private tokenP: Promise<string> | null = null;
+  /** Until when sign-in is not retried here (see TokenStore.refusedUntil). */
+  private refused = 0;
   private readonly base: string;
   private readonly doFetch: typeof fetch;
   private readonly now: () => number;
@@ -172,6 +180,11 @@ export class AutorouterClient {
           this.token = stored!;
           return stored!.value;
         }
+        const wait = Math.max(this.refused, (await this.store?.refusedUntil().catch(() => 0)) ?? 0);
+        if (wait > this.now())
+          throw new AutorouterError(
+            `autorouter sign-in refused (too many active access tokens); not retrying before ${new Date(wait).toISOString().slice(11, 16)}Z`,
+          );
         const res = await this.doFetch(`${this.base}/oauth2/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -189,6 +202,10 @@ export class AutorouterClient {
           error_description?: string;
         };
         if (!res.ok || !body.access_token) {
+          if (/too many active access tokens/i.test(body.error_description || body.error || '')) {
+            this.refused = this.now() + REFUSED_WAIT_MS;
+            await this.store?.refuse(this.refused).catch(() => {});
+          }
           // never echo the credentials; autorouter's error text is safe to show
           throw new AutorouterError(
             `autorouter sign-in failed: ${body.error_description || body.error || `HTTP ${res.status}`}`,

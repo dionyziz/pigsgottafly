@@ -74,7 +74,18 @@ function tokenStore(db: Db): TokenStore {
   return {
     async get() {
       const [r] = await db.query('SELECT token, expires FROM autorouter_token WHERE id = 1');
-      return r ? { value: r.token, expires: Number(r.expires) } : null;
+      return r?.token ? { value: r.token, expires: Number(r.expires) } : null;
+    },
+    async refusedUntil() {
+      const [r] = await db.query('SELECT refused_until FROM autorouter_token WHERE id = 1');
+      return Number(r?.refused_until) || 0;
+    },
+    async refuse(until) {
+      await db.query(
+        `INSERT INTO autorouter_token (id, refused_until) VALUES (1, $1)
+         ON CONFLICT (id) DO UPDATE SET refused_until = EXCLUDED.refused_until`,
+        [until],
+      );
     },
     async set(t) {
       await db.query(
