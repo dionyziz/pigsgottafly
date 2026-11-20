@@ -17,8 +17,8 @@ public class PgfNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPr
         CAPPluginMethod(name: "reload", returnType: CAPPluginReturnPromise),
     ]
 
-    /** The scheme the sign-in page hands the code back on (only the sign-in sheet listens for it;
-     *  ASWebAuthenticationSession needs no CFBundleURLTypes entry). */
+    /// The scheme the sign-in page hands the code back on (only the sign-in sheet listens for it;
+    /// ASWebAuthenticationSession needs no CFBundleURLTypes entry).
     static let callbackScheme = "pigsgottafly"
     private var session: ASWebAuthenticationSession?
 
@@ -28,7 +28,8 @@ public class PgfNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPr
             return
         }
         DispatchQueue.main.async {
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: Self.callbackScheme) { [weak self] back, error in
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: Self.callbackScheme) {
+                [weak self] back, error in
                 self?.session = nil
                 if let back {
                     call.resolve(["url": back.absoluteString])
@@ -70,7 +71,9 @@ public class PgfNativePlugin: CAPPlugin, CAPBridgedPlugin, ASWebAuthenticationPr
             }
             // an iPad shows the print options as a popover from the top of the page
             if UIDevice.current.userInterfaceIdiom == .pad, let view = self.bridge?.viewController?.view {
-                printer.present(from: CGRect(x: view.bounds.midX, y: view.safeAreaInsets.top + 8, width: 1, height: 1), in: view, animated: true, completionHandler: done)
+                printer.present(
+                    from: CGRect(x: view.bounds.midX, y: view.safeAreaInsets.top + 8, width: 1, height: 1), in: view,
+                    animated: true, completionHandler: done)
             } else {
                 printer.present(animated: true, completionHandler: done)
             }

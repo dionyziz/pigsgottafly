@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vite build && node --import tsx --test --test-concurrency=1 --test-timeout=300000 \"tests/e2e/*.e2e.test.mjs\"",
-    "test:all": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:e2e",
+    "test:all": "npm run typecheck && npm run lint && npm run lint:swift && npm run format:check && npm test && npm run test:e2e",
     "ref": "tsx tools/build_ref.ts",
     "smoke": "tsx tools/smoke.ts",
     "ios:sync": "vite build && cap sync ios",
@@ -23,6 +23,7 @@
     "ios:upload": "npm run ios:version && npm run ios:sync && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath ios/build/App.xcarchive -allowProvisioningUpdates archive && xcodebuild -exportArchive -archivePath ios/build/App.xcarchive -exportOptionsPlist ios/ExportOptions.plist -exportPath ios/build/export -allowProvisioningUpdates",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:swift": "xcrun swift-format lint --strict --configuration ios/.swift-format ios/App/App/*.swift",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip"
