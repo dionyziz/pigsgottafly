@@ -20,6 +20,7 @@
     "ios:open": "cap open ios",
     "ios:version": "tsx tools/ios_version.ts",
     "ios:build": "npm run ios:sync && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/build build",
+    "ios:upload": "npm run ios:version && npm run ios:sync && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath ios/build/App.xcarchive -allowProvisioningUpdates archive && xcodebuild -exportArchive -archivePath ios/build/App.xcarchive -exportOptionsPlist ios/ExportOptions.plist -exportPath ios/build/export -allowProvisioningUpdates",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

@@ -151,14 +151,17 @@ promotional text, support and privacy URLs, category, age rating, review notes, 
 the screenshots (`screenshots/iphone-6.9`, 1320×2868, and `screenshots/ipad-13`, 2064×2752; taken from the
 simulators against a local server with a demo flight). Only the owner can do these:
 
-1. Join the Apple Developer Program.
-2. In Xcode (`npm run ios:open`), Signing & Capabilities: set the team.
-3. In the developer account, the App ID `com.pigsgottafly.app` with the "Sign in with Apple" capability.
-4. In App Store Connect, create the app record (bundle id `com.pigsgottafly.app`, SKU of your choice).
-5. Paste `ios/AppStore/*.txt`, answer App Privacy from `app_privacy.md`, upload the screenshots.
-6. `npm run ios:version`, `npm run ios:sync`, then in Xcode: Product → Archive → Distribute App → App Store
-   Connect. Try the build in TestFlight.
-7. Choose the build on the version page and submit for review.
+1. The team is set in the project (Dionysis Zindros, `F2UQTZ295F`, automatic signing); Xcode must be signed in
+   with that Apple ID.
+2. In App Store Connect, create the app record once (bundle id `com.pigsgottafly.app`, SKU of your choice), or
+   let Xcode create it: Window → Organizer → the archive → Distribute App → App Store Connect.
+3. Paste `ios/AppStore/*.txt`, answer App Privacy from `app_privacy.md`, upload the screenshots.
+4. `npm run ios:upload`: version and build number, sync, archive and upload to App Store Connect
+   (`ios/ExportOptions.plist`). Try the build in TestFlight.
+5. For Sign in with Apple on the sign-in page: a Services ID (e.g. `com.pigsgottafly.web`) with Sign in with
+   Apple, domain `pigsgottafly.com`, return URL `https://pigsgottafly.com/`; `APPLE_CLIENT_ID` set to it in
+   Vercel.
+6. Choose the build on the version page and submit for review.
 
 ## Reference data
 
