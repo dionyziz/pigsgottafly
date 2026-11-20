@@ -83,6 +83,30 @@ vercel deploy --prod
     - SPF/DKIM must be set up for the sender domain.
   - `ADMIN_EMAILS`: optional, comma-separated (default: nobody). These pilots see the admin page (`/admin`: every pilot, their counts and shares) and get an e-mail for each new signup (sent through Resend, no cc; a failed e-mail never blocks the sign-in).
 
+## iPhone and iPad app
+
+`ios/` is the native app: a Capacitor shell around this same web app. It loads https://pigsgottafly.com,
+so **every web deploy updates the app**, and there is no separate code to keep in step. The built web app is
+bundled as the start-up fallback. App Store updates are only needed when the native part changes.
+
+- Native code: `ios/App/App/PgfNativePlugin.swift` (Apple's sign-in sheet; AirPrint) and
+  `MainViewController.swift` (registers it; swipe back). The web side of it is `src/app/native.ts`:
+  printing, exports opening in place, and the sign-in button. Everything there is a no-op in a browser.
+- Sign-in: Google refuses sign-in inside an app's web view. The app opens `/app-login` in Apple's sign-in
+  sheet (Safari's cookies), and the page hands a one-time code back (`POST /api/app-code`,
+  `GET /api/app-session`, `api/_lib/routes/appLogin.ts`).
+- Touch: the map editor takes the same gestures by finger. Drag a point or a leg's middle dot, press and
+  hold a point for its menu.
+
+```
+npm run ios:build        # web build + cap sync + simulator build (checks it compiles)
+npm run ios:open         # Xcode: run on a simulator or a device, archive for the App Store
+CAP_SERVER_URL=http://127.0.0.1:8765 npm run ios:sync   # point a development build at a local server
+```
+
+To publish: open it in Xcode, set the team (Signing & Capabilities) to the Apple Developer account,
+then Product → Archive → Distribute (App Store Connect / TestFlight). Bundle id `com.pigsgottafly.app`.
+
 ## Reference data
 
 `data/aip.js`, `data/vfr.js` and `data/sun.js` are generated from the Greek eAIP by the Python tools in `tools/` (see [AIP-UPDATE.md](AIP-UPDATE.md)). `npm run ref` then converts them into the client's typed JSON (`src/data/ref/`) and into the SQL migration that loads the API's `ref_*` tables, which are tagged with the AIRAC cycle (currently 09/26). For a new AIRAC, add a new migration; never edit an applied one.

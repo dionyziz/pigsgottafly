@@ -86,10 +86,16 @@ export function SignIn({ clientId, onSignedIn }: { clientId: string | null; onSi
 
   return (
     <div className="center-screen">
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 380 }}>
         <div
           className="card stack"
-          style={{ padding: '40px 24px', alignItems: 'center', width: 380, maxWidth: '100%', textAlign: 'center' }}
+          style={{
+            padding: '40px 24px',
+            alignItems: 'center',
+            width: '100%',
+            boxSizing: 'border-box',
+            textAlign: 'center',
+          }}
         >
           <img src="/icon.svg" alt="" width={56} height={56} />
           <h1>Pig's Gotta Fly</h1>

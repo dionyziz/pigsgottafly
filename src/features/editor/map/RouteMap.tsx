@@ -17,7 +17,7 @@
 //   Leg labels: magnetic course and distance (read-only), altitude (click to edit; Enter/Esc).
 import './map.css';
 
-import type { GeoJSONSource, Map as MlMap, MapMouseEvent } from 'maplibre-gl';
+import type { GeoJSONSource, Map as MlMap, MapMouseEvent, MapTouchEvent } from 'maplibre-gl';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { maplibregl } from '../../../app/maplibre';
@@ -239,6 +239,9 @@ function marchDashes(m: MlMap, layerId: string): (() => void) | undefined {
   frame = requestAnimationFrame(tick);
   return () => cancelAnimationFrame(frame);
 }
+
+/** A press this long on a route point, without moving, opens its menu (touch). */
+const LONG_PRESS_MS = 550;
 export function RouteMap(props: RouteMapProps) {
   const { route, date, altitudes, refData, waypoints } = props;
   const el = useRef<HTMLDivElement>(null);
@@ -257,6 +260,8 @@ export function RouteMap(props: RouteMapProps) {
   const [prompt, setPrompt] = useState<NamePrompt | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [hover, setHover] = useState<Hover | null>(null);
+  /** A touch screen (iPhone, iPad): the hints say tap and press, not click. */
+  const [touch] = useState(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
   /** Airspaces under the cursor (idle mode), smallest first. */
   const [airTip, setAirTip] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
   /** Weather hazard texts under the cursor (idle mode). */
@@ -1428,13 +1433,63 @@ export function RouteMap(props: RouteMapProps) {
       }
     };
 
+    // Touch (iPhone, iPad, touch screens): one finger on a route point or a leg's middle dot drags it as
+    // the mouse does, and a long press on a point opens its menu; other gestures pan and zoom the map.
+    // The touches go through the mouse handlers above.
+    const asMouse = (e: MapTouchEvent) =>
+      ({
+        point: e.point,
+        lngLat: e.lngLat,
+        originalEvent: { button: 0, buttons: 1, shiftKey: false }, // a finger down is a held button
+        preventDefault: () => e.preventDefault(),
+      }) as unknown as MapMouseEvent;
+    let press = 0;
+    const onTouchStart = (e: MapTouchEvent) => {
+      window.clearTimeout(press);
+      if (e.points.length !== 1) return cancelDrag();
+      const me = asMouse(e);
+      onDown(me); // a point or a middle dot under the finger: the drag starts and the map does not pan
+      const d = drag.current;
+      if (d && !d.insert)
+        press = window.setTimeout(() => {
+          if (drag.current === d && !d.moved) {
+            cancelDrag();
+            onContext(me);
+          }
+        }, LONG_PRESS_MS);
+    };
+    const onTouchMove = (e: MapTouchEvent) => {
+      if (!drag.current) return;
+      e.preventDefault();
+      onMove(asMouse(e));
+    };
+    const onTouchEnd = (e: MapTouchEvent) => {
+      window.clearTimeout(press);
+      const t = e.originalEvent.changedTouches[0];
+      if (!drag.current || !t) return;
+      void release({ button: 0, clientX: t.clientX, clientY: t.clientY, shiftKey: false } as MouseEvent);
+    };
+    const onTouchCancel = () => {
+      window.clearTimeout(press);
+      cancelDrag();
+    };
+
     m.on('mousemove', onMove);
     m.on('mousedown', onDown);
     m.on('click', onClick);
     m.on('dblclick', onDbl);
     m.on('contextmenu', onContext);
     m.on('mouseout', onOut);
+    m.on('touchstart', onTouchStart);
+    m.on('touchmove', onTouchMove);
+    m.on('touchend', onTouchEnd);
+    m.on('touchcancel', onTouchCancel);
     return () => {
+      window.clearTimeout(press);
+      m.off('touchstart', onTouchStart);
+      m.off('touchmove', onTouchMove);
+      m.off('touchend', onTouchEnd);
+      m.off('touchcancel', onTouchCancel);
       m.off('mousemove', onMove);
       m.off('mousedown', onDown);
       m.off('click', onClick);
@@ -1631,12 +1686,18 @@ export function RouteMap(props: RouteMapProps) {
         : 'Click to place a custom point and name it · Esc to stop'
       : mode === 'draw'
         ? route.length === 0
-          ? 'Click your departure aerodrome to start'
-          : closing
-            ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
-            : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
+          ? `${touch ? 'Tap' : 'Click'} your departure aerodrome to start`
+          : touch
+            ? closing
+              ? `Tap to add points before the return to ${closing.name} · tap ${closing.name} to finish`
+              : 'Tap to add points · tap the last point to finish'
+            : closing
+              ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
+              : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
         : route.length >= 2
-          ? 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
+          ? touch
+            ? 'Drag points to move · drag a leg’s middle dot to insert · press and hold a point for options · tap an altitude to edit'
+            : 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
           : '';
 
   return (

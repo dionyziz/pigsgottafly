@@ -294,6 +294,53 @@ test('dragging a route point snaps it to the point it is dropped on, which it be
   await shot('2-after-drags');
 });
 
+test('touch (iPhone, iPad): one finger drags a route point; a long press opens its menu', async () => {
+  const touch = (type, pts) =>
+    page.send('Input.dispatchTouchEvent', {
+      type,
+      touchPoints: pts.map((p) => ({ x: p.x, y: p.y, radiusX: 2, radiusY: 2, force: 1 })),
+    });
+  await page.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  try {
+    // drag ABLONAS onto OTHER with a finger: it becomes OTHER, as with the mouse
+    const a = await mapPx(ABLONAS.lat, ABLONAS.lon);
+    const b = await mapPx(OTHER.lat, OTHER.lon);
+    await touch('touchStart', [a]);
+    for (let i = 1; i <= 10; i++) {
+      await touch('touchMove', [{ x: a.x + ((b.x + 3 - a.x) * i) / 10, y: a.y + ((b.y - 2 - a.y) * i) / 10 }]);
+      await sleep(25);
+    }
+    await touch('touchEnd', []);
+    await waitSaved();
+    let f = await api('GET', `flights/${flightId}`);
+    assert.deepEqual(f.route[1].refId, OTHER.id);
+    // and back
+    const o = await mapPx(OTHER.lat, OTHER.lon);
+    const back = await mapPx(ABLONAS.lat, ABLONAS.lon);
+    await touch('touchStart', [o]);
+    for (let i = 1; i <= 10; i++) {
+      await touch('touchMove', [{ x: o.x + ((back.x - o.x) * i) / 10, y: o.y + ((back.y - o.y) * i) / 10 }]);
+      await sleep(25);
+    }
+    await touch('touchEnd', []);
+    await waitSaved();
+    f = await api('GET', `flights/${flightId}`);
+    assert.deepEqual(f.route[1].refId, ABLONAS.id);
+    // a long press on a point opens its menu and moves nothing
+    const p = await mapPx(ABLONAS.lat, ABLONAS.lon);
+    await touch('touchStart', [p]);
+    await sleep(800);
+    await touch('touchEnd', []);
+    await page.waitFor(() => !!document.querySelector('[data-testid=point-menu]'), { timeout: 5000 });
+    f = await api('GET', `flights/${flightId}`);
+    assert.deepEqual(f.route[1].refId, ABLONAS.id);
+    await page.key('Escape');
+    await page.waitFor(() => !document.querySelector('[data-testid=point-menu]'));
+  } finally {
+    await page.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  }
+});
+
 test('ENR 5 areas: drawn, hover and click details with the AIP PDF link; popovers show identity only', async () => {
   const lgp1 = AREAS.find((a) => a.id === 'LGP1');
   assert.ok(lgp1?.circle, 'LGP1 ACROPOLIS is a circle');
