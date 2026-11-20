@@ -1,11 +1,11 @@
 // NOTAM hover tooltip and click popover on the route map (PLAN-v3 "Map interaction for weather and
 // NOTAMs"): ID, validity and limits on hover; on click the decoded content, the affected leg and the
 // raw ICAO text.
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
-import { MapPopover, PopItem, useAccordion } from './MapPopover';
+import { PopItem, useAccordion } from './MapPopover';
 
 const Badge = ({ n }: { n: Notam }) => (
   <b className={'pgf-air-type t-notam' + (n.relevant ? '' : ' is-hidden')}>NOTAM</b>
@@ -34,18 +34,22 @@ export function NotamTipRows({ items }: { items: Notam[] }) {
 }
 
 interface PopProps {
-  x: number;
-  y: number;
   items: Notam[];
   /** Leg names by index ('LGTT → KARYSTOS'). */
   legName: (i: number) => string;
   onOpen: (key: string) => void;
-  onClose: () => void;
+  /** The NOTAM to outline on the map: the one under the pointer, else the open one. */
+  onFocus?: (key: string | null) => void;
 }
 
-export function NotamPopover({ x, y, items, legName, onOpen, onClose }: PopProps) {
+export function NotamDetails({ items, legName, onOpen, onFocus }: PopProps) {
   const acc = useAccordion(items[0]?.key);
   const [raw, setRaw] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const focused = hovered ?? (acc.open || null);
+  const focus = useEffectEvent((key: string | null) => onFocus?.(key));
+  useEffect(() => focus(focused), [focused]);
+  useEffect(() => () => focus(null), []);
   const toggle = (key: string) => {
     const opening = !acc.isOpen(key);
     acc.toggle(key);
@@ -53,12 +57,13 @@ export function NotamPopover({ x, y, items, legName, onOpen, onClose }: PopProps
     if (opening) onOpen(key);
   };
   return (
-    <MapPopover x={x} y={y} label="NOTAM" testId="notam-pop" onClose={onClose}>
+    <section className="pgf-pop-section" aria-label="NOTAM" data-testid="notam-pop">
       {items.map((n) => (
         <PopItem
           key={n.key}
           open={acc.isOpen(n.key)}
           onToggle={() => toggle(n.key)}
+          onHover={(on) => setHovered((h) => (on ? n.key : h === n.key ? null : h))}
           testId="notam-item"
           data={{ key: n.key }}
           head={
@@ -108,6 +113,6 @@ export function NotamPopover({ x, y, items, legName, onOpen, onClose }: PopProps
           </dl>
         </PopItem>
       ))}
-    </MapPopover>
+    </section>
   );
 }

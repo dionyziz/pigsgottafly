@@ -6,7 +6,7 @@ import { Fragment } from 'react';
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefNavaid } from '../../../shared/ref';
 import { navaidFreq } from './features';
-import { MapPopover, PopItem } from './MapPopover';
+import { PopItem } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 
 const TYPE_NAME: Record<RefNavaid['type'], string> = {
@@ -51,24 +51,18 @@ export function NavaidTipRows({ n }: { n: RefNavaid }) {
   );
 }
 
-export function NavaidPopover({
-  x,
-  y,
+export function NavaidDetails({
   n,
   airac,
   charts = [],
-  onClose,
 }: {
-  x: number;
-  y: number;
   n: RefNavaid;
   airac: string;
   /** The AIP VFR chart showing the navaid. */
   charts?: VfrChart[];
-  onClose: () => void;
 }) {
   return (
-    <MapPopover x={x} y={y} label="Radio navaid" testId="navaid-pop" onClose={onClose}>
+    <section className="pgf-pop-section" aria-label="Radio navaid" data-testid="navaid-pop">
       <PopItem open head={<Head n={n} />}>
         <dl className="pgf-air-body" data-testid="navaid-detail">
           <dt>Type</dt>
@@ -119,6 +113,6 @@ export function NavaidPopover({
           <span className="muted">· AIRAC {airac}</span>
         </div>
       </PopItem>
-    </MapPopover>
+    </section>
   );
 }

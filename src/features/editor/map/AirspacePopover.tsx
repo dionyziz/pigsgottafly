@@ -6,7 +6,7 @@ import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import { type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
-import { MapPopover, PopItem, useAccordion } from './MapPopover';
+import { PopItem, useAccordion } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 
 const TYPE_LABEL: Record<AirspaceInfo['type'], string> = {
@@ -51,22 +51,16 @@ export function AirspaceTipRows({ items }: { items: AirspaceInfo[] }) {
   );
 }
 
-export function AirspacePopover({
-  x,
-  y,
+export function AirspaceDetails({
   items,
   airac,
   chartsFor,
-  onClose,
   onFocus,
 }: {
-  x: number;
-  y: number;
   items: AirspaceInfo[];
   airac: string;
   /** The AIP VFR charts showing an airspace. */
   chartsFor?: (a: AirspaceInfo) => VfrChart[];
-  onClose: () => void;
   /** The airspace to outline on the map: the one under the pointer, else the open one. */
   onFocus?: (id: string | null) => void;
 }) {
@@ -76,7 +70,7 @@ export function AirspacePopover({
   const focus = useEffectEvent((id: string | null) => onFocus?.(id));
   useEffect(() => focus(focused), [focused]);
   return (
-    <MapPopover x={x} y={y} label="Airspace" testId="airspace-pop" onClose={onClose}>
+    <section className="pgf-pop-section" aria-label="Airspace" data-testid="airspace-pop">
       {items.map((a) => {
         const isOpen = acc.isOpen(a.id);
         const area = isArea(a.type);
@@ -166,6 +160,6 @@ export function AirspacePopover({
           </PopItem>
         );
       })}
-    </MapPopover>
+    </section>
   );
 }

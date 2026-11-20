@@ -5,7 +5,7 @@
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefAerodrome } from '../../../shared/ref';
 import { type AdDayInfo, adHandlingLine, AdHoursDetail, adHoursLine } from '../AerodromeHours';
-import { MapPopover, PopItem } from './MapPopover';
+import { PopItem } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 
 const title = (a: RefAerodrome) => (a.icao ? `${a.icao} · ${a.name}` : a.name);
@@ -28,26 +28,20 @@ export function AerodromeTipRows({ a, info }: { a: RefAerodrome; info: AdDayInfo
   );
 }
 
-export function AerodromePopover({
-  x,
-  y,
+export function AerodromeDetails({
   a,
   info,
   airac,
   charts = [],
-  onClose,
 }: {
-  x: number;
-  y: number;
   a: RefAerodrome;
   info: AdDayInfo;
   airac: string;
   /** The AIP VFR chart(s) showing the aerodrome. */
   charts?: VfrChart[];
-  onClose: () => void;
 }) {
   return (
-    <MapPopover x={x} y={y} label="Aerodrome" testId="aerodrome-pop" onClose={onClose}>
+    <section className="pgf-pop-section" aria-label="Aerodrome" data-testid="aerodrome-pop">
       <PopItem
         open
         head={
@@ -70,6 +64,6 @@ export function AerodromePopover({
           <span className="muted">· AIRAC {airac}</span>
         </div>
       </PopItem>
-    </MapPopover>
+    </section>
   );
 }

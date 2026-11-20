@@ -618,6 +618,18 @@ test('radio navaids: ICAO symbols labelled with their ident, hover and click det
   assert.match(await page.eval(() => document.querySelector('[data-testid=navaid-tip]').textContent), /114\.40 MHz/);
   await clickAt(c.x, c.y);
   await page.waitFor(() => !!document.querySelector('[data-testid=navaid-pop]'));
+  // one details box with everything there: the navaid and the airspaces around it
+  assert.deepEqual(
+    await page.eval(() => {
+      const pops = document.querySelectorAll('[data-testid=map-pop]');
+      return [
+        pops.length,
+        !!pops[0].querySelector('[data-testid=navaid-pop]'),
+        !!pops[0].querySelector('[data-testid=airspace-pop]'),
+      ];
+    }),
+    [1, true, true],
+  );
   const pop = await page.eval(() => ({
     text: document.querySelector('[data-testid=navaid-pop]').textContent,
     links: [...document.querySelectorAll('[data-testid=navaid-pop] [data-testid=aip-link]')].map((a) => a.href),

@@ -15,9 +15,12 @@ import {
 } from '../../../data/notams';
 import { aerodrome } from '../../../data/ref';
 import { fmtClockMs } from '../../../shared/format';
-import { Chip, Icon } from '../../../ui';
+import { Chip, Collapsible, Icon } from '../../../ui';
 import { useNotams } from '../notams';
 import { Section } from './ui';
+
+/** Which NOTAM groups (aerodromes, airspace) are collapsed, per browser. */
+const NOTAM_GROUPS_STORE = 'pgf.editor.notamGroups';
 
 const fmtFetched = (ms: number | null): string => (ms ? fmtClockMs(ms, { z: true }) : '');
 
@@ -121,18 +124,25 @@ export function NotamSection() {
             {briefing.message && <p className="ep-note warn-text">{briefing.message}</p>}
             {list.length > 0 ? (
               groupNotams(list).map((g) => (
-                <div key={g.icao ?? ''} className="ep-notam-group" data-testid="notam-group" data-icao={g.icao ?? ''}>
-                  <h4 className="ep-notam-group-head">
-                    {g.icao ? (
+                <Collapsible
+                  key={g.icao ?? ''}
+                  id={`notams-${g.icao ?? 'airspace'}`}
+                  store={NOTAM_GROUPS_STORE}
+                  className="ep-notam-group"
+                  testId={`notam-group-${g.icao ?? 'airspace'}`}
+                  openWhen={g.notams.some((n) => n.key === selected)}
+                  title={
+                    g.icao ? (
                       <>
-                        <span className="mono">{g.icao}</span>
-                        <span className="muted">{aerodrome(g.icao)?.name ?? ''}</span>
+                        <span className="mono">{g.icao}</span>{' '}
+                        <span className="muted ep-notam-group-name">{aerodrome(g.icao)?.name ?? ''}</span>
                       </>
                     ) : (
                       'Airspace'
-                    )}
-                    <span className="muted tnum">{g.notams.length}</span>
-                  </h4>
+                    )
+                  }
+                  badge={<span className="muted tnum">{g.notams.length}</span>}
+                >
                   <ul className="ep-notam-list">
                     {g.notams.map((n) => (
                       <NotamItem
@@ -143,7 +153,7 @@ export function NotamSection() {
                       />
                     ))}
                   </ul>
-                </div>
+                </Collapsible>
               ))
             ) : (
               <p className="ep-note muted">No NOTAM concerns this flight.</p>

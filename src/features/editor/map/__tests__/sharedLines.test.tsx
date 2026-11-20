@@ -3,19 +3,19 @@
 // VFR route segments published in both directions or on two charts; and the AIP VFR chart links of the
 // map's info boxes.
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { aipFiles } from '../../../../../tools/aip_files';
 import { AIP_EAIP_BASE, vfrChartUrl } from '../../../../data/aipLinks';
 import { AD_AIRSPACES, AERODROMES, AIRSPACES, AREAS, NAVAIDS, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../../../../shared/ref';
 import { adDayInfo } from '../../AerodromeHours';
-import { AerodromePopover } from '../AerodromePopover';
+import { AerodromeDetails } from '../AerodromePopover';
 import { airspaceInfos } from '../airspace';
-import { AirspacePopover } from '../AirspacePopover';
+import { AirspaceDetails } from '../AirspacePopover';
 import { VFR_ARROW_AT, vfrRouteArrowFeatures } from '../features';
 import { labelAlong, legLabelSlots } from '../labels';
-import { NavaidPopover } from '../NavaidPopover';
+import { NavaidDetails } from '../NavaidPopover';
 import { aerodromeVfrCharts, airspaceVfrCharts, vfrChartIndex, vfrChartsAt, vfrPointCharts } from '../vfrCharts';
 
 afterEach(cleanup);
@@ -159,16 +159,12 @@ describe('AIP VFR charts', () => {
     expect(airspaceVfrCharts(idx, near!)).toHaveLength(1);
   });
   it('the info boxes link the charts', () => {
-    const onClose = vi.fn();
     const r = render(
-      <AerodromePopover
-        x={10}
-        y={10}
+      <AerodromeDetails
         a={ad('LGAV')}
         info={adDayInfo(ad('LGAV'), '2026-11-17', [])}
         airac="2611"
         charts={aerodromeVfrCharts(idx, ad('LGAV'))}
-        onClose={onClose}
       />,
     );
     const link = r.getByTestId('vfr-chart-link');
@@ -177,29 +173,11 @@ describe('AIP VFR charts', () => {
     expect(link.getAttribute('target')).toBe('_blank');
     cleanup();
     const atv = NAVAIDS.find((n) => n.id === 'ATV VOR/DME')!;
-    const n = render(
-      <NavaidPopover
-        x={10}
-        y={10}
-        n={atv}
-        airac="2611"
-        charts={vfrChartsAt(idx, atv.lon, atv.lat)}
-        onClose={onClose}
-      />,
-    );
+    const n = render(<NavaidDetails n={atv} airac="2611" charts={vfrChartsAt(idx, atv.lon, atv.lat)} />);
     expect(n.getByTestId('vfr-chart-link').textContent).toBe('VFR chart LGAV');
     cleanup();
     const ctr = airspaceInfos(AIRSPACES, AD_AIRSPACES).find((a) => a.id === 'LGKR-CTR')!;
-    const s = render(
-      <AirspacePopover
-        x={10}
-        y={10}
-        items={[ctr]}
-        airac="2611"
-        chartsFor={(a) => airspaceVfrCharts(idx, a)}
-        onClose={onClose}
-      />,
-    );
+    const s = render(<AirspaceDetails items={[ctr]} airac="2611" chartsFor={(a) => airspaceVfrCharts(idx, a)} />);
     expect(s.getByTestId('vfr-chart-link').getAttribute('href')).toMatch(/LG_AD_2_LGKR_VFR_en\.pdf$/);
   });
 });

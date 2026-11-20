@@ -11,7 +11,7 @@ import { SegmentedControl } from '../../../../ui';
 import { MapLayerToggles } from '../MapLayerToggles';
 import { MapPopover, MapTip, placeBeside, PopItem, useAccordion } from '../MapPopover';
 import { LayersControl, MapHint } from '../MapToolbar';
-import { NavaidPopover, NavaidTipRows } from '../NavaidPopover';
+import { NavaidDetails, NavaidTipRows } from '../NavaidPopover';
 import { PointMenu } from '../PointMenu';
 
 afterEach(cleanup);
@@ -174,8 +174,7 @@ describe('radio navaid tooltip and details', () => {
     expect(r.getByTestId('navaid-tip').textContent).toBe('VOR/DMEATV · ATHINAI114.40 MHz');
   });
   it('the details add channel, hours, coverage and links to every AIP section that publishes it', () => {
-    const onClose = vi.fn();
-    const r = render(<NavaidPopover x={10} y={10} n={atv} airac="2609" onClose={onClose} />);
+    const r = render(<NavaidDetails n={atv} airac="2609" />);
     const text = r.getByTestId('navaid-detail').textContent;
     expect(text).toContain('114.40 MHz · CH 91X');
     expect(text).toContain('H24');
@@ -187,7 +186,7 @@ describe('radio navaid tooltip and details', () => {
     expect(links[0].getAttribute('href')).toMatch(/LG_ENR_4_1_en\.pdf$/);
     expect(links[1].getAttribute('href')).toMatch(/LG_AD_2_LGAV_en\.pdf$/);
     const loc = NAVAIDS.find((n) => n.type === 'L')!;
-    r.rerender(<NavaidPopover x={10} y={10} n={loc} airac="2609" onClose={onClose} />);
+    r.rerender(<NavaidDetails n={loc} airac="2609" />);
     expect(r.getByTestId('navaid-detail').textContent).toMatch(/Locator \(L\).*\d+ kHz/);
   });
 });

@@ -37,9 +37,9 @@ import type { MapLayers } from '../../../shared/mapLayers';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
 import type { MenuItem } from '../../../ui';
 import type { AdDayInfo } from '../AerodromeHours';
-import { AerodromePopover, AerodromeTipRows } from './AerodromePopover';
+import { AerodromeDetails, AerodromeTipRows } from './AerodromePopover';
 import { type AirspaceInfo, airspaceInfos, airspacesAt, isArea } from './airspace';
-import { AirspacePopover, AirspaceTipRows } from './AirspacePopover';
+import { AirspaceDetails, AirspaceTipRows } from './AirspacePopover';
 import {
   aerodromeFeatures,
   airspaceFeatures,
@@ -48,6 +48,7 @@ import {
   focusFeatures,
   midpointFeatures,
   navaidFeatures,
+  notamFocusFeatures,
   routeArrowFeatures,
   routeLineFeatures,
   routePointFeatures,
@@ -68,12 +69,12 @@ import {
   parseAltitudeInput,
   placeLabel,
 } from './labels';
-import { MapTip } from './MapPopover';
+import { MapPopover, MapTip } from './MapPopover';
 import { airspaceShown, areaToggle, loadPrefs, savePrefs } from './mapPrefs';
 import { type DrawMode, LayersControl, MapHint, MapToolbar } from './MapToolbar';
-import { NavaidPopover, NavaidTipRows } from './NavaidPopover';
+import { NavaidDetails, NavaidTipRows } from './NavaidPopover';
 import { type MapNotam, mapNotams, notamKeysAt, setNotamLayer } from './notamLayer';
-import { NotamPopover, NotamTipRows } from './NotamPopover';
+import { NotamDetails, NotamTipRows } from './NotamPopover';
 import { NameBox, type NamePrompt, PointMenu } from './PointMenu';
 import {
   addDrawnPoint,
@@ -267,7 +268,19 @@ export function RouteMap(props: RouteMapProps) {
   /** Airspace details opened by a click. */
   const [airPop, setAirPop] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
   /** The airspace outlined with marching dashes (hovered or open in the airspace popover). */
-  const [airFocus, setAirFocus] = useState<string | null>(null);
+  /** The airspace or NOTAM outlined with marching dashes (hovered or open in the details box); the latest wins. */
+  const [mapFocus, setMapFocus] = useState<{ kind: 'air' | 'notam'; id: string } | null>(null);
+  const focusOf = (kind: 'air' | 'notam') => (id: string | null) =>
+    setMapFocus((f) => (id ? { kind, id } : f?.kind === kind ? null : f));
+  const setAirFocus = useMemo(() => focusOf('air'), []);
+  const setNotamFocus = useMemo(() => focusOf('notam'), []);
+  /** Closes the details box (all its sections). */
+  const closeDetails = useCallback(() => {
+    setAdPop(null);
+    setNavPop(null);
+    setNotamPop(null);
+    setAirPop(null);
+  }, []);
   /** NOTAM areas under the cursor (keys, smallest first) and the NOTAM details opened by a click. */
   const [notamTip, setNotamTip] = useState<{ x: number; y: number; keys: string[] } | null>(null);
   const [notamPop, setNotamPop] = useState<{ x: number; y: number; keys: string[] } | null>(null);
@@ -328,6 +341,7 @@ export function RouteMap(props: RouteMapProps) {
     airPop,
     adPop,
     navPop,
+    closeDetails,
   });
   live.current = {
     props,
@@ -346,6 +360,7 @@ export function RouteMap(props: RouteMapProps) {
     airPop,
     adPop,
     navPop,
+    closeDetails,
   };
   const drag = useRef<Drag | null>(null);
   const cancelDragRef = useRef<(() => void) | null>(null);
@@ -475,14 +490,6 @@ export function RouteMap(props: RouteMapProps) {
     if (m && loaded) setData(m, 'areas', areaFeatures(airInfos));
   }, [airInfos, loaded]);
 
-  // The focused airspace: its outline with dashes walking around it (still when motion is reduced).
-  const focusInfo = airPop && airFocus ? (allInfos.find((a) => a.id === airFocus) ?? null) : null;
-  useEffect(() => {
-    const m = mapRef.current;
-    if (!m || !loaded) return;
-    setData(m, 'air-focus', focusFeatures(focusInfo));
-    return focusInfo ? marchDashes(m, 'air-focus-line') : undefined;
-  }, [focusInfo, loaded]);
   // The leg hovered in the navlog, the same way.
   const focusLeg = props.focusLeg ?? null;
   useEffect(() => {
@@ -527,6 +534,24 @@ export function RouteMap(props: RouteMapProps) {
   // ---------------------------------------------------------------------------------- NOTAMs
   const notamList = props.notams;
   const notamMarks = useMemo(() => mapNotams(notamList ?? []), [notamList]);
+  // The focused airspace or NOTAM area: its outline with dashes walking around it (still when motion is reduced).
+  const focusData = useMemo(() => {
+    if (mapFocus?.kind === 'air' && airPop) {
+      const a = allInfos.find((x) => x.id === mapFocus.id);
+      return a ? focusFeatures(a) : null;
+    }
+    if (mapFocus?.kind === 'notam' && notamPop) {
+      const n = notamMarks.find((x) => x.key === mapFocus.id);
+      return n ? notamFocusFeatures(n.key, n.rings) : null;
+    }
+    return null;
+  }, [mapFocus, airPop, notamPop, allInfos, notamMarks]);
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !loaded) return;
+    setData(m, 'air-focus', focusData ?? focusFeatures(null));
+    return focusData ? marchDashes(m, 'air-focus-line') : undefined;
+  }, [focusData, loaded]);
   const notamLive = useRef<{ marks: MapNotam[]; pop: boolean }>({ marks: [], pop: false });
   notamLive.current = { marks: layers.notams ? notamMarks : [], pop: !!notamPop };
   useEffect(() => {
@@ -1312,52 +1337,28 @@ export function RouteMap(props: RouteMapProps) {
       if (L.mode === 'idle') {
         const i = hitPoint(e.point);
         setSelected(i === null ? null : L.route[i].uid);
-        // a click on a charted aerodrome opens its hours (a second click closes them)
+        // a click opens one details box with everything there: aerodrome, navaid, airspaces, NOTAM
+        // areas (a second click closes it)
         setAdTip(null);
-        if (L.adPop) {
-          setAdPop(null);
-          return;
-        }
         setNavTip(null);
-        if (L.navPop) {
-          setNavPop(null);
-          return;
-        }
-        const ad = i === null && !L.airPop && !notamLive.current.pop ? adAt(e.point, null) : null;
-        if (ad) {
-          setAdPop({ x: e.point.x, y: e.point.y, a: ad });
-          setNotamTip(null);
-          setAirTip(null);
-          highlightAirspace(null);
-          return;
-        }
-        // a click on a radio navaid opens its details (a second click closes them)
-        const nav = i === null && !L.airPop && !notamLive.current.pop ? navAt(e.point) : null;
-        if (nav) {
-          setNavPop({ x: e.point.x, y: e.point.y, n: nav });
-          setNotamTip(null);
-          setAirTip(null);
-          highlightAirspace(null);
-          return;
-        }
-        // a click on a NOTAM area opens its details (a second click closes them)
         setNotamTip(null);
-        if (notamLive.current.pop) {
-          setNotamPop(null);
-          return;
-        }
-        const nk = i === null && !L.airPop ? notamKeysAt(m, e.point, notamLive.current.marks) : [];
-        if (nk.length) {
-          setNotamPop({ x: e.point.x, y: e.point.y, keys: nk });
-          L.props.onNotamSelect?.(nk[0]);
-          setAirTip(null);
+        setAirTip(null);
+        if (L.adPop || L.navPop || L.airPop || notamLive.current.pop) {
+          L.closeDetails();
           highlightAirspace(null);
           return;
         }
-        // a click on open map shows the airspace there (a second click closes it)
-        const air = i === null && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
-        setAirPop(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
-        setAirTip(null);
+        if (i !== null) return;
+        const at = { x: e.point.x, y: e.point.y };
+        const ad = adAt(e.point, null);
+        const nav = navAt(e.point);
+        const nk = notamKeysAt(m, e.point, notamLive.current.marks);
+        const air = airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat);
+        setAdPop(ad ? { ...at, a: ad } : null);
+        setNavPop(nav ? { ...at, n: nav } : null);
+        setNotamPop(nk.length ? { ...at, keys: nk } : null);
+        setAirPop(air.length ? { ...at, items: air } : null);
+        if (nk.length) L.props.onNotamSelect?.(nk[0]);
         highlightAirspace(air[0] ?? null);
         return;
       }
@@ -1462,10 +1463,7 @@ export function RouteMap(props: RouteMapProps) {
       const L = live.current;
       if (e.key === 'Escape') {
         if (drag.current) cancelDragRef.current?.();
-        else if (L.adPop) setAdPop(null);
-        else if (L.navPop) setNavPop(null);
-        else if (notamLive.current.pop) setNotamPop(null);
-        else if (L.airPop) setAirPop(null);
+        else if (L.adPop || L.navPop || L.airPop || notamLive.current.pop) L.closeDetails();
         else if (L.layersOpen) setLayersOpen(false);
         else if (L.menu) setMenu(null);
         else if (L.mode !== 'idle') stopDrawing();
@@ -1721,48 +1719,47 @@ export function RouteMap(props: RouteMapProps) {
           </MapTip>
         );
       })()}
-      {notamPop && notamsOf(notamPop.keys).length > 0 && (
-        <NotamPopover
-          x={notamPop.x}
-          y={notamPop.y}
-          items={notamsOf(notamPop.keys)}
-          legName={(i) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '')}
-          onOpen={(k) => props.onNotamSelect?.(k)}
-          onClose={() => setNotamPop(null)}
-        />
-      )}
-      {adPop && props.aerodromeInfo && (
-        <AerodromePopover
-          x={adPop.x}
-          y={adPop.y}
-          a={adPop.a}
-          info={props.aerodromeInfo(adPop.a)}
-          airac={refData.airac.id}
-          charts={aerodromeVfrCharts(chartIdx, adPop.a)}
-          onClose={() => setAdPop(null)}
-        />
-      )}
-      {navPop && (
-        <NavaidPopover
-          x={navPop.x}
-          y={navPop.y}
-          n={navPop.n}
-          airac={refData.airac.id}
-          charts={vfrChartsAt(chartIdx, navPop.n.lon, navPop.n.lat)}
-          onClose={() => setNavPop(null)}
-        />
-      )}
-      {airPop && (
-        <AirspacePopover
-          x={airPop.x}
-          y={airPop.y}
-          items={airPop.items}
-          airac={refData.airac.id}
-          chartsFor={(a) => airspaceVfrCharts(chartIdx, a)}
-          onClose={() => setAirPop(null)}
-          onFocus={setAirFocus}
-        />
-      )}
+      {(adPop || navPop || airPop || notamPop) &&
+        (() => {
+          // one details box with everything at the clicked point (the hover box's sections, in full)
+          const at = (adPop ?? navPop ?? notamPop ?? airPop)!;
+          const notams = notamPop ? notamsOf(notamPop.keys) : [];
+          return (
+            <MapPopover x={at.x} y={at.y} label="Details" testId="map-pop" onClose={closeDetails}>
+              {adPop && props.aerodromeInfo && (
+                <AerodromeDetails
+                  a={adPop.a}
+                  info={props.aerodromeInfo(adPop.a)}
+                  airac={refData.airac.id}
+                  charts={aerodromeVfrCharts(chartIdx, adPop.a)}
+                />
+              )}
+              {navPop && (
+                <NavaidDetails
+                  n={navPop.n}
+                  airac={refData.airac.id}
+                  charts={vfrChartsAt(chartIdx, navPop.n.lon, navPop.n.lat)}
+                />
+              )}
+              {airPop && (
+                <AirspaceDetails
+                  items={airPop.items}
+                  airac={refData.airac.id}
+                  chartsFor={(a) => airspaceVfrCharts(chartIdx, a)}
+                  onFocus={setAirFocus}
+                />
+              )}
+              {notams.length > 0 && (
+                <NotamDetails
+                  items={notams}
+                  legName={(i) => (legs[i] ? `${legs[i].from.name} → ${legs[i].to.name}` : '')}
+                  onOpen={(k) => props.onNotamSelect?.(k)}
+                  onFocus={setNotamFocus}
+                />
+              )}
+            </MapPopover>
+          );
+        })()}
 
       {prompt && <NameBox prompt={prompt} />}
 

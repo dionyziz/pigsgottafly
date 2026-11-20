@@ -396,6 +396,17 @@ const FOCUS_COLOR: Record<AirspaceType, ChartColor> = {
 };
 
 /** The focused airspace's outline (empty when none). */
+/** A NOTAM's outline (its rings, [lon, lat]) for the same marching dashes, in the NOTAM accent. */
+export function notamFocusFeatures(key: string, rings: [number, number][][]): FC<LineString> {
+  return fc(
+    rings.map((ring) => ({
+      type: 'Feature' as const,
+      geometry: { type: 'LineString' as const, coordinates: ring },
+      properties: { id: key, color: CHART.notamSelected },
+    })),
+  );
+}
+
 export function focusFeatures(a: AirspaceInfo | null): FC<LineString> {
   if (!a) return fc([]);
   return fc([
