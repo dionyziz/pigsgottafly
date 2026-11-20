@@ -28,6 +28,7 @@ export function FilingSection() {
       </details>
       {/* filed as saved: the server checks the plan against the saved flight */}
       <FilingPanel
+        title="autorouter"
         flight={current}
         message={fpl.message}
         complete={fpl.complete && !weatherLoading && saveStatus === 'saved'}

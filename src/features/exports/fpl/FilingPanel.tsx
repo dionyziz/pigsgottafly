@@ -37,9 +37,11 @@ export interface FilingPanelProps {
   complete: boolean;
   /** The reviewed addressees, for the printed form. */
   onAddresses?: (addresses: string[]) => void;
+  /** The panel's heading (default 'Filing'; the editor's section already says it). */
+  title?: string;
 }
 
-export function FilingPanel({ flight, message, complete, onAddresses }: FilingPanelProps) {
+export function FilingPanel({ flight, message, complete, onAddresses, title = 'Filing' }: FilingPanelProps) {
   // the last state this session shows at once (filing.get updates it)
   const [st, setSt] = useState<FilingState | null>(() => peekGet<FilingState>(`flights/${flight.id}/filing`) ?? null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -118,7 +120,7 @@ export function FilingPanel({ flight, message, complete, onAddresses }: FilingPa
 
   return (
     <Panel
-      title="Filing"
+      title={title}
       className="fpl-panel fpl-filing"
       testId="fpl-filing"
       status={
