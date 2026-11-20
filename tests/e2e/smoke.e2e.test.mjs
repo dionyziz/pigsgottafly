@@ -16,6 +16,12 @@ after(async () => {
   await server?.close();
 });
 
+/** Opens a stage of the flight panel (plan, brief, file): only its sections are shown. */
+const stage = async (s) => {
+  await page.click(`[data-testid=stage-${s}]`);
+  await page.waitFor((s) => document.querySelector(`[data-testid=stage-body-${s}]`)?.hidden === false, { args: [s] });
+};
+
 test('first use asks for the profile, then the lobby, a new flight and the editor work', async () => {
   await page.goto(server.url + '/');
   await page.waitFor(() => location.pathname === '/profile' && !!document.querySelector('[data-testid=profile-form]'));
@@ -34,6 +40,7 @@ test('first use asks for the profile, then the lobby, a new flight and the edito
   assert.match(title, /^\d{4}-\d{2}-\d{2}$/, 'a new flight is titled with its date');
 
   // an edit is saved to the server
+  await stage('plan');
   await page.type('[data-testid=flight-panel] input[placeholder="HH:MM"]', '09:30');
   await page.blur();
   await page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', {
@@ -65,6 +72,7 @@ test('origin and destination are fields in the editor, kept in sync with the rou
   await page.goto(`${server.url}/flights/${f0.id}`);
   await page.waitFor(() => !!document.querySelector('[data-testid=route-destination] input'));
   assert.equal(await page.eval(() => document.querySelector('[data-testid=route-origin] input').value), 'LGTT');
+  await stage('plan');
   await page.type('[data-testid=route-destination] input', 'LGMG');
   await page.blur();
   let f;
@@ -96,6 +104,7 @@ test('editor boxes: header toggles, ATC rows removable, not reorderable, a warni
     page.waitFor(() => document.querySelector('[data-testid=save-state]').textContent === 'Saved', { timeout: 10000 });
 
   // a click anywhere on a box's header closes and opens it
+  await stage('plan');
   await page.click('[data-testid=section-when] .collapsible-title');
   await page.waitFor(() => document.querySelector('[data-testid=section-when]').classList.contains('collapsed'));
   await page.click('[data-testid=section-when] .collapsible-badge');
@@ -107,6 +116,7 @@ test('editor boxes: header toggles, ATC rows removable, not reorderable, a warni
   await page.waitFor(() => !document.querySelector('[data-testid=navlog-strip]').classList.contains('closed'));
 
   // ATC: rows have no drag handle; removing one saves the list on the flight
+  await stage('brief');
   const names = () =>
     page.eval(() =>
       [...document.querySelectorAll('[data-testid=atc-row] .ep-atc-cs')].map((e) => e.firstChild.textContent),
@@ -133,8 +143,11 @@ test('editor boxes: header toggles, ATC rows removable, not reorderable, a warni
   await page.key('Escape');
 
   // "No aircraft chosen" → Fix: the Aircraft box opens (it was collapsed) and its field is highlighted (the hangar is empty here)
+  await stage('plan');
   await page.click('[data-testid=section-aircraft] .collapsible-title');
   await page.waitFor(() => document.querySelector('[data-testid=section-aircraft]').classList.contains('collapsed'));
+  // from another stage: the Fix switches to Plan, which holds the Aircraft box
+  await stage('brief');
   await page.click('[data-testid=navlog-warn-toggle]');
   await page.waitFor(() =>
     [...document.querySelectorAll('[data-testid=navlog-warnings] li')].some((li) =>
@@ -148,6 +161,7 @@ test('editor boxes: header toggles, ATC rows removable, not reorderable, a warni
       .click(),
   );
   await page.waitFor(() => !!document.querySelector('[data-testid=section-aircraft] [data-focus=aircraft].attention'));
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=stage-body-plan]').hidden), false);
   assert.equal(
     await page.eval(() => document.querySelector('[data-testid=section-aircraft]').classList.contains('collapsed')),
     false,

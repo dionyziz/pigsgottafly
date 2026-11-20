@@ -560,7 +560,14 @@ export function RouteMap(props: RouteMapProps) {
       const prop = OPACITY[l.type];
       if (!prop || !('source' in l) || !AIR_SOURCES.includes(l.source)) continue;
       const v = (m.getPaintProperty(l.id, prop) as ExpressionSpecification | number | undefined) ?? 1;
-      m.setPaintProperty(l.id, prop, ['*', v, far]);
+      // a zoom curve must stay the top-level expression: scale each of its outputs instead
+      const isZoomCurve =
+        Array.isArray(v) && (v[0] === 'interpolate' || v[0] === 'step') && JSON.stringify(v).includes('"zoom"');
+      const scaled = isZoomCurve
+        ? // outputs: [interpolate, type, input, z, OUT, z, OUT…] and [step, input, OUT, z, OUT…]
+          v.map((x, i) => (i >= (v[0] === 'interpolate' ? 4 : 2) && i % 2 === 0 ? ['*', x, far] : x))
+        : ['*', v, far];
+      m.setPaintProperty(l.id, prop, scaled as never);
     }
   }, [loaded]);
   const routeLatLon = useMemo(() => route.map((p) => ({ lat: p.lat, lon: p.lon })), [route]);
