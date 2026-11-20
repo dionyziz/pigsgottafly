@@ -105,7 +105,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
       </div>
     );
   if (!session) return <Loading variant="screen" />;
-  if (!value) return <SignIn clientId={session.googleClientId} onSignedIn={load} />;
+  if (!value)
+    return <SignIn clientId={session.googleClientId} appleClientId={session.appleClientId ?? null} onSignedIn={load} />;
   // the iOS app's sign-in sheet, signed in: hand the sign-in back to the app
   if (location.pathname === APP_LOGIN_PATH) return <AppHandoff />;
   return <SessionContext value={value}>{children}</SessionContext>;

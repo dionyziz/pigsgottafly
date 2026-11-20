@@ -1,5 +1,6 @@
 // Vercel function: every /api/… request is rewritten here (vercel.json: /api/:path* → /api?__path=:path*).
-// Environment: DATABASE_URL (Neon Postgres), GOOGLE_CLIENT_ID (required), optional ALLOWED_EMAILS
+// Environment: DATABASE_URL (Neon Postgres), GOOGLE_CLIENT_ID (required), optional APPLE_CLIENT_ID (Sign in
+// with Apple Services ID), optional ALLOWED_EMAILS
 // (checked at sign-in and on every request), optional AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD (NOTAM
 // briefing) and AUTOROUTER_FILING=1 (flight-plan filing).
 // The autorouter account is used only for the pilots on AUTOROUTER_PILOTS ('*' = every pilot; default ALLOWED_EMAILS;

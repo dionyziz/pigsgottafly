@@ -15,7 +15,12 @@ let local, google, browser, page, tmp;
 before(async () => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pgf-account-'));
   local = await startServer();
-  google = await startServer({ googleClientId: 'e2e.apps.googleusercontent.com', googleKeys: async () => [] });
+  google = await startServer({
+    googleClientId: 'e2e.apps.googleusercontent.com',
+    googleKeys: async () => [],
+    appleClientId: 'com.example.e2e.web',
+    appleKeys: async () => [],
+  });
   browser = await launch();
   page = await browser.newPage();
 });
@@ -55,6 +60,11 @@ test('sign-in screen: the consent line and footer link to the terms and privacy 
     body: `window.google = { accounts: { id: { initialize() {}, prompt() {}, disableAutoSelect() {},
       renderButton(el) { el.innerHTML = '<div style="width:260px;height:40px;border:1px solid #dadce0;border-radius:20px;display:flex;align-items:center;justify-content:center;font:14px sans-serif;color:#3c4043">Sign in with Google</div>'; } } } };`,
   }));
+  // Sign in with Apple JS (allowed by the CSP the local server sends), set up for a popup
+  await page.intercept('https://appleid.cdn-apple.com/appleauth/*', () => ({
+    contentType: 'text/javascript',
+    body: `window.AppleID = { auth: { init(o) { window.__appleInit = o; }, signIn() { return new Promise(() => {}); } } };`,
+  }));
   await page.goto(google.url + '/');
   await page.waitFor(() => !!document.querySelector('[data-testid=signin-consent]'));
   assert.equal(
@@ -68,6 +78,20 @@ test('sign-in screen: the consent line and footer link to the terms and privacy 
     ['/terms', '/privacy'],
   );
   await page.waitFor(() => /Sign in with Google/.test(document.body.textContent));
+  // Apple's button under Google's, as wide, once Apple's script is set up
+  await page.waitFor(() => document.querySelector('[data-testid=apple-signin]')?.disabled === false);
+  assert.deepEqual(
+    await page.eval(() => ({
+      text: document.querySelector('[data-testid=apple-signin]').textContent,
+      width: Math.round(document.querySelector('[data-testid=apple-signin]').getBoundingClientRect().width),
+      init: window.__appleInit,
+    })),
+    {
+      text: 'Sign in with Apple',
+      width: 260,
+      init: { clientId: 'com.example.e2e.web', scope: 'name email', redirectURI: google.url + '/', usePopup: true },
+    },
+  );
   await shot('account-signin');
 
   await page.click('[data-testid=signin-footer] a[href="/privacy"]');
@@ -96,7 +120,7 @@ test('the privacy policy and terms render with their sections and date', async (
       contact: !!document.querySelector('a[href="mailto:dionyziz@gmail.com"]'),
     }));
     assert.equal(doc.h1, title);
-    assert.equal(doc.date, 'Last updated 16 November 2026');
+    assert.equal(doc.date, 'Last updated 21 November 2026');
     assert.equal(doc.toc, sections);
     assert.equal(doc.h2, sections);
     assert.equal(doc.title, `${title} · Pig's Gotta Fly`);
