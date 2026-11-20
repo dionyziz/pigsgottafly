@@ -422,7 +422,7 @@ describe('without autorouter', () => {
   test('NOTAMs: not-configured, with a message', async () => {
     const r = (await a.call('GET', `flights/${fid}/notams`)).body;
     expect(r).toMatchObject({ status: 'not-configured', source: null, notams: [] });
-    expect(r.message).toMatch(/NOTAM source is not configured/);
+    expect(r.message).toMatch(/NOTAMs are not available on this server/);
   });
   test('filing disabled: actions refused with 503 and logged; addressees still proposed', async () => {
     const s = (await a.call('GET', `flights/${fid}/filing`)).body;
@@ -525,6 +525,16 @@ describe('filing via autorouter (mocked)', () => {
     expect(mails[2].text).toMatch(/cancellation confirmation[\s\S]*-MSGTXT \(CNL-SXASV-LGTT0900-LGMG-DOF\/261116\)/);
     // everything read from the queue is acknowledged
     expect(ar.state.queue).toEqual([]);
+  });
+  test('the e-mail copies the pilot unticks are not sent; with none left, the pilot alone gets it', async () => {
+    const f2 = await newFlight(a);
+    mails.length = 0;
+    const r = await a.call('POST', `flights/${f2}/filing`, { fpl: FPL, addresses: [], copyTo: [] });
+    expect(r.status).toBe(200);
+    expect(mails.map((m) => m.to)).toEqual([['fa@example.com']]);
+    mails.length = 0;
+    await a.call('POST', `flights/${f2}/filing/cancel`, { copyTo: ['LGTTATC@gmail.com'] });
+    expect(mails.map((m) => m.to)).toEqual([['lgttatc@gmail.com']]);
   });
   test('provider errors are shown and logged', async () => {
     const f2 = await newFlight(a);

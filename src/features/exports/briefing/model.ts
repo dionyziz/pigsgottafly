@@ -77,7 +77,7 @@ export function briefingModel(input: { doc: FlightDoc; title: string; briefing: 
   const filter = `lower limit at or below ${Math.round(b.params.maxAltFt)} ft · within ${b.params.corridorNm} NM of the route`;
   const source =
     b.status === 'ok' && b.fetched
-      ? `${b.source === 'autorouter' ? 'autorouter (EAD)' : (b.source ?? '')}, fetched ${fmtNotamTime(b.fetched)}`
+      ? `EAD, fetched ${fmtNotamTime(b.fetched)}`
       : '';
   const ok = b.status === 'ok';
   return {

@@ -216,7 +216,7 @@ describe('briefing export model', () => {
     expect(m.relevant[0].raw).toContain('Q) LGGG/QRTCA');
     expect(m.hiddenCount).toBe(1);
     expect(m.filter).toBe('lower limit at or below 4500 ft · within 10 NM of the route');
-    expect(m.source).toBe('autorouter (EAD), fetched 2026-11-16 08:50Z');
+    expect(m.source).toBe('EAD, fetched 2026-11-16 08:50Z');
   });
   test('not configured: the server message, no lists', () => {
     const m = briefingModel({
