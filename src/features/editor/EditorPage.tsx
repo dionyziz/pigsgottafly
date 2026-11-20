@@ -176,16 +176,28 @@ export function EditorPage() {
     await Promise.all([reloadHangar(), reloadPassengers(), reloadWaypoints()]);
   }, [reloadHangar, reloadPassengers, reloadWaypoints]);
   useEffect(() => {
-    setState(null);
+    // this device's copy opens at once; the server's replaces it only when it is newer and nothing was
+    // edited meanwhile (a change made on another device)
+    const quick = flightStore.peek(id);
+    setState(quick);
     setError(null);
     flightStore.load(id).then(
-      (r) => setState(r ?? 'missing'),
-      (e) =>
+      (r) =>
+        setState((cur) =>
+          !r
+            ? 'missing'
+            : !cur || cur === 'missing' || (cur.flight.version !== r.flight.version && !flightStore.hasUnsent(id))
+              ? r
+              : cur,
+        ),
+      (e) => {
+        if (quick) return; // offline: this device's copy stays open
         setError(
           e instanceof ApiRequestError && e.offline
             ? 'Offline, and this flight is not on this device.'
             : String(e.message),
-        ),
+        );
+      },
     );
   }, [id]);
   // a list that failed to load counts as empty (the editor still opens)
@@ -213,7 +225,7 @@ export function EditorPage() {
 
   return (
     <EditorProvider
-      key={state.flight.id}
+      key={`${state.flight.id}:${state.flight.version}`}
       flight={state.flight}
       initialDoc={state.doc}
       pilot={pilot}

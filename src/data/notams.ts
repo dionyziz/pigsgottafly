@@ -5,7 +5,7 @@
 import type { Notam, NotamBriefing } from '../shared/briefing';
 import { fmtAltitude, fmtDateTimeMs } from '../shared/format';
 import { FIR_WIDE_NM, type NotamArea } from '../shared/notamAreas';
-import { request } from './api';
+import { peekGet, rememberGet, request } from './api';
 
 export type { Notam, NotamBriefing };
 
@@ -27,8 +27,15 @@ export function notamsPath(flightId: string, q: NotamQuery = {}): string {
   return `flights/${encodeURIComponent(flightId)}/notams${s ? '?' + s : ''}`;
 }
 
-export function fetchNotams(flightId: string, q: NotamQuery = {}): Promise<NotamBriefing> {
-  return request<NotamBriefing>('GET', notamsPath(flightId, q));
+export async function fetchNotams(flightId: string, q: NotamQuery = {}): Promise<NotamBriefing> {
+  const b = await request<NotamBriefing>('GET', notamsPath(flightId, q));
+  rememberGet(notamsPath(flightId), b); // a refresh too: lastNotams answers with the newest
+  return b;
+}
+
+/** The flight's last NOTAM briefing this session, to show while a new one loads. */
+export function lastNotams(flightId: string): NotamBriefing | undefined {
+  return peekGet<NotamBriefing>(notamsPath(flightId));
 }
 
 /** Epoch ms → '2026-11-15 06:00Z'. */

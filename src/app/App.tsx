@@ -27,8 +27,20 @@ import { useSession } from './session';
 import { ToastProvider } from './toast';
 
 // The map (MapLibre) and the export sheets are loaded on demand, so the lobby and lists load fast.
-const EditorPage = lazy(() => import('../features/editor').then((m) => ({ default: m.EditorPage })));
-const ExportPage = lazy(() => import('../features/exports').then((m) => ({ default: m.ExportPage })));
+// The map editor and the exports are the big chunks: fetched as soon as the app is idle after it
+// starts, so opening a flight or an export never waits for code.
+const loadEditor = () => import('../features/editor');
+const loadExports = () => import('../features/exports');
+const EditorPage = lazy(() => loadEditor().then((m) => ({ default: m.EditorPage })));
+const ExportPage = lazy(() => loadExports().then((m) => ({ default: m.ExportPage })));
+if (typeof window !== 'undefined') {
+  const warm = () => {
+    void loadEditor().catch(() => undefined);
+    void loadExports().catch(() => undefined);
+  };
+  if ('requestIdleCallback' in window) window.requestIdleCallback(warm);
+  else setTimeout(warm, 1500);
+}
 // The Form 731 signing page: public (no sign-in), outside the AuthGate.
 const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ default: m.SignPage })));
 const OperatorsPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorsPage })));

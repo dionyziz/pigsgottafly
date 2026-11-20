@@ -24,6 +24,7 @@ export function OperatorSendPanel({ flightId, content }: { flightId: string; con
   const q = useAsync(() => api.declarations.get(flightId), [flightId], {
     refetchOnFocus: true,
     invalidatedBy: ['operators', 'aircraft', 'flights'],
+    cache: `declarations:${flightId}`,
   });
   const st = q.data;
   const [err, setErr] = useState<string | null>(null);

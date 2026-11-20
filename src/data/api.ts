@@ -75,6 +75,24 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * The last answer of every GET, by path, for the session: a page shows it at once when it comes
+ * back and fetches again quietly (peekGet). Cleared on sign-out (clearGetCache).
+ */
+const LAST_GET = new Map<string, unknown>();
+const LAST_GET_MAX = 200;
+export function rememberGet(path: string, v: unknown): void {
+  LAST_GET.delete(path);
+  LAST_GET.set(path, v);
+  if (LAST_GET.size > LAST_GET_MAX) LAST_GET.delete(LAST_GET.keys().next().value!);
+}
+export function peekGet<T>(path: string): T | undefined {
+  return LAST_GET.get(path) as T | undefined;
+}
+export function clearGetCache(): void {
+  LAST_GET.clear();
+}
+
 export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
@@ -94,6 +112,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   if (res.status >= 500)
     reportApiFailure(method, path, res.status, (out && typeof out.error === 'string' && out.error) || '');
   if (!res.ok) throw new ApiRequestError(res.status, (out && out.error) || `HTTP ${res.status}`, out);
+  if (method === 'GET') rememberGet(path, out);
   return out as T;
 }
 

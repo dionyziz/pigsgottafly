@@ -70,7 +70,7 @@ export function issueTarget(root: ParentNode, issue: Pick<Issue, 'path' | 'secti
 
 export function AircraftPage() {
   const { id = '' } = useParams();
-  const { data, error, setData } = useAsync(() => api.aircraft.get(id), [id]);
+  const { data, error, setData } = useAsync(() => api.aircraft.get(id), [id], { cache: `aircraft:${id}` });
   return (
     <Shell>
       {error && !data ? (

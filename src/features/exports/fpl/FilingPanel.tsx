@@ -8,7 +8,7 @@
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
 import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
-import { api, ApiRequestError } from '../../../data/api';
+import { api, ApiRequestError, peekGet } from '../../../data/api';
 import type { Flight } from '../../../shared';
 import type { FilingState, FilingStatus } from '../../../shared/briefing';
 import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
@@ -54,7 +54,8 @@ export interface FilingPanelProps {
 }
 
 export function FilingPanel({ flight, message, complete, onAddresses }: FilingPanelProps) {
-  const [st, setSt] = useState<FilingState | null>(null);
+  // the last state this session shows at once (filing.get updates it)
+  const [st, setSt] = useState<FilingState | null>(() => peekGet<FilingState>(`flights/${flight.id}/filing`) ?? null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<'' | 'file' | 'delay' | 'cancel' | 'refresh'>('');
   const [actionErr, setActionErr] = useState<string | null>(null);

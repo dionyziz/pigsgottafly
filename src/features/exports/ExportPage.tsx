@@ -90,7 +90,7 @@ export function ExportPage() {
       return api.flights.get(id);
     },
     [id],
-    { refetchOnFocus: true, invalidatedBy: 'flights' },
+    { refetchOnFocus: true, invalidatedBy: 'flights', cache: `flight:${id}` },
   );
   if (Object.hasOwn(EXPORT_REDIRECTS, kind))
     return <Navigate replace to={`/flights/${id}/export/${EXPORT_REDIRECTS[kind]}`} />;

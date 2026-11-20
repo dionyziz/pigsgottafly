@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 
 import { usePilot } from '../../../app/session';
 import { ApiRequestError } from '../../../data/api';
-import { fetchNotams, type NotamBriefing } from '../../../data/notams';
+import { fetchNotams, lastNotams, type NotamBriefing } from '../../../data/notams';
 import type { Flight } from '../../../shared';
 import { Chip, Panel } from '../../../ui';
 import type { ShownSignature } from '../form731/Form731';
@@ -20,9 +20,9 @@ import { SignLine } from '../wb/SignLine';
 import { type BriefingModel, briefingModel } from './model';
 
 export function BriefingExport({ flight }: { flight: Flight }) {
-  const [briefing, setBriefing] = useState<NotamBriefing | null>(null);
+  const [briefing, setBriefing] = useState<NotamBriefing | null>(() => lastNotams(flight.id) ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [busy, setBusy] = useState(() => !lastNotams(flight.id));
   const [refresh, setRefresh] = useState(0);
   // acknowledged by the PIC, e-signed when the briefing is generated
   const pilot = usePilot();
@@ -30,7 +30,8 @@ export function BriefingExport({ flight }: { flight: Flight }) {
   const signature: ShownSignature | null = pilot.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
   useEffect(() => {
     let live = true;
-    setBusy(true);
+    // the last briefing stays shown while the new one loads
+    if (refresh > 0 || !lastNotams(flight.id)) setBusy(true);
     fetchNotams(flight.id, { refresh: refresh > 0 }).then(
       (b) => {
         if (live) {

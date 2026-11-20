@@ -11,7 +11,7 @@ import { api } from '../../../src/data/api';
 import { invalidate, onInvalidate, putEntity, useEntity } from '../../../src/data/entities';
 import { __resetEntityStoreForTests, CHANNEL_NAME, registerFetcher, revalidate } from '../../../src/data/entityStore';
 import { latestOnly, sequencer } from '../../../src/data/sequence';
-import { useAsync } from '../../../src/data/useAsync';
+import { clearAsyncCache, useAsync } from '../../../src/data/useAsync';
 import type { Passenger, Pilot, SessionResponse } from '../../../src/shared';
 
 function deferred<T>() {
@@ -179,6 +179,24 @@ describe('useAsync', () => {
       window.dispatchEvent(new Event('focus'));
     });
     await waitFor(() => expect(screen.getByTestId('rows').textContent).toBe('v3'));
+  });
+  it('cache: coming back shows the last answer at once, then the new one; sign-out forgets it', async () => {
+    let n = 0;
+    const next = deferred<string>();
+    fetchRows = async () => (++n === 1 ? 'first' : next.promise);
+    const one = render(<Rows q="c" opts={{ cache: 'rows:c' }} />);
+    await waitFor(() => expect(screen.getByTestId('rows').textContent).toBe('first'));
+    one.unmount();
+    // back on the page: no loading state, the cached answer while it fetches again
+    render(<Rows q="c" opts={{ cache: 'rows:c' }} />);
+    expect(screen.getByTestId('rows').textContent).toBe('first');
+    await act(async () => next.resolve('second'));
+    expect(screen.getByTestId('rows').textContent).toBe('second');
+    cleanup();
+    clearAsyncCache();
+    fetchRows = () => new Promise(() => {});
+    render(<Rows q="c" opts={{ cache: 'rows:c' }} />);
+    expect(screen.getByTestId('rows').textContent).toBe('loading');
   });
 });
 

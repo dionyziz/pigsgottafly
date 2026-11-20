@@ -93,7 +93,7 @@ const normalized = (d: OperatorInput): OperatorInput => ({
 
 export function OperatorPage() {
   const { id = '' } = useParams();
-  const { data, error, setData } = useAsync(() => api.operators.get(id), [id]);
+  const { data, error, setData } = useAsync(() => api.operators.get(id), [id], { cache: `operator:${id}` });
   return (
     <Shell>
       {error && !data ? (
@@ -131,7 +131,10 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
   const readOnly = role === 'view';
   useFocusParam(() => document.querySelector('[data-testid=operator-page]'));
   // who has access: refetched when a share of the operator or of one of its aircraft changes
-  const people = useAsync(() => api.operatorShares.get(op.id), [op.id], { invalidatedBy: ['operators', 'aircraft'] });
+  const people = useAsync(() => api.operatorShares.get(op.id), [op.id], {
+    invalidatedBy: ['operators', 'aircraft'],
+    cache: `operatorShares:${op.id}`,
+  });
 
   const set = <K extends keyof OperatorInput>(k: K, v: OperatorInput[K]) => setDraft((d) => ({ ...d, [k]: v }));
   const issues = validateOperator(draft);

@@ -49,6 +49,7 @@ export function LobbyPage() {
   const { data, reload, loading, error, setData } = useAsync(() => api.flights.list(trashView), [trashView], {
     refetchOnFocus: true,
     invalidatedBy: 'flights',
+    cache: `flights:${trashView ? 'trash' : 'list'}`,
   });
   const [q, setQ] = useState('');
   const [renaming, setRenaming] = useState<FlightListItem | null>(null);

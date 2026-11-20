@@ -7,7 +7,7 @@
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiRequestError } from '../../data/api';
-import { fetchNotams, type Notam, type NotamBriefing } from '../../data/notams';
+import { fetchNotams, lastNotams, type Notam, type NotamBriefing } from '../../data/notams';
 import { useEditor } from './state';
 
 export interface NotamState {
@@ -49,7 +49,7 @@ const DEBOUNCE_MS = 1200;
 
 export function NotamProvider({ children }: { children: ReactNode }) {
   const { flight, doc, saveStatus } = useEditor();
-  const [briefing, setBriefing] = useState<NotamBriefing | null>(null);
+  const [briefing, setBriefing] = useState<NotamBriefing | null>(() => lastNotams(flight.id) ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);

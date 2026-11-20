@@ -5,13 +5,21 @@
 // page, another page, another tab) or a window focus refreshes it, so usePilot() is never stale.
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { api, ApiRequestError } from '../data/api';
+import { api, ApiRequestError, clearGetCache } from '../data/api';
 import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/entities';
+import { clearAsyncCache } from '../data/useAsync';
 import type { Pilot, SessionResponse } from '../shared';
 import { Loading } from '../ui';
 import { APP_LOGIN_PATH, handBackToApp } from './native';
 import { SessionContext, type SessionValue } from './session';
 import { SignIn } from './SignIn';
+
+/** Another pilot (or none): nothing the last one loaded may show. */
+function forgetAll() {
+  clearEntities();
+  clearAsyncCache();
+  clearGetCache();
+}
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionResponse | null>(null);
@@ -21,7 +29,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     try {
       const s = await api.session();
       // another pilot (or none): nothing cached belongs to them
-      if (getEntity<Pilot>('pilot').data?.id !== s.pilot?.id) clearEntities();
+      if (getEntity<Pilot>('pilot').data?.id !== s.pilot?.id) forgetAll();
       if (s.authed && s.pilot) putEntity('pilot', s.pilot);
       setSession(s);
       setError(null);
@@ -69,7 +77,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               } catch {
                 /* ignore */
               }
-              clearEntities();
+              forgetAll();
               await load();
             },
             signOutEverywhere: async () => {
@@ -79,7 +87,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               } catch {
                 /* ignore */
               }
-              clearEntities();
+              forgetAll();
               await load();
             },
           }

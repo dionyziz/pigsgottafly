@@ -138,6 +138,21 @@ export const flightStore = {
     };
   },
 
+  /** This device's copy of a flight (shown at once while load() asks the server), or null. */
+  peek(id: string): { flight: Flight; doc: FlightDoc } | null {
+    const c = LS.get<Cached>(key(id));
+    if (!c) return null;
+    return {
+      flight: { ...c.doc, id, version: c.version, created: 0, updated: 0, opened: 0, deleted: false },
+      doc: c.doc,
+    };
+  },
+
+  /** Edits of this flight not yet on the server. */
+  hasUnsent(id: string): boolean {
+    return !!LS.get<Cached>(key(id))?.dirty;
+  },
+
   /** Loads a flight: the server copy, unless we hold unsent edits of the same version. Null if missing. */
   async load(id: string): Promise<{ flight: Flight; doc: FlightDoc } | null> {
     const cached = LS.get<Cached>(key(id));

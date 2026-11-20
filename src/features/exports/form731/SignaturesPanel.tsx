@@ -9,10 +9,11 @@
 //   - when everyone has signed, "Send to HCAA" e-mails the signed PDF to 731@hcaa.gov.gr (cc and
 //     reply-to the pilot); sent time, and "Re-send" after changes.
 // The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 
 import { api, ApiRequestError } from '../../../data/api';
+import { useAsync } from '../../../data/useAsync';
 import { fmtLocalClock, fmtLocalDayTime } from '../../../shared/format';
 import type { FormsState } from '../../../shared/forms';
 import { Chip, Loading, Panel } from '../../../ui';
@@ -26,31 +27,14 @@ const errText = (e: unknown) =>
   e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.';
 
 export function useFormsState(flightId: string) {
-  const [st, setSt] = useState<FormsState | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => {
-    api.forms.get(flightId).then(
-      (s) => {
-        setSt(s);
-        setErr(null);
-      },
-      (e) => setErr(errText(e)),
-    );
-  }, [flightId]);
-  useEffect(load, [load]);
-  // signatures arrive while the page is open: refresh when it regains focus
-  useEffect(() => {
-    const on = () => {
-      if (document.visibilityState === 'visible') load();
-    };
-    document.addEventListener('visibilitychange', on);
-    window.addEventListener('focus', on);
-    return () => {
-      document.removeEventListener('visibilitychange', on);
-      window.removeEventListener('focus', on);
-    };
-  }, [load]);
-  return { st, setSt, err, setErr, load };
+  // kept for the session (coming back shows it at once); refetched when the page regains focus,
+  // since signatures arrive while it is open
+  const q = useAsync(() => api.forms.get(flightId), [flightId], { cache: `forms:${flightId}`, refetchOnFocus: true });
+  const [actionErr, setErr] = useState<string | null>(null);
+  const err = actionErr ?? (q.error && !q.data ? errText(q.error) : null);
+  const { reload } = q;
+  const load = useCallback(() => void reload(), [reload]);
+  return { st: q.data ?? null, setSt: q.setData as (s: FormsState) => void, err, setErr, load };
 }
 
 /** Current signatures by person key, for the sheet. */
