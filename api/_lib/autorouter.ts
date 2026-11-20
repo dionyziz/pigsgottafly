@@ -1,7 +1,8 @@
 // Server-side autorouter API client (https://www.autorouter.aero/wiki/api/). The app's own account
 // (AUTOROUTER_EMAIL / AUTOROUTER_PASSWORD) authenticates with OAuth 2.0 client credentials; the
 // bearer token (valid one hour) is reused until it expires or is refused, as the API asks (it caps
-// the number of live tokens per account). Used for the NOTAM briefing and for filing flight plans.
+// the live tokens per account at 20): kept in memory and in a TokenStore shared by every server
+// instance (autorouter_token, api/_lib/app.ts), so a cold start reuses the token instead of taking a new one. Used for the NOTAM briefing and for filing flight plans.
 // Credentials never leave this module except in the token request to autorouter.
 //
 // Endpoints (wiki: authentication, notams, flightplan):
@@ -63,6 +64,23 @@ export interface AutorouterSettings {
   /** Waits between message-queue polls (tests: instant). */
   sleep?: (ms: number) => Promise<void>;
 }
+
+export interface AutorouterToken {
+  value: string;
+  /** Epoch ms. */
+  expires: number;
+}
+
+/** Where the token is kept for every server instance. */
+export interface TokenStore {
+  get: () => Promise<AutorouterToken | null>;
+  set: (t: AutorouterToken) => Promise<void>;
+  /** Forgets the token if it is still this one (refused by autorouter). */
+  drop: (value: string) => Promise<void>;
+}
+
+/** A token this close to expiring is not used. */
+const TOKEN_MARGIN_MS = 60e3;
 
 /** An AFTN message autorouter sent for a plan (FPL, DLA, CNL), as transmitted. */
 export interface AftnMessage {
@@ -129,7 +147,10 @@ export class AutorouterClient {
   private readonly now: () => number;
   private readonly sleep: (ms: number) => Promise<void>;
 
-  constructor(private readonly s: AutorouterSettings) {
+  constructor(
+    private readonly s: AutorouterSettings,
+    private readonly store: TokenStore | null = null,
+  ) {
     this.base = (s.baseUrl || AUTOROUTER_BASE).replace(/\/+$/, '');
     this.doFetch = s.fetch || fetch;
     this.now = s.now || Date.now;
@@ -140,10 +161,17 @@ export class AutorouterClient {
     return this.s.filing;
   }
 
+  private fresh = (t: AutorouterToken | null): t is AutorouterToken => !!t && t.expires > this.now() + TOKEN_MARGIN_MS;
+
   private async getToken(): Promise<string> {
-    if (this.token && this.token.expires > this.now() + 60e3) return this.token.value;
+    if (this.fresh(this.token)) return this.token.value;
     this.tokenP ||= (async () => {
       try {
+        const stored = await this.store?.get().catch(() => null);
+        if (this.fresh(stored ?? null)) {
+          this.token = stored!;
+          return stored!.value;
+        }
         const res = await this.doFetch(`${this.base}/oauth2/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -167,6 +195,7 @@ export class AutorouterClient {
           );
         }
         this.token = { value: body.access_token, expires: this.now() + (Number(body.expires_in) || 3600) * 1000 };
+        await this.store?.set(this.token).catch(() => {});
         return this.token.value;
       } finally {
         this.tokenP = null;
@@ -191,6 +220,7 @@ export class AutorouterClient {
       });
       if ((res.status === 401 || res.status === 403) && attempt === 0) {
         this.token = null;
+        await this.store?.drop(tok).catch(() => {});
         continue;
       }
       const out = parseBody(await res.text());

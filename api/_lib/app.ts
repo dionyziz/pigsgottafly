@@ -3,7 +3,7 @@
 // and turns handler results/errors into JSON responses.
 import type { Pilot } from '../../src/shared/types.js';
 import { googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
-import { AutorouterClient, autorouterFromEnv } from './autorouter.js';
+import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
 import type { Db } from './db.js';
 import type { ApiConfig, Ctx, JsonBody, Req, Res, Route } from './http.js';
 import { compilePath, HttpError, isJsonContentType, readJsonObject, Reply, send } from './http.js';
@@ -69,6 +69,26 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Omit<ApiCon
   };
 }
 
+/** The autorouter token in the database, shared by every server instance (one row). */
+function tokenStore(db: Db): TokenStore {
+  return {
+    async get() {
+      const [r] = await db.query('SELECT token, expires FROM autorouter_token WHERE id = 1');
+      return r ? { value: r.token, expires: Number(r.expires) } : null;
+    },
+    async set(t) {
+      await db.query(
+        `INSERT INTO autorouter_token (id, token, expires) VALUES (1, $1, $2)
+         ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token, expires = EXCLUDED.expires`,
+        [t.value, t.expires],
+      );
+    },
+    async drop(value) {
+      await db.query('DELETE FROM autorouter_token WHERE id = 1 AND token = $1', [value]);
+    },
+  };
+}
+
 export function createApi(
   opts: { db: Db } & Partial<ApiConfig>,
   routes: Route[] = ROUTES,
@@ -85,7 +105,7 @@ export function createApi(
     openMeteo: opts.openMeteo,
     aviationWeather: opts.aviationWeather,
   };
-  const autorouter = config.autorouter ? new AutorouterClient(config.autorouter) : null;
+  const autorouter = config.autorouter ? new AutorouterClient(config.autorouter, tokenStore(opts.db)) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {
     console.warn(
       'autorouter: neither AUTOROUTER_PILOTS nor ALLOWED_EMAILS is set; NOTAMs and filing are disabled for every pilot',
