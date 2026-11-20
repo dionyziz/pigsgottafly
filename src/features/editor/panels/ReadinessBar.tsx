@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
+import { focusParam } from '../../../app/focusParam';
 import { api } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { Icon } from '../../../ui';
@@ -121,6 +122,9 @@ const stageKey = (flightId: string) => `pgf.editor.stage.${flightId}`;
 export function useStage(): [Stage, (s: Stage) => void] {
   const { flight, doc } = useEditor();
   const [stage, setStageState] = useState<Stage>(() => {
+    // a ?focus= deep link (an export's warning): the stage holding that field
+    const linked = SECTION_STAGE[sectionOf(focusParam()) ?? ''];
+    if (linked) return linked;
     try {
       const s = sessionStorage.getItem(stageKey(flight.id));
       if (s && (STAGES as readonly string[]).includes(s)) return s as Stage;

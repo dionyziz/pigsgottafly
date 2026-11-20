@@ -12,6 +12,12 @@ import { launch, startServer } from './harness.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Opens a stage of the flight panel (plan, brief, file): only its sections are shown. */
+const stage = async (s) => {
+  await page.click(`[data-testid=stage-${s}]`);
+  await page.waitFor((s) => document.querySelector(`[data-testid=stage-body-${s}]`)?.hidden === false, { args: [s] });
+};
+
 const AD = JSON.parse(fs.readFileSync('src/data/ref/aerodromes.json', 'utf8'));
 const ad = (id) => {
   const a = AD.find((x) => x.id === id);
@@ -222,6 +228,7 @@ test('the start-up, taxi, take-off and landing fuel is edited per flight in the 
     });
   assert.deepEqual(await field(), ['', '4', false]);
   const before = await required();
+  await stage('plan');
   await page.type('[data-testid=taxi-allowance]', '10');
   await page.blur();
   await page.waitFor((b) => parseInt(document.querySelector('[data-testid=fuel-required]').textContent, 10) === b + 6, {

@@ -215,6 +215,11 @@ const flightId = () => page.eval(() => location.pathname.split('/')[2]);
 const waitSaved = () =>
   page.waitFor(() => document.querySelector('[data-testid=save-state]')?.textContent === 'Saved', { timeout: 15000 });
 const text = (sel) => page.eval((s) => document.querySelector(s)?.textContent ?? null, sel);
+/** Opens a stage of the flight panel (plan, brief, file): only its sections are shown. */
+const stage = async (s) => {
+  await page.click(`[data-testid=stage-${s}]`);
+  await page.waitFor((s) => document.querySelector(`[data-testid=stage-body-${s}]`)?.hidden === false, { args: [s] });
+};
 
 test('plan a flight end to end: map, panels, navlog, exports, W&B and performance', { timeout: 240000 }, async () => {
   // ---- pilot profile, hangar (SX-ASV from the seed), one passenger: through the API
@@ -254,6 +259,15 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
   const id = await flightId();
   assert.match(await text('[data-testid=flight-title]'), /^\d{4}-\d{2}-\d{2}$/);
+  // the "Ready to fly" checklist heads the panel; a stage tab shows that stage's sections only
+  assert.ok(await page.eval(() => !!document.querySelector('[data-testid=readiness] [data-testid=ready-summary]')));
+  await stage('brief');
+  assert.deepEqual(
+    await page.eval(() =>
+      ['plan', 'brief', 'file'].map((s) => document.querySelector(`[data-testid=stage-body-${s}]`).hidden),
+    ),
+    [true, false, true],
+  );
 
   // frame the area of the route
   await page.eval(() => {
@@ -396,6 +410,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await hover(p.x + 200, p.y + 150);
 
   // ---- 3. date and block start, aircraft, fuel on board (PIC alone first: club case 60)
+  await stage('plan');
   await setValue('[data-testid=flight-date]', DATE);
   await page.type('[data-testid=block-off]', BLOCK_OFF);
   await page.blur();
@@ -466,6 +481,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     return m.getSource('leg-focus').serialize().data.features.length === 0;
   });
   // aerodrome hours on the flight's date: LGTT HJ (AIP AD 1.6.5.3), no handling
+  await stage('brief');
   await page.waitFor(() => document.querySelectorAll('[data-testid=aerodrome-hours-item]').length === 2);
   assert.deepEqual(
     await page.eval(() =>
@@ -538,6 +554,7 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   // ---- 3b. back in the editor: add the passenger by type-ahead, seat her rear left
   await page.goto(`${server.url}/flights/${id}`);
   await page.waitFor(() => !!document.querySelector('[data-testid=pax-search]'));
+  await stage('plan');
   await page.type('[data-testid=pax-search]', 'mari');
   await sleep(200);
   await page.key('Enter');
