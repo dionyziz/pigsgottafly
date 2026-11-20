@@ -5,7 +5,7 @@
 // The stage is remembered per flight in this tab. A new visit opens on Brief when the flight is today
 // or tomorrow (the morning-of check), else on Plan. A focus request (a warning's Fix, a deep link) or a
 // NOTAM picked on the map switches to the stage holding it.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { focusParam } from '../../../app/focusParam';
@@ -201,34 +201,50 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
   const open = items.filter((x) => x.state !== 'ok').length;
   const worst = STAGES.map((s) => stageSummary(items, s).state);
   const danger = worst.includes('danger');
+  // the summary and the tabs stay at the top of the panel; the sections' sticky headers stop under them
+  // (--rd-pinned on the panel, kept equal to their height)
+  const pinned = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = pinned.current;
+    const panel = el?.closest<HTMLElement>('.ep');
+    if (!el || !panel) return;
+    const set = () => panel.style.setProperty('--rd-pinned', `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className="rd" data-testid="readiness">
-      <div
-        className={'rd-head' + (open === 0 ? ' is-ok' : danger ? ' is-danger' : ' is-todo')}
-        data-testid="ready-summary"
-      >
-        <Icon name={open === 0 ? 'check' : 'warn'} size={14} />
-        {open === 0 ? 'Ready to fly' : `${open} to do`}
-      </div>
-      <div className="rd-tabs" role="tablist" aria-label="Stage">
-        {STAGES.map((s) => {
-          const sum = stageSummary(items, s);
-          return (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={s === stage}
-              className={'rd-tab is-' + sum.state}
-              onClick={() => onStage(s)}
-              data-testid={`stage-${s}`}
-            >
-              <span className="rd-dot" aria-hidden />
-              {STAGE_LABEL[s]}
-              {sum.open > 0 && <span className="rd-count tnum">{sum.open}</span>}
-            </button>
-          );
-        })}
+    // two siblings straight in the panel: a sticky element stays within its parent
+    <>
+      <div className="rd-pinned" ref={pinned} data-testid="readiness">
+        <div
+          className={'rd-head' + (open === 0 ? ' is-ok' : danger ? ' is-danger' : ' is-todo')}
+          data-testid="ready-summary"
+        >
+          <Icon name={open === 0 ? 'check' : 'warn'} size={14} />
+          {open === 0 ? 'Ready to fly' : `${open} to do`}
+        </div>
+        <div className="rd-tabs" role="tablist" aria-label="Stage">
+          {STAGES.map((s) => {
+            const sum = stageSummary(items, s);
+            return (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={s === stage}
+                className={'rd-tab is-' + sum.state}
+                onClick={() => onStage(s)}
+                data-testid={`stage-${s}`}
+              >
+                <span className="rd-dot" aria-hidden />
+                {STAGE_LABEL[s]}
+                {sum.open > 0 && <span className="rd-count tnum">{sum.open}</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <ul className="rd-list" data-testid={`ready-${stage}`}>
         {items
@@ -237,6 +253,6 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
             <Row key={x.id} item={x} onMarkRead={markNotamsRead} />
           ))}
       </ul>
-    </div>
+    </>
   );
 }

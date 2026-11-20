@@ -510,6 +510,24 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.key('Escape');
   await page.waitFor(() => !document.querySelector('[data-testid=aerodrome-pop]'));
   await shot('3-panels');
+  // scrolling the panel: the pinned summary and stage tabs stay on top, never covered by a section
+  // header (a header sticks just below them, and slides under them as its section ends), on every stage
+  for (const s of ['plan', 'brief', 'file']) {
+    await stage(s);
+    for (const y of [250, 700, 1500]) {
+      const covered = await page.eval((y) => {
+        document.querySelector('.editor-panel').scrollTop = y;
+        const pin = document.querySelector('[data-testid=readiness]');
+        const r = pin.getBoundingClientRect();
+        const pts = [];
+        for (const fx of [0.1, 0.5, 0.9])
+          for (const fy of [0.15, 0.5, 0.9]) pts.push([r.left + r.width * fx, r.top + r.height * fy]);
+        return pts.filter(([x, py]) => !document.elementFromPoint(x, py)?.closest('[data-testid=readiness]')).length;
+      }, y);
+      assert.equal(covered, 0, `stage ${s}, scrolled ${y}: the pinned bar is covered`);
+    }
+  }
+  await page.eval(() => (document.querySelector('.editor-panel').scrollTop = 0));
 
   // ---- 6a. take-off performance at LGTT against the club calculator (case 60). The old
   // /export/performance link redirects to the merged W&B and performance export.
