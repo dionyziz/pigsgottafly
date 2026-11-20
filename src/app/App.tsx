@@ -8,7 +8,7 @@
 //   /admin/errors                  grouped server/client/migration errors (ADMIN_EMAILS only)
 //   /admin/mail                    the e-mail action log (ADMIN_EMAILS only)
 //   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
-//   /privacy  /terms               privacy policy, terms of service (no sign-in)
+//   /privacy  /terms  /support     privacy policy, terms of service, help and contact (no sign-in)
 // v2 links (/#/f/<id>) are redirected to /flights/<id>.
 import { lazy, type ReactNode, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
@@ -48,6 +48,7 @@ const OperatorPage = lazy(() => import('../features/operators').then((m) => ({ d
 const AdminPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.AdminPage })));
 const PrivacyPage = lazy(() => import('../features/legal').then((m) => ({ default: m.PrivacyPage })));
 const TermsPage = lazy(() => import('../features/legal').then((m) => ({ default: m.TermsPage })));
+const SupportPage = lazy(() => import('../features/legal').then((m) => ({ default: m.SupportPage })));
 const MailPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.MailPage })));
 const ErrorsPage = lazy(() => import('../features/admin/ErrorsPage').then((m) => ({ default: m.ErrorsPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
@@ -101,6 +102,14 @@ export function App() {
               element={
                 <Suspense fallback={<Loading variant="screen" />}>
                   <TermsPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/support"
+              element={
+                <Suspense fallback={<Loading variant="screen" />}>
+                  <SupportPage />
                 </Suspense>
               }
             />

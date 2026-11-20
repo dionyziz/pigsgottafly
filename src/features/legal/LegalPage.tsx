@@ -23,7 +23,7 @@ export function LegalPage({
   title: string;
   lead: ReactNode;
   sections: LegalSection[];
-  current: 'privacy' | 'terms';
+  current: 'privacy' | 'terms' | 'support';
 }) {
   useEffect(() => {
     const prev = document.title;
@@ -48,6 +48,9 @@ export function LegalPage({
           </Link>
           <Link to="/privacy" aria-current={current === 'privacy' ? 'page' : undefined}>
             Privacy Policy
+          </Link>
+          <Link to="/support" aria-current={current === 'support' ? 'page' : undefined}>
+            Support
           </Link>
         </nav>
       </header>
