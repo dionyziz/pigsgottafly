@@ -266,7 +266,6 @@ describe('flights', () => {
         })
       ).status,
     ).toBe(400);
-    // manifest rules
     const twoPics = [...crew, { role: 'PIC', passengerId: null, seat: 'rear-left', snapshot: {} }];
     expect((await a.call('PUT', `flights/${f.id}`, { flight: { crew: twoPics }, version: 3 })).status).toBe(400);
     const sameSeat = [crew[0], { ...crew[1], seat: 'front-left' }];
@@ -276,12 +275,10 @@ describe('flights', () => {
     expect((await a.call('DELETE', `passengers/${pax.id}`)).status).toBe(204);
     const after = (await a.call('GET', `flights/${f.id}`)).body as Flight;
     expect(after.crew[1]).toMatchObject({ passengerId: null, snapshot: { fullName: 'Bob Pax' } });
-    // trash and restore
     expect((await a.call('DELETE', `flights/${f.id}`)).status).toBe(204);
     expect((await a.call('GET', 'flights')).body.some((x: any) => x.id === f.id)).toBe(false);
     expect((await a.call('GET', 'flights?trash=1')).body.some((x: any) => x.id === f.id)).toBe(true);
     expect((await a.call('POST', `flights/${f.id}/restore`)).body.deleted).toBe(false);
-    // copy
     const c = await a.call('POST', `flights/${f.id}/copy`, {});
     expect(c.status).toBe(201);
     expect(c.body.title).toBe('Copy of Trip');

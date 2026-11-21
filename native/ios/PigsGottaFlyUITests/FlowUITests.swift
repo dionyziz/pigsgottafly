@@ -11,7 +11,6 @@ final class FlowUITests: XCTestCase {
         app.launchArguments = ["-fixtures", "-noNetwork", "-fixturePosition", "38.45,24.0,32,105"]
         app.launch()
 
-        // Flights
         XCTAssertTrue(app.navigationBars["Flights"].waitForExistence(timeout: 15))
         let row = app.descendants(matching: .any)["flight-fixture-lgtt-lgsy"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
@@ -37,7 +36,6 @@ final class FlowUITests: XCTestCase {
         app.buttons["night"].tap()
         app.buttons["night"].tap()
 
-        // Brief
         app.buttons["fly-brief"].tap()
         XCTAssertTrue(app.tabBars.buttons["Brief"].waitForExistence(timeout: 5))
         let wx = app.staticTexts["LGSY 220820Z 01012KT CAVOK 15/07 Q1020"]

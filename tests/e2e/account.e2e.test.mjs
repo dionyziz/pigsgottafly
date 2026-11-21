@@ -204,7 +204,6 @@ test('profile: download my data, then delete the account with a typed confirmati
       ),
     { timeout: 20000 },
   );
-  // remove the medical
   await page.click('[data-testid=pilot-doc-medical] button[aria-label="Remove medical certificate"]');
   await page.waitFor(() => !document.querySelector('[data-testid=pilot-doc-medical] [data-testid=pilot-doc-name]'));
   const stored = await api('GET', `pilots/${me.id}/files`);

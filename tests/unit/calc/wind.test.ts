@@ -53,7 +53,6 @@ test('selectRunway: most headwind; ties → longer; calm → preferred or first'
   expect(selectRunway(runways, { dirTrueDeg: 20, speedKt: 10 }, 0)!.runway.designator).toBe('03');
   // Variation: 125 true with 5° E = 120 magnetic: exactly across (both 0 head) → tie → longer (21).
   expect(selectRunway(runways, { dirTrueDeg: 125, speedKt: 10 }, 5)!.runway.designator).toBe('21');
-  // Calm.
   expect(selectRunway(runways, null, 0)!.runway.designator).toBe('03');
   expect(selectRunway(runways, { dirTrueDeg: 0, speedKt: 0 }, 0, '21')!.runway.designator).toBe('21');
   expect(selectRunway([], { dirTrueDeg: 0, speedKt: 10 }, 0)).toBeNull();

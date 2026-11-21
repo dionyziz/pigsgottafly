@@ -169,7 +169,6 @@ beforeAll(async () => {
   expect(
     (await A.call('POST', `operators/${op.id}/shares`, { email: 'staying@example.com', role: 'view' })).status,
   ).toBe(201);
-  // A's licence (a pilot file)
   const lic = (
     await A.call('POST', `pilots/${ids.a}/files`, {
       kind: 'licence',
