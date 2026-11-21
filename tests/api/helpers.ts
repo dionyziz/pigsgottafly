@@ -2,6 +2,7 @@
 import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 
+import type { SheetPdfRenderer } from '../../api/_lib/sheetPdf';
 import { createServer } from '../../server/server';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -36,7 +37,14 @@ export const appleClaims = (sub: string, email: string, extra: Record<string, un
 });
 
 export async function startApi(
-  opts: { google?: boolean; apple?: boolean; allowedEmails?: string[]; adminEmails?: string[]; db?: string } = {},
+  opts: {
+    google?: boolean;
+    apple?: boolean;
+    allowedEmails?: string[];
+    adminEmails?: string[];
+    db?: string;
+    sheetPdf?: SheetPdfRenderer | null;
+  } = {},
 ) {
   const google = opts.google ?? true;
   const s = createServer({
@@ -47,6 +55,7 @@ export async function startApi(
     appleKeys: async () => [JWK],
     allowedEmails: opts.allowedEmails,
     adminEmails: opts.adminEmails,
+    sheetPdf: opts.sheetPdf,
     client: (_req, res) => {
       res.writeHead(404);
       res.end();

@@ -240,7 +240,7 @@ const content = (mass = '1040.2'): WbPerfContent =>
       verdictText: 'Within limits (normal category)',
       rows: [
         {
-          kind: 'line',
+          kind: 'empty',
           label: 'Corrected empty weight',
           note: '',
           mass: '691.2',
@@ -260,7 +260,15 @@ const content = (mass = '1040.2'): WbPerfContent =>
           over: false,
         },
       ],
-      checks: [{ label: 'Take-off', ok: true, text: `${mass} kg · CG 1.010 m`, categories: 'Normal: within' }],
+      checks: [
+        {
+          phase: 'takeoff',
+          label: 'Take-off',
+          ok: true,
+          text: `${mass} kg · CG 1.010 m`,
+          categories: [{ label: 'Normal', ok: true }],
+        },
+      ],
       chart: {
         envelopes: [
           {
@@ -274,7 +282,7 @@ const content = (mass = '1040.2'): WbPerfContent =>
             cgOutline: null,
           },
         ],
-        points: [{ label: 'T/O', moment: 1050, mass: 1040, ok: true }],
+        points: [{ key: 'takeoff', label: 'T/O', moment: 1050, mass: 1040, ok: true }],
       },
       limits: ['MTOW 1043 kg'],
       weighing: 'Weighing 2024',
@@ -286,7 +294,8 @@ const content = (mass = '1040.2'): WbPerfContent =>
       pages: [
         {
           label: '',
-          speeds: 'Vx 60 kt',
+          stall: { vsKt: 44, vsoKt: 33 },
+          speedsSource: '',
           takeoff: {
             title: 'Departure',
             aerodrome: 'LGTT',

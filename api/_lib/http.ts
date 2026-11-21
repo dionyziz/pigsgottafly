@@ -6,6 +6,7 @@ import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { Db } from './db.js';
 import type { WeatherProxyOptions } from './routes/weather.js';
 import type { WeatherGridOptions } from './routes/weatherGrid.js';
+import type { SheetPdfRenderer } from './sheetPdf.js';
 
 /** Node request, possibly with a body pre-parsed by Vercel. */
 export type Req = IncomingMessage & { body?: unknown };
@@ -48,6 +49,12 @@ export interface ApiConfig {
   adminEmails?: string[];
   /** Open-Meteo through GET /weather/grid: upstream fetch (tests, local synthetic data) and the daily budget. */
   openMeteo?: WeatherGridOptions;
+  /**
+   * Prints the W&B and performance sheets e-mailed to an operator, as the website prints them
+   * (sheetPdf.ts: headless Chromium; configFromEnv sets it up). null/undefined: the server's own PDF
+   * writer (declarationPdf.ts), which is also the fallback when the print fails.
+   */
+  sheetPdf?: SheetPdfRenderer | null;
   /** aviationweather.gov through GET /weather/metar: upstream fetch (tests). */
   aviationWeather?: WeatherProxyOptions;
 }

@@ -14,6 +14,7 @@ import { PerfSheet } from '../../../src/features/exports/performance/Performance
 import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
 import { wbSheetModel } from '../../../src/features/exports/wb/model';
 import { WbSheet } from '../../../src/features/exports/wb/WbExport';
+import { wbPerfContent } from '../../../src/features/exports/wbperf/declaration';
 import {
   type Aircraft,
   DEFAULT_CIRCUIT_MIN,
@@ -313,7 +314,9 @@ describe('intermediate stop at LGSY', () => {
     expect(m.stops[0].takeoff.title).toBe('Take-off from stop');
     expect(m.verdict).toBe('pass');
     expect(m.verdictText).toMatch(/All 4 take-offs and landings/);
-    const html = m.pages.map((pg, i) => renderToStaticMarkup(<PerfSheet m={m} page={pg} pageNo={i + 1} />)).join('');
+    const html = m.pages
+      .map((_, i) => renderToStaticMarkup(<PerfSheet c={wbPerfContent(null, m)} pageNo={i + 1} />))
+      .join('');
     expect(html).toContain('Sector 1 of 2');
     expect(html).toContain('Landing at stop');
     expect(html).toContain('Take-off from stop');
@@ -360,7 +363,7 @@ describe('intermediate stop at LGSY', () => {
     expect(by.stop0.massKg! + by.burnLast.massKg! - by.ldg.massKg!).toBeCloseTo(0, 9);
     expect(by.burn0.note).toBe(`${120 - fuelAtStop} L`);
     expect(m.verdict).toBe('pass');
-    const html = renderToStaticMarkup(<WbSheet m={m} />);
+    const html = renderToStaticMarkup(<WbSheet c={wbPerfContent(m, null)} />);
     expect(html).toContain('Total at LGSY (stop)');
     expect(html).toContain('wb-pt-stop0');
   });

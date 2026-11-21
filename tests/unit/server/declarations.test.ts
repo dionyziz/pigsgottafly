@@ -23,16 +23,25 @@ const sample = (sectors = 1) =>
       verdict: 'fail',
       verdictText: 'Outside limits',
       rows: [
-        { kind: 'line', label: 'Corrected empty weight', mass: '691.2', arm: '0.995', moment: '687.74' },
+        { kind: 'empty', key: 'empty', label: 'Corrected empty weight', mass: '691.2', arm: '0.995', moment: '687.74' },
         { kind: 'person', label: 'PIC · Pat', note: 'Front left', mass: '80.0' },
       ],
       totals: [
         { kind: 'total', label: 'Total at take-off', mass: '1100.0', arm: '1.010', moment: '1111.00', over: true },
       ],
-      checks: [{ label: 'Take-off', ok: false, text: '1100.0 kg', categories: 'Normal: OUTSIDE' }],
+      checks: [
+        {
+          phase: 'takeoff',
+          label: 'Take-off',
+          ok: false,
+          text: '1100.0 kg',
+          categories: [{ label: 'Normal', ok: false }],
+        },
+      ],
       chart: {
         envelopes: [
           {
+            category: 'normal',
             label: 'Normal',
             outline: [
               [600, 700],
@@ -46,7 +55,7 @@ const sample = (sectors = 1) =>
             ],
           },
         ],
-        points: [{ label: 'T/O', moment: 1111, mass: 1100, ok: false }],
+        points: [{ key: 'takeoff', label: 'T/O', moment: 1111, mass: 1100, ok: false }],
       },
       limits: ['MTOW 1043 kg'],
       weighing: 'Weighing 2024',
@@ -57,11 +66,26 @@ const sample = (sectors = 1) =>
       verdictText: 'ok',
       pages: Array.from({ length: sectors }, (_, i) => ({
         label: `S${i}`,
-        speeds: 'Vx 60',
-        takeoff: { title: 'Departure', rows: [{ label: 'TODR', value: '420 m', status: 'bad' }] },
-        landing: { title: 'Destination' },
+        stall: { vsKt: 44, vsoKt: null },
+        speedsSource: 'AFM',
+        takeoff: {
+          phase: 'takeoff',
+          title: 'Departure',
+          rows: [{ key: 'todr', label: 'TODR', value: '420 m', status: 'bad' }],
+          diagram: {
+            runway: '02',
+            reciprocal: '20',
+            runwayHdgMag: 20,
+            windFromMag: 360,
+            headwindKt: 9.4,
+            crosswindKt: 3.4,
+            crossFrom: 'L',
+          },
+        },
+        landing: { phase: 'landing', title: 'Destination' },
       })),
       factors: [{ label: 'Grass', factor: '1.20' }],
+      crosswind: { takeoff: 15, landing: 'x' },
       notes: ['n'],
     },
     junk: 'dropped',
@@ -73,14 +97,22 @@ describe('W&B and performance declarations', () => {
     expect((c as any).junk).toBeUndefined();
     expect(c.wb.rows[1]).toEqual({
       kind: 'person',
+      key: '',
       label: 'PIC · Pat',
       note: 'Front left',
       mass: '80.0',
       arm: '',
       moment: '',
       over: false,
+      need: false,
     });
+    expect(c.perf.pages[0].stall).toEqual({ vsKt: 44, vsoKt: null });
+    expect(c.perf.crosswind).toEqual({ takeoff: 15, landing: null });
+    expect(c.perf.pages[0].takeoff.diagram?.crossFrom).toBe('L');
+    expect(c.wb.chart.points[0].key).toBe('takeoff');
+    expect(c.wb.checks[0].categories).toEqual([{ label: 'Normal', ok: false }]);
     expect(c.perf.pages[0].landing).toEqual({
+      phase: 'landing',
       title: 'Destination',
       aerodrome: '',
       time: '',
@@ -89,6 +121,7 @@ describe('W&B and performance declarations', () => {
       verdictText: '',
       weather: '',
       metar: '',
+      diagram: null,
     });
     expect(wbPerfContentOf(JSON.parse(JSON.stringify(c)))).toEqual(c);
     expect(() => wbPerfContentOf('x')).toThrow();
@@ -142,9 +175,9 @@ describe('free text on the sheets', () => {
     });
     expect(c.route.length).toBeLessThanOrEqual(200);
     expect(c.wb.rows.length).toBeLessThanOrEqual(40);
-    expect(c.wb.rows[0].label.length).toBeLessThanOrEqual(60);
+    expect(c.wb.rows[0].label.length).toBeLessThanOrEqual(80);
     expect(c.wb.limits.length).toBeLessThanOrEqual(12);
     expect(c.perf.notes.length).toBeLessThanOrEqual(10);
-    expect(c.perf.pages.length).toBeLessThanOrEqual(6);
+    expect(c.perf.pages.length).toBeLessThanOrEqual(10);
   });
 });

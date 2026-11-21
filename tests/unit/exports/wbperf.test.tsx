@@ -29,6 +29,7 @@ import { perfSpeeds } from '../../../src/features/exports/performance/speeds';
 import { computeExportCalc, type ExportCalcInput } from '../../../src/features/exports/wb/exportCalc';
 import { cgToMomentOutline, chartDomain, fmtArm, wbSheetModel } from '../../../src/features/exports/wb/model';
 import { WbSheet } from '../../../src/features/exports/wb/WbExport';
+import { wbPerfContent } from '../../../src/features/exports/wbperf/declaration';
 import {
   type Aircraft,
   type AircraftInput,
@@ -147,7 +148,7 @@ describe('W&B sheet (MD 4.3)', () => {
     // landing: the burn comes from the mix
     const rho = (60 * 0.72 + 40 * 0.75) / 100;
     expect(m.takeoff.massKg! - m.landing.massKg!).toBeCloseTo((calc.fuelTakeoffL - calc.fuelLandingL) * rho, 9);
-    expect(renderToStaticMarkup(<WbSheet m={m} />)).toContain('60 L AVGAS + 40 L MOGAS');
+    expect(renderToStaticMarkup(<WbSheet c={wbPerfContent(m, null)} />)).toContain('60 L AVGAS + 40 L MOGAS');
   });
 
   test('rows in MD 4.3 order with the people under their seat station; totals from the calculation', () => {
@@ -282,14 +283,10 @@ describe('W&B sheet (MD 4.3)', () => {
     const d = chartDomain(
       [
         {
-          category: 'normal',
-          label: '',
-          maxKg: 1043,
           outline: ASV.massBalance.envelopes.normal.momentPolygon!,
-          cgOutline: null,
         },
       ],
-      [{ massKg: 1100, momentKgM: 1400, armM: 0 }],
+      [{ massKg: 1100, momentKgM: 1400 }],
     );
     expect(d.x0).toBeLessThanOrEqual(600);
     expect(d.x1).toBeGreaterThanOrEqual(1400);
@@ -300,7 +297,7 @@ describe('W&B sheet (MD 4.3)', () => {
   test('renders the sheet with the table, the chart and the verdict', () => {
     const doc = flight();
     const m = wbSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV), route: 'LGTT – LGMG' });
-    const html = renderToStaticMarkup(<WbSheet m={m} />);
+    const html = renderToStaticMarkup(<WbSheet c={wbPerfContent(m, null)} />);
     expect(html).toContain('LOADING SHEET');
     expect(html).toContain('Robin Rider');
     expect(html).toContain('<svg');
@@ -386,7 +383,7 @@ describe('performance sheet (MD 4.4)', () => {
   test('renders both blocks', () => {
     const doc = flight();
     const m = perfSheetModel({ doc, aircraft: ASV, pilot, calc: calcOf(doc, ASV) });
-    const html = renderToStaticMarkup(<PerfSheet m={m} />);
+    const html = renderToStaticMarkup(<PerfSheet c={wbPerfContent(null, m)} />);
     for (const t of [
       'PERFORMANCE LOG',
       'T.O.D.A.',
@@ -406,10 +403,13 @@ describe('performance sheet (MD 4.4)', () => {
     const calc = calcOf(doc, ASV);
     const s = { name: 'Pat Pilot', signedAt: Date.UTC(2026, 10, 15, 16, 51) };
     const perf = renderToStaticMarkup(
-      <PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} signature={s} />,
+      <PerfSheet c={wbPerfContent(null, perfSheetModel({ doc, aircraft: ASV, pilot, calc }))} signature={s} />,
     );
     const wb = renderToStaticMarkup(
-      <WbSheet m={wbSheetModel({ doc, aircraft: ASV, pilot, calc, route: 'LGTT – LGMG' })} signature={s} />,
+      <WbSheet
+        c={wbPerfContent(wbSheetModel({ doc, aircraft: ASV, pilot, calc, route: 'LGTT – LGMG' }), null)}
+        signature={s}
+      />,
     );
     for (const html of [perf, wb]) {
       expect(html).toMatch(
@@ -418,9 +418,9 @@ describe('performance sheet (MD 4.4)', () => {
       expect(html).toContain('>P. Pilot<');
       expect(html).toContain('signed 2026-11-15 16:51Z');
     }
-    expect(renderToStaticMarkup(<PerfSheet m={perfSheetModel({ doc, aircraft: ASV, pilot, calc })} />)).not.toContain(
-      'data-testid="signature"',
-    );
+    expect(
+      renderToStaticMarkup(<PerfSheet c={wbPerfContent(null, perfSheetModel({ doc, aircraft: ASV, pilot, calc }))} />),
+    ).not.toContain('data-testid="signature"');
   });
 });
 

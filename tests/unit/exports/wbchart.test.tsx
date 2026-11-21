@@ -25,6 +25,7 @@ import {
   wbSheetModel,
 } from '../../../src/features/exports/wb/model';
 import { WbSheet } from '../../../src/features/exports/wb/WbExport';
+import { wbPerfContent } from '../../../src/features/exports/wbperf/declaration';
 import {
   type Aircraft,
   emptyFlightDoc,
@@ -161,7 +162,7 @@ describe('envelope chart labels', () => {
     const g = envelopeChartGeometry(m.envelopes, chartPoints(m));
     expect(g.layout.envelopes.map((l) => l.key)).toEqual(['normal', 'utility']);
     expect(g.layout.points.map((l) => l.key).sort()).toEqual(['landing', 'takeoff', 'zerofuel']);
-    const html = renderToStaticMarkup(<WbSheet m={m} />);
+    const html = renderToStaticMarkup(<WbSheet c={wbPerfContent(m, null)} />);
     expect(html).toContain('T/O 1002.2 kg');
     expect(html).toMatch(/114[12]\.\d kg·m/);
   });
@@ -231,7 +232,7 @@ describe('printed notes', () => {
       'Utility: no rear passengers, no baggage; front seats set forward to 0.90 m (club W&B calculator).';
     const m = sheet({}, asv);
     expect(m.weighing).toBe('DAS (EL.145.0078) weight and balance report, 14-11-2024');
-    const html = renderToStaticMarkup(<WbSheet m={m} />);
+    const html = renderToStaticMarkup(<WbSheet c={wbPerfContent(m, null)} />);
     expect(html).not.toMatch(/trn-docs|\.pdf/);
     expect(html).not.toContain('0.90 m');
     expect(m.limits.join(' · ')).toMatch(
