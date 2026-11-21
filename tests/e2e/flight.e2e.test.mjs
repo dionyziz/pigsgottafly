@@ -274,7 +274,6 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     [true, false],
   );
 
-  // frame the area of the route
   await page.eval(() => {
     const m = document.querySelector('.pgf-map-canvas').__pgfMap;
     m.fitBounds(
@@ -783,7 +782,6 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.equal(after('RUNWAY'), '03');
   await page.screenshot('flight-export-navlog');
   await pdfCheck('navlog', 1, 'landscape');
-  // the tab says Navlog
   assert.match(await page.eval(() => document.title), /^Navlog · /);
   // the printed PDF is named <date>-navlog
   assert.equal(

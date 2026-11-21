@@ -66,7 +66,6 @@ final class Core: @unchecked Sendable {
         if let failure { throw CoreError.load(failure) }
     }
 
-    /// The core.js bundled with the app.
     static func bundled(_ bundle: Bundle = .main) throws -> Core {
         guard let url = bundle.url(forResource: "core", withExtension: "js") else { throw CoreError.notFound }
         return try Core(script: try String(contentsOf: url, encoding: .utf8), sourceURL: url)

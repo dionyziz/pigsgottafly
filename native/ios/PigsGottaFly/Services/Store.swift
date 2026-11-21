@@ -58,7 +58,6 @@ final class Store: @unchecked Sendable {
         try? fm.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
-    /// Application Support/PigsGottaFly.
     static func standard() -> Store {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return Store(root: base.appendingPathComponent("PigsGottaFly", isDirectory: true))
@@ -84,7 +83,6 @@ final class Store: @unchecked Sendable {
 
     func exists(_ key: Key) -> Bool { fm.fileExists(atPath: url(key).path) }
 
-    /// When the file was written (nil: absent).
     func modified(_ key: Key) -> Date? {
         (try? fm.attributesOfItem(atPath: url(key).path))?[.modificationDate] as? Date
     }

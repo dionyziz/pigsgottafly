@@ -172,7 +172,6 @@ describe('TimeField', () => {
     fireEvent.mouseDown(r.getByRole('option', { name: '13:45' }));
     expect(stored()).toBe('13:45');
     expect(list()).toBeNull();
-    // a click on the input opens it again
     fireEvent.click(el);
     expect(list()).not.toBeNull();
   });

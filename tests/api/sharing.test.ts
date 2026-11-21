@@ -168,7 +168,6 @@ describe('sharing an aircraft', () => {
     expect((await owner.call('GET', `aircraft/${ac.id}/attachments/${file.body.id}`)).status).toBe(200);
     expect((await stranger.call('GET', `aircraft/${ac.id}/attachments/${file.body.id}`)).status).toBe(404);
     expect((await viewer.call('DELETE', `aircraft/${ac.id}/attachments/${file.body.id}`)).status).toBe(403);
-    // sharing
     expect(
       (await editor.call('POST', `aircraft/${ac.id}/shares`, { email: 'stranger@example.com', role: 'view' })).status,
     ).toBe(201);
@@ -215,7 +214,6 @@ describe('flights on a shared aircraft', () => {
     const ac = await newAircraft('SX-FLY');
     await owner.call('POST', `aircraft/${ac.id}/shares`, { email: 'viewer@example.com', role: 'view' });
 
-    // default aircraft and new flights
     expect((await viewer.call('PUT', 'me', { defaultAircraftId: ac.id })).status).toBe(200);
     const created = await viewer.call<Flight>('POST', 'flights', {});
     expect(created.status).toBe(201);

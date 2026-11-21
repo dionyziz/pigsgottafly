@@ -235,7 +235,6 @@ struct Frequency: Equatable {
 /// PGF.progress's result.
 struct Progress: Equatable {
     var legIndex: Int
-    /// The next waypoint's name.
     var toWaypoint: String
     var distNm: Double?
     /// To the next waypoint, degrees true and magnetic.

@@ -28,7 +28,6 @@ const api = async (method, path, body) => {
   });
   return r.status === 204 ? null : r.json();
 };
-/** Clicks the first element matching `sel` whose text is `text`. */
 async function clickText(sel, text) {
   await page.waitFor((s, t) => [...document.querySelectorAll(s)].some((e) => e.textContent.trim() === t), {
     args: [sel, text],
@@ -93,7 +92,6 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   );
 
   await shot('lists-lobby');
-  // search
   await page.type('[data-testid=flight-search]', 'old');
   await page.waitFor(() => document.querySelectorAll('[data-flight-id]').length === 1);
   await page.type('[data-testid=flight-search]', 'lgtt');
@@ -101,7 +99,6 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.type('[data-testid=flight-search]', '');
   await page.key('Backspace');
 
-  // rename through the ⋮ menu
   await page.click(`[data-flight-id="${old.id}"] [data-testid=row-menu]`);
   await clickText(`[data-flight-id="${old.id}"] .menu button`, 'Rename');
   await page.waitFor(() => !!document.querySelector('[data-testid=rename-dialog] input'));
@@ -122,7 +119,6 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   );
   assert.equal((await api('GET', `flights/${old.id}`)).title, 'Renamed trip');
 
-  // make a copy
   await page.click(`[data-flight-id="${soon.id}"] [data-testid=row-menu]`);
   await clickText(`[data-flight-id="${soon.id}"] .menu button`, 'Make a copy');
   await page.waitFor(() => document.querySelectorAll('[data-flight-id]').length === 4);
@@ -497,7 +493,6 @@ test('Form 731 e-mailed to each passenger from the export', async () => {
     await page.eval(() => document.querySelector('[data-testid=f731-add-email]')?.getAttribute('href')),
     `/passengers?edit=${cy.id}&fields=email&back=${encodeURIComponent(`/flights/${f.id}/export/form731`)}`,
   );
-  // one passenger
   await page.click('[data-testid=f731-email]');
   await page.waitFor(() => document.querySelectorAll('[data-testid=f731-emailed]').length === 1);
   assert.equal(sent.length, 1);

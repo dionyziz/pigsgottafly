@@ -314,7 +314,6 @@ test('touch (iPhone, iPad): one finger drags a route point; a long press opens i
     await waitSaved();
     let f = await api('GET', `flights/${flightId}`);
     assert.deepEqual(f.route[1].refId, OTHER.id);
-    // and back
     const o = await mapPx(OTHER.lat, OTHER.lon);
     const back = await mapPx(ABLONAS.lat, ABLONAS.lon);
     await touch('touchStart', [o]);
@@ -578,7 +577,6 @@ test('the flight panel collapses and expands (button, keyboard, dragging its edg
   await page.reload();
   await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
   assert.ok(await page.eval(() => document.querySelector('[data-testid=editor-panel]').hidden));
-  // keyboard: focus the tab, Enter
   await page.eval(() => document.querySelector('[data-testid=panel-collapse]').focus());
   await page.key('Enter');
   await page.waitFor(() => !document.querySelector('[data-testid=editor-panel]').hidden);
@@ -719,7 +717,6 @@ test('radio navaids: ICAO symbols labelled with their ident, hover and click det
   const navaidsOn = async () => (await api('GET', `flights/${flightId}`)).options.mapLayers?.navaids;
   for (let i = 0; i < 100 && (await navaidsOn()) !== false; i++) await sleep(100);
   assert.equal(await navaidsOn(), false);
-  // back on
   await page.click('[data-testid=map-layers]');
   await page.waitFor(() => !!document.querySelector('[data-testid=map-navaids]'));
   await page.click('[data-testid=map-navaids]');

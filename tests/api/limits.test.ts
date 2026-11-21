@@ -163,7 +163,6 @@ describe('counts', () => {
     await refused(`flights/fll1${id}/copy`, {}, /limit of 2000 flights/);
     await refused('passengers', { fullName: 'One More' }, /limit of 500 passengers/);
     await refused('waypoints', { name: 'ONEMORE', lat: 38, lon: 23 }, /limit of 1000 waypoints/);
-    // files per aircraft
     const acId = `acl1${id}`;
     await db.query(
       `INSERT INTO aircraft_attachments (id, pilot_id, aircraft_id, name, mime, size, data, created, kind, chunks, complete)
