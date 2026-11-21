@@ -96,6 +96,8 @@
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+/* nothing may widen the page sideways (iOS widens it to fit an overflowing row instead of clipping it) */
+html, body { overflow-x: hidden; }
 /* the iOS app (src/app/native.ts) draws under the status bar and the home indicator: keep the page clear of them */
 html.native-app #root { box-sizing: border-box; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 body { margin: 0; background: var(--bg); color: var(--ink); font: var(--fs)/1.45 var(--font); font-feature-settings: 'calt' 1; -webkit-font-smoothing: antialiased; }
