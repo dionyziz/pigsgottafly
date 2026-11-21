@@ -67,7 +67,7 @@ final class Session: NSObject, ObservableObject {
         } catch let e as ASWebAuthenticationSessionError where e.code == .canceledLogin {
             return
         } catch {
-            self.error = error.localizedDescription
+            if !isCancellation(error) { self.error = error.localizedDescription }
         }
     }
 

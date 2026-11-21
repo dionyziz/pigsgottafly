@@ -135,7 +135,7 @@ struct NewFlightView: View {
             aircraftId = list.first { $0.id == preferred }?.id ?? list.first?.id
         } catch {
             aircraft = []
-            self.error = error.localizedDescription
+            if !isCancellation(error) { self.error = error.localizedDescription }
         }
     }
 
@@ -158,7 +158,7 @@ struct NewFlightView: View {
             dismiss()
             onCreated(id)
         } catch {
-            self.error = error.localizedDescription
+            if !isCancellation(error) { self.error = error.localizedDescription }
         }
     }
 }

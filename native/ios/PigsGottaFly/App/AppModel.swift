@@ -99,7 +99,7 @@ final class AppModel: ObservableObject {
         } catch APIError.offline {
             flightsError = flights.isEmpty ? "No connection." : nil
         } catch {
-            flightsError = error.localizedDescription
+            if !isCancellation(error) { flightsError = error.localizedDescription }
         }
     }
 
@@ -206,7 +206,7 @@ final class AppModel: ObservableObject {
             await loadFlights()
             return id
         } catch {
-            flightsError = error.localizedDescription
+            if !isCancellation(error) { flightsError = error.localizedDescription }
             return nil
         }
     }

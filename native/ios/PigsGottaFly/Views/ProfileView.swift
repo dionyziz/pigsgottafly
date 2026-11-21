@@ -100,7 +100,7 @@ struct ProfileView: View {
             try await app.saveProfile(fullName: fullName, phone: phone, home: home)
             if !welcome { dismiss() }
         } catch {
-            self.error = error.localizedDescription
+            if !isCancellation(error) { self.error = error.localizedDescription }
         }
     }
 }
@@ -167,7 +167,7 @@ struct DeleteAccountView: View {
             try await app.deleteAccount(confirm: typed.trimmingCharacters(in: .whitespaces))
             onDeleted()
         } catch {
-            self.error = error.localizedDescription
+            if !isCancellation(error) { self.error = error.localizedDescription }
         }
     }
 }

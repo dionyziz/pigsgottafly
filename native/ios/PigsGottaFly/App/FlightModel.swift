@@ -74,7 +74,21 @@ final class FlightModel: ObservableObject {
     // MARK: loading
 
     /// Shows the cached copy at once, then asks the server.
+    /// The opening load runs in a task of its own: SwiftUI cancels a view's .task when it re-creates the
+    /// view (Fly hiding its bars, a rotation), which must not stop the flight from loading.
+    private var opening: Task<Void, Never>?
+
     func open() async {
+        if let opening {
+            await opening.value
+            return
+        }
+        let t = Task { await self.load() }
+        opening = t
+        await t.value
+    }
+
+    private func load() async {
         loadCached()
         await app.ensureTerrain()
         await recompute()
@@ -143,6 +157,8 @@ final class FlightModel: ObservableObject {
             offline = true
         } catch APIError.notFound {
             error = "This flight is no longer there."
+        } catch  where isCancellation(error) {
+            // replaced or abandoned: nothing to report
         } catch {
             self.error = error.localizedDescription
         }
@@ -221,6 +237,7 @@ final class FlightModel: ObservableObject {
             }
             computedText = result.text
             computed = ComputedFlight(result)
+        } catch  where isCancellation(error) {
         } catch {
             self.error = error.localizedDescription
         }

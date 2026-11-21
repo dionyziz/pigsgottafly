@@ -36,6 +36,13 @@ enum APIError: Error, Equatable, LocalizedError {
     }
 }
 
+/// A cancelled task or request (a view went away, a newer load replaced it): not something to show the pilot.
+func isCancellation(_ error: Error) -> Bool {
+    if error is CancellationError { return true }
+    if let e = error as? URLError, e.code == .cancelled { return true }
+    return false
+}
+
 /// The website's API (https://pigsgottafly.com/api; src/shared/api.ts). Paths are relative to /api.
 final class API: Sendable {
     static let site = URL(string: "https://pigsgottafly.com")!
