@@ -22,6 +22,8 @@ export default defineConfig(
     'ios/build/',
     'ios/App/App/public/',
     'ios/App/CapApp-SPM/',
+    // the native app's core, built from src/native/core.ts (npm run native:core)
+    'native/ios/PigsGottaFly/Resources/core.js',
     // agents' git worktrees
     '.claude/',
     // applied migrations are frozen

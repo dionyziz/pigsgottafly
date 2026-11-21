@@ -280,6 +280,117 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
     }),
 };
 
+/**
+ * What each symbol of SYMBOLS looks like, for apps that draw them natively (the iPhone app: the
+ * native core's PGF.symbolNames()): its size in points (drawn at pixelRatio 2), the chart colours it
+ * uses (CHART keys) and a description of the drawing above.
+ */
+export const SYMBOL_INFO: Record<
+  string,
+  { size: number; colors: (keyof typeof CHART)[]; rotates?: boolean; pattern?: boolean; description: string }
+> = {
+  'pgf-ad-major': {
+    size: 30,
+    colors: ['aerodrome', 'halo', 'paper'],
+    rotates: true,
+    description:
+      'Aerodrome with a hard runway: a ring (radius 8, stroke 2.2, halo filled) and a runway bar north-south (24 × 3.6, a 1.2 white edge) through it; the layer rotates it to the runway heading.',
+  },
+  'pgf-ad-minor': {
+    size: 26,
+    colors: ['aerodrome', 'halo', 'paper'],
+    rotates: true,
+    description:
+      'Smaller aerodrome: ring (radius 6.5, stroke 1.8) and runway bar (19 × 2.8, white edge 1.2), rotated to the runway.',
+  },
+  'pgf-ad-plain': {
+    size: 22,
+    colors: ['aerodrome', 'halo'],
+    description:
+      'Aerodrome without a known runway: ring (radius 6, stroke 1.8, halo filled) with a filled centre dot (radius 2.2).',
+  },
+  'pgf-ad-water': {
+    size: 24,
+    colors: ['aerodrome', 'halo'],
+    description:
+      'Water aerodrome: ring (radius 7, stroke 1.8, halo filled) with a wave across it (1.5 sine periods, amplitude 1.6, stroke 1.6).',
+  },
+  'pgf-vfr': {
+    size: 18,
+    colors: ['vfr', 'paper'],
+    description:
+      'Charted VFR reporting point: a solid triangle pointing up (circumradius 6.4) with a white 1.4 outline.',
+  },
+  'pgf-vfr-ofm': {
+    size: 18,
+    colors: ['vfr', 'halo'],
+    description:
+      'Other (openflightmaps) reporting point: a hollow triangle (circumradius 5.6), halo filled, 1.6 outline.',
+  },
+  'pgf-wpt': {
+    size: 20,
+    colors: ['waypoint', 'paper'],
+    description: "The pilot's saved waypoint: a filled four-point star (radius 7, waist 2.2) with a white 1.2 outline.",
+  },
+  'pgf-nav-vor': {
+    size: 20,
+    colors: ['navaid', 'halo'],
+    description: 'VOR: flat-topped hexagon (circumradius 6.5, halo filled, stroke 1.5) with a centre dot (radius 1.5).',
+  },
+  'pgf-nav-vordme': {
+    size: 24,
+    colors: ['navaid', 'halo'],
+    description: 'VOR/DME: the VOR hexagon inside a rectangle (18.4 × 15.2, halo filled, stroke 1.5).',
+  },
+  'pgf-nav-vortac': {
+    size: 28,
+    colors: ['navaid', 'halo'],
+    description:
+      'VORTAC: the VOR hexagon with three filled rectangular lobes on its top, lower-left and lower-right sides.',
+  },
+  'pgf-nav-tacan': {
+    size: 28,
+    colors: ['navaid', 'halo'],
+    description: 'TACAN: the VORTAC shape with outlined (halo filled) lobes.',
+  },
+  'pgf-nav-dme': {
+    size: 18,
+    colors: ['navaid', 'halo'],
+    description: 'DME: a square (12 × 12, halo filled, stroke 1.5) with a centre dot.',
+  },
+  'pgf-nav-ndb': {
+    size: 26,
+    colors: ['navaid', 'halo'],
+    description:
+      'NDB: a centre dot (radius 1.8) in three rings of small dots (radii 4.2, 7, 9.8; dots of radius 0.75 every 2.6) on a halo disc.',
+  },
+  'pgf-nav-l': {
+    size: 20,
+    colors: ['navaid', 'halo'],
+    description: 'Locator: the NDB symbol with two rings of dots (radii 3.8, 6.6).',
+  },
+  'pgf-arrow': {
+    size: 14,
+    colors: ['vfr'],
+    rotates: true,
+    description: 'One-way arrow along a VFR route: an open chevron pointing along +x (6 wide, 8 tall, stroke 2).',
+  },
+  'pgf-route-arrow': {
+    size: 22,
+    colors: ['route', 'paper'],
+    rotates: true,
+    description:
+      'Direction of flight on a route leg: a filled arrowhead pointing north (13 wide, 12.5 tall, notched base) with a white 3 edge; rotated to the leg.',
+  },
+  'pgf-hatch-r': {
+    size: 8,
+    colors: ['restricted'],
+    pattern: true,
+    description:
+      'Restricted-area fill pattern: diagonal lines (bottom-left to top-right, stroke 1, 45% opacity) that join across tiles.',
+  },
+};
+
 /** Register every chart symbol on the map (idempotent). */
 export function addSymbols(map: MlMap): void {
   for (const [name, draw] of Object.entries(SYMBOLS)) {

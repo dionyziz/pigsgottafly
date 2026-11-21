@@ -16,13 +16,15 @@ import {
   describeSource,
   forecastAvailability,
   type ForecastSource,
+  isGridResult,
   LEVELS,
   METAR_MAX_AGE_MS,
   METAR_USE_WINDOW_MS,
   MODEL_LABELS,
+  type OpenMeteoEndpoint,
   type OpenMeteoLocation,
 } from './weather';
-import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
+import { clearGridCache, fetchGrid, type GridGet, type GridResult } from './weatherGrid';
 import type { StationReports } from './weatherMetar';
 
 export const CORRIDOR_STEP_NM = 10;
@@ -103,34 +105,6 @@ export function hazardSeries(loc: OpenMeteoLocation | null): HazardSample[] {
   });
 }
 
-/** Hazard series per grid cell (keys of GridCell), through the server; null where there is no data. */
-async function fetchCells(
-  cells: GridCell[],
-  date: IsoDate,
-  d1: IsoDate,
-  model: WindModel,
-  get: GridGet | undefined,
-  now: () => number,
-  force: boolean,
-) {
-  const r = await fetchGrid({
-    kind: 'hazard',
-    model,
-    from: date,
-    to: d1,
-    locs: cells.map((c) => nodeKey(c)),
-    force,
-    get,
-    now,
-  });
-  const data = new Map<string, HazardSample[] | null>();
-  for (const c of cells) {
-    const loc = r.locations.get(nodeKey(c)) ?? null;
-    data.set(c.key, loc ? hazardSeries(loc) : null);
-  }
-  return { data, run: r.run, endpoint: r.endpoint, message: r.message, synthetic: r.synthetic };
-}
-
 export interface HazardWeatherRequest {
   date: IsoDate;
   model: WindModel | null | undefined;
@@ -156,25 +130,61 @@ export interface HazardWeather {
 
 /** Corridor data for the hazards of a whole flight. Never rejects. */
 export async function fetchHazardWeather(req: HazardWeatherRequest): Promise<HazardWeather> {
-  const model = req.model || DEFAULT_MODEL;
   const now = req.now || Date.now;
-  const empty = (status: HazardWeather['status'], message: string): HazardWeather => ({
-    status,
-    message,
-    legs: req.legs.map(() => ({ corridor: [], spacingFrac: 1 })),
-    departure: [],
-    destination: [],
-    sourceLabel: '',
-    source: null,
-  });
-  if (!req.legs.length && !req.departure && !req.destination) return empty('idle', '');
-  const av = forecastAvailability(req.date, model, now());
-  if (av.kind === 'invalid') return empty('idle', 'No flight date');
+  const plan = hazardWeatherPlan(req, now());
+  if ('done' in plan) return plan.done;
+  try {
+    const r = await fetchGrid({ ...plan.grid, force: !!req.force, get: req.get, now });
+    return hazardWeatherFrom(req, plan, r, now());
+  } catch (e) {
+    return hazardWeatherFrom(req, plan, e, now());
+  }
+}
+
+/** What fetchHazardWeather asks the grid for, or its answer when it asks nothing. */
+export type HazardWeatherPlan =
+  | { done: HazardWeather }
+  | {
+      model: WindModel;
+      endpoint: OpenMeteoEndpoint;
+      grid: { kind: 'hazard'; model: WindModel; from: IsoDate; to: IsoDate; locs: string[] };
+      corridors: ReturnType<typeof legCorridor>[];
+      cells: GridCell[];
+      depCell: GridCell | null;
+      destCell: GridCell | null;
+    };
+
+const emptyHazards = (
+  req: Pick<HazardWeatherRequest, 'legs'>,
+  status: HazardWeather['status'],
+  message: string,
+): HazardWeather => ({
+  status,
+  message,
+  legs: req.legs.map(() => ({ corridor: [], spacingFrac: 1 })),
+  departure: [],
+  destination: [],
+  sourceLabel: '',
+  source: null,
+});
+
+/** The grid request of a flight's hazard data at a time (pure: fetchHazardWeather and the native core). */
+export function hazardWeatherPlan(
+  req: Pick<HazardWeatherRequest, 'date' | 'model' | 'legs' | 'departure' | 'destination'>,
+  nowMs: number,
+): HazardWeatherPlan {
+  const model = req.model || DEFAULT_MODEL;
+  if (!req.legs.length && !req.departure && !req.destination) return { done: emptyHazards(req, 'idle', '') };
+  const av = forecastAvailability(req.date, model, nowMs);
+  if (av.kind === 'invalid') return { done: emptyHazards(req, 'idle', 'No flight date') };
   if (av.kind === 'too-far')
-    return empty(
-      'unavailable',
-      `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}: no weather hazards for ${req.date} yet`,
-    );
+    return {
+      done: emptyHazards(
+        req,
+        'unavailable',
+        `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}: no weather hazards for ${req.date} yet`,
+      ),
+    };
   const next = isoDay(Date.parse(req.date + 'T00:00:00Z') + DAY);
   const d1 = next <= av.lastDate ? next : req.date;
   const corridors = req.legs.map((l) => legCorridor(l.from, l.to, l.distNm));
@@ -183,23 +193,47 @@ export async function fetchHazardWeather(req: HazardWeatherRequest): Promise<Haz
   const depCell = req.departure ? gridCell(req.departure) : null;
   const destCell = req.destination ? gridCell(req.destination) : null;
   for (const g of [depCell, destCell]) if (g) cells.set(g.key, g);
+  const list = [...cells.values()];
+  return {
+    model,
+    endpoint: av.endpoint,
+    grid: { kind: 'hazard', model, from: req.date, to: d1, locs: list.map((c) => nodeKey(c)) },
+    corridors,
+    cells: list,
+    depCell,
+    destCell,
+  };
+}
+
+/** The flight's hazard data from the grid's answer (or the error it failed with). */
+export function hazardWeatherFrom(
+  req: Pick<HazardWeatherRequest, 'legs'>,
+  plan: Exclude<HazardWeatherPlan, { done: HazardWeather }>,
+  answer: GridResult | unknown,
+  nowMs: number,
+): HazardWeather {
+  const { model, corridors, depCell, destCell } = plan;
   try {
-    const got = await fetchCells([...cells.values()], req.date, d1, model, req.get, now, !!req.force);
-    const data = got.data;
-    const endpoint = got.endpoint ?? av.endpoint;
-    const run = endpoint === 'forecast' ? got.run : null;
+    if (!isGridResult(answer)) throw answer;
+    const data = new Map<string, HazardSample[] | null>();
+    for (const c of plan.cells) {
+      const loc = answer.locations.get(nodeKey(c)) ?? null;
+      data.set(c.key, loc ? hazardSeries(loc) : null);
+    }
+    const endpoint = answer.endpoint ?? plan.endpoint;
+    const run = endpoint === 'forecast' ? answer.run : null;
     if ([...data.values()].every((v) => v === null))
-      return empty('error', `Weather hazards unavailable: ${got.message || 'no data'}`);
+      return emptyHazards(req, 'error', `Weather hazards unavailable: ${answer.message || 'no data'}`);
     const source: ForecastSource = {
       provider: 'Open-Meteo',
       model,
       modelLabel: MODEL_LABELS[model] || model,
       endpoint,
       run,
-      fetchedMs: now(),
+      fetchedMs: nowMs,
       coverFromMs: null,
       coverToMs: null,
-      ...(got.synthetic ? { synthetic: true } : {}),
+      ...(answer.synthetic ? { synthetic: true } : {}),
     };
     const runText = run ? `run ${describeSource(source).split('run ')[1]?.split(',')[0] ?? ''}` : '';
     const sourceLabel = [source.modelLabel, runText].filter(Boolean).join(', ');
@@ -216,7 +250,7 @@ export async function fetchHazardWeather(req: HazardWeatherRequest): Promise<Haz
       destination: destCell ? (data.get(destCell.key) ?? []) : [],
     };
   } catch (e) {
-    return empty('error', `Weather hazards unavailable: ${String((e as Error)?.message || e)}`);
+    return emptyHazards(req, 'error', `Weather hazards unavailable: ${String((e as Error)?.message || e)}`);
   }
 }
 

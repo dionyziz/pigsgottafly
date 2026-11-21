@@ -31,7 +31,7 @@ import {
   type OpenMeteoLocation,
   pointKey,
 } from '../shared/weatherGrid';
-import { clearGridCache, fetchGrid, type GridGet } from './weatherGrid';
+import { clearGridCache, fetchGrid, type GridGet, type GridResult } from './weatherGrid';
 import type { MetarWind, ParsedMetar } from './weatherMetar';
 
 export {
@@ -311,6 +311,10 @@ const empty = (status: RouteWeather['status'], message: string, n: number): Rout
   source: null,
 });
 
+/** A grid answer (not the error a request failed with). */
+export const isGridResult = (x: unknown): x is GridResult =>
+  !!x && typeof x === 'object' && (x as GridResult).locations instanceof Map;
+
 const DAY = 86400000;
 const dayMs = (d: IsoDate) => Date.parse(d + 'T00:00:00Z');
 
@@ -421,18 +425,48 @@ export function blendLocations(
  * (flights past midnight). Never rejects.
  */
 export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<RouteWeather> {
+  const now = req.now || Date.now;
+  const plan = routeWeatherPlan(req, now());
+  if ('done' in plan) return plan.done;
+  try {
+    const r = await fetchGrid({ ...plan.grid, force: req.force, get: req.get, now });
+    return routeWeatherFrom(req, plan, r, now());
+  } catch (e) {
+    return routeWeatherFrom(req, plan, e, now());
+  }
+}
+
+/** What fetchRouteWeather asks the grid for, or its answer when it asks nothing. */
+export type RouteWeatherPlan =
+  | { done: RouteWeather }
+  | {
+      model: WindModel;
+      endpoint: OpenMeteoEndpoint;
+      grid: { kind: 'wind'; model: WindModel; from: IsoDate; to: IsoDate; locs: string[] };
+      legCorners: { key: string; w: number }[][];
+      depKey: string | null;
+      destKey: string | null;
+      stopKeys: string[];
+    };
+
+/** The grid request of a route's weather at a time (pure: fetchRouteWeather and the native core). */
+export function routeWeatherPlan(
+  req: Pick<RouteWeatherRequest, 'date' | 'model' | 'legMidpoints' | 'departure' | 'destination' | 'stops'>,
+  nowMs: number,
+): RouteWeatherPlan {
   const n = req.legMidpoints.length;
   const model = req.model || DEFAULT_MODEL;
-  const now = req.now || Date.now;
-  if (!n && !req.departure && !req.destination) return empty('idle', '', 0);
-  const av = forecastAvailability(req.date, model, now());
-  if (av.kind === 'invalid') return empty('idle', 'No flight date', n);
+  if (!n && !req.departure && !req.destination) return { done: empty('idle', '', 0) };
+  const av = forecastAvailability(req.date, model, nowMs);
+  if (av.kind === 'invalid') return { done: empty('idle', 'No flight date', n) };
   if (av.kind === 'too-far')
-    return empty(
-      'unavailable',
-      `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}; winds for ${req.date} from ${av.availableFrom}`,
-      n,
-    );
+    return {
+      done: empty(
+        'unavailable',
+        `${MODEL_LABELS[model]} forecast reaches ${av.lastDate}; winds for ${req.date} from ${av.availableFrom}`,
+        n,
+      ),
+    };
   const legCorners = req.legMidpoints.map((m) => windCorners(m, model).map((c) => ({ key: nodeKey(c), w: c.w })));
   const nodeKeys = [...new Set(legCorners.flat().map((c) => c.key))];
   const depKey = req.departure ? pointKey(req.departure) : null;
@@ -441,17 +475,30 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
   const order = [...nodeKeys, depKey, destKey, ...stopKeys].filter((k): k is string => !!k);
   const next = isoDay(dayMs(req.date) + DAY);
   const d1 = next <= av.lastDate ? next : req.date;
+  return {
+    model,
+    endpoint: av.endpoint,
+    grid: { kind: 'wind', model, from: req.date, to: d1, locs: order },
+    legCorners,
+    depKey,
+    destKey,
+    stopKeys,
+  };
+}
+
+/** The route's weather from the grid's answer (or the error it failed with). */
+export function routeWeatherFrom(
+  req: Pick<RouteWeatherRequest, 'legMidpoints'>,
+  plan: Exclude<RouteWeatherPlan, { done: RouteWeather }>,
+  answer: GridResult | unknown,
+  nowMs: number,
+): RouteWeather {
+  const n = req.legMidpoints.length;
+  const { model, legCorners, depKey, destKey, stopKeys } = plan;
+  const order = plan.grid.locs;
   try {
-    const r = await fetchGrid({
-      kind: 'wind',
-      model,
-      from: req.date,
-      to: d1,
-      locs: order,
-      force: req.force,
-      get: req.get,
-      now,
-    });
+    if (!isGridResult(answer)) throw answer;
+    const r = answer;
     const at = (k: string | null) => (k ? (r.locations.get(k) ?? null) : null);
     if (order.every((k) => !at(k))) return empty('error', `Winds unavailable: ${r.message || 'no data'}`, n);
     const legs = legCorners.map((cs, i) =>
@@ -462,14 +509,14 @@ export async function fetchRouteWeather(req: RouteWeatherRequest): Promise<Route
     );
     const firstLoc = at(order[0]);
     const ts = firstLoc?.hourly?.time ? times(firstLoc.hourly) : [];
-    const endpoint = r.endpoint ?? av.endpoint;
+    const endpoint = r.endpoint ?? plan.endpoint;
     const source: ForecastSource = {
       provider: 'Open-Meteo',
       model,
       modelLabel: MODEL_LABELS[model] || model,
       endpoint,
       run: endpoint === 'forecast' ? r.run : null,
-      fetchedMs: now(),
+      fetchedMs: nowMs,
       coverFromMs: ts.length ? ts[0] : null,
       coverToMs: ts.length ? ts[ts.length - 1] : null,
       ...(r.synthetic ? { synthetic: true } : {}),

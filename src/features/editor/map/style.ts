@@ -300,6 +300,38 @@ export const LAYER_GROUPS = {
   waypoints: ['waypoint-icon', 'waypoint-label'],
 } as const satisfies Record<string, readonly string[]>;
 
+/** Airspaces further than this from the route are drawn faint… */
+export const FAR_NM = 10;
+/** …at this share of their opacity. */
+export const FAR_OPACITY = 0.3;
+/** The sources of the airspaces and areas (drawn faint when far from the route). */
+export const AIR_SOURCES: readonly string[] = ['airspaces', 'zones', 'areas'];
+/** The opacity property that fades a layer of each type. */
+export const FAR_OPACITY_PROP: Record<string, 'fill-opacity' | 'line-opacity' | 'text-opacity'> = {
+  fill: 'fill-opacity',
+  line: 'line-opacity',
+  symbol: 'text-opacity',
+};
+
+/** An opacity value scaled by `far` (an expression giving FAR_OPACITY when the feature is far, else 1). */
+export function farScaled(
+  v: ExpressionSpecification | number | undefined,
+  far: ExpressionSpecification,
+): ExpressionSpecification {
+  const value = v ?? 1;
+  // a zoom curve must stay the top-level expression: scale each of its outputs instead
+  const isZoomCurve =
+    Array.isArray(value) &&
+    (value[0] === 'interpolate' || value[0] === 'step') &&
+    JSON.stringify(value).includes('"zoom"');
+  return (
+    isZoomCurve
+      ? // outputs: [interpolate, type, input, z, OUT, z, OUT…] and [step, input, OUT, z, OUT…]
+        value.map((x, i) => (i >= (value[0] === 'interpolate' ? 4 : 2) && i % 2 === 0 ? ['*', x, far] : x))
+      : ['*', value, far]
+  ) as ExpressionSpecification;
+}
+
 /** ENR 5 areas in VFR-chart style: P red tint, R red hatching, D amber dashed, MIL violet dash-dot, ACT green dotted. */
 function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
   const kind = (...k: string[]): ExpressionSpecification => ['in', ['get', 'kind'], ['literal', k]];

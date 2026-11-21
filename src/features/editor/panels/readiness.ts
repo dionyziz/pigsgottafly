@@ -12,7 +12,8 @@
 import type { FilingState, NotamBriefing } from '../../../shared/briefing';
 import type { DeclarationsState } from '../../../shared/declarations';
 import type { FormsState } from '../../../shared/forms';
-import type { CalcWarning, WarningArea } from './calc';
+import { planningFix } from '../../exports/fix';
+import type { CalcWarning, WarningArea } from './flightCalc';
 
 export type Stage = 'plan' | 'brief' | 'file';
 export const STAGES: readonly Stage[] = ['plan', 'brief', 'file'];
@@ -64,6 +65,15 @@ export interface ReadinessInput {
   forms: FormsState | null;
   declarations: DeclarationsState | null;
 }
+
+/** What the pilot's profile lacks for the forms and the flight plan. */
+export const profileMissingOf = (p: { fullName: string; phone: string }): string[] =>
+  [!p.fullName.trim() && 'name', !p.phone.trim() && 'phone'].filter((x): x is string => !!x);
+
+/** The warnings as the checklist files them: what is fixed in the aircraft's record (TAS, burn rate,
+ *  envelope) belongs to the Aircraft row. */
+export const readinessWarnings = (warnings: CalcWarning[]): CalcWarning[] =>
+  warnings.map((w) => (planningFix(w.text)?.kind === 'aircraft' ? { ...w, area: 'aircraft' as const } : w));
 
 const RANK: Record<ItemState, number> = { ok: 0, todo: 1, warn: 2, danger: 3 };
 const worse = (a: ItemState, b: ItemState) => (RANK[b] > RANK[a] ? b : a);

@@ -26,6 +26,7 @@
     "lint:swift": "xcrun swift-format lint --strict --configuration ios/.swift-format ios/App/App/*.swift",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "native:core": "tsx tools/build_native_core.ts",
     "knip": "knip"
   },
   "dependencies": {
@@ -51,6 +52,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",

@@ -3,7 +3,7 @@
 // with "show all": grey; the one picked in the panel or on the map: accent). FIR-wide NOTAMs and
 // those without a position have no area; aerodrome NOTAMs are not drawn (the panel lists them). Hovering shows the NOTAM's ID, validity and limits; a click opens the
 // details (NotamPopover). Self-contained: adds its own source and layers on demand.
-import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
+import type { GeoJSONSource, LayerSpecification, Map as MlMap } from 'maplibre-gl';
 
 import { isAerodromeNotam, notamRings, ringsSizeNm } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
@@ -18,7 +18,7 @@ export interface MapNotam {
   sizeNm: number;
 }
 
-const SRC = 'notam-areas';
+export const NOTAM_SOURCE = 'notam-areas';
 export const NOTAM_LAYER_IDS = ['notam-fill', 'notam-line'] as const;
 
 /** Map areas of the NOTAMs that have one. */
@@ -32,21 +32,21 @@ export function mapNotams(list: Notam[]): MapNotam[] {
   return out;
 }
 
-function featureCollection(list: MapNotam[], selected: string | null) {
+/** The GeoJSON of the NOTAM areas (the 'notam-areas' source); feature ids are indices into the list. */
+export function notamFeatures(list: MapNotam[], selected: string | null) {
   return {
-    type: 'FeatureCollection',
+    type: 'FeatureCollection' as const,
     features: list.map((n, i) => ({
-      type: 'Feature',
+      type: 'Feature' as const,
       id: i,
       properties: { key: n.key, relevant: n.relevant ? 1 : 0, selected: n.key === selected ? 1 : 0 },
-      geometry: { type: 'MultiPolygon', coordinates: n.rings.map((r) => [r]) },
+      geometry: { type: 'MultiPolygon' as const, coordinates: n.rings.map((r) => [r]) },
     })),
   };
 }
 
-function ensureLayers(m: MlMap, beforeId: string | undefined) {
-  if (m.getSource(SRC)) return;
-  m.addSource(SRC, { type: 'geojson', data: featureCollection([], null) as never });
+/** The NOTAM layers, drawn under the route (before 'route-casing'). */
+export function notamLayers(): LayerSpecification[] {
   const color = [
     'case',
     ['==', ['get', 'selected'], 1],
@@ -55,21 +55,17 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
     CHART.notam,
     CHART.notamOff,
   ] as never;
-  const before = beforeId && m.getLayer(beforeId) ? beforeId : undefined;
-  m.addLayer(
+  return [
     {
       id: 'notam-fill',
       type: 'fill',
-      source: SRC,
+      source: NOTAM_SOURCE,
       paint: { 'fill-color': color, 'fill-opacity': ['case', ['==', ['get', 'selected'], 1], 0.18, 0.04] as never },
     },
-    before,
-  );
-  m.addLayer(
     {
       id: 'notam-line',
       type: 'line',
-      source: SRC,
+      source: NOTAM_SOURCE,
       paint: {
         'line-color': color,
         'line-width': ['case', ['==', ['get', 'selected'], 1], 2.4, 1] as never,
@@ -77,8 +73,14 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
         'line-opacity': ['case', ['==', ['get', 'selected'], 1], 0.9, 0.55] as never,
       },
     },
-    before,
-  );
+  ];
+}
+
+function ensureLayers(m: MlMap, beforeId: string | undefined) {
+  if (m.getSource(NOTAM_SOURCE)) return;
+  m.addSource(NOTAM_SOURCE, { type: 'geojson', data: notamFeatures([], null) as never });
+  const before = beforeId && m.getLayer(beforeId) ? beforeId : undefined;
+  for (const l of notamLayers()) m.addLayer(l, before);
 }
 
 /** Sets the NOTAM areas (adds the layers the first time) and their visibility. */
@@ -91,7 +93,7 @@ export function setNotamLayer(
 ) {
   try {
     ensureLayers(m, beforeId);
-    void m.getSource<GeoJSONSource>(SRC)?.setData(featureCollection(list, selected) as never);
+    void m.getSource<GeoJSONSource>(NOTAM_SOURCE)?.setData(notamFeatures(list, selected));
     for (const id of NOTAM_LAYER_IDS)
       if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
   } catch {

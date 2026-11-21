@@ -34,12 +34,11 @@ import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
 import { type AerodromeRequest, DEFAULT_STOP_MIN, requestAllowed, uid as newUid } from '../../../shared';
 import type { Notam } from '../../../shared/briefing';
 import type { MapLayers } from '../../../shared/mapLayers';
-import { areasToRoute } from '../../../shared/notamAreas';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
 import type { MenuItem } from '../../../ui';
 import type { AdDayInfo } from '../AerodromeHours';
 import { AerodromeDetails, AerodromeTipRows } from './AerodromePopover';
-import { type AirspaceInfo, airspaceInfos, airspacesAt, isArea } from './airspace';
+import { type AirspaceInfo, airspaceInfos, airspacesAt, farFromRoute, isArea } from './airspace';
 import { AirspaceDetails, AirspaceTipRows } from './AirspacePopover';
 import {
   aerodromeFeatures,
@@ -98,10 +97,14 @@ import {
   type SnapHit,
 } from './snap';
 import {
+  AIR_SOURCES,
   BASE_MAPS,
   type BaseLayers,
   buildStyle,
   type DataSourceId,
+  FAR_OPACITY,
+  FAR_OPACITY_PROP,
+  farScaled,
   FOCUS_DASHES,
   LAYER_GROUPS,
   LGGG_BOUNDS,
@@ -245,11 +248,6 @@ function marchDashes(m: MlMap, layerId: string): (() => void) | undefined {
   return () => cancelAnimationFrame(frame);
 }
 
-/** Airspaces further than this from the route are drawn faint… */
-const FAR_NM = 10;
-/** …at this share of their opacity. */
-const FAR_OPACITY = 0.3;
-const AIR_SOURCES = ['airspaces', 'zones', 'areas'];
 /** A press this long on a route point, without moving, opens its menu (touch). */
 const LONG_PRESS_MS = 550;
 export function RouteMap(props: RouteMapProps) {
@@ -557,23 +555,11 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (!m || !loaded) return;
     const far: ExpressionSpecification = ['case', ['boolean', ['feature-state', 'far'], false], FAR_OPACITY, 1];
-    const OPACITY: Record<string, 'fill-opacity' | 'line-opacity' | 'text-opacity'> = {
-      fill: 'fill-opacity',
-      line: 'line-opacity',
-      symbol: 'text-opacity',
-    };
     for (const l of m.getStyle().layers) {
-      const prop = OPACITY[l.type];
+      const prop = FAR_OPACITY_PROP[l.type];
       if (!prop || !('source' in l) || !AIR_SOURCES.includes(l.source)) continue;
-      const v = (m.getPaintProperty(l.id, prop) as ExpressionSpecification | number | undefined) ?? 1;
-      // a zoom curve must stay the top-level expression: scale each of its outputs instead
-      const isZoomCurve =
-        Array.isArray(v) && (v[0] === 'interpolate' || v[0] === 'step') && JSON.stringify(v).includes('"zoom"');
-      const scaled = isZoomCurve
-        ? // outputs: [interpolate, type, input, z, OUT, z, OUT…] and [step, input, OUT, z, OUT…]
-          v.map((x, i) => (i >= (v[0] === 'interpolate' ? 4 : 2) && i % 2 === 0 ? ['*', x, far] : x))
-        : ['*', v, far];
-      m.setPaintProperty(l.id, prop, scaled as never);
+      const v = m.getPaintProperty(l.id, prop) as ExpressionSpecification | number | undefined;
+      m.setPaintProperty(l.id, prop, farScaled(v, far));
     }
   }, [loaded]);
   const routeLatLon = useMemo(() => route.map((p) => ({ lat: p.lat, lon: p.lon })), [route]);
@@ -583,10 +569,7 @@ export function RouteMap(props: RouteMapProps) {
     const src = (x: AirspaceInfo) =>
       x.type === 'CTR' || x.type === 'ATZ' ? 'zones' : isArea(x.type) ? 'areas' : 'airspaces';
     for (const a of allInfos) {
-      const isFar =
-        routeLatLon.length >= 2 &&
-        areasToRoute([{ kind: 'polygon', points: a.ring.map(([lon, lat]) => ({ lat, lon })) }], routeLatLon).dist >
-          FAR_NM;
+      const isFar = farFromRoute(a, routeLatLon);
       try {
         m.setFeatureState({ source: src(a), id: a.id }, { far: isFar });
       } catch {

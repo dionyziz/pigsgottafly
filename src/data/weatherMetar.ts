@@ -335,34 +335,47 @@ export function fetchMetarTaf(
   opts: { force?: boolean; now?: () => number } = {},
 ): Promise<MetarTafResult> {
   const now = opts.now || Date.now;
-  const ids = [...new Set(icaos.map((x) => (x || '').trim().toUpperCase()).filter((x) => ICAO_RE.test(x)))].sort();
-  if (!ids.length)
-    return Promise.resolve({ status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: null, stations: {} });
-  const key = ids.join(',');
+  const groups = metarGroups(icaos);
+  if (!groups.length) return Promise.resolve(metarTafOf([]));
+  const key = groups.flat().join(',');
   const hit = metarCache.get(key);
   if (hit && !opts.force && now() - hit.at < METAR_CLIENT_TTL_MS) return hit.p;
-  // the proxy takes METAR_MAX_IDS aerodromes per request
-  const groups: string[][] = [];
-  for (let i = 0; i < ids.length; i += METAR_MAX_IDS) groups.push(ids.slice(i, i + METAR_MAX_IDS));
   const p = Promise.all(groups.map((g) => api.weather.metar(g)))
-    .then((rs) =>
-      decodeMetarTafResponse({
-        stations: Object.assign({}, ...rs.map((r) => r.stations)),
-        fetched: Math.min(...rs.map((r) => r.fetched)),
-      }),
-    )
+    .then((rs) => metarTafOf(rs))
     .catch((e: unknown): MetarTafResult => {
       metarCache.delete(key);
-      const msg = (e as { offline?: boolean })?.offline ? 'offline' : String((e as Error)?.message || e);
-      return {
-        status: 'error',
-        message: `METAR/TAF unavailable (${msg})`,
-        source: 'aviationweather.gov',
-        fetchedMs: null,
-        stations: {},
-      };
+      return metarTafOf(e);
     });
   metarCache.set(key, { at: now(), p });
   return p;
+}
+
+/** The aerodromes of each request for these ICAO codes (others are ignored): the proxy takes METAR_MAX_IDS a request. */
+export function metarGroups(icaos: string[]): string[][] {
+  const ids = [...new Set(icaos.map((x) => (x || '').trim().toUpperCase()).filter((x) => ICAO_RE.test(x)))].sort();
+  const groups: string[][] = [];
+  for (let i = 0; i < ids.length; i += METAR_MAX_IDS) groups.push(ids.slice(i, i + METAR_MAX_IDS));
+  return groups;
+}
+
+/** The decoded reports from the answers of every group (none: no aerodromes), or the error one failed with. */
+export function metarTafOf(answers: MetarTafResponse[] | unknown): MetarTafResult {
+  if (Array.isArray(answers)) {
+    const rs = answers as MetarTafResponse[];
+    if (!rs.length) return { status: 'ok', message: '', source: 'aviationweather.gov', fetchedMs: null, stations: {} };
+    return decodeMetarTafResponse({
+      stations: Object.assign({}, ...rs.map((r) => r.stations)),
+      fetched: Math.min(...rs.map((r) => r.fetched)),
+    });
+  }
+  const e = answers;
+  const msg = (e as { offline?: boolean })?.offline ? 'offline' : String((e as Error)?.message || e);
+  return {
+    status: 'error',
+    message: `METAR/TAF unavailable (${msg})`,
+    source: 'aviationweather.gov',
+    fetchedMs: null,
+    stations: {},
+  };
 }
 export const clearMetarCache = () => metarCache.clear();
