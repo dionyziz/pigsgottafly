@@ -688,6 +688,41 @@ describe('autorouter account allow-list', () => {
     expect(r.file.status).toBe(200);
     expect(r.notams.status).toBe('ok');
   });
+  test('shared flights: the account serves only its own pilot’s flights, and shows them to no one else', async () => {
+    const api = await start(settings, ['owner@example.com']);
+    try {
+      const me = client(api.base);
+      const other = client(api.base);
+      await me.login('s-me', 'owner@example.com');
+      await other.login('s-other', 'other@example.com');
+      const mine = await newFlight(me);
+      const theirs = await newFlight(other);
+      for (const [c, id, email] of [
+        [me, mine, 'other@example.com'],
+        [other, theirs, 'owner@example.com'],
+      ] as const)
+        expect((await c.call('POST', `flights/${id}/shares`, { email, role: 'edit' })).status).toBe(201);
+
+      // my own flight: fetched with the account (and cached)
+      expect((await me.call('GET', `flights/${mine}/notams`)).body.status).toBe('ok');
+      const n = ar.calls.length;
+      // the other pilot opening my flight: neither the cached briefing nor a new fetch
+      const seen = (await other.call('GET', `flights/${mine}/notams`)).body;
+      expect(seen).toMatchObject({ status: 'not-configured', notams: [], fetched: null });
+      expect((await other.call('GET', `flights/${mine}/notams?refresh=1`)).body.status).toBe('not-configured');
+      // me opening the other pilot's flight: the account is not used for it
+      const theirsSeen = (await me.call('GET', `flights/${theirs}/notams`)).body;
+      expect(theirsSeen).toMatchObject({ status: 'not-configured', notams: [] });
+      expect(theirsSeen.message).toMatch(/not available for this account/);
+      // and only its owner files a flight, with the account only if listed
+      expect((await other.call('POST', `flights/${mine}/filing`, { fpl: FPL, addresses: [] })).status).not.toBe(200);
+      expect((await me.call('POST', `flights/${theirs}/filing`, { fpl: FPL, addresses: [] })).status).not.toBe(200);
+      expect((await other.call('POST', `flights/${theirs}/filing`, { fpl: FPL, addresses: [] })).status).toBe(503);
+      expect(ar.calls.length).toBe(n);
+    } finally {
+      await api.close();
+    }
+  });
   test("'*': every signed-in pilot may file", async () => {
     const r = await attempt(['*'], 'anyone@example.com');
     expect(r.state.enabled).toBe(true);

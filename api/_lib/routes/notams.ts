@@ -37,6 +37,11 @@ export const routes: Route[] = [
     async handler({ db, pilot, params, query, autorouter, autorouterDenied }): Promise<NotamBriefing> {
       await rateLimit(db, 'notams', { pilotId: pilot.id });
       const owner = (await flightFor(db, pilot, params.id)).owner.id;
+      // The autorouter account is personal (AUTOROUTER_PILOTS): it serves only its pilots' own flights, and
+      // what it fetched is shown to no one else (not even on a flight shared with them).
+      const own = owner === pilot.id;
+      const ar = own ? autorouter : null;
+      const denied = autorouterDenied || (!!autorouter && !own);
       const ctx = await flightContext(db, owner, params.id);
       const planned = ctx.altitudesFt.filter(Number.isFinite);
       const maxAltFt =
@@ -64,10 +69,10 @@ export const routes: Route[] = [
         [ctx.id, owner],
       );
       const sameQuery = cached && cached.params?.key === paramsKey;
-      if (sameQuery && query.get('refresh') !== '1' && Date.now() - Number(cached.fetched) < NOTAM_TTL_MS)
+      if (ar && sameQuery && query.get('refresh') !== '1' && Date.now() - Number(cached.fetched) < NOTAM_TTL_MS)
         return cached.doc;
 
-      if (!autorouter) {
+      if (!ar) {
         return {
           ...base,
           status: 'not-configured',
@@ -76,14 +81,14 @@ export const routes: Route[] = [
           notams: [],
           relevantCount: 0,
           hiddenCount: 0,
-          message: autorouterDenied
+          message: denied
             ? 'NOTAMs are not available for this account. Get the NOTAM briefing from AIS before flight.'
             : 'NOTAMs are not available on this server. Get the NOTAM briefing from AIS before flight.',
         };
       }
       let notams: Notam[];
       try {
-        const rows = await autorouter.notams(locations, window.from, window.to);
+        const rows = await ar.notams(locations, window.from, window.to);
         notams = rows.map(normalizeNotam).filter((n): n is Notam => !!n);
       } catch (e) {
         const msg = e instanceof AutorouterError ? e.message : 'the NOTAM source failed';
