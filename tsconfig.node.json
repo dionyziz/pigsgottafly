@@ -6,14 +6,5 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": [
-    "api",
-    "server",
-    "tools/*.ts",
-    "src/shared",
-    "src/calc",
-    "vite.config.ts",
-    "vitest.config.ts",
-    "capacitor.config.ts"
-  ]
+  "include": ["api", "server", "tools/*.ts", "src/shared", "src/calc", "vite.config.ts", "vitest.config.ts"]
 }

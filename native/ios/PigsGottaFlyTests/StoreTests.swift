@@ -22,7 +22,7 @@ final class StoreTests: XCTestCase {
         try store.write(try Fixtures.data("flights.json"), .flights)
         XCTAssertNil(store.read(.notams("b")))
         XCTAssertEqual(store.decode(NotamBriefing.self, .notams("a"))?.notams.count, 2)
-        XCTAssertEqual(store.decode([FlightListItem].self, .flights)?.count, 2)
+        XCTAssertEqual(store.decode([FlightListItem].self, .flights)?.count, 3)
         XCTAssertNil(store.decode([FlightListItem].self, .notams("a")))
     }
 

@@ -1,10 +1,11 @@
-// Sign-in for the iOS app (ios/, Capacitor). Google refuses sign-in inside an app's web view, so the
-// app opens /app-login in Apple's sign-in sheet (ASWebAuthenticationSession, Safari's cookies), where
-// the web app signs the pilot in as usual and then:
+// Sign-in for the native iPhone/iPad app (native/ios, NATIVE.md "Account"). Google refuses sign-in
+// inside an app, so the app opens /app-login in Apple's sign-in sheet (ASWebAuthenticationSession,
+// Safari's cookies), where the website signs the pilot in as usual (src/app/appLogin.ts) and then:
 //   POST /app-code               (signed in) a one-time code, valid APP_CODE_MS, stored hashed;
 //                                the page hands it to the app as pigsgottafly://signed-in?code=…
-//   GET  /app-session?code=…     (in the app's web view) uses up the code: a session cookie for that
-//                                web view and a redirect to the flights; a bad or used code → /.
+//   GET  /app-session?code=…     (the app's URLSession) uses up the code: a session cookie for the
+//                                app and a redirect to /, which the app does not follow; a bad or
+//                                used code → /?signin=failed.
 import { randomBytes } from 'node:crypto';
 
 import { createSession, hashToken, SESSION_MS, sessionCookie } from '../auth.js';

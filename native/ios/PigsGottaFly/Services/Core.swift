@@ -194,6 +194,21 @@ final class Core: @unchecked Sendable {
         return (try callWithRef("weatherRequests", ref: ref, fields: f).array ?? []).compactMap(\.string)
     }
 
+    /// The hangar's type templates (offered when the pilot has no aircraft).
+    func aircraftTemplates() throws -> [AircraftTemplate] {
+        (try JSON.parse(try call("aircraftTemplates", json: nil)).array ?? []).compactMap { t in
+            guard let id = t["id"]?.string, let label = t["label"]?.string else { return nil }
+            return AircraftTemplate(id: id, label: label, description: t["description"]?.string ?? "")
+        }
+    }
+
+    /// The body of POST /api/aircraft for a template and a registration (JSON text).
+    func aircraftFromTemplate(id: String, registration: String) throws -> String {
+        try call(
+            "aircraftFromTemplate",
+            fields: ["id": JSON.string(id).text, "registration": JSON.string(registration).text])
+    }
+
     /// The terrain grid (greece.bin) for the following computeFlight calls; whether the core took it.
     @discardableResult
     func setTerrain(_ grid: Data?) throws -> Bool {

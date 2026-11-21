@@ -34,8 +34,10 @@ const sections: LegalSection[] = [
     title: 'The iPhone and iPad app',
     body: (
       <p>
-        The app is the same planner as pigsgottafly.com, with your flights in both. It needs a connection to open; print
-        the navlog before you go.
+        The app is for flying the flight: a moving map with your position along the route, which works with no
+        connection once the flight has been opened; the brief (checklist, METAR and TAF, NOTAMs, aerodrome hours); and
+        the navlog, with quick changes and new flights. Full planning, filing and the forms are here on
+        pigsgottafly.com, with the same account and the same flights; each flight in the app opens here in one tap.
       </p>
     ),
   },
@@ -44,8 +46,8 @@ const sections: LegalSection[] = [
     title: 'Your data and your account',
     body: (
       <p>
-        You can download all your data, or delete your account and everything in it, from your profile. See the{' '}
-        <Link to="/privacy">Privacy Policy</Link> for what is kept and why.
+        You can download all your data, or delete your account and everything in it, from your profile (in the app:
+        Account, Delete account). See the <Link to="/privacy">Privacy Policy</Link> for what is kept and why.
       </p>
     ),
   },

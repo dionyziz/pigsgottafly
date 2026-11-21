@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- The native app's privacy manifest (from ios/App/App/PrivacyInfo.xcprivacy, the Capacitor app's). No
+<!-- The native app's privacy manifest. No
      tracking. Collected, linked to the pilot, for the app to work: name, e-mail and account id (from
      sign-in), phone (profile), the flights, aircraft, operators and passengers the pilot enters (other
      user content), aircraft photos the pilot uploads, and reports of the app's own errors (crash data).
-     Precise location: Fly mode shows the aircraft on the map from GPS; it stays on the device (not linked,
-     not sent). UserDefaults: the app's own settings (CA92.1). Kept in step with ios/AppStore/app_privacy.md. -->
+     Location is not collected: Fly mode draws the aircraft and its progress from GPS on the device only (it
+     is never sent or stored; Apple: data processed only on the device is not collected). UserDefaults: the
+     app's own settings (CA92.1). Kept in step with native/ios/AppStore/app_privacy.md. -->
 <plist version="1.0">
 <dict>
 	<key>NSPrivacyTracking</key>
@@ -91,18 +92,6 @@
 			<string>NSPrivacyCollectedDataTypeCrashData</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-			</array>
-		</dict>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>

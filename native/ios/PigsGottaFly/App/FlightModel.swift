@@ -127,6 +127,7 @@ final class FlightModel: ObservableObject {
                 try? store.write(ac, .aircraft(acId))
             }
             if let me = try? await api.me() { try? store.write(me, .pilot) }
+            if let w = try? await api.waypoints() { try? store.write(w, .waypoints) }
             let refAge = store.modified(.ref).map { -$0.timeIntervalSinceNow } ?? .infinity
             if refAge > 6 * 3600, let ref = try? await api.refBundle() { try? store.write(ref, .ref) }
             await app.ensureTerrain()
@@ -264,6 +265,7 @@ final class FlightModel: ObservableObject {
         guard let ref = store.text(.ref) else { return }
         let notamsText = store.text(.notams(id))
         let layers = flight?["options"]?["mapLayers"]?.text
+        let waypoints = store.text(.waypoints)
         let style = try? await core.run { try $0.chartStyle(base: "light", vector: vector, layers: layers) }
         // per flight: the style shows the flight's map layers
         if let style {
@@ -271,7 +273,7 @@ final class FlightModel: ObservableObject {
             styleURL = store.url(.chartStyle("light-\(id)"))
         }
         chartData = try? await core.run {
-            try $0.chartData(ref: ref, flight: flightText, notams: notamsText, layers: layers)
+            try $0.chartData(ref: ref, flight: flightText, notams: notamsText, layers: layers, waypoints: waypoints)
         }
     }
 
@@ -365,12 +367,23 @@ final class FlightModel: ObservableObject {
         return .object(o)
     }
 
-    /// The lobby row data follows the edit (date, time, totals).
+    /// The lobby row data follows the edit (title, date, time, route, totals), as the website's editor
+    /// writes it (src/features/editor/state.tsx summaryOf).
     private func withSummary(_ doc: JSON) -> JSON {
         var d = doc
         guard var s = d["summary"]?.object else { return d }
         s["date"] = d["date"] ?? s["date"]
         s["blockOff"] = d["blockOff"] ?? s["blockOff"]
+        let title = (d["title"]?.string ?? "").trimmingCharacters(in: .whitespaces)
+        s["title"] = .string(title.isEmpty ? (d["date"]?.string ?? "") : title)
+        if let route = d["route"]?.array {
+            s["route"] = .array(
+                route.map { p in
+                    .array([p["lat"], p["lon"]].map { .number((($0?.double ?? 0) * 1000).rounded() / 1000) })
+                })
+            s["from"] = route.first?["name"] ?? ""
+            s["to"] = route.count > 1 ? route.last?["name"] ?? "" : ""
+        }
         if let c = computed {
             if let x = c.totalDistNm { s["distNm"] = .number(x) }
             if let x = c.totalEteMin { s["eteMin"] = .number(x) }
@@ -386,6 +399,30 @@ final class FlightModel: ObservableObject {
 
     func setBlockOff(_ clock: String) async {
         await edit { $0["blockOff"] = .string(clock) }
+    }
+
+    /// The route's points (RoutePoint JSON).
+    var route: [JSON] { flight?["route"]?.array ?? [] }
+
+    /// Adds a point where it lengthens the route least; then the chart, the weather and the
+    /// briefing follow the new route.
+    func addPoint(_ place: Place) async {
+        await edit { RouteEdit.add(place, to: &$0) }
+        await routeChanged()
+    }
+
+    func removePoint(uid: String) async {
+        guard route.count > 2 else { return }
+        await edit { RouteEdit.remove(uid: uid, from: &$0) }
+        await routeChanged()
+    }
+
+    private func routeChanged() async {
+        await prepareChart()
+        await fetchWeather()
+        await fetchBriefing()
+        await recompute()
+        await prepareChart()
     }
 
     func setAltitude(legKey: String, feet: Int) async {

@@ -73,8 +73,21 @@ final class Session: NSObject, ObservableObject {
 
     func signOut() async {
         try? await api.logout()
+        ended()
+    }
+
+    /// Deletes the account (DELETE /api/me with its e-mail typed as the confirmation), then forgets
+    /// everything here as a sign-out does.
+    func deleteAccount(confirm: String) async throws {
+        try await api.deleteAccount(confirm: confirm)
+        ended()
+    }
+
+    /// Signed out: the cookie, the cache and the saved map packs go.
+    private func ended() {
         for c in HTTPCookieStorage.shared.cookies(for: API.site) ?? [] { HTTPCookieStorage.shared.deleteCookie(c) }
         store.clear()
+        OfflineMaps.removeAll()
         pilot = nil
         set(signedIn: false)
     }

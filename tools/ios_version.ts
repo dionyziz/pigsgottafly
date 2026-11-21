@@ -1,7 +1,7 @@
-// Sets the iOS/iPad app's version in the Xcode project (ios/App/App.xcodeproj): the marketing version
-// (what the App Store shows) is package.json's "version"; the build number is the count of commits on
-// HEAD, which only grows, so every upload to App Store Connect gets a new one.
-//   npm run ios:version            (before archiving; commit the project file it changes)
+// Sets the native iPhone/iPad app's version in its XcodeGen spec (native/ios/project.yml): the marketing
+// version (what the App Store shows) is package.json's "version"; the build number is the count of
+// commits on HEAD, which only grows, so every upload to App Store Connect gets a new one.
+//   npm run ios:version            (npm run ios:upload runs it; commit the project.yml it changes)
 //   npm run ios:version -- 42      (a build number of your own)
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PROJECT = path.join(ROOT, 'ios/App/App.xcodeproj/project.pbxproj');
+const PROJECT = path.join(ROOT, 'native/ios/project.yml');
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as { version?: string };
 const version = pkg.version;
@@ -22,7 +22,10 @@ if (!/^\d+$/.test(build)) throw new Error(`the build number must be a whole numb
 
 const project = fs
   .readFileSync(PROJECT, 'utf8')
-  .replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${version};`)
-  .replace(/CURRENT_PROJECT_VERSION = [^;]+;/g, `CURRENT_PROJECT_VERSION = ${build};`);
+  .replace(/^(\s*)MARKETING_VERSION: .*$/m, `$1MARKETING_VERSION: '${version}'`)
+  .replace(/^(\s*)CURRENT_PROJECT_VERSION: .*$/m, `$1CURRENT_PROJECT_VERSION: '${build}'`);
+if (!project.includes(`MARKETING_VERSION: '${version}'`) || !project.includes(`CURRENT_PROJECT_VERSION: '${build}'`)) {
+  throw new Error(`${PROJECT} has no MARKETING_VERSION / CURRENT_PROJECT_VERSION to set`);
+}
 fs.writeFileSync(PROJECT, project);
 console.log(`iOS app: version ${version}, build ${build}`);

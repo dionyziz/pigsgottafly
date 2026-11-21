@@ -8,6 +8,8 @@ final class Store: @unchecked Sendable {
         case flights
         case pilot
         case ref
+        /// GET /api/waypoints (the pilot's saved points).
+        case waypoints
         /// OpenFreeMap's style JSON (the base of the chart).
         case vectorStyle
         /// The chart style built by the core (a file: MapLibre and the offline packs load it by URL).
@@ -31,6 +33,7 @@ final class Store: @unchecked Sendable {
             case .flights: "flights.json"
             case .pilot: "pilot.json"
             case .ref: "ref.json"
+            case .waypoints: "waypoints.json"
             case .vectorStyle: "map/vector-style.json"
             case .chartStyle(let base): "map/chart-\(Store.safe(base)).json"
             case .flight(let id): "flights/\(Store.safe(id))/flight.json"

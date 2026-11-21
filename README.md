@@ -107,57 +107,48 @@ HTTPS origins, so use a tunnel) and run with `APPLE_CLIENT_ID` set.
 
 ## iPhone and iPad app
 
-`ios/` is the native app: a Capacitor shell around this same web app. It loads https://pigsgottafly.com,
-so **every web deploy updates the app**, and there is no separate code to keep in step. App Store updates are
-only needed when the native part changes.
+`native/ios/` is the native app (Swift, SwiftUI, MapLibre Native), described in [NATIVE.md](NATIVE.md): Fly (a
+moving map with GPS that works offline), Brief and Navlog for a flight, New flight, small route edits, the
+profile and account deletion. Full planning, filing and the forms stay on the website; a flight opens there in
+an in-app Safari view. Everything it computes comes from `src/native/core.ts`, built into `core.js` and run in
+JavaScriptCore, so the app and the website show the same numbers.
 
-- Native code: `ios/App/App/PgfNativePlugin.swift` (Apple's sign-in sheet; AirPrint; reload) and
-  `MainViewController.swift` (registers it; swipe back; iPad turns every way), which `SceneDelegate.swift`
-  creates. The web side of it is `src/app/native.ts`: printing, exports opening in place, and the sign-in
-  button. Everything there is a no-op in a browser.
-- No connection (no network at the aerodrome): the app shows `public/offline.html`, bundled from `dist/`
-  (`server.errorPath` in `capacitor.config.ts`). "Try again", or the network coming back, loads the site again.
-  A load that is only cancelled (a new page started first) does not count as a failure.
-- `ios/App/App/PrivacyInfo.xcprivacy`: the privacy manifest (no tracking; account, profile, flights and error
-  reports, linked to the pilot, for the app to work; UserDefaults). Keep it in step with
-  `ios/AppStore/app_privacy.md` and the privacy policy.
-- `Info.plist`: name "Pig's Gotta Fly", light appearance with dark status bar text, iPad multitasking, no
-  export-compliance question (HTTPS only). Sign-in needs no URL scheme: the sign-in sheet catches
-  `pigsgottafly://` itself.
-- Sign-in: Google refuses sign-in inside an app's web view. The app's single *Sign in* button opens `/app-login`
-  in Apple's sign-in sheet (Safari's cookies), which offers both Google and Apple, and the page hands a one-time code back (`POST /api/app-code`,
-  `GET /api/app-session`, `api/_lib/routes/appLogin.ts`).
-- Touch: the map editor takes the same gestures by finger. Drag a point or a leg's middle dot, press and
-  hold a point for its menu.
+- XcodeGen: `native/ios/project.yml` → `PigsGottaFly.xcodeproj` (generated, not committed). Team Dionysis
+  Zindros (`F2UQTZ295F`), automatic signing, bundle id `com.pigsgottafly.app`.
+- Sign-in: the app's *Sign in* opens `/app-login` in Apple's sign-in sheet (Google or Apple ID), and the page hands
+  back a one-time code (`POST /api/app-code`, `GET /api/app-session`, `api/_lib/routes/appLogin.ts`,
+  `src/app/appLogin.ts`).
+- `native/ios/PigsGottaFly/PrivacyInfo.xcprivacy`: the privacy manifest. Keep it in step with
+  `native/ios/AppStore/app_privacy.md` and the privacy policy.
+- Fixture mode (no network, no sign-in) for tests and screenshots: launch arguments `-fixtures` (the API answers
+  from `native/ios/PigsGottaFly/Fixtures/`), `-emptyAccount` (a brand-new pilot), `-noNetwork`,
+  `-fixturePosition lat,lon[,track,gs]`, `-openFlight <id>`, `-tab fly|brief|navlog`.
 
 ```
-npm run ios:build        # web build + cap sync + simulator build (checks it compiles)
-npm run ios:open         # Xcode: run on a simulator or a device, archive for the App Store
-npm run ios:version      # version = package.json "version", build = commit count (before each upload)
-CAP_SERVER_URL=http://127.0.0.1:8765 npm run ios:sync   # point a development build at a local server
+npm run native:core      # rebuild core.js after changing the shared TypeScript (committed)
+npm run native:build     # xcodegen + unit and UI tests on the iPhone 17 Pro simulator
+npm run native:open      # xcodegen + Xcode
+npm run ios:version      # version = package.json "version", build = commit count, into project.yml
+npm run ios:upload       # ios:version, xcodegen, Release archive, export and upload to App Store Connect
 ```
 
-Run `npm run ios:sync` without `CAP_SERVER_URL` before archiving, so the app points at pigsgottafly.com.
-To try the offline page, sync with `CAP_SERVER_URL=http://127.0.0.1:59999` (a closed port; WebKit refuses some
-low ports such as 9 outright, without a load error).
-
-Versions: bump `"version"` in package.json for a new App Store version; `npm run ios:version` writes it and
-a new build number into the Xcode project (commit the change). Every upload needs a higher build number.
+Versions: bump `"version"` in package.json for a new App Store version; `npm run ios:version` (which
+`ios:upload` runs first) writes it and a new build number into `native/ios/project.yml` (commit the change).
+Every upload needs a higher build number.
 
 ### Publishing
 
-`ios/AppStore/` holds the App Store Connect listing as files to paste (name, subtitle, description, keywords,
-promotional text, support and privacy URLs, category, age rating, review notes, the App Privacy answers) and
-the screenshots (`screenshots/iphone-6.9`, 1320×2868, and `screenshots/ipad-13`, 2064×2752; taken from the
-simulators against a local server with a demo flight). Only the owner can do these:
+`native/ios/AppStore/` holds the App Store Connect listing as files to paste (name, subtitle, description,
+keywords, promotional text, support and privacy URLs, category, age rating, review notes, the App Privacy answers)
+and the screenshots (`screenshots/iphone-6.9`, 1320×2868, iPhone 17 Pro Max, and `screenshots/ipad-13`,
+2064×2752, iPad Pro 13-inch (M5); taken from the simulators in fixture mode). Only the owner can do these:
 
-1. The team is set in the project (Dionysis Zindros, `F2UQTZ295F`, automatic signing); Xcode must be signed in
-   with that Apple ID.
-2. In App Store Connect, create the app record once (bundle id `com.pigsgottafly.app`, SKU of your choice), or
-   let Xcode create it: Window → Organizer → the archive → Distribute App → App Store Connect.
-3. Paste `ios/AppStore/*.txt`, answer App Privacy from `app_privacy.md`, upload the screenshots.
-4. `npm run ios:upload`: version and build number, sync, archive and upload to App Store Connect
-   (`ios/ExportOptions.plist`). Try the build in TestFlight.
+1. Xcode must be signed in with the team's Apple ID (Settings → Accounts), so that the export can sign with an
+   App Store distribution certificate.
+2. The app record exists in App Store Connect (6837510399, bundle id `com.pigsgottafly.app`).
+3. Paste `native/ios/AppStore/*.txt`, answer App Privacy from `app_privacy.md`, upload the screenshots.
+4. `npm run ios:upload`: version and build number, archive and upload to App Store Connect
+   (`native/ios/ExportOptions.plist`). Try the build in TestFlight.
 5. For Sign in with Apple on the sign-in page: a Services ID (e.g. `com.pigsgottafly.web`) with Sign in with
    Apple, domain `pigsgottafly.com`, return URL `https://pigsgottafly.com/`; `APPLE_CLIENT_ID` set to it in
    Vercel.

@@ -1,11 +1,10 @@
 // Sign in with Google (Google Identity Services) or with Apple (Sign in with Apple JS, in a popup);
-// the server verifies the token. In the iOS app, a single "Sign in" button opens Apple's sign-in sheet
-// instead (src/app/native.ts) on /app-login, which offers both.
+// the server verifies the token. The native app signs in through this page too, on /app-login in
+// Apple's sign-in sheet (src/app/appLogin.ts).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { api, ApiRequestError } from '../data/api';
-import { isNativeApp, nativeSignIn } from './native';
 
 /** The part of Google Identity Services (accounts.google.com/gsi/client) this app uses. */
 interface GoogleIdentity {
@@ -142,16 +141,9 @@ export function SignIn({
   onSignedIn: () => void;
 }) {
   const button = useRef<HTMLDivElement>(null);
-  const app = isNativeApp();
   const [error, setError] = useState<string | null>(() =>
     new URLSearchParams(location.search).get('signin') === 'failed' ? 'Sign-in failed. Try again.' : null,
   );
-  const appSignIn = () => {
-    setError(null);
-    nativeSignIn().catch((e: { code?: string }) => {
-      if (e?.code !== 'cancelled') setError('Sign-in failed. Try again.');
-    });
-  };
 
   const appleSignIn = async (idToken: string, name?: string) => {
     setError(null);
@@ -168,7 +160,7 @@ export function SignIn({
   };
 
   useEffect(() => {
-    if (!clientId || app) return;
+    if (!clientId) return;
     const signIn = async (credential: string) => {
       try {
         await api.login(credential);
@@ -204,7 +196,7 @@ export function SignIn({
       return;
     }
     loadScript('https://accounts.google.com/gsi/client').then(init, () => undefined);
-  }, [clientId, onSignedIn, app]);
+  }, [clientId, onSignedIn]);
 
   return (
     <div className="center-screen">
@@ -224,16 +216,8 @@ export function SignIn({
           <p className="muted" style={{ margin: 0 }}>
             VFR flight planning for the Athinai FIR.
           </p>
-          {app ? (
-            <button type="button" className="primary" onClick={appSignIn} data-testid="app-signin">
-              Sign in
-            </button>
-          ) : (
-            <>
-              <div ref={button} style={{ minHeight: 44 }} />
-              {appleClientId && <AppleButton clientId={appleClientId} onToken={(t, n) => void appleSignIn(t, n)} />}
-            </>
-          )}
+          <div ref={button} style={{ minHeight: 44 }} />
+          {appleClientId && <AppleButton clientId={appleClientId} onToken={(t, n) => void appleSignIn(t, n)} />}
           <p className="muted" style={{ margin: 0, fontSize: 'var(--fs-xs)' }} data-testid="signin-consent">
             By signing in you agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
           </p>

@@ -1,8 +1,9 @@
-# The native iPhone app
+# The native iPhone and iPad app
 
-The iPhone app is native (Swift, SwiftUI, MapLibre Native), designed for what a pilot does with a phone:
-fly the route, check the flight on the morning of the flight, and make small changes. Planning at a desk
-stays on the website. The iPad keeps the website's editor, because the iPad has room for it.
+The app is native (Swift, SwiftUI, MapLibre Native), designed for what a pilot does with a phone or a
+tablet in the cockpit: fly the route, check the flight on the morning of the flight, and make small
+changes. Planning at a desk stays on the website; every flight opens in the website's editor from the app
+(SFSafariViewController). The iPad runs the same app, with the flights beside the open flight.
 
 The app and the website are maintained together. **Everything computed comes from one TypeScript source.**
 The flight's numbers, the chart's style and features, the checklist and progress along the route are
@@ -18,11 +19,19 @@ native/ios/                    the app (XcodeGen: project.yml → PigsGottaFly.x
 src/native/core.ts             the core's API (below); unit-tested in tests/unit/native/
 ```
 
-## Screens (iPhone)
+## Screens
 
 - **Flights**: the pilot's flights and the ones shared with them (GET /api/flights), with date, route, the
   readiness summary and the filing status. Pull to refresh. "Fly again" (POST /flights/:id/copy).
-- **A flight**: three tabs.
+- **New flight**: departure and destination (the reference data's aerodromes, searched by ICAO code or
+  name; the departure starts as the home aerodrome), date, block-off time (UTC) and aircraft (GET
+  /api/aircraft). POST /api/flights with the website's shape (the route as two aerodrome points: `uid`,
+  `kind`, `refId`, `name`, `lat`, `lon`); the server fills in the profile's defaults and the altitudes are
+  the core's defaults, as on the website. With an empty hangar the pilot types a registration and the
+  aircraft is made from the hangar's type template (`PGF.aircraftFromTemplate`, POST /api/aircraft). The
+  new flight opens.
+- **A flight**: three tabs, and a button that opens it in the website's editor
+  (https://pigsgottafly.com/flights/:id in an in-app Safari view; the flight is read again when it closes).
   - **Fly**: a full-screen moving map. It shows the chart (the same style and layers as the website),
     the route with the active leg, the own aircraft from GPS with its track line, and a top strip with
     the next waypoint, bearing, distance, ETE and ETA, groundspeed and the leg's planned altitude and
@@ -34,10 +43,15 @@ src/native/core.ts             the core's API (below); unit-tested in tests/unit
     lists. The forms (filing, Form 731, GenDec, W&B) open the website's File & forms page in an in-app
     browser.
   - **Navlog**: the legs as a native list (altitude, heading, distance, ETE, ETA, fuel), the totals.
-    Quick edits: date, block-off time, a leg's altitude (PUT the flight with the version).
+    Quick edits: date, block-off time, a leg's altitude; the route: add an aerodrome, a VFR reporting
+    point or a saved waypoint (searched; it goes where it lengthens the route least), remove a point
+    (swipe; two stay). PUT the flight with the version; the summary follows (title, route, totals) and
+    the overrides of legs that are gone are dropped, as the website's editor does.
 - **Account**: sign in with Apple's sign-in sheet on /app-login (Google or Apple ID) → one-time code →
-  GET /api/app-session?code=… with URLSession, which keeps the session cookie (HTTPCookieStorage). Sign
-  out; delete account (Profile on the website).
+  GET /api/app-session?code=… with URLSession, which keeps the session cookie (HTTPCookieStorage). The
+  profile (name, phone, home aerodrome; PUT /api/me), asked for first when it is missing, as the website
+  asks a new pilot. Sign out. Delete account: the account's e-mail typed as the confirmation, DELETE
+  /api/me { confirm }, then signed out with the cache and the map packs cleared.
 
 ## core.js API (global `PGF`, JSON in and out, synchronous)
 
@@ -76,6 +90,10 @@ extra fields below were added while building the core.
   https://pigsgottafly.com/terrain/greece.bin in base64, kept for the following `computeFlight` calls
   (the default altitude of uncharted legs and the low-leg warnings use it, as on the website).
   `{ base64: null }` forgets it. Returns `{ ok }`.
+- `PGF.aircraftTemplates()`: the hangar's type templates `[{ id, label, description }]`
+  (src/features/hangar/templates.ts). `PGF.aircraftFromTemplate({ id, registration })`: the AircraftInput a
+  template builds with that registration (upper case), the body of POST /api/aircraft as the website's Add
+  aircraft sends it.
 - `PGF.weatherRequests({ flight, ref, now? })`: the GET paths on https://pigsgottafly.com (they start
   with `/api/`) the app fetches for the flight's weather, as the website's editor does: winds aloft and
   surface forecast (`/api/weather/grid?kind=wind…`), the hazard data along the route (`kind=hazard`)
@@ -120,13 +138,14 @@ extra fields below were added while building the core.
 ## Offline
 
 On opening a flight with a connection, the app saves to its container: the flight, the aircraft, the
-pilot, `ref`, the weather answers, the NOTAM briefing and the terrain grid (public/terrain/greece.bin is also
-built into the app, for a first launch offline). The relevant NOTAMs marked read are kept per flight, by
-their keys, as the website keeps them. It also downloads an
+pilot, the saved waypoints, `ref`, the weather answers, the NOTAM briefing and the terrain grid
+(public/terrain/greece.bin is also built into the app, for a first launch offline). The relevant NOTAMs marked
+read are kept per flight, by their keys, as the website keeps them. It also downloads an
 MLNOfflineStorage pack: the route's bounding box plus 15 NM, zooms 6–11, for the base style. Fly mode
 works from these with no connection.
 
 ## Release
 
-Same bundle id (com.pigsgottafly.app) and App Store Connect record (6837510399) as before. The native app
-replaces the Capacitor shell in `ios/`.
+Same bundle id (com.pigsgottafly.app) and App Store Connect record (6837510399) as the Capacitor shell it
+replaced. `npm run ios:upload` (README, "iPhone and iPad app"); the listing, the review notes and the
+screenshots are in `native/ios/AppStore/`.

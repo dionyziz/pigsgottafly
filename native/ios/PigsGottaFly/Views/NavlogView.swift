@@ -5,6 +5,7 @@ import SwiftUI
 struct NavlogView: View {
     @ObservedObject var model: FlightModel
     @State private var editing: Edit?
+    @State private var addingPoint = false
 
     enum Edit: Identifiable {
         case date, blockOff
@@ -50,6 +51,7 @@ struct NavlogView: View {
                     Text("Headings, times and fuel need the flight's aircraft: choose it on the website.")
                 }
             }
+            route
             if let c = model.computed {
                 Section("Totals") {
                     ValueRow(label: "Distance", value: Fmt.distance(c.totalDistNm))
@@ -75,6 +77,63 @@ struct NavlogView: View {
         .sheet(item: $editing) { edit in
             EditSheet(edit: edit, model: model)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $addingPoint) {
+            NavigationStack {
+                PlaceSearchView(title: "Add a point", aerodromesOnly: false) { place in
+                    Task { await model.addPoint(place) }
+                }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { addingPoint = false } }
+                }
+            }
+        }
+    }
+
+    /// The route's points: one is added where it lengthens the route least; any point can be removed
+    /// (swipe) while two are left. Drawing the route is the website's.
+    @ViewBuilder
+    private var route: some View {
+        let points = model.route
+        if !points.isEmpty {
+            Section {
+                ForEach(Array(points.enumerated()), id: \.offset) { i, p in
+                    HStack {
+                        Text(p["name"]?.string ?? "Point").font(.body.weight(.medium))
+                        Spacer()
+                        Text(kindLabel(p["kind"]?.string)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .frame(minHeight: 36)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("route-point-\(i)")
+                    .deleteDisabled(model.readOnly || points.count <= 2)
+                }
+                .onDelete { offsets in
+                    guard let i = offsets.first, let uid = points[i]["uid"]?.string else { return }
+                    Task { await model.removePoint(uid: uid) }
+                }
+                if !model.readOnly {
+                    Button {
+                        addingPoint = true
+                    } label: {
+                        Label("Add a point", systemImage: "plus.circle").frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("add-point")
+                }
+            } header: {
+                Text("Route")
+            } footer: {
+                if !model.readOnly && points.count > 2 { Text("Swipe a point to remove it.") }
+            }
+        }
+    }
+
+    private func kindLabel(_ kind: String?) -> String {
+        switch kind {
+        case "aerodrome": "Aerodrome"
+        case "vfr": "VFR point"
+        case "waypoint": "My waypoint"
+        default: "Point"
         }
     }
 

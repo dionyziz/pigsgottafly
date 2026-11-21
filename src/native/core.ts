@@ -64,8 +64,10 @@ import {
   readiness,
   readinessWarnings,
 } from '../features/editor/panels/readiness';
+import { buildFromTemplate, TYPE_TEMPLATES } from '../features/hangar/templates';
 import {
   type Aircraft,
+  type AircraftInput,
   type AtcEntry,
   DEFAULT_MAP_LAYERS,
   DEFAULT_SETTINGS,
@@ -615,4 +617,23 @@ export function progress(
       lastLegIndex: i.lastLegIndex ?? null,
     }),
   );
+}
+
+// ---------------------------------------------------------------- a new pilot's first aircraft
+
+/** The hangar's type templates ("Add aircraft" on the website), offered when the hangar is empty. */
+export function aircraftTemplates(): { id: string; label: string; description: string }[] {
+  return TYPE_TEMPLATES.map((t) => ({ id: t.id, label: t.label, description: t.description }));
+}
+
+/** The aircraft a template builds, with the registration: the body of POST /api/aircraft, as the
+ *  website's Add aircraft dialog sends it. An unknown template id is a blank airframe. */
+export function aircraftFromTemplate(input: Json<{ id: string | null; registration: string }>): AircraftInput {
+  const i = arg(input);
+  return plain({
+    ...buildFromTemplate(i.id ?? null),
+    registration: String(i.registration ?? '')
+      .trim()
+      .toUpperCase(),
+  });
 }

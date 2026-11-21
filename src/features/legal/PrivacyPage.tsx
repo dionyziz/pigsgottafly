@@ -99,6 +99,12 @@ const sections: LegalSection[] = [
           account, and per IP address for sign-in attempts and other requests made without a session; these counters are
           kept for about two days at most. We do not use any of this to profile you.
         </p>
+        <h3>Your location (the iPhone and iPad app)</h3>
+        <p>
+          When you allow it, the app reads your device's location while a flight's moving map is shown, to draw your
+          aircraft and its progress along the route. This happens on your device only: your location is not sent to us
+          or stored.
+        </p>
       </>
     ),
   },

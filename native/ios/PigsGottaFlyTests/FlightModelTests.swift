@@ -28,10 +28,14 @@ final class FlightModelTests: XCTestCase {
             XCTAssertTrue(store.exists(key), key.path)
         }
         XCTAssertEqual(store.read(.terrain)?.count, AppModel.terrainBytes, "the terrain grid, fetched and saved")
-        // the weather answers by the core's paths: METAR/TAF from the fixture, no forecast grids
+        // the weather answers by the core's paths: METAR/TAF and the forecast grids from the fixtures
         let weather = try JSON.parse(try XCTUnwrap(store.read(.weather(model.id))))
-        XCTAssertEqual(weather.object?.keys.sorted(), ["/api/weather/metar?ids=LGSY,LGTT"])
-        XCTAssertEqual(model.computed?.windsMessage, "Winds unavailable: not fetched")
+        let paths = weather.object?.keys.sorted() ?? []
+        XCTAssertEqual(paths.count, 3, "\(paths)")
+        XCTAssertTrue(paths.contains("/api/weather/metar?ids=LGSY,LGTT"))
+        XCTAssertTrue(paths.contains { $0.hasPrefix("/api/weather/grid?kind=wind") })
+        XCTAssertTrue(paths.contains { $0.hasPrefix("/api/weather/grid?kind=hazard") })
+        XCTAssertNil(model.computed?.windsMessage, "the winds aloft are known")
         XCTAssertEqual(model.computed?.aerodromes.map(\.icao), ["LGTT", "LGSY"])
 
         // the relevant NOTAMs marked read: the row is ready, and stays so on the next opening
@@ -79,6 +83,7 @@ final class FlightModelTests: XCTestCase {
         server["title"] = "Renamed elsewhere"
         let serverCopy = try server.data()
         let baseCopy = try base.data()
+        let aircraft = try Fixtures.data("aircraft.json")
         let fake = FakeTransport { req in
             if req.httpMethod == "PUT" {
                 let body = try JSON.parse(req.httpBody!)
@@ -86,6 +91,7 @@ final class FlightModelTests: XCTestCase {
                 return (409, serverCopy, [:])
             }
             if req.url!.path == "/api/flights/fixture-lgtt-lgsy" { return (200, baseCopy, [:]) }
+            if req.url!.path.hasPrefix("/api/aircraft/") { return (200, aircraft, [:]) }
             return (404, Data(), [:])
         }
         let store = temporaryStore()

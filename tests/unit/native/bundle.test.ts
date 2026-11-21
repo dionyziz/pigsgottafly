@@ -7,6 +7,7 @@ import vm from 'node:vm';
 
 import { beforeAll, describe, expect, test } from 'vitest';
 
+import { buildFromTemplate } from '../../../src/features/hangar/templates';
 import { buildCore, CORE_OUT } from '../../../tools/build_native_core';
 import { AC, API_REF, briefing, flight, notam, NOW, PILOT, ROUTE } from './fixtures';
 
@@ -81,6 +82,15 @@ describe('core.js in a bare JavaScript context', () => {
     expect(p.toWaypoint.name).toBe('KORINTHOS');
     expect(call('paperwork', {})[0]).toMatchObject({ id: 'filing', state: 'todo' });
     expect(call('setTerrain', { base64: null })).toEqual({ ok: false });
+  });
+
+  test('aircraftTemplates, aircraftFromTemplate: the hangar template for a first aircraft', () => {
+    expect(call('aircraftTemplates')).toEqual([
+      { id: 'reims-f172m', label: 'Reims/Cessna F172M', description: 'AFM 1972' },
+    ]);
+    const a = call('aircraftFromTemplate', { id: 'reims-f172m', registration: ' sx-abc ' });
+    expect(a).toEqual({ ...buildFromTemplate('reims-f172m'), registration: 'SX-ABC' });
+    expect(call('aircraftFromTemplate', { id: 'nope', registration: 'SX-ABC' }).icaoType).toBe('');
   });
 });
 
