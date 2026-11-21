@@ -5,6 +5,8 @@
 .ep-icon { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 /* sections (src/ui Collapsible): the header stays in view while the panel scrolls */
+/* a section scrolled to (a checklist row, a Fix) lands below the pinned summary and tabs */
+.ep-section { scroll-margin-top: var(--rd-pinned, 0px); }
 .ep-section > .collapsible-head { position: sticky; top: var(--rd-pinned, 0px); background: var(--surface); z-index: 2; border-radius: 0; }
 .ep-section > .collapsible-head:hover { background: var(--hover); }
 .ep-section > .collapsible-head button.icon { padding: 5px; }

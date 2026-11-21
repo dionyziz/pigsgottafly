@@ -531,6 +531,17 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     }
   }
   await page.eval(() => (document.querySelector('.editor-panel').scrollTop = 0));
+  // a checklist row opens its section just below the pinned bar, its header in full view
+  await stage('plan');
+  await page.click('[data-testid=ready-item][data-id=wb] .rd-main');
+  await page.waitFor(
+    () => {
+      const pin = document.querySelector('[data-testid=readiness]').getBoundingClientRect();
+      const head = document.querySelector('[data-testid=section-manifest] > .collapsible-head').getBoundingClientRect();
+      return Math.abs(head.top - pin.bottom) <= 2;
+    },
+    { timeout: 5000 },
+  );
   // File & forms is its own page, without the map: the flight plan with its filing, a tab per form with
   // its state; the back link returns to the editor
   await page.click('[data-testid=stage-file]');
