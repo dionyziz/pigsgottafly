@@ -21,6 +21,9 @@
 // end of the day after the flight, at most 14 days after they were made. A link is bound to the person it was given to (personHash): a
 // passenger without a saved record is keyed by seat, and whoever later takes that seat is a different
 // person whom the old link must not reach.
+// A flight shared with other pilots (access.ts flightFor): they see the forms' state (GET, as the
+// owner's flight); only the owner hands out signing links and sends the forms (403 for the others);
+// editors may set the GenDec override (it is part of the flight).
 import crypto from 'node:crypto';
 
 import { aerodromeNotamEffects, type GenDecHandling, genDecHandling } from '../../../src/calc/aerodromeStatus.js';
@@ -47,7 +50,7 @@ import {
 import type { RefAerodrome } from '../../../src/shared/ref.js';
 import type { RoutePoint } from '../../../src/shared/types.js';
 import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
-import { accessibleSql, AIRCRAFT_FROM } from '../access.js';
+import { accessibleSql, AIRCRAFT_FROM, flightFor } from '../access.js';
 import { hashToken } from '../auth.js';
 import type { Queryable, Row } from '../db.js';
 import { flightContext, loadRef } from '../flightContext.js';
@@ -86,13 +89,18 @@ interface Loaded {
   gendec: GenDecContent;
   hash731: string;
   hashGendec: string;
-  /** This pilot may not send forms by e-mail (no e-mail address to cc). */
-  mailDenied: boolean;
+  /** This pilot may not send forms by e-mail (no e-mail address to cc; a string: why not, e.g. not the owner). */
+  mailDenied: boolean | string;
   /** Saved passengers' e-mail addresses, by passenger id (= their person key). */
   emails: Map<string, string>;
 }
 
-async function loadForms(db: Queryable, pilot: Pilot, flightId: string, mailDenied = true): Promise<Loaded> {
+async function loadForms(
+  db: Queryable,
+  pilot: Pilot,
+  flightId: string,
+  mailDenied: boolean | string = true,
+): Promise<Loaded> {
   const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [flightId, pilot.id]);
   if (!r) throw notFound('no such flight');
   const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [flightId, pilot.id]);
@@ -363,8 +371,10 @@ async function newLink(db: Queryable, L: Loaded, person: Form731Person): Promise
 const fmtDay = fmtDate;
 
 const MAIL_DENIED = 'Your account has no e-mail address to copy the forms to.';
+const NOT_OWNER = 'Only the flight’s owner sends its forms.';
 /** Whether this pilot can send forms by e-mail: configured on the server, and the pilot has an e-mail to cc. */
 function mailFor(L: Loaded): { enabled: boolean; reason: string | null } {
+  if (typeof L.mailDenied === 'string') return { enabled: false, reason: L.mailDenied };
   return L.mailDenied ? { enabled: false, reason: MAIL_DENIED } : mailAvailability();
 }
 /** 403 for a pilot without an e-mail address, 503 when e-mail is not configured. */
@@ -556,13 +566,17 @@ export const routes: Route[] = [
   {
     method: 'GET',
     path: '/flights/:id/forms',
-    handler: async ({ db, pilot, params, formsMailDenied }) =>
-      state(db, await loadForms(db, pilot, params.id, formsMailDenied)),
+    async handler({ db, pilot, params, formsMailDenied }) {
+      const g = await flightFor(db, pilot, params.id);
+      const denied = g.role === 'owner' ? formsMailDenied : NOT_OWNER;
+      return state(db, await loadForms(db, g.owner, params.id, denied));
+    },
   },
   {
     method: 'POST',
     path: '/flights/:id/forms/731/links',
     async handler({ db, pilot, params, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const existing = await db.query(
         'SELECT person_key, person_hash FROM form_links WHERE flight_id = $1 AND pilot_id = $2 AND NOT revoked AND expires > $3',
@@ -581,6 +595,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/forms/731/links/:key/renew',
     async handler({ db, pilot, params, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
       if (!person) throw notFound('no such passenger on this flight');
@@ -592,6 +607,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/forms/731/links/:key/revoke',
     async handler({ db, pilot, params, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       await db.query(
         'UPDATE form_links SET revoked = TRUE WHERE flight_id = $1 AND pilot_id = $2 AND person_key = $3',
@@ -604,6 +620,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/forms/731/send',
     async handler({ db, pilot, params, body, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const st = await state(db, L);
       const missing = st.form731.signatures.filter((s) => !s.signed).map((s) => s.name || s.key);
@@ -619,6 +636,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/forms/731/email/:key',
     async handler({ db, pilot, params, req, config, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       const person = L.c731.people.find((p) => p.key === params.key && p.role === 'PAX');
       if (!person) throw notFound('no such passenger on this flight');
@@ -663,6 +681,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/forms/gendec/send',
     async handler({ db, pilot, params, body, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const L = await loadForms(db, pilot, params.id, formsMailDenied);
       if (L.gendec.placeCount < 2) throw conflict('the route needs a departure and a destination');
       await sendOnce(db, L, 'gendec', L.hashGendec, (await body()).resend === true, async () =>
@@ -677,6 +696,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/forms/gendec/handled',
     async handler({ db, pilot, params, body, formsMailDenied }) {
+      const g = await flightFor(db, pilot, params.id, 'edit');
       const b = await body();
       const v = b.handled;
       if (v !== null && typeof v !== 'boolean') throw badRequest('handled must be true, false or null');
@@ -684,10 +704,10 @@ export const routes: Route[] = [
         `UPDATE flights SET options = options || jsonb_build_object('genDecHandled', $3::jsonb), version = version + 1,
            updated = (extract(epoch FROM clock_timestamp()) * 1000)::BIGINT
          WHERE id = $1 AND pilot_id = $2 RETURNING id`,
-        [params.id, pilot.id, JSON.stringify(v)],
+        [params.id, g.owner.id, JSON.stringify(v)],
       );
       if (!r.length) throw notFound('no such flight');
-      return state(db, await loadForms(db, pilot, params.id, formsMailDenied));
+      return state(db, await loadForms(db, g.owner, params.id, g.role === 'owner' ? formsMailDenied : NOT_OWNER));
     },
   },
   {

@@ -10,11 +10,11 @@ import './fpl.css';
 
 import { type ReactNode, useMemo, useState } from 'react';
 
-import { usePilot } from '../../../app/session';
 import type { Flight } from '../../../shared';
 import { Panel } from '../../../ui';
 import type { Fix } from '../fix';
 import { type ShownSignature, Signature } from '../form731/Form731';
+import { useFlightPilot } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
 import { FilingPanel } from './FilingPanel';
 import { buildFpl, type FplOptions, type FplResult, oneLine } from './fpl';
@@ -43,7 +43,7 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export function FplExport({ flight }: { flight: Flight }) {
-  const pilot = usePilot();
+  const pilot = useFlightPilot(flight);
   const data = useFplData(flight, pilot);
   const [opts, setOpts] = useState<Required<FplOptions>>({ regInItem18: false });
   const fpl = useMemo(

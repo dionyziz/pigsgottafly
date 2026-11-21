@@ -11,14 +11,13 @@ import './navlog.css';
 
 import { Fragment, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { usePilot } from '../../../app/session';
 import { atcInput, atcLegRelevance, generateAtcList } from '../../../data/atc';
 import { REF, SUN_TABLES } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { Flight } from '../../../shared';
 import { Loading, Panel } from '../../../ui';
-import { useFlightAircraft } from '../useExportData';
+import { useFlightAircraft, useFlightPilot } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
 import { fitSheets, SHEET_UNITS } from './fit';
 import {
@@ -34,8 +33,8 @@ import {
 } from './model';
 
 export function NavlogExport({ flight }: { flight: Flight }) {
-  const pilot = usePilot();
-  const ac = useFlightAircraft(flight.aircraftId);
+  const pilot = useFlightPilot(flight);
+  const ac = useFlightAircraft(flight);
   const aircraft = ac.aircraft;
 
   // ---- weather: winds aloft at leg midpoints, surface at both ends and every stop (Open-Meteo), METAR/TAF

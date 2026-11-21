@@ -9,6 +9,7 @@
 // normalized by wbPerfContentOf (bounded, links and e-mail addresses removed) and with its
 // identifying fields replaced by the server's. Every send goes through the sending caps
 // (sendCaps.ts: per pilot, per flight, per declarations address; 10 min between sends of a flight).
+// A pilot the flight is shared with sees the state (as the owner's flight); only the owner sends.
 import crypto from 'node:crypto';
 
 import {
@@ -19,7 +20,7 @@ import {
   wbPerfText,
 } from '../../../src/shared/declarations.js';
 import type { Pilot } from '../../../src/shared/types.js';
-import { accessibleSql } from '../access.js';
+import { accessibleSql, flightFor } from '../access.js';
 import type { Queryable } from '../db.js';
 import { wbPerfPdf } from '../declarationPdf.js';
 import type { Route } from '../http.js';
@@ -28,6 +29,7 @@ import { mailAvailability, MailError, sendMail } from '../mail.js';
 import { sendFormOnce } from './forms.js';
 
 const MAIL_DENIED = 'Your account has no e-mail address to copy the declarations to.';
+const NOT_OWNER = 'Only the flight’s owner sends its declarations.';
 export const wbPerfHash = (c: WbPerfContent) => crypto.createHash('sha256').update(wbPerfText(c)).digest('base64url');
 
 async function load(db: Queryable, pilot: Pilot, flightId: string) {
@@ -76,11 +78,17 @@ function token(v: unknown, max: number): string {
     .slice(0, max);
 }
 
-function mailState(denied: boolean) {
+function mailState(denied: boolean | string) {
+  if (typeof denied === 'string') return { enabled: false, reason: denied };
   return denied ? { enabled: false, reason: MAIL_DENIED } : mailAvailability();
 }
 
-async function state(db: Queryable, pilot: Pilot, flightId: string, denied: boolean): Promise<DeclarationsState> {
+async function state(
+  db: Queryable,
+  pilot: Pilot,
+  flightId: string,
+  denied: boolean | string,
+): Promise<DeclarationsState> {
   const { operator } = await load(db, pilot, flightId);
   const [s] = await db.query(
     `SELECT * FROM form_submissions WHERE flight_id = $1 AND pilot_id = $2 AND form = 'wbperf'`,
@@ -99,12 +107,16 @@ export const routes: Route[] = [
   {
     method: 'GET',
     path: '/flights/:id/declarations',
-    handler: async ({ db, pilot, params, formsMailDenied }) => state(db, pilot, params.id, formsMailDenied),
+    async handler({ db, pilot, params, formsMailDenied }) {
+      const g = await flightFor(db, pilot, params.id);
+      return state(db, g.owner, params.id, g.role === 'owner' ? formsMailDenied : NOT_OWNER);
+    },
   },
   {
     method: 'POST',
     path: '/flights/:id/declarations/send',
     async handler({ db, pilot, params, body, formsMailDenied }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const { flight, facts, operator } = await load(db, pilot, params.id);
       if (!operator) throw conflict('the flight’s aircraft has no operator');
       if (!operator.requiresWbPerf) throw conflict(`${operator.name} does not ask for the W&B and performance sheets`);

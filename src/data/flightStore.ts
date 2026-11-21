@@ -18,6 +18,8 @@ interface Cached {
   dirty: boolean;
   /** Bumped on every local edit, to detect edits made while a PUT was in flight. */
   rev: number;
+  /** A flight shared with this pilot: how (Flight.access), so this device's copy opens with the same rights. */
+  access?: Flight['access'];
 }
 
 const key = (id: string) => `pgf.flight.${id}`;
@@ -48,7 +50,7 @@ const LS = {
 
 /** The editable part of a Flight. */
 export function docOf(f: Flight): FlightDoc {
-  const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...doc } = f;
+  const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, access: _a, ...doc } = f;
   return doc;
 }
 
@@ -95,9 +97,10 @@ async function flush(): Promise<void> {
         if (e instanceof ApiRequestError && e.status === 409 && e.body) {
           const now = LS.get<Cached>(key(id))!;
           LS.set(key(id), { ...now, version: (e.body as Flight).version });
-        } else if (e instanceof ApiRequestError && (e.status === 404 || e.status === 400)) {
-          // gone or rejected: retrying will not help, and the rejected copy must not shadow the
-          // server's on the next load (load() prefers a dirty local copy of the same version)
+        } else if (e instanceof ApiRequestError && (e.status === 404 || e.status === 400 || e.status === 403)) {
+          // gone, rejected or no longer ours to change (a shared flight made view-only): retrying will
+          // not help, and the rejected copy must not shadow the server's on the next load (load()
+          // prefers a dirty local copy of the same version)
           drop(id);
           const now = LS.get<Cached>(key(id));
           if (now) LS.set(key(id), { ...now, dirty: false });
@@ -143,7 +146,7 @@ export const flightStore = {
     const c = LS.get<Cached>(key(id));
     if (!c) return null;
     return {
-      flight: { ...c.doc, id, version: c.version, created: 0, updated: 0, opened: 0, deleted: false },
+      flight: { ...c.doc, id, version: c.version, created: 0, updated: 0, opened: 0, deleted: false, access: c.access },
       doc: c.doc,
     };
   },
@@ -159,8 +162,18 @@ export const flightStore = {
     try {
       const f = await api.flights.get(id);
       api.flights.opened(id).catch(() => {});
-      if (cached && cached.dirty && cached.version === f.version) return { flight: f, doc: cached.doc };
-      LS.set(key(id), { id, doc: docOf(f), version: f.version, dirty: false, rev: 0 } satisfies Cached);
+      if (cached && cached.dirty && cached.version === f.version) {
+        LS.set(key(id), { ...cached, access: f.access } satisfies Cached);
+        return { flight: f, doc: cached.doc };
+      }
+      LS.set(key(id), {
+        id,
+        doc: docOf(f),
+        version: f.version,
+        dirty: false,
+        rev: 0,
+        access: f.access,
+      } satisfies Cached);
       return { flight: f, doc: docOf(f) };
     } catch (e) {
       if (e instanceof ApiRequestError && e.auth) throw e;
@@ -170,7 +183,16 @@ export const flightStore = {
       }
       if (!cached) throw e;
       return {
-        flight: { ...cached.doc, id, version: cached.version, created: 0, updated: 0, opened: 0, deleted: false },
+        flight: {
+          ...cached.doc,
+          id,
+          version: cached.version,
+          created: 0,
+          updated: 0,
+          opened: 0,
+          deleted: false,
+          access: cached.access,
+        },
         doc: cached.doc,
       };
     }
@@ -179,7 +201,14 @@ export const flightStore = {
   /** Saves locally now and to the server soon. */
   save(id: string, doc: FlightDoc) {
     const c = LS.get<Cached>(key(id));
-    LS.set(key(id), { id, doc, version: c?.version ?? 1, dirty: true, rev: (c?.rev ?? 0) + 1 } satisfies Cached);
+    LS.set(key(id), {
+      id,
+      doc,
+      version: c?.version ?? 1,
+      dirty: true,
+      rev: (c?.rev ?? 0) + 1,
+      access: c?.access,
+    } satisfies Cached);
     queue(id);
   },
 

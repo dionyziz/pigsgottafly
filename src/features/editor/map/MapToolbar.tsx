@@ -18,8 +18,11 @@ export function MapToolbar({
   canUndo,
   canRedo,
   onFit,
+  readOnly,
 }: {
   mode: DrawMode;
+  /** Only "zoom to the route" (a flight shared as a viewer). */
+  readOnly?: boolean;
   hasRoute: boolean;
   onMode: (m: DrawMode) => void;
   onUndo?: () => void;
@@ -28,6 +31,14 @@ export function MapToolbar({
   canRedo?: boolean;
   onFit: () => void;
 }) {
+  if (readOnly)
+    return (
+      <div className="pgf-map-toolbar" role="toolbar" aria-label="Route tools">
+        <ToolButton onClick={onFit} disabled={!hasRoute} title="Zoom to the route" testid="map-fit">
+          <IconFit />
+        </ToolButton>
+      </div>
+    );
   return (
     <div className="pgf-map-toolbar" role="toolbar" aria-label="Route tools">
       <ToolButton

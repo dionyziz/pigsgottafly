@@ -87,6 +87,7 @@ export function NotamSection() {
 
   return (
     <Section
+      edits={false}
       id="notams"
       title="NOTAMs"
       badge={badge}

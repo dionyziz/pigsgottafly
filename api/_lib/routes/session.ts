@@ -24,6 +24,7 @@ import { mailAvailability, sendSystemMail } from '../mail.js';
 import { rateLimit } from '../rateLimit.js';
 import { toPilot } from '../rows.js';
 import { sendLogged } from '../sendCaps.js';
+import { claimInvites } from './flightShares.js';
 
 /** Longest a sign-in waits for the signup notice (it is sent before the response, as a serverless
  * function may be stopped once it has answered). */
@@ -108,8 +109,13 @@ export async function notifySignup(
 
 const newPilotId = () => `pl_${randomBytes(9).toString('base64url')}`;
 
-/** After a sign-in: tells the admins about a new pilot, then answers with a new session cookie. */
-async function signedIn(db: Queryable, config: ApiConfig, row: Row, isNew: boolean, at: number) {
+/**
+ * After a sign-in: the flights shared with the verified address the pilot signed in with become theirs
+ * to open (flightShares.ts claimInvites), the admins hear about a new pilot, and the answer carries a
+ * new session cookie.
+ */
+async function signedIn(db: Queryable, config: ApiConfig, row: Row, isNew: boolean, at: number, email: string) {
+  await claimInvites(db, row.id, email);
   // a new account: tell the admins (never blocks or fails the sign-in)
   if (isNew)
     await notifySignup(db, config.adminEmails ?? [], { pilotId: row.id, name: row.name || '', email: row.email, at });
@@ -176,7 +182,7 @@ export const routes: Route[] = [
          RETURNING *, (xmax = 0) AS inserted`,
         [newPilotId(), sub, email, claims.name || '', claims.picture || '', now],
       );
-      return signedIn(db, config, row, row.inserted === true, now);
+      return signedIn(db, config, row, row.inserted === true, now, email);
     },
   },
   {
@@ -207,7 +213,7 @@ export const routes: Route[] = [
          WHERE apple_sub = $1 RETURNING *`,
         [claims.sub, now, email, appleName(name)],
       );
-      if (known) return signedIn(db, config, known, false, now);
+      if (known) return signedIn(db, config, known, false, now, email);
       if (!isAppleRelay(claims)) {
         const [linked] = await db.query(
           `UPDATE pilots SET apple_sub = $1, last_login = $2
@@ -216,7 +222,7 @@ export const routes: Route[] = [
            RETURNING *`,
           [claims.sub, now, email],
         );
-        if (linked) return signedIn(db, config, linked, false, now);
+        if (linked) return signedIn(db, config, linked, false, now, email);
       }
       // a new pilot (a race with another sign-in of the same Apple ID finds that one)
       const [row] = await db.query(
@@ -225,7 +231,7 @@ export const routes: Route[] = [
          RETURNING *, (xmax = 0) AS inserted`,
         [newPilotId(), claims.sub, email, appleName(name), now],
       );
-      return signedIn(db, config, row, row.inserted === true, now);
+      return signedIn(db, config, row, row.inserted === true, now, email);
     },
   },
   {

@@ -38,7 +38,7 @@ function safe<T>(f: () => T): T | null {
 }
 
 export function useFplData(flight: Flight, pilot: Pilot): FplData {
-  const { aircraft, loading: aircraftLoading } = useFlightAircraft(flight.aircraftId);
+  const { aircraft, loading: aircraftLoading } = useFlightAircraft(flight);
   const wx = useFlightWeather({
     date: flight.date,
     route: flight.route,

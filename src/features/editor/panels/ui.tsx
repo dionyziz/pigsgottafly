@@ -1,10 +1,11 @@
 // Small building blocks of the editor panel: collapsible sections (Collapsible that opens on a focus
 // request) and key/value rows.
-import { type ReactNode, useEffect, useEffectEvent, useRef, useState } from 'react';
+import { type ReactNode, use, useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { findFocusTarget, focusAndHighlight, focusParam } from '../../../app/focusParam';
 import { Collapsible } from '../../../ui';
 import { onEditorFocus, sectionOf } from '../focus';
+import { EditorContext } from '../state';
 
 /** Where the editor remembers which boxes are collapsed (id → true). */
 export const SECTIONS_STORE = 'pgf.editor.sections';
@@ -57,10 +58,17 @@ export function Section({
   badge,
   actions,
   summary,
+  edits = true,
   children,
 }: {
   id: string;
   title: string;
+  /**
+   * The section changes the flight (default). In a read-only editor (a flight shared as a viewer) its
+   * controls are disabled and its header actions hidden; a section that only reads (briefing,
+   * documents) says false and stays usable.
+   */
+  edits?: boolean;
   /** Shown next to the title (also when collapsed): a short summary or a status chip. */
   badge?: ReactNode;
   /** Buttons on the right of the header (shown when open). */
@@ -70,19 +78,26 @@ export function Section({
   children: ReactNode;
 }) {
   const { ref, open } = useFocusRequest((key) => sectionOf(key) === id);
+  const readOnly = edits && !!use(EditorContext)?.readOnly;
   return (
     <Collapsible
       id={id}
       title={title}
       badge={badge}
-      actions={actions}
+      actions={readOnly ? undefined : actions}
       summary={summary}
       store={SECTIONS_STORE}
       openWhen={open}
       sectionRef={ref}
       className="ep-section"
     >
-      {children}
+      {readOnly ? (
+        <fieldset className="ep-readonly" disabled>
+          {children}
+        </fieldset>
+      ) : (
+        children
+      )}
     </Collapsible>
   );
 }

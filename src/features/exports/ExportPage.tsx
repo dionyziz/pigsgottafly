@@ -11,7 +11,6 @@ import './export.css';
 
 import { Link, Navigate, useParams } from 'react-router';
 
-import { usePilot } from '../../app/session';
 import { api } from '../../data/api';
 import { flightStore } from '../../data/flightStore';
 import { useAsync } from '../../data/useAsync';
@@ -25,7 +24,7 @@ import { FplExport } from './fpl';
 import { GenDec } from './gendec';
 import { GenDecSendPanel } from './gendec/SendPanel';
 import { NavlogExport } from './navlog';
-import { useFlightAircraft, usePassengers } from './useExportData';
+import { useFlightAircraft, useFlightPilot, usePassengers } from './useExportData';
 import { WbPerfExport } from './wbperf';
 
 /** How long the export waits for the editor's unsent edits before loading the flight anyway. */
@@ -44,8 +43,8 @@ async function flushFlightEdits(): Promise<void> {
 }
 
 function FormExport({ flight, kind }: { flight: Flight; kind: 'form731' | 'gendec' }) {
-  const pilot = usePilot();
-  const ac = useFlightAircraft(flight.aircraftId);
+  const pilot = useFlightPilot(flight);
+  const ac = useFlightAircraft(flight);
   const pax = usePassengers();
   // signatures (Form 731) and the e-mail to HCAA (both forms)
   const forms = useFormsState(flight.id);

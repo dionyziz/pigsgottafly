@@ -1,6 +1,9 @@
 // Flights: /flights (list, create), /flights/:id (get, versioned PUT with 409, DELETE = trash),
 // /flights/:id/restore, /flights/:id/copy, /flights/:id/opened. Manifest rows (flight_crew) are part
-// of the flight document and replaced atomically with it. Everything is scoped to the session pilot.
+// of the flight document and replaced atomically with it. A flight is its owner's (flights.pilot_id);
+// it may be shared with other pilots (flight_shares, access.ts flightFor): viewers read it, editors
+// also save it (the manifest rows keep the owner's id), only the owner trashes or restores it. A copy
+// ("Make a copy", "Fly again") belongs to whoever makes it.
 // A flight may use the pilot's own aircraft or one shared with them (access.ts). When that access
 // ends, the flight keeps the aircraft id and the editor shows the aircraft as unavailable; saving
 // such a flight keeps that id (without the seat checks) until the pilot picks another aircraft.
@@ -18,9 +21,10 @@ import {
   seatLayout,
   validateCrew,
 } from '../../../src/shared/constants.js';
+import { pilotDetails } from '../../../src/shared/forms.js';
 import { mapLayersOf } from '../../../src/shared/mapLayers.js';
-import type { FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
-import { accessibleSql, canUseAircraft } from '../access.js';
+import type { Flight, FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
+import { accessibleSql, canUseAircraft, flightAircraft, flightFor, type FlightGrant, personName } from '../access.js';
 import type { Queryable, Row } from '../db.js';
 import { checkAtc, checkBaggage, checkLegOverrides, checkOptions, checkRoute, checkSummary } from '../flightDoc.js';
 import type { Route } from '../http.js';
@@ -29,11 +33,27 @@ import { checkCount } from '../limits.js';
 import { arr, obj, optDate, optNum, personColumns, str, toFlight } from '../rows.js';
 import { findAerodrome } from './ref.js';
 
-async function load(db: Queryable, pilotId: string, id: string) {
-  const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [id, pilotId]);
+/** The flight of its owner `ownerId` (access already checked). */
+async function load(db: Queryable, ownerId: string, id: string) {
+  const [r] = await db.query('SELECT * FROM flights WHERE id = $1 AND pilot_id = $2', [id, ownerId]);
   if (!r) throw notFound('no such flight');
-  const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [id, pilotId]);
+  const crew = await db.query('SELECT * FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2', [id, ownerId]);
   return toFlight(r, crew);
+}
+
+/** The flight as the session pilot gets it: with `access` (role, owner, aircraft) when it is shared with them. */
+async function view(db: Queryable, g: FlightGrant): Promise<Flight> {
+  const f = await load(db, g.owner.id, g.id);
+  if (g.role === 'owner') return f;
+  return {
+    ...f,
+    access: {
+      role: g.role,
+      owner: { pilotId: g.owner.id, name: personName(g.owner.fullName, g.owner.name), email: g.owner.email ?? '' },
+      aircraft: f.aircraftId ? await flightAircraft(db, g.owner.id, f.aircraftId) : null,
+      pilot: { ...pilotDetails(g.owner), licenceNo: g.owner.licenceNo, settings: g.owner.settings },
+    },
+  };
 }
 
 /**
@@ -204,20 +224,36 @@ export const routes: Route[] = [
     path: '/flights',
     async handler({ db, pilot, query }): Promise<FlightListItem[]> {
       const trash = query.get('trash') === '1';
+      // own flights, and (not in the trash) those shared with the pilot that their owner has not trashed;
+      // a shared flight's "opened" is when this pilot last opened it
       const rows = await db.query(
         `SELECT f.id, f.summary, f.route, f.date, f.aircraft_id, f.version, f.created, f.updated, f.opened, f.deleted,
-           ff.status AS filing_status
+           ff.status AS filing_status, NULL AS share_role, NULL AS owner_id, NULL AS owner_email, NULL AS owner_full_name,
+           NULL AS owner_name
          FROM flights f LEFT JOIN flight_filings ff ON ff.flight_id = f.id AND ff.pilot_id = f.pilot_id
-         WHERE f.pilot_id = $1 AND f.deleted = $2 ORDER BY GREATEST(f.updated, f.opened) DESC`,
+         WHERE f.pilot_id = $1 AND f.deleted = $2
+         UNION ALL
+         SELECT f.id, f.summary, f.route, f.date, f.aircraft_id, f.version, f.created, f.updated, COALESCE(s.opened, s.created),
+           f.deleted, ff.status, s.role, o.id, o.email, o.full_name, o.name
+         FROM flight_shares s JOIN flights f ON f.id = s.flight_id JOIN pilots o ON o.id = f.pilot_id
+           LEFT JOIN flight_filings ff ON ff.flight_id = f.id AND ff.pilot_id = f.pilot_id
+         WHERE s.pilot_id = $1 AND NOT $2 AND NOT f.deleted
+         ORDER BY 1`,
         [pilot.id, trash],
       );
-      // Passengers' names per flight, in manifest order (the pilot's own manifest rows only).
+      rows.sort(
+        (a, b) =>
+          Math.max(Number(b.updated), Number(b.opened)) - Math.max(Number(a.updated), Number(a.opened)) ||
+          (a.id < b.id ? -1 : 1),
+      );
+      // Passengers' names per flight, in manifest order (the owner's manifest rows).
       const pax = new Map<string, string[]>();
       if (rows.length) {
         const crew = await db.query(
-          `SELECT flight_id, snapshot->>'fullName' AS name FROM flight_crew
-           WHERE pilot_id = $1 AND role = 'PAX' AND flight_id = ANY($2::text[]) ORDER BY flight_id, position`,
-          [pilot.id, rows.map((r) => r.id)],
+          `SELECT c.flight_id, c.snapshot->>'fullName' AS name FROM flight_crew c
+           JOIN flights f ON f.id = c.flight_id AND f.pilot_id = c.pilot_id
+           WHERE c.role = 'PAX' AND c.flight_id = ANY($1::text[]) ORDER BY c.flight_id, c.position`,
+          [rows.map((r) => r.id)],
         );
         for (const c of crew) {
           const name = typeof c.name === 'string' ? c.name.trim() : '';
@@ -242,6 +278,16 @@ export const routes: Route[] = [
         opened: Number(r.opened),
         deleted: !!r.deleted,
         filingStatus: r.filing_status ?? null,
+        ...(r.share_role
+          ? {
+              sharedBy: {
+                pilotId: r.owner_id,
+                name: personName(r.owner_full_name, r.owner_name),
+                email: r.owner_email ?? '',
+              },
+              role: r.share_role,
+            }
+          : {}),
       }));
     },
   },
@@ -302,16 +348,23 @@ export const routes: Route[] = [
       return reply(201, await load(db, pilot.id, id));
     },
   },
-  { method: 'GET', path: '/flights/:id', handler: async ({ db, pilot, params }) => load(db, pilot.id, params.id) },
   {
+    method: 'GET',
+    path: '/flights/:id',
+    handler: async ({ db, pilot, params }) => view(db, await flightFor(db, pilot, params.id)),
+  },
+  {
+    // the owner or an editor; checked as the owner's flight (their aircraft and passengers)
     method: 'PUT',
     path: '/flights/:id',
     async handler({ db, pilot, params, body }) {
-      const cur = await load(db, pilot.id, params.id);
+      const g = await flightFor(db, pilot, params.id, 'edit');
+      const ownerId = g.owner.id;
+      const cur = await load(db, ownerId, params.id);
       const { flight, version } = (await body()) as FlightUpdateRequest;
       if (!Number.isInteger(version)) throw badRequest('version is required');
       const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...base } = cur;
-      const d = await checkDoc(db, pilot.id, obj(flight, 'flight'), base, cur.aircraftId);
+      const d = await checkDoc(db, ownerId, obj(flight, 'flight'), base, cur.aircraftId);
       const now = Date.now();
       const out = await db.transaction(async (tx) => {
         const r = await tx.query(
@@ -319,12 +372,12 @@ export const routes: Route[] = [
              leg_overrides=$11::jsonb, atc=$12::jsonb, baggage_kg=$13::jsonb, options=$14::jsonb, summary=$15::jsonb,
              version = version + 1, updated = $16
            WHERE id = $1 AND pilot_id = $2 AND version = $17 RETURNING version, updated`,
-          [params.id, pilot.id, ...docParams(d), now, version],
+          [params.id, ownerId, ...docParams(d), now, version],
         );
-        if (r.length) await writeCrew(tx, pilot.id, params.id, d.crew);
+        if (r.length) await writeCrew(tx, ownerId, params.id, d.crew);
         return r;
       });
-      if (!out.length) throw new HttpError(409, 'edited elsewhere', await load(db, pilot.id, params.id));
+      if (!out.length) throw new HttpError(409, 'edited elsewhere', await view(db, g));
       return { version: Number(out[0].version), updated: Number(out[0].updated) };
     },
   },
@@ -332,6 +385,7 @@ export const routes: Route[] = [
     method: 'DELETE',
     path: '/flights/:id',
     async handler({ db, pilot, params }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const r = await db.query('UPDATE flights SET deleted = TRUE WHERE id = $1 AND pilot_id = $2 RETURNING id', [
         params.id,
         pilot.id,
@@ -344,6 +398,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/restore',
     async handler({ db, pilot, params }) {
+      await flightFor(db, pilot, params.id, 'owner');
       const r = await db.query('UPDATE flights SET deleted = FALSE WHERE id = $1 AND pilot_id = $2 RETURNING id', [
         params.id,
         pilot.id,
@@ -356,12 +411,14 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/opened',
     async handler({ db, pilot, params }) {
-      const r = await db.query('UPDATE flights SET opened = $3 WHERE id = $1 AND pilot_id = $2 RETURNING id', [
-        params.id,
-        pilot.id,
-        Date.now(),
-      ]);
-      if (!r.length) throw notFound('no such flight');
+      const g = await flightFor(db, pilot, params.id);
+      // a shared flight: when this pilot opened it (their lobby's order), not the owner's
+      await db.query(
+        g.role === 'owner'
+          ? 'UPDATE flights SET opened = $3 WHERE id = $1 AND pilot_id = $2'
+          : 'UPDATE flight_shares SET opened = $3 WHERE flight_id = $1 AND pilot_id = $2',
+        [params.id, pilot.id, Date.now()],
+      );
       return undefined;
     },
   },
@@ -369,7 +426,11 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/copy',
     async handler({ db, pilot, params, body }) {
-      const cur = await load(db, pilot.id, params.id);
+      const g = await flightFor(db, pilot, params.id);
+      const cur = await load(db, g.owner.id, params.id);
+      // a copy of a shared flight is the copier's: the owner's saved passengers stay theirs (the
+      // manifest keeps the people's details, unlinked)
+      if (g.role !== 'owner') cur.crew = cur.crew.map((c) => ({ ...c, passengerId: null }));
       const { title, date } = await body();
       const { id: _i, version: _v, created: _c, updated: _u, opened: _o, deleted: _d, ...doc } = cur;
       // "Fly again" (title '' and a date): the same trip on another day, named after its route

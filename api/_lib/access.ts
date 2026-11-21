@@ -1,12 +1,13 @@
-// Who may do what with an aircraft. The owner is aircraft.pilot_id; aircraft_shares gives other
-// pilots 'view' or 'edit' (migration 013, src/shared/sharing.ts). Every aircraft read or write in
-// the API goes through here: no access answers 404 (the aircraft does not exist for that pilot),
-// too little access answers 403.
-import type { AircraftAccess, AircraftRole, HangarAircraft } from '../../src/shared/sharing.js';
+// Who may do what with an aircraft or a flight. The owner is aircraft.pilot_id (flights.pilot_id);
+// aircraft_shares (flight_shares) gives other pilots 'view' or 'edit' (migrations 013 and 054,
+// src/shared/sharing.ts). Every aircraft and flight read or write in the API goes through here: no
+// access answers 404 (it does not exist for that pilot), too little access answers 403.
+import type { AircraftAccess, AircraftRole, FlightRole, HangarAircraft } from '../../src/shared/sharing.js';
+import type { Pilot } from '../../src/shared/types.js';
 import type { Queryable, Row } from './db.js';
 import { HttpError, notFound } from './http.js';
 import { photoJsonSql, toFile } from './routes/files.js';
-import { toAircraft } from './rows.js';
+import { toAircraft, toPilot } from './rows.js';
 
 /** SQL condition: aircraft `alias` is accessible to the pilot id in `param` (e.g. accessibleSql('a', '$2')). */
 export const accessibleSql = (alias: string, param: string) =>
@@ -64,6 +65,22 @@ export async function aircraftFor(
   return r;
 }
 
+/**
+ * A flight's aircraft as the flight's owner sees it, for a pilot the flight is shared with (role
+ * 'view' for them whatever the owner's is); null when the owner has no access to it. Only this
+ * aircraft: the owner's others stay out of reach.
+ */
+export async function flightAircraft(
+  db: Queryable,
+  ownerId: string,
+  aircraftId: string,
+): Promise<HangarAircraft | null> {
+  const [r] = await db.query(`${SELECT} AND a.id = $2`, [ownerId, aircraftId]);
+  if (!r) return null;
+  const ac = toHangarAircraft(r);
+  return { ...ac, access: { ...ac.access, role: 'view' } };
+}
+
 /** SQL select list + join for toAircraft(): the aircraft `a` with its operator's name (operator_name). */
 export const AIRCRAFT_FROM = `SELECT a.*, op.name AS operator_name FROM aircraft a LEFT JOIN operators op ON op.id = a.operator_id`;
 
@@ -74,4 +91,43 @@ export async function canUseAircraft(db: Queryable, pilotId: string, id: string)
     id,
   ]);
   return rows.length > 0;
+}
+
+// ---------------------------------------------------------------- flights
+
+/** A flight the session pilot may use, with their role and the flight's owner. */
+export interface FlightGrant {
+  id: string;
+  role: FlightRole;
+  /** The owner: rows kept per pilot for the flight (manifest, filing, NOTAMs, forms) use their id. */
+  owner: Pilot;
+}
+
+/**
+ * The session pilot's access to a flight when it is at least `need`: 404 without access (or a shared
+ * flight in its owner's trash), 403 with less than `need`.
+ */
+export async function flightFor(
+  db: Queryable,
+  pilot: Pilot,
+  id: string,
+  need: FlightRole = 'view',
+): Promise<FlightGrant> {
+  const [r] = await db.query(
+    `SELECT f.id, f.pilot_id, CASE WHEN f.pilot_id = $2 THEN 'owner' ELSE s.role END AS access_role
+     FROM flights f LEFT JOIN flight_shares s ON s.flight_id = f.id AND s.pilot_id = $2
+     WHERE f.id = $1 AND (f.pilot_id = $2 OR (s.pilot_id IS NOT NULL AND NOT f.deleted))`,
+    [id, pilot.id],
+  );
+  if (!r) throw notFound('no such flight');
+  const role = r.access_role as FlightRole;
+  if (RANK[role] < RANK[need]) {
+    throw new HttpError(
+      403,
+      need === 'owner' ? 'only the flight’s owner can do this' : 'you can view this flight but not change it',
+    );
+  }
+  if (role === 'owner') return { id: r.id, role, owner: pilot };
+  const [o] = await db.query('SELECT * FROM pilots WHERE id = $1', [r.pilot_id]);
+  return { id: r.id, role, owner: toPilot(o) };
 }

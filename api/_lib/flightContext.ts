@@ -74,6 +74,10 @@ export interface FlightContext {
 /** Default cruise speed for the time window when neither the summary nor the aircraft gives one. */
 const FALLBACK_TAS_KT = 90;
 
+/**
+ * The flight `id` of its owner `pilotId` (404 for anyone else's): callers serving a pilot the flight
+ * is shared with check that access first (access.ts flightFor) and pass the owner's id.
+ */
 export async function flightContext(db: Queryable, pilotId: string, id: string): Promise<FlightContext> {
   const [f] = await db.query(
     `SELECT f.id, f.date, f.block_off, f.taxi_out_min, f.taxi_in_min, f.route, f.leg_overrides, f.options, f.summary, a.cruise_tas_kt, a.registration

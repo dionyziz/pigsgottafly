@@ -40,11 +40,14 @@ export async function deletePilotData(q: Queryable, pilotId: string): Promise<vo
   if (legacy?.ok) await q.query('DELETE FROM legacy_flights WHERE owner = $1', [pilotId]);
   // the notices of shares other pilots made with this one keep counting for them, without the address
   const [me] = await q.query('SELECT email FROM pilots WHERE id = $1', [pilotId]);
-  if (me?.email)
+  if (me?.email) {
     await q.query(
       `UPDATE mail_log SET recipient = 'deleted account' WHERE form = ANY($1::text[]) AND lower(recipient) = lower($2)`,
       [SHARE_FORMS, me.email],
     );
+    // flights shared with the address and not claimed yet
+    await q.query('DELETE FROM flight_invites WHERE email = lower($1)', [me.email]);
+  }
   await q.query('DELETE FROM pilots WHERE id = $1', [pilotId]);
 }
 
@@ -94,6 +97,20 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
   const waypoints = await q.query('SELECT * FROM waypoints WHERE pilot_id = $1 ORDER BY name', [pilotId]);
   const flights = await q.query('SELECT * FROM flights WHERE pilot_id = $1 ORDER BY date, created', [pilotId]);
   const crew = await q.query('SELECT * FROM flight_crew WHERE pilot_id = $1', [pilotId]);
+  const flightGranted = await q.query(
+    `SELECT s.flight_id, s.role, s.created, g.email, g.full_name, g.name, FALSE AS pending FROM flight_shares s
+       JOIN flights f ON f.id = s.flight_id JOIN pilots g ON g.id = s.pilot_id WHERE f.pilot_id = $1
+     UNION ALL
+     SELECT i.flight_id, i.role, i.created, i.email, '', '', TRUE FROM flight_invites i
+       JOIN flights f ON f.id = i.flight_id WHERE f.pilot_id = $1
+     ORDER BY 3`,
+    [pilotId],
+  );
+  const flightReceived = await q.query(
+    `SELECT s.flight_id, s.role, s.created, f.title, f.summary->>'title' AS auto_title, o.email AS owner_email FROM flight_shares s
+     JOIN flights f ON f.id = s.flight_id JOIN pilots o ON o.id = f.pilot_id WHERE s.pilot_id = $1 ORDER BY s.created`,
+    [pilotId],
+  );
   const all = (sql: string) => q.query(sql, [pilotId]);
   const [links, signatures, submissions, briefings, filings, filingLog, mailLog] = await Promise.all([
     all(
@@ -161,7 +178,25 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     })),
     passengers: passengers.map(toPassenger),
     waypoints: waypoints.map(toWaypoint),
-    flights: flights.map((f) => toFlight(f, crewOf(f.id))),
+    flights: flights.map((f) => ({
+      ...toFlight(f, crewOf(f.id)),
+      sharedWith: flightGranted
+        .filter((s) => s.flight_id === f.id)
+        .map((s) => ({
+          email: s.email,
+          name: s.full_name || s.name,
+          role: s.role,
+          created: num(s.created),
+          ...(s.pending ? { pending: true } : {}),
+        })),
+    })),
+    flightsSharedWithMe: flightReceived.map((s) => ({
+      flightId: s.flight_id,
+      title: s.title || s.auto_title || '',
+      owner: s.owner_email,
+      role: s.role,
+      created: num(s.created),
+    })),
     forms: {
       signingLinks: links.map((l) => ({
         flightId: l.flight_id,

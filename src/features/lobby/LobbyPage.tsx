@@ -2,12 +2,16 @@
 // first) then past ones (most recent first); each row has a route sketch, title, date, block start,
 // aircraft and totals, and a ⋮ menu: Open in new tab, Rename, Make a copy, Move to trash (with
 // Undo). A Trash view lists trashed flights with Restore. The header (h1, tabs, New flight) keeps
-// its layout in both views.
+// its layout in both views. Flights other pilots shared with this one are in their own "Shared with
+// me" group (never in the trash), with who shared them; their ⋮ menu: Open, Fly again (a copy of
+// one's own) and Leave (removes one's own access).
 import './lists.css';
+import '../hangar/share.css';
 
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
+import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
 import { api, ApiRequestError } from '../../data/api';
@@ -26,7 +30,7 @@ const titleOf = (r: FlightListItem) => r.summary.title || 'Untitled flight';
 async function renameFlight(id: string, title: string): Promise<void> {
   for (let attempt = 0; ; attempt++) {
     const f: Flight = await api.flights.get(id);
-    const { id: _i, version, created: _c, updated: _u, opened: _o, deleted: _d, ...doc } = f;
+    const { id: _i, version, created: _c, updated: _u, opened: _o, deleted: _d, access: _a, ...doc } = f;
     const auto = autoTitle(doc);
     // typing back exactly the automatic name keeps the title automatic (it follows route edits)
     const stored = title === auto ? '' : title;
@@ -56,10 +60,13 @@ export function LobbyPage() {
   const [renaming, setRenaming] = useState<FlightListItem | null>(null);
   const navigate = useNavigate();
   const toast = useToast();
+  const { pilot } = useSession();
   const today = localToday();
 
   const rows = useMemo(() => (data || []).filter((r) => matchesQuery(flightSearchText(r), q)), [data, q]);
-  const { upcoming, past } = useMemo(() => splitFlights(rows, today), [rows, today]);
+  const own = useMemo(() => rows.filter((r) => !r.sharedBy), [rows]);
+  const shared = useMemo(() => rows.filter((r) => r.sharedBy), [rows]);
+  const { upcoming, past } = useMemo(() => splitFlights(own, today), [own, today]);
 
   const fail = useCallback((what: string) => (e: unknown) => toast(`${what}: ${errorMessage(e)}`), [toast]);
 
@@ -109,6 +116,17 @@ export function LobbyPage() {
       fail('Could not copy')(e);
     }
   };
+  // a flight shared with this pilot: their own access ends (the owner can share it again)
+  const leave = async (r: FlightListItem) => {
+    setData((d) => d?.filter((x) => x.id !== r.id));
+    try {
+      await api.flightShares.remove(r.id, pilot.id);
+      toast(`You left “${titleOf(r)}”`);
+    } catch (e) {
+      fail('Could not leave the flight')(e);
+    }
+    await reload();
+  };
   const openNewTab = (r: FlightListItem) => window.open(`/flights/${r.id}`, '_blank', 'noopener');
 
   const onRowClick = (r: FlightListItem) =>
@@ -128,13 +146,19 @@ export function LobbyPage() {
     const pax = passengerNames(r);
     const items = trashView
       ? [{ label: 'Restore', onSelect: () => void restore(r) }]
-      : [
-          { label: 'Fly again', onSelect: () => void flyAgain(r) },
-          { label: 'Open in new tab', onSelect: () => openNewTab(r), separator: true },
-          { label: 'Rename', onSelect: () => setRenaming(r), separator: true },
-          { label: 'Make a copy', onSelect: () => void copy(r) },
-          { label: 'Move to trash', onSelect: () => void trash(r), danger: true, separator: true },
-        ];
+      : r.sharedBy
+        ? [
+            { label: 'Open', onSelect: () => void navigate(`/flights/${r.id}`) },
+            { label: 'Fly again', onSelect: () => void flyAgain(r) },
+            { label: 'Leave', onSelect: () => void leave(r), danger: true, separator: true },
+          ]
+        : [
+            { label: 'Fly again', onSelect: () => void flyAgain(r) },
+            { label: 'Open in new tab', onSelect: () => openNewTab(r), separator: true },
+            { label: 'Rename', onSelect: () => setRenaming(r), separator: true },
+            { label: 'Make a copy', onSelect: () => void copy(r) },
+            { label: 'Move to trash', onSelect: () => void trash(r), danger: true, separator: true },
+          ];
     return (
       <div
         key={r.id}
@@ -154,6 +178,19 @@ export function LobbyPage() {
           )}
           <div className="sub">
             {[route, s.aircraft].filter(Boolean).join(' · ') || 'No route yet'}
+            {r.sharedBy && (
+              <>
+                {' '}
+                <Chip
+                  sm
+                  className="share-chip"
+                  testId="flight-shared-by"
+                  title={`Shared with you by ${r.sharedBy.name || r.sharedBy.email}${r.sharedBy.name ? ` (${r.sharedBy.email})` : ''}`}
+                >
+                  {r.role === 'edit' ? 'Can edit' : 'View only'} · {r.sharedBy.name || r.sharedBy.email}
+                </Chip>
+              </>
+            )}
             {r.filingStatus && (
               <>
                 {' '}
@@ -293,6 +330,7 @@ export function LobbyPage() {
               <>
                 {section('Upcoming', upcoming)}
                 {section('Past', past)}
+                {section('Shared with me', shared)}
               </>
             )}
           </div>

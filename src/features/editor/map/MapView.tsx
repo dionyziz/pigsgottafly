@@ -34,6 +34,7 @@ export function MapView() {
     altitudesFt,
     pilot,
     reloadLists,
+    readOnly,
   } = useEditor();
 
   const { hazards, aerodromeChecks, adEffects } = useFlightCalc();
@@ -168,6 +169,7 @@ export function MapView() {
       requests={requests}
       onRequest={onRequest}
       aerodromeInfo={aerodromeInfo}
+      readOnly={readOnly}
     />
   );
 }

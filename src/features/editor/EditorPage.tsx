@@ -2,12 +2,13 @@
 // Layout slots: <MapView/> (./map), <FlightPanel/> and <NavlogStrip/> (./panels).
 // This page loads the flight, shows the editable title and save state, and wires undo/redo.
 // Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job,
-// driven by EditorProvider.update().
+// driven by EditorProvider.update(). Share opens the flight's sharing dialog; a flight shared with
+// the pilot as a viewer opens read-only, with a "View only" chip naming who shared it.
 import './editor.css';
 import './panels/panels.css';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
@@ -20,6 +21,7 @@ import { autoTitle, type Flight, type FlightDoc } from '../../shared';
 import { FILING_STATUS_LABEL } from '../../shared/briefing';
 import { fmtClockMs } from '../../shared/format';
 import { Chip, Icon, Loading } from '../../ui';
+import { ShareDialog } from '../hangar/ShareDialog';
 import { focusSection, onEditorFocus } from './focus';
 import { LegHoverProvider } from './legHover';
 import { MapView } from './map';
@@ -81,11 +83,57 @@ function SaveState() {
   );
 }
 
+/** "View only · shared by Olga" on a flight shared with the pilot as a viewer; "Shared by Olga" for an editor. */
+function SharedFlightChip() {
+  const { flight } = useEditor();
+  const a = flight.access;
+  if (!a) return null;
+  const by = a.owner.name || a.owner.email;
+  return (
+    <Chip
+      className="share-chip"
+      title={`Shared with you by ${by}${a.owner.email && a.owner.name ? ` (${a.owner.email})` : ''}${a.role === 'view' ? ': you can view it, not change it' : ''}`}
+      testId="view-only-chip"
+    >
+      {a.role === 'view' ? `View only · shared by ${by}` : `Shared by ${by}`}
+    </Chip>
+  );
+}
+
+/** Share: who has access to the flight (owner, editors and viewers add people by e-mail). */
+function ShareButton() {
+  const { flight } = useEditor();
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  return (
+    <>
+      <button type="button" className="sm" onClick={() => setOpen(true)} data-testid="share-flight">
+        Share
+      </button>
+      {open && (
+        <ShareDialog
+          kind="flight"
+          id={flight.id}
+          name={flight.title.trim() || autoTitle(flight)}
+          onClose={() => setOpen(false)}
+          onLeft={() => void navigate('/')}
+        />
+      )}
+    </>
+  );
+}
+
 /** The title: shown as text, edited in place on click. Empty = automatic (from the route). */
 function Title() {
-  const { doc, update } = useEditor();
+  const { doc, update, readOnly } = useEditor();
   const [editing, setEditing] = useState(false);
   const auto = autoTitle(doc);
+  if (readOnly)
+    return (
+      <span className="editor-title" data-testid="flight-title">
+        {doc.title.trim() || auto}
+      </span>
+    );
   if (!editing) {
     return (
       <button
@@ -123,7 +171,8 @@ function Title() {
 }
 
 function UndoRedo() {
-  const { undo, redo, canUndo, canRedo } = useEditor();
+  const { undo, redo, canUndo, canRedo, readOnly } = useEditor();
+  if (readOnly) return null;
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const mod = mac ? '⌘' : 'Ctrl+';
   return (
@@ -212,7 +261,8 @@ export function EditorPage() {
             ? 'missing'
             : !cur || cur === 'missing' || (cur.flight.version !== r.flight.version && !flightStore.hasUnsent(id))
               ? r
-              : cur,
+              : // this device's copy stays, with the access the server gives now (a role may have changed)
+                { ...cur, flight: { ...cur.flight, access: r.flight.access } },
         ),
       (e) => {
         if (quick) return; // offline: this device's copy stays open
@@ -270,9 +320,11 @@ export function EditorPage() {
                 </Link>
                 <Title />
                 <SaveState />
+                <SharedFlightChip />
                 <FilingChip />
                 <span className="spacer" />
                 <UndoRedo />
+                <ShareButton />
                 <AccountMenu />
               </header>
               <div className="editor-body">

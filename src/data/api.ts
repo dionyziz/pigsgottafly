@@ -19,6 +19,7 @@ import type {
   FlightCreateRequest,
   FlightDoc,
   FlightListItem,
+  FlightSharing,
   FlightUpdateResponse,
   HangarAircraft,
   LoginResponse,
@@ -265,6 +266,8 @@ export const api = {
     ),
     opened: (id: string) => request<null>('POST', `flights/${encodeURIComponent(id)}/opened`),
   },
+  /** Who has access to a flight, invites included (src/shared/sharing.ts); removing yourself is "Leave". */
+  flightShares: sharesOf<FlightSharing>('flights', ['flights'], []),
 
   ref: {
     airac: () => request<RefAirac>('GET', 'ref/airac'),

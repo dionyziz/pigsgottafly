@@ -13,6 +13,7 @@ import type {
   RefVfrPoint,
   RefVfrRoute,
 } from './ref.js';
+import type { ShareRole } from './sharing.js';
 import type {
   Aircraft,
   AircraftInput,
@@ -89,7 +90,10 @@ export type WaypointUpdateRequest = Partial<WaypointInput>;
 
 // ---- flights ---------------------------------------------------------------------------------
 
-/** GET /api/flights (?trash=1 for the trash) → FlightListItem[], most recently updated/opened first. */
+/**
+ * GET /api/flights (?trash=1 for the trash) → FlightListItem[], most recently updated/opened first.
+ * Without ?trash=1 it also lists the flights shared with the pilot (sharedBy, role; never in the trash).
+ */
 export interface FlightListItem {
   id: Id;
   summary: FlightSummary;
@@ -106,6 +110,10 @@ export interface FlightListItem {
   deleted: boolean;
   /** The flight plan's filing status (autorouter), null when never filed. */
   filingStatus: FilingStatus | null;
+  /** A flight another pilot shared with the session pilot: its owner (absent on their own flights). */
+  sharedBy?: { pilotId: Id; name: string; email: string };
+  /** The session pilot's role on a shared flight (with sharedBy). */
+  role?: ShareRole;
 }
 
 /**

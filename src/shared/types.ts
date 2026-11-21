@@ -11,6 +11,7 @@
 // imports these files too.
 
 import type { MapLayers } from './mapLayers.js';
+import type { FlightAccess } from './sharing.js';
 
 export type Id = string;
 /** 'YYYY-MM-DD' */
@@ -653,4 +654,6 @@ export interface Flight extends FlightDoc {
   opened: EpochMs;
   /** In the trash. */
   deleted: boolean;
+  /** A flight shared with the session pilot: their role, its owner and its aircraft (absent on their own). */
+  access?: FlightAccess;
 }

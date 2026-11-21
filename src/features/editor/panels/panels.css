@@ -284,3 +284,11 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .rd-row.is-danger .rd-text { color: var(--danger); }
 .rd-act { font-size: var(--fs-xs); white-space: nowrap; }
 .ep-print-navlog { margin-bottom: var(--s3); align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+
+/* a flight shared as a viewer: the sections' controls are disabled (Section, ui.tsx) */
+fieldset.ep-readonly {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
