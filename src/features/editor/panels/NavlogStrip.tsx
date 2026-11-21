@@ -7,6 +7,7 @@ import { Fragment, type KeyboardEvent, type MouseEvent, useEffect, useState } fr
 import { Link } from 'react-router';
 
 import { AipRefText } from '../../../app/AipLink';
+import { FlowLink } from '../../../app/FlowLinks';
 import { fmtAltitude, fmtHdg } from '../../../calc';
 import { flightStore } from '../../../data/flightStore';
 import type { RouteWeather } from '../../../data/weather';
@@ -77,9 +78,9 @@ function WarningFix({ text, aircraftId }: { text: string; aircraftId: string | n
   const f = editorWarningFix(text, aircraftId);
   if (!f) return null;
   return 'to' in f ? (
-    <Link to={f.to} className="warning-fix" data-testid="warning-fix">
+    <FlowLink to={f.to} className="warning-fix" data-testid="warning-fix">
       {f.label} →
-    </Link>
+    </FlowLink>
   ) : (
     <button type="button" className="linkish warning-fix" data-testid="warning-fix" onClick={f.onFix}>
       {f.label} →

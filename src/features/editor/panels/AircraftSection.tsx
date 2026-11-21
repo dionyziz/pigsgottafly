@@ -1,8 +1,7 @@
 // Aircraft: pick one from the hangar; shows the planning figures and the compass card in use. On a
 // flight shared with the pilot the aircraft is its owner's choice (from the owner's hangar): shown,
 // not changed here.
-import { Link } from 'react-router';
-
+import { FlowLink } from '../../../app/FlowLinks';
 import { pickCompassCard } from '../../../calc';
 import {
   type Aircraft,
@@ -78,7 +77,7 @@ export function AircraftSection() {
     >
       {hangar.length === 0 ? (
         <p className="ep-note" data-focus="aircraft">
-          Hangar empty. <Link to="/hangar">Add an aircraft</Link>
+          Hangar empty. <FlowLink to="/hangar">Add an aircraft</FlowLink>
         </p>
       ) : (
         <select
@@ -158,9 +157,9 @@ export function AircraftSection() {
           ) : card && expiredOn(card.expires) ? (
             <KV k="Compass card" tone="danger" v={card.name} sub={`expired ${card.expires}`} />
           ) : null}
-          <Link to={`/hangar/${aircraft.id}`} className="ep-link">
+          <FlowLink to={`/hangar/${aircraft.id}`} className="ep-link">
             {aircraft.registration} in the hangar
-          </Link>
+          </FlowLink>
         </>
       )}
     </Section>

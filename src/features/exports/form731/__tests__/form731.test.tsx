@@ -1,5 +1,7 @@
 // Form 731: field contents, manifest order, pagination, warnings, and the rendered sheet.
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { Form731, form731Model } from '..';
@@ -96,9 +98,12 @@ describe('route places', () => {
   });
 });
 
+// the warnings' fix links need a router
+const markup = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
+
 describe('form 731 sheet', () => {
   it('renders one landscape sheet with the values in their fields and six numbered rows', () => {
-    const html = renderToStaticMarkup(<Form731 flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    const html = markup(<Form731 flight={flight()} aircraft={aircraft} pilot={pilot} />);
     expect(html.match(/class="pgf-sheet f731-sheet"/g)).toHaveLength(1);
     expect(html).toContain('OFFICIAL STATEMENT OF PERSONS BOARDING PRIVATE AIRCRAFTS');
     expect(html).toMatch(/data-field="registration"><span class="pgf-fill">SX-ABC</);

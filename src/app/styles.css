@@ -143,6 +143,8 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 .page { max-width: 1040px; margin: 0 auto; padding: var(--s5) var(--s4) var(--s7); }
 .topbar-mid { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: var(--s2); }
 @media (max-width: 600px) { .topbar:has(.searchbox) .brand span { display: none; } }
+/* "← Back to Form 731": the page was opened from a flight to fix something (src/app/back.ts) */
+.flow-back { display: inline-flex; align-items: center; gap: var(--s1); margin-bottom: var(--s3); font-weight: 600; }
 .page-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-bottom: var(--s4); }
 .center-screen { min-height: 100%; display: grid; place-items: center; padding: var(--s5); }
 .loading-screen { min-height: 100%; display: grid; place-items: center; color: var(--muted); }

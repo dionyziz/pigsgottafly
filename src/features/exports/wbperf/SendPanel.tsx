@@ -7,8 +7,8 @@
 import '../form731/forms.css';
 
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
 
+import { FlowLink } from '../../../app/FlowLinks';
 import { api, ApiRequestError } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { type WbPerfContent, wbPerfText } from '../../../shared';
@@ -97,7 +97,9 @@ export function OperatorSendPanel({ flightId, content }: { flightId: string; con
     >
       <div className="pgf-note">
         W&amp;B and performance sheets to{' '}
-        {op.declarationsEmail || <Link to={`/operators/${op.id}?focus=declarationsEmail`}>set the address</Link>}
+        {op.declarationsEmail || (
+          <FlowLink to={`/operators/${op.id}?focus=declarationsEmail`}>set the address</FlowLink>
+        )}
       </div>
       {sub && (
         <div className="pgf-note" data-testid="operator-send-sent">

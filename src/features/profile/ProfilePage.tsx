@@ -12,6 +12,7 @@ import '../lobby/lists.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
+import { BACK_PARAM, safePath } from '../../app/back';
 import { useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
@@ -166,9 +167,10 @@ export function toUpdate(f: ProfileForm, welcome: boolean): PilotUpdate {
   return profileUpdate(f, welcome);
 }
 
-/** An in-app path to go on to after the first-use form (?next=), else '/'. */
+/** An in-app path to go on to after the first-use form (?next=, else ?back=), else '/'. */
 export function nextPath(next: string | null): string {
-  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/profile') ? next : '/';
+  const p = safePath(next);
+  return p && !p.startsWith('/profile') ? p : '/';
 }
 
 export function ProfilePage() {
@@ -252,7 +254,7 @@ export function ProfilePage() {
       const p = await api.me.update(profileUpdate(f, true));
       setError(null);
       if (!profileMissing(p).length) {
-        void navigate(nextPath(params.get('next')), { replace: true });
+        void navigate(nextPath(params.get('next') ?? params.get(BACK_PARAM)), { replace: true });
         if (hangar && hangar.length === 0)
           toast('Welcome aboard. Add your aircraft next.', {
             label: 'Open hangar',

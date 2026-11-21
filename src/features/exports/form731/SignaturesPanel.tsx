@@ -10,8 +10,8 @@
 //     reply-to the pilot); sent time, and "Re-send" after changes.
 // The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router';
 
+import { FlowLink } from '../../../app/FlowLinks';
 import { api, ApiRequestError } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
 import { fmtLocalClock, fmtLocalDayTime } from '../../../shared/format';
@@ -28,8 +28,12 @@ const errText = (e: unknown) =>
 
 export function useFormsState(flightId: string) {
   // kept for the session (coming back shows it at once); refetched when the page regains focus,
-  // since signatures arrive while it is open
-  const q = useAsync(() => api.forms.get(flightId), [flightId], { cache: `forms:${flightId}`, refetchOnFocus: true });
+  // since signatures arrive while it is open, and when a passenger changes (an e-mail added)
+  const q = useAsync(() => api.forms.get(flightId), [flightId], {
+    cache: `forms:${flightId}`,
+    refetchOnFocus: true,
+    invalidatedBy: 'passengers',
+  });
   const [actionErr, setErr] = useState<string | null>(null);
   const err = actionErr ?? (q.error && !q.data ? errText(q.error) : null);
   const { reload } = q;
@@ -237,13 +241,13 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
                 </button>
               )}
               {s.role === 'PAX' && !s.email && !s.key.startsWith('seat:') && (
-                <Link
+                <FlowLink
                   className="btn ghost"
                   to={`/passengers?edit=${encodeURIComponent(s.key)}&fields=email`}
                   data-testid="f731-add-email"
                 >
                   Add e-mail
-                </Link>
+                </FlowLink>
               )}
               {token && (
                 <span className="pgf-link">

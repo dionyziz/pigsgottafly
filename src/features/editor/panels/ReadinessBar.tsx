@@ -7,8 +7,9 @@
 // or tomorrow (the morning-of check), else on Plan. A focus request (a warning's Fix, a deep link) or a
 // NOTAM picked on the map switches to the stage holding it.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 
+import { FlowLink } from '../../../app/FlowLinks';
 import { focusParam } from '../../../app/focusParam';
 import { api } from '../../../data/api';
 import { flightStore } from '../../../data/flightStore';
@@ -177,14 +178,14 @@ function Row({ item, onMarkRead }: { item: ReadyItem; onMarkRead: () => void }) 
           Mark read
         </button>
       ) : item.link ? (
-        <Link className="rd-act" to={item.link.to}>
+        <FlowLink className="rd-act" to={item.link.to}>
           {item.link.label} →
-        </Link>
+        </FlowLink>
       ) : fix ? (
         'to' in fix ? (
-          <a className="rd-act" href={fix.to}>
+          <FlowLink className="rd-act" to={fix.to}>
             {fix.label} →
-          </a>
+          </FlowLink>
         ) : (
           <button type="button" className="linkish rd-act" onClick={fix.onFix}>
             {fix.label} →

@@ -492,10 +492,10 @@ test('Form 731 e-mailed to each passenger from the export', async () => {
 
   await page.goto(`${server.url}/flights/${f.id}/export/form731`);
   await page.waitFor(() => document.querySelectorAll('[data-testid=f731-email]').length === 2);
-  // the one without an address links to adding it
+  // the one without an address links to adding it, and back to the form
   assert.equal(
     await page.eval(() => document.querySelector('[data-testid=f731-add-email]')?.getAttribute('href')),
-    `/passengers?edit=${cy.id}&fields=email`,
+    `/passengers?edit=${cy.id}&fields=email&back=${encodeURIComponent(`/flights/${f.id}/export/form731`)}`,
   );
   // one passenger
   await page.click('[data-testid=f731-email]');
@@ -520,6 +520,108 @@ test('Form 731 e-mailed to each passenger from the export', async () => {
   assert.deepEqual(
     sent.slice(1).map((m) => m.to[0]),
     ['ana@example.com', 'bo@example.com'],
+  );
+  assert.deepEqual(page.errors, []);
+});
+
+test('"Add e-mail" on Form 731 opens the passenger at the e-mail; Done comes back to the form', async () => {
+  const di = await api('POST', 'passengers', {
+    fullName: 'Di Noemail',
+    phone: '+30 690 000 0002',
+    dateOfBirth: null,
+    weightKg: 70,
+    idNumber: 'DN4',
+    idType: 'ID',
+    nationality: 'GR',
+    relation: '',
+  });
+  const ad = (icao, uid, lat, lon) => ({ uid, kind: 'aerodrome', refId: icao, name: icao, lat, lon });
+  const f = await api('POST', 'flights', {
+    date: iso(new Date(Date.now() + 86400e3)),
+    blockOff: '08:00',
+    route: [ad('LGTT', 'a', 38.109, 23.784), ad('LGMG', 'b', 37.981, 23.365)],
+    crew: [
+      { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: { fullName: '', idNumber: '' } },
+      { role: 'PAX', passengerId: di.id, seat: 'front-right', snapshot: { fullName: di.fullName, idNumber: 'DN4' } },
+    ],
+  });
+  const form = `/flights/${f.id}/export/form731`;
+  await page.goto(server.url + form);
+  await page.waitFor(() => !!document.querySelector('[data-testid=f731-add-email]'));
+  assert.equal(await page.eval(() => document.querySelectorAll('[data-testid=f731-email]').length), 0);
+  await page.click('[data-testid=f731-add-email]');
+  await page.waitFor(
+    () => !!document.querySelector('[data-testid=passenger-dialog]') && document.activeElement?.name === 'email',
+  );
+  assert.equal(await page.eval(() => location.pathname), '/passengers');
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=flow-back]')?.textContent),
+    'Back to Form 731',
+  );
+  await page.type('[data-testid=passenger-dialog] input[name=email]', 'di@example.com');
+  await page.click('[data-testid=dialog-done]');
+  // back on the form, where the passenger can now be e-mailed
+  await page.waitFor(
+    (p) =>
+      location.pathname === p &&
+      !!document.querySelector('[data-testid=f731-email]') &&
+      !document.querySelector('[data-testid=f731-add-email]'),
+    { args: [form] },
+  );
+  assert.equal(await page.eval(() => location.search), '');
+  assert.equal((await api('GET', 'passengers')).find((p) => p.id === di.id).email, 'di@example.com');
+
+  // Escape on the dialog comes back too
+  await page.goto(`${server.url}/passengers?edit=${di.id}&fields=phone&back=${encodeURIComponent(form)}`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=passenger-dialog]'));
+  await page.key('Escape');
+  await page.waitFor((p) => location.pathname === p, { args: [form] });
+  // never off the site
+  await page.goto(`${server.url}/passengers?back=${encodeURIComponent('//evil.example/')}`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=passenger-list]'));
+  assert.equal(await page.eval(() => !!document.querySelector('[data-testid=flow-back]')), false);
+  assert.deepEqual(page.errors, []);
+});
+
+test("the flight's fix links (Ready to fly, the aircraft) show the way back and return", async () => {
+  const ac = await api('POST', 'aircraft', { registration: 'SX-BAK' });
+  const ad = (icao, uid, lat, lon) => ({ uid, kind: 'aerodrome', refId: icao, name: icao, lat, lon });
+  const f = await api('POST', 'flights', {
+    date: iso(new Date(Date.now() + 5 * 86400e3)),
+    blockOff: '08:00',
+    aircraftId: ac.id,
+    route: [ad('LGTT', 'a', 38.109, 23.784), ad('LGMG', 'b', 37.981, 23.365)],
+  });
+  const flight = `/flights/${f.id}`;
+  await page.goto(server.url + flight);
+  await page.waitFor(() => !!document.querySelector('[data-testid=stage-plan]'), { timeout: 15000 });
+  await page.click('[data-testid=stage-plan]');
+  // the aircraft lacks its speeds and burn rate: the Aircraft row's fix opens it in the hangar
+  const fix = '[data-testid=ready-item][data-id=aircraft] a.rd-act';
+  await page.waitFor((s) => !!document.querySelector(s), { args: [fix], timeout: 15000 });
+  assert.match(
+    await page.eval((s) => document.querySelector(s).getAttribute('href'), fix),
+    new RegExp(`^/hangar/${ac.id}\\?focus=\\w+&back=${encodeURIComponent(flight)}$`),
+  );
+  await page.click(fix);
+  await page.waitFor(() => !!document.querySelector('[data-testid=aircraft-page]'));
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=flow-back]')?.textContent),
+    'Back to the flight',
+  );
+  await page.click('[data-testid=flow-back]');
+  await page.waitFor((p) => location.pathname === p && !!document.querySelector('[data-testid=readiness]'), {
+    args: [flight],
+  });
+  // the Aircraft section's link to the hangar, and the manifest's to the passengers, do the same
+  await page.waitFor(() => !!document.querySelector('a.ep-link[href^="/hangar/"]'), { timeout: 15000 });
+  assert.equal(
+    await page.eval(() => document.querySelector('a.ep-link[href^="/hangar/"]').getAttribute('href')),
+    `/hangar/${ac.id}?back=${encodeURIComponent(flight)}`,
+  );
+  assert.equal(
+    await page.eval(() => document.querySelector('a.ep-link[href^="/passengers"]')?.getAttribute('href')),
+    `/passengers?back=${encodeURIComponent(flight)}`,
   );
   assert.deepEqual(page.errors, []);
 });

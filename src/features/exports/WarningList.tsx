@@ -1,9 +1,10 @@
 // The warnings box of the export pages (screen only): the shared WarningList (src/ui) in one warn
 // (or danger) box, each warning with a link to where it is fixed (the flight editor with the input
-// focused, the hangar, the profile, the passenger dialog: fix.ts).
+// focused, the hangar, the profile, the passenger dialog: fix.ts); those elsewhere come back here (back.ts).
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router';
 
+import { useWithBack } from '../../app/back';
 import { type WarningLevel, WarningList } from '../../ui';
 import { type Fix, type FixContext, fixLink, planningFix } from './fix';
 
@@ -42,6 +43,7 @@ export function ExportWarnings({
   testId?: string;
 }) {
   const { id } = useParams();
+  const withBack = useWithBack();
   if (!warnings.length) return null;
   const ctx: FixContext = { flightId: id, aircraftId };
   const entries: Entry[] = warnings.map((w) => {
@@ -56,7 +58,13 @@ export function ExportWarnings({
       data-testid={testId}
     >
       {title && <strong className="export-warnings-title">{title}</strong>}
-      <WarningList warnings={entries} fix={(e) => (e.fix ? fixLink(e.fix, ctx) : null)} />
+      <WarningList
+        warnings={entries}
+        fix={(e) => {
+          const l = e.fix ? fixLink(e.fix, ctx) : null;
+          return l && { ...l, to: withBack(l.to) };
+        }}
+      />
     </div>
   );
 }

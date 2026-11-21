@@ -40,7 +40,7 @@ describe('ExportWarnings', () => {
     expect(html).toContain('data-testid="w"');
     expect(html).toContain('<strong class="export-warnings-title">Check</strong>');
     expect(html).toContain('href="/flights/f1?focus=blockOff"');
-    expect(html).toContain('href="/hangar/ac1?focus=colours"');
+    expect(html).toContain('href="/hangar/ac1?focus=colours&amp;back=%2Fflights%2Ff1%2Fexport%2Fnavlog"');
     expect(html.match(/data-testid="warning-fix"/g)).toHaveLength(2);
 
     const plain = at(<ExportWarnings warnings={['Block start time not set.']} classify={false} level="danger" />);
