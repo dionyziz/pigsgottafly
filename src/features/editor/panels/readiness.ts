@@ -30,9 +30,7 @@ export const SECTION_STAGE: Record<string, Stage> = {
   aerodromes: 'brief',
   performance: 'brief',
   atc: 'brief',
-  fpl: 'file',
-  filing: 'file',
-  documents: 'file',
+  fpl: 'plan',
 };
 
 export type ItemState = 'ok' | 'warn' | 'danger' | 'todo';
@@ -167,9 +165,23 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
           ? { state: 'ok', text: `${n} relevant, read.` }
           : { state: 'todo', text: `${n} relevant to read.` }),
   });
-  // ---- file
+  items.push(...paperwork(i));
+  return items;
+}
+
+/** The forms of a flight, as the File & forms page shows them: which document each is (its tab). */
+export const PAPERWORK_KIND: Record<string, 'fpl' | 'form731' | 'gendec' | 'wbperf'> = {
+  filing: 'fpl',
+  form731: 'form731',
+  gendec: 'gendec',
+  operator: 'wbperf',
+};
+
+/** The File & forms stage's items: the flight plan, Form 731, the GenDec and the operator's sheets. */
+export function paperwork(i: Pick<ReadinessInput, 'filing' | 'forms' | 'declarations'>): ReadyItem[] {
+  const out: ReadyItem[] = [];
   const f = i.filing?.filing ?? null;
-  items.push({
+  out.push({
     id: 'filing',
     stage: 'file',
     label: 'Flight plan',
@@ -187,7 +199,7 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
   if (f731) {
     const missing = f731.signatures.filter((s) => !s.signed).length;
     const sent = f731.submission && !f731.submission.changed;
-    items.push({
+    out.push({
       id: 'form731',
       stage: 'file',
       label: 'Form 731',
@@ -204,7 +216,7 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
   }
   const g = i.forms?.gendec;
   if (g?.pilotSends)
-    items.push({
+    out.push({
       id: 'gendec',
       stage: 'file',
       label: 'General Declaration',
@@ -218,7 +230,7 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
     });
   const op = i.declarations?.operator;
   if (op?.requiresWbPerf)
-    items.push({
+    out.push({
       id: 'operator',
       stage: 'file',
       label: `${op.name}: W&B and performance`,
@@ -226,7 +238,7 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
       warning: null,
       ...(i.declarations?.submission ? { state: 'ok', text: 'Sent.' } : { state: 'todo', text: 'Not sent yet.' }),
     });
-  return items;
+  return out;
 }
 
 /** The state of a whole stage (its worst item) and how many of its items need attention. */

@@ -1,15 +1,17 @@
-// The top of the flight panel: "Ready to fly" (readiness.ts) and the three stages the panel is split
-// into: Plan, Brief, File & forms. Each stage tab shows its state; under it, the stage's checklist
-// rows (each opens its section, or fixes the problem), then the stage's sections (FlightPanel).
+// The top of the flight panel: "Ready to fly" (readiness.ts) and the stages: Plan and Brief in the
+// panel, File & forms on its own page without the map (the exports: flight plan and filing, the forms).
+// Each stage tab shows its state; under it, the stage's checklist rows (each opens its section, or
+// fixes the problem), then the stage's sections (FlightPanel).
 //
 // The stage is remembered per flight in this tab. A new visit opens on Brief when the flight is today
 // or tomorrow (the morning-of check), else on Plan. A focus request (a warning's Fix, a deep link) or a
 // NOTAM picked on the map switches to the stage holding it.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { focusParam } from '../../../app/focusParam';
 import { api } from '../../../data/api';
+import { flightStore } from '../../../data/flightStore';
 import { useAsync } from '../../../data/useAsync';
 import { Icon } from '../../../ui';
 import { planningFix } from '../../exports/fix';
@@ -127,7 +129,7 @@ export function useStage(): [Stage, (s: Stage) => void] {
     if (linked) return linked;
     try {
       const s = sessionStorage.getItem(stageKey(flight.id));
-      if (s && (STAGES as readonly string[]).includes(s)) return s as Stage;
+      if (s === 'plan' || s === 'brief') return s;
     } catch {
       /* no storage: the default */
     }
@@ -198,6 +200,12 @@ function Row({ item, onMarkRead }: { item: ReadyItem; onMarkRead: () => void }) 
 
 export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: Stage) => void }) {
   const { items, markNotamsRead } = useReadiness();
+  const { flight } = useEditor();
+  const navigate = useNavigate();
+  const openForms = () => {
+    void flightStore.flushNow(); // the page loads the saved flight
+    void navigate(`/flights/${flight.id}/export/fpl`);
+  };
   const open = items.filter((x) => x.state !== 'ok').length;
   const worst = STAGES.map((s) => stageSummary(items, s).state);
   const danger = worst.includes('danger');
@@ -235,7 +243,8 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
                 role="tab"
                 aria-selected={s === stage}
                 className={'rd-tab is-' + sum.state}
-                onClick={() => onStage(s)}
+                // File & forms is its own page, without the map (the flight plan, filing and the forms)
+                onClick={() => (s === 'file' ? openForms() : onStage(s))}
                 data-testid={`stage-${s}`}
               >
                 <span className="rd-dot" aria-hidden />

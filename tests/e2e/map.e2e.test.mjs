@@ -428,8 +428,13 @@ test('ENR 5 areas: drawn, hover and click details with the AIP PDF link; popover
     return m.getSource('air-focus').serialize().data.features[0]?.properties.id === 'LGTT-ATZ';
   });
   const d0 = (await focus()).dash;
-  await sleep(250);
-  assert.notEqual((await focus()).dash, d0, 'the dashes move');
+  // the dashes move (frames can be slow on a busy machine: up to 3 s)
+  let moved = false;
+  for (let i = 0; i < 30 && !moved; i++) {
+    await sleep(100);
+    moved = (await focus()).dash !== d0;
+  }
+  assert.ok(moved, 'the dashes move');
   const other = await page.eval(() => {
     const s = [...document.querySelectorAll('[data-testid=airspace-pop] [data-testid=airspace-item]')].find(
       (x) => x.dataset.id !== 'LGTT-ATZ',
