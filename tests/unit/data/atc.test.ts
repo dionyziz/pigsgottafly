@@ -86,7 +86,7 @@ describe('real routes', () => {
       'airspace|ATHINAI TMA|ATHINAI TMA INFORMATION|INFO|124.025 / 131.175',
       'airspace|ATHINAI TMA|ATHINAI APPROACH|APP|126.575 / 130.025',
       'airspace|TANAGRA MTMA|TANAGRA APPROACH|APP|120.250',
-      'fis|FIS|MAKEDONIA INFORMATION|INFO|130.925 / 130.700',
+      'fis|FIS|MAKEDONIA INFORMATION|INFO|130.925 / 119.750',
     ]);
     // the SKIROS MTMA is entered too, but SKIROS APPROACH 123.200 is already listed with the destination
     expect(list.filter((e) => e.group === 'SKIROS MTMA')).toEqual([]);
@@ -110,7 +110,7 @@ describe('real routes', () => {
       'airspace|ATHINAI TMA|ATHINAI APPROACH|APP|126.575 / 130.025',
       'airspace|ANCHIALOS MTMA|ALMIROS APPROACH|APP|120.350',
       'airspace|PREVEZA MTMA|AKTION APPROACH|APP|120.450',
-      'fis|FIS|MAKEDONIA / ATHINAI INFORMATION|INFO|130.925 / 130.700',
+      'fis|FIS|MAKEDONIA / ATHINAI INFORMATION|INFO|130.925 / 119.750',
     ]);
     // TANAGRA MTMA is entered, but its unit is the en-route Tanagra row
     expect(list.some((e) => e.group === 'TANAGRA MTMA')).toBe(false);
@@ -129,7 +129,7 @@ describe('real routes', () => {
       'departure|LGMG MEGARA|MEGARA TOWER|TWR|130.875 / 122.100',
       'airspace|ATHINAI TMA|ATHINAI TMA INFORMATION|INFO|124.025 / 131.175',
       'airspace|ATHINAI TMA|ATHINAI APPROACH|APP|126.575 / 130.025',
-      'fis|FIS|MAKEDONIA INFORMATION|INFO|130.925 / 130.700',
+      'fis|FIS|MAKEDONIA INFORMATION|INFO|130.925 / 119.750',
     ]);
     expect(list[0].remark).toBe('Departure and destination');
     const low = gen(route, [900, 900]);

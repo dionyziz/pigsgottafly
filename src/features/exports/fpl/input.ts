@@ -4,7 +4,7 @@ import { endpointAerodrome } from '../../../data/atc';
 import { aerodrome, REF } from '../../../data/ref';
 import { type Aircraft, type Flight, type Pilot, requestRemarks } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
-import type { FplAerodrome, FplInput, FplOptions } from './fpl';
+import type { FplAerodrome, FplInput } from './fpl';
 
 const BLANK_EQUIPMENT: Aircraft['equipment'] = {
   item10a: '',
@@ -45,7 +45,6 @@ export function fplInputFrom(o: {
   pilot: Pick<Pilot, 'fullName' | 'phone'>;
   navlog: NavlogResult | null;
   fuel: FuelPlan | null;
-  options?: FplOptions;
 }): FplInput {
   const { flight, aircraft: ac, pilot, navlog, fuel } = o;
   const route = flight.route;
@@ -85,6 +84,5 @@ export function fplInputFrom(o: {
     pic: { fullName: pilot.fullName || picSnap?.fullName || '', phone: pilot.phone || picSnap?.phone || '' },
     remarks: flight.options.remarks || '',
     requests: requestRemarks(route, flight.options, (p) => endpointAerodrome(p, REF.aerodromes)?.icao ?? null),
-    options: o.options,
   };
 }

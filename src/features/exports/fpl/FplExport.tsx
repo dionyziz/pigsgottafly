@@ -17,7 +17,7 @@ import { type ShownSignature, Signature } from '../form731/Form731';
 import { useFlightPilot } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
 import { FilingPanel } from './FilingPanel';
-import { buildFpl, type FplOptions, type FplResult, oneLine } from './fpl';
+import { buildFpl, type FplResult, oneLine } from './fpl';
 import { fplInputFrom } from './input';
 import { useFplData } from './useFplData';
 
@@ -45,13 +45,9 @@ async function copyText(text: string): Promise<boolean> {
 export function FplExport({ flight }: { flight: Flight }) {
   const pilot = useFlightPilot(flight);
   const data = useFplData(flight, pilot);
-  const [opts, setOpts] = useState<Required<FplOptions>>({ regInItem18: false });
   const fpl = useMemo(
-    () =>
-      buildFpl(
-        fplInputFrom({ flight, aircraft: data.aircraft, pilot, navlog: data.navlog, fuel: data.fuel, options: opts }),
-      ),
-    [flight, data.aircraft, data.navlog, data.fuel, pilot, opts],
+    () => buildFpl(fplInputFrom({ flight, aircraft: data.aircraft, pilot, navlog: data.navlog, fuel: data.fuel })),
+    [flight, data.aircraft, data.navlog, data.fuel, pilot],
   );
   const [copied, setCopied] = useState<'' | 'lines' | 'one' | 'error'>('');
   const [addresses, setAddresses] = useState<string[]>([]);
@@ -95,16 +91,6 @@ export function FplExport({ flight }: { flight: Flight }) {
         <pre className={`fpl-message${loading ? ' fpl-loading' : ''}`} data-testid="fpl-message" aria-busy={loading}>
           {fpl.message}
         </pre>
-        <div className="fpl-options">
-          <label>
-            <input
-              type="checkbox"
-              checked={opts.regInItem18}
-              onChange={(e) => setOpts({ ...opts, regInItem18: e.target.checked })}
-            />{' '}
-            REG/
-          </label>
-        </div>
         <ExportWarnings
           warnings={warnings}
           aircraftId={flight.aircraftId}

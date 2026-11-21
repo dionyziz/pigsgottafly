@@ -22,6 +22,15 @@
 /* each form's state on its tab, as the editor's "Ready to fly" sees it (readiness.ts paperwork) */
 .export-tabs a { display: inline-flex; align-items: center; gap: 6px; }
 .export-tabs .rd-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ok); }
-.export-tabs .rd-dot.is-todo { background: var(--line-strong); }
+.export-tabs .rd-dot.is-todo { background: var(--warn); }
+.export-tabs .xp-tab-ok { color: var(--ok); flex: none; }
+/* the open form's state under the tabs */
+.xp-status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.xp-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r); font-size: var(--fs-sm); border: 1px solid var(--warn-line); background: var(--warn-soft); color: var(--warn); }
+.xp-status b { font-weight: 600; }
+.xp-status span { color: var(--ink); }
+.xp-status.is-ok { border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: color-mix(in srgb, var(--ok) 8%, transparent); color: var(--ok); }
+.xp-status.is-danger { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.xp-status-next { font-size: var(--fs-sm); font-weight: 600; }
 .export-tabs .rd-dot.is-warn { background: var(--warn); }
 .export-tabs .rd-dot.is-danger { background: var(--danger); }

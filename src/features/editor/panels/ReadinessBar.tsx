@@ -20,6 +20,7 @@ import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import {
   type ItemState,
+  PAPERWORK_KIND,
   profileMissingOf,
   readiness,
   readinessWarnings,
@@ -198,11 +199,26 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
   const { items, markNotamsRead } = useReadiness();
   const { flight } = useEditor();
   const navigate = useNavigate();
-  const openForms = () => {
+  const openItems = items.filter((x) => x.state !== 'ok');
+  // File & forms opens on the first form that needs attention (else the flight plan)
+  const openForms = (item?: ReadyItem) => {
     void flightStore.flushNow(); // the page loads the saved flight
-    void navigate(`/flights/${flight.id}/export/fpl`);
+    const first = item ?? openItems.find((x) => x.stage === 'file');
+    void navigate(`/flights/${flight.id}/export/${(first && PAPERWORK_KIND[first.id]) || 'fpl'}`);
   };
-  const open = items.filter((x) => x.state !== 'ok').length;
+  // the summary takes the pilot to the first thing left to do: its stage, its section (or its form)
+  const goToFirst = () => {
+    const first = STAGES.flatMap((s) => openItems.filter((x) => x.stage === s))[0];
+    if (!first) return;
+    if (first.stage === 'file') openForms(first);
+    else {
+      onStage(first.stage);
+      focusSection(first.section);
+    }
+  };
+  const open = openItems.length;
+  // what is left, by name: "1 to do: Form 731"; more than three are counted only
+  const openNames = open <= 3 ? `: ${openItems.map((x) => x.label).join(', ')}` : '';
   const worst = STAGES.map((s) => stageSummary(items, s).state);
   const danger = worst.includes('danger');
   // the summary and the tabs stay at the top of the panel; the sections' sticky headers stop under them
@@ -227,7 +243,13 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
           data-testid="ready-summary"
         >
           <Icon name={open === 0 ? 'check' : 'warn'} size={14} />
-          {open === 0 ? 'Ready to fly' : `${open} to do`}
+          {open === 0 ? (
+            'Ready to fly'
+          ) : (
+            <button type="button" className="rd-head-go" onClick={goToFirst} data-testid="ready-go">
+              {`${open} to do${openNames}`} →
+            </button>
+          )}
         </div>
         <div className="rd-tabs" role="tablist" aria-label="Stage">
           {STAGES.map((s) => {

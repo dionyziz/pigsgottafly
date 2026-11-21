@@ -52,7 +52,7 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
                 d.registration = v;
               });
             }}
-            placeholder="e.g. SX-ABC"
+            placeholder="e.g., SX-ABC"
             maxLength={20}
           />
         </Field>
@@ -66,7 +66,7 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
                 d.makeModel = v;
               });
             }}
-            placeholder="e.g. Reims/Cessna F172M"
+            placeholder="e.g., Reims/Cessna F172M"
             maxLength={200}
           />
         </Field>
@@ -98,7 +98,7 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
               });
             }}
             maxLength={4}
-            placeholder="e.g. C172"
+            placeholder="e.g., C172"
           />
         </Field>
         <Field focus="wake" label="Wake turbulence category" issues={at('wake')}>
@@ -123,7 +123,7 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
           <AerodromeTextInput
             name="homeBase"
             value={a.homeBase}
-            placeholder="e.g. LGTT"
+            placeholder="e.g., LGTT"
             testId="home-base"
             onChange={(t, ad) => {
               const v = ad?.icao || t.toUpperCase().trim();
@@ -146,7 +146,7 @@ export function IdentitySection({ a, edit, issues }: SectionProps) {
                 d.colours = v;
               });
             }}
-            placeholder="e.g. WHITE WITH BLUE STRIPES"
+            placeholder="e.g., WHITE WITH BLUE STRIPES"
             maxLength={200}
           />
         </Field>
@@ -262,7 +262,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
           focus="item10b"
           label="Item 10b as filed"
           issues={valid10b ? [] : at('equipment.item10b')}
-          hint="e.g. C, S, SB2"
+          hint="e.g., C, S, SB2"
         >
           <input
             name="equipment.item10b"
@@ -299,7 +299,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
       </div>
 
       <div className="grid2">
-        <Field focus="pbn" label="PBN/ (item 18)" issues={at('equipment.pbn')} hint="e.g. B2D2S1">
+        <Field focus="pbn" label="PBN/ (item 18)" issues={at('equipment.pbn')} hint="e.g., B2D2S1">
           <input
             name="equipment.pbn"
             className="mono upper"
@@ -318,7 +318,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
           focus="item18Extras"
           label="Other item 18 indicators"
           issues={at('equipment.item18Extras')}
-          hint="e.g. NAV/SBAS COM/…"
+          hint="e.g., NAV/SBAS COM/…"
         >
           <input
             name="equipment.item18Extras"
@@ -548,7 +548,7 @@ export function FplSection({ a, edit, issues }: SectionProps) {
                       q.dinghies!.colour = v;
                     });
                   }}
-                  placeholder="e.g. ORANGE"
+                  placeholder="e.g., ORANGE"
                 />
               </label>
               {issuesAt(issues, 'equipment.dinghies').map((i, k) => (
@@ -722,7 +722,7 @@ export function FuelSection({ a, edit, issues }: SectionProps) {
               });
             }}
             maxLength={60}
-            placeholder="e.g. standard, long-range"
+            placeholder="e.g., standard, long-range"
           />
         </Field>
       </div>

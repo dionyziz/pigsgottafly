@@ -13,6 +13,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { AccountMenu } from '../../app/AccountMenu';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
 import { useSession } from '../../app/session';
+import { flightTitle, usePageTitle } from '../../app/title';
 import { api, ApiRequestError } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { flightStore } from '../../data/flightStore';
@@ -29,6 +30,13 @@ import { NotamProvider } from './notams';
 import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
 import { useResizable } from './resizable';
 import { EditorProvider, useEditor } from './state';
+
+/** The tab title: the flight's name. */
+function EditorTitle() {
+  const { doc } = useEditor();
+  usePageTitle(flightTitle(doc));
+  return null;
+}
 
 /** The flight plan's filing status, in the top bar once it is filed; a click opens the Filing section. */
 function FilingChip() {
@@ -321,6 +329,7 @@ export function EditorPage() {
                 <Title />
                 <SaveState />
                 <SharedFlightChip />
+                <EditorTitle />
                 <FilingChip />
                 <span className="spacer" />
                 <UndoRedo />

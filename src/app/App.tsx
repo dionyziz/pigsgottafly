@@ -24,6 +24,7 @@ import { AboutPage } from './AboutPage';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
 import { useSession } from './session';
+import { RouteTitle } from './title';
 import { ToastProvider } from './toast';
 
 // The map (MapLibre) and the export sheets are loaded on demand, so the lobby and lists load fast.
@@ -80,6 +81,7 @@ export function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <ToastProvider>
+          <RouteTitle />
           <Routes>
             <Route
               path="/sign/:token"

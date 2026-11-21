@@ -27,6 +27,8 @@ button.linkish:hover { text-decoration: underline; background: none; }
 .tnum { font-variant-numeric: tabular-nums; }
 .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 input.upper { text-transform: uppercase; }
+/* an example in a placeholder keeps its own case ("e.g., LGTT"), even in an upper-case field */
+input::placeholder, textarea::placeholder { text-transform: none; }
 input.upper::placeholder { text-transform: none; }
 
 /* ---- layout */

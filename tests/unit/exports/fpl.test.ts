@@ -400,9 +400,8 @@ describe('the message', () => {
     expect(r.lines[r.lines.length - 1]).toBe('-E/0400 P/002 R/E A/WHITE BLUE STRIPES C/ZINDROS D +30 6940000000)');
   });
 
-  test('REG/ only on request: it would repeat the item 7 registration', () => {
+  test('no REG/: it would repeat the item 7 registration', () => {
     expect(buildFpl(base()).fields.item18).not.toContain('REG/');
-    expect(buildFpl(base({ options: { regInItem18: true } })).fields.item18).toBe('REG/SXASV DOF/261120');
   });
 
   test('missing data is visible as ???? and warned', () => {

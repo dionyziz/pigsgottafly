@@ -13,6 +13,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
+import { usePageTitle } from '../../app/title';
 import { useToast } from '../../app/toast';
 import { operatorScope } from '../../data/aircraftFiles';
 import { api, ApiRequestError, keepalivePut } from '../../data/api';
@@ -39,7 +40,7 @@ import type { FormIssue } from '../passengers/formIssues';
 const DOCS_TEXT = {
   title: 'Documents',
   empty: 'No documents.',
-  placeholder: 'Title, e.g. Operations manual',
+  placeholder: 'Title, e.g., Operations manual',
 };
 
 const inputOf = ({
@@ -94,6 +95,7 @@ const normalized = (d: OperatorInput): OperatorInput => ({
 export function OperatorPage() {
   const { id = '' } = useParams();
   const { data, error, setData } = useAsync(() => api.operators.get(id), [id], { cache: `operator:${id}` });
+  usePageTitle(data?.name);
   return (
     <Shell>
       {error && !data ? (

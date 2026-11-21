@@ -224,11 +224,13 @@ add('TANAGRA MTMA', 'MTMA', '', poly('381300N 0241600E', '381000N 0241100E', '38
     '1000 FT AGL', 'UNL', 'E (C above FL 195)', [u('TANAGRA APPROACH', '120.250', hours='H24')])
 
 # FIS (ENR 2.1.3 / 2.1.4): both FICs list the same frequencies; boundary between them is the
-# ATHINAI/MAKEDONIA CTA dividing line below (Makedonia to the north).
+# ATHINAI/MAKEDONIA CTA dividing line below (Makedonia to the north). Order: 130.925 (primary), then
+# 119.750 (coverage to FL 250, the alternative the aerodromes' VFR charts give, e.g. LGTT), then
+# 130.700 (to FL 450); the navlog shows the first two.
 FIS = {
     'units': [
-        {'callsign': 'ATHINAI INFORMATION', 'freqs': ['130.925', '130.700', '119.750'], 'side': 'south'},
-        {'callsign': 'MAKEDONIA INFORMATION', 'freqs': ['130.925', '130.700', '119.750'], 'side': 'north'},
+        {'callsign': 'ATHINAI INFORMATION', 'freqs': ['130.925', '119.750', '130.700'], 'side': 'south'},
+        {'callsign': 'MAKEDONIA INFORMATION', 'freqs': ['130.925', '119.750', '130.700'], 'side': 'north'},
     ],
     'boundary': [list(c(s)) for s in ('402630N 0204730E', '374836N 0232724E', '375055N 0241807E',
                                        '375558N 0243920E', '381449N 0261010E')],

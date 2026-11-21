@@ -261,6 +261,13 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.match(await text('[data-testid=flight-title]'), /^\d{4}-\d{2}-\d{2}$/);
   // the "Ready to fly" checklist heads the panel; a stage tab shows that stage's sections only
   assert.ok(await page.eval(() => !!document.querySelector('[data-testid=readiness] [data-testid=ready-summary]')));
+  // the summary names what is left and takes the pilot to the first of it
+  assert.match(await text('[data-testid=ready-summary]'), /^\d+ to do/);
+  await page.click('[data-testid=ready-go]');
+  await page.waitFor(() => {
+    const first = document.querySelector('[data-testid=ready-item]:not([data-state=ok])');
+    return !!first;
+  });
   await stage('brief');
   assert.deepEqual(
     await page.eval(() => ['plan', 'brief'].map((s) => document.querySelector(`[data-testid=stage-body-${s}]`).hidden)),
@@ -776,6 +783,18 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.equal(after('RUNWAY'), '03');
   await page.screenshot('flight-export-navlog');
   await pdfCheck('navlog', 1, 'landscape');
+  // the printed PDF is named <date>-navlog
+  assert.equal(
+    await page.eval(() => {
+      window.dispatchEvent(new Event('beforeprint'));
+      const t = document.title;
+      window.dispatchEvent(new Event('afterprint'));
+      return t;
+    }),
+    `${DATE}-navlog`,
+  );
+  // the form's state is said under the tabs
+  assert.ok(await page.eval(() => !!document.querySelector('[data-testid=export-page]')));
 
   // ---- 5/6. W&B (MD 4.3): every row and total against an independent sum of mass × arm (the old
   // /export/wb link redirects to the merged export: loading sheet first, then performance)
@@ -937,6 +956,45 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     await page.eval(() => !!document.querySelector('[data-testid=fpl-filed-by] [data-testid=signature]')),
     'FILED BY e-signature',
   );
+  // the tab is named after the form and the flight
+  assert.match(await page.eval(() => document.title), /^Flight plan \(AFTN\) · .+ · Pig's Gotta Fly$/);
+  // nothing filed yet: no Cancel button
+  assert.equal(
+    await page.eval(() => !!document.querySelector('[data-testid=fpl-cancel]')),
+    false,
+    'no Cancel before filing',
+  );
+  // the AFTN address field's example keeps its case and fits the field
+  const ph = await page.eval(() => {
+    const i = document.querySelector('[aria-label="Add an AFTN address"]');
+    if (!i) return null;
+    const cs = getComputedStyle(i, '::placeholder');
+    const is = getComputedStyle(i);
+    const probe = document.createElement('span');
+    probe.textContent = i.placeholder;
+    Object.assign(probe.style, {
+      position: 'absolute',
+      visibility: 'hidden',
+      whiteSpace: 'pre',
+      font: is.font,
+      letterSpacing: is.letterSpacing,
+    });
+    document.body.append(probe);
+    const textW = probe.getBoundingClientRect().width;
+    probe.remove();
+    const pad = parseFloat(is.paddingLeft) + parseFloat(is.paddingRight);
+    return {
+      text: i.placeholder,
+      transform: cs.textTransform,
+      fits: textW + pad <= i.clientWidth,
+      textW,
+      w: i.clientWidth,
+    };
+  });
+  assert.ok(ph, 'the AFTN address field');
+  assert.equal(ph.text, 'e.g., LGMGZTZX');
+  assert.equal(ph.transform, 'none');
+  assert.ok(ph.fits, `the example is not cut off (${ph.textW} px of text in ${ph.w} px)`);
   await page.screenshot('flight-export-fpl');
   await pdfCheck('fpl', 1, 'portrait'); // the filled form on one page
 

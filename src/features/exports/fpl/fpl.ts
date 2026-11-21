@@ -122,13 +122,6 @@ export interface FplInput {
   remarks: string;
   /** Touch-and-go / intermediate-stop requests, in the club's words ('REQUEST TOUCH N GO AT LGMG'), first in RMK/. */
   requests?: string[];
-
-  options?: FplOptions;
-}
-
-export interface FplOptions {
-  /** Write REG/ in item 18 even though it equals the item 7 identification (default false). */
-  regInItem18?: boolean;
 }
 
 export interface Item19 {
@@ -488,7 +481,6 @@ export function buildFpl(input: FplInput): FplResult {
     if (!warnings.includes(text)) warnings.push(text);
     if (fix && !fixes[text]) fixes[text] = fix;
   };
-  const opts = { regInItem18: false, ...(input.options || {}) };
   const ac = (focus: AircraftFocus): Fix => ({ kind: 'aircraft', focus });
 
   // item 7
@@ -567,7 +559,6 @@ export function buildFpl(input: FplInput): FplResult {
   if (dof) add('DOF', dof);
   else warn('Flight date not set (item 18 DOF/).', { kind: 'flight', focus: 'date' });
   // Item 7 is always the registration here, so REG/ would only repeat it (App. 2: 'if different').
-  if (item7 !== MISSING && opts.regInItem18) add('REG', item7);
   if (input.firEets && input.firEets.length) {
     add(
       'EET',

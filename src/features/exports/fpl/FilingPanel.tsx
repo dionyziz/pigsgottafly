@@ -13,7 +13,7 @@ import { api, ApiRequestError, peekGet } from '../../../data/api';
 import { invalidate } from '../../../data/entities';
 import type { Flight } from '../../../shared';
 import { FILING_STATUS_LABEL, type FilingState, type FilingStatus } from '../../../shared/briefing';
-import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
+import { fmtDateTimeMs } from '../../../shared/format';
 import { Chip, Loading, Panel } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
 
@@ -27,7 +27,6 @@ const OPEN = new Set<FilingStatus>([
   'arriving',
 ]);
 
-const clockZ = (ms: number) => fmtClockMs(ms, { z: true });
 const dateTimeZ = (ms: number) => fmtDateTimeMs(ms);
 
 export interface FilingPanelProps {
@@ -142,17 +141,19 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
           >
             {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
           </button>
-          <button
-            data-testid="fpl-cancel"
-            className="danger"
-            disabled={!enabled || !open || !!busy}
-            onClick={() => {
-              if (window.confirm('Cancel the filed flight plan?'))
-                void run('cancel', () => api.filing.cancel(flight.id, undefined, copyTo));
-            }}
-          >
-            {busy === 'cancel' ? 'Cancelling…' : 'Cancel'}
-          </button>
+          {open && (
+            <button
+              data-testid="fpl-cancel"
+              className="danger"
+              disabled={!enabled || !!busy}
+              onClick={() => {
+                if (window.confirm('Cancel the filed flight plan?'))
+                  void run('cancel', () => api.filing.cancel(flight.id, undefined, copyTo));
+              }}
+            >
+              {busy === 'cancel' ? 'Cancelling…' : 'Cancel'}
+            </button>
+          )}
           <button
             className="ghost"
             data-testid="fpl-refresh"
@@ -180,7 +181,6 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       {filing && (
         <div className="fpl-filing-record">
           {filing.filed != null && <span>Filed {dateTimeZ(filing.filed)}</span>}
-          {filing.eobt != null && <span>EOBT {clockZ(filing.eobt)}</span>}
           {filing.polled != null && <span className="muted">checked {dateTimeZ(filing.polled)}</span>}
           {filing.message && <span>{filing.message}</span>}
         </div>
@@ -253,7 +253,7 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
             type="text"
             value={typed}
             maxLength={8}
-            placeholder="e.g. LGMGZTZX"
+            placeholder="e.g., LGMGZTZX"
             aria-label="Add an AFTN address"
             onChange={(e) => setTyped(e.target.value.toUpperCase())}
             onKeyDown={(e) => {

@@ -13,10 +13,7 @@ import { ApiRequestError } from '../../../data/api';
 import { fetchNotams, lastNotams, type NotamBriefing } from '../../../data/notams';
 import type { Flight } from '../../../shared';
 import { Chip, Panel } from '../../../ui';
-import type { ShownSignature } from '../form731/Form731';
-import { useFlightPilot } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
-import { SignLine } from '../wb/SignLine';
 import { type BriefingModel, briefingModel } from './model';
 
 export function BriefingExport({ flight }: { flight: Flight }) {
@@ -24,10 +21,6 @@ export function BriefingExport({ flight }: { flight: Flight }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(() => !lastNotams(flight.id));
   const [refresh, setRefresh] = useState(0);
-  // acknowledged by the PIC, e-signed when the briefing is generated
-  const pilot = useFlightPilot(flight);
-  const [signedAt] = useState(() => Date.now());
-  const signature: ShownSignature | null = pilot.fullName.trim() ? { name: pilot.fullName, signedAt } : null;
   useEffect(() => {
     let live = true;
     // the last briefing stays shown while the new one loads
@@ -85,13 +78,13 @@ export function BriefingExport({ flight }: { flight: Flight }) {
         <ExportWarnings warnings={error ? [error] : []} classify={false} testId="briefing-warnings" />
       </Panel>
       <div className="xp-stage">
-        <BriefingSheet m={m} signature={signature} />
+        <BriefingSheet m={m} />
       </div>
     </div>
   );
 }
 
-export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signature?: ShownSignature | null }) {
+export function BriefingSheet({ m }: { m: BriefingModel }) {
   return (
     <section className="xp-sheet brief-sheet" aria-label="NOTAM briefing">
       <header className="xp-head">
@@ -164,12 +157,6 @@ export function BriefingSheet({ m, signature = null }: { m: BriefingModel; signa
           ))}
         </>
       )}
-      <footer className="xp-sign brief-sign" data-testid="briefing-ack">
-        <span>
-          ACKNOWLEDGED BY PIC <b className="xp-fill">{signature?.name ?? ''}</b>
-        </span>
-        <SignLine signature={signature} />
-      </footer>
     </section>
   );
 }

@@ -13,6 +13,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { focusAndHighlight, useFocusParam } from '../../app/focusParam';
 import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
+import { usePageTitle } from '../../app/title';
 import { useToast } from '../../app/toast';
 import { aircraftScope } from '../../data/aircraftFiles';
 import { api, ApiRequestError, keepalivePut } from '../../data/api';
@@ -103,6 +104,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
   const navigate = useNavigate();
   const today = localToday();
   const [draft, setDraft] = useState<AircraftInput>(() => toInput(aircraft));
+  usePageTitle(draft.registration || 'New aircraft');
   const [deleting, setDeleting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [leaving, setLeaving] = useState(false);

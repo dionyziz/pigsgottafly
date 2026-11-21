@@ -146,7 +146,7 @@ export function MassBalanceSection({ a, edit, issues }: SectionProps) {
                 q.datum = v;
               });
             }}
-            placeholder="e.g. Forward face of firewall"
+            placeholder="e.g., Forward face of firewall"
           />
         </Field>
         <div className="checks-col">

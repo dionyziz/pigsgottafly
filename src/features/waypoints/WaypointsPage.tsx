@@ -344,7 +344,7 @@ function WaypointDialog({
             onChange={(e) => set('name', e.target.value)}
             data-autofocus
             maxLength={40}
-            placeholder="e.g. ZOFRI"
+            placeholder="e.g., ZOFRI"
             style={{ textTransform: 'uppercase', fontFamily: 'var(--mono)' }}
           />
         </Field>

@@ -9,14 +9,16 @@
 // here or in another tab. The aircraft and passengers come from the shared entity cache.
 import './export.css';
 
+import { useEffect } from 'react';
 import { Link, Navigate, useParams } from 'react-router';
 
+import { flightTitle, usePageTitle } from '../../app/title';
 import { api } from '../../data/api';
 import { flightStore } from '../../data/flightStore';
 import { useAsync } from '../../data/useAsync';
 import { EXPORT_KINDS, EXPORT_LABEL, EXPORT_REDIRECTS, type ExportKind, type Flight } from '../../shared';
-import { EmptyState, Loading } from '../../ui';
-import { type ItemState, paperwork, PAPERWORK_KIND } from '../editor/panels/readiness';
+import { EmptyState, Icon, Loading } from '../../ui';
+import { paperwork, PAPERWORK_KIND, type ReadyItem } from '../editor/panels/readiness';
 import { BriefingExport } from './briefing';
 import { Form731 } from './form731';
 import { shownSignatures, SignaturesPanel, useFormsState } from './form731/SignaturesPanel';
@@ -83,7 +85,7 @@ function Body({ flight, kind }: { flight: Flight; kind: ExportKind }) {
 }
 
 /** Each form's state, as the editor's "Ready to fly" sees it (readiness.ts paperwork): a dot on its tab. */
-function useFormStates(id: string): Partial<Record<ExportKind, ItemState>> {
+function useFormStates(id: string): Partial<Record<ExportKind, ReadyItem>> {
   const opts = (cache: string) => ({ cache, refetchOnFocus: true, invalidatedBy: 'flights' as const });
   const filing = useAsync(() => api.filing.get(id), [id], opts(`filing:${id}`));
   const forms = useAsync(() => api.forms.get(id), [id], opts(`forms:${id}`));
@@ -91,14 +93,50 @@ function useFormStates(id: string): Partial<Record<ExportKind, ItemState>> {
     ...opts(`declarations:${id}`),
     invalidatedBy: ['operators', 'aircraft', 'flights'],
   });
-  const out: Partial<Record<ExportKind, ItemState>> = {};
+  const out: Partial<Record<ExportKind, ReadyItem>> = {};
   for (const it of paperwork({
     filing: filing.data ?? null,
     forms: forms.data ?? null,
     declarations: declarations.data ?? null,
   }))
-    out[PAPERWORK_KIND[it.id]] = it.state;
+    out[PAPERWORK_KIND[it.id]] = it;
   return out;
+}
+
+/** The file name (without .pdf) a printed form is saved under: the flight's date and the form. */
+function printFileName(date: string | null | undefined, kind: string): string {
+  return [date || '', kind].filter(Boolean).join('-');
+}
+
+/** The form's state, said plainly: done, or what it still needs; and the next form that needs attention. */
+function FormStatus({
+  flightId,
+  kind,
+  states,
+}: {
+  flightId: string;
+  kind: ExportKind;
+  states: Partial<Record<ExportKind, ReadyItem>>;
+}) {
+  const it = states[kind];
+  const next = EXPORT_KINDS.find((x) => x !== kind && states[x] && states[x].state !== 'ok');
+  if (!it && !next) return null;
+  return (
+    <div className="no-print xp-status-row">
+      {it && (
+        <div className={'xp-status is-' + it.state} data-testid="form-status" data-state={it.state}>
+          <Icon name={it.state === 'ok' ? 'check' : 'warn'} size={14} />
+          <b>{it.state === 'ok' ? 'Done' : 'Needs your attention'}</b>
+          {it.text && <span>{it.text}</span>}
+        </div>
+      )}
+      {next && (
+        <Link className="xp-status-next" to={`/flights/${flightId}/export/${next}`} data-testid="form-status-next">
+          Next: {EXPORT_LABEL[next]} →
+        </Link>
+      )}
+    </div>
+  );
 }
 
 export function ExportPage() {
@@ -112,6 +150,26 @@ export function ExportPage() {
     { refetchOnFocus: true, invalidatedBy: 'flights', cache: `flight:${id}` },
   );
   const formStates = useFormStates(id);
+  usePageTitle(flight && (EXPORT_LABEL as Record<string, string>)[kind], flight && flightTitle(flight));
+  // a printed PDF is named after the flight's date and the form: 2026-11-22-navlog.pdf
+  const printName = flight ? printFileName(flight.date, kind) : null;
+  useEffect(() => {
+    if (!printName) return;
+    let shown = '';
+    const before = () => {
+      shown = document.title;
+      document.title = printName;
+    };
+    const after = () => {
+      if (shown) document.title = shown;
+    };
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint', after);
+    return () => {
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint', after);
+    };
+  }, [printName]);
   if (Object.hasOwn(EXPORT_REDIRECTS, kind))
     return <Navigate replace to={`/flights/${id}/export/${EXPORT_REDIRECTS[kind]}`} />;
   if (!(EXPORT_KINDS as readonly string[]).includes(kind)) {
@@ -145,9 +203,15 @@ export function ExportPage() {
               aria-current={x === k ? 'page' : undefined}
               className={x === k ? 'active' : undefined}
               data-testid={`export-tab-${x}`}
-              data-state={formStates[x]}
+              data-state={formStates[x]?.state}
+              title={formStates[x] ? `${formStates[x].label}: ${formStates[x].text ?? 'done.'}` : undefined}
             >
-              {formStates[x] && <span className={'rd-dot is-' + formStates[x]} aria-hidden />}
+              {formStates[x] &&
+                (formStates[x].state === 'ok' ? (
+                  <Icon name="check" size={13} className="xp-tab-ok" />
+                ) : (
+                  <span className={'rd-dot is-' + formStates[x].state} aria-hidden />
+                ))}
               {EXPORT_LABEL[x]}
             </Link>
           ))}
@@ -156,6 +220,7 @@ export function ExportPage() {
           Print
         </button>
       </div>
+      <FormStatus flightId={flight.id} kind={k} states={formStates} />
       <Body flight={flight} kind={k} />
     </div>
   );

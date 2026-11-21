@@ -259,6 +259,9 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .rd-pinned { position: sticky; top: 0; z-index: 3; background: var(--surface); padding: var(--s3) var(--s4) var(--s2); display: flex; flex-direction: column; gap: var(--s2); }
 .rd-head { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--fs-sm); }
 .rd-head.is-ok { color: var(--ok); }
+.rd-head-go { all: unset; cursor: pointer; font: inherit; color: inherit; }
+.rd-head-go:hover { text-decoration: underline; }
+.rd-head-go:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .rd-head.is-todo { color: var(--warn); }
 .rd-head.is-danger { color: var(--danger); }
 .rd-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; border-radius: var(--r); background: var(--surface-2); }

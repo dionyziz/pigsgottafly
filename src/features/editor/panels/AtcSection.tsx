@@ -97,7 +97,7 @@ function EditRow({
       </label>
       <label className="field wide">
         Heading
-        <input value={f.group} onChange={set('group')} placeholder="e.g. LGTT DEKELIA / TATOI" />
+        <input value={f.group} onChange={set('group')} placeholder="e.g., LGTT DEKELIA / TATOI" />
       </label>
       <label className="field wide">
         Remark

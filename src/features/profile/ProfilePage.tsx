@@ -357,13 +357,13 @@ export function ProfilePage() {
         <CardSection id="planning" title="Planning defaults" plain>
           <div className="grid3">
             <Field label={<>Taxi out {notSet(f.taxiOutMin)}</>} issues={issuesOf('taxiOutMin')}>
-              {minutes('taxiOutMin', `e.g. ${SETTING_SUGGESTIONS.taxiOutMin}`)}
+              {minutes('taxiOutMin', `e.g., ${SETTING_SUGGESTIONS.taxiOutMin}`)}
             </Field>
             <Field label={<>Taxi in {notSet(f.taxiInMin)}</>} issues={issuesOf('taxiInMin')}>
-              {minutes('taxiInMin', `e.g. ${SETTING_SUGGESTIONS.taxiInMin}`)}
+              {minutes('taxiInMin', `e.g., ${SETTING_SUGGESTIONS.taxiInMin}`)}
             </Field>
             <Field label={<>Fuel reserve {notSet(f.reserveMin)}</>} issues={issuesOf('reserveMin')}>
-              {minutes('reserveMin', `e.g. ${SETTING_SUGGESTIONS.reserveMin}`)}
+              {minutes('reserveMin', `e.g., ${SETTING_SUGGESTIONS.reserveMin}`)}
             </Field>
           </div>
           {!welcome && (

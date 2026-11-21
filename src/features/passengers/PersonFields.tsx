@@ -68,16 +68,16 @@ export function PersonFields({
               />
             </Field>
             <Field label="Nationality" issues={issues('nationality')}>
-              <input {...text('nationality')} placeholder="e.g. GREEK" />
+              <input {...text('nationality')} placeholder="e.g., GREEK" />
             </Field>
           </div>
           <div className="grid2">
             <Field label="ID / passport number" issues={issues('idNumber')}>
-              <input {...text('idNumber')} placeholder="e.g. AK 123456" />
+              <input {...text('idNumber')} placeholder="e.g., AK 123456" />
             </Field>
             {pilot && (
               <Field label="Licence number" issues={issues('licenceNo')}>
-                <input {...text('licenceNo')} placeholder="e.g. EL.FCL.6094" />
+                <input {...text('licenceNo')} placeholder="e.g., EL.FCL.6094" />
               </Field>
             )}
           </div>

@@ -5,6 +5,8 @@ import './legal.css';
 import { type ReactNode, useEffect } from 'react';
 import { Link } from 'react-router';
 
+import { usePageTitle } from '../../app/title';
+
 export const LEGAL_UPDATED = '21 November 2026';
 export const CONTACT_EMAIL = 'dionyziz@gmail.com';
 
@@ -25,14 +27,10 @@ export function LegalPage({
   sections: LegalSection[];
   current: 'privacy' | 'terms' | 'support';
 }) {
+  usePageTitle(title);
   useEffect(() => {
-    const prev = document.title;
-    document.title = `${title} · Pig's Gotta Fly`;
     // a #section link opens at that section once it is rendered
     if (window.location.hash) document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
-    return () => {
-      document.title = prev;
-    };
   }, [title]);
   return (
     <div className="legal-page" data-testid={`legal-${current}`}>

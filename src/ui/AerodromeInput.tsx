@@ -33,7 +33,7 @@ export function AerodromeTextInput({
   name,
   id,
   required,
-  placeholder = 'ICAO or name, e.g. LGTT',
+  placeholder = 'ICAO or name, e.g., LGTT',
   autoFocus,
   disabled,
   ariaLabel,

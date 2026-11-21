@@ -71,7 +71,7 @@ export function FplSection() {
             value={remarks}
             data-testid="fpl-remarks"
             data-focus="remarks"
-            placeholder="e.g. PHOTO FLIGHT"
+            placeholder="e.g., PHOTO FLIGHT"
             onChange={(e) =>
               update((d) => ({ ...d, options: { ...d.options, remarks: e.target.value } }), { coalesce: 'fpl-rmk' })
             }

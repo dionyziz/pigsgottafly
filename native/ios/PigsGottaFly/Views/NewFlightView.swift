@@ -72,7 +72,7 @@ struct NewFlightView: View {
         if let list = aircraft {
             if list.isEmpty, let t = app.aircraftTemplates.first {
                 Section {
-                    TextField("Registration, e.g. SX-ABC", text: $registration)
+                    TextField("Registration, e.g., SX-ABC", text: $registration)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("new-registration")

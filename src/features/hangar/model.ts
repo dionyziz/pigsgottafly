@@ -592,13 +592,13 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   // identity
   if (!a.registration.trim()) err('identity', 'registration', 'Registration is required.');
   else if (!/^[A-Z0-9]{1,3}-?[A-Z0-9]{1,6}$/.test(a.registration))
-    warn('identity', 'registration', 'Registration is usually letters and digits with one hyphen, e.g. SX-ASV.');
+    warn('identity', 'registration', 'Registration is usually letters and digits with one hyphen, e.g., SX-ASV.');
   if (!a.icaoType) warn('identity', 'icaoType', 'ICAO type designator not set (FPL item 9).');
   else if (!/^[A-Z][A-Z0-9]{1,3}$/.test(a.icaoType))
     err(
       'identity',
       'icaoType',
-      'ICAO type designator is 2–4 letters/digits starting with a letter, e.g. C172 (or ZZZZ).',
+      'ICAO type designator is 2–4 letters/digits starting with a letter, e.g., C172 (or ZZZZ).',
     );
   if (!a.colours.trim()) warn('identity', 'colours', 'Colours and markings not set (FPL item 19 A/).');
   if (a.homeBase && !/^[A-Z]{4}$/.test(a.homeBase))
@@ -608,13 +608,13 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   const e = a.equipment;
   if (!e.item10a) warn('fpl', 'equipment.item10a', 'Item 10a not set.');
   else if (!ITEM10A_RE.test(e.item10a))
-    err('fpl', 'equipment.item10a', `Item 10a “${e.item10a}” has invalid designators (N alone, or e.g. SDFGY).`);
+    err('fpl', 'equipment.item10a', `Item 10a “${e.item10a}” has invalid designators (N alone, or e.g., SDFGY).`);
   if (!e.item10b) warn('fpl', 'equipment.item10b', 'Item 10b (transponder) not set.');
   else if (!/^(N|[ACEHILPSX]?(?:[BUVDG][12])*)$/.test(e.item10b))
     err(
       'fpl',
       'equipment.item10b',
-      `Item 10b “${e.item10b}” is invalid (N, or a transponder letter then ADS codes, e.g. SB2).`,
+      `Item 10b “${e.item10b}” is invalid (N, or a transponder letter then ADS codes, e.g., SB2).`,
     );
   const bad = badPbn(e.pbn);
   if (bad.length) err('fpl', 'equipment.pbn', `Unknown PBN designators: ${bad.join(', ')}.`);

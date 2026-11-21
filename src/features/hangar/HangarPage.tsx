@@ -365,7 +365,7 @@ function AddAircraftDialog({
               setReg(e.target.value.toUpperCase());
               setError(null);
             }}
-            placeholder="e.g. SX-ABC"
+            placeholder="e.g., SX-ABC"
             maxLength={20}
             data-autofocus
           />

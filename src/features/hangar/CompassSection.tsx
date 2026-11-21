@@ -344,7 +344,7 @@ export function CompassSection({
                     x.name = v;
                   });
                 }}
-                placeholder="e.g. Magnetic compass"
+                placeholder="e.g., Magnetic compass"
               />
               {i === 0 && cards.length > 1 && <Chip>Default</Chip>}
               {!c.expires && <StatusChip card={c} today={today} />}

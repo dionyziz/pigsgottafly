@@ -98,7 +98,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
         <Field label="Source" wide>
           <input
             value={t.source}
-            placeholder="e.g. AFM 5-8 Table 5"
+            placeholder="e.g., AFM 5-8 Table 5"
             onChange={(e) => {
               const v = e.target.value;
               pe((q) => {
@@ -110,7 +110,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
         <Field label="Flaps">
           <input
             value={t.flaps}
-            placeholder="e.g. 0°"
+            placeholder="e.g., 0°"
             onChange={(e) => {
               const v = e.target.value;
               pe((q) => {
@@ -410,7 +410,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
         <Field label="Source">
           <input
             value={l.source}
-            placeholder="e.g. AFM 5-9 Table 6"
+            placeholder="e.g., AFM 5-9 Table 6"
             onChange={(e) => {
               const v = e.target.value;
               pe((q) => {
@@ -422,7 +422,7 @@ export function PerformanceSection({ a, edit, issues }: SectionProps) {
         <Field label="Flaps">
           <input
             value={l.flaps}
-            placeholder="e.g. 40°"
+            placeholder="e.g., 40°"
             onChange={(e) => {
               const v = e.target.value;
               pe((q) => {

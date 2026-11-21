@@ -238,7 +238,7 @@ export function PdfIcon() {
 const AIRCRAFT_DOCS = {
   title: 'Documents',
   empty: 'No documents.',
-  placeholder: 'Title, e.g. POH',
+  placeholder: 'Title, e.g., POH',
 };
 
 /** Documents section: the PDFs of an aircraft (or, with `text`, of an operator), each with a title; open in the viewer, download. */
