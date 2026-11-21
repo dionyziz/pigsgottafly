@@ -28,7 +28,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     try {
       const s = await api.session();
-      // another pilot (or none): nothing cached belongs to them
       if (getEntity<Pilot>('pilot').data?.id !== s.pilot?.id) forgetAll();
       if (s.authed && s.pilot) putEntity('pilot', s.pilot);
       setSession(s);
@@ -48,7 +47,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('pgf:unauthorized', onUnauthorized);
   }, []);
 
-  // the session pilot follows the 'pilot' entity (refetched when changed here or in another tab)
   useEffect(
     () =>
       subscribeEntity('pilot', () => {

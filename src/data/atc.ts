@@ -273,7 +273,6 @@ export function generateAtcList(input: AtcGenInput): AtcGenOutput {
 
   if (dep) out.push(...aerodromeEntries('departure', dep, local ? 'Departure and destination' : 'Departure', listed));
 
-  // aerodromes passed over / near the route
   if (legs.length) {
     const enr: { a: RefAerodrome; pos: number }[] = [];
     for (const a of aerodromes) {
@@ -287,7 +286,6 @@ export function generateAtcList(input: AtcGenInput): AtcGenOutput {
 
   if (arr && !local) out.push(...aerodromeEntries('destination', arr, 'Destination', listed));
 
-  // airspace (TMA / MTMA) entered at the planned altitude
   const hits = new Map<string, { first: number; vols: RefAirspace[] }>();
   legs.forEach((L, i) => {
     for (const v of airspaces) {

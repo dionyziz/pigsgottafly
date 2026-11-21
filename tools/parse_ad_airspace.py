@@ -237,7 +237,6 @@ def main():
         if not lat_lines or lat_lines[0].startswith('NIL'):
             continue
         section_ref = (f"{m2.group(1)} AD 2.17" if m2 else f"AD 1.6.{m1.group(1)}.17")
-        # designations and their lateral text
         desigs = []
         for l in lat_lines:
             dm = DESIG.match(l)

@@ -1,5 +1,3 @@
-// Top-right account menu: Profile, Hangar, Operators, Passengers, My waypoints, (admins: Admin), About,
-// Terms, Privacy, Sign out, Sign out everywhere (confirmed).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 

@@ -38,7 +38,6 @@ export function routeTitle(pathname: string): string | null {
   return ROUTES.find(([re]) => re.test(pathname))?.[1] ?? null;
 }
 
-/** Sets the title from the route on every navigation. */
 export function RouteTitle() {
   const { pathname } = useLocation();
   useEffect(() => {

@@ -73,7 +73,6 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
   const refresh = useCallback(() => setRefreshCount((n) => n + 1), []);
   const lastRefresh = useRef({ wx: 0, metar: 0 });
 
-  // ---- winds aloft + surface forecast
   const wxSeq = useSequencer();
   const [weather, setWeather] = useState<RouteWeather | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -134,7 +133,6 @@ export function useFlightWeather(input: FlightWeatherInput): FlightWeather {
     return requestWeather(current);
   }, [wxSeq, plan.key, refreshCount, enabled]);
 
-  // ---- METAR/TAF
   const metarSeq = useSequencer();
   const [metar, setMetar] = useState<MetarTafResult | null>(null);
   const [metarLoading, setMetarLoading] = useState(false);

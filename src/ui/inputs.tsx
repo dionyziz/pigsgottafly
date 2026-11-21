@@ -1,4 +1,3 @@
-// Small input pieces: the search box and the row-click helper of list tables.
 import type { MouseEvent } from 'react';
 
 import { Icon } from './Icon';

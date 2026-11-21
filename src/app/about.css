@@ -1,4 +1,3 @@
-/* /about: the data sources. */
 .about { max-width: 760px; }
 .about-list { margin: 0; display: grid; gap: var(--s2); }
 .about-list > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--s3); }

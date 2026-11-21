@@ -266,7 +266,6 @@ export function parseTaf(raw: string, refMs: number = Date.now()): ParsedTaf {
   return out;
 }
 
-/** True when the TAF's validity period covers the time. */
 export const tafCovers = (taf: ParsedTaf | null, timeMs: number): boolean =>
   !!taf && taf.validFromMs !== null && taf.validToMs !== null && timeMs >= taf.validFromMs && timeMs <= taf.validToMs;
 
@@ -278,8 +277,6 @@ export function fmtMetarWind(w: MetarWind | null): string {
   const g = w.gustKt !== null ? `G${String(w.gustKt).padStart(2, '0')}` : '';
   return `${w.dirDeg === null ? 'VRB' : String(w.dirDeg).padStart(3, '0')}${spd}${g}KT`;
 }
-
-// ---- client: fetch through the proxy -----------------------------------------------------------
 
 export interface StationReports {
   metar: ParsedMetar | null;

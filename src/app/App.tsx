@@ -1,15 +1,4 @@
-// Router. Routes:
-//   /                              lobby (flights)
-//   /flights/new                   creates a flight, then → /flights/:id
-//   /flights/:id                   flight editor (map)
-//   /flights/:id/export/:kind      print-ready export (kind: navlog | form731 | gendec | fpl | wbperf | briefing; /wb and /performance redirect to wbperf)
-//   /profile  /hangar  /hangar/:id  /operators  /operators/:id  /passengers  /waypoints  /about
-//   /admin                         every pilot (ADMIN_EMAILS only)
-//   /admin/errors                  grouped server/client/migration errors (ADMIN_EMAILS only)
-//   /admin/mail                    the e-mail action log (ADMIN_EMAILS only)
-//   /sign/:token                   Form 731 signing page for a passenger (no sign-in)
-//   /privacy  /terms  /support     privacy policy, terms of service, help and contact (no sign-in)
-// v2 links (/#/f/<id>) are redirected to /flights/<id>.
+// The /admin pages are for ADMIN_EMAILS only. v2 links (/#/f/<id>) still work (LegacyHashRedirect).
 import { lazy, type ReactNode, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 
@@ -42,7 +31,6 @@ if (typeof window !== 'undefined') {
   if ('requestIdleCallback' in window) window.requestIdleCallback(warm);
   else setTimeout(warm, 1500);
 }
-// The Form 731 signing page: public (no sign-in), outside the AuthGate.
 const SignPage = lazy(() => import('../features/sign/SignPage').then((m) => ({ default: m.SignPage })));
 const OperatorsPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorsPage })));
 const OperatorPage = lazy(() => import('../features/operators').then((m) => ({ default: m.OperatorPage })));

@@ -1,4 +1,3 @@
-// Status chip: a pill with a tone. Variants: mono (codes), count (a number badge), sm.
 import type { ReactNode } from 'react';
 
 export type ChipTone = 'warn' | 'danger' | 'ok' | 'info' | 'accent';

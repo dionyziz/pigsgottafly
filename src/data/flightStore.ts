@@ -212,6 +212,5 @@ export const flightStore = {
     queue(id);
   },
 
-  /** Sends pending edits now. */
   flushNow: () => flush(),
 };

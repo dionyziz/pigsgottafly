@@ -122,7 +122,6 @@ def parse_freqs(sec):
                 role = 'secondary'
             else:
                 role = 'other'
-            # strip operational hours from the remark
             r = re.sub(r'^(H24|HJ|HO|HN|HS|HX|NIL|SR\s*-\s*SS|As AD [A-Z ]+|See [A-Z0-9 .]+ hours)\s+', '', r).strip()
             out.append({'service': g['service'], 'callsign': cs, 'mhz': '%.3f' % float(f['mhz']),
                         'role': role, 'remark': r})

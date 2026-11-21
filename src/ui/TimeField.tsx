@@ -29,7 +29,6 @@ export interface TimeFieldProps {
   invalid?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Classes of the <input>. */
   className?: string;
   /** ?focus= deep-link key, on the input (data-focus). */
   focusKey?: string;

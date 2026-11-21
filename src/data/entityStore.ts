@@ -1,9 +1,6 @@
 // The entity cache and its invalidation bus (no React, no fetch: src/data/entities.ts registers the
 // fetchers and the hooks; src/data/api.ts invalidates after every mutation).
 //
-// - Keys name what changed: 'pilot', 'passengers', 'aircraft', 'operators', 'waypoints', 'flights'.
-// - invalidate(key) marks the cached copy stale, refetches it when something on screen uses it, tells
-//   every onInvalidate listener, and tells the other tabs (BroadcastChannel 'pgf').
 // - A hidden tab defers its refetches until it is visible again; focusing the window or showing
 //   the tab revalidates what is on screen (onRevalidate).
 // - Each entry keeps a request sequence: only the newest request's answer is stored, so a slow
@@ -19,7 +16,6 @@ export const ENTITY_KEYS: readonly EntityKey[] = [
   'flights',
 ];
 
-/** BroadcastChannel name shared by every tab of the app. */
 export const CHANNEL_NAME = 'pgf';
 /** A focus or tab switch refetches data older than this. */
 export const FOCUS_REVALIDATE_MS = 5000;
@@ -75,9 +71,6 @@ function emit(e: Entry, patch: Partial<EntitySnapshot<unknown>>) {
 
 const hidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
 
-// ---- the cache -------------------------------------------------------------------------------
-
-/** How `key` is fetched (src/data/entities.ts registers the API calls). */
 export function registerFetcher(key: EntityKey, fetch: Fetcher) {
   fetchers.set(key, fetch);
 }
@@ -151,8 +144,6 @@ export function clearEntities() {
   }
 }
 
-// ---- invalidation ----------------------------------------------------------------------------
-
 function refetchIfUsed(key: EntityKey) {
   const e = entries.get(key);
   if (e && e.subs.size && fetchers.has(key)) void loadEntity(key, { force: true }).catch(() => {});
@@ -218,8 +209,6 @@ export function revalidate() {
   }
   for (const fn of [...revalidateListeners]) fn();
 }
-
-// ---- other tabs ------------------------------------------------------------------------------
 
 let channel: BroadcastChannel | null = null;
 function post(keys: EntityKey[]) {

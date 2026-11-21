@@ -77,7 +77,6 @@ export function useAutosave<T>({
       inFlight.current = null;
     }
     if (!ok) return false;
-    // edits made while saving go in the next save
     if (latest.current.json !== savedJson.current) {
       setStatus('pending');
       if (latest.current.enabled) timer.current = window.setTimeout(() => void run(), delay);
@@ -87,7 +86,6 @@ export function useAutosave<T>({
     return true;
   }, [delay]);
 
-  // every change (re)starts the countdown
   useEffect(() => {
     if (json === savedJson.current) return;
     setStatus((s) => (s === 'saving' ? s : 'pending'));
@@ -96,7 +94,6 @@ export function useAutosave<T>({
     if (enabled && !inFlight.current) timer.current = window.setTimeout(() => void run(), delay);
   }, [json, enabled, delay, run]);
 
-  // back online: try again
   useEffect(() => {
     const online = () => {
       if (latest.current.json !== savedJson.current) void run();
@@ -126,7 +123,7 @@ export function useAutosave<T>({
     };
   }, []);
 
-  // leaving the page inside the app: save what is pending
+  // leaving the page inside the app
   useEffect(
     () => () => {
       window.clearTimeout(timer.current);

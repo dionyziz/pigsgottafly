@@ -122,7 +122,6 @@ export function buildRunways(
         const gaps: string[] = [];
         const n = parseInt(d, 10);
 
-        // true heading
         let headingTrueDeg: number | null = p?.trueBrg ?? null;
         let headingTrueSource: RefRunwayDetail['headingTrueSource'] = headingTrueDeg !== null ? 'aip' : null;
         if (headingTrueDeg === null) {
@@ -141,18 +140,15 @@ export function buildRunways(
               `TRUE BRG ${p.trueBrg}° differs by ${r1(diff)}° from the course between the published thresholds (${r1(c)}°)`,
             );
         }
-        // magnetic heading
         let headingMagDeg = n * 10;
         let headingMagSource: RefRunwayDetail['headingMagSource'] = 'designator';
         if (headingTrueDeg !== null && varHere !== null) {
           headingMagDeg = r1(norm360(headingTrueDeg - varHere));
           headingMagSource = varSource;
         }
-        // threshold
         const thrElev = p?.thrElevFt ?? null;
         if (thrElev === null) gaps.push('threshold elevation');
         if (!p?.thr) gaps.push('threshold coordinates');
-        // slope
         let slopePct: number | null = null;
         let slopeSource: RefRunwayDetail['slopeSource'] = null;
         let slopeUnsignedPct: number | null = null;
@@ -188,7 +184,6 @@ export function buildRunways(
             );
           }
         }
-        // physical + declared
         if (p?.lengthM == null) gaps.push('length');
         if (p?.widthM == null) gaps.push('width');
         if (p?.surface == null) gaps.push('surface');

@@ -1,6 +1,4 @@
-/* Shared component classes, global: button variants, text and layout utilities, form helpers,
-   dialogs, menus, empty state, search box, tabs, combobox. Tokens live in src/app/styles.css.
-   Feature stylesheets build on these; they do not redefine them. */
+/* Shared component classes. Feature stylesheets build on these; they do not redefine them. */
 
 /* ---- button variants (base button in styles.css) */
 button.sm, .btn.sm { padding: 4px 10px; font-size: var(--fs-sm); }
