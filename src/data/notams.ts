@@ -168,9 +168,13 @@ export interface NotamGroup {
   notams: Notam[];
 }
 
-/** NOTAMs by aerodrome, in the order the list has them, then the airspace ones. */
-export function groupNotams(list: Notam[]): NotamGroup[] {
+/**
+ * NOTAMs by aerodrome, then the airspace ones. The aerodromes in `always` (the departure and the
+ * destination) come first and are listed even with no NOTAM; the others follow in the list's order.
+ */
+export function groupNotams(list: Notam[], always: string[] = []): NotamGroup[] {
   const ads = new Map<string, Notam[]>();
+  for (const icao of always) if (!ads.has(icao)) ads.set(icao, []);
   const air: Notam[] = [];
   for (const n of list) {
     if (!isAerodromeNotam(n)) air.push(n);

@@ -64,7 +64,7 @@ export function MapView() {
       return v;
     };
   }, [doc.date, adEffects]);
-  const { briefing, showAll, selected: selectedNotam, select: selectNotam } = useNotams();
+  const { briefing, showAll, selected: selectedNotam, select: selectNotam, hovered: hoveredNotam } = useNotams();
   const hoveredLeg = useHoveredLeg();
   const hovered = hoveredLeg !== null ? doc.route.slice(hoveredLeg, hoveredLeg + 2) : [];
   const [legFrom, legTo] = hovered.length === 2 ? hovered : [null, null];
@@ -164,6 +164,7 @@ export function MapView() {
       hazards={hazardMarks}
       notams={notams}
       selectedNotam={selectedNotam}
+      hoveredNotam={hoveredNotam}
       onNotamSelect={selectNotam}
       focusLeg={focusLeg}
       requests={requests}

@@ -2,7 +2,7 @@
 // (subject, validity, limits, item E) with the raw ICAO text one click away; the hidden ones behind
 // "Show all (N hidden)" with the reason each is hidden. Picking one highlights its area on the map
 // and its leg in the navlog strip.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   groupNotams,
@@ -17,6 +17,7 @@ import { aerodrome } from '../../../data/ref';
 import { fmtClockMs } from '../../../shared/format';
 import { Chip, Collapsible, Icon } from '../../../ui';
 import { useNotams } from '../notams';
+import { useEditor } from '../state';
 import { Section } from './ui';
 
 /** Which NOTAM groups (aerodromes, airspace) are collapsed, per browser. */
@@ -24,7 +25,18 @@ const NOTAM_GROUPS_STORE = 'pgf.editor.notamGroups';
 
 const fmtFetched = (ms: number | null): string => (ms ? fmtClockMs(ms, { z: true }) : '');
 
-function NotamItem({ n, selected, onSelect }: { n: Notam; selected: boolean; onSelect: () => void }) {
+function NotamItem({
+  n,
+  selected,
+  onSelect,
+  onHover,
+}: {
+  n: Notam;
+  selected: boolean;
+  onSelect: () => void;
+  /** The pointer over it (its area is outlined on the map) or gone. */
+  onHover: (on: boolean) => void;
+}) {
   const [raw, setRaw] = useState(false);
   const el = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -36,6 +48,8 @@ function NotamItem({ n, selected, onSelect }: { n: Notam; selected: boolean; onS
       className={'ep-notam' + (n.relevant ? '' : ' hidden-notam') + (selected ? ' selected' : '')}
       data-testid="notam"
       data-key={n.key}
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
     >
       <button type="button" className="ep-notam-head" onClick={onSelect} aria-pressed={selected}>
         <span className="ep-notam-key mono">{n.key}</span>
@@ -69,8 +83,15 @@ function NotamItem({ n, selected, onSelect }: { n: Notam; selected: boolean; onS
 }
 
 export function NotamSection() {
-  const { briefing, loading, error, refresh, showAll, setShowAll, selected, select } = useNotams();
+  const { briefing, loading, error, refresh, showAll, setShowAll, selected, select, hover } = useNotams();
   const list = visibleNotams(briefing, showAll);
+  // the departure and the destination always have their group, even with no NOTAM
+  const { doc } = useEditor();
+  const always = useMemo(() => {
+    const icaoOf = (p: (typeof doc.route)[number] | undefined) =>
+      p?.kind === 'aerodrome' ? (aerodrome(p.refId ?? p.name)?.icao ?? null) : null;
+    return [icaoOf(doc.route[0]), icaoOf(doc.route[doc.route.length - 1])].filter((x): x is string => !!x);
+  }, [doc.route]);
   const ok = briefing?.status === 'ok';
   const badge =
     loading && !briefing ? (
@@ -123,8 +144,8 @@ export function NotamSection() {
               {briefing.params.corridorNm} NM either side
             </p>
             {briefing.message && <p className="ep-note warn-text">{briefing.message}</p>}
-            {list.length > 0 ? (
-              groupNotams(list).map((g) => (
+            {list.length > 0 || always.length > 0 ? (
+              groupNotams(list, always).map((g) => (
                 <Collapsible
                   key={g.icao ?? ''}
                   id={`notams-${g.icao ?? 'airspace'}`}
@@ -144,6 +165,7 @@ export function NotamSection() {
                   }
                   badge={<span className="muted tnum">{g.notams.length}</span>}
                 >
+                  {g.notams.length === 0 && <p className="ep-note muted">No relevant NOTAMs.</p>}
                   <ul className="ep-notam-list">
                     {g.notams.map((n) => (
                       <NotamItem
@@ -151,6 +173,7 @@ export function NotamSection() {
                         n={n}
                         selected={selected === n.key}
                         onSelect={() => select(selected === n.key ? null : n.key)}
+                        onHover={(on) => hover(on ? n.key : null)}
                       />
                     ))}
                   </ul>

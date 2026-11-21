@@ -148,6 +148,8 @@ export interface RouteMapProps {
   /** The NOTAM picked in the panel or on the map (highlighted). */
   selectedNotam?: string | null;
   onNotamSelect?: (key: string | null) => void;
+  /** The NOTAM under the pointer in the panel: its area outlined with marching dashes. */
+  hoveredNotam?: string | null;
   /** The leg hovered in the navlog (highlighted with marching dashes), null = none. */
   focusLeg?: { from: { lat: number; lon: number }; to: { lat: number; lon: number } } | null;
   /** Touch-and-go / stop request per route point uid (FlightOptions.aerodromeRequests). */
@@ -594,7 +596,13 @@ export function RouteMap(props: RouteMapProps) {
   }, [allInfos, routeLatLon, loaded]);
 
   // The focused airspace or NOTAM area: its outline with dashes walking around it (still when motion is reduced).
+  // A NOTAM under the pointer in the panel comes first.
+  const panelNotam = props.hoveredNotam ?? null;
   const focusData = useMemo(() => {
+    if (panelNotam) {
+      const n = notamMarks.find((x) => x.key === panelNotam);
+      if (n) return notamFocusFeatures(n.key, n.rings);
+    }
     if (mapFocus?.kind === 'air' && airPop) {
       const a = allInfos.find((x) => x.id === mapFocus.id);
       return a ? focusFeatures(a) : null;
@@ -604,7 +612,7 @@ export function RouteMap(props: RouteMapProps) {
       return n ? notamFocusFeatures(n.key, n.rings) : null;
     }
     return null;
-  }, [mapFocus, airPop, notamPop, allInfos, notamMarks]);
+  }, [panelNotam, mapFocus, airPop, notamPop, allInfos, notamMarks]);
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !loaded) return;

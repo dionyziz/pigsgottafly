@@ -23,6 +23,9 @@ export interface NotamState {
   selected: string | null;
   select: (key: string | null) => void;
   selectedNotam: Notam | null;
+  /** NOTAM under the pointer in the panel (its area is outlined on the map), null = none. */
+  hovered: string | null;
+  hover: (key: string | null) => void;
 }
 
 const NotamContext = createContext<NotamState | null>(null);
@@ -37,6 +40,8 @@ const EMPTY: NotamState = {
   selected: null,
   select: () => {},
   selectedNotam: null,
+  hovered: null,
+  hover: () => {},
 };
 
 /** The editor's NOTAM state; outside a <NotamProvider> an empty, inert state. */
@@ -54,6 +59,7 @@ export function NotamProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [force, setForce] = useState(0);
   const seq = useRef(0);
 
@@ -128,8 +134,10 @@ export function NotamProvider({ children }: { children: ReactNode }) {
       selected,
       select,
       selectedNotam,
+      hovered,
+      hover: setHovered,
     }),
-    [briefing, loading, error, refresh, showAll, selected, select, selectedNotam],
+    [briefing, loading, error, refresh, showAll, selected, select, selectedNotam, hovered],
   );
   return <NotamContext value={value}>{children}</NotamContext>;
 }

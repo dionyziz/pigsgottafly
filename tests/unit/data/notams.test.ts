@@ -142,6 +142,16 @@ describe('NOTAM areas on the map', () => {
       [null, ['A2/26', 'A5/26']],
     ]);
     expect(groupNotams([])).toEqual([]);
+    // the departure and the destination always come first, even with no NOTAM (once for a round trip)
+    expect(groupNotams(list, ['LGMG', 'LGTT', 'LGTT']).map((g) => [g.icao, g.notams.length])).toEqual([
+      ['LGMG', 1],
+      ['LGTT', 2],
+      [null, 2],
+    ]);
+    expect(groupNotams([], ['LGTT', 'LGSO']).map((g) => [g.icao, g.notams.length])).toEqual([
+      ['LGTT', 0],
+      ['LGSO', 0],
+    ]);
   });
   test('the areas the text describes replace the Q-line circle', () => {
     const square = notamRings(
