@@ -60,7 +60,6 @@ export interface FuelPlan {
   defaultFobL: number;
   /** FOB used: input.fobL ?? defaultFobL. */
   fobL: number;
-  /** True when FOB is the default (input.fobL null). */
   fobIsDefault: boolean;
   /** FOB − taxi − trip. */
   landingFuelL: number;
@@ -68,11 +67,9 @@ export interface FuelPlan {
   enduranceMin: number;
   /** Endurance of the fuel left on landing at the planning burn, whole minutes rounded down. */
   landingEnduranceMin: number;
-  /** FOB above usable capacity. */
   overCapacity: boolean;
   /** Default FOB (required + reserve) above usable capacity. */
   defaultOverCapacity: boolean;
-  /** FOB below required. */
   belowRequired: boolean;
   /** PilotSettings.reserveMin was not set (reserve 0 used). */
   reserveUnset: boolean;

@@ -14,11 +14,9 @@ import type { MapLayers } from './mapLayers.js';
 import type { FlightAccess } from './sharing.js';
 
 export type Id = string;
-/** 'YYYY-MM-DD' */
 export type IsoDate = string;
 /** 'HH:MM', UTC. '' = not set. */
 export type ClockUtc = string;
-/** Milliseconds since the Unix epoch. */
 export type EpochMs = number;
 
 export interface LatLon {
@@ -50,7 +48,6 @@ export interface PilotSettings {
    * as on the paper navlog). Set e.g. 30 to plan a VFR-day final reserve inside "required".
    */
   finalReserveMin: number;
-  /** Winds/temperatures aloft model. */
   windModel: WindModel;
   /** Minutes of one circuit (touch-and-go then full stop, full stop at the departure or destination); missing = 7. */
   circuitMin?: number;
@@ -175,7 +172,6 @@ export interface SeatPosition {
   label: string;
 }
 
-/** A loading station of the W&B sheet. */
 export interface Station {
   /** Stable id: 'front', 'rear', 'bag1', 'bag2', 'fuel' for the seeded aircraft. */
   id: string;
@@ -215,9 +211,7 @@ export interface MassBalance {
   emptyMassKg: number;
   emptyArmM: number;
   emptyMomentKgM: number;
-  /** Date of the weighing report. */
   weighingDate: IsoDate | null;
-  /** Reference to the weighing report. */
   weighingSource: string;
   includesOil: boolean;
   mtowKg: number;
@@ -385,7 +379,6 @@ export interface AircraftFile {
   mime: string;
   /** Bytes. */
   size: number;
-  /** Number of chunks of the content. */
   chunks: number;
   uploaded: EpochMs;
 }

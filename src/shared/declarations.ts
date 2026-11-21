@@ -157,7 +157,6 @@ export function sheetText(v: unknown, max: number): string {
 const S = (v: unknown, max = 200): string => sheetText(v, max);
 const B = (v: unknown): boolean => v === true;
 const N = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(-1e6, Math.min(1e6, v)) : 0);
-/** A number, or null when it is not one. */
 const NN = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? N(v) : null);
 /** A key as the sheets use them (data attributes): letters, digits and _ . : - only. */
 const K = (v: unknown): string => (typeof v === 'string' && /^[A-Za-z0-9_.:-]{1,40}$/.test(v) ? v : '');
@@ -173,7 +172,6 @@ const LS = (v: unknown, max: number, len: number): string[] =>
     : [];
 type Obj = Record<string, unknown>;
 const O = (v: unknown): Obj => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Obj) : {});
-/** v when it is one of the options, else the fallback. */
 const oneOf = <T extends string, F>(v: unknown, options: readonly T[], fallback: F): T | F =>
   options.find((o) => o === v) ?? fallback;
 const V = (v: unknown): Verdict => (v === 'pass' || v === 'fail' ? v : 'incomplete');

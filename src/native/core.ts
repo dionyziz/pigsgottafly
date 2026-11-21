@@ -275,7 +275,6 @@ export function chartData(
   const allInfos = airspaceInfos(r.airspaces, r.adAirspaces, r.areas ?? [], r.fir);
   const airInfos = allInfos.filter((a) => airspaceShown(layers, a.type));
   const far = new Set(allInfos.filter((a) => farFromRoute(a, routeLatLon)).map((a) => a.id));
-  /** The `far` property on each airspace (the website's feature state 'far'). */
   const withFar = <T extends { features: { properties: unknown }[] }>(fc: T): T => {
     for (const f of fc.features) {
       const p = f.properties as { id?: string; far?: boolean };
@@ -499,7 +498,6 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
   const s = weatherSetup(flight, ref, nowMs);
   const { weather, hazardWeather, metar } = weatherOf(s, i.weather ?? {}, nowMs);
   const legs: LegGeometry[] = s.legs;
-  // altitudes as the editor's state: the pilot's override, else the default
   const overrides = legs.map((l) => flight.legOverrides?.[l.key]?.altFt);
   const timing = requestTiming(flight.route, flight.options, settings.circuitMin);
   const defaults = defaultAltitudes(

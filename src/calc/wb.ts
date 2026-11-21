@@ -55,7 +55,6 @@ export interface WbPoint {
 export interface WbCheck {
   /** Inside the envelope polygon (mass and CG), and inside the moment polygon if there is one. */
   inEnvelope: boolean;
-  /** Mass ≤ envelope max. */
   massOk: boolean;
   /** CG polygon alone. */
   inCgPolygon?: boolean;
@@ -128,7 +127,6 @@ export function insidePolygon(x: number, y: number, poly: [number, number][]): b
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const [xi, yi] = poly[i];
     const [xj, yj] = poly[j];
-    // on the segment?
     const cross = (x - xi) * (yj - yi) - (y - yi) * (xj - xi);
     const len = Math.hypot(xj - xi, yj - yi) || 1;
     if (
@@ -144,7 +142,6 @@ export function insidePolygon(x: number, y: number, poly: [number, number][]): b
   return inside;
 }
 
-/** Checks a point against one envelope. */
 export function checkEnvelope(env: Envelope, p: WbPoint): WbCheck {
   const inCg = p.massKg > 0 && insidePolygon(p.armM, p.massKg, env.polygon);
   const inMoment =
@@ -198,7 +195,6 @@ export function weightAndBalance(input: WbInput): WbResult {
     rows.push(unusableRow);
   }
 
-  // Loads (people and baggage).
   const perStation = new Map<string, { mass: number; moment: number }>();
   const seatsUsed = new Map<string, number>();
   const peoplePerStation = new Map<string, number>();
@@ -249,7 +245,6 @@ export function weightAndBalance(input: WbInput): WbResult {
     }
   }
 
-  // Fuel.
   let fuelTo = input.fuelTakeoffL;
   let fuelLdg = input.fuelLandingL;
   if (!(fuelTo >= 0)) fuelTo = 0;
@@ -288,7 +283,6 @@ export function weightAndBalance(input: WbInput): WbResult {
   }
   stationRows.push(fuelRow);
 
-  // Limits.
   if (mb.mtowKg > 0 && takeoff.massKg > mb.mtowKg + EPS)
     breach(
       'mtow',
@@ -309,7 +303,6 @@ export function weightAndBalance(input: WbInput): WbResult {
   const chosen = input.category === 'utility' ? utility : normal;
   const catName = input.category === 'utility' ? 'utility' : 'normal';
   if (input.category === 'utility' && !utilEnv) {
-    // No utility limits to check against: the flight cannot be in the utility category.
     breach('category', 'This aircraft has no utility category.');
   }
   if (chosen) {

@@ -11,7 +11,6 @@ export function parseDecimal(s: string): number | null {
 export interface NumberRules {
   min?: number;
   max?: number;
-  /** Whole numbers only. */
   integer?: boolean;
   /** An empty field is null (default true); otherwise it is not a valid value. */
   allowEmpty?: boolean;

@@ -20,8 +20,6 @@
 // Corridor: the caller samples each leg every ~10 NM along it and ±5 NM either side (snapped to
 // the model grid). Each hazard reports the stretch of the leg it affects (fractions 0–1), so the
 // map can mark that stretch without naming the leg; the strip/export prefix the leg.
-//
-// Everything here is advisory (model guidance); the official briefing remains the pilot's job.
 import { fmtClockMs } from '../shared/format.js';
 import { fmtAltitude } from './nav.js';
 

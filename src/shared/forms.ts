@@ -5,7 +5,6 @@ import type { GenDecHandling } from '../calc/aerodromeStatus.js';
 import { seatLayout } from './constants.js';
 import type { Aircraft, FlightCrew, IsoDate, Passenger, PersonDetails, Pilot, RoutePoint, Station } from './types.js';
 
-/** Minimal aerodrome record for the forms. */
 export interface FormAerodrome {
   id: string;
   icao: string | null;
@@ -30,7 +29,6 @@ export interface Place {
   code: string;
   name: string;
   icao: string | null;
-  /** The route point is an aerodrome. */
   aerodrome: boolean;
 }
 
@@ -385,7 +383,7 @@ export interface SignatureState {
   email: string;
   /** When the form was last e-mailed to them (epoch ms). */
   emailedAt: number | null;
-  /** Link state (PAX only). */
+  /** PAX only. */
   link: {
     created: number;
     firstOpened: number | null;

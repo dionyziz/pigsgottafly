@@ -1,5 +1,3 @@
-// Small immutable array helpers.
-
 /** A copy of `list` with the item at `from` moved to index `to` (clamped to the list). */
 export function moveAt<T>(list: readonly T[], from: number, to: number): T[] {
   const out = list.slice();

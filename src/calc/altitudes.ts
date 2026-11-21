@@ -34,7 +34,6 @@ export const TERRAIN_ROUND_FT = 500;
 export interface AltitudeDefault {
   /** Default altitude, ft; NaN when no rule gives one. */
   altFt: number;
-  /** Which rule produced it. */
   source: 'vfr-route' | 'pattern' | 'previous' | 'closest-route' | 'terrain' | 'none';
   /** The charted route used (source 'vfr-route' / 'closest-route'). */
   route: RefVfrRoute | null;
@@ -43,7 +42,6 @@ export interface AltitudeDefault {
 /** A custom point further than this from every charted VFR route leg gets no 'closest-route' default. */
 export const CLOSEST_ROUTE_MAX_NM = 10;
 
-/** Nearest aerodrome within maxNm, or null. */
 export function nearestAerodrome(p: LatLon, aerodromes: RefAerodrome[], maxNm: number): RefAerodrome | null {
   let best: RefAerodrome | null = null,
     bd = Infinity;

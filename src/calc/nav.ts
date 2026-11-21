@@ -34,7 +34,6 @@ export function trueCourse(a: LatLon, b: LatLon): number {
   return norm360(deg(Math.atan2(y, x)));
 }
 
-/** Great-circle midpoint. */
 export function midpoint(a: LatLon, b: LatLon): LatLon {
   const la1 = rad(a.lat),
     lo1 = rad(a.lon),
@@ -215,7 +214,6 @@ export const fmtHmm = (min: number): string => {
   const m = Math.round(min);
   return `${Math.floor(m / 60)}:${pad(m % 60)}`;
 };
-// fmtDuration ('1h44'), fmtAltitude ('3000' / 'FL065'), fmtClock ('HH:MM') live in src/shared/format.ts.
 export { fmtAltitude, fmtClock, fmtDuration } from '../shared/format.js';
 /** '0930', '09:30', '09:30Z' → minutes after midnight; NaN if invalid. */
 export function parseClock(s: string | null | undefined): number {

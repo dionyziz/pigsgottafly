@@ -71,7 +71,6 @@ export type FlightRole = AircraftRole;
 /** How the session pilot holds a flight they do not own (Flight.access; absent on their own flights). */
 export interface FlightAccess {
   role: ShareRole;
-  /** The flight's owner. */
   owner: Omit<SharePerson, 'role'>;
   /**
    * The flight's aircraft as its owner sees it (null without one, or when the owner no longer has

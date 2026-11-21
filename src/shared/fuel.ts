@@ -37,7 +37,6 @@ export function primaryFuel(spec: Pick<FuelSpec, 'types'>): FuelGrade {
   return { type, densityKgPerL: fuelDensity(type) };
 }
 
-/** The standard density of a fuel type, kg/L. */
 export function fuelDensity(type: FuelType): number {
   return FUEL_DENSITY[type] ?? FUEL_DENSITY.AVGAS;
 }
@@ -67,7 +66,6 @@ export interface FuelLoad {
   kg: number;
   /** Average density of the mix, kg/L (the first fuel's density when there is no fuel). */
   densityKgPerL: number;
-  /** More than one type on board. */
   mixed: boolean;
   /** Types on board that the aircraft does not list as approved. */
   unapproved: FuelType[];
@@ -90,7 +88,6 @@ export function fuelByType(
   return any ? out : null;
 }
 
-/** Sum of the litres per type (0 when none). */
 export function fuelByTypeTotal(byType: Partial<Record<FuelType, number>> | null | undefined): number {
   return FUEL_TYPES.reduce((s, t) => s + (fin(byType?.[t]) ? byType[t] : 0), 0);
 }

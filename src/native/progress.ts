@@ -20,7 +20,6 @@ export const MIN_GPS_GS_KT = 30;
 /** Within this of the departure or destination aerodrome, its own frequency is the one to use. */
 export const AERODROME_FREQ_NM = 10;
 
-/** A waypoint of the route. */
 export interface ProgressPoint extends LatLon {
   name: string;
   uid?: string;
@@ -216,7 +215,6 @@ export function freqAt(atc: ProgressAtc | null, legIndex: number, p: LatLon, las
 const sameFreq = (a: AtcEntry | null, b: AtcEntry | null) =>
   !!a && !!b && a.primary === b.primary && a.callsign === b.callsign;
 
-/** Where the aircraft is along the route. */
 export function progress(i: ProgressInput): Progress {
   const { legs, navlog, atc, position } = i;
   const p = { lat: position.lat, lon: position.lon };
