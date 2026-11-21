@@ -1,6 +1,8 @@
 // General Declaration: header fields, routing (origin and destination only) and crew, passenger
 // counts, warnings, render.
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES } from '../../../../shared/forms';
@@ -50,9 +52,12 @@ describe('general declaration model', () => {
   });
 });
 
+// the warnings' fix links need a router
+const markup = (el: ReactElement) => renderToStaticMarkup(<MemoryRouter>{el}</MemoryRouter>);
+
 describe('general declaration sheet', () => {
   it('renders one portrait sheet with the values in bold after their labels', () => {
-    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    const html = markup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     expect(html.match(/class="pgf-sheet gd-sheet"/g)).toHaveLength(1);
     expect(html).toContain('GENERAL DECLARATION');
     expect(html).toContain('(OUTWARD/INWARD)');
@@ -64,7 +69,7 @@ describe('general declaration sheet', () => {
   });
 
   it('routing table: origin with the PIC, the arrow, destination, then blank ruled rows', () => {
-    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    const html = markup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     const body = html.slice(html.indexOf('<tbody>'), html.indexOf('</tbody>'));
     expect(body.match(/<tr>/g)).toHaveLength(ROUTING_ROWS);
     expect(body).toMatch(/data-end="origin">LGTT<\/td><td class="gd-crew-col pgf-fill" data-field="crew">PAT PILOT</);
@@ -74,7 +79,7 @@ describe('general declaration sheet', () => {
   });
 
   it('reproduces the full Annex 9 Declaration of Health, struck through NIL', () => {
-    const html = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    const html = markup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     for (const l of GENDEC_HEALTH_LINES) expect(html).toContain(l);
     for (const l of GENDEC_DISINSECT_LINES) expect(html).toContain(l);
     expect(html).toContain('temperature 38°C/100°F or greater');
@@ -83,10 +88,10 @@ describe('general declaration sheet', () => {
   });
 
   it('draws the PIC e-signature on the declaration signature line, like Form 731', () => {
-    const unsigned = renderToStaticMarkup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
+    const unsigned = markup(<GenDec flight={flight()} aircraft={aircraft} pilot={pilot} />);
     expect(unsigned).not.toContain('data-testid="signature"');
     const signedAt = Date.UTC(2026, 10, 15, 16, 51);
-    const html = renderToStaticMarkup(
+    const html = markup(
       <GenDec flight={flight()} aircraft={aircraft} pilot={pilot} signature={{ name: 'Pat Pilot', signedAt }} />,
     );
     expect(html).toMatch(

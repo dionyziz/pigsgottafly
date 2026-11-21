@@ -8,6 +8,7 @@ import './hangar.css';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
+import { useBack, withBack } from '../../app/back';
 import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
@@ -30,6 +31,8 @@ export function HangarPage() {
   const { pilot, setPilot } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
+  // opened from a flight (?back=): the new aircraft's page keeps the way back
+  const { back } = useBack();
   const [adding, setAdding] = useState<{ copyOf?: Aircraft } | null>(null);
   const [deleting, setDeleting] = useState<Aircraft | null>(null);
   const [sharing, setSharing] = useState<HangarAircraft | null>(null);
@@ -62,7 +65,7 @@ export function HangarPage() {
       }
     }
     toast(becameDefault ? `Added ${a.registration} as your default aircraft` : `Added ${a.registration}`);
-    void navigate(`/hangar/${a.id}`);
+    void navigate(withBack(`/hangar/${a.id}`, back));
   };
 
   return (
@@ -110,14 +113,14 @@ export function HangarPage() {
                   />
                 </div>
                 <div className="ac-card-head">
-                  <Link to={`/hangar/${a.id}`} className="reg mono ac-card-link">
+                  <Link to={withBack(`/hangar/${a.id}`, back)} className="reg mono ac-card-link">
                     {a.registration}
                   </Link>
                   {isDefault && <Chip tone="ok">Default</Chip>}
                   <span className="spacer" />
                   <KebabMenu
                     items={[
-                      { label: 'Open', onSelect: () => void navigate(`/hangar/${a.id}`) },
+                      { label: 'Open', onSelect: () => void navigate(withBack(`/hangar/${a.id}`, back)) },
                       { label: 'Share…', onSelect: () => setSharing(a) },
                       ...(isDefault ? [] : [{ label: 'Make default aircraft', onSelect: () => void makeDefault(a) }]),
                       { label: 'Add another of this type', onSelect: () => setAdding({ copyOf: a }) },

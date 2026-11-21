@@ -7,6 +7,7 @@ import '../lobby/lists.css';
 import { Fragment, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { useBack } from '../../app/back';
 import { usePilot } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { useToast } from '../../app/toast';
@@ -131,15 +132,30 @@ export function PassengersPage() {
   const pilot = usePilot();
   const toast = useToast();
   // ?edit=me or ?edit=<passenger id>, with &fields=<names> (links from the forms' missing-details list).
+  // With ?back= (a link from a flight: src/app/back.ts), closing that dialog returns there.
   const [params, setParams] = useSearchParams();
   const editParam = params.get('edit');
+  const { goBack } = useBack();
+  const [linked, setLinked] = useState(false);
   const openFromParams = useEffectEvent(() => {
     if (!editParam) return;
     const fields = (params.get('fields') || '').split(',').filter(Boolean);
+    // the dialog is open: the link's params go (?back= stays)
+    const opened = () =>
+      setParams(
+        (old) => {
+          const next = new URLSearchParams(old);
+          next.delete('edit');
+          next.delete('fields');
+          return next;
+        },
+        { replace: true },
+      );
     if (editParam === 'me') {
       setFocusFields(fields);
       setEditing('me');
-      setParams({}, { replace: true });
+      setLinked(true);
+      opened();
       return;
     }
     if (!data) return;
@@ -147,8 +163,9 @@ export function PassengersPage() {
     if (p) {
       setFocusFields(fields);
       setEditing(p);
+      setLinked(true);
     } else toast('That passenger was deleted');
-    setParams({}, { replace: true });
+    opened();
   });
   useEffect(() => openFromParams(), [editParam, data]);
   const [deleting, setDeleting] = useState<Passenger | null>(null);
@@ -170,9 +187,12 @@ export function PassengersPage() {
     setFocusFields(fields);
     setEditing(who);
   };
-  const close = () => {
+  /** Closes the dialog; one opened by a link from a flight returns there (unless `stay`). */
+  const close = (stay = false) => {
     setEditing(null);
     setFocusFields([]);
+    setLinked(false);
+    if (linked && !stay) goBack();
   };
 
   return (
@@ -233,14 +253,14 @@ export function PassengersPage() {
           </div>
         )}
       </AsyncView>
-      {editing === 'me' && <PilotDetailsDialog focus={focusFields} onClose={close} />}
+      {editing === 'me' && <PilotDetailsDialog focus={focusFields} onClose={() => close()} />}
       {editing && editing !== 'me' && (
         <PassengerDialog
           passenger={editing === 'new' ? null : editing}
           focus={focusFields}
-          onClose={close}
+          onClose={() => close()}
           onDelete={(p) => {
-            close();
+            close(true);
             setDeleting(p);
           }}
           onSaved={(p, created) => {

@@ -2,8 +2,8 @@
 // or created on the spot), each in a seat of the aircraft; body weights for this flight; baggage per
 // baggage area; W&B category; take-off/landing mass and CG against the envelope.
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
 
+import { FlowLink } from '../../../app/FlowLinks';
 import {
   FALLBACK_SEATS,
   type FlightCrew,
@@ -421,9 +421,9 @@ export function ManifestSection() {
           )}
         </>
       )}
-      <Link to="/passengers" className="ep-link">
+      <FlowLink to="/passengers" className="ep-link">
         Manage passengers
-      </Link>
+      </FlowLink>
 
       {editingMe && (
         <PilotDetailsDialog

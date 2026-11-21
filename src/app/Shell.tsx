@@ -1,9 +1,11 @@
 // Page chrome for the lobby and the account pages: brand, optional centre content, account menu.
-// The flight editor and the export pages have their own full-window layouts.
+// The flight editor and the export pages have their own full-window layouts. A page opened from a
+// flight to fix something (?back=) starts with the way back (FlowBack).
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { AccountMenu } from './AccountMenu';
+import { FlowBack } from './FlowLinks';
 
 export function TopBar({ children }: { children?: ReactNode }) {
   return (
@@ -22,7 +24,10 @@ export function Shell({ children, top }: { children: ReactNode; top?: ReactNode 
   return (
     <>
       <TopBar>{top}</TopBar>
-      <main className="page">{children}</main>
+      <main className="page">
+        <FlowBack />
+        {children}
+      </main>
     </>
   );
 }

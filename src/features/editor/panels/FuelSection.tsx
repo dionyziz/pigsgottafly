@@ -1,8 +1,7 @@
 // Fuel: required (allowance + trip + final reserve), reserve on top, fuel on board (default =
 // required + reserve; editable), capacity and endurance. An aircraft with more than one approved
 // fuel gets one input per type (mixed tanks allowed): FOB is their sum, the W&B weighs each type.
-import { Link } from 'react-router';
-
+import { FlowLink } from '../../../app/FlowLinks';
 import { type FlightDoc, fuelByType, fuelLoad, type FuelType, primaryFuel } from '../../../shared';
 import { fmtDuration } from '../../../shared/format';
 import { Chip, NumberField } from '../../../ui';
@@ -123,7 +122,13 @@ export function FuelSection() {
         <KV
           k="Reserve"
           v={<span className="tnum">{fuel.reserveL} L</span>}
-          sub={fuel.reserveUnset ? <Link to="/profile">set in your profile</Link> : time(fuel.reserveL)}
+          sub={
+            fuel.reserveUnset ? (
+              <FlowLink to="/profile?focus=reserveMin">set in your profile</FlowLink>
+            ) : (
+              time(fuel.reserveL)
+            )
+          }
           tone={fuel.reserveUnset ? 'warn' : undefined}
         />
         <KV
