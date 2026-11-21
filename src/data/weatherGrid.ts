@@ -80,39 +80,10 @@ export async function fetchGrid(req: GridRequest): Promise<GridResult> {
     return newest === undefined || newest <= e.runMs;
   };
   const missing = locs.filter((k) => !usable(cache.get(base + k)));
-  // nodes and points together, at most GRID_MAX_LOCATIONS (GRID_MAX_POINTS points) per request
-  const chunks: string[][] = [];
-  let cur: string[] = [],
-    points = 0;
-  for (const k of missing) {
-    const point = k.startsWith('p:');
-    if (cur.length >= GRID_MAX_LOCATIONS || (point && points >= GRID_MAX_POINTS)) {
-      chunks.push(cur);
-      cur = [];
-      points = 0;
-    }
-    cur.push(k);
-    if (point) points++;
-  }
-  if (cur.length) chunks.push(cur);
-  for (const chunk of chunks) {
-    const q = new URLSearchParams({
-      kind: req.kind,
-      model: req.model,
-      from: req.from,
-      to: req.to,
-      locs: chunk.join(';'),
-    });
-    if (req.force) q.set('fresh', '1');
-    const all = get(`weather/grid?${q}`).then((b) => b as WeatherGridResponse);
+  for (const { path, locs: chunk } of gridRequests({ ...req, locs: missing })) {
+    const all = get(path).then((b) => b as WeatherGridResponse);
     for (const k of chunk) {
-      const p = all.then((r): Answer => ({
-        loc: r.locations?.[k] ?? null,
-        endpoint: r.endpoint,
-        run: r.run,
-        message: r.message,
-        synthetic: r.synthetic,
-      }));
+      const p = all.then((r) => answerOf(r, k));
       const entry: Entry = { p, until: now + PENDING_MS, runMs: null, endpoint: null };
       cache.set(base + k, entry);
       p.then(
@@ -139,6 +110,69 @@ export async function fetchGrid(req: GridRequest): Promise<GridResult> {
     }
   }
   const settled = await Promise.allSettled(locs.map((k) => cache.get(base + k)!.p));
+  return mergeGrid(locs, settled);
+}
+
+/**
+ * The GET requests (paths under /api/) that fetch these locations: nodes and points together, at
+ * most GRID_MAX_LOCATIONS (GRID_MAX_POINTS points) per request.
+ */
+export function gridRequests(
+  req: Pick<GridRequest, 'kind' | 'model' | 'from' | 'to' | 'locs' | 'force'>,
+): { path: string; locs: string[] }[] {
+  const chunks: string[][] = [];
+  let cur: string[] = [],
+    points = 0;
+  for (const k of [...new Set(req.locs)]) {
+    const point = k.startsWith('p:');
+    if (cur.length >= GRID_MAX_LOCATIONS || (point && points >= GRID_MAX_POINTS)) {
+      chunks.push(cur);
+      cur = [];
+      points = 0;
+    }
+    cur.push(k);
+    if (point) points++;
+  }
+  if (cur.length) chunks.push(cur);
+  return chunks.map((chunk) => {
+    const q: [string, string][] = [
+      ['kind', req.kind],
+      ['model', req.model],
+      ['from', req.from],
+      ['to', req.to],
+      ['locs', chunk.join(';')],
+    ];
+    if (req.force) q.push(['fresh', '1']);
+    return { path: `weather/grid?${formQuery(q)}`, locs: chunk };
+  });
+}
+
+/**
+ * A query string exactly as URLSearchParams writes it (application/x-www-form-urlencoded), without
+ * URLSearchParams: the native app's JavaScriptCore has no URL API (src/native/core.ts).
+ */
+export function formQuery(params: [string, string][]): string {
+  const enc = (s: string) =>
+    encodeURIComponent(s)
+      .replace(/[!'()~]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase())
+      .replace(/%20/g, '+');
+  return params.map(([k, v]) => `${enc(k)}=${enc(v)}`).join('&');
+}
+
+/** One location's answer: from a server response (see answerOf), or the request's failure. */
+export type GridAnswer = PromiseSettledResult<Answer>;
+
+/** A location's answer in a server response. */
+export const answerOf = (r: WeatherGridResponse, k: string): Answer => ({
+  loc: r.locations?.[k] ?? null,
+  endpoint: r.endpoint,
+  run: r.run,
+  message: r.message,
+  synthetic: r.synthetic,
+});
+
+/** The result of a grid request from each location's answer. Throws when every request failed. */
+export function mergeGrid(locs: string[], settled: GridAnswer[]): GridResult {
   const locations = new Map<string, OpenMeteoLocation | null>();
   let first: Answer | null = null,
     failure: unknown = null;

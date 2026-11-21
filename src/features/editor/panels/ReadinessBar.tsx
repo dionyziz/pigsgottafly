@@ -14,14 +14,15 @@ import { api } from '../../../data/api';
 import { flightStore } from '../../../data/flightStore';
 import { useAsync } from '../../../data/useAsync';
 import { Icon } from '../../../ui';
-import { planningFix } from '../../exports/fix';
 import { editorWarningFix, focusSection, onEditorFocus, sectionOf } from '../focus';
 import { useNotams } from '../notams';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import {
   type ItemState,
+  profileMissingOf,
   readiness,
+  readinessWarnings,
   type ReadyItem,
   SECTION_STAGE,
   type Stage,
@@ -84,15 +85,10 @@ export function useReadiness() {
   const items = useMemo(
     () =>
       readiness({
-        profileMissing: [!pilot.fullName.trim() && 'name', !pilot.phone.trim() && 'phone'].filter(
-          (x): x is string => !!x,
-        ),
+        profileMissing: profileMissingOf({ fullName: pilot.fullName, phone: pilot.phone }),
         routePoints: doc.route.length,
         hasAircraft: !!doc.aircraftId,
-        // what is fixed in the aircraft's record (TAS, burn rate, envelope) belongs to the Aircraft row
-        warnings: warnings.map((w) =>
-          planningFix(w.text)?.kind === 'aircraft' ? { ...w, area: 'aircraft' as const } : w,
-        ),
+        warnings: readinessWarnings(warnings),
         notams: briefing,
         notamsRead: read === relevant,
         filing: filing.data ?? null,

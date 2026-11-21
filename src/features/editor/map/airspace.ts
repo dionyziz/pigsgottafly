@@ -4,7 +4,10 @@
 import polygonClipping from 'polygon-clipping';
 
 import { deg, R_NM, rad } from '../../../calc';
+import { areasToRoute } from '../../../shared/notamAreas';
 import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef, RefFir } from '../../../shared/ref';
+import type { LatLon } from '../../../shared/types';
+import { FAR_NM } from './style';
 
 /** Point at distance/bearing from a start (great circle), [lon, lat]. */
 export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
@@ -275,4 +278,12 @@ export function airspacesAt(infos: AirspaceInfo[], lon: number, lat: number): Ai
   return infos
     .filter((a) => contains(a, lon, lat))
     .sort((x, y) => ORDER[x.type] - ORDER[y.type] || limitFt(x.upper).ft - limitFt(y.upper).ft);
+}
+
+/** Further than FAR_NM from a route of two or more points (the map draws it faint). */
+export function farFromRoute(a: Pick<AirspaceInfo, 'ring'>, route: LatLon[]): boolean {
+  return (
+    route.length >= 2 &&
+    areasToRoute([{ kind: 'polygon', points: a.ring.map(([lon, lat]) => ({ lat, lon })) }], route).dist > FAR_NM
+  );
 }
