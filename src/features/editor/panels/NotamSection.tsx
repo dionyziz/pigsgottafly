@@ -86,12 +86,12 @@ export function NotamSection() {
   const { briefing, loading, error, refresh, showAll, setShowAll, selected, select, hover } = useNotams();
   const list = visibleNotams(briefing, showAll);
   // the departure and the destination always have their group, even with no NOTAM
-  const { doc } = useEditor();
+  const route = useEditor().doc.route;
   const always = useMemo(() => {
-    const icaoOf = (p: (typeof doc.route)[number] | undefined) =>
+    const icaoOf = (p: (typeof route)[number] | undefined) =>
       p?.kind === 'aerodrome' ? (aerodrome(p.refId ?? p.name)?.icao ?? null) : null;
-    return [icaoOf(doc.route[0]), icaoOf(doc.route[doc.route.length - 1])].filter((x): x is string => !!x);
-  }, [doc.route]);
+    return [icaoOf(route[0]), icaoOf(route[route.length - 1])].filter((x): x is string => !!x);
+  }, [route]);
   const ok = briefing?.status === 'ok';
   const badge =
     loading && !briefing ? (
