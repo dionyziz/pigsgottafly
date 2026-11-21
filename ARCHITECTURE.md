@@ -13,6 +13,8 @@ The design is in PLAN-v3.md. This file covers how the code is laid out and the c
 
 ```
 index.html                 Vite entry (→ src/main.tsx)
+pdf.html                   second Vite entry (→ src/pdf/main.tsx): the page the server prints the operator's W&B and
+                           performance PDF from (api/_lib/sheetPdf.ts)
 public/                    icons, manifest, fonts/Inter (copied to dist/ as-is)
 src/
   shared/                  THE CONTRACT: domain + API + ref types, constants, type templates
@@ -38,7 +40,8 @@ src/
     aerodrome.ts           aerodromeName(a) (ICAO, else the last part of the name), aerodromePoint(a): the one rule for
                            route points (new flight, editor, map, server home route)
     operators.ts           Operator, OperatorItem (access, viaAircraft), OperatorSharing; isEmail
-    declarations.ts        WbPerfContent (the W&B and performance sheets as sent to an operator), wbPerfContentOf
+    declarations.ts        WbPerfContent (the W&B and performance sheets as drawn: the export page draws them from it,
+                           sends it to an operator, and the server prints it with the same sheets), wbPerfContentOf
                            (normalization, both sides), wbPerfText (hashed: "changed since sent"), DeclarationsState
     weatherGrid.ts         forecast contract of GET /api/weather/grid: variable sets (wind, hazard), model grid steps
                            (ECMWF/GFS 0.25°, ICON-EU 0.0625°), gridCorners (the nodes around a point, bilinear weights),
@@ -192,7 +195,8 @@ src/
     exports/               ExportPage: /flights/:id/export/:kind → navlog/ (MD 4.2), form731/, gendec/ (MD 4.7),
                            fpl/ (ICAO 2012 message + form), wbperf/ (one signed document: wb/ MD 4.3 + envelope
                            chart, then performance/ MD 4.4; /export/wb and /export/performance redirect to it;
-                           SendPanel + declaration.ts: "Send to <operator>" when the aircraft's operator asks for them),
+                           SendPanel + declaration.ts: "Send to <operator>" when the aircraft's operator asks for them;
+                           the sheets WbSheet/PerfSheet are drawn from WbPerfContent, on the page and in the PDF),
                            briefing/ (NOTAM briefing). The flight is loaded after flightStore.flushNow() and refetched on
                            focus / 'flights' changes; aircraft and passengers via useEntity (useExportData.ts); weather via
                            useFlightWeather; screen panels are src/ui Panel. fix.ts + WarningList.tsx (ExportWarnings, the one
@@ -217,7 +221,12 @@ api/
   _lib/shareMail.ts        the e-mail to a person an aircraft or an operator is shared with (who, what, access, link); logged, capped, never fails the share
   _lib/monitor.ts          error monitoring: recordError (app_errors, grouped by fingerprint) + throttled alert e-mails,
                            migrateReporting (a failed migration is recorded and e-mailed, then rethrown), client report rate limit
-  _lib/declarationPdf.ts   the W&B and performance sheets as PDF (pdf.ts writer), from the client's WbPerfContent
+  _lib/sheetPdf.ts         the W&B and performance PDF e-mailed to an operator: headless Chromium (CHROME / a local Chrome;
+                           on Vercel @sparticuz/chromium, x86_64) prints dist/pdf.html (src/pdf/: the export page's sheets
+                           and CSS) from the sent WbPerfContent, A4 with the print CSS; no session, no network (requests
+                           answered from dist/ on disk, the rest aborted); ApiConfig.sheetPdf (configFromEnv; SHEET_PDF=off)
+  _lib/declarationPdf.ts   the fallback when that print fails (recorded in app_errors): the same sheets drawn with the
+                           pdf.ts writer
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
   _lib/migrate.ts          migration runner + MIGRATIONS registry
   _lib/migrations/         001_schema.ts, 002_ref_2609.ts (generated), 003_existing_pilot_data.ts (generated),
@@ -283,7 +292,8 @@ data/                      aip.js, vfr.js, sun.js (made by the Python tools from
                            aircraft/{reims-f172m,fleet,compass-cards}.json
 tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calculator cases), data/, exports/, screens/
 src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
-tests/api/                 vitest: API, auth, migrations (PGlite in memory)
+tests/api/                 vitest: API, auth, migrations (PGlite in memory); sheetPdf.test.ts prints the W&B and performance
+                           sheets in a local Chrome/Chromium (CHROME; skipped when there is none), building dist/pdf.html
 tests/setup/               noExternalApis.ts: the test process's fetch refuses Open-Meteo, aviationweather.gov and autorouter
                            (vitest setupFiles and the e2e harness; startServer's close() fails the test if anything tried)
 tests/helpers/             openMeteoGrid.ts: fake Open-Meteo from recorded ECMWF responses + gridApi (the real route on PGlite)
@@ -345,7 +355,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET, POST, PUT, DELETE | /flights/:id/shares[/:key] | Sharing a flight (`FlightSharing`): as for aircraft, but an e-mail no account uses gets an invite (`pending`, key = the address) instead of 404; every sign-in with that verified address turns its invites into shares. Both e-mail the person ('share-flight'). |
 | GET, POST, PUT, DELETE | /operators/:id/files… | Documents (operations manual), chunked like the aircraft files. |
 | GET | /flights/:id/declarations | `DeclarationsState`: the flight's aircraft's operator, the last sending (`hash`). |
-| POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. Subject and body from the server's records only; the content (bounded, links and e-mail addresses removed) only draws the PDF. 409 when not asked for / already sent (without resend); 429 over the sending caps; 503 e-mail not configured. |
+| POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. Subject and body from the server's records only; the content (bounded, links and e-mail addresses removed) only draws the PDF: the website's own print of the sheets (sheetPdf.ts), its registration, aircraft, operator, date, pilot and route replaced by the server's; if the print fails, the server's writer (declarationPdf.ts) and an app_errors entry. 409 when not asked for / already sent (without resend); 429 over the sending caps; 503 e-mail not configured. |
 | GET | /admin/pilots | `AdminPilot[]` (ADMIN_EMAILS only; 403 otherwise). `GET /session` says `admin`. |
 | GET | /admin/mail?pilot=&kind= | `AdminMail[]`: the e-mail action log, newest first (300), ADMIN_EMAILS only. |
 | GET | /admin/errors?status=open\|resolved\|all | `AppErrorGroup[]` (src/shared/monitoring.ts), newest first (ADMIN_EMAILS only). |
@@ -405,7 +415,7 @@ npm run smoke -- https://pigsgottafly.com   # post-deploy check (health, SPA, an
 npm run ref          # regenerate src/data/ref/*.json + migration 002 from data/*.js
 npx tsx tools/build_seed.ts   # print the owner's seeded aircraft (003 is applied and frozen)
 ```
-The W&B and performance sheets are computed in the browser (weather, models), so the export sends what it shows as `WbPerfContent` (text as printed + chart geometry) and the server draws the PDF with its own writer: nothing to install on Vercel, no headless browser. The client hashes `wbPerfText` (SHA-256, crypto.subtle) the way the server does, to show "changed since it was sent".
+The W&B and performance sheets are computed in the browser (weather, models), so the export draws them from `WbPerfContent` (text as printed + chart and runway-diagram geometry) and sends that same content; the server prints it with the very same sheet components and CSS (dist/pdf.html in headless Chromium: `@sparticuz/chromium` on Vercel, about 66 MB of the function; the vector PDF the browser's Print gives), so the operator gets what the pilot saw. Linux has neither Arial nor Menlo: src/pdf/pdf.css maps them to the metric-compatible Arimo and DejaVu Sans Mono (public/fonts) where they are not installed. The client hashes `wbPerfText` (SHA-256, crypto.subtle) the way the server does, to show "changed since it was sent".
 
 The signed-in pilot is one copy for the app (AuthGate): `setPilot` is posted to the other tabs (BroadcastChannel) and a tab re-reads `/api/me` when it comes to the foreground, so details fixed in an export's tab show everywhere at once. Exports read it with `usePilot()`, never their own `GET /me`.
 

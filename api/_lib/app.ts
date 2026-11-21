@@ -1,6 +1,8 @@
 // The API dispatcher, shared by the local server (server/server.ts) and the Vercel function
 // (api/index.ts). Matches /api/<path> against the route registry, resolves the session pilot,
 // and turns handler results/errors into JSON responses.
+import path from 'node:path';
+
 import type { Pilot } from '../../src/shared/types.js';
 import { appleKeys, googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
 import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
@@ -11,6 +13,7 @@ import { recordError } from './monitor.js';
 import { isConstraintViolation } from './pgErrors.js';
 import { ROUTES } from './routes/index.js';
 import { toPilot } from './rows.js';
+import { chromiumSheetPdf } from './sheetPdf.js';
 
 /** The `error` text of a thrown { error } object, if any. */
 const errorField = (e: unknown): string | null =>
@@ -69,6 +72,12 @@ export function configFromEnv(
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots ('*': every signed-in
     // pilot); unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
+    // the operator's W&B and performance PDF, printed by headless Chromium from the built client
+    // (dist/: on Vercel shipped with the function, vercel.json); SHEET_PDF=off: the server's own writer
+    sheetPdf:
+      env.SHEET_PDF === 'off'
+        ? null
+        : chromiumSheetPdf({ distDir: path.resolve(env.SHEET_PDF_DIST || path.join(process.cwd(), 'dist')) }),
   };
 }
 
@@ -121,6 +130,7 @@ export function createApi(
     adminEmails: (opts.adminEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),
     openMeteo: opts.openMeteo,
     aviationWeather: opts.aviationWeather,
+    sheetPdf: opts.sheetPdf ?? null,
   };
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter, tokenStore(opts.db)) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {

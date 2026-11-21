@@ -10,6 +10,9 @@
 // identifying fields replaced by the server's. Every send goes through the sending caps
 // (sendCaps.ts: per pilot, per flight, per declarations address; 10 min between sends of a flight).
 // A pilot the flight is shared with sees the state (as the owner's flight); only the owner sends.
+// The PDF is the website's own print of the sheets (config.sheetPdf: sheetPdf.ts, headless Chromium);
+// when that fails, the server's PDF writer draws it (declarationPdf.ts), so the operator still gets
+// the sheets, and the failure is recorded in app_errors (monitor.ts).
 import crypto from 'node:crypto';
 
 import {
@@ -19,18 +22,67 @@ import {
   wbPerfContentOf,
   wbPerfText,
 } from '../../../src/shared/declarations.js';
-import type { Pilot } from '../../../src/shared/types.js';
+import { routePlacesWith } from '../../../src/shared/forms.js';
+import type { Pilot, RoutePoint } from '../../../src/shared/types.js';
 import { accessibleSql, flightFor } from '../access.js';
 import type { Queryable } from '../db.js';
 import { wbPerfPdf } from '../declarationPdf.js';
-import type { Route } from '../http.js';
+import { loadRef } from '../flightContext.js';
+import type { ApiConfig, Route } from '../http.js';
 import { badRequest, conflict, HttpError, notFound } from '../http.js';
 import { mailAvailability, MailError, sendMail } from '../mail.js';
+import { recordError } from '../monitor.js';
+import type { SheetSignature } from '../sheetPdf.js';
 import { sendFormOnce } from './forms.js';
 
 const MAIL_DENIED = 'Your account has no e-mail address to copy the declarations to.';
 const NOT_OWNER = 'Only the flight’s owner sends its declarations.';
 export const wbPerfHash = (c: WbPerfContent) => crypto.createHash('sha256').update(wbPerfText(c)).digest('base64url');
+
+/**
+ * The PDF of the sheets: the website's print (config.sheetPdf), else, when there is none or it
+ * fails, the server's own writer; a failure is recorded (app_errors) and the send goes on.
+ */
+async function sheetsPdf(
+  db: Queryable,
+  config: Pick<ApiConfig, 'sheetPdf' | 'adminEmails'>,
+  content: WbPerfContent,
+  sig: SheetSignature | null,
+  pilotId: string,
+): Promise<Buffer> {
+  if (config.sheetPdf) {
+    try {
+      return await config.sheetPdf(content, sig);
+    } catch (e) {
+      await recordError(
+        db,
+        {
+          kind: 'server',
+          message: `W&B and performance PDF: the print failed, the server's own PDF was sent instead: ${(e as Error)?.message ?? e}`,
+          stack: (e as Error)?.stack ?? null,
+          route: '/flights/:id/declarations/send',
+          method: 'POST',
+          pilotId,
+          group: 'sheet-pdf',
+        },
+        { adminEmails: config.adminEmails },
+      );
+    }
+  }
+  return wbPerfPdf(content, sig && { key: 'PIC', ...sig });
+}
+
+/** The route as the sheets print it (the export page's routeText): origin, aerodromes on the way,
+ *  destination, by code. */
+async function sheetRoute(db: Queryable, route: RoutePoint[]): Promise<string> {
+  const ref = await loadRef(db);
+  const byId = new Map(ref.aerodromes.map((x) => [x.id.toUpperCase(), x]));
+  const byIcao = new Map(ref.aerodromes.filter((x) => x.icao).map((x) => [x.icao!.toUpperCase(), x]));
+  return routePlacesWith(route, (k) => (k ? (byId.get(k.toUpperCase()) ?? byIcao.get(k.toUpperCase())) : undefined))
+    .map((p) => token(p.code, 24))
+    .filter(Boolean)
+    .join(' – ');
+}
 
 async function load(db: Queryable, pilot: Pilot, flightId: string) {
   const [f] = await db.query('SELECT id, date, aircraft_id, route FROM flights WHERE id = $1 AND pilot_id = $2', [
@@ -49,7 +101,7 @@ async function load(db: Queryable, pilot: Pilot, flightId: string) {
     name?: string;
   }[];
   return {
-    flight: { id: f.id as string, date: f.date as string },
+    flight: { id: f.id as string, date: f.date as string, route: route as RoutePoint[] },
     facts: {
       registration: token(op?.registration, 12).toUpperCase(),
       makeModel: sheetText(op?.make_model, 60),
@@ -115,7 +167,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/declarations/send',
-    async handler({ db, pilot, params, body, formsMailDenied }) {
+    async handler({ db, pilot, params, body, formsMailDenied, config }) {
       await flightFor(db, pilot, params.id, 'owner');
       const { flight, facts, operator } = await load(db, pilot, params.id);
       if (!operator) throw conflict('the flight’s aircraft has no operator');
@@ -136,6 +188,9 @@ export const routes: Route[] = [
       const hash = wbPerfHash(sent);
       const signer = token(pilot.fullName, 80);
       const routeText = [facts.origin, facts.destination].filter(Boolean).join(' – ');
+      // the sheets print the pilot and the route as the export page does (WbExport.tsx)
+      const pic = sheetText(pilot.fullName, 80);
+      const sheetRouteText = (await sheetRoute(db, flight.route).catch(() => '')) || routeText;
       // the PDF's identifying fields are the server's
       const content: WbPerfContent = {
         ...sent,
@@ -143,8 +198,8 @@ export const routes: Route[] = [
         makeModel: facts.makeModel,
         operator: facts.operator,
         date: facts.date,
-        pilot: signer,
-        route: routeText,
+        pilot: pic,
+        route: sheetRouteText,
       };
       const to = operator.declarationsEmail;
       const subject = [
@@ -159,7 +214,8 @@ export const routes: Route[] = [
         db,
         { flightId: flight.id, pilotId: pilot.id, form: 'wbperf', hash, resend: input.resend === true, to, subject },
         async () => {
-          const pdf = wbPerfPdf(content, signer ? { key: 'PIC', name: signer, signedAt: Date.now() } : null);
+          // signed when sent
+          const pdf = await sheetsPdf(db, config, content, pic ? { name: pic, signedAt: Date.now() } : null, pilot.id);
           const phone = token(pilot.phone, 40);
           const text = [
             `Weight and balance and take-off/landing performance for the flight of ${facts.registration || 'the aircraft'} on ${facts.date || 'the date shown'}${routeText ? `, ${routeText}` : ''}, attached as PDF.`,

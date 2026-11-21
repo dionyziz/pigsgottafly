@@ -7,7 +7,8 @@
 // Usage (ExportPage): <WbPerfExport flight={flight} />. Loads the pilot, the aircraft and the
 // weather (winds aloft for trip fuel; surface forecast / METAR at take-off and landing) itself.
 // When the aircraft's operator asks for these sheets before each flight, a panel sends them to it
-// (./SendPanel.tsx).
+// (./SendPanel.tsx). The sheets are drawn from WbPerfContent (./declaration.ts), the content that panel
+// sends: the operator's PDF is printed from it with these same sheets (src/pdf/, api/_lib/sheetPdf.ts).
 import '../wb/xp.css';
 
 import type { Flight } from '../../../shared';
@@ -36,6 +37,8 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
     route: routeText(flight.route),
   });
   const perf = perfSheetModel({ doc: flight, aircraft: st.aircraft, pilot: st.pilot, calc: st.calc });
+  // the sheets as drawn here and as sent to the operator (printed from the same content)
+  const content = wbPerfContent(wb, perf);
   const signer = st.pilot.fullName.trim() || wb.pilot.trim();
   const signature: ShownSignature | null = signer ? { name: signer, signedAt: st.nowMs } : null;
   const legs = st.calc.computed.navlog.legs.length;
@@ -97,11 +100,11 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
       >
         <ExportWarnings warnings={warnings} aircraftId={flight.aircraftId} testId="wbperf-warnings" />
       </Panel>
-      <OperatorSendPanel flightId={flight.id} content={st.weatherPending ? null : wbPerfContent(wb, perf)} />
+      <OperatorSendPanel flightId={flight.id} content={st.weatherPending ? null : content} />
       <div className="xp-stage">
-        <WbSheet m={wb} signature={signature} />
-        {perf.pages.map((pg, i) => (
-          <PerfSheet key={i} m={perf} page={pg} pageNo={i + 1} signature={signature} />
+        <WbSheet c={content} signature={signature} />
+        {content.perf.pages.map((_, i) => (
+          <PerfSheet key={i} c={content} pageNo={i + 1} signature={signature} />
         ))}
       </div>
     </div>

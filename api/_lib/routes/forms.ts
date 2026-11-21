@@ -384,7 +384,7 @@ function requireMail(L: Loaded): void {
     throw new HttpError(L.mailDenied ? 403 : 503, mail.reason!, { error: mail.reason, emailEnabled: false });
 }
 
-const CLAIM_MS = 60e3; // longer than the mail provider's timeout (20 s)
+const CLAIM_MS = 60e3; // longer than the W&B and performance print (25 s, sheetPdf.ts) and the mail provider's timeout (20 s)
 
 /**
  * Sends a form once per version. Claims (flight, form) first so that concurrent requests cannot both

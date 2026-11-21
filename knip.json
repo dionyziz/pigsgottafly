@@ -13,7 +13,7 @@
   ],
   "project": ["src/**/*.{ts,tsx}", "api/**/*.ts", "server/**/*.ts", "tools/*.ts", "tests/**/*.{ts,tsx,mjs}"],
   "ignore": ["api/_lib/migrations/**"],
-  "ignoreBinaries": ["xcodegen"],
+  "ignoreBinaries": ["xcodegen", "pdftotext"],
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "src/shared/api.ts": ["types"],

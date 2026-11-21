@@ -2,12 +2,15 @@
 // performance sheets, to an e-mail address), assign an aircraft to it on the aircraft page, then on
 // the flight's W&B and performance export send the sheets to it (mail transport MOCKED: the PDF is
 // kept in tests/e2e/artifacts), see "Sent", change the flight and see "Changed since it was sent".
+// The PDF is the website's own print of the sheets: the server prints the built PDF page (dist/pdf.html)
+// in headless Chrome (api/_lib/sheetPdf.ts), as in production.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test, { after, before } from 'node:test';
 
 import { setMailTransport } from '../../api/_lib/mail.ts';
+import { chromiumSheetPdf } from '../../api/_lib/sheetPdf.ts';
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { ARTIFACTS, launch, ROOT } from './harness.mjs';
 
@@ -15,7 +18,7 @@ let server, db, url, browser, page;
 const sent = [];
 before(async () => {
   const { createServer } = await import('../../server/server.ts');
-  server = createServer({ db: 'memory://' });
+  server = createServer({ db: 'memory://', sheetPdf: chromiumSheetPdf({ distDir: path.join(ROOT, 'dist') }) });
   ({ db } = await server.ready);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   url = `http://127.0.0.1:${server.address().port}`;
@@ -185,6 +188,12 @@ test(
     const pdf = sent[0].attachments[0];
     assert.equal(pdf.content.subarray(0, 5).toString(), '%PDF-');
     fs.writeFileSync(path.join(ARTIFACTS, 'operator-wbperf.pdf'), pdf.content);
+    // Chromium's print (Skia), not the server's own writer: the loading sheet and one performance page,
+    // with the website's envelope chart and performance cards
+    const raw = pdf.content.toString('latin1');
+    assert.match(raw, /Skia\/PDF/);
+    assert.match(raw, /\/Type\s*\/Pages[\s\S]{0,200}?\/Count 2\b/);
+    assert.match(raw, /\/FontName\s*\/[A-Z]{6}\+HomemadeApple/);
 
     // ---- a change after sending: "Changed since it was sent", then "Re-send"
     const g = await api('GET', `flights/${f.id}`);

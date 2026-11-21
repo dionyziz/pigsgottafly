@@ -4,7 +4,12 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "cleanUrls": false,
-  "functions": { "api/index.ts": { "includeFiles": "public/terrain/greece.bin" } },
+  "functions": {
+    "api/index.ts": {
+      "architecture": "x86_64",
+      "includeFiles": "{public/terrain/greece.bin,dist/pdf.html,dist/icon.svg,dist/assets/*.{js,css},dist/fonts/*,node_modules/@sparticuz/chromium/bin/*}"
+    }
+  },
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api?__path=:path*" },
     { "source": "/((?!api/|assets/|fonts/).*)", "destination": "/index.html" }

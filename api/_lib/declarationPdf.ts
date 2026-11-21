@@ -2,8 +2,9 @@
 // (src/shared/declarations.ts): page 1 the loading sheet (table, totals, checks, the CG moment
 // envelope chart with the points), then one performance page per sector (take-off and landing
 // blocks), each signed by the PIC like the print sheets (src/features/exports/wb/WbExport.tsx,
-// performance/PerformanceExport.tsx). Drawn with the forms' PDF writer (pdf.ts), from the content
-// the browser computed; A4 portrait, mm from the top-left.
+// performance/PerformanceExport.tsx). The fallback when the Chromium print of those sheets
+// (sheetPdf.ts) fails: drawn with the forms' PDF writer (pdf.ts), from the content the browser
+// computed; A4 portrait, mm from the top-left.
 import type { PerfBlockContent, Verdict, WbPerfContent, WbPerfRow } from '../../src/shared/declarations.js';
 import handTtf from './fonts/homemadeApple.js';
 import { type PdfSignature, signature } from './formPdf.js';
@@ -141,7 +142,9 @@ function chart(p: PdfPage, c: WbPerfContent['wb']['chart'], x0: number, y0: numb
     p.text(X(top[0]), Y(top[1]) - 1.5, e.label, { size: 6.5, align: 'center' });
   });
   // the points, joined in flight order (the fuel burn line)
-  const pts = c.points.filter((q) => q.mass > 0);
+  const order = (k: string) =>
+    k === 'takeoff' ? -1 : k === 'landing' ? 1000 : k === 'zerofuel' ? 1001 : Number(k.slice(4));
+  const pts = c.points.filter((q) => q.mass > 0).sort((a, b) => order(a.key) - order(b.key));
   for (let i = 1; i < pts.length; i++)
     p.line(X(pts[i - 1].moment), Y(pts[i - 1].mass), X(pts[i].moment), Y(pts[i].mass), 0.2);
   for (const q of pts) {
@@ -192,7 +195,8 @@ function wbPage(doc: PdfDoc, c: WbPerfContent, sig: PdfSignature | null) {
     p.text(x + cw - 3.5, y + 4, k.ok ? 'WITHIN LIMITS' : 'OUTSIDE LIMITS', { font: 'bold', size: 6.5, align: 'right' });
     p.color(0, 0, 0);
     p.text(x + 1.5, y + 8.2, k.text, { size: 7, maxW: cw - 5 });
-    p.text(x + 1.5, y + 11.8, k.categories, { size: 6.5, maxW: cw - 5 });
+    const cats = k.categories.map((cat) => `${cat.label}: ${cat.ok ? 'within' : 'OUTSIDE'}`).join(' · ');
+    p.text(x + 1.5, y + 11.8, cats, { size: 6.5, maxW: cw - 5 });
   });
   y += 18;
   const chartBottom = 232;
@@ -273,7 +277,17 @@ function perfPages(doc: PdfDoc, c: WbPerfContent, sig: PdfSignature | null) {
       }
       y += 2;
     }
-    for (const t of [pg.speeds, ...c.perf.notes].filter(Boolean)) {
+    const xw = c.perf.crosswind;
+    const speeds = [
+      pg.stall.vsKt != null || pg.stall.vsoKt != null
+        ? `Stall IAS (power off, wings level, MTOW): flaps up ${pg.stall.vsKt ?? '–'} kt, landing flaps ${pg.stall.vsoKt ?? '–'} kt.`
+        : '',
+      xw.takeoff != null || xw.landing != null
+        ? `Crosswind limits: take-off ${xw.takeoff ?? '–'} kt, landing ${xw.landing ?? '–'} kt.`
+        : '',
+    ].join(' ');
+    const distances = `Distances: AFM tables at the density altitude, interpolated in mass; headwind −10 % per 5 kt, tailwind +10 % per 2 kt; then × condition × safety factor. Required distances rounded up to the metre.${pg.speedsSource ? ` Vx, Vy, Vglide: ${pg.speedsSource}.` : ''}`;
+    for (const t of [speeds.trim(), ...c.perf.notes, distances].filter(Boolean)) {
       for (const line of wrap(doc, t, W, 'regular', 7)) {
         if (y < 268) p.text(L, y, line, { size: 7 });
         y += 3.4;

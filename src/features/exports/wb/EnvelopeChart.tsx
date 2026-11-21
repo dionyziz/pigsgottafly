@@ -6,11 +6,14 @@ import type { WbPoint } from '../../../calc';
 import { type Box, layoutChartLabels, type Segment } from './chartLayout';
 import { chartDomain, type ChartEnvelope, fmtKg } from './model';
 
+/** An envelope as the chart draws it. */
+export type EnvelopeOutline = Pick<ChartEnvelope, 'category' | 'label' | 'outline' | 'cgOutline'>;
+
 export interface ChartPoint {
   /** stop0, stop1…: intermediate full stops, in flight order. */
   key: 'takeoff' | 'landing' | 'zerofuel' | `stop${number}`;
   label: string;
-  point: WbPoint;
+  point: Pick<WbPoint, 'massKg' | 'momentKgM'>;
   ok: boolean | null;
 }
 
@@ -19,7 +22,7 @@ const H = 560;
 const M = { l: 78, r: 18, t: 18, b: 62 };
 
 /** Chart geometry: scales, the points by key and the label layout (exported for the tests). */
-export function envelopeChartGeometry(envelopes: ChartEnvelope[], points: ChartPoint[]) {
+export function envelopeChartGeometry(envelopes: EnvelopeOutline[], points: ChartPoint[]) {
   const valid = points.filter((p) => p.point.massKg > 0 && isFinite(p.point.momentKgM));
   const d = chartDomain(
     envelopes,
@@ -81,7 +84,7 @@ export function envelopeChartGeometry(envelopes: ChartEnvelope[], points: ChartP
 const MARK_R = { takeoff: 8, landing: 7, zerofuel: 6 } as const;
 const markR = (key: ChartPoint['key']) => (key in MARK_R ? MARK_R[key as keyof typeof MARK_R] : 7);
 
-export function EnvelopeChart({ envelopes, points }: { envelopes: ChartEnvelope[]; points: ChartPoint[] }) {
+export function EnvelopeChart({ envelopes, points }: { envelopes: EnvelopeOutline[]; points: ChartPoint[] }) {
   const { d, sx, sy, valid, to, ldg, zf, burnPath, layout } = envelopeChartGeometry(envelopes, points);
   const path = (pts: [number, number][]) =>
     pts.length ? `M${pts.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join('L')}Z` : '';

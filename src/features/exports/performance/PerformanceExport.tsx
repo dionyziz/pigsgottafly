@@ -8,28 +8,30 @@
 import '../wb/xp.css';
 import './performance.css';
 
+import type { PerfBlockContent, PerfDiagram, WbPerfContent } from '../../../shared/declarations';
 import type { ShownSignature } from '../form731/Form731';
 import { SignLine } from '../wb/SignLine';
-import type { PerfBlock, PerfPage, PerfSheetModel } from './model';
+import type { PerfBlock } from './model';
 
 /** 'Departure', or 'Landing at stop LGSY' for a stop's block. */
-export function blockName(b: PerfBlock): string {
+export function blockName(b: Pick<PerfBlock, 'title' | 'aerodrome'>): string {
   return b.title === 'Departure' || b.title === 'Destination' ? b.title : `${b.title} ${b.aerodrome.split(' ')[0]}`;
 }
 
-/** One MD 4.4 page: the take-off and landing of one sector (the first page by default). */
+/** One MD 4.4 page: the take-off and landing of one sector (`pageNo`, from 1). Drawn from
+ *  WbPerfContent, like the loading sheet (../wb/WbExport.tsx): on the export page and in the PDF. */
 export function PerfSheet({
-  m,
-  page = m.pages[0],
+  c,
   pageNo = 1,
   signature,
 }: {
-  m: PerfSheetModel;
-  page?: PerfPage;
+  c: WbPerfContent;
   pageNo?: number;
   signature?: ShownSignature | null;
 }) {
-  const pg = page ?? { takeoff: m.departure, landing: m.arrival, speeds: m.speeds, label: '' };
+  const m = c.perf;
+  const pg = m.pages[pageNo - 1];
+  if (!pg) return null;
   const pages = m.pages.length;
   return (
     <section
@@ -55,19 +57,19 @@ export function PerfSheet({
       <dl className="xp-fields">
         <div>
           <dt>Date</dt>
-          <dd className="xp-fill">{m.date}</dd>
+          <dd className="xp-fill">{c.date}</dd>
         </div>
         <div>
           <dt>Registration</dt>
-          <dd className="xp-fill">{m.registration}</dd>
+          <dd className="xp-fill">{c.registration}</dd>
         </div>
         <div>
           <dt>Aircraft</dt>
-          <dd className="xp-fill">{m.makeModel}</dd>
+          <dd className="xp-fill">{c.makeModel}</dd>
         </div>
         <div>
           <dt>Pilot</dt>
-          <dd className="xp-fill">{m.pilot}</dd>
+          <dd className="xp-fill">{c.pilot}</dd>
         </div>
       </dl>
 
@@ -77,7 +79,7 @@ export function PerfSheet({
       </div>
 
       <div className="perf-bottom">
-        {m.conditionTable.length > 0 && (
+        {m.factors.length > 0 && (
           <table className="perf-factors">
             <thead>
               <tr>
@@ -86,7 +88,7 @@ export function PerfSheet({
               </tr>
             </thead>
             <tbody>
-              {m.conditionTable.map((r) => (
+              {m.factors.map((r) => (
                 <tr key={r.label}>
                   <td>{r.label}</td>
                   <td>{r.factor}</td>
@@ -101,20 +103,20 @@ export function PerfSheet({
           </table>
         )}
         <div className="perf-limits">
-          {(m.crosswindLimits.takeoff != null || m.crosswindLimits.landing != null) && (
+          {(m.crosswind.takeoff != null || m.crosswind.landing != null) && (
             <p>
               <b>Crosswind limits</b>
-              {m.registration ? ` ${m.makeModel || m.registration}` : ''}: take-off {m.crosswindLimits.takeoff ?? '–'}{' '}
-              kt, landing {m.crosswindLimits.landing ?? '–'} kt
+              {c.registration ? ` ${c.makeModel || c.registration}` : ''}: take-off {m.crosswind.takeoff ?? '–'} kt,
+              landing {m.crosswind.landing ?? '–'} kt
             </p>
           )}
-          {(pg.speeds.vsKt != null || pg.speeds.vsoKt != null) && (
+          {(pg.stall.vsKt != null || pg.stall.vsoKt != null) && (
             <p>
-              <b>Stall IAS</b> (power off, wings level, MTOW): flaps up {pg.speeds.vsKt ?? '–'} kt, landing flaps{' '}
-              {pg.speeds.vsoKt ?? '–'} kt
+              <b>Stall IAS</b> (power off, wings level, MTOW): flaps up {pg.stall.vsKt ?? '–'} kt, landing flaps{' '}
+              {pg.stall.vsoKt ?? '–'} kt
             </p>
           )}
-          {m.conditionNotes.map((n, i) => (
+          {m.notes.map((n, i) => (
             <p key={i} className="xp-small">
               {n}
             </p>
@@ -122,20 +124,20 @@ export function PerfSheet({
           <p className="xp-small">
             Distances: AFM tables at the density altitude, interpolated in mass; headwind −10 % per 5 kt, tailwind +10 %
             per 2 kt; then × condition × safety factor. Required distances rounded up to the metre.
-            {pg.speeds.source ? ` Vx, Vy, Vglide: ${pg.speeds.source}.` : ''}
+            {pg.speedsSource ? ` Vx, Vy, Vglide: ${pg.speedsSource}.` : ''}
           </p>
         </div>
       </div>
 
       <footer className="xp-sign">
         <span>
-          DATE <b className="xp-fill">{m.date}</b>
+          DATE <b className="xp-fill">{c.date}</b>
         </span>
         <span>
-          REGISTRATION <b className="xp-fill">{m.registration}</b>
+          REGISTRATION <b className="xp-fill">{c.registration}</b>
         </span>
         <span>
-          PILOT <b className="xp-fill">{m.pilot}</b>
+          PILOT <b className="xp-fill">{c.pilot}</b>
         </span>
         <SignLine signature={signature} />
       </footer>
@@ -143,7 +145,7 @@ export function PerfSheet({
   );
 }
 
-function Block({ b }: { b: PerfBlock }) {
+function Block({ b }: { b: PerfBlockContent }) {
   return (
     <div className={`perf-block ${b.verdict}`} data-phase={b.phase} data-testid={`perf-${b.phase}`}>
       <div className="perf-block-head">
@@ -157,8 +159,8 @@ function Block({ b }: { b: PerfBlock }) {
           <col />
         </colgroup>
         <tbody>
-          {b.rows.map((r) => (
-            <tr key={r.key} data-row={r.key} className={r.status ? `st-${r.status}` : ''}>
+          {b.rows.map((r, i) => (
+            <tr key={r.key || i} data-row={r.key} className={r.status ? `st-${r.status}` : ''}>
               <th scope="row">{r.label}</th>
               {r.key === 'aerodrome' ? (
                 <td className="perf-val perf-wide xp-fill" colSpan={2}>
@@ -180,12 +182,12 @@ function Block({ b }: { b: PerfBlock }) {
           <div className={`perf-verdict ${b.verdict}`}>
             <b>{b.verdict === 'pass' ? 'PASS' : b.verdict === 'fail' ? 'FAIL' : 'INCOMPLETE'}</b> {b.verdictText}
           </div>
-          {b.weatherSource && (
+          {b.weather && (
             <p className="xp-small">
-              <b>Weather:</b> {b.weatherSource}
+              <b>Weather:</b> {b.weather}
             </p>
           )}
-          {b.rawMetar && <p className="xp-small perf-metar">{b.rawMetar}</p>}
+          {b.metar && <p className="xp-small perf-metar">{b.metar}</p>}
         </div>
       </div>
     </div>
@@ -193,7 +195,7 @@ function Block({ b }: { b: PerfBlock }) {
 }
 
 /** Runway pointing up (direction of travel); the wind arrow blows toward the runway from its relative bearing. */
-function WindDiagram({ d }: { d: NonNullable<PerfBlock['diagram']> }) {
+function WindDiagram({ d }: { d: PerfDiagram }) {
   const S = 120;
   const c = S / 2;
   const rel = d.windFromMag == null ? null : (((d.windFromMag - d.runwayHdgMag) % 360) + 360) % 360;

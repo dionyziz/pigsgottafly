@@ -595,7 +595,10 @@ export interface ChartDomain {
 }
 
 /** Axis ranges covering the envelopes and the points, on round numbers (100 kg·m, 50 kg). */
-export function chartDomain(envs: ChartEnvelope[], points: WbPoint[]): ChartDomain {
+export function chartDomain(
+  envs: Pick<ChartEnvelope, 'outline'>[],
+  points: Pick<WbPoint, 'massKg' | 'momentKgM'>[],
+): ChartDomain {
   const xs: number[] = [];
   const ys: number[] = [];
   for (const e of envs)
