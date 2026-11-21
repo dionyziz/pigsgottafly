@@ -1,8 +1,4 @@
-// Briefing export: the NOTAMs relevant to the flight (decoded, with the ICAO text); the ones
-// filtered out are only counted. A4 portrait sheets (named page "xp"); a long list flows on
-// to further pages.
-//
-// Usage (ExportPage): <BriefingExport flight={flight} />. Loads the briefing itself.
+// The NOTAMs relevant to the flight (decoded, with the ICAO text); the ones filtered out are only counted.
 import '../form731/forms.css';
 import '../wb/xp.css';
 import './briefing.css';

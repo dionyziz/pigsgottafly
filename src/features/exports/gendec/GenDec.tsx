@@ -1,8 +1,5 @@
-// General Declaration (ICAO Annex 9 Appendix 1, club form MD 4.7), filled: one portrait A4 page
-// laid out like the declaration the pilot uses: header lines (label, then the value in bold), the
-// boxed flight routing (origin ⇩ destination with the PIC), passengers on this stage, the
-// Declaration of Health struck through "NIL", the declaration with the PIC's e-signature and the
-// footnotes. The PDF e-mailed to HCAA (api/_lib/formPdf.ts genDecPdf) has the same layout.
+// General Declaration (ICAO Annex 9 Appendix 1, club form MD 4.7), laid out like the declaration the
+// pilot uses. The PDF e-mailed to HCAA (api/_lib/formPdf.ts genDecPdf) has the same layout.
 import './gendec.css';
 
 import type { ReactNode } from 'react';

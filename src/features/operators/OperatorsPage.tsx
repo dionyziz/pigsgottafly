@@ -1,7 +1,4 @@
-// Operators: the clubs and owners who operate the pilot's aircraft (own, shared with them, or seen
-// through a shared aircraft), with their aircraft and whether they ask for the W&B and performance
-// sheets before each flight. "New operator" creates one and opens its page. The list is the
-// 'operators' entity (src/data/entities.ts): fresh after any operator, aircraft or share change.
+// The list is the 'operators' entity (src/data/entities.ts): fresh after any operator, aircraft or share edit.
 import '../lobby/lists.css';
 
 import { useState } from 'react';

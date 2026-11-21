@@ -1,8 +1,6 @@
-// The editor's flight calculations as pure functions (no React, no I/O): the navlog, fuel, W&B (also
-// at each stop), take-off/landing performance (also the landing at and the take-off from each stop),
-// the aerodrome checks and one list of warnings. calc.tsx calls each of them in its own memo; the
-// native app's core (src/native/core.ts) calls computeFlightCalc, which runs them all in order, so
-// the website and the app compute the same numbers and the same warnings.
+// Pure (no React, no I/O): calc.tsx calls each function in its own memo; the native app's core
+// (src/native/core.ts) calls computeFlightCalc, which runs them all in order, so the website and the
+// app compute the same numbers and the same warnings.
 import {
   type AdNotamEffect,
   aerodromeNotamEffects,
@@ -100,7 +98,6 @@ export interface EndpointCalc {
   stopKind?: 'stop' | 'touch-and-go';
 }
 
-/** An intermediate full stop: the landing there and the take-off from there. */
 export interface StopCalc {
   pointIndex: number;
   /** A full stop, or a touch-and-go (a landing and an immediate take-off). */
@@ -117,7 +114,6 @@ export interface StopCalc {
   fuelL: number | null;
 }
 
-/** The reference data the calculations read. */
 export interface CalcRef {
   aerodromes: RefAerodrome[];
   runwaysOf: (aerodromeId: string) => RefRunway[];
@@ -137,8 +133,6 @@ function safe<T>(f: () => T): T | null {
     return null;
   }
 }
-
-// ---- navlog
 
 export function calcNavlog(a: {
   doc: Pick<FlightDoc, 'date' | 'blockOff' | 'taxiOutMin' | 'taxiInMin' | 'legOverrides'> & {
@@ -173,8 +167,6 @@ export function calcNavlog(a: {
   );
 }
 
-// ---- fuel
-
 export function calcFuel(a: {
   doc: Pick<FlightDoc, 'fobL' | 'route'>;
   aircraft: Aircraft | null;
@@ -200,8 +192,6 @@ export function calcFuel(a: {
     }),
   );
 }
-
-// ---- weight and balance
 
 export interface WbCalc {
   wb: WbResult;
@@ -280,7 +270,6 @@ export function calcSectors(a: {
   return { sectors, wbs };
 }
 
-/** The W&B status for the flight's category (see wbStatus). */
 export function calcWbOk(wb: WbResult | null, category: FlightDoc['options']['category']): WbStatus | null {
   if (!wb) return null;
   const checks = category === 'utility' && wb.utility ? wb.utility : wb.normal;
@@ -291,8 +280,6 @@ export function calcWbOk(wb: WbResult | null, category: FlightDoc['options']['ca
     loading: s.loading,
   };
 }
-
-// ---- surface conditions and performance at both ends and at the stops
 
 export interface EndpointContext {
   wb: WbResult | null;
@@ -306,7 +293,6 @@ export interface EndpointContext {
   nowMs?: number;
 }
 
-/** Surface conditions and performance of one take-off or landing. */
 export function calcEndpoint(
   c: EndpointContext,
   phase: 'takeoff' | 'landing',
@@ -367,7 +353,6 @@ export function calcEndpoint(
   return out;
 }
 
-/** The intermediate full stops and touch-and-goes: landing and take-off there, W&B and fuel at each. */
 export function calcStops(a: {
   sectorCalc: SectorCalc | null;
   doc: Pick<FlightDoc, 'route' | 'options'>;
@@ -451,8 +436,6 @@ export function calcStops(a: {
   });
 }
 
-// ---- weather hazards and aerodrome hours
-
 export function calcHazards(a: {
   hazardWeather: HazardWeather | null;
   navlog: NavlogResult | null;
@@ -481,7 +464,6 @@ export function calcHazards(a: {
   );
 }
 
-/** The flight's NOTAMs that change aerodrome hours, ATS or handling. */
 export const calcAdEffects = (briefing: NotamBriefing | null): AdNotamEffect[] =>
   aerodromeNotamEffects(briefing?.notams ?? []);
 
@@ -517,11 +499,8 @@ export function calcAerodromeChecks(a: {
   });
 }
 
-/** Problems with the manifest (seats, duplicates…). */
 export const calcCrewErrors = (crew: FlightDoc['crew'], aircraft: Aircraft | null): string[] =>
   validateCrew(crew, aircraft ? seatLayout(aircraft.massBalance.stations).map((s) => s.id) : null);
-
-// ---- warnings
 
 export interface WarningsInput {
   doc: Pick<FlightDoc, 'date'> & { options: Pick<FlightOptions, 'category' | 'fuelL' | 'compassCard'> };

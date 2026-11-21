@@ -1,12 +1,6 @@
-// /flights/:id/export/:kind: print-ready A4 pages, one route per document.
-//   navlog (MD 4.2 sheet), form731 (HCAA Form 731), gendec (MD 4.7 General Declaration),
-//   fpl (ICAO 2012 message + form view), wbperf (MD 4.3 loading sheet + envelope, then MD 4.4
-//   performance; the old /wb and /performance links redirect here), briefing (NOTAMs relevant to the flight).
-// Each export component loads what it needs (aircraft, weather) itself; the forms get it from here.
-//
 // The flight is loaded after the editor's pending edits are sent (so the export never shows the
 // manifest from before the last edit), and again when the window regains focus or a flight changes
-// here or in another tab. The aircraft and passengers come from the shared entity cache.
+// here or in another tab.
 import './export.css';
 
 import { useEffect } from 'react';
@@ -33,7 +27,6 @@ import { WbPerfExport } from './wbperf';
 const FLUSH_WAIT_MS = 4000;
 const FLUSH_POLL_MS = 150;
 
-/** Sends the editor's pending edits and waits (a while) until they are saved. */
 async function flushFlightEdits(): Promise<void> {
   const until = Date.now() + FLUSH_WAIT_MS;
   await flightStore.flushNow().catch(() => {});
@@ -48,7 +41,6 @@ function FormExport({ flight, kind }: { flight: Flight; kind: 'form731' | 'gende
   const pilot = useFlightPilot(flight);
   const ac = useFlightAircraft(flight);
   const pax = usePassengers();
-  // signatures (Form 731) and the e-mail to HCAA (both forms)
   const forms = useFormsState(flight.id);
   if (ac.loading || pax.loading) return <Loading />;
   const props = { flight, aircraft: ac.aircraft, pilot, passengers: pax.passengers };
@@ -106,12 +98,10 @@ function useFormStates(id: string): Partial<Record<ExportKind, ReadyItem>> {
 /** A form's name in the browser tab where pilots call it something shorter than its label. */
 const TAB_TITLE: Record<string, string> = { navlog: 'Navlog' };
 
-/** The file name (without .pdf) a printed form is saved under: the flight's date and the form. */
 function printFileName(date: string | null | undefined, kind: string): string {
   return [date || '', kind].filter(Boolean).join('-');
 }
 
-/** The form's state, said plainly: done, or what it still needs; and the next form that needs attention. */
 function FormStatus({
   flightId,
   kind,
@@ -157,7 +147,6 @@ export function ExportPage() {
     flight && (TAB_TITLE[kind] ?? (EXPORT_LABEL as Record<string, string>)[kind]),
     flight && flightTitle(flight),
   );
-  // a printed PDF is named after the flight's date and the form: 2026-11-22-navlog.pdf
   const printName = flight ? printFileName(flight.date, kind) : null;
   useEffect(() => {
     if (!printName) return;

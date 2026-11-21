@@ -1,9 +1,5 @@
-// Flight editor: full-window map, left panel, collapsible navlog strip at the bottom.
-// Layout slots: <MapView/> (./map), <FlightPanel/> and <NavlogStrip/> (./panels).
-// This page loads the flight, shows the editable title and save state, and wires undo/redo.
-// Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job,
-// driven by EditorProvider.update(). Share opens the flight's sharing dialog; a flight shared with
-// the pilot as a viewer opens read-only, with a "View only" chip naming who shared it.
+// Saving (debounced, versioned, offline-tolerant, 409 = last writer wins) is flightStore's job, driven by
+// EditorProvider.update().
 import './editor.css';
 import './panels/panels.css';
 
@@ -31,14 +27,12 @@ import { FlightCalcProvider, FlightPanel, NavlogStrip } from './panels';
 import { useResizable } from './resizable';
 import { EditorProvider, useEditor } from './state';
 
-/** The tab title: the flight's name. */
 function EditorTitle() {
   const { doc } = useEditor();
   usePageTitle(flightTitle(doc));
   return null;
 }
 
-/** The flight plan's filing status, in the top bar once it is filed; a click opens the Filing section. */
 function FilingChip() {
   const { flight } = useEditor();
   const q = useAsync(() => api.filing.get(flight.id), [flight.id], {
@@ -91,7 +85,6 @@ function SaveState() {
   );
 }
 
-/** "View only · shared by Olga" on a flight shared with the pilot as a viewer; "Shared by Olga" for an editor. */
 function SharedFlightChip() {
   const { flight } = useEditor();
   const a = flight.access;
@@ -108,7 +101,6 @@ function SharedFlightChip() {
   );
 }
 
-/** Share: who has access to the flight (owner, editors and viewers add people by e-mail). */
 function ShareButton() {
   const { flight } = useEditor();
   const [open, setOpen] = useState(false);
@@ -131,7 +123,7 @@ function ShareButton() {
   );
 }
 
-/** The title: shown as text, edited in place on click. Empty = automatic (from the route). */
+/** Empty = automatic (from the route). */
 function Title() {
   const { doc, update, readOnly } = useEditor();
   const [editing, setEditing] = useState(false);
@@ -246,7 +238,6 @@ export function EditorPage() {
   const { pilot } = useSession();
   const [state, setState] = useState<{ flight: Flight; doc: FlightDoc } | null | 'missing'>(null);
   const [error, setError] = useState<string | null>(null);
-  // hangar, passengers and waypoints: cached, and refetched when they change elsewhere (another page or tab)
   const hangar = useEntity('aircraft');
   const passengers = useEntity('passengers');
   const waypoints = useEntity('waypoints');
@@ -368,11 +359,6 @@ const readCollapsed = () => {
   }
 };
 
-/**
- * The flight panel on the left; its width is set by dragging its right edge. It collapses (the map takes
- * the space) with the tab on its edge, or by dragging the edge well past its narrowest width; remembered
- * per browser.
- */
 function ResizablePanel() {
   const [collapsed, setCollapsedState] = useState(readCollapsed);
   const setCollapsed = (v: boolean) => {

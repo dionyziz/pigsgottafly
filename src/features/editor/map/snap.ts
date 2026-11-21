@@ -1,13 +1,10 @@
-// Snapping: which known point (aerodrome, VFR reporting point, saved waypoint, or a point already
-// on the route) the cursor is over. Pure: the caller passes a projection (lon/lat → screen px), so
-// this is unit-tested without a map.
+// Pure: the caller passes a projection (lon/lat → screen px), so this is unit-tested without a map.
 import { distanceNm } from '../../../calc';
 import type { LatLon, RoutePoint, RoutePointKind, Waypoint } from '../../../shared';
 import { aerodromeName } from '../../../shared/aerodrome';
 import type { RefAerodrome, RefVfrPoint } from '../../../shared/ref';
 
 export interface SnapCandidate extends LatLon {
-  /** What a route point made from this candidate refers to. */
   kind: RoutePointKind;
   refId: string | null;
   /** Route point name (ICAO for aerodromes, the reporting point's name, the waypoint's name). */
@@ -29,7 +26,7 @@ export interface ScreenPoint {
 
 export interface SnapHit {
   cand: SnapCandidate;
-  /** Screen distance cursor → candidate, px (without the penalty). */
+  /** Without the penalty. */
   distPx: number;
   /**
    * A point the aerodrome was preferred over (it sits within AERODROME_PRIORITY_NM of the aerodrome
@@ -46,16 +43,12 @@ export interface SnapHit {
  */
 export const AERODROME_PRIORITY_NM = 1.5;
 
-/** Default snap radius, px. */
 export const SNAP_RADIUS_PX = 12;
 
 /** Label of an aerodrome as a route point: ICAO, else the last part of the name (as v2). */
 export { aerodromeName };
 
-/**
- * Everything the cursor may snap to. Open-flightmaps duplicates of a charted point (same name
- * within 0.5 NM) are dropped so the charted one is used.
- */
+/** Open-flightmaps duplicates of a charted point (same name within 0.5 NM) are dropped so the charted one is used. */
 export function buildCandidates(
   aerodromes: RefAerodrome[],
   vfrPoints: RefVfrPoint[],
@@ -160,7 +153,6 @@ export function findSnap(
   return best;
 }
 
-/** Route point made from a candidate (new uid). */
 export function pointFromCandidate(c: SnapCandidate, uid: string): RoutePoint {
   return { uid, kind: c.kind, refId: c.refId, name: c.name, lat: c.lat, lon: c.lon };
 }

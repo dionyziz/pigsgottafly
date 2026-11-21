@@ -1,7 +1,4 @@
-// NOTAMs relevant to the flight (PLAN-v3): the server's briefing for the saved flight, decoded
-// (subject, validity, limits, item E) with the raw ICAO text one click away; the hidden ones behind
-// "Show all (N hidden)" with the reason each is hidden. Picking one highlights its area on the map
-// and its leg in the navlog strip.
+// The server's briefing for the saved flight (PLAN-v3).
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {

@@ -1,10 +1,5 @@
-// Live flight calculations for the editor panels and the navlog strip: winds aloft (Open-Meteo),
-// METAR/TAF at the departure, destination and intermediate stops, navlog, fuel, W&B (also at each
-// stop: src/calc/sectors.ts), take-off/landing performance (also the landing at and the take-off
-// from each stop) and one list of warnings. Everything numeric comes from src/calc through the pure
-// functions of flightCalc.ts (shared with the native app's core); this file only wires inputs.
-//
-// <FlightCalcProvider> sits inside <EditorProvider> (EditorPage); read with useFlightCalc().
+// Everything numeric comes from src/calc through the pure functions of flightCalc.ts (shared with the
+// native app's core); this file only wires inputs.
 import { createContext, type ReactNode, use, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import type { AdNotamEffect, FuelPlan, Hazard, NavlogResult, WbResult, WbStatus } from '../../../calc';
@@ -164,7 +159,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     };
   }, [hzKey, force]);
 
-  // ---- navlog
   const circuitMin = pilot.settings.circuitMin;
   const timing = useMemo(() => requestTiming(doc.route, doc.options, circuitMin), [doc.route, doc.options, circuitMin]);
   /** Start-up, taxi, take-off and landing fuel per take-off: the flight's, else the aircraft's. */
@@ -204,7 +198,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  // ---- fuel
   const { finalReserveMin, reserveMin } = pilot.settings;
   const fuel = useMemo(
     () =>
@@ -219,7 +212,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     [aircraft, navlog, finalReserveMin, reserveMin, doc.fobL, doc.route, timing, taxiAllowanceL],
   );
 
-  // ---- weight and balance
   const { category, fuelL: fuelMix } = doc.options;
   const wbAll = useMemo(
     () =>
@@ -248,7 +240,6 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const wbMissingWeights = useMemo(() => wbAll?.missingWeights ?? [], [wbAll]);
   const wbOk = useMemo(() => calcWbOk(wb, category), [wb, category]);
 
-  // ---- surface conditions and performance at both ends
   // Only with a block start time: computeNavlog assumes 12:00 without one, and sampling the weather
   // at that made-up time would show distances for conditions nobody planned (the MD 4.4 export
   // likewise uses ISA and calm then).
@@ -291,13 +282,11 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     [sectorCalc, stopIdx, stopAds, weather, times, dayMs, endpointCtx, doc.route, doc.options],
   );
 
-  // ---- weather hazards at the planned times and altitudes
   const hazards = useMemo(
     () => calcHazards({ hazardWeather, navlog, dayMs, dep, arr, metar, nowMs: Date.now() }),
     [hazardWeather, navlog, dayMs, dep, arr, metar],
   );
 
-  // ---- aerodrome hours at the planned times (AIP + the flight's NOTAMs)
   const { briefing } = useNotams();
   const adEffects = useMemo(() => calcAdEffects(briefing), [briefing]);
   const aerodromeChecks = useMemo(
@@ -317,10 +306,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     [adEffects, dayMs, times, doc.route, doc.options, dep, arr, stops, navlog],
   );
 
-  // ---- manifest
   const crewErrors = useMemo(() => calcCrewErrors(doc.crew, aircraft), [doc.crew, aircraft]);
 
-  // ---- warnings
   const terrain = useTerrain();
   const compassCard = doc.options.compassCard;
   const warnings = useMemo(
@@ -379,7 +366,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  // ---- lobby summary: ETE and fuel come from the navlog (setDerived: no undo step).
+  // ETE and fuel for the lobby summary (setDerived: no undo step).
   const eteMin = navlog && navlog.legs.length ? navlog.totals.ete : null;
   const fuelL = navlog && navlog.legs.length && aircraft ? navlog.totals.fuel : null;
   useEffect(() => {

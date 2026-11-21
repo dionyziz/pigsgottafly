@@ -11,13 +11,11 @@ import {
 } from './common';
 import type { FormFix, PersonField } from './FormWarnings';
 
-/** Rows printed on one Form 731 sheet. */
 export const ROWS_PER_SHEET = 6;
 
 export interface Form731Row {
   /** 1-based row number, continuing across sheets. */
   no: number;
-  /** The person's signing key (FormPerson.key). */
   key: string;
   role: 'PIC' | 'PAX';
   name: string;
@@ -40,7 +38,6 @@ export interface Form731Model {
   picName: string;
   /** Missing data, shown on screen only. */
   warnings: string[];
-  /** How to fix each warning (keyed by its text). */
   fixes: Record<string, FormFix>;
 }
 

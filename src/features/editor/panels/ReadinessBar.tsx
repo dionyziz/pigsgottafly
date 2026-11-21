@@ -1,8 +1,3 @@
-// The top of the flight panel: "Ready to fly" (readiness.ts) and the stages: Plan and Brief in the
-// panel, File & forms on its own page without the map (the exports: flight plan and filing, the forms).
-// Each stage tab shows its state; under it, the stage's checklist rows (each opens its section, or
-// fixes the problem), then the stage's sections (FlightPanel).
-//
 // The stage is remembered per flight in this tab. A new visit opens on Brief when the flight is today
 // or tomorrow (the morning-of check), else on Plan. A focus request (a warning's Fix, a deep link) or a
 // NOTAM picked on the map switches to the stage holding it.
@@ -40,8 +35,6 @@ const STATE_ICON: Record<ItemState, 'check' | 'warn' | 'info'> = {
   danger: 'warn',
 };
 
-// ---------------------------------------------------------------- NOTAMs read
-
 /** The relevant NOTAMs, as one string: marking them read holds until this changes. */
 function relevantSignature(keys: string[]): string {
   return [...keys].sort().join(',');
@@ -54,8 +47,6 @@ function loadRead(flightId: string): string | null {
     return null;
   }
 }
-
-// ---------------------------------------------------------------- the data
 
 export function useReadiness() {
   const { flight, doc, pilot } = useEditor();
@@ -114,11 +105,8 @@ export function useReadiness() {
   return { items, markNotamsRead };
 }
 
-// ---------------------------------------------------------------- the stage
-
 const stageKey = (flightId: string) => `pgf.editor.stage.${flightId}`;
 
-/** The stage shown: remembered per flight in this tab; a new visit opens on Brief near the flight. */
 export function useStage(): [Stage, (s: Stage) => void] {
   const { flight, doc } = useEditor();
   const [stage, setStageState] = useState<Stage>(() => {
@@ -160,8 +148,6 @@ export function useStage(): [Stage, (s: Stage) => void] {
   }, [selected, setStage]);
   return [stage, setStage];
 }
-
-// ---------------------------------------------------------------- the view
 
 function Row({ item, onMarkRead }: { item: ReadyItem; onMarkRead: () => void }) {
   const { doc } = useEditor();
@@ -218,7 +204,6 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
     }
   };
   const open = openItems.length;
-  // what is left, by name: "1 to do: Form 731"; more than three are counted only
   const openNames = open <= 3 ? `: ${openItems.map((x) => x.label).join(', ')}` : '';
   const worst = STAGES.map((s) => stageSummary(items, s).state);
   const danger = worst.includes('danger');
@@ -262,7 +247,6 @@ export function ReadinessBar({ stage, onStage }: { stage: Stage; onStage: (s: St
                 role="tab"
                 aria-selected={s === stage}
                 className={'rd-tab is-' + sum.state}
-                // File & forms is its own page, without the map (the flight plan, filing and the forms)
                 onClick={() => (s === 'file' ? openForms() : onStage(s))}
                 data-testid={`stage-${s}`}
               >

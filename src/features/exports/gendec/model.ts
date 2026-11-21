@@ -6,12 +6,10 @@ import { GENDEC_ROUTING_ROWS, type GenDecContent, genDecContent } from '../../..
 import { type FormExportProps, routePlaces } from '../form731/common';
 import type { FormFix } from '../form731/FormWarnings';
 
-/** Ruled rows of the flight routing table on the form. */
 export const ROUTING_ROWS = GENDEC_ROUTING_ROWS;
 
 export interface GenDecModel extends GenDecContent {
   warnings: string[];
-  /** How to fix each warning (keyed by its text). */
   fixes: Record<string, FormFix>;
 }
 

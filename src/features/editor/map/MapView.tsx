@@ -1,5 +1,5 @@
-// The editor's map slot: binds the controlled <RouteMap> to the editor state. Every edit is one
-// update() call (one undo step); leg overrides of legs that no longer exist are dropped with it.
+// Every edit is one update() call (one undo step); leg overrides of legs that no longer exist are dropped
+// with it.
 import { useCallback, useMemo } from 'react';
 
 import { clockZ } from '../../../calc';

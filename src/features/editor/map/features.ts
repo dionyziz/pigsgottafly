@@ -1,5 +1,3 @@
-// GeoJSON for the map layers, built from the reference data, the pilot's waypoints and the route.
-// Pure (no map), unit-tested.
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 
 import type { RoutePoint, Waypoint } from '../../../shared';
@@ -28,7 +26,6 @@ export function runwayHeading(a: RefAerodrome): number | null {
   return isFinite(h) ? h : null;
 }
 
-/** Aerodrome symbols: properties name (ICAO / label), full name, elevation, icon, rotation. */
 export function aerodromeFeatures(aerodromes: RefAerodrome[], variationDeg = 5): FC<Point> {
   return fc(
     aerodromes
@@ -61,10 +58,7 @@ export function aerodromeFeatures(aerodromes: RefAerodrome[], variationDeg = 5):
   );
 }
 
-/**
- * Aerodrome CTRs and ATZs (AD 2.17) with their chart label, e.g.
- * 'DEKELIA TATOI MIL ATZ · D · SFC – 5000 ft'. Class G zones are drawn apart from controlled ones.
- */
+/** Class G zones are drawn apart from controlled ones. */
 export function zoneFeatures(zones: AirspaceInfo[]): FC<Polygon> {
   return fc(
     zones
@@ -116,7 +110,6 @@ export function airspaceFeatures(infos: AirspaceInfo[]): FC<Polygon> {
   );
 }
 
-/** The FIS sector boundary (ATHINAI / MAKEDONIA INFORMATION). */
 /** The FIR boundary ('LGGG ATHINAI FIR') and the dividing line inside it ('ATHINAI | MAKEDONIA'). */
 export function firFeatures(fir: RefFir | undefined): FC<LineString> {
   if (!fir || fir.boundary.length < 3) return fc([]);
@@ -174,8 +167,8 @@ export function navaidFreq(n: Pick<RefNavaid, 'freq' | 'unit' | 'channel'>): str
 }
 
 /**
- * Radio navaid symbols: properties id, label (ident), freq (as charted), icon (ICAO symbol by type) and
- * rank (1: VORs and DMEs, and NDBs listed en-route in ENR 4.1; 2: the other NDBs and locators, shown zoomed in).
+ * rank 1: VORs, DMEs and the NDBs listed en-route in ENR 4.1; rank 2: the other NDBs and locators,
+ * shown zoomed in.
  */
 export function navaidFeatures(navaids: RefNavaid[]): FC<Point> {
   return fc(
@@ -276,7 +269,6 @@ export function vfrRouteArrowFeatures(routes: RefVfrRoute[], points: RefVfrPoint
   return fc(out);
 }
 
-/** The pilot's saved waypoints. */
 export function waypointFeatures(waypoints: Waypoint[]): FC<Point> {
   return fc(
     waypoints
@@ -289,7 +281,6 @@ export function waypointFeatures(waypoints: Waypoint[]): FC<Point> {
   );
 }
 
-/** The route line. */
 export function routeLineFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<LineString> {
   if (route.length < 2) return fc([]);
   return fc([
@@ -351,7 +342,6 @@ export function routeArrowFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC
   return fc(out);
 }
 
-/** Route points with their role (dep / arr / mid) and selection. */
 export function routePointFeatures(route: RoutePoint[], selectedUid: string | null): FC<Point> {
   return fc(
     route.map((p, i) => ({
@@ -371,7 +361,7 @@ export function routePointFeatures(route: RoutePoint[], selectedUid: string | nu
   );
 }
 
-/** Midpoint handles (drag one to insert a point into that leg), at the middle of the drawn line. */
+/** Drag one to insert a point into that leg. */
 export function midpointFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
   const out: Feature<Point, Record<string, unknown>>[] = [];
   for (let i = 0; i + 1 < route.length; i++) {
@@ -382,7 +372,6 @@ export function midpointFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<P
   return fc(out);
 }
 
-/** Outline colour of an airspace, as drawn on the chart. */
 const FOCUS_COLOR: Record<AirspaceType, ChartColor> = {
   TMA: 'tma',
   MTMA: 'mtma',
@@ -395,7 +384,6 @@ const FOCUS_COLOR: Record<AirspaceType, ChartColor> = {
   ACT: 'act',
 };
 
-/** The focused airspace's outline (empty when none). */
 /** A NOTAM's outline (its rings, [lon, lat]) for the same marching dashes, in the NOTAM accent. */
 export function notamFocusFeatures(key: string, rings: [number, number][][]): FC<LineString> {
   return fc(

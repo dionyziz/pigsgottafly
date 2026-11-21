@@ -1,5 +1,3 @@
-// The person form shared by the passenger dialog, the pilot's details dialog and the profile: its
-// state, its checks (one message per field) and the API input it becomes. Pure, for tests.
 import { EMPTY_PERSON, isEmail, type PassengerInput, type PersonDetails } from '../../shared';
 import { isIsoDate, localToday } from '../../shared/date';
 import type { FormIssue } from './formIssues';

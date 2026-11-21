@@ -1,10 +1,5 @@
-// Export (d): ICAO 2012 flight plan. The FPL message ready to paste into AFTN / EuroFPL (copy
-// button, multi-line or one line) and the ICAO flight plan form filled in, one A4 portrait page,
-// signed by the PIC in the FILED BY box.
-//
-// Usage (ExportPage): <FplExport flight={flight} />. The aircraft is loaded from the hangar, the
-// pilot comes from the session, EET from the navlog with live winds aloft, endurance from the
-// fuel plan (fuel on board at the planning burn).
+// The FPL message for AFTN / EuroFPL and the filled ICAO form. EET comes from the navlog with live
+// winds aloft, endurance from the fuel plan (fuel on board at the planning burn).
 import '../form731/forms.css';
 import './fpl.css';
 
@@ -111,7 +106,6 @@ export function FplExport({ flight }: { flight: Flight }) {
   );
 }
 
-// ------------------------------------------------------------------------------------------------
 // The ICAO flight plan form (Doc 4444 Appendix 2, the 2012 form), one A4 portrait page.
 
 /** Fixed character boxes; value left-aligned, one character per box. */

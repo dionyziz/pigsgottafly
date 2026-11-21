@@ -1,8 +1,3 @@
-// Performance section: the flight manual's take-off and landing tables with their corrections,
-// the planning factors applied on top of them (safety, runway surface and condition, slope,
-// crosswind limits) and stall speeds. Every value is an input; only the distance grids have a
-// read view, and "Edit tables" turns their cells (masses, altitudes, headwinds, distances) into
-// inputs with rows and columns to add and remove. Source fields are the pilot's own text.
 import { useState } from 'react';
 
 import type { DistancePair, PerformanceTables } from '../../shared/types';

@@ -1,5 +1,3 @@
-// When: date, block start (UTC, with local time), taxi out/in for this flight, and the computed
-// take-off, landing and block stop times.
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
 import { localOffsetLabel, utcToLocal } from '../../../shared/date';

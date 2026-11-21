@@ -50,7 +50,6 @@ export interface EditorValue {
   /** The passenger list was fetched (false: it failed to load, `passengers` is empty for that reason). */
   passengersLoaded: boolean;
   reloadLists: () => Promise<void>;
-  /** The flight's aircraft (doc.aircraftId), or null. */
   aircraft: Aircraft | null;
   /** Reference data (current AIRAC, shipped with the client). */
   ref: RefBundle;

@@ -1,7 +1,3 @@
-// Aerodrome hover tooltip and click popover on the route map: name, elevation and the hours on the
-// flight's date (with handling) on hover; on click the hours, ATS, handling, customs, the NOTAMs that
-// change them (by NOTAM id) and the AIP text (AerodromeHours.tsx), and links to the aerodrome's AIP PDF
-// and its AIP VFR chart.
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefAerodrome } from '../../../shared/ref';
 import { type AdDayInfo, adHandlingLine, AdHoursDetail, adHoursLine } from '../AerodromeHours';
@@ -10,7 +6,6 @@ import type { VfrChart } from './vfrCharts';
 
 const title = (a: RefAerodrome) => (a.icao ? `${a.icao} · ${a.name}` : a.name);
 
-/** The aerodrome under the pointer and its hours that day, in the map's hover box (MapHoverTip). */
 export function AerodromeTipRows({ a, info }: { a: RefAerodrome; info: AdDayInfo }) {
   const closed = info.ad?.runs.every((r) => r.status === 'closed');
   return (
@@ -37,7 +32,6 @@ export function AerodromeDetails({
   a: RefAerodrome;
   info: AdDayInfo;
   airac: string;
-  /** The AIP VFR chart(s) showing the aerodrome. */
   charts?: VfrChart[];
 }) {
   return (

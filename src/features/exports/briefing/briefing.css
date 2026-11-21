@@ -1,4 +1,3 @@
-/* NOTAM briefing export (A4 portrait, xp sheet). */
 .brief-sheet .xp-fields > div.full { grid-column: 1 / -1; }
 .brief-sheet .xp-fields dd.brief-wrap { white-space: normal; }
 .brief-count { font-size: 9pt; color: #555; }

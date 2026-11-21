@@ -1,9 +1,8 @@
 // NOTAM briefing of the flight in the editor, shared by the NOTAM panel section, the map layer and
-// the navlog strip (which highlights the leg of the NOTAM picked on the map or in the panel).
+// the navlog strip.
 //
 // The server assesses the NOTAMs against the SAVED flight (route, times, altitudes), so the
 // briefing is (re)loaded once the editor's changes are saved and the route/times/altitudes changed.
-// <NotamProvider> sits inside <EditorProvider> (EditorPage); read with useNotams().
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ApiRequestError } from '../../data/api';

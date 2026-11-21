@@ -1,9 +1,6 @@
-// Weather hazards on the map: each hazard of a leg is drawn as a wide translucent band over the
-// stretch of the leg it affects (amber = warn, red = danger); aerodrome hazards as a ring around the
-// aerodrome. The texts ("BKN 1700 ft · planned 1900 ft") are not printed on the chart, where they
-// would collide with the leg labels and each other: the leg label carries a small warning badge
-// (hazardsByLeg) and hovering a band, a ring or the badge shows the texts. Self-contained: adds its
-// own source and layers on demand.
+// The hazard texts are not printed on the chart, where they would collide with the leg labels and each
+// other: the leg label carries a small warning badge (hazardsByLeg) and hovering a band, a ring or the
+// badge shows the texts.
 import type { GeoJSONSource, Map as MlMap } from 'maplibre-gl';
 
 import type { Hazard } from '../../../calc';
@@ -27,7 +24,7 @@ const lerp = (a: LatLon, b: LatLon, f: number): [number, number] => [
   a.lat + (b.lat - a.lat) * f,
 ];
 
-/** Map marks of the flight's hazards: legs[i] gives each leg's end points. */
+/** legs[i] gives each leg's end points. */
 export function mapHazards(hazards: Hazard[], legs: { from: LatLon; to: LatLon }[]): MapHazard[] {
   const out: MapHazard[] = [];
   for (const h of hazards) {
@@ -60,13 +57,11 @@ export function mapHazards(hazards: Hazard[], legs: { from: LatLon; to: LatLon }
 }
 
 export interface LegHazards {
-  /** Worst level on the leg. */
   level: 'danger' | 'warn';
-  /** Hazard texts, danger first, without repeats. */
   labels: string[];
 }
 
-/** The hazards of each leg (by leg index) for the leg-label badges; legs without hazards are absent. */
+/** Legs without hazards are absent. */
 export function hazardsByLeg(list: MapHazard[]): Map<number, LegHazards> {
   const out = new Map<number, LegHazards>();
   const sorted = [...list].sort((a, b) => (a.level === b.level ? 0 : a.level === 'danger' ? -1 : 1));
@@ -79,7 +74,6 @@ export function hazardsByLeg(list: MapHazard[]): Map<number, LegHazards> {
   return out;
 }
 
-/** Texts of the hazard marks under a screen point (deduplicated, danger first), or []. */
 export function hazardLabelsAt(
   m: MlMap,
   point: { x: number; y: number },
@@ -162,7 +156,6 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
   );
 }
 
-/** Sets the hazard marks (adds the layers the first time). */
 export function setHazardLayer(m: MlMap, list: MapHazard[], beforeId?: string) {
   try {
     ensureLayers(m, beforeId);

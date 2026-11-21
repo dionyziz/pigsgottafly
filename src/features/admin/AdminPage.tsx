@@ -1,8 +1,4 @@
-// Admin (ADMIN_EMAILS only; the API answers 403 to everyone else), tabs Pilots | Errors | E-mails:
-// /admin, every pilot with their sign-up and last sign-in, what they have (flights, aircraft,
-// passengers, operators) and what they share; /admin/mail, the e-mail action log (every outbound
-// e-mail: forms to HCAA, declarations to operators, signup notices), filterable by pilot and kind.
-// Read-only. /admin/errors is ErrorsPage.tsx.
+// ADMIN_EMAILS only; the API answers 403 to everyone else.
 import '../lobby/lists.css';
 
 import { useState } from 'react';
@@ -15,10 +11,8 @@ import { fmtLocalDayTime } from '../../shared/format';
 import { AsyncView, Chip, type ChipTone, EmptyState } from '../../ui';
 import { AdminNav } from './AdminNav';
 
-/** Local (Greek) date and time, '—' for never. */
 export const when = (ms: number | null | undefined) => fmtLocalDayTime(ms || null, { fallback: '—' });
 const none = <span className="muted">—</span>;
-/** Admins only (403), or another failure. */
 export const adminErrorTitle = (e: Error, what: string) =>
   e instanceof ApiRequestError && e.status === 403 ? 'Admins only' : `Could not load the ${what}`;
 const shareText = (s: AdminShare) =>

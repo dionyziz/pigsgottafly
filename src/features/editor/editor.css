@@ -24,7 +24,6 @@
   .save-state { display: none; }
 }
 
-/* Drag handles of the resizable panels (resizable.tsx). */
 .resize-handle { flex: none; position: relative; z-index: 5; touch-action: none; background: transparent; outline: none; }
 .resize-handle.x { width: 6px; margin: 0 -3px; cursor: col-resize; }
 .resize-handle.y { position: absolute; left: 0; right: 0; top: -3px; height: 6px; cursor: row-resize; }
@@ -36,7 +35,6 @@
 .ns.sized { max-height: none; }
 @media (max-width: 900px) { .resize-handle { display: none; } }
 
-/* The flight panel's edge: its resize handle and the collapse / expand tab (EditorPage ResizablePanel). */
 .editor-panel[hidden] { display: none; }
 .editor-panel.will-collapse { opacity: 0.45; transition: opacity .12s; }
 .editor-edge { flex: none; position: relative; width: 0; z-index: 6; }

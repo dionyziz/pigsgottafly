@@ -1,12 +1,10 @@
-// Pure route edits used by the map (unit-tested). The map calls these and hands the result to
-// onRouteChange / onAltitudeChange; the editor turns that into one update() (one undo step).
+// Pure (unit-tested); the editor turns each result into one update(), i.e. one undo step.
 import type { LegOverride, RoutePoint } from '../../../shared';
 import { legKey } from '../../../shared';
 
 /**
- * True when the route comes back to where it started (A … A), as a new flight home → home does.
- * Points are the same when they reference the same aerodrome / VFR point / waypoint, or sit at the
- * same position.
+ * Comes back to where it started (A … A), as a new flight home → home does. Points are the same when
+ * they reference the same aerodrome / VFR point / waypoint, or sit at the same position.
  */
 export function isRoundTrip(route: RoutePoint[]): boolean {
   if (route.length < 2) return false;
@@ -16,7 +14,6 @@ export function isRoundTrip(route: RoutePoint[]): boolean {
   return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
 }
 
-/** A route that only goes from a point back to itself (the home → home of a new flight). */
 export function isBareRoundTrip(route: RoutePoint[]): boolean {
   return route.length === 2 && isRoundTrip(route);
 }
@@ -30,7 +27,6 @@ export function drawIndex(route: RoutePoint[], toEnd = false): number {
   return !toEnd && isRoundTrip(route) ? route.length - 1 : route.length;
 }
 
-/** Add a drawn point where drawing adds points (drawIndex). */
 export function addDrawnPoint(route: RoutePoint[], p: RoutePoint, toEnd = false): RoutePoint[] {
   return insertPoint(route, drawIndex(route, toEnd), p);
 }
@@ -45,18 +41,17 @@ export function removeDrawnPoint(route: RoutePoint[], toEnd = false): RoutePoint
   return route.slice(0, -1);
 }
 
-/** Insert p before index i (i = leg index + 1 when splitting leg i). */
+/** i = leg index + 1 when splitting leg i. */
 export function insertPoint(route: RoutePoint[], i: number, p: RoutePoint): RoutePoint[] {
   const k = Math.max(0, Math.min(route.length, i));
   return [...route.slice(0, k), p, ...route.slice(k)];
 }
 
-/** Replace the point with this uid (keeps its uid, so overrides of its legs survive a move). */
+/** Keeps its uid, so overrides of its legs survive a move. */
 export function replacePoint(route: RoutePoint[], uid: string, p: Omit<RoutePoint, 'uid'>): RoutePoint[] {
   return route.map((q) => (q.uid === uid ? { ...p, uid } : q));
 }
 
-/** True when two route points refer to the same thing (the same aerodrome / VFR point / waypoint, or both custom). */
 export function sameIdentity(a: Pick<RoutePoint, 'kind' | 'refId'>, b: Pick<RoutePoint, 'kind' | 'refId'>): boolean {
   return a.kind === b.kind && (a.kind === 'custom' || a.refId === b.refId);
 }
@@ -86,7 +81,6 @@ export function renamePoint(route: RoutePoint[], uid: string, name: string): Rou
   return route.map((q) => (q.uid === uid ? { ...q, name } : q));
 }
 
-/** Leg overrides restricted to the legs of this route (drops legs that no longer exist). */
 export function pruneOverrides(
   overrides: Record<string, LegOverride>,
   route: RoutePoint[],
@@ -102,7 +96,6 @@ export function pruneOverrides(
   return changed ? out : overrides;
 }
 
-/** Set (or with null, remove) the altitude override of one leg; empty overrides are dropped. */
 export function setAltitudeOverride(
   overrides: Record<string, LegOverride>,
   key: string,
@@ -121,7 +114,7 @@ export function setAltitudeOverride(
   return { ...overrides, [key]: { ...cur, altFt } };
 }
 
-/** Midpoint of a → b on a Web Mercator map (where the straight leg line is drawn), [lon, lat]. */
+/** Midpoint on a Web Mercator map (where the straight leg line is drawn), [lon, lat]. */
 export function mercatorMid(a: { lat: number; lon: number }, b: { lat: number; lon: number }): [number, number] {
   const y = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
   const ym = (y(a.lat) + y(b.lat)) / 2;

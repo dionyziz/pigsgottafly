@@ -1,10 +1,4 @@
-// Lobby (Google Docs style): search by name/date/aircraft/route, upcoming flights first (soonest
-// first) then past ones (most recent first); each row has a route sketch, title, date, block start,
-// aircraft and totals, and a ⋮ menu: Open in new tab, Rename, Make a copy, Move to trash (with
-// Undo). A Trash view lists trashed flights with Restore. The header (h1, tabs, New flight) keeps
-// its layout in both views. Flights other pilots shared with this one are in their own "Shared with
-// me" group (never in the trash), with who shared them; their ⋮ menu: Open, Fly again (a copy of
-// one's own) and Leave (removes one's own access).
+// Flights other pilots shared with this one are in their own "Shared with me" group (never in the trash).
 import './lists.css';
 import '../hangar/share.css';
 

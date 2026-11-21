@@ -1,12 +1,7 @@
-// Profile: the pilot's details for the forms (the person editor shared with passengers, plus the
-// licence number), home aerodrome, default aircraft and planning defaults (taxi out/in, fuel
-// reserve, final reserve, ATC list radius) and the map layers of new flights. With ?welcome=1 (or while name, phone or home is
-// missing) it is the first-use form: only name, phone, home aerodrome, taxi and reserve are asked.
-// Nothing pilot-specific is prefilled: unset values show neutral placeholders.
-// The first-use form is sent with Continue (then to ?next=, the page the pilot was opening); after
-// that, edits save on their own (useAutosave, PUT /api/me) and invalid fields say why under
-// themselves. The form follows the pilot (another tab, a dialog) while it has nothing unsaved.
-// Below it: the licence and medical PDFs (PilotDocuments), then the account (AccountSection).
+// With ?welcome=1 (or while name, phone or home is missing) it is the first-use form: only name, phone,
+// home aerodrome, taxi and reserve are asked, and nothing pilot-specific is prefilled. That form is sent
+// with Continue (then to ?next=); after that, edits save on their own (useAutosave, PUT /api/me). The
+// form follows the pilot (another tab, a dialog) while it has nothing unsaved.
 import '../lobby/lists.css';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -95,7 +90,6 @@ const LABEL: Partial<Record<ProfileField, string>> = {
   enrouteAerodromeRadiusNm: 'Radius',
 };
 
-/** What is wrong with the profile, field by field (empty when it can be saved). */
 export function validateProfile(f: ProfileForm, welcome: boolean): FormIssue<ProfileField>[] {
   const out: FormIssue<ProfileField>[] = validatePerson(f, { pilot: true });
   const unknown = (t: string) => `“${t.trim()}” is not an aerodrome in the current AIP`;
@@ -238,7 +232,6 @@ export function ProfilePage() {
   const setPerson: SetPerson = (k, v) => put(k, v as ProfileForm[typeof k]);
   const text = (k: 'defaultAircraftId') => (e: { target: { value: string } }) => put(k, e.target.value);
 
-  /** First use: Continue. */
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!welcome) {

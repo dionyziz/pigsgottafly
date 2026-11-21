@@ -1,11 +1,5 @@
-// Weight and balance, laid out like the club's MD 4.3 loading sheet
-// (trn-docs/MD4_3_Loading_Sheet_C172M.pdf): the loading table (empty, fuel, each station with the
-// people in it, baggage), totals at take-off and landing, the CG moment envelope chart with both
-// points and the burn line, a pass/fail verdict and the PIC's signature. One A4 portrait page,
-// the first page of the "Weight & balance and performance" export (../wbperf).
-// Drawn from WbPerfContent (src/shared/declarations.ts; built from the sheet model by
-// ../wbperf/declaration.ts): the export page and the PDF e-mailed to the operator (src/pdf/) draw
-// the same content with this component.
+// Laid out like the club's MD 4.3 loading sheet (trn-docs/MD4_3_Loading_Sheet_C172M.pdf), one A4 portrait page.
+// Drawn from WbPerfContent so the export page and the PDF e-mailed to the operator (src/pdf/) are the same.
 import './xp.css';
 import './wb.css';
 

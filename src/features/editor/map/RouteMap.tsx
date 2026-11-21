@@ -1,20 +1,6 @@
-// The route map: a controlled MapLibre component. It draws the VFR-chart layers and the route, and
-// reports edits through callbacks; it never changes the flight itself. MapView (./MapView.tsx)
-// binds it to the editor state (useEditor().update).
-//
-// Interaction
-//   Draw mode (toolbar "Draw", or automatically while the route has < 2 points or is a bare
-//   home → home): click adds a point, snapping to the nearest aerodrome / VFR point / my waypoint / route point within ~12 px.
-//   Clicking empty map (or Shift-click anywhere, or "Custom point" mode) places a custom point and
-//   asks its name. Click the last point, double-click, Enter or Esc to stop. Backspace removes the
-//   last point while drawing. On a round trip (A … A) drawing adds points before the closing A, so
-//   the flight keeps returning home; clicking A ends drawing ("Continue drawing" on the last point
-//   appends after it instead).
-//   Edit mode: drag a point (snaps like drawing; Shift = no snap): dropped on an aerodrome / VFR point /
-//   my waypoint it becomes that point (name, position, a new uid when it is another point); dropped on
-//   open map it becomes a custom point (a known point asks for a name); drag a leg's middle handle to insert a point;
-//   click a point to select it, Backspace/Delete removes it, right-click for more.
-//   Leg labels: magnetic course and distance (read-only), altitude (click to edit; Enter/Esc).
+// Controlled: reports edits through callbacks and never changes the flight itself; MapView binds it to the
+// editor state. On a round trip (A … A) drawing adds points before the closing A, so the flight keeps
+// returning home.
 import './map.css';
 
 import type { ExpressionSpecification, GeoJSONSource, Map as MlMap, MapMouseEvent, MapTouchEvent } from 'maplibre-gl';
@@ -115,19 +101,17 @@ import { addSymbols } from './symbols';
 import { aerodromeVfrCharts, airspaceVfrCharts, vfrChartIndex, vfrChartsAt, vfrPointCharts } from './vfrCharts';
 
 export interface LegAltitude {
-  /** Effective altitude, ft (NaN = unknown). */
+  /** ft; NaN = unknown. */
   altFt: number;
-  /** The pilot typed it (LegOverride.altFt). */
   overridden: boolean;
-  /** Rule that gave the default. */
   source: AltitudeDefault['source'];
 }
 
 export interface RouteMapProps {
   route: RoutePoint[];
-  /** Flight date (magnetic variation of the labels). */
+  /** For the labels' magnetic variation. */
   date: string;
-  /** Altitude per leg key (legKey(from, to)). */
+  /** By legKey(from, to). */
   altitudes: Record<string, LegAltitude>;
   refData: RefBundle;
   waypoints: Waypoint[];
@@ -136,35 +120,25 @@ export interface RouteMapProps {
   onRouteChange: (route: RoutePoint[], opts?: { coalesce?: string }) => void;
   /** null = remove the override (back to the default). */
   onAltitudeChange: (legKey: string, altFt: number | null) => void;
-  /** A custom point was named and placed (informational). */
   onCustomWaypoint?: (p: RoutePoint) => void;
-  /** "Save to my waypoints" on a custom point; resolves when saved. */
   onSaveWaypoint?: (p: RoutePoint) => Promise<void>;
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
-  /** Weather hazard marks on the affected stretches of the legs (hazardLayer.ts). */
   hazards?: MapHazard[];
   /** NOTAMs to draw (the panel's list); those with a Q-line circle get an area (notamLayer.ts). */
   notams?: Notam[];
-  /** The NOTAM picked in the panel or on the map (highlighted). */
   selectedNotam?: string | null;
   onNotamSelect?: (key: string | null) => void;
-  /** The NOTAM under the pointer in the panel: its area outlined with marching dashes. */
   hoveredNotam?: string | null;
-  /** The leg hovered in the navlog (highlighted with marching dashes), null = none. */
   focusLeg?: { from: { lat: number; lon: number }; to: { lat: number; lon: number } } | null;
-  /** Touch-and-go / stop request per route point uid (FlightOptions.aerodromeRequests). */
   requests?: Record<string, Partial<Record<AerodromeRequest['kind'], AerodromeRequest>>>;
-  /** Sets (kind) or removes (null) the request on an aerodrome point of the route. */
   onRequest?: (uid: string, kind: AerodromeRequest['kind'], on: boolean, stopMin?: number) => void;
-  /** An aerodrome's hours on the flight's date (AIP + NOTAMs), for its tooltip and details. */
   aerodromeInfo?: (a: RefAerodrome) => AdDayInfo;
-  /** The layers shown (the flight's selection); the route is always drawn. */
+  /** The route is always drawn. */
   layers: MapLayers;
   onLayers: (l: MapLayers) => void;
-  /** Nothing can be edited (a flight shared as a viewer): no drawing, dragging, point menu or altitude edits. */
   readOnly?: boolean;
 }
 
@@ -176,7 +150,6 @@ interface Drag {
   insert: boolean;
   start: { x: number; y: number };
   moved: boolean;
-  /** Route before the drag. */
   base: RoutePoint[];
   /** The point as it was (moves keep its identity until dropped elsewhere). */
   orig: RoutePoint;
@@ -210,7 +183,6 @@ function snapDetail(hit: SnapHit): string {
   return `${hit.cand.detail} · ${hit.shadowed.name} (${nm.toFixed(1)} NM away): zoom in to pick it`;
 }
 
-/** MC/distance read-out for a leg being drawn. */
 function legReadout(a: LatLon, b: LatLon, date: string): string {
   const d = distanceNm(a, b);
   if (d < 0.05) return '';
@@ -221,7 +193,7 @@ function legReadout(a: LatLon, b: LatLon, date: string): string {
   return `${fmtCourse(mc)}  ${fmtDistance(d)}`;
 }
 
-/** What a leg label shows (it is re-rendered when this changes). */
+/** A leg label is re-rendered when this changes. */
 function labelKey(
   leg: { mcMag: number; distNm: number },
   alt: LegAltitude | undefined,
@@ -231,7 +203,7 @@ function labelKey(
   return `${fmtCourse(leg.mcMag)}|${fmtDistance(leg.distNm)}|${fmtAltitude(altFt)}|${alt?.overridden ? 1 : 0}|${alt?.source ?? ''}|${haz ? haz.level + ':' + haz.labels.join(';') : ''}`;
 }
 
-/** Walks the dashes of a line layer along it until the returned stop is called (still when motion is reduced). */
+/** Returns the stop function; marches even when motion is reduced. */
 function marchDashes(m: MlMap, layerId: string): (() => void) | undefined {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   let frame = 0,
@@ -272,37 +244,29 @@ export function RouteMap(props: RouteMapProps) {
   const [hover, setHover] = useState<Hover | null>(null);
   /** A touch screen (iPhone, iPad): the hints say tap and press, not click. */
   const [touch] = useState(() => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
-  /** Airspaces under the cursor (idle mode), smallest first. */
   const [airTip, setAirTip] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
-  /** Weather hazard texts under the cursor (idle mode). */
   const [wxTip, setWxTip] = useState<{
     x: number;
     y: number;
     items: { level: 'danger' | 'warn'; label: string }[];
   } | null>(null);
-  /** Airspace details opened by a click. */
   const [airPop, setAirPop] = useState<{ x: number; y: number; items: AirspaceInfo[] } | null>(null);
-  /** The airspace outlined with marching dashes (hovered or open in the airspace popover). */
-  /** The airspace or NOTAM outlined with marching dashes (hovered or open in the details box); the latest wins. */
+  /** Hovered or open in the details box; the latest wins. */
   const [mapFocus, setMapFocus] = useState<{ kind: 'air' | 'notam'; id: string } | null>(null);
   const focusOf = (kind: 'air' | 'notam') => (id: string | null) =>
     setMapFocus((f) => (id ? { kind, id } : f?.kind === kind ? null : f));
   const setAirFocus = useMemo(() => focusOf('air'), []);
   const setNotamFocus = useMemo(() => focusOf('notam'), []);
-  /** Closes the details box (all its sections). */
   const closeDetails = useCallback(() => {
     setAdPop(null);
     setNavPop(null);
     setNotamPop(null);
     setAirPop(null);
   }, []);
-  /** NOTAM areas under the cursor (keys, smallest first) and the NOTAM details opened by a click. */
   const [notamTip, setNotamTip] = useState<{ x: number; y: number; keys: string[] } | null>(null);
   const [notamPop, setNotamPop] = useState<{ x: number; y: number; keys: string[] } | null>(null);
-  /** Aerodrome under the cursor (idle mode) and the aerodrome details opened by a click. */
   const [adTip, setAdTip] = useState<{ x: number; y: number; a: RefAerodrome } | null>(null);
   const [adPop, setAdPop] = useState<{ x: number; y: number; a: RefAerodrome } | null>(null);
-  /** Radio navaid under the cursor (idle mode) and the navaid details opened by a click. */
   const [navTip, setNavTip] = useState<{ x: number; y: number; n: RefNavaid } | null>(null);
   const [navPop, setNavPop] = useState<{ x: number; y: number; n: RefNavaid } | null>(null);
   const [editingLeg, setEditingLeg] = useState<string | null>(null);
@@ -312,7 +276,6 @@ export function RouteMap(props: RouteMapProps) {
 
   const shown = draft ?? route;
   const legs = useMemo(() => buildLegs(shown, date), [shown, date]);
-  // the AIP VFR charts, for the links in the info boxes
   const chartIdx = useMemo(
     () => vfrChartIndex(refData.aerodromes, refData.vfrPoints),
     [refData.aerodromes, refData.vfrPoints],
@@ -381,7 +344,6 @@ export function RouteMap(props: RouteMapProps) {
   const cancelDragRef = useRef<(() => void) | null>(null);
   const suppressClick = useRef(false);
 
-  // ---------------------------------------------------------------------------------- map setup
   const baseLayers = useRef<BaseLayers | null>(null);
   // the map is built once, with the layers shown at that time (later toggles restyle it in place)
   const buildMap = useEffectEvent((container: HTMLDivElement, vector: maplibregl.StyleSpecification | null) => {
@@ -432,7 +394,6 @@ export function RouteMap(props: RouteMapProps) {
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     m.addControl(new maplibregl.ScaleControl({ unit: 'nautical', maxWidth: 120 }), 'bottom-right');
     m.on('styleimagemissing', () => addSymbols(m));
-    // the attribution starts collapsed to its (i) button
     m.once('idle', () => {
       const a = container.querySelector('.maplibregl-ctrl-attrib');
       a?.classList.remove('maplibregl-compact-show');
@@ -483,7 +444,6 @@ export function RouteMap(props: RouteMapProps) {
     m.fitBounds(b, { padding: 90, maxZoom: 11 });
   }, [route]);
 
-  // ------------------------------------------------------------------------------- layer prefs
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !loaded) return;
@@ -505,7 +465,6 @@ export function RouteMap(props: RouteMapProps) {
     if (m && loaded) setData(m, 'areas', areaFeatures(airInfos));
   }, [airInfos, loaded]);
 
-  // The leg hovered in the navlog, the same way.
   const focusLeg = props.focusLeg ?? null;
   useEffect(() => {
     const m = mapRef.current;
@@ -539,14 +498,12 @@ export function RouteMap(props: RouteMapProps) {
     if (m && loaded) setData(m, 'waypoints', waypointFeatures(waypoints));
   }, [waypoints, loaded]);
 
-  // ---------------------------------------------------------------------------- weather hazards
   const hazardMarks = props.hazards;
   useEffect(() => {
     const m = mapRef.current;
     if (m && loaded) setHazardLayer(m, hazardMarks ?? [], 'route-casing');
   }, [hazardMarks, loaded]);
 
-  // ---------------------------------------------------------------------------------- NOTAMs
   const notamList = props.notams;
   const notamMarks = useMemo(() => mapNotams(notamList ?? []), [notamList]);
   // Airspaces and areas more than FAR_NM from the route are drawn faint (UX-PLAN.md step 6): what the
@@ -578,8 +535,7 @@ export function RouteMap(props: RouteMapProps) {
     }
   }, [allInfos, routeLatLon, loaded]);
 
-  // The focused airspace or NOTAM area: its outline with dashes walking around it (still when motion is reduced).
-  // A NOTAM under the pointer in the panel comes first.
+  // Dashes march even when motion is reduced. A NOTAM under the pointer in the panel comes first.
   const panelNotam = props.hoveredNotam ?? null;
   const focusData = useMemo(() => {
     if (panelNotam) {
@@ -608,7 +564,6 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (m && loaded) setNotamLayer(m, notamMarks, props.selectedNotam ?? null, layers.notams, 'route-casing');
   }, [notamMarks, props.selectedNotam, layers.notams, loaded]);
-  // a NOTAM picked in the panel: bring its area into view
   const selectedNotam = props.selectedNotam ?? null;
   const showNotam = useEffectEvent((key: string | null) => {
     const m = mapRef.current;
@@ -624,9 +579,8 @@ export function RouteMap(props: RouteMapProps) {
   const notamsOf = (keys: string[]) =>
     keys.map((k) => (notamList ?? []).find((n) => n.key === k)).filter((n): n is Notam => !!n);
 
-  // ------------------------------------------------------------------------------ route layers
   const drawing = mode !== 'idle';
-  /** The route point under the cursor (idle mode): its index, which is its feature id (generateId). */
+  /** Its index, which is its feature id (generateId). */
   const hoverPoint = useRef<number | null>(null);
   const setHoverPoint = useCallback((i: number | null) => {
     const m = mapRef.current;
@@ -700,8 +654,7 @@ export function RouteMap(props: RouteMapProps) {
     if (selected && !route.some((p) => p.uid === selected)) setSelected(null);
   }, [route, mode, selected, props.readOnly]);
 
-  // ------------------------------------------------------------------------------- leg labels
-  // (none while a point is dragged: the hazards belong to the legs before the drag)
+  // None while a point is dragged: the hazards belong to the legs before the drag.
   const legHazards = useMemo(
     () => (draft ? new Map<number, LegHazards>() : hazardsByLeg(hazardMarks ?? [])),
     [hazardMarks, draft],
@@ -716,7 +669,6 @@ export function RouteMap(props: RouteMapProps) {
   // legs sharing a line (out and back, or flown twice) have their labels spread along it (labels.ts)
   const labelSlots = useMemo(() => legLabelSlots(legs), [legs]);
 
-  /** Rotate/offset/size the labels of these legs (all when omitted). */
   const layoutLabels = useCallback(
     (only?: Set<string>) => {
       const m = mapRef.current;
@@ -840,7 +792,6 @@ export function RouteMap(props: RouteMapProps) {
     ) => {
       inner.textContent = '';
       if (haz) {
-        // weather on this leg: a small badge; its texts show on hover (and in the navlog strip)
         const b = document.createElement('span');
         b.className = 'pgf-leg-wx is-' + haz.level;
         b.textContent = '!';
@@ -951,7 +902,6 @@ export function RouteMap(props: RouteMapProps) {
   // After an edit ends, re-render that label (its text key was reset).
   const redrawResetLabels = useEffectEvent(() => {
     for (const rec of markers.current.values()) rec.el.classList.remove('is-editing');
-    // force the label effect to redraw labels whose text was reset
     const m = mapRef.current;
     if (!m) return;
     legs.forEach((leg, i) => {
@@ -970,7 +920,6 @@ export function RouteMap(props: RouteMapProps) {
     if (!editingLeg) redrawResetLabels();
   }, [editingLeg]);
 
-  // ---------------------------------------------------------------------------------- snapping
   const snapAt = useCallback((pt: { x: number; y: number }, exceptUid?: string): SnapHit | null => {
     const m = mapRef.current;
     if (!m) return null;
@@ -1002,7 +951,6 @@ export function RouteMap(props: RouteMapProps) {
     );
   }
 
-  // ------------------------------------------------------------------------------- name prompt
   const askName = useCallback((at: { x: number; y: number }, title: string, value: string): Promise<string | null> => {
     return new Promise((resolve) => {
       setPrompt({
@@ -1052,7 +1000,6 @@ export function RouteMap(props: RouteMapProps) {
     }
   }, []);
 
-  // --------------------------------------------------------------------------- map interaction
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !loaded) return;
@@ -1108,7 +1055,6 @@ export function RouteMap(props: RouteMapProps) {
       return best;
     };
 
-    /** The radio navaid drawn nearest to p (within 9 px), when the layer is shown. */
     const navAt = (p: { x: number; y: number }): RefNavaid | null => {
       const L = live.current;
       if (!L.layers.navaids) return null;
@@ -1218,7 +1164,6 @@ export function RouteMap(props: RouteMapProps) {
         });
         return;
       }
-      // idle: hover feedback
       const pt = hitPoint(e.point);
       setHoverPoint(pt);
       const mid = pt === null ? hitMid(e.point) : null;
@@ -1231,25 +1176,20 @@ export function RouteMap(props: RouteMapProps) {
         m.setFeatureState({ source: 'route-mid', id: mid }, { hover: true });
       }
       m.getCanvas().style.cursor = pt !== null ? 'grab' : mid !== null ? 'copy' : '';
-      // an aerodrome under the cursor: its hours on the flight's date
       const quiet = !L.airPop && !L.adPop && !L.navPop && !notamLive.current.pop;
       const ad = mid === null && quiet ? adAt(e.point, pt) : null;
       setAdTip(ad ? { x: e.point.x, y: e.point.y, a: ad } : null);
-      // a radio navaid under the cursor: ident, type and frequency
       const nav = pt === null && mid === null && quiet ? navAt(e.point) : null;
       setNavTip(nav ? { x: e.point.x, y: e.point.y, n: nav } : null);
       if ((ad || nav) && pt === null) m.getCanvas().style.cursor = 'pointer';
-      // everything else under the cursor goes in the same hover box (MapHoverTip):
-      // weather hazard bands/rings (their texts are not printed on the chart)
+      // weather hazards go in the hover box because their texts are not printed on the chart
       const wx = pt === null && mid === null && !L.airPop ? hazardLabelsAt(m, e.point, L.props.hazards ?? []) : [];
       setWxTip(wx.length ? { x: e.point.x, y: e.point.y, items: wx } : null);
-      // NOTAM areas under the cursor: ID, validity and limits
       const nk =
         pt === null && mid === null && !L.airPop && !notamLive.current.pop
           ? notamKeysAt(m, e.point, notamLive.current.marks)
           : [];
       setNotamTip(nk.length ? { x: e.point.x, y: e.point.y, keys: nk } : null);
-      // airspace under the cursor: name, class and limits; the smallest one is highlighted
       const air = pt === null && mid === null && !L.airPop ? airspacesAt(L.airInfos, e.lngLat.lng, e.lngLat.lat) : [];
       highlightAirspace(air[0] ?? null);
       setAirTip(air.length ? { x: e.point.x, y: e.point.y, items: air } : null);
@@ -1370,7 +1310,6 @@ export function RouteMap(props: RouteMapProps) {
       const next = d.insert ? insertPoint(base, d.index, point) : movePoint(base, d.uid, point, newUid);
       setDraft(null);
       live.current.props.onRouteChange(next);
-      // keep the point selected under its (possibly new) uid
       if (!d.insert)
         setSelected(next.find((q) => q.lat === point.lat && q.lon === point.lon && q.name === point.name)?.uid ?? null);
       if (point.kind === 'custom' && (d.insert || d.orig.kind !== 'custom'))
@@ -1414,7 +1353,6 @@ export function RouteMap(props: RouteMapProps) {
         return;
       }
       const shift = e.originalEvent.shiftKey || L.mode === 'custom';
-      // clicking the last point again, the closing point of a round trip (or a double-click) ends drawing
       const at = drawIndex(L.route, L.toEnd);
       const last = L.route[at - 1];
       const next = L.route[at];
@@ -1549,7 +1487,6 @@ export function RouteMap(props: RouteMapProps) {
     };
   }, [loaded, snapAt, placeCustom, stopDrawing, askName, setHoverPoint]);
 
-  // ---------------------------------------------------------------------------------- keyboard
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Escape closes the layers popover even while one of its checkboxes has the focus.
@@ -1599,7 +1536,6 @@ export function RouteMap(props: RouteMapProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, [stopDrawing]);
 
-  // ------------------------------------------------------------------------------- menu actions
   const menuPoint = menu ? (route.find((p) => p.uid === menu.uid) ?? null) : null;
   const doRename = async () => {
     if (!menu || !menuPoint) return;
@@ -1726,7 +1662,6 @@ export function RouteMap(props: RouteMapProps) {
     return items;
   };
 
-  // ----------------------------------------------------------------------------------- render
   const closing = mode !== 'idle' && drawIndex(route, toEnd) < route.length ? route[route.length - 1] : null;
   const hint = props.readOnly
     ? ''
@@ -1807,7 +1742,6 @@ export function RouteMap(props: RouteMapProps) {
       )}
 
       {(() => {
-        // one hover box with everything under the pointer: aerodrome, navaid, airspaces, NOTAMs, weather
         const at = adTip ?? navTip ?? airTip ?? notamTip ?? wxTip;
         if (!at || hover || menu || mode !== 'idle' || airPop || notamPop || adPop || navPop) return null;
         const notams = notamTip ? notamsOf(notamTip.keys) : [];
@@ -1833,7 +1767,6 @@ export function RouteMap(props: RouteMapProps) {
       })()}
       {(adPop || navPop || airPop || notamPop) &&
         (() => {
-          // one details box with everything at the clicked point (the hover box's sections, in full)
           const at = (adPop ?? navPop ?? notamPop ?? airPop)!;
           const notams = notamPop ? notamsOf(notamPop.keys) : [];
           return (

@@ -1,9 +1,5 @@
-// One aircraft of the hangar: identity, flight plan items, speeds, fuel, mass & balance (stations,
-// seats, envelopes), performance tables and compass cards. The page edits a local draft and saves it
-// on its own (useAutosave: PUT /api/aircraft/:id of the whole aircraft, debounced; on blur, Ctrl+S and
-// leaving). Errors hold the save back and show in a bar with links to their fields; warnings do not
-// (header chip). The section nav follows the scroll (useScrollSpy). Shared aircraft: editors edit like
-// the owner; viewers see the page read-only. Share opens the sharing dialog.
+// The page edits a local draft and saves it on its own (useAutosave: PUT /api/aircraft/:id of the whole
+// aircraft, debounced; on blur, Ctrl+S and leaving). Errors hold the save back; warnings do not.
 import '../lobby/lists.css';
 import './hangar.css';
 
@@ -170,7 +166,6 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
     return () => document.removeEventListener('keydown', key);
   }, [flush]);
 
-  // the warnings list closes on a click elsewhere or Escape
   useEffect(() => {
     if (!showWarnings) return;
     const down = (e: PointerEvent) => {

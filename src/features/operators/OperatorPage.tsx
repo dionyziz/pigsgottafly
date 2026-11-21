@@ -1,8 +1,5 @@
-// One operator: its details (name, contacts), whether it asks for the W&B and performance sheets
-// before each flight and where they go, its documents (operations manual, PDFs), its aircraft, and
-// who has access (shared directly, or through one of its aircraft). Viewers see it read-only.
-// Edits save on their own as on the aircraft page (useAutosave: PUT /api/operators/:id, debounced;
-// on blur, Ctrl+S and leaving); invalid fields hold the save back and say why under themselves.
+// Edits save on their own as on the aircraft page (useAutosave: PUT /api/operators/:id, debounced; on
+// blur, Ctrl+S and leaving); invalid fields hold the save back.
 import '../hangar/hangar.css';
 import '../hangar/share.css';
 import '../lobby/lists.css';
@@ -83,7 +80,6 @@ export function validateOperator(d: OperatorInput): FormIssue<OperatorField>[] {
   return out;
 }
 
-/** The input as saved: names and addresses trimmed. */
 const normalized = (d: OperatorInput): OperatorInput => ({
   ...d,
   name: d.name.trim(),

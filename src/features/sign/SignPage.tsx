@@ -1,8 +1,6 @@
 // /sign/:token: a passenger signs Form 731 (PLAN-v3 "Form 731: signatures and submission to HCAA").
-// No account needed: the link is the key, and it opens this one form only. A read-only view of the
-// filled form, built for a phone: the passenger's own row in full, other people's ID and contact
-// masked, and a single "Sign" button. The signature is the signer's initial and last name in the
-// handwriting font, with the time.
+// No account needed: the link is the key, and it opens this one form only, so other people's ID and
+// contact are masked.
 import '../exports/form731/forms.css';
 import './sign.css';
 

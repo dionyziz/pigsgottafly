@@ -1,10 +1,8 @@
-/* Route map (map agent). Uses the app tokens from src/app/styles.css. */
 .pgf-map { position: absolute; inset: 0; overflow: hidden; background: var(--map-bg); font-family: var(--font); }
 .pgf-map-canvas { position: absolute; inset: 0; }
 .pgf-map-failed { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--s5); color: var(--ink-2); text-align: center; }
 .pgf-map .maplibregl-canvas:focus { outline: none; }
 
-/* toolbar */
 .pgf-map-toolbar {
   position: absolute; top: var(--s3); left: var(--s3); z-index: 3;
   display: flex; align-items: center; gap: 2px; padding: 3px;
@@ -21,7 +19,6 @@
 .pgf-map-btn.is-active { background: var(--accent-soft); color: var(--accent); }
 .pgf-map-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* layers popover (below the zoom buttons) */
 .pgf-map-layers { position: absolute; top: 88px; right: 10px; z-index: 3; }
 .pgf-map-layers > .pgf-map-btn { width: 29px; min-width: 29px; height: 29px; padding: 0; background: var(--surface); border-radius: 4px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 10%, transparent); }
 .pgf-map-pop {
@@ -32,7 +29,6 @@
 }
 .pgf-map-airac { font-size: var(--fs-xs); }
 
-/* layer toggles (MapLayerToggles: the map's popover and the profile) */
 .pgf-layers { display: flex; flex-direction: column; gap: 10px; font-size: var(--fs-sm); color: var(--ink); }
 .pgf-layers-h { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .pgf-layers-group { display: flex; flex-direction: column; gap: 6px; }
@@ -57,8 +53,7 @@
 .pgf-legend .lg-d { border-color: var(--map-danger-area); border-top-style: dashed; }
 .pgf-legend .lg-mil { border-color: var(--map-mil); border-top-style: dashed; }
 .pgf-legend .lg-act { border-color: var(--map-activity); border-top-style: dotted; }
-/* hint bubble: top left, under the toolbar (out of the way of the route and the snap tooltip, which
-   follow the cursor below it); it fades out while the cursor is near it, but not near its close button */
+/* under the toolbar, out of the way of the route and the snap tooltip, which follow the cursor below it */
 .pgf-map-hint {
   position: absolute; top: calc(var(--s3) + 48px); left: var(--s3); z-index: 2;
   max-width: min(400px, calc(100% - 80px)); padding: 6px 10px 6px 12px; border-radius: 8px;
@@ -67,7 +62,6 @@
   display: flex; align-items: flex-start; gap: 8px; transition: opacity 0.15s ease;
 }
 .pgf-map-hint.is-away { opacity: 0; }
-/* (ui CloseButton) */
 .pgf-map-hint .pgf-map-hint-x {
   pointer-events: auto; flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; min-height: 0; padding: 0; margin: 0 -3px 0 0;
@@ -75,7 +69,6 @@
 }
 .pgf-map-hint .pgf-map-hint-x:hover { background: color-mix(in srgb, var(--on-accent) 32%, transparent); color: var(--on-accent); }
 
-/* snap / rubber-band tooltip */
 .pgf-snap-tip {
   position: absolute; z-index: 4; pointer-events: none; display: flex; flex-direction: column; gap: 1px;
   padding: 5px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line);
@@ -84,13 +77,11 @@
 .pgf-snap-tip b { color: var(--map-route); font-size: var(--fs-sm); letter-spacing: 0.02em; }
 .pgf-snap-leg { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
 
-/* weather hazard tooltip (hover a hazard band or ring) */
 .pgf-wx-tip { gap: 3px; }
 .pgf-wx-tip span { font-size: var(--fs-xs); }
 .pgf-wx-tip .is-danger { color: var(--danger); }
 .pgf-wx-tip .is-warn { color: var(--warn); }
 
-/* airspace hover tooltip and click popover */
 .pgf-air-tip {
   position: absolute; z-index: 4; pointer-events: none; display: flex; flex-direction: column; gap: 3px;
   max-width: 380px; padding: 6px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line);
@@ -104,7 +95,6 @@
   background: var(--hover); color: var(--ink);
 }
 .pgf-air-tip-more { color: var(--muted); font-size: 11px; }
-/* the hover box: a section per kind of thing under the pointer, divided by a rule */
 .pgf-tip-section { display: flex; flex-direction: column; gap: 3px; }
 .pgf-tip-section + .pgf-tip-section { margin-top: 2px; padding-top: 5px; border-top: 1px solid var(--line); }
 .pgf-air-type {
@@ -119,7 +109,6 @@
   padding: 6px 34px 6px 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg);
   font-size: var(--fs-sm); color: var(--ink);
 }
-/* (ui CloseButton) */
 .pgf-air-pop .pgf-air-x {
   position: absolute; top: 9px; right: 6px; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 6px;
@@ -142,7 +131,6 @@
 .pgf-air-cs { font-weight: 600; }
 .pgf-air-fq { margin-left: 6px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-/* leg labels (MapLibre markers) */
 .pgf-leg { pointer-events: none; }
 .pgf-leg-inner {
   display: flex; align-items: center; gap: 0; white-space: nowrap; transform-origin: 50% 50%;
@@ -152,7 +140,6 @@
 }
 .pgf-leg-inner > * { padding: 4px 6px; }
 .pgf-leg-mc { color: var(--map-route); font-weight: 700; }
-/* weather badge at the start of a leg label (texts on hover) */
 .pgf-leg-inner > .pgf-leg-wx {
   pointer-events: auto; cursor: help; align-self: center; flex: none; display: grid; place-items: center;
   width: 13px; height: 13px; margin-left: 4px; padding: 0; border-radius: 50%;
@@ -177,7 +164,7 @@
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 .pgf-leg-input.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger-soft); }
-/* compact: course and distance on top, altitude below, smaller type (never only the altitude) */
+/* never only the altitude */
 .pgf-leg[data-mode='compact'] .pgf-leg-inner { position: relative; display: grid; grid-template-columns: auto auto; font-size: 10px; }
 .pgf-leg[data-mode='compact'] .pgf-leg-inner > * { padding: 3px 4px; text-align: center; }
 .pgf-leg[data-mode='compact'] .pgf-leg-alt {
@@ -190,7 +177,6 @@
 .pgf-map-canvas.is-dragging .pgf-leg-alt { pointer-events: none; }
 .pgf-leg.is-editing { z-index: 5; }
 
-/* name prompt and point menu */
 .pgf-name {
   position: absolute; z-index: 6; transform: translate(-50%, calc(-100% - 14px));
   display: flex; flex-direction: column; gap: 6px; padding: 10px; min-width: 200px;
@@ -229,7 +215,6 @@
 }
 @media print { .pgf-map { display: none; } }
 
-/* NOTAM areas: tooltip and popover (shares the airspace popover's look) */
 .pgf-air-type.t-notam { background: var(--map-notam); }
 .pgf-air-type.t-notam.is-hidden { background: var(--map-notam-off); }
 .pgf-notam-text { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -238,7 +223,6 @@
   font-family: var(--mono); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink);
 }
 
-/* aerodrome hours (AerodromeHours.tsx: map tooltip / details, editor panel) */
 .pgf-ad-notam { font-family: var(--mono); font-weight: 600; color: var(--warn); }
 .pgf-ad-aip { margin-top: 4px; display: grid; gap: 2px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-2); }
 .pgf-ad-aip b { font-weight: 600; color: var(--ink); margin-right: 4px; }
@@ -250,7 +234,6 @@
 div.pgf-air-h { cursor: default; }
 div.pgf-air-h:hover { background: none; }
 
-/* ENR 5 areas (prohibited / restricted / danger / military / other activities): popover badges */
 .pgf-air-type.t-p { background: var(--map-prohibited); }
 .pgf-air-type.t-r { background: var(--map-paper); color: var(--map-restricted); box-shadow: inset 0 0 0 1px var(--map-restricted); background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--map-restricted) 18%, transparent) 0 2px, transparent 2px 5px); }
 .pgf-air-type.t-d { background: var(--map-danger-area); }

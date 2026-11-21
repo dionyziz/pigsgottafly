@@ -1,14 +1,6 @@
-// Export "Weight & balance and performance": one document, the club's MD 4.3 loading sheet (page 1)
-// followed by the MD 4.4 performance log (one page per sector: a flight with intermediate full
-// stops gets a page for each take-off → landing), each page signed by the PIC on its SIGN line.
-// The signature is the PIC's e-signature (the handwriting signature of Form 731 and the General
-// Declaration) dated when these sheets were computed.
-//
-// Usage (ExportPage): <WbPerfExport flight={flight} />. Loads the pilot, the aircraft and the
-// weather (winds aloft for trip fuel; surface forecast / METAR at take-off and landing) itself.
-// When the aircraft's operator asks for these sheets before each flight, a panel sends them to it
-// (./SendPanel.tsx). The sheets are drawn from WbPerfContent (./declaration.ts), the content that panel
-// sends: the operator's PDF is printed from it with these same sheets (src/pdf/, api/_lib/sheetPdf.ts).
+// MD 4.3 loading sheet (page 1), then the MD 4.4 performance log: one page per sector (each take-off →
+// landing), each page signed by the PIC. The operator's PDF is printed from the same WbPerfContent
+// (./declaration.ts) with these same sheets (src/pdf/, api/_lib/sheetPdf.ts).
 import '../wb/xp.css';
 
 import type { Flight } from '../../../shared';

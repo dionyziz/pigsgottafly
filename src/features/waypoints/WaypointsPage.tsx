@@ -1,7 +1,4 @@
-// My waypoints: the pilot's saved custom points (list, search, rename in place, edit position/notes,
-// delete) beside a small map. Points are usually saved from the flight editor; here a click on the
-// map, or typed coordinates, adds one too. An existing waypoint's dialog saves as it is edited
-// (useAutosave).
+// Points are usually saved from the flight editor; here a click on the map, or typed coordinates, adds one too.
 import '../lobby/lists.css';
 
 import { useMemo, useRef, useState } from 'react';
@@ -223,7 +220,6 @@ export function WaypointsPage() {
 
 type WaypointField = 'name' | 'position';
 
-/** What is wrong with a waypoint being saved, field by field. */
 export function validateWaypoint(
   name: string,
   pos: string,
@@ -240,7 +236,6 @@ export function validateWaypoint(
   return out;
 }
 
-/** The form of a waypoint: name, position and notes as typed. */
 interface WaypointForm {
   name: string;
   pos: string;

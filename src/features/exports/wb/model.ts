@@ -1,6 +1,5 @@
-// The MD 4.3 loading sheet (trn-docs/MD4_3_Loading_Sheet_C172M.pdf) as data: the loading table,
-// the totals at take-off and landing, the envelope checks and the chart geometry (moment vs mass,
-// as the AFM "centre of gravity moment envelope" printed on the club form). Pure: no I/O, no DOM.
+// The MD 4.3 loading sheet (trn-docs/MD4_3_Loading_Sheet_C172M.pdf) as data; the chart is moment vs mass,
+// as the AFM "centre of gravity moment envelope" printed on the club form.
 //
 // Table order follows MD 4.3: corrected empty weight, (unusable fuel when the weighing excluded
 // it), fuel, then the loading stations in the aircraft's order (PIC and front passenger, rear
@@ -33,9 +32,7 @@ export interface WbLine {
   massKg: number | null;
   armM: number | null;
   momentKgM: number | null;
-  /** Seat stations: who sits there. */
   people: WbPerson[];
-  /** A station limit is exceeded on this line. */
   over: boolean;
 }
 
@@ -76,7 +73,6 @@ export interface WbSheetModel {
   fuelLabel: string;
   lines: WbLine[];
   takeoff: WbLine;
-  /** Fuel used over the whole flight (all sectors). */
   burn: WbLine;
   landing: WbLine;
   /** The totals block as printed: take-off, then per sector its fuel used and the total at its
@@ -103,12 +99,10 @@ export function fmtArm(x: number | null | undefined): string {
   const s = x.toFixed(3);
   return s.endsWith('0') ? x.toFixed(2) : s;
 }
-/** A computed CG: always 3 decimals. */
 export const fmtCg = (x: number | null | undefined) => (fin(x) ? x.toFixed(3) : '');
 const trimNum = (x: number) => String(Math.round(x * 1000) / 1000);
 
-/** 'YYYY-MM-DD' (validated; '' otherwise). */
-/** CG polygon [arm, mass] → moment outline [moment, mass], each edge split into `steps` pieces. */
+/** Each edge is split into `steps` pieces: a sloped CG limit is a curve in moment space. */
 export function cgToMomentOutline(polygon: [number, number][], steps = 16): [number, number][] {
   const out: [number, number][] = [];
   const n = polygon.length;
@@ -185,7 +179,6 @@ export interface WbSheetInput {
   aircraft: Aircraft | null;
   pilot: Pilot | null;
   calc: ExportCalc;
-  /** Route text for the header, e.g. 'LGTT – LGMG – LGTT'. */
   route: string;
 }
 
@@ -241,7 +234,6 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
 
   const mb = aircraft.massBalance;
   const fuelStation = mb.stations.find((s) => s.kind === 'fuel');
-  // The fuel on board by type: one type → 'AVGAS 0.72 kg/L'; mixed → each type with its density.
   const load = calc.fuelLoad ?? fuelLoad(aircraft.fuel, calc.fuelTakeoffL, doc.options.fuelL);
   const grades = load.parts.length
     ? load.parts.map((p) => ({ type: p.type, rho: p.densityKgPerL }))
@@ -251,7 +243,6 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     .join(' + ');
   const lines: WbLine[] = [];
 
-  // People per seat station, from the manifest (names, seat labels, weights).
   const seats = new Map(seatLayout(mb.stations).map((s) => [s.id, s]));
   const peopleBy = new Map<string, WbPerson[]>();
   for (const c of [...doc.crew].sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role])) {
@@ -383,7 +374,6 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     over: !!wb && mlw > 0 && wb.landing.massKg > mlw + 1e-9,
   };
 
-  // Intermediate full stops: per sector, the fuel used and the total at its landing.
   const stops = wb ? calc.stops.filter((x) => x.wbBefore && x.wbAfter) : [];
   const stopName = (x: (typeof stops)[number]) => x.landing.aerodrome?.icao || x.point.name;
   const totals: WbLine[] = [takeoff];
@@ -490,7 +480,6 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     checks.push(phaseCheck('landing'));
   }
 
-  // Warnings: manifest problems first, then the calculation's.
   const missingWeights = doc.crew.filter((c) => c.snapshot.weightKg == null);
   for (const t of calc.wbLoadWarnings) warnings.push(t);
   if (wb) for (const t of wb.warnings) if (!warnings.includes(t)) warnings.push(t);

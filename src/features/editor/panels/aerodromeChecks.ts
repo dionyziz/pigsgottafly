@@ -35,7 +35,6 @@ export interface AdChecksInput {
   options: Pick<FlightOptions, 'aerodromeRequests'>;
   departure: RefAerodrome | null;
   destination: RefAerodrome | null;
-  /** The aerodrome a route point stands for. */
   aerodromeOf: (p: RoutePoint) => RefAerodrome | null;
   /** 00:00 UTC of the flight date, epoch ms. */
   dayMs: number;

@@ -19,7 +19,6 @@ export type Stage = 'plan' | 'brief' | 'file';
 export const STAGES: readonly Stage[] = ['plan', 'brief', 'file'];
 export const STAGE_LABEL: Record<Stage, string> = { plan: 'Plan', brief: 'Brief', file: 'File & forms' };
 
-/** Which stage each panel section belongs to (Section ids). */
 export const SECTION_STAGE: Record<string, Stage> = {
   route: 'plan',
   when: 'plan',
@@ -45,7 +44,6 @@ export interface ReadyItem {
   text: string | null;
   /** The warning behind the text (its fix is offered), if any. */
   warning: CalcWarning | null;
-  /** The panel section to open for it. */
   section: string;
   /** A page elsewhere that fixes it (the profile). */
   link?: { label: string; to: string };
@@ -66,7 +64,6 @@ export interface ReadinessInput {
   declarations: DeclarationsState | null;
 }
 
-/** What the pilot's profile lacks for the forms and the flight plan. */
 export const profileMissingOf = (p: { fullName: string; phone: string }): string[] =>
   [!p.fullName.trim() && 'name', !p.phone.trim() && 'phone'].filter((x): x is string => !!x);
 
@@ -99,7 +96,7 @@ const FILED_OPEN = new Set(['filed', 'manual_correction', 'departed', 'arriving'
 export function readiness(i: ReadinessInput): ReadyItem[] {
   const w = i.warnings;
   const items: ReadyItem[] = [];
-  // ---- plan (a new pilot's profile first: it goes on the flight plan and the forms)
+  // A new pilot's profile first: it goes on the flight plan and the forms.
   if (i.profileMissing.length)
     items.push({
       id: 'profile',
@@ -146,7 +143,6 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
       section: 'manifest',
     }),
   );
-  // ---- brief
   items.push(fromWarnings(w, ['time'], { id: 'time', stage: 'brief', label: 'Times and daylight', section: 'when' }));
   items.push(
     fromWarnings(w, ['aerodrome'], { id: 'aerodromes', stage: 'brief', label: 'Aerodromes', section: 'aerodromes' }),
@@ -187,7 +183,6 @@ export const PAPERWORK_KIND: Record<string, 'fpl' | 'form731' | 'gendec' | 'wbpe
   operator: 'wbperf',
 };
 
-/** The File & forms stage's items: the flight plan, Form 731, the GenDec and the operator's sheets. */
 export function paperwork(i: Pick<ReadinessInput, 'filing' | 'forms' | 'declarations'>): ReadyItem[] {
   const out: ReadyItem[] = [];
   const f = i.filing?.filing ?? null;

@@ -1,10 +1,5 @@
-// Add/edit a passenger in a dialog. Exported for reuse: the editor's manifest can create a passenger
-// on the spot with <PassengerDialog passenger={null} initialName="…" onSaved={…} />.
-// The pilot is a passenger too: <PilotDetailsDialog /> edits the pilot's own person details (plus the
-// licence number) with the same form, saved to the profile (PUT /api/me).
-// A new passenger is added with "Add passenger"; an existing one (and the pilot) saves on its own as
-// it is edited (useAutosave; onSaved after each save), invalid fields hold the save back and say why
-// under themselves, and Done closes once everything is saved.
+// Exported for reuse: the editor's manifest creates a passenger on the spot. An existing passenger (and
+// the pilot) saves on its own as it is edited (useAutosave); Done closes once everything is saved.
 import { useCallback, useRef, useState } from 'react';
 
 import { useSession } from '../../app/session';
@@ -16,7 +11,6 @@ import { type FormIssue, useFormIssues } from './formIssues';
 import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from './person';
 import { PersonFields, type SetPerson } from './PersonFields';
 
-/** The dialog's form state, its field problems and the fields a link asked to highlight. */
 function usePersonDialog(initial: () => PersonForm, focus: readonly string[]) {
   const ref = useRef<HTMLFormElement>(null);
   const [f, setF] = useState<PersonForm>(initial);
@@ -193,7 +187,6 @@ export function PilotDetailsDialog({
   focus = [],
 }: {
   onClose: () => void;
-  /** After each save. */
   onSaved?: (p: Pilot) => void;
   focus?: string[];
 }) {

@@ -1,5 +1,3 @@
-// Pure formatting and filtering helpers for the lobby and the list pages (unit-tested in
-// tests/unit/screens/format.test.ts). No DOM, no React.
 import type { FlightListItem } from '../../shared';
 import { fmtDate } from '../../shared/date';
 
@@ -24,7 +22,6 @@ export function flightSearchText(r: FlightListItem): string {
     .toLowerCase();
 }
 
-/** The row's passengers, comma-separated ('' without any). */
 export const passengerNames = (r: FlightListItem): string => (r.passengers ?? []).join(', ');
 
 /** Every whitespace-separated term of `q` must occur in the row's text. */

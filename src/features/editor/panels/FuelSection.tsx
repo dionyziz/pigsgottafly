@@ -1,6 +1,5 @@
-// Fuel: required (allowance + trip + final reserve), reserve on top, fuel on board (default =
-// required + reserve; editable), capacity and endurance. An aircraft with more than one approved
-// fuel gets one input per type (mixed tanks allowed): FOB is their sum, the W&B weighs each type.
+// An aircraft with more than one approved fuel gets one input per type (mixed tanks allowed): FOB is
+// their sum, the W&B weighs each type.
 import { FlowLink } from '../../../app/FlowLinks';
 import { type FlightDoc, fuelByType, fuelLoad, type FuelType, primaryFuel } from '../../../shared';
 import { fmtDuration } from '../../../shared/format';

@@ -1,12 +1,6 @@
-// Filing the flight plan through autorouter (PLAN-v3 "Filing the flight plan via autorouter" and
-// "Flight plan addressing (Greek VFR)"), on the flight plan export, screen only:
-//   - the AFTN addressees the server proposes from AIP Greece ENR 1.11 (api/_lib/addressees.ts),
-//     each with why it is there, for review: untick to leave one out, add one by hand;
-//   - File / Cancel / Refresh status, with the plan's status and this flight's filing log; the e-mail
-//     copies proposed (operator, aerodromes), each ticked and free to untick;
-//   - when the server cannot file, why not (the buttons stay disabled; the addressees are still
-//     shown, for filing by other means).
-// The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
+// Filing through autorouter (PLAN-v3 "Filing the flight plan via autorouter" and "Flight plan
+// addressing (Greek VFR)"). The AFTN addressees the server proposes from AIP Greece ENR 1.11
+// (api/_lib/addressees.ts) are still shown when the server cannot file, for filing by other means.
 import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { api, ApiRequestError, peekGet } from '../../../data/api';
@@ -31,11 +25,9 @@ const dateTimeZ = (ms: number) => fmtDateTimeMs(ms);
 
 export interface FilingPanelProps {
   flight: Flight;
-  /** The FPL message as built on the page. */
   message: string;
   /** False while the message has ???? fields: filing is refused. */
   complete: boolean;
-  /** The reviewed addressees, for the printed form. */
   onAddresses?: (addresses: string[]) => void;
   /** The panel's heading (default 'Filing'; the editor's section already says it). */
   title?: string;

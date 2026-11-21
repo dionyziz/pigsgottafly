@@ -1,4 +1,3 @@
-// The lobby's route thumbnail. Styles in lists.css.
 import './lists.css';
 
 /** Route sketch from summary.route ([lat, lon] pairs), equirectangular with cos(lat) scaling. */

@@ -14,7 +14,6 @@ export function endText(p: RoutePoint | undefined): string {
   return p ? p.name : '';
 }
 
-/** The route with its origin (end 'from') or destination ('to') set to an aerodrome. */
 export function setRouteEnd(route: RoutePoint[], end: 'from' | 'to', a: RefAerodrome): RoutePoint[] {
   const p = pointOf(a);
   if (end === 'from') return route.length ? [p, ...route.slice(1)] : [p];

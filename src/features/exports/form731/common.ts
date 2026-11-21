@@ -1,9 +1,8 @@
-// Helpers shared by the filled forms (Form 731 and the General Declaration). Pure: no DOM, no I/O.
+// Shared by Form 731 and the General Declaration. Pure: no DOM, no I/O.
 import { aerodrome } from '../../../data/ref';
 import type { Aircraft, FlightDoc, Passenger, Pilot, RoutePoint } from '../../../shared';
 import { formPeopleOf, type FormPerson, type Place, routePlacesWith } from '../../../shared/forms';
 
-/** What every filled-form component needs. The export page loads these and passes them in. */
 export interface FormExportProps {
   flight: FlightDoc;
   /** The flight's aircraft, or null when none is chosen (or it was deleted from the hangar). */

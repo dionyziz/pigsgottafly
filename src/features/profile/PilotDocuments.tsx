@@ -1,6 +1,4 @@
-// Profile: the pilot's licence and medical certificate, one PDF each (optional), stored as the
-// aircraft documents are (chunked: src/data/aircraftFiles.ts, /api/pilots/:id/files). Each can be
-// opened in the PDF viewer, downloaded, replaced and removed.
+// Stored as the aircraft documents are (chunked: src/data/aircraftFiles.ts, /api/pilots/:id/files).
 import '../hangar/hangar.css';
 import './profile.css';
 

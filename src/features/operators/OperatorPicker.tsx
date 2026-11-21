@@ -1,6 +1,4 @@
-// The aircraft page's operator field: a dropdown of the operators the pilot may assign (owner or
-// editor; the current one even when only viewed), "None", and "New operator…" (created on the spot
-// and selected). Choosing one sets the aircraft's operatorId and its operator text to the name; an
+// Lists the operators the pilot may assign (owner or editor; the current one even when only viewed). An
 // aircraft without a linked operator keeps its old free-text operator, shown as such.
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -83,7 +81,6 @@ export function OperatorPicker({
   );
 }
 
-/** Creates an operator by name (the rest on its page). */
 export function NewOperatorDialog({
   initialName = '',
   onClose,

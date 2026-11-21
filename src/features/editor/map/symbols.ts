@@ -74,7 +74,6 @@ function dot(g: CanvasRenderingContext2D, x: number, y: number, r: number, color
   g.fill();
 }
 
-/** A VOR: hexagon (white inside) with its centre dot. */
 function vor(g: CanvasRenderingContext2D, s: number, r: number) {
   const c = s / 2;
   hexagon(g, c, c, r);
@@ -112,7 +111,6 @@ function lobes(g: CanvasRenderingContext2D, s: number, r: number, filled: boolea
   }
 }
 
-/** NDB / locator: centre dot, a ring and rings of dots around it. */
 function ndb(g: CanvasRenderingContext2D, s: number, rings: number[]) {
   const c = s / 2;
   g.beginPath();
@@ -391,7 +389,7 @@ export const SYMBOL_INFO: Record<
   },
 };
 
-/** Register every chart symbol on the map (idempotent). */
+/** Idempotent. */
 export function addSymbols(map: MlMap): void {
   for (const [name, draw] of Object.entries(SYMBOLS)) {
     if (map.hasImage(name)) continue;

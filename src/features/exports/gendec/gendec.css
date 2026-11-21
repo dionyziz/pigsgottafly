@@ -13,7 +13,6 @@
 .gd-sheet .gd-title { position: absolute; left: 0; right: 0; top: 14mm; margin: 0; text-align: center; font-size: 17pt; font-weight: 700; line-height: 7mm; letter-spacing: 0.02em; }
 .gd-sub { position: absolute; left: 0; right: 0; top: 21.5mm; text-align: center; font-size: 7pt; line-height: 3mm; }
 
-/* header lines: label, then the value in bold */
 .gd-fields { position: absolute; left: 15mm; right: 15mm; top: 31mm; font-size: 9pt; }
 .gd-f { line-height: 5mm; height: 5mm; margin-bottom: 2.6mm; white-space: nowrap; }
 .gd-val { font-weight: 700; font-size: 9.5pt; margin-left: 1mm; }
@@ -24,7 +23,6 @@
 .gd-placef { position: relative; display: inline-block; }
 .gd-placef small { position: absolute; left: 0; right: 0; top: 4.6mm; text-align: center; font-size: 6.5pt; }
 
-/* the routing box */
 .gd-box { position: absolute; left: 15mm; top: 59mm; width: 180mm; border: 0.45mm solid #000; }
 .gd-routing-head { height: 14mm; text-align: center; padding-top: 2mm; font-size: 7.5pt; border-bottom: 0.35mm solid #000; }
 .gd-h2 { font-size: 13pt; font-weight: 700; line-height: 6mm; letter-spacing: 0.02em; }
@@ -64,11 +62,9 @@
 .gd-nil text { fill: #4a90d9; font: 700 6.2px Verdana, Arial, sans-serif; letter-spacing: 0.2px; }
 .gd-official { border-top: 0.35mm solid #000; text-align: center; font-weight: 700; font-size: 8pt; padding-top: 3mm; }
 
-/* the declaration, full width under the box */
 .gd-declare { position: absolute; left: 15mm; width: 180mm; top: 222mm; margin: 0; font-size: 8.5pt; line-height: 4.2mm; text-align: justify; }
 .gd-signature { position: absolute; left: 70mm; top: 248mm; display: flex; align-items: flex-end; font-size: 9pt; white-space: nowrap; }
 .gd-sigline { position: relative; display: inline-block; width: 90mm; height: 3mm; border-bottom: 0.2mm solid #000; margin-left: 2mm; }
-/* The PIC's e-signature stands on the line (name in handwriting, then the time it was signed). */
 .gd-pic-signature { position: absolute; left: 14mm; bottom: 0.5mm; text-align: left; }
 .gd-agent { position: absolute; left: 87mm; width: 90mm; top: 252.5mm; text-align: center; font-size: 8pt; }
 

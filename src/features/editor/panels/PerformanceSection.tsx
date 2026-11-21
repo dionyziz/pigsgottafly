@@ -1,7 +1,6 @@
-// Take-off and landing: conditions (METAR when current, else forecast), runway (from the wind, or
-// chosen), surface condition, wind components, and required vs available distances. At the
-// departure, at each intermediate full stop and touch-and-go (the landing there and the take-off
-// from there, with the sector masses) and at the destination.
+// Conditions are the METAR when current, else the forecast. At the departure, at each intermediate full
+// stop and touch-and-go (the landing there and the take-off from there, with the sector masses) and at
+// the destination.
 import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
 import type { Aircraft } from '../../../shared';

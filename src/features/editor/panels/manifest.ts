@@ -1,7 +1,6 @@
-// Pure manifest helpers (unit-tested in tests/unit/screens/screens.test.ts and editorPanels.test.ts).
-// Following: a manifest row's snapshot follows its person (passenger list / profile) field by field
-// until that field is edited on the flight (FlightCrew.overrides); "Reset from the saved details"
-// copies the person again and clears the overrides.
+// A manifest row's snapshot follows its person (passenger list / profile) field by field until that
+// field is edited on the flight (FlightCrew.overrides); "Reset from the saved details" copies the
+// person again and clears the overrides.
 import { type FlightCrew, PERSON_KEYS, type PersonDetails, type PersonKey } from '../../../shared';
 
 /**
@@ -38,7 +37,6 @@ export function editCrewField<K extends PersonKey>(c: FlightCrew, k: K, v: Perso
   return { ...c, snapshot: { ...c.snapshot, [k]: v }, overrides };
 }
 
-/** Reset from the passenger list / profile: the person's details, no overrides. */
 export function resetCrew(c: FlightCrew, person: PersonDetails): FlightCrew {
   const { overrides: _o, ...rest } = c;
   return { ...rest, snapshot: person };

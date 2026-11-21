@@ -1,6 +1,3 @@
-// The map's controls: the route toolbar (draw, custom point, undo/redo, zoom to the route), the layers
-// button with its popover (MapLayerToggles, tips, legend) and
-// the editing hint bubble.
 import { type ReactNode, type Ref, useEffect, useLayoutEffect, useRef } from 'react';
 
 import type { MapLayers } from '../../../shared/mapLayers';

@@ -1,5 +1,3 @@
-// Form controls of the aircraft page: an editable point table, NumInput (NumberField where an empty
-// field commits 0 unless optional) and Section (CardSection with the page's class).
 import { type ReactNode, useId, useState } from 'react';
 
 import { moveAt } from '../../shared/list';
@@ -27,7 +25,6 @@ export interface NumInputProps {
   heading?: boolean;
 }
 
-/** The aircraft page's number input: src/ui/NumberField; an empty field commits 0 unless optional. */
 export function NumInput({ optional, placeholder, ...p }: NumInputProps) {
   return (
     <NumberField
@@ -39,7 +36,6 @@ export function NumInput({ optional, placeholder, ...p }: NumInputProps) {
   );
 }
 
-/** Section card with a header and an anchor id. */
 export function Section({
   id,
   title,
@@ -60,12 +56,8 @@ export function Section({
   );
 }
 
-/**
- * Editable table of [x, y] points (envelope vertices, compass card rows). Rows can be added,
- * removed and reordered (drag handle, or Alt+↑/↓), or, with `sortBy`, are always shown in that
- * order (kept still while a field of the table has focus); `extra` renders an additional read-only
- * cell per row. `name` names the inputs `<name>.<row>.x` / `.y`, so the save bar's issues can focus them.
- */
+// With `sortBy`, rows are kept still while a field of the table has focus. `name` names the inputs
+// `<name>.<row>.x` / `.y`, so the save bar's issues can focus them.
 export function PointTable({
   points,
   onChange,
