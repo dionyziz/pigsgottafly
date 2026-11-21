@@ -21,6 +21,7 @@ import type {
   FplCopyRecipient,
 } from '../../../src/shared/briefing.js';
 import type { Pilot } from '../../../src/shared/types.js';
+import { flightFor } from '../access.js';
 import { generateAddressees } from '../addressees.js';
 import type { AutorouterClient } from '../autorouter.js';
 import { AutorouterError } from '../autorouter.js';
@@ -181,6 +182,7 @@ async function state(
   flightId: string,
   ar: AutorouterClient | null,
   denied = false,
+  notOwner = false,
 ): Promise<FilingState> {
   const ctx = await flightContext(db, pilotId, flightId);
   const addressees = generateAddressees({
@@ -196,7 +198,9 @@ async function state(
     [pilotId, flightId],
   );
   return {
-    ...filingAvailability(ar, denied),
+    ...(notOwner
+      ? { enabled: false, reason: 'Only the flight’s owner files its flight plan.' }
+      : filingAvailability(ar, denied)),
     addressees,
     copyTo: await copyTo(db, pilotId, flightId, ctx),
     filing: await record(db, pilotId, flightId),
@@ -289,13 +293,17 @@ export const routes: Route[] = [
   {
     method: 'GET',
     path: '/flights/:id/filing',
-    handler: async ({ db, pilot, params, autorouter, autorouterDenied }) =>
-      state(db, pilot.id, params.id, autorouter, autorouterDenied),
+    async handler({ db, pilot, params, autorouter, autorouterDenied }) {
+      // a pilot the flight is shared with sees its filing (read-only): the owner's record and log
+      const g = await flightFor(db, pilot, params.id);
+      return state(db, g.owner.id, params.id, autorouter, autorouterDenied, g.role !== 'owner');
+    },
   },
   {
     method: 'POST',
     path: '/flights/:id/filing',
     async handler({ db, pilot, params, body, autorouter, autorouterDenied }) {
+      await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       const ar = await requireEnabled(db, pilot.id, params.id, 'file', autorouter, autorouterDenied);
       const input = await body();
       const fpl = checkFpl(input.fpl);
@@ -346,6 +354,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/filing/delay',
     async handler({ db, pilot, params, body, autorouter, autorouterDenied }) {
+      await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       const ar = await requireEnabled(db, pilot.id, params.id, 'delay', autorouter, autorouterDenied);
       const eobt = checkEobt((await body()).eobt);
       const cur = await record(db, pilot.id, params.id);
@@ -375,6 +384,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/filing/cancel',
     async handler({ db, pilot, params, body, autorouter, autorouterDenied }) {
+      await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       const ar = await requireEnabled(db, pilot.id, params.id, 'cancel', autorouter, autorouterDenied);
       const input = await body();
       const reason =
@@ -408,6 +418,7 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/flights/:id/filing/refresh',
     async handler({ db, pilot, params, autorouter, autorouterDenied }) {
+      await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       const ar = await requireEnabled(db, pilot.id, params.id, 'refresh', autorouter, autorouterDenied);
       const cur = await record(db, pilot.id, params.id);
       if (!cur?.providerId) throw conflict('this flight has no filed plan');

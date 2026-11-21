@@ -1,4 +1,6 @@
-// Aircraft: pick one from the hangar; shows the planning figures and the compass card in use.
+// Aircraft: pick one from the hangar; shows the planning figures and the compass card in use. On a
+// flight shared with the pilot the aircraft is its owner's choice (from the owner's hangar): shown,
+// not changed here.
 import { Link } from 'react-router';
 
 import { pickCompassCard } from '../../../calc';
@@ -61,7 +63,8 @@ function sharedBy(a: Aircraft): string {
 }
 
 export function AircraftSection() {
-  const { doc, update, hangar, aircraft } = useEditor();
+  const { flight, doc, update, hangar, aircraft } = useEditor();
+  const ownersChoice = !!flight.access;
   // A compass card is only worth a line when it has expired by the day of the flight.
   const expiredOn = (expires: string) => !!expires && expires < (doc.date || todayUtc());
   const card = aircraft ? pickCompassCard(aircraft.compassCards, doc.options.compassCard) : null;
@@ -83,6 +86,8 @@ export function AircraftSection() {
           data-testid="aircraft-select"
           data-focus="aircraft"
           aria-label="Aircraft"
+          disabled={ownersChoice}
+          title={ownersChoice ? 'The flight’s owner chooses its aircraft' : undefined}
           onChange={(e) => {
             const a = hangar.find((x) => x.id === e.target.value) ?? null;
             update((d) => setAircraft(d, a));

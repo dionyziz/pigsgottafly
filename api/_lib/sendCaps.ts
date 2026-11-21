@@ -4,7 +4,7 @@
 //   e-mails         MAIL_DAILY_CAP per pilot, MAIL_FLIGHT_FORM_CAP per flight and form (re-sends included),
 //                   MAIL_RECIPIENT_CAP per pilot to any one operator declarations address,
 //                   (Form 731 to a passenger, '731-pax': the per-flight cap and the pause are per recipient)
-//                   (share notices, 'share-aircraft' and 'share-operator': a daily cap of their own,
+//                   (share notices, 'share-aircraft', 'share-operator' and 'share-flight': a daily cap of their own,
 //                   MAIL_DAILY_CAP, apart from the forms, and MAIL_RECIPIENT_CAP to any one person)
 //                   and a global cap on everything sent to HCAA by all pilots together (hcaaDailyCap():
 //                   HCAA_DAILY_CAP, default 200)
@@ -28,8 +28,8 @@ export const LINK_FLIGHT_CAP = 20;
 export const HCAA_FORMS = ['731', 'gendec'];
 /** Forms sent to each person on a flight separately: the per-flight cap and pause count per recipient. */
 const PER_RECIPIENT_FORMS = ['731-pax'];
-/** The notice to someone an aircraft or an operator was shared with: counted apart from the forms. */
-export const SHARE_FORMS = ['share-aircraft', 'share-operator'];
+/** The notice to someone an aircraft, an operator or a flight was shared with: counted apart from the forms. */
+export const SHARE_FORMS = ['share-aircraft', 'share-operator', 'share-flight'];
 
 /** All pilots together, per 24 hours, to the HCAA mailboxes (env HCAA_DAILY_CAP, default 200). */
 export function hcaaDailyCap(env: NodeJS.ProcessEnv = process.env): number {
@@ -49,7 +49,7 @@ export interface MailEntry {
   /** The pilot it is sent for (null: the app's own message with no pilot). */
   pilotId: string | null;
   flightId: string | null;
-  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'share-aircraft', 'share-operator', 'signup', 'signup-more' */
+  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'share-aircraft', 'share-operator', 'share-flight', 'signup', 'signup-more' */
   form: string;
   /** The To addresses, comma-separated. */
   recipient: string;

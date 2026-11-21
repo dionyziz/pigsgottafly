@@ -3,14 +3,13 @@
 // weather comes from useFlightWeather, as for the navlog and the editor, so the printouts agree.
 import { useMemo, useState } from 'react';
 
-import { usePilot } from '../../../app/session';
 import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { RouteWeather } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
 import type { Aircraft, Flight, Pilot } from '../../../shared';
-import { useFlightAircraft } from '../useExportData';
+import { useFlightAircraft, useFlightPilot } from '../useExportData';
 import { computeExportCalc, type ExportCalc } from './exportCalc';
 
 export interface ExportCalcState {
@@ -27,8 +26,8 @@ export interface ExportCalcState {
 }
 
 export function useExportCalc(flight: Flight): ExportCalcState {
-  const pilot = usePilot();
-  const ac = useFlightAircraft(flight.aircraftId);
+  const pilot = useFlightPilot(flight);
+  const ac = useFlightAircraft(flight);
   const aircraft = ac.aircraft;
   const wx = useFlightWeather({
     date: flight.date,

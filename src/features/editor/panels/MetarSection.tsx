@@ -74,7 +74,7 @@ export function MetarSection() {
   if (!rows.length) return null;
 
   return (
-    <Section id="metar" title="METAR" badge={<span className="muted">{rows.length}</span>}>
+    <Section id="metar" title="METAR" edits={false} badge={<span className="muted">{rows.length}</span>}>
       <ul className="ep-metars" data-testid="metar-list">
         {rows.map(({ s, metar: m, observedMs }) => (
           <li key={s.icao} data-icao={s.icao} data-role={s.role}>

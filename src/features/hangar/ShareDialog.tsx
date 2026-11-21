@@ -1,8 +1,10 @@
-// Share an aircraft or an operator, like sharing a Google Doc: add pilots by the e-mail of their Pig's
-// Gotta Fly account as viewer or editor, change their role or remove them. The owner is listed first
-// and cannot be changed. Viewers see who has access but cannot change it. An operator also lists the
-// pilots who see it through one of its aircraft (changed by sharing that aircraft). Also: the
-// "Shared by" chip of shared aircraft and operators in the lists and on their pages.
+// Share an aircraft, an operator or a flight, like sharing a Google Doc: add pilots by the e-mail of
+// their Pig's Gotta Fly account as viewer or editor, change their role or remove them. The owner is
+// listed first and cannot be changed. Viewers see who has access but cannot change it. An operator
+// also lists the pilots who see it through one of its aircraft (changed by sharing that aircraft). A
+// flight can also be shared with an address no account uses yet: the invite is listed as pending
+// until someone signs in with it. Also: the "Shared by" chip of shared aircraft and operators in the
+// lists and on their pages.
 import './share.css';
 
 import { useEffect, useState } from 'react';
@@ -36,10 +38,10 @@ const message = errorMessage;
 interface SharingState {
   role: AircraftRole;
   canManage: boolean;
-  people: (SharePerson & { via?: string[]; direct?: boolean })[];
+  people: (SharePerson & { via?: string[]; direct?: boolean; pending?: boolean })[];
 }
 
-const API = { aircraft: api.shares, operator: api.operatorShares } as const;
+const API = { aircraft: api.shares, operator: api.operatorShares, flight: api.flightShares } as const;
 
 export function ShareDialog({
   kind = 'aircraft',
@@ -48,12 +50,12 @@ export function ShareDialog({
   onClose,
   onLeft,
 }: {
-  kind?: 'aircraft' | 'operator';
+  kind?: 'aircraft' | 'operator' | 'flight';
   id: string;
-  /** Registration or operator name, for the title. */
+  /** Registration, operator name or flight title, for the title. */
   name: string;
   onClose: () => void;
-  /** The pilot removed their own access (the aircraft left their hangar). */
+  /** The pilot removed their own access (the aircraft left their hangar, the flight their list). */
   onLeft?: () => void;
 }) {
   const { pilot } = useSession();
@@ -144,7 +146,7 @@ export function ShareDialog({
                   setEmail(e.target.value);
                   setError(null);
                 }}
-                placeholder="Add people by e-mail"
+                placeholder={kind === 'flight' ? 'Add people by e-mail (any address)' : 'Add people by e-mail'}
                 aria-label="E-mail address"
                 autoComplete="off"
                 spellCheck={false}
@@ -177,7 +179,12 @@ export function ShareDialog({
                 const self = p.pilotId === pilot.id;
                 const via = p.via?.length ? `through ${p.via.join(', ')}` : '';
                 return (
-                  <li key={p.pilotId} data-pilot-id={p.pilotId} data-role={p.role}>
+                  <li
+                    key={p.pilotId}
+                    data-pilot-id={p.pilotId}
+                    data-role={p.role}
+                    data-pending={p.pending || undefined}
+                  >
                     <span className="share-avatar" aria-hidden="true">
                       {(p.name || p.email || '?').trim().charAt(0).toUpperCase()}
                     </span>
@@ -187,6 +194,11 @@ export function ShareDialog({
                         {self && <span className="muted"> (you)</span>}
                       </b>
                       {p.name && <span className="hint">{p.email}</span>}
+                      {p.pending && (
+                        <span className="hint" data-testid="share-pending">
+                          Invited · has access once they sign in with this address
+                        </span>
+                      )}
                       {kind === 'operator' && via && (
                         <span className="hint" data-testid="share-via">
                           Aircraft: {p.via!.join(', ')}

@@ -4,8 +4,10 @@
 // lacks NOTAMs not marked for international dissemination), so without autorouter credentials the
 // briefing says so ('not-configured') instead of showing an incomplete list.
 // The last briefing is stored per flight (flight_notams): served again for 10 minutes while the
-// query is unchanged, and as a fallback (with a message) when the source fails.
+// query is unchanged, and as a fallback (with a message) when the source fails. A flight shared with
+// the pilot (access.ts flightFor) is briefed as its owner's: the stored briefing keeps the owner's id.
 import type { Notam, NotamBriefing } from '../../../src/shared/briefing.js';
+import { flightFor } from '../access.js';
 import { AutorouterError } from '../autorouter.js';
 import { aerodromesNear, flightContext } from '../flightContext.js';
 import type { Route } from '../http.js';
@@ -34,7 +36,8 @@ export const routes: Route[] = [
     path: '/flights/:id/notams',
     async handler({ db, pilot, params, query, autorouter, autorouterDenied }): Promise<NotamBriefing> {
       await rateLimit(db, 'notams', { pilotId: pilot.id });
-      const ctx = await flightContext(db, pilot.id, params.id);
+      const owner = (await flightFor(db, pilot, params.id)).owner.id;
+      const ctx = await flightContext(db, owner, params.id);
       const planned = ctx.altitudesFt.filter(Number.isFinite);
       const maxAltFt =
         numParam(query.get('maxAltFt'), 'maxAltFt', 0, 60000) ??
@@ -58,7 +61,7 @@ export const routes: Route[] = [
 
       const [cached] = await db.query<{ fetched: string; params: { key?: string }; doc: NotamBriefing }>(
         'SELECT fetched, params, doc FROM flight_notams WHERE flight_id = $1 AND pilot_id = $2',
-        [ctx.id, pilot.id],
+        [ctx.id, owner],
       );
       const sameQuery = cached && cached.params?.key === paramsKey;
       if (sameQuery && query.get('refresh') !== '1' && Date.now() - Number(cached.fetched) < NOTAM_TTL_MS)
@@ -130,7 +133,7 @@ export const routes: Route[] = [
         `INSERT INTO flight_notams (flight_id, pilot_id, fetched, params, doc) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
          ON CONFLICT (flight_id) DO UPDATE SET fetched = EXCLUDED.fetched, params = EXCLUDED.params, doc = EXCLUDED.doc
          WHERE flight_notams.pilot_id = EXCLUDED.pilot_id`,
-        [ctx.id, pilot.id, fetched, JSON.stringify({ key: paramsKey }), JSON.stringify(doc)],
+        [ctx.id, owner, fetched, JSON.stringify({ key: paramsKey }), JSON.stringify(doc)],
       );
       return doc;
     },

@@ -45,6 +45,7 @@ export function AerodromeSection() {
   const closed = aerodromeChecks.filter((c) => c.ad.status === 'closed' && Number.isFinite(c.fromMs)).length;
   return (
     <Section
+      edits={false}
       id="aerodromes"
       title="Aerodrome hours"
       badge={

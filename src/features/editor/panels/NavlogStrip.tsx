@@ -168,7 +168,7 @@ function LegWarnings({
 }
 
 export function NavlogStrip() {
-  const { doc, legs, aircraft, altitudeDefaults, update } = useEditor();
+  const { doc, legs, aircraft, altitudeDefaults, update, readOnly } = useEditor();
   const setHoveredLeg = useSetHoveredLeg();
   const { navlog, weather, weatherLoading, refreshWeather, warnings, dayMs } = useFlightCalc();
   const { selectedNotam } = useNotams();
@@ -345,150 +345,155 @@ export function NavlogStrip() {
               </tbody>
             </table>
           ) : (
-            <table className="ns-table" data-testid="navlog-table">
-              <thead>
-                <tr>
-                  <th>Leg</th>
-                  <th className="num">Alt</th>
-                  <th className="num">TAS</th>
-                  <th className="num">TC</th>
-                  <th className="num">MC</th>
-                  <th className="num">Wind</th>
-                  <th className="num">Temp</th>
-                  <th className="num">WCA</th>
-                  <th className="num">MH</th>
-                  <th className="num">Dev</th>
-                  <th className="num">CH</th>
-                  <th className="num">GS</th>
-                  <th className="num">Dist</th>
-                  <th className="num">ETE</th>
-                  <th className="num">ETA</th>
-                  <th className="num">Fuel</th>
-                </tr>
-              </thead>
-              <tbody>
-                {navlog.legs.map((r, i) => {
-                  const L = legs[i];
-                  const noWind = r.windMissing;
-                  const override = L ? doc.legOverrides[L.key]?.altFt : undefined;
-                  const dflt = altitudeDefaults[i]?.altFt;
-                  const tasSet = L ? doc.legOverrides[L.key]?.tasKt : undefined;
-                  return (
-                    <Fragment key={L?.key ?? i}>
-                      <tr
-                        data-testid="navlog-row"
-                        onMouseEnter={() => setHoveredLeg(i)}
-                        onMouseLeave={() => setHoveredLeg(null)}
-                        className={notamLeg === i ? 'is-notam' : undefined}
-                        title={notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined}
-                      >
-                        <td className="ns-leg">
-                          <span>{L?.from.name}</span>
-                          <span className="muted"> → </span>
-                          <span>{L?.to.name}</span>
-                        </td>
-                        <td className={'num ns-alt' + (fin(r.altFt) ? '' : ' warn')}>
-                          {L ? (
-                            <NumberField
-                              value={override ?? null}
-                              onChange={(v) => setAlt(L.key, v)}
-                              integer
-                              min={0}
-                              max={20000}
-                              step={100}
-                              placeholder={fin(dflt) ? fmtAltitude(dflt) : '?'}
-                              className={override != null ? 'is-set' : undefined}
-                              ariaLabel={`Altitude ${L.from.name} → ${L.to.name}, feet`}
-                              testId="navlog-alt"
-                              showLimit={false}
-                              commitOnEnter
-                              fillValue={fin(dflt) ? dflt : null}
-                            />
-                          ) : fin(r.altFt) ? (
-                            fmtAltitude(r.altFt)
-                          ) : (
-                            '?'
-                          )}
-                        </td>
-                        <td className="num ns-tas">
-                          {L ? (
-                            <NumberField
-                              value={tasSet ?? null}
-                              onChange={(v) => setTas(L.key, v)}
-                              integer
-                              min={20}
-                              max={300}
-                              placeholder={tasSet == null && fin(r.tasKt) ? String(r.tasKt) : '?'}
-                              className={tasSet != null ? 'is-set' : undefined}
-                              ariaLabel={`TAS ${L.from.name} → ${L.to.name}, knots`}
-                              testId="navlog-tas"
-                              showLimit={false}
-                              commitOnEnter
-                              fillValue={tasSet == null && fin(r.tasKt) ? r.tasKt : null}
-                            />
-                          ) : (
-                            r.tasKt
-                          )}
-                        </td>
-                        <td className="num">{hdg(r.tc)}</td>
-                        <td className="num">{hdg(r.mc)}</td>
-                        <td
-                          className={'num' + (noWind ? ' warn' : '')}
+            // a flight shared as a viewer: the altitude and TAS fields are read-only
+            <fieldset className="ep-readonly" disabled={readOnly}>
+              <table className="ns-table" data-testid="navlog-table">
+                <thead>
+                  <tr>
+                    <th>Leg</th>
+                    <th className="num">Alt</th>
+                    <th className="num">TAS</th>
+                    <th className="num">TC</th>
+                    <th className="num">MC</th>
+                    <th className="num">Wind</th>
+                    <th className="num">Temp</th>
+                    <th className="num">WCA</th>
+                    <th className="num">MH</th>
+                    <th className="num">Dev</th>
+                    <th className="num">CH</th>
+                    <th className="num">GS</th>
+                    <th className="num">Dist</th>
+                    <th className="num">ETE</th>
+                    <th className="num">ETA</th>
+                    <th className="num">Fuel</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {navlog.legs.map((r, i) => {
+                    const L = legs[i];
+                    const noWind = r.windMissing;
+                    const override = L ? doc.legOverrides[L.key]?.altFt : undefined;
+                    const dflt = altitudeDefaults[i]?.altFt;
+                    const tasSet = L ? doc.legOverrides[L.key]?.tasKt : undefined;
+                    return (
+                      <Fragment key={L?.key ?? i}>
+                        <tr
+                          data-testid="navlog-row"
+                          onMouseEnter={() => setHoveredLeg(i)}
+                          onMouseLeave={() => setHoveredLeg(null)}
+                          className={notamLeg === i ? 'is-notam' : undefined}
                           title={
-                            noWind
-                              ? 'No forecast: calm assumed'
-                              : r.windSource === 'override'
-                                ? 'Wind typed by hand'
-                                : 'Forecast'
+                            notamLeg === i && selectedNotam ? `NOTAM ${selectedNotam.key} near this leg` : undefined
                           }
                         >
-                          {noWind ? '—' : `${fmtHdg(r.windDirDeg)}/${r.windKt}`}
-                          {r.windSource === 'override' ? '*' : ''}
-                        </td>
-                        <td className="num">{fin(r.tempC) ? `${r.tempC}°` : ''}</td>
-                        <td className="num">{signed(r.wca)}</td>
-                        <td className="num">{hdg(r.mh)}</td>
-                        <td className="num">{signed(r.dev)}</td>
-                        <td className="num">
-                          <b>{hdg(r.ch ?? r.mh)}</b>
-                        </td>
-                        <td className="num">{fin(r.gs) ? r.gs : ''}</td>
-                        <td className="num">{r.dist}</td>
-                        <td className="num">{fin(r.ete) ? fmtLegTime(r.ete) : ''}</td>
-                        <td className="num">{fin(r.endMin) && fin(dayMs) ? fmtMin(r.endMin) : ''}</td>
-                        <td className="num">{fin(r.fuel) ? r.fuel : ''}</td>
-                      </tr>
-                      <LegWarnings list={byLeg[i] ?? []} index={i} colSpan={16} aircraftId={doc.aircraftId} />
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={12}>
-                    {navlog.legs.length} legs
-                    {!navlog.blockOffSet && (
-                      <>
-                        {' '}
-                        ·{' '}
-                        <button
-                          type="button"
-                          className="linkish"
-                          data-testid="navlog-blockoff-fix"
-                          onClick={() => focusInEditor('blockOff')}
-                        >
-                          block start not set: 12:00Z assumed
-                        </button>
-                      </>
-                    )}
-                  </td>
-                  <td className="num">{navlog.totals.dist}</td>
-                  <td className="num">{fmtLegTime(navlog.totals.ete)}</td>
-                  <td />
-                  <td className="num">{navlog.totals.tripFuel}</td>
-                </tr>
-              </tfoot>
-            </table>
+                          <td className="ns-leg">
+                            <span>{L?.from.name}</span>
+                            <span className="muted"> → </span>
+                            <span>{L?.to.name}</span>
+                          </td>
+                          <td className={'num ns-alt' + (fin(r.altFt) ? '' : ' warn')}>
+                            {L ? (
+                              <NumberField
+                                value={override ?? null}
+                                onChange={(v) => setAlt(L.key, v)}
+                                integer
+                                min={0}
+                                max={20000}
+                                step={100}
+                                placeholder={fin(dflt) ? fmtAltitude(dflt) : '?'}
+                                className={override != null ? 'is-set' : undefined}
+                                ariaLabel={`Altitude ${L.from.name} → ${L.to.name}, feet`}
+                                testId="navlog-alt"
+                                showLimit={false}
+                                commitOnEnter
+                                fillValue={fin(dflt) ? dflt : null}
+                              />
+                            ) : fin(r.altFt) ? (
+                              fmtAltitude(r.altFt)
+                            ) : (
+                              '?'
+                            )}
+                          </td>
+                          <td className="num ns-tas">
+                            {L ? (
+                              <NumberField
+                                value={tasSet ?? null}
+                                onChange={(v) => setTas(L.key, v)}
+                                integer
+                                min={20}
+                                max={300}
+                                placeholder={tasSet == null && fin(r.tasKt) ? String(r.tasKt) : '?'}
+                                className={tasSet != null ? 'is-set' : undefined}
+                                ariaLabel={`TAS ${L.from.name} → ${L.to.name}, knots`}
+                                testId="navlog-tas"
+                                showLimit={false}
+                                commitOnEnter
+                                fillValue={tasSet == null && fin(r.tasKt) ? r.tasKt : null}
+                              />
+                            ) : (
+                              r.tasKt
+                            )}
+                          </td>
+                          <td className="num">{hdg(r.tc)}</td>
+                          <td className="num">{hdg(r.mc)}</td>
+                          <td
+                            className={'num' + (noWind ? ' warn' : '')}
+                            title={
+                              noWind
+                                ? 'No forecast: calm assumed'
+                                : r.windSource === 'override'
+                                  ? 'Wind typed by hand'
+                                  : 'Forecast'
+                            }
+                          >
+                            {noWind ? '—' : `${fmtHdg(r.windDirDeg)}/${r.windKt}`}
+                            {r.windSource === 'override' ? '*' : ''}
+                          </td>
+                          <td className="num">{fin(r.tempC) ? `${r.tempC}°` : ''}</td>
+                          <td className="num">{signed(r.wca)}</td>
+                          <td className="num">{hdg(r.mh)}</td>
+                          <td className="num">{signed(r.dev)}</td>
+                          <td className="num">
+                            <b>{hdg(r.ch ?? r.mh)}</b>
+                          </td>
+                          <td className="num">{fin(r.gs) ? r.gs : ''}</td>
+                          <td className="num">{r.dist}</td>
+                          <td className="num">{fin(r.ete) ? fmtLegTime(r.ete) : ''}</td>
+                          <td className="num">{fin(r.endMin) && fin(dayMs) ? fmtMin(r.endMin) : ''}</td>
+                          <td className="num">{fin(r.fuel) ? r.fuel : ''}</td>
+                        </tr>
+                        <LegWarnings list={byLeg[i] ?? []} index={i} colSpan={16} aircraftId={doc.aircraftId} />
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={12}>
+                      {navlog.legs.length} legs
+                      {!navlog.blockOffSet && (
+                        <>
+                          {' '}
+                          ·{' '}
+                          <button
+                            type="button"
+                            className="linkish"
+                            data-testid="navlog-blockoff-fix"
+                            onClick={() => focusInEditor('blockOff')}
+                          >
+                            block start not set: 12:00Z assumed
+                          </button>
+                        </>
+                      )}
+                    </td>
+                    <td className="num">{navlog.totals.dist}</td>
+                    <td className="num">{fmtLegTime(navlog.totals.ete)}</td>
+                    <td />
+                    <td className="num">{navlog.totals.tripFuel}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </fieldset>
           )}
         </div>
       )}

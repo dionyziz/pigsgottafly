@@ -3,6 +3,11 @@
 //
 // SHARED CONTRACT (frozen until integration): map and panels read everything through useEditor()
 // and change the flight only through update().
+//
+// A flight shared with the pilot (Flight.access): it is computed with its owner's details, settings
+// and aircraft (flightPilot, withFlightAircraft). A viewer's editor is read-only: update() and the
+// other changes do nothing (the map's layers change on screen only) and `readOnly` tells the panels
+// (Section disables its controls) and the map (no route editing) to offer no edits.
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type AltitudeDefault, buildLegs, defaultAltitudes, type LegGeometry } from '../../calc';
@@ -11,6 +16,7 @@ import { REF } from '../../data/ref';
 import { useTerrain } from '../../data/terrain';
 import type { Aircraft, Flight, FlightDoc, MapLayers, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
 import { autoTitle, EMPTY_SUMMARY, requestTiming } from '../../shared';
+import { flightPilot, withFlightAircraft } from '../../shared/sharing';
 
 export interface EditorValue {
   flight: Flight;
@@ -32,9 +38,12 @@ export interface EditorValue {
   canUndo: boolean;
   canRedo: boolean;
   saveStatus: SaveStatus;
+  /** A flight shared with the pilot as a viewer: nothing can be changed (update() does nothing). */
+  readOnly: boolean;
 
+  /** The session pilot; on a shared flight with its owner's details and settings (flightPilot). */
   pilot: Pilot;
-  /** The pilot's hangar, passengers and saved waypoints (reload after creating one). */
+  /** The pilot's hangar (and a shared flight's aircraft), passengers and saved waypoints (reload after creating one). */
   hangar: Aircraft[];
   passengers: Passenger[];
   waypoints: Waypoint[];
@@ -98,14 +107,17 @@ interface Props {
 export function EditorProvider({
   flight,
   initialDoc,
-  pilot,
-  hangar,
+  pilot: sessionPilot,
+  hangar: ownHangar,
   passengers,
   waypoints,
   passengersLoaded = true,
   reloadLists,
   children,
 }: Props) {
+  const readOnly = flight.access?.role === 'view';
+  const pilot = useMemo(() => flightPilot(sessionPilot, flight), [sessionPilot, flight]);
+  const hangar = useMemo(() => withFlightAircraft(ownHangar, flight), [ownHangar, flight]);
   const [doc, setDoc] = useState<FlightDoc>(initialDoc);
   const hist = useRef({ past: [] as FlightDoc[], future: [] as FlightDoc[], key: '', t: 0 });
   const [, bump] = useState(0);
@@ -151,6 +163,7 @@ export function EditorProvider({
 
   const update = useCallback<EditorValue['update']>(
     (fn, opts) => {
+      if (readOnly) return;
       const cur = docRef.current;
       const raw = fn(cur);
       if (raw === cur) return;
@@ -167,11 +180,12 @@ export function EditorProvider({
       const sum = summaryOf(raw, ac, buildLegs(raw.route, raw.date));
       commit({ ...raw, summary: { ...sum, eteMin: raw.summary.eteMin, fuelL: raw.summary.fuelL } });
     },
-    [commit, hangar],
+    [commit, hangar, readOnly],
   );
 
   const setDerived = useCallback<EditorValue['setDerived']>(
     ({ eteMin, fuelL }) => {
+      if (readOnly) return;
       const cur = docRef.current;
       // recompute the whole summary from the current document, so it can never lag behind the route
       const ac = hangar.find((a) => a.id === cur.aircraftId) ?? null;
@@ -183,7 +197,7 @@ export function EditorProvider({
       setDoc(next);
       flightStore.save(flight.id, next);
     },
-    [flight.id, hangar],
+    [flight.id, hangar, readOnly],
   );
 
   const setMapLayers = useCallback(
@@ -192,9 +206,9 @@ export function EditorProvider({
       const next = { ...cur, options: { ...cur.options, mapLayers } };
       docRef.current = next;
       setDoc(next);
-      flightStore.save(flight.id, next);
+      if (!readOnly) flightStore.save(flight.id, next);
     },
-    [flight.id],
+    [flight.id, readOnly],
   );
   /** A history entry with the current map layers (they are not part of undo). */
   const withView = (d: FlightDoc): FlightDoc => {
@@ -230,6 +244,7 @@ export function EditorProvider({
     canUndo: hist.current.past.length > 0,
     canRedo: hist.current.future.length > 0,
     saveStatus,
+    readOnly,
     pilot,
     hangar,
     passengers,

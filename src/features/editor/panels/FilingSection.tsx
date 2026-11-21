@@ -19,7 +19,7 @@ export function FilingSection() {
     [current, aircraft, pilot, navlog, fuel],
   );
   return (
-    <Section id="filing" title="Filing">
+    <Section id="filing" title="Filing" edits={false}>
       <details className="ep-fpl-message">
         <summary>The message</summary>
         <pre className="fpl-message" data-testid="editor-fpl-message">

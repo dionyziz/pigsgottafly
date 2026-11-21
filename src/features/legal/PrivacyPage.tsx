@@ -242,6 +242,14 @@ const sections: LegalSection[] = [
             operator. When someone shares an aircraft or an operator with you, they and the others it is shared with see
             your name and e-mail.
           </li>
+          <li>
+            <b>People you share a flight with</b>: you can share a flight with people you choose, by their e-mail
+            address, also when they have no account yet. They see the whole flight as you planned it, including its
+            manifest (the names and details of the pilot and passengers on board), its aircraft, its briefing and the
+            state of its forms and flight plan, and who else it is shared with; an editor can also change it. We e-mail
+            them that you shared it (with your name and e-mail), and keep the address of someone without an account
+            until they sign in with it or you remove them. Only you file the flight plan and send its forms.
+          </li>
         </ul>
         <p>We disclose data to authorities only when the law requires it.</p>
       </>

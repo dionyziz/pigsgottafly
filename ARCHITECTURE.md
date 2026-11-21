@@ -239,11 +239,12 @@ api/
                            043_aircraft_placeholder.ts (aircraft.placeholder 1–3: random at creation, backfilled),
                            044_weather_cache.ts (weather_cache: Open-Meteo data per model, endpoint, run, set, location and
                            UTC day, with expiry; weather_budget: Open-Meteo calls per UTC day),
-                           045_passenger_email.ts (passengers.email, NULL for existing passengers)
+                           045_passenger_email.ts (passengers.email, NULL for existing passengers),
+                           054_flight_shares.ts (flight_shares, flight_invites: flights shared by e-mail)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form (Form 731 to a
-                           passenger, '731-pax': per flight and recipient; share notices, 'share-aircraft' and
-                           'share-operator', 20/24 h counted apart from the forms and 10/24 h to one person); HCAA_DAILY_CAP
+                           passenger, '731-pax': per flight and recipient; share notices, 'share-aircraft',
+                           'share-operator' and 'share-flight', 20/24 h counted apart from the forms and 10/24 h to one person); HCAA_DAILY_CAP
                            (default 200) for all pilots together; signing links 60/24 h and 20 per flight
   _lib/limits.ts           per-pilot counts (aircraft 50, operators 20, flights 2000, passengers 500, waypoints 1000, files
                            per parent 50), STORAGE_QUOTA_MB (300) over owned files, 3 unfinished uploads, the 1 h sweep,
@@ -253,7 +254,7 @@ api/
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            weatherGrid.ts (the Open-Meteo proxy and shared forecast cache),
                            attachments.ts, files.ts (fileRoutes: aircraft photo/documents and operator documents, chunked),
-                           shares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts,
+                           shares.ts, flightShares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts,
                            monitoring.ts (health, client-errors, admin/errors)
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
@@ -341,6 +342,7 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET, POST | /operators | `OperatorItem[]`: own, shared, and seen through an aircraft (view); create (you own it). |
 | GET, PUT, DELETE | /operators/:id | GET any access; PUT owner or editor (merges; renames its aircraft's fallback text); DELETE owner (aircraft keep the name as text). `requiresWbPerf` needs `declarationsEmail`. |
 | GET, POST, PUT, DELETE | /operators/:id/shares[/:pilotId] | As for aircraft. GET also lists who sees it through an aircraft (`direct: false`, `via`: registrations); those change by sharing the aircraft. |
+| GET, POST, PUT, DELETE | /flights/:id/shares[/:key] | Sharing a flight (`FlightSharing`): as for aircraft, but an e-mail no account uses gets an invite (`pending`, key = the address) instead of 404; every sign-in with that verified address turns its invites into shares. Both e-mail the person ('share-flight'). |
 | GET, POST, PUT, DELETE | /operators/:id/files… | Documents (operations manual), chunked like the aircraft files. |
 | GET | /flights/:id/declarations | `DeclarationsState`: the flight's aircraft's operator, the last sending (`hash`). |
 | POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. Subject and body from the server's records only; the content (bounded, links and e-mail addresses removed) only draws the PDF. 409 when not asked for / already sent (without resend); 429 over the sending caps; 503 e-mail not configured. |
@@ -371,6 +373,8 @@ Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's reco
 Operators (migration 018, `api/_lib/operators.ts`, `tests/api/operators.test.ts`) are shared the same way (`operator_shares`), and everyone with access to an aircraft views its operator: derived on every query, so it ends with the aircraft's share unless the operator is shared directly. Assigning an aircraft to an operator needs edit access to the operator. `Aircraft.operator` is the linked operator's name (joined as `operator_name`), else the old free text.
 
 Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/api/sharing.test.ts`): `aircraft.pilot_id` is the owner, `aircraft_shares` gives other pilots `view` (see it, use it on their flights) or `edit` (also change it and its files, manage sharing). Only the owner deletes. No access answers 404, too little 403. flights.aircraft_id and pilots.default_aircraft_id are plain FKs to aircraft(id) (ON DELETE SET NULL) and the API checks access. When access ends, the pilot's flights keep the aircraft id: the editor shows it as unavailable, a PUT keeps that unchanged id without the seat checks, forms/filing/exports see no aircraft; the pilot's default is cleared. Attachments keep pilot_id = owner.
+
+Shared flights (migration 054, `access.ts` `flightFor`, `api/_lib/routes/flightShares.ts`, `tests/api/flightSharing.test.ts`): `flights.pilot_id` is the owner, `flight_shares` gives `view` (read the flight, its briefing, filing and forms state; GET answers `Flight.access` with the owner, their details and settings and the flight's aircraft as the owner sees it) or `edit` (also PUT the flight and its manifest, the GenDec override, manage sharing). Owner only: trash/restore, filing (file, delay, cancel, refresh), Form 731/GenDec sends and signing links, declarations. Rows kept per pilot for the flight (flight_crew, flight_filings, flight_notams, the forms' tables) always use the owner's id. A shared flight in its owner's trash is out of reach of the others. GET /flights lists shared flights with `sharedBy` and `role` (never in the trash); a copy is the copier's.
 
 **Adding a route**: add it to the module that owns it (e.g. `api/_lib/routes/weather.ts` exports `routes: Route[]`). Every module is already listed in `routes/index.ts`, so the dispatcher needs no edits. A handler returns the body (200), `reply(status, body, headers)`, or `undefined` (204), and throws `HttpError` for errors.
 

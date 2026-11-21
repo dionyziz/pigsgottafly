@@ -159,6 +159,8 @@ export interface RouteMapProps {
   /** The layers shown (the flight's selection); the route is always drawn. */
   layers: MapLayers;
   onLayers: (l: MapLayers) => void;
+  /** Nothing can be edited (a flight shared as a viewer): no drawing, dragging, point menu or altitude edits. */
+  readOnly?: boolean;
 }
 
 type Mode = DrawMode;
@@ -258,7 +260,9 @@ export function RouteMap(props: RouteMapProps) {
   const [prefs, setPrefs] = useState(loadPrefs);
   const layers = props.layers;
   const [layersOpen, setLayersOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>(() => (route.length < 2 || isBareRoundTrip(route) ? 'draw' : 'idle'));
+  const [mode, setMode] = useState<Mode>(() =>
+    !props.readOnly && (route.length < 2 || isBareRoundTrip(route)) ? 'draw' : 'idle',
+  );
   /** Drawing appends after the last point even on a round trip ("Continue drawing" on it). */
   const [toEnd, setToEnd] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -701,9 +705,9 @@ export function RouteMap(props: RouteMapProps) {
 
   // The route may shrink below 2 points from elsewhere (undo, panel): offer drawing again.
   useEffect(() => {
-    if (route.length === 0 && mode === 'idle') setMode('draw');
+    if (route.length === 0 && mode === 'idle' && !props.readOnly) setMode('draw');
     if (selected && !route.some((p) => p.uid === selected)) setSelected(null);
-  }, [route, mode, selected]);
+  }, [route, mode, selected, props.readOnly]);
 
   // ------------------------------------------------------------------------------- leg labels
   // (none while a point is dragged: the hazards belong to the legs before the drag)
@@ -891,6 +895,7 @@ export function RouteMap(props: RouteMapProps) {
   }
 
   function startAltEdit(key: string) {
+    if (live.current.props.readOnly) return;
     const rec = markers.current.get(key);
     if (!rec) return;
     setEditingLeg(key);
@@ -1271,7 +1276,7 @@ export function RouteMap(props: RouteMapProps) {
 
     const onDown = (e: MapMouseEvent) => {
       const L = live.current;
-      if (L.mode !== 'idle' || e.originalEvent.button !== 0) return;
+      if (L.props.readOnly || L.mode !== 'idle' || e.originalEvent.button !== 0) return;
       const index = hitPoint(e.point);
       const mid = index === null ? hitMid(e.point) : null;
       if (index !== null) {
@@ -1454,6 +1459,7 @@ export function RouteMap(props: RouteMapProps) {
 
     const onContext = (e: MapMouseEvent) => {
       const L = live.current;
+      if (L.props.readOnly) return;
       const i = hitPoint(e.point);
       if (i !== null) {
         e.preventDefault();
@@ -1578,6 +1584,8 @@ export function RouteMap(props: RouteMapProps) {
       } else if (e.key === 'Enter' && L.mode !== 'idle') {
         e.preventDefault();
         stopDrawing();
+      } else if (L.props.readOnly) {
+        return;
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         if (L.selected) {
           e.preventDefault();
@@ -1729,8 +1737,9 @@ export function RouteMap(props: RouteMapProps) {
 
   // ----------------------------------------------------------------------------------- render
   const closing = mode !== 'idle' && drawIndex(route, toEnd) < route.length ? route[route.length - 1] : null;
-  const hint =
-    mode === 'custom'
+  const hint = props.readOnly
+    ? ''
+    : mode === 'custom'
       ? closing
         ? `Click to place a custom point before ${closing.name} and name it · Esc to stop`
         : 'Click to place a custom point and name it · Esc to stop'
@@ -1758,6 +1767,7 @@ export function RouteMap(props: RouteMapProps) {
       {!failed && (
         <MapToolbar
           mode={mode}
+          readOnly={props.readOnly}
           hasRoute={route.length > 0}
           onMode={(m) => {
             setToEnd(false);

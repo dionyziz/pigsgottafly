@@ -34,7 +34,7 @@ function DocumentsSection() {
     onClick: () => void flightStore.flushNow(),
   });
   return (
-    <Section id="documents" title="Forms and navlog">
+    <Section id="documents" title="Forms and navlog" edits={false}>
       <a className="btn primary ep-print-navlog" data-testid="export-navlog" {...open('navlog')}>
         <Icon name="print" /> Print the navlog
       </a>
