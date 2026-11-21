@@ -31,7 +31,7 @@ struct MainView: View {
             FlightsView(selection: $selection, showAccount: $showAccount)
         } detail: {
             if let id = selection {
-                FlightView(id: id, app: app).id(id)
+                FlightView(id: id, app: app) { selection = nil }.id(id)
             } else {
                 ContentUnavailableView(
                     "Choose a flight", systemImage: "airplane", description: Text("Plan flights on pigsgottafly.com."))

@@ -45,6 +45,10 @@ struct NavlogView: View {
                 }
             } header: {
                 Text("Legs")
+            } footer: {
+                if let c = model.computed, !c.hasNavlog, !c.rows.isEmpty {
+                    Text("Headings, times and fuel need the flight's aircraft: choose it on the website.")
+                }
             }
             if let c = model.computed {
                 Section("Totals") {
@@ -52,6 +56,8 @@ struct NavlogView: View {
                     ValueRow(label: "Time en route", value: Fmt.duration(c.totalEteMin))
                     ValueRow(label: "Trip fuel", value: Fmt.litres(c.tripFuelL))
                     ValueRow(label: "Fuel with the allowance", value: Fmt.litres(c.totalFuelL))
+                    ValueRow(label: "Fuel on board", value: Fmt.litres(c.fobL))
+                    ValueRow(label: "Fuel at landing", value: Fmt.litres(c.landingFuelL))
                     ValueRow(label: "Take-off", value: c.takeoff.map { "\($0)Z" } ?? Fmt.dash)
                     ValueRow(label: "Landing", value: c.landing.map { "\($0)Z" } ?? Fmt.dash)
                 }

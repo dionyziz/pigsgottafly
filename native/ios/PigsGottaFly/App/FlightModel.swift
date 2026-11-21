@@ -25,9 +25,14 @@ final class FlightModel: ObservableObject {
     @Published private(set) var offline = false
     @Published var error: String?
 
+    /// The relevant NOTAMs of the briefing were marked read (and none came since).
+    @Published private(set) var notamsRead = false
+
     private var flightText: String?
     private var computedText: String?
     private var progressBusy = false
+    /// The leg of the last progress answer (PGF.progress lastLegIndex).
+    private var lastLegIndex: Int?
 
     init(id: String, app: AppModel) {
         self.id = id
@@ -63,12 +68,15 @@ final class FlightModel: ObservableObject {
             return code.count == 4 ? code : nil
         }
     }
+    /// The last point's name (the Fly strip's destination line).
+    var destinationName: String? { flight?["route"]?.array?.last?["name"]?.string }
 
     // MARK: loading
 
     /// Shows the cached copy at once, then asks the server.
     func open() async {
         loadCached()
+        await app.ensureTerrain()
         await recompute()
         await prepareChart()
         await refresh()
@@ -76,9 +84,28 @@ final class FlightModel: ObservableObject {
 
     private func loadCached() {
         if let d = store.read(.flight(id)), let j = try? JSON.parse(d) { setFlight(j) }
-        notams = store.decode(NotamBriefing.self, .notams(id))
+        setNotams(store.decode(NotamBriefing.self, .notams(id)))
         filing = store.decode(FilingState.self, .filing(id))
         readMetar()
+    }
+
+    private func setNotams(_ b: NotamBriefing?) {
+        notams = b
+        notamsRead = b.map { store.text(.notamsRead(id)) == Self.relevantSignature($0) } ?? false
+    }
+
+    /// The relevant NOTAMs as one string: marking them read holds until it changes (the website's
+    /// ReadinessBar relevantSignature).
+    nonisolated static func relevantSignature(_ b: NotamBriefing) -> String {
+        b.notams.filter(\.relevant).map(\.key).sorted().joined(separator: ",")
+    }
+
+    /// The relevant NOTAMs were read: the NOTAMs row of "Ready to fly" turns ready.
+    func markNotamsRead() async {
+        guard let b = notams else { return }
+        try? store.write(Data(Self.relevantSignature(b).utf8), .notamsRead(id))
+        setNotams(b)
+        await recompute()
     }
 
     private func setFlight(_ j: JSON) {
@@ -102,10 +129,11 @@ final class FlightModel: ObservableObject {
             if let me = try? await api.me() { try? store.write(me, .pilot) }
             let refAge = store.modified(.ref).map { -$0.timeIntervalSinceNow } ?? .infinity
             if refAge > 6 * 3600, let ref = try? await api.refBundle() { try? store.write(ref, .ref) }
+            await app.ensureTerrain()
             await recompute()
             await fetchWeather()
-            await recompute()
             await fetchBriefing()
+            await recompute()
             await prepareChart()
             prepareOfflineMap()
         } catch APIError.unauthorized {
@@ -121,12 +149,18 @@ final class FlightModel: ObservableObject {
 
     private func fetchWeather() async {
         guard let core, let flightText else { return }
-        let paths = (try? await core.run { try $0.weatherRequests(flight: flightText) }) ?? []
+        let ref = store.text(.ref)
+        let paths = (try? await core.run { try $0.weatherRequests(flight: flightText, ref: ref) }) ?? []
+        // what was saved for these paths stays until a fresh answer replaces it (offline, a failed fetch)
+        let saved = store.read(.weather(id)).flatMap { try? JSON.parse($0) }?.object ?? [:]
         var answers: [String: String] = [:]
         for p in paths {
-            if let d = try? await api.get(p), let t = String(data: d, encoding: .utf8) { answers[p] = t }
+            if let d = try? await api.get(p), let t = String(data: d, encoding: .utf8), (try? JSON.parse(t)) != nil {
+                answers[p] = t
+            } else if let old = saved[p] {
+                answers[p] = old.text
+            }
         }
-        guard !answers.isEmpty || paths.isEmpty else { return }
         try? store.write(Data(Core.object(answers).utf8), .weather(id))
         readMetar()
     }
@@ -150,7 +184,7 @@ final class FlightModel: ObservableObject {
     private func fetchBriefing() async {
         if let d = try? await api.notams(id, maxAltFt: computed?.maxAltFt) {
             try? store.write(d, .notams(id))
-            notams = try? JSONDecoder().decode(NotamBriefing.self, from: d)
+            setNotams(try? JSONDecoder().decode(NotamBriefing.self, from: d))
         }
         if let d = try? await api.filing(id) {
             try? store.write(d, .filing(id))
@@ -173,15 +207,19 @@ final class FlightModel: ObservableObject {
         let acId = flight?["aircraftId"]?.string
         let aircraft = acId.flatMap { store.text(.aircraft($0)) }
         let pilot = store.text(.pilot)
-        let ref = store.text(.ref) ?? "{}"
+        // the core keeps the last ref given; without any (a first launch offline) there is nothing to compute
+        guard let ref = store.text(.ref) else { return }
         let weather = store.text(.weather(id)) ?? "{}"
-        let flightJSON = flight ?? .null
+        let notams = store.text(.notams(id))
+        let read = notamsRead
         do {
             let result = try await core.run {
-                try $0.computeFlight(flight: flightText, aircraft: aircraft, pilot: pilot, ref: ref, weather: weather)
+                try $0.computeFlight(
+                    flight: flightText, aircraft: aircraft, pilot: pilot, ref: ref, weather: weather, notams: notams,
+                    notamsRead: read)
             }
             computedText = result.text
-            computed = ComputedFlight(result, flight: flightJSON)
+            computed = ComputedFlight(result)
         } catch {
             self.error = error.localizedDescription
         }
@@ -202,14 +240,18 @@ final class FlightModel: ObservableObject {
 
     /// Where the aircraft is along the route (nil while the core is busy with the last fix).
     func progress(at fix: Position) async -> Progress? {
-        guard let core, let flightText, let computedText, !progressBusy else { return nil }
+        guard let core, let computedText, !progressBusy else { return nil }
         progressBusy = true
         defer { progressBusy = false }
-        let day = Fmt.isoDay(date)
+        let last = lastLegIndex
         guard
-            let j = try? await core.run({ try $0.progress(flight: flightText, computed: computedText, position: fix) })
+            let j = try? await core.run({
+                try $0.progress(computed: computedText, position: fix, lastLegIndex: last)
+            }),
+            let p = Progress(j)
         else { return nil }
-        return Progress(j, day: day)
+        lastLegIndex = p.legIndex
+        return p
     }
 
     // MARK: the chart
@@ -219,13 +261,14 @@ final class FlightModel: ObservableObject {
         var fetched = store.text(.vectorStyle)
         if fetched == nil, !app.noNetwork { fetched = await fetchVectorStyle() }
         let vector = fetched
-        let ref = store.text(.ref) ?? "{}"
+        guard let ref = store.text(.ref) else { return }
         let notamsText = store.text(.notams(id))
         let layers = flight?["options"]?["mapLayers"]?.text
-        let style = try? await core.run { try $0.chartStyle(base: "light", vector: vector) }
+        let style = try? await core.run { try $0.chartStyle(base: "light", vector: vector, layers: layers) }
+        // per flight: the style shows the flight's map layers
         if let style {
-            try? store.write(Data(style.utf8), .chartStyle("light"))
-            styleURL = store.url(.chartStyle("light"))
+            try? store.write(Data(style.utf8), .chartStyle("light-\(id)"))
+            styleURL = store.url(.chartStyle("light-\(id)"))
         }
         chartData = try? await core.run {
             try $0.chartData(ref: ref, flight: flightText, notams: notamsText, layers: layers)

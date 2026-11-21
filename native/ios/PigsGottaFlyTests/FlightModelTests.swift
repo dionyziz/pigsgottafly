@@ -27,6 +27,18 @@ final class FlightModelTests: XCTestCase {
         ] {
             XCTAssertTrue(store.exists(key), key.path)
         }
+        XCTAssertEqual(store.read(.terrain)?.count, AppModel.terrainBytes, "the terrain grid, fetched and saved")
+        // the weather answers by the core's paths: METAR/TAF from the fixture, no forecast grids
+        let weather = try JSON.parse(try XCTUnwrap(store.read(.weather(model.id))))
+        XCTAssertEqual(weather.object?.keys.sorted(), ["/api/weather/metar?ids=LGSY,LGTT"])
+        XCTAssertEqual(model.computed?.windsMessage, "Winds unavailable: not fetched")
+        XCTAssertEqual(model.computed?.aerodromes.map(\.icao), ["LGTT", "LGSY"])
+
+        // the relevant NOTAMs marked read: the row is ready, and stays so on the next opening
+        XCTAssertEqual(model.computed?.readiness.first { $0.id == "notams" }?.state, .todo)
+        await model.markNotamsRead()
+        XCTAssertTrue(model.notamsRead)
+        XCTAssertEqual(model.computed?.readiness.first { $0.id == "notams" }?.state, .ok)
 
         // offline: the cached copy opens
         let offline = AppModel(
@@ -37,6 +49,27 @@ final class FlightModelTests: XCTestCase {
         XCTAssertTrue(again.offline)
         XCTAssertEqual(again.computed?.rows.count, 3)
         XCTAssertEqual(again.notams?.notams.count, 2)
+        XCTAssertTrue(again.notamsRead)
+        XCTAssertEqual(again.computed?.readiness.first { $0.id == "notams" }?.state, .ok)
+        XCTAssertNotNil(again.metar?.stations["LGSY"], "the saved weather")
+    }
+
+    func testProgressFollowsTheLegs() async throws {
+        let app = AppModel(
+            arguments: ["-fixtures", "-noNetwork"], api: API(transport: FixtureTransport.bundled()!),
+            store: temporaryStore())
+        let model = FlightModel(id: "fixture-lgtt-lgsy", app: app)
+        await model.open()
+        let t = Date(timeIntervalSince1970: 1_795_337_400)
+        let a = await model.progress(at: Position(lat: 38.2, lon: 23.82, trackDeg: 19, gsKt: 90, time: t))
+        XCTAssertEqual(a?.legIndex, 0)
+        XCTAssertEqual(a?.freq?.callsign, "TATOI TOWER")
+        let b = await model.progress(at: Position(lat: 38.45, lon: 24.0, trackDeg: 32, gsKt: 105, time: t))
+        XCTAssertEqual(b?.legIndex, 1)
+        XCTAssertEqual(b?.toWaypoint, "KIMI")
+        // without a track, back over the first leg's end: the leg shown last holds (lastLegIndex)
+        let c = await model.progress(at: Position(lat: 38.29, lon: 23.86, trackDeg: nil, gsKt: nil, time: t))
+        XCTAssertEqual(c?.legIndex, 1)
     }
 
     func testAnEditIsAppliedAgainOnTopOfANewerServerCopy() async throws {

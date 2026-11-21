@@ -15,39 +15,54 @@ enum Symbols {
         static let restricted = UIColor(hex: 0xc62828)
         static let paper = UIColor.white
         static let halo = UIColor(white: 1, alpha: 0.92)
+
+        /// The CHART keys PGF.symbolNames() names a symbol's colours by.
+        static let byKey: [String: UIColor] = [
+            "aerodrome": aerodrome, "navaid": navaid, "vfr": vfr, "waypoint": waypoint, "route": route,
+            "restricted": restricted, "paper": paper, "halo": halo,
+        ]
     }
 
     /// The own aircraft (not a chart symbol: the app's own layer).
     static let ownship = "pgf-ownship"
 
-    static let known: [String] = [
-        "pgf-ad-major", "pgf-ad-minor", "pgf-ad-plain", "pgf-ad-water", "pgf-vfr", "pgf-vfr-ofm", "pgf-wpt",
-        "pgf-nav-vor", "pgf-nav-vordme", "pgf-nav-vortac", "pgf-nav-tacan", "pgf-nav-dme", "pgf-nav-ndb", "pgf-nav-l",
-        "pgf-arrow", "pgf-route-arrow", "pgf-hatch-r", ownship,
-    ]
+    /// The symbols of the core's style when it cannot list them (it always can: a fallback).
+    static let known: [SymbolInfo] = [
+        ("pgf-ad-major", 30), ("pgf-ad-minor", 26), ("pgf-ad-plain", 22), ("pgf-ad-water", 24), ("pgf-vfr", 18),
+        ("pgf-vfr-ofm", 18), ("pgf-wpt", 20), ("pgf-nav-vor", 20), ("pgf-nav-vordme", 24), ("pgf-nav-vortac", 28),
+        ("pgf-nav-tacan", 28), ("pgf-nav-dme", 18), ("pgf-nav-ndb", 26), ("pgf-nav-l", 20), ("pgf-arrow", 14),
+        ("pgf-route-arrow", 22), ("pgf-hatch-r", 8),
+    ].map { SymbolInfo(name: $0.0, size: $0.1) }
+
+    /// A symbol as the core describes it: drawn at its size, in its main colour.
+    static func image(_ info: SymbolInfo) -> UIImage {
+        image(
+            info.name, size: info.size > 0 ? info.size : nil,
+            color: info.colors.first.flatMap { Chart.byKey[$0] })
+    }
 
     /// The image for a name; an unknown name gets a small route-coloured dot so the layer still draws.
-    static func image(_ name: String) -> UIImage {
+    static func image(_ name: String, size: Double? = nil, color: UIColor? = nil) -> UIImage {
         switch name {
         case "pgf-ad-major":
-            return make(30) { g, s in
-                ring(g, s, r: 8, width: 2.2, color: Chart.aerodrome)
-                runwayBar(g, s, len: 24, width: 3.6, color: Chart.aerodrome)
+            return make(size ?? 30) { g, s in
+                ring(g, s, r: 8, width: 2.2, color: color ?? Chart.aerodrome)
+                runwayBar(g, s, len: 24, width: 3.6, color: color ?? Chart.aerodrome)
             }
         case "pgf-ad-minor":
-            return make(26) { g, s in
-                ring(g, s, r: 6.5, width: 1.8, color: Chart.aerodrome)
-                runwayBar(g, s, len: 19, width: 2.8, color: Chart.aerodrome)
+            return make(size ?? 26) { g, s in
+                ring(g, s, r: 6.5, width: 1.8, color: color ?? Chart.aerodrome)
+                runwayBar(g, s, len: 19, width: 2.8, color: color ?? Chart.aerodrome)
             }
         case "pgf-ad-plain":
-            return make(22) { g, s in
-                ring(g, s, r: 6, width: 1.8, color: Chart.aerodrome)
-                dot(g, s / 2, s / 2, r: 2.2, color: Chart.aerodrome)
+            return make(size ?? 22) { g, s in
+                ring(g, s, r: 6, width: 1.8, color: color ?? Chart.aerodrome)
+                dot(g, s / 2, s / 2, r: 2.2, color: color ?? Chart.aerodrome)
             }
         case "pgf-ad-water":
-            return make(24) { g, s in
-                ring(g, s, r: 7, width: 1.8, color: Chart.aerodrome)
-                g.setStrokeColor(Chart.aerodrome.cgColor)
+            return make(size ?? 24) { g, s in
+                ring(g, s, r: 7, width: 1.8, color: color ?? Chart.aerodrome)
+                g.setStrokeColor((color ?? Chart.aerodrome).cgColor)
                 g.setLineWidth(1.6)
                 var x = -4.5
                 g.move(to: CGPoint(x: s / 2 + x, y: s / 2 + sin(x / 4.5 * .pi * 1.5) * 1.6))
@@ -58,23 +73,23 @@ enum Symbols {
                 g.strokePath()
             }
         case "pgf-vfr":
-            return make(18) { g, s in
+            return make(size ?? 18) { g, s in
                 triangle(g, s, r: 6.4)
-                g.setFillColor(Chart.vfr.cgColor)
+                g.setFillColor((color ?? Chart.vfr).cgColor)
                 g.setStrokeColor(Chart.paper.cgColor)
                 g.setLineWidth(1.4)
                 g.drawPath(using: .fillStroke)
             }
         case "pgf-vfr-ofm":
-            return make(18) { g, s in
+            return make(size ?? 18) { g, s in
                 triangle(g, s, r: 5.6)
                 g.setFillColor(Chart.halo.cgColor)
-                g.setStrokeColor(Chart.vfr.cgColor)
+                g.setStrokeColor((color ?? Chart.vfr).cgColor)
                 g.setLineWidth(1.6)
                 g.drawPath(using: .fillStroke)
             }
         case "pgf-wpt":
-            return make(20) { g, s in
+            return make(size ?? 20) { g, s in
                 let c = s / 2
                 let r = 7.0
                 let k = 2.2
@@ -84,61 +99,61 @@ enum Symbols {
                 ]
                 g.addLines(between: pts.map { CGPoint(x: $0.0, y: $0.1) })
                 g.closePath()
-                g.setFillColor(Chart.waypoint.cgColor)
+                g.setFillColor((color ?? Chart.waypoint).cgColor)
                 g.setStrokeColor(Chart.paper.cgColor)
                 g.setLineWidth(1.2)
                 g.drawPath(using: .fillStroke)
             }
         case "pgf-nav-vor":
-            return make(20) { g, s in vor(g, s, r: 6.5) }
+            return make(size ?? 20) { g, s in vor(g, s, r: 6.5, ink: color ?? Chart.navaid) }
         case "pgf-nav-vordme":
-            return make(24) { g, s in
+            return make(size ?? 24) { g, s in
                 let c = s / 2
                 let w = 9.2
                 let h = 7.6
                 g.setFillColor(Chart.halo.cgColor)
                 g.fill(CGRect(x: c - w - 1, y: c - h - 1, width: 2 * w + 2, height: 2 * h + 2))
-                g.setStrokeColor(Chart.navaid.cgColor)
+                g.setStrokeColor((color ?? Chart.navaid).cgColor)
                 g.setLineWidth(1.5)
                 g.stroke(CGRect(x: c - w, y: c - h, width: 2 * w, height: 2 * h))
-                vor(g, s, r: 6.5)
+                vor(g, s, r: 6.5, ink: color ?? Chart.navaid)
             }
         case "pgf-nav-vortac":
-            return make(28) { g, s in
-                lobes(g, s, r: 6.5, filled: true)
-                vor(g, s, r: 6.5)
+            return make(size ?? 28) { g, s in
+                lobes(g, s, r: 6.5, filled: true, ink: color ?? Chart.navaid)
+                vor(g, s, r: 6.5, ink: color ?? Chart.navaid)
             }
         case "pgf-nav-tacan":
-            return make(28) { g, s in
-                lobes(g, s, r: 6.5, filled: false)
-                vor(g, s, r: 6.5)
+            return make(size ?? 28) { g, s in
+                lobes(g, s, r: 6.5, filled: false, ink: color ?? Chart.navaid)
+                vor(g, s, r: 6.5, ink: color ?? Chart.navaid)
             }
         case "pgf-nav-dme":
-            return make(18) { g, s in
+            return make(size ?? 18) { g, s in
                 let c = s / 2
                 let h = 6.0
                 g.setFillColor(Chart.halo.cgColor)
                 g.fill(CGRect(x: c - h - 1, y: c - h - 1, width: 2 * h + 2, height: 2 * h + 2))
-                g.setStrokeColor(Chart.navaid.cgColor)
+                g.setStrokeColor((color ?? Chart.navaid).cgColor)
                 g.setLineWidth(1.5)
                 g.stroke(CGRect(x: c - h, y: c - h, width: 2 * h, height: 2 * h))
-                dot(g, c, c, r: 1.5, color: Chart.navaid)
+                dot(g, c, c, r: 1.5, color: color ?? Chart.navaid)
             }
         case "pgf-nav-ndb":
-            return make(26) { g, s in ndb(g, s, rings: [4.2, 7, 9.8]) }
+            return make(size ?? 26) { g, s in ndb(g, s, rings: [4.2, 7, 9.8], ink: color ?? Chart.navaid) }
         case "pgf-nav-l":
-            return make(20) { g, s in ndb(g, s, rings: [3.8, 6.6]) }
+            return make(size ?? 20) { g, s in ndb(g, s, rings: [3.8, 6.6], ink: color ?? Chart.navaid) }
         case "pgf-arrow":
-            return make(14) { g, s in
+            return make(size ?? 14) { g, s in
                 g.move(to: CGPoint(x: s / 2 - 3, y: s / 2 - 4))
                 g.addLine(to: CGPoint(x: s / 2 + 3, y: s / 2))
                 g.addLine(to: CGPoint(x: s / 2 - 3, y: s / 2 + 4))
                 g.setLineWidth(2)
-                g.setStrokeColor(Chart.vfr.cgColor)
+                g.setStrokeColor((color ?? Chart.vfr).cgColor)
                 g.strokePath()
             }
         case "pgf-route-arrow":
-            return make(22) { g, s in
+            return make(size ?? 22) { g, s in
                 let c = s / 2
                 let path = CGMutablePath()
                 path.move(to: CGPoint(x: c, y: c - 7))
@@ -151,12 +166,12 @@ enum Symbols {
                 g.setStrokeColor(Chart.paper.cgColor)
                 g.strokePath()
                 g.addPath(path)
-                g.setFillColor(Chart.route.cgColor)
+                g.setFillColor((color ?? Chart.route).cgColor)
                 g.fillPath()
             }
         case "pgf-hatch-r":
-            return make(8) { g, s in
-                g.setStrokeColor(Chart.restricted.withAlphaComponent(0.45).cgColor)
+            return make(size ?? 8) { g, s in
+                g.setStrokeColor((color ?? Chart.restricted).withAlphaComponent(0.45).cgColor)
                 g.setLineWidth(1)
                 g.setLineCap(.butt)
                 for o in [-s, 0, s] {
@@ -168,7 +183,7 @@ enum Symbols {
         case ownship:
             return ownshipImage()
         default:
-            return make(10) { g, s in dot(g, s / 2, s / 2, r: 3, color: Chart.route) }
+            return make(size ?? 10) { g, s in dot(g, s / 2, s / 2, r: 3, color: color ?? Chart.route) }
         }
     }
 
@@ -264,17 +279,17 @@ enum Symbols {
         g.fillEllipse(in: CGRect(x: x - r, y: y - r, width: 2 * r, height: 2 * r))
     }
 
-    private static func vor(_ g: CGContext, _ s: Double, r: Double) {
+    private static func vor(_ g: CGContext, _ s: Double, r: Double, ink: UIColor) {
         let c = s / 2
         hexagon(g, c, c, r: r)
         g.setFillColor(Chart.halo.cgColor)
-        g.setStrokeColor(Chart.navaid.cgColor)
+        g.setStrokeColor(ink.cgColor)
         g.setLineWidth(1.5)
         g.drawPath(using: .fillStroke)
-        dot(g, c, c, r: 1.5, color: Chart.navaid)
+        dot(g, c, c, r: 1.5, color: ink)
     }
 
-    private static func lobes(_ g: CGContext, _ s: Double, r: Double, filled: Bool) {
+    private static func lobes(_ g: CGContext, _ s: Double, r: Double, filled: Bool, ink: UIColor) {
         let c = s / 2
         let apo = r * sqrt(3) / 2
         let half = r / 2
@@ -285,30 +300,30 @@ enum Symbols {
             g.rotate(by: (deg + 90) * .pi / 180)
             let rect = CGRect(x: -half, y: -apo - depth, width: 2 * half, height: depth)
             if filled {
-                g.setFillColor(Chart.navaid.cgColor)
+                g.setFillColor(ink.cgColor)
                 g.fill(rect)
             } else {
                 g.setFillColor(Chart.halo.cgColor)
                 g.fill(rect)
                 g.setLineWidth(1.3)
-                g.setStrokeColor(Chart.navaid.cgColor)
+                g.setStrokeColor(ink.cgColor)
                 g.stroke(rect)
             }
             g.restoreGState()
         }
     }
 
-    private static func ndb(_ g: CGContext, _ s: Double, rings: [Double]) {
+    private static func ndb(_ g: CGContext, _ s: Double, rings: [Double], ink: UIColor) {
         let c = s / 2
         let outer = (rings.last ?? 4) + 1.6
         g.setFillColor(Chart.halo.cgColor)
         g.fillEllipse(in: CGRect(x: c - outer, y: c - outer, width: 2 * outer, height: 2 * outer))
-        dot(g, c, c, r: 1.8, color: Chart.navaid)
+        dot(g, c, c, r: 1.8, color: ink)
         for r in rings {
             let n = Int((2 * Double.pi * r / 2.6).rounded())
             for i in 0..<n {
                 let a = Double(i) * 2 * .pi / Double(n)
-                dot(g, c + r * cos(a), c + r * sin(a), r: 0.75, color: Chart.navaid)
+                dot(g, c + r * cos(a), c + r * sin(a), r: 0.75, color: ink)
             }
         }
     }

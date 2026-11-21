@@ -17,7 +17,34 @@ final class AppModel: ObservableObject {
     let noNetwork: Bool
 
     /// The symbol images the chart style uses (PGF.symbolNames()).
-    private(set) lazy var symbolNames: [String] = (try? core?.symbolNames()) ?? Symbols.known
+    private(set) lazy var symbols: [SymbolInfo] = (try? core?.symbolNames()) ?? Symbols.known
+
+    /// The terrain grid was handed to the core (once per JSContext: NATIVE.md "setTerrain").
+    private var terrainSet = false
+
+    /// Gives the core the terrain grid (https://pigsgottafly.com/terrain/greece.bin): the saved copy, else
+    /// fetched and saved, else the copy built into the app (public/terrain/greece.bin, for a first
+    /// launch offline). The default altitude of uncharted legs and the low-leg warnings use it, as on
+    /// the website.
+    func ensureTerrain() async {
+        guard let core, !terrainSet else { return }
+        var grid = store.read(.terrain)
+        if grid == nil, let d = try? await api.site(Self.terrainPath), d.count == Self.terrainBytes {
+            try? store.write(d, .terrain)
+            grid = d
+        }
+        if grid == nil { grid = Self.bundledTerrain() }
+        guard let grid, !terrainSet else { return }
+        if (try? await core.run({ try $0.setTerrain(grid) })) == true { terrainSet = true }
+    }
+
+    nonisolated static let terrainPath = "terrain/greece.bin"
+    /// src/calc/terrain.ts TERRAIN_GRID rows × cols.
+    nonisolated static let terrainBytes = 880_000
+
+    nonisolated static func bundledTerrain(_ bundle: Bundle = .main) -> Data? {
+        bundle.url(forResource: "greece", withExtension: "bin").flatMap { try? Data(contentsOf: $0) }
+    }
 
     @Published var flights: [FlightListItem] = []
     @Published var flightsError: String?

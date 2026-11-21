@@ -7,7 +7,7 @@ import SwiftUI
 struct ChartMapView: UIViewRepresentable {
     var styleURL: URL?
     var chartData: JSON?
-    var symbolNames: [String]
+    var symbols: [SymbolInfo]
     var route: [CLLocationCoordinate2D]
     var fix: Position?
     var trackUp: Bool
@@ -68,9 +68,12 @@ struct ChartMapView: UIViewRepresentable {
 
         nonisolated func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             MainActor.assumeIsolated {
-                for name in Set(parent.symbolNames + Symbols.known) {
-                    style.setImage(Symbols.image(name), forName: name)
+                for info in parent.symbols {
+                    style.setImage(Symbols.image(info), forName: info.name)
                 }
+                style.setImage(Symbols.ownshipImage(), forName: Symbols.ownship)
+                // the website's leg midpoint handles are for editing the route
+                style.layer(withIdentifier: "route-mid")?.isVisible = false
                 addOwnshipLayers(style)
                 styleLoaded = true
                 applied = nil
@@ -119,8 +122,11 @@ struct ChartMapView: UIViewRepresentable {
             icon.iconImageName = NSExpression(forConstantValue: Symbols.ownship)
             icon.iconRotation = NSExpression(forKeyPath: "course")
             icon.iconRotationAlignment = NSExpression(forConstantValue: "map")
+            // always drawn, on top of everything, and the chart's labels (the route's waypoint names
+            // among them) keep clear of it: they take another side of their point, or wait
             icon.iconAllowsOverlap = NSExpression(forConstantValue: true)
-            icon.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+            icon.iconIgnoresPlacement = NSExpression(forConstantValue: false)
+            icon.iconPadding = NSExpression(forConstantValue: 4)
             style.addLayer(icon)
         }
 

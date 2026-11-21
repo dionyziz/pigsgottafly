@@ -63,7 +63,7 @@ enum Fmt {
     /// 'ATHINAI INFORMATION 130.925'
     static func frequency(_ f: Frequency?) -> String {
         guard let f else { return dash }
-        return f.callsign.isEmpty ? f.mhz : "\(f.callsign) \(f.mhz)"
+        return f.callsign.isEmpty ? f.primary : "\(f.callsign) \(f.primary)"
     }
 
     /// Cross-track: '0.3 NM R' (right of the course), '1.2 NM L'.
@@ -71,17 +71,6 @@ enum Fmt {
         guard let nm, nm.isFinite else { return dash }
         let side = nm >= 0 ? "R" : "L"
         return String(format: "%.1f NM %@", abs(nm), side)
-    }
-
-    /// An ETA string from the core: ISO date-time, or 'HH:MM' on `day` (UTC).
-    static func parseEta(_ s: String, day: Date?) -> Date? {
-        if let d = ISO8601DateFormatter().date(from: s) { return d }
-        let parts = s.replacingOccurrences(of: "Z", with: "").split(separator: ":")
-        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]) else { return nil }
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = utc
-        let start = cal.startOfDay(for: day ?? Date())
-        return start.addingTimeInterval(TimeInterval(h * 3600 + m * 60))
     }
 
     /// '22 Nov 2026' from 'YYYY-MM-DD'.
@@ -128,6 +117,7 @@ enum Fmt {
 struct StripText: Equatable {
     var waypoint: String
     var distance: String
+    /// Magnetic, as the pilot flies it.
     var bearing: String
     var ete: String
     var eta: String
@@ -138,11 +128,16 @@ struct StripText: Equatable {
     var nextFrequency: String
     var crossTrack: String
     var offRoute: Bool
+    /// Past the last waypoint.
+    var arrived: Bool
+    /// To the destination along the route: 'LGSY 37 NM · 24 min · 09:18Z'.
+    var destination: String
 
-    init(progress p: Progress, groundspeedKt: Double?) {
+    /// `groundspeedKt`: the GPS's (nil: not moving or not known).
+    init(progress p: Progress, groundspeedKt: Double?, destination name: String?) {
         waypoint = p.toWaypoint
         distance = Fmt.distance(p.distNm)
-        bearing = Fmt.degrees(p.bearingDeg)
+        bearing = Fmt.degrees(p.bearingMagDeg)
         ete = Fmt.duration(p.eteMin)
         eta = Fmt.zulu(p.eta)
         groundspeed = Fmt.speed(groundspeedKt)
@@ -151,14 +146,22 @@ struct StripText: Equatable {
         frequency = Fmt.frequency(p.freq)
         nextFrequency = Fmt.frequency(p.nextFreq)
         crossTrack = Fmt.crossTrack(p.crossTrackNm)
-        offRoute = p.offRoute
+        offRoute = p.offRoute && !p.arrived
+        arrived = p.arrived
+        let dest = name ?? p.toWaypoint
+        destination =
+            p.arrived
+            ? "Arrived at \(dest)"
+            : [dest, Fmt.distance(p.remainingNm), Fmt.duration(p.eteDestMin), Fmt.zulu(p.etaDest)].joined(
+                separator: " · ")
     }
 
     /// The top strip for VoiceOver: units spelt out.
     var accessibilityTop: String {
+        if arrived { return "\(destination), distance \(spoken(distance)), ground speed \(spoken(groundspeed))" }
         var parts = ["Next waypoint \(waypoint)"]
         parts.append("distance \(spoken(distance))")
-        parts.append("bearing \(spoken(bearing))")
+        parts.append("magnetic bearing \(spoken(bearing))")
         parts.append("time to go \(spoken(ete))")
         parts.append("arriving \(spoken(eta))")
         parts.append("ground speed \(spoken(groundspeed))")
@@ -166,6 +169,13 @@ struct StripText: Equatable {
         parts.append("planned heading \(spoken(plannedHeading))")
         if offRoute { parts.append("off route, \(spoken(crossTrack))") }
         return parts.joined(separator: ", ")
+    }
+
+    var accessibilityDestination: String {
+        if arrived { return destination }
+        let parts = destination.components(separatedBy: " · ")
+        guard parts.count == 4 else { return destination }
+        return "To \(parts[0]): \(spoken(parts[1])), \(spoken(parts[2])), arriving \(spoken(parts[3]))"
     }
 
     var accessibilityBottom: String {

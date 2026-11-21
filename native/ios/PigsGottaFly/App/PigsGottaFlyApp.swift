@@ -38,4 +38,11 @@ enum Orientation {
             if mask == .portrait { scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) }
         }
     }
+
+    /// Turns the screen (launch argument `-orientation landscape`: screenshots of Fly in landscape).
+    static func rotate(to mask: UIInterfaceOrientationMask) {
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask))
+        }
+    }
 }

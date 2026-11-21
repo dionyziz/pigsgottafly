@@ -11,6 +11,7 @@ struct BriefView: View {
         List {
             readiness
             times
+            aerodromes
             weather
             notams
             filing
@@ -44,22 +45,18 @@ struct BriefView: View {
                 ValueRow(label: "Landing", value: c.landing.map { "\($0)Z" } ?? Fmt.dash)
                 ValueRow(label: "Block on", value: c.blockOn.map { "\($0)Z" } ?? Fmt.dash)
                 ValueRow(label: "Sunset", value: c.sunset.map { "\($0)Z" } ?? Fmt.dash)
-                ForEach(c.aerodromes) { a in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(a.id).font(.headline)
-                            Text(a.name).font(.subheadline).foregroundStyle(.secondary)
-                            Spacer()
-                            Text(a.role.capitalized).font(.caption).foregroundStyle(.secondary)
-                        }
-                        Text("Hours: \(a.hours)").font(.subheadline)
-                        if let h = a.handling { Text("Handling: \(h)").font(.subheadline).foregroundStyle(.secondary) }
-                    }
-                    .padding(.vertical, 2)
-                    .accessibilityElement(children: .combine)
-                }
             } else {
                 Text("Preparing…").foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Each aerodrome of the route at the time the flight uses it (the website's Aerodromes section).
+    @ViewBuilder
+    private var aerodromes: some View {
+        if let c = model.computed, !c.aerodromes.isEmpty {
+            Section("Aerodromes") {
+                ForEach(c.aerodromes) { AerodromeRow(check: $0) }
             }
         }
     }
@@ -103,6 +100,24 @@ struct BriefView: View {
                         Text(groupTitle(g))
                     }
                 }
+                if b.notams.contains(where: \.relevant) {
+                    Section {
+                        if model.notamsRead {
+                            Label("The relevant NOTAMs are read.", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .frame(minHeight: 44)
+                                .accessibilityIdentifier("notams-read")
+                        } else {
+                            Button {
+                                Task { await model.markNotamsRead() }
+                            } label: {
+                                Label("Mark the relevant NOTAMs read", systemImage: "checkmark.circle")
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            }
+                            .accessibilityIdentifier("mark-notams-read")
+                        }
+                    }
+                }
             }
         } else {
             Section("NOTAMs") {
@@ -138,7 +153,7 @@ struct BriefView: View {
 
     private func groupTitle(_ g: NotamGroup) -> String {
         guard let icao = g.icao else { return "NOTAMs · Airspace" }
-        let name = model.computed?.aerodromes.first { $0.id == icao }?.name
+        let name = model.computed?.aerodromes.first { $0.icao == icao }?.name
         return name.map { "NOTAMs · \(icao) \($0)" } ?? "NOTAMs · \(icao)"
     }
 
@@ -196,6 +211,48 @@ struct ReadyRow: View {
         case .warn: "warning"
         case .danger: "problem"
         case .todo: "to do"
+        }
+    }
+}
+
+/// An aerodrome at the time the flight uses it: the aerodrome's, the ATS's and the handling's hours.
+struct AerodromeRow: View {
+    var check: AerodromeCheck
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline) {
+                Image(systemName: icon).foregroundStyle(color).accessibilityHidden(true)
+                Text(check.icao).font(.headline)
+                Text(check.name).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Spacer()
+                Text(check.role.capitalized).font(.caption).foregroundStyle(.secondary)
+            }
+            if let w = check.when { Text(w).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
+            if let h = check.aerodrome { line("Aerodrome", h) }
+            if let h = check.ats { line("ATS", h) }
+            if let h = check.handling { line("Handling", h) }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func line(_ label: String, _ h: AerodromeCheck.Hours) -> some View {
+        Text("\(label): \(h.text)").font(.subheadline)
+    }
+
+    private var icon: String {
+        switch check.worst {
+        case "open": "checkmark.circle.fill"
+        case "closed": "xmark.octagon.fill"
+        default: "questionmark.circle.fill"
+        }
+    }
+    private var color: Color {
+        switch check.worst {
+        case "open": .green
+        case "closed": .red
+        default: .orange
         }
     }
 }

@@ -2,14 +2,16 @@ import XCTest
 
 @testable import PigsGottaFly
 
-/// The bundled core.js (stub or real) called with the fixtures, function by function (NATIVE.md).
+/// The bundled core.js (src/native/core.ts) called with the fixtures, function by function (NATIVE.md
+/// "core.js API"): the numbers are the website's for the same flight.
 final class CoreTests: XCTestCase {
     private var core: Core!
     private var flight: String!
     private var aircraft: String!
     private var pilot: String!
     private var ref: String!
-    private var weather: String!
+    private var notams: String!
+    private static let metarPath = "/api/weather/metar?ids=LGSY,LGTT"
 
     override func setUpWithError() throws {
         core = try Core.bundled()
@@ -17,16 +19,42 @@ final class CoreTests: XCTestCase {
         aircraft = try Fixtures.text("aircraft.json")
         pilot = try Fixtures.text("pilot.json")
         ref = try Fixtures.text("ref.json")
-        weather = Core.object(["weather/metar?ids=LGTT,LGSY,LGTG": try Fixtures.text("metar.json")])
+        notams = try Fixtures.text("notams.json")
     }
 
-    func testVersionAndSymbols() throws {
-        XCTAssertFalse(core.version.isEmpty)
-        XCTAssertNotEqual(core.version, "unknown")
-        let names = try core.symbolNames()
-        XCTAssertFalse(names.isEmpty)
-        XCTAssertTrue(names.allSatisfy { !$0.isEmpty })
-        for n in names { XCTAssertGreaterThan(Symbols.image(n).size.width, 0, n) }
+    private func weather() throws -> String {
+        Core.object([Self.metarPath: try Fixtures.text("metar.json")])
+    }
+
+    private func compute(notamsRead: Bool = false) throws -> JSON {
+        try core.computeFlight(
+            flight: flight, aircraft: aircraft, pilot: pilot, ref: ref, weather: try weather(), notams: notams,
+            notamsRead: notamsRead)
+    }
+
+    func testVersion() {
+        XCTAssertTrue(core.version.contains("+"), core.version)
+    }
+
+    func testSymbolNamesAreDrawnAtTheirSize() throws {
+        let symbols = try core.symbolNames()
+        XCTAssertEqual(Set(symbols.map(\.name)), Set(Symbols.known.map(\.name)), "the app draws each of them")
+        for s in symbols {
+            XCTAssertGreaterThan(s.size, 0, s.name)
+            XCTAssertFalse(s.colors.isEmpty, s.name)
+            XCTAssertNotNil(Symbols.Chart.byKey[s.colors[0]], "\(s.name): \(s.colors[0])")
+            XCTAssertEqual(Symbols.image(s).size.width, s.size, s.name)
+        }
+        let ad = try XCTUnwrap(symbols.first { $0.name == "pgf-ad-major" })
+        XCTAssertTrue(ad.rotates)
+        XCTAssertTrue(symbols.first { $0.name == "pgf-hatch-r" }?.pattern ?? false)
+    }
+
+    func testLayerGroups() throws {
+        let groups = try core.layerGroups()
+        XCTAssertEqual(groups["aerodromes"], ["aerodrome-icon", "aerodrome-label"])
+        XCTAssertEqual(groups["notams"], ["notam-fill", "notam-line"])
+        XCTAssertNotNil(groups["vfrPoints"])
     }
 
     func testChartStyleWithAndWithoutTheVectorBase() throws {
@@ -34,61 +62,171 @@ final class CoreTests: XCTestCase {
             let style = try JSON.parse(try core.chartStyle(base: "light", vector: vector))
             XCTAssertEqual(style["version"]?.int, 8)
             XCTAssertNotNil(style["sources"]?["route-line"], "the route's source")
-            XCTAssertGreaterThan(style["layers"]?.array?.count ?? 0, 1)
+            XCTAssertNotNil(style["sources"]?["notam-areas"], "the NOTAM areas")
+            let ids = (style["layers"]?.array ?? []).compactMap { $0["id"]?.string }
+            XCTAssertLessThan(ids.firstIndex(of: "notam-fill") ?? 99, ids.firstIndex(of: "route-casing") ?? 0)
+            XCTAssertEqual(ids.last, "route-point-label")
         }
+        // a layer toggled off by the flight's map layers is hidden
+        let off = try JSON.parse(try core.chartStyle(base: "light", vector: nil, layers: #"{"navaids":false}"#))
+        let navaid = (off["layers"]?.array ?? []).first { $0["id"]?.string == "navaid-icon" }
+        XCTAssertEqual(navaid?["layout"]?["visibility"]?.string, "none")
     }
 
     func testChartDataFillsTheSources() throws {
-        let data = try core.chartData(ref: ref, flight: flight, notams: try Fixtures.text("notams.json"), layers: nil)
-        let route = data["route-line"]?["features"]?.array ?? []
-        XCTAssertEqual(route.count, 1)
+        let data = try core.chartData(ref: ref, flight: flight, notams: notams, layers: nil)
         XCTAssertEqual(data["route-line"]?["type"]?.string, "FeatureCollection")
-        XCTAssertGreaterThan(data["aerodromes"]?["features"]?.array?.count ?? 0, 0)
+        XCTAssertEqual(data["route-line"]?["features"]?.array?.count, 1)
+        let points = data["route-points"]?["features"]?.array ?? []
+        XCTAssertEqual(points.compactMap { $0["properties"]?["name"]?.string }, ["LGTT", "KALAMO", "KIMI", "LGSY"])
+        XCTAssertGreaterThan(data["aerodromes"]?["features"]?.array?.count ?? 0, 5)
+        XCTAssertGreaterThan(data["navaids"]?["features"]?.array?.count ?? 0, 0, "the core brings the navaids")
+        XCTAssertEqual(data["notam-areas"]?["features"]?.array?.count, 1, "the danger area NOTAM's circle")
+        let airspaces = data["airspaces"]?["features"]?.array ?? []
+        XCTAssertFalse(airspaces.isEmpty)
+        XCTAssertTrue(airspaces.allSatisfy { $0["properties"]?["far"]?.bool != nil }, "far is set on each")
     }
 
     func testWeatherRequests() throws {
-        let paths = try core.weatherRequests(flight: flight)
-        XCTAssertTrue(paths.contains { $0.contains("weather/metar") && $0.contains("LGSY") })
+        let paths = try core.weatherRequests(flight: flight, ref: ref, now: Fmt.date(day: "2026-11-21", clock: "10:00"))
+        XCTAssertTrue(paths.contains(Self.metarPath), "\(paths)")
+        XCTAssertTrue(paths.contains { $0.hasPrefix("/api/weather/grid?kind=wind") }, "\(paths)")
+        XCTAssertTrue(paths.contains { $0.hasPrefix("/api/weather/grid?kind=hazard") }, "\(paths)")
+        XCTAssertTrue(paths.allSatisfy { $0.hasPrefix("/api/") })
     }
 
-    func testComputeFlight() throws {
-        let j = try core.computeFlight(flight: flight, aircraft: aircraft, pilot: pilot, ref: ref, weather: weather)
-        let c = ComputedFlight(j, flight: try JSON.parse(flight))
-        XCTAssertEqual(c.rows.count, 3)
+    func testRefIsGivenOnceAndKept() throws {
+        // after the first call the core has the reference data: a call without it computes the same
+        let first = try compute()
+        let again = try core.computeFlight(
+            flight: flight, aircraft: aircraft, pilot: pilot, ref: nil, weather: try weather(), notams: notams)
+        XCTAssertEqual(first["navlog"], again["navlog"])
+        XCTAssertThrowsError(
+            try Core.bundled().computeFlight(
+                flight: flight, aircraft: aircraft, pilot: pilot, ref: nil, weather: "{}"),
+            "a fresh core has no ref")
+    }
+
+    func testComputeFlightIsTheWebsitesNavlog() throws {
+        let j = try compute()
+        let c = ComputedFlight(j)
+        XCTAssertEqual(c.rows.count, 3, "one leg per route leg")
         XCTAssertEqual(c.rows.map(\.from), ["LGTT", "KALAMO", "KIMI"])
-        XCTAssertEqual(c.rows[1].key, "p2>p3")
-        XCTAssertEqual(c.rows[1].altFt, 5500, "the leg override")
-        XCTAssertGreaterThan(c.totalDistNm ?? 0, 50)
-        XCTAssertLessThan(c.totalDistNm ?? 0, 80)
-        XCTAssertFalse(c.readiness.isEmpty)
-        XCTAssertNotNil(c.takeoff)
-        XCTAssertNotNil(c.sunset)
-        for k in ["legs", "navlog", "fuel", "wb", "warnings", "readiness", "times"] { XCTAssertNotNil(j[k], k) }
+        XCTAssertEqual(c.rows.map(\.to), ["KALAMO", "KIMI", "LGSY"])
+        XCTAssertEqual(c.rows.map(\.key), ["p1>p2", "p2>p3", "p3>p4"])
+        XCTAssertTrue(c.rows.allSatisfy { ($0.distNm ?? 0) > 0 && ($0.eteMin ?? 0) > 0 && ($0.fuelL ?? 0) > 0 })
+        // no winds aloft (not fetched): calm wind, the navlog's GS is the TAS (80 kt pattern, 92 kt cruise)
+        XCTAssertEqual(c.rows.map(\.altFt), [1900, 5500, 1000], "pattern, the leg override, pattern")
+        XCTAssertEqual(c.rows.map(\.heading), [14, 28, 34], "MH")
+        XCTAssertEqual(c.rows.map(\.distNm), [12, 25, 25])
+        XCTAssertEqual(c.rows.map(\.eteMin), [9, 16, 19])
+        XCTAssertEqual(c.rows.map(\.gsKt), [80, 92, 80])
+        XCTAssertEqual(c.totalDistNm, 62)
+        XCTAssertEqual(c.totalEteMin, 44)
+        XCTAssertEqual(c.tripFuelL, 24)
+        XCTAssertEqual(c.totalFuelL, 28)
+        XCTAssertEqual(c.blockOff, "08:30")
+        XCTAssertEqual(c.takeoff, "08:45")
+        XCTAssertEqual(c.landing, "09:29")
+        XCTAssertEqual(c.blockOn, "09:39")
+        XCTAssertEqual(c.sunset, "15:03")
+        XCTAssertEqual(c.rows.first?.startMin, 525, "the first leg starts at take-off")
+        XCTAssertEqual(c.windsMessage, "Winds unavailable: not fetched")
+        XCTAssertTrue(c.warnings.contains("No winds aloft forecast: calm wind assumed."))
+        // the aerodromes at the time the flight uses them
+        XCTAssertEqual(c.aerodromes.map(\.icao), ["LGTT", "LGSY"])
+        XCTAssertEqual(c.aerodromes.first?.aerodrome?.status, "open")
+        XCTAssertEqual(c.aerodromes.first?.when, "block start 08:30Z – take-off 08:45Z")
+        XCTAssertEqual(c.aerodromes.first?.handling?.text, "Closed (NIL)")
+        // METAR/TAF decoded; the readiness rows of the Plan and Brief stages
+        XCTAssertEqual(j["weather"]?["metar"]?["status"]?.string, "ok")
+        XCTAssertEqual(j["weather"]?["metar"]?["stations"]?["LGSY"]?["metar"]?["qnhHpa"]?.int, 1020)
+        XCTAssertEqual(
+            c.readiness.map(\.id),
+            ["route", "aircraft", "fuel", "wb", "time", "aerodromes", "weather", "performance", "notams"])
+        XCTAssertEqual(c.readiness.first { $0.id == "weather" }?.state, .warn)
+        XCTAssertEqual(j["atc"]?["entries"]?.array?.count, 3)
+        XCTAssertEqual(c.maxAltFt, 5500)
+    }
+
+    func testNotamsReadMakesTheRowReady() throws {
+        let unread = ComputedFlight(try compute()).readiness.first { $0.id == "notams" }
+        XCTAssertEqual(unread?.state, .todo)
+        XCTAssertEqual(unread?.text, "2 relevant to read.")
+        let read = ComputedFlight(try compute(notamsRead: true)).readiness.first { $0.id == "notams" }
+        XCTAssertEqual(read?.state, .ok)
+    }
+
+    func testTerrain() throws {
+        let grid = try XCTUnwrap(AppModel.bundledTerrain())
+        XCTAssertEqual(grid.count, AppModel.terrainBytes)
+        XCTAssertTrue(try core.setTerrain(grid))
+        XCTAssertEqual(ComputedFlight(try compute()).rows.count, 3)
+        XCTAssertFalse(try core.setTerrain(Data([1, 2, 3])), "not a grid")
+        XCTAssertFalse(try core.setTerrain(nil))
     }
 
     func testPaperwork() throws {
         let rows = ReadyItem.list(
-            try core.paperwork(filing: try Fixtures.text("filing.json"), forms: nil, declarations: nil))
-        XCTAssertFalse(rows.isEmpty)
-        XCTAssertTrue(rows.contains { $0.state == .ok }, "the plan is filed")
+            try core.paperwork(
+                filing: try Fixtures.text("filing.json"), forms: try Fixtures.text("forms.json"),
+                declarations: try Fixtures.text("declarations.json")))
+        XCTAssertEqual(rows.map(\.id), ["filing", "form731"])
+        XCTAssertEqual(rows.first?.state, .ok)
+        XCTAssertEqual(rows.first?.text, "Filed.")
+        XCTAssertTrue(rows.allSatisfy { $0.stage == "file" })
+    }
+
+    private func progress(_ lat: Double, _ lon: Double, track: Double?, gs: Double?, last: Int? = nil) throws
+        -> PigsGottaFly.Progress
+    {
+        let computed = try compute()
+        let fix = Position(
+            lat: lat, lon: lon, altFt: nil, trackDeg: track, gsKt: gs, time: Date(timeIntervalSince1970: 1_795_337_400))
+        return try XCTUnwrap(Progress(try core.progress(computed: computed.text, position: fix, lastLegIndex: last)))
     }
 
     func testProgressAlongTheSecondLeg() throws {
-        let computed = try core.computeFlight(
-            flight: flight, aircraft: aircraft, pilot: pilot, ref: ref, weather: weather)
-        // between KALAMO and KIMI, a little right of the course
-        let fix = Position(
-            lat: 38.45, lon: 24.0, altFt: 5400, trackDeg: 32, gsKt: 105,
-            time: Date(timeIntervalSince1970: 1_795_337_400))
-        let j = try core.progress(flight: flight, computed: computed.text, position: fix)
-        let p = try XCTUnwrap(Progress(j))
+        // between KALAMO and KIMI
+        let p = try progress(38.45, 24.0, track: 32, gs: 105)
         XCTAssertEqual(p.legIndex, 1)
         XCTAssertEqual(p.toWaypoint, "KIMI")
-        XCTAssertEqual(p.distNm ?? 0, 13, accuracy: 3)
-        XCTAssertEqual(p.bearingDeg ?? 0, 30, accuracy: 10)
+        XCTAssertEqual(p.distNm ?? 0, 13.8, accuracy: 0.1)
+        XCTAssertEqual(p.bearingMagDeg ?? 0, 26.5, accuracy: 0.5)
+        XCTAssertEqual((p.bearingDeg ?? 0) - (p.bearingMagDeg ?? 0), 5.2, accuracy: 0.3, "the variation, E")
         XCTAssertFalse(p.offRoute)
-        XCTAssertNotNil(p.eta)
+        XCTAssertFalse(p.arrived)
+        XCTAssertEqual(p.gsKt, 105)
+        XCTAssertEqual(p.gsSource, "gps")
+        XCTAssertEqual(p.eteMin ?? 0, 13.8 / 105 * 60, accuracy: 0.2)
+        XCTAssertEqual(p.eta?.timeIntervalSince1970 ?? 0, 1_795_337_400 + (p.eteMin ?? 0) * 60, accuracy: 1)
+        XCTAssertEqual(p.remainingNm ?? 0, 38.6, accuracy: 0.2)
+        XCTAssertNotNil(p.etaDest)
         XCTAssertEqual(p.plannedAltFt, 5500)
+        XCTAssertEqual(p.plannedHdg, 28)
+        XCTAssertEqual(
+            p.freq,
+            Frequency(callsign: "ATHINAI INFORMATION", service: "INFO", primary: "130.925", backups: ["130.700"]))
+        XCTAssertEqual(p.nextFreq?.callsign, "SKIROS TOWER")
+    }
+
+    func testProgressNearTheDepartureAndAtTheDestination() throws {
+        let first = try progress(38.2, 23.82, track: 19, gs: 90)
+        XCTAssertEqual(first.legIndex, 0)
+        XCTAssertEqual(first.toWaypoint, "KALAMO")
+        XCTAssertEqual(first.freq?.callsign, "TATOI TOWER")
+        XCTAssertEqual(first.nextFreq?.callsign, "ATHINAI INFORMATION")
+        let there = try progress(38.98, 24.5, track: 40, gs: 60, last: 2)
+        XCTAssertEqual(there.legIndex, 2)
+        XCTAssertTrue(there.arrived)
+        XCTAssertEqual(there.freq?.primary, "123.200")
+        XCTAssertNil(there.nextFreq)
+    }
+
+    func testProgressWithoutAPosition() throws {
+        let computed = try compute()
+        let fix = Position(lat: .nan, lon: 24, altFt: nil, trackDeg: nil, gsKt: nil, time: Date())
+        XCTAssertNil(Progress(try core.progress(computed: computed.text, position: fix, lastLegIndex: nil)))
     }
 
     func testExceptionsBecomeErrors() throws {
@@ -106,14 +244,16 @@ final class CoreTests: XCTestCase {
         }
         XCTAssertThrowsError(try c.call("missing", json: nil))
         XCTAssertEqual(try c.call("echo", fields: ["a": "[1,2]"]), #"{"a":[1,2]}"#)
+        XCTAssertThrowsError(try core.computeFlight(flight: "{", aircraft: nil, pilot: nil, ref: ref, weather: "{}"))
     }
 
     func testCallsFromManyThreads() async throws {
         let core = self.core!
         let flight = self.flight!
+        let ref = self.ref!
         try await withThrowingTaskGroup(of: Int.self) { group in
             for _ in 0..<8 {
-                group.addTask { try core.weatherRequests(flight: flight).count }
+                group.addTask { try core.weatherRequests(flight: flight, ref: ref).count }
             }
             for try await n in group { XCTAssertGreaterThan(n, 0) }
         }

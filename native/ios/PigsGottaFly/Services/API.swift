@@ -69,7 +69,17 @@ final class API: Sendable {
     }
 
     func request(_ method: String, _ path: String, body: Data? = nil) async throws -> Data {
-        var req = URLRequest(url: url(path))
+        try await send(method, url(path), body: body)
+    }
+
+    /// GET a file of the website outside /api ('terrain/greece.bin').
+    func site(_ path: String) async throws -> Data {
+        let root = base.deletingLastPathComponent()
+        return try await send("GET", root.appendingPathComponent(path), body: nil)
+    }
+
+    private func send(_ method: String, _ url: URL, body: Data?) async throws -> Data {
+        var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body {

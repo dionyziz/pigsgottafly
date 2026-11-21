@@ -55,6 +55,6 @@ struct AccountView: View {
 
     private var coreVersion: String {
         guard let core = app.core else { return app.coreError ?? "Not loaded" }
-        return core.isStub ? "\(core.version) (stub)" : core.version
+        return core.version
     }
 }

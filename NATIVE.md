@@ -120,7 +120,9 @@ extra fields below were added while building the core.
 ## Offline
 
 On opening a flight with a connection, the app saves to its container: the flight, the aircraft, the
-pilot, `ref`, the weather answers, the NOTAM briefing and the terrain grid. It also downloads an
+pilot, `ref`, the weather answers, the NOTAM briefing and the terrain grid (public/terrain/greece.bin is also
+built into the app, for a first launch offline). The relevant NOTAMs marked read are kept per flight, by
+their keys, as the website keeps them. It also downloads an
 MLNOfflineStorage pack: the route's bounding box plus 15 NM, zooms 6–11, for the base style. Fly mode
 works from these with no connection.
 

@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// Fly: the moving map with the strips (NATIVE.md "Fly"). The screen stays on while it is shown.
+/// Fly: the moving map with the strips (NATIVE.md "Fly"), full screen: no tab bar and no navigation
+/// bar; a compact control reaches the flights, Brief and Navlog. The screen stays on while it is shown.
 struct FlyView: View {
     @ObservedObject var model: FlightModel
+    @Binding var tab: FlightView.Tab
+    var close: (() -> Void)?
     @EnvironmentObject private var app: AppModel
     @StateObject private var location: LocationFeed
     @State private var progress: Progress?
@@ -10,9 +13,12 @@ struct FlyView: View {
     @AppStorage("fly.trackUp") private var trackUp = true
     @AppStorage("fly.night") private var night = false
     @Environment(\.verticalSizeClass) private var verticalSize
+    private static let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
-    init(model: FlightModel) {
+    init(model: FlightModel, tab: Binding<FlightView.Tab>, close: (() -> Void)?) {
         self.model = model
+        _tab = tab
+        self.close = close
         _location = StateObject(
             wrappedValue: LocationFeed(simulated: LocationFeed.simulated(from: ProcessInfo.processInfo.arguments)))
     }
@@ -20,24 +26,27 @@ struct FlyView: View {
     var body: some View {
         ZStack {
             ChartMapView(
-                styleURL: model.styleURL, chartData: model.chartData, symbolNames: app.symbolNames,
+                styleURL: model.styleURL, chartData: model.chartData, symbols: app.symbols,
                 route: model.routeCoordinates, fix: location.fix, trackUp: trackUp, following: $following
             )
-            .ignoresSafeArea(.container, edges: .horizontal)
+            // iPad: not under the flight list beside it, so the aircraft stays in the middle of what shows
+            .ignoresSafeArea(.container, edges: Self.isPad ? .vertical : .all)
             if night {
-                Color.black.opacity(0.5).allowsHitTesting(false).accessibilityHidden(true)
+                Color.black.opacity(0.5).allowsHitTesting(false).accessibilityHidden(true).ignoresSafeArea()
             }
             VStack(spacing: 0) {
                 TopStrip(text: stripText, waiting: waitingText, compact: verticalSize == .compact)
                 Spacer()
                 controls
-                BottomStrip(text: stripText)
+                BottomStrip(text: stripText, compact: verticalSize == .compact)
             }
             .environment(\.colorScheme, night ? .dark : .light)
         }
+        .toolbar(.hidden, for: .tabBar)
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             Orientation.allow(.allButUpsideDown)
+            if LaunchArgs.value("-orientation") == "landscape" { Orientation.rotate(to: .landscapeRight) }
             location.start()
         }
         .onDisappear {
@@ -57,7 +66,9 @@ struct FlyView: View {
     }
 
     private var stripText: StripText? {
-        progress.map { StripText(progress: $0, groundspeedKt: location.fix?.gsKt) }
+        progress.map {
+            StripText(progress: $0, groundspeedKt: location.fix?.gsKt, destination: model.destinationName)
+        }
     }
 
     private var waitingText: String {
@@ -68,6 +79,7 @@ struct FlyView: View {
 
     private var controls: some View {
         HStack(spacing: 12) {
+            FlyNavigation(tab: $tab, close: close)
             Spacer()
             if !following && location.fix != nil {
                 MapButton(systemImage: "location.fill", label: "Re-centre") { following = true }
@@ -86,6 +98,39 @@ struct FlyView: View {
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
+    }
+}
+
+/// Fly hides the tab bar and the navigation bar: back to the flights, Brief and Navlog from here.
+struct FlyNavigation: View {
+    @Binding var tab: FlightView.Tab
+    var close: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if let close {
+                item("chevron.backward", "Flights", id: "fly-back", action: close)
+                Divider().frame(height: 28)
+            }
+            item("checklist", "Brief", id: "fly-brief") { tab = .brief }
+            Divider().frame(height: 28)
+            item("list.number", "Navlog", id: "fly-navlog") { tab = .navlog }
+        }
+        .padding(.horizontal, 4)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().stroke(.primary.opacity(0.15)))
+    }
+
+    private func item(_ image: String, _ label: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: image)
+                .font(.title3.weight(.semibold))
+                .frame(width: 52, height: 56)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(id)
     }
 }
 
@@ -139,11 +184,20 @@ struct TopStrip: View {
 
     var body: some View {
         Group {
-            if let t = text {
+            if let t = text, t.arrived {
+                HStack(spacing: 10) {
+                    StripCell(label: "ARRIVED", value: t.waypoint, emphasis: true)
+                    StripCell(label: "DIST", value: t.distance, emphasis: true)
+                    StripCell(label: "GS", value: t.groundspeed)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(t.accessibilityTop)
+                .accessibilityIdentifier("fly-top-strip")
+            } else if let t = text {
                 let cells: [(String, String, Bool)] = [
-                    ("TO", t.waypoint, true), ("DIST", t.distance, true), ("BRG", t.bearing, true),
+                    ("TO", t.waypoint, true), ("DIST", t.distance, true), ("BRG (M)", t.bearing, true),
                     ("ETE", t.ete, false), ("ETA", t.eta, false), ("GS", t.groundspeed, false),
-                    ("ALT", t.plannedAltitude, false), ("HDG", t.plannedHeading, false),
+                    ("ALT", t.plannedAltitude, false), ("HDG (M)", t.plannedHeading, false),
                     (t.offRoute ? "OFF ROUTE" : "XTK", t.crossTrack, false),
                 ]
                 let columns = compact ? 9 : 3
@@ -176,17 +230,41 @@ struct TopStrip: View {
     }
 }
 
-/// The current leg's frequency and the next one.
+/// The destination along the route (distance, time, ETA), the current frequency and the next one.
+/// In landscape (`compact`) on one row, to leave the map its height.
 struct BottomStrip: View {
     var text: StripText?
+    var compact = false
 
     var body: some View {
+        let layout =
+            compact
+            ? AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+        layout {
+            if let d = text?.destination {
+                Text(d)
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityLabel(text?.accessibilityDestination ?? d)
+                    .accessibilityIdentifier("fly-destination")
+            }
+            frequencies
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+    }
+
+    private var frequencies: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("FREQ").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                 Text(text?.frequency ?? Fmt.dash)
                     .font(.system(.title3, design: .rounded).weight(.bold).monospacedDigit())
-                    .lineLimit(2)
+                    .lineLimit(compact ? 1 : 2)
                     .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -195,14 +273,11 @@ struct BottomStrip: View {
                 Text(text?.nextFrequency ?? Fmt.dash)
                     .font(.system(.body, design: .rounded).weight(.semibold).monospacedDigit())
                     .multilineTextAlignment(.trailing)
-                    .lineLimit(2)
+                    .lineLimit(compact ? 1 : 2)
                     .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(.regularMaterial)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text?.accessibilityBottom ?? "No frequency yet")
         .accessibilityIdentifier("fly-bottom-strip")

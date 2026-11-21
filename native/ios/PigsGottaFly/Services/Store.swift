@@ -21,6 +21,10 @@ final class Store: @unchecked Sendable {
         case filing(String)
         case forms(String)
         case declarations(String)
+        /// The relevant NOTAMs marked read: their keys, sorted, comma-separated (as the website keeps it).
+        case notamsRead(String)
+        /// The terrain grid (greece.bin, as fetched).
+        case terrain
 
         var path: String {
             switch self {
@@ -37,6 +41,8 @@ final class Store: @unchecked Sendable {
             case .filing(let id): "flights/\(Store.safe(id))/filing.json"
             case .forms(let id): "flights/\(Store.safe(id))/forms.json"
             case .declarations(let id): "flights/\(Store.safe(id))/declarations.json"
+            case .notamsRead(let id): "flights/\(Store.safe(id))/notams-read.txt"
+            case .terrain: "terrain/greece.bin"
             }
         }
     }

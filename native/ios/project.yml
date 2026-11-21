@@ -33,6 +33,9 @@ targets:
       - path: PigsGottaFly/Fixtures
         type: folder
         buildPhase: resources
+      # the terrain grid as the website serves it (AppModel.ensureTerrain: before the first fetch)
+      - path: ../../public/terrain/greece.bin
+        buildPhase: resources
     dependencies:
       - package: MapLibre
     settings:

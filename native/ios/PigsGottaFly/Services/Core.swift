@@ -135,38 +135,84 @@ final class Core: @unchecked Sendable {
         }) ?? "unknown"
     }
 
-    /// The core is the hand-written stub (until the real core.js lands).
-    var isStub: Bool {
-        queue.sync { context.evaluateScript("__pgfGet('stub')")?.toString() == "true" }
+    /// The reference data last handed to the core: the core keeps the last `ref` given (NATIVE.md), so
+    /// the 180 KB of JSON crosses into JavaScript once, not on every call.
+    private let refLock = NSLock()
+    private var refGiven: String?
+
+    /// Calls a function that takes `ref`, passing it only when the core does not have this one yet.
+    private func callWithRef(_ name: String, ref: String?, fields: [String: String]) throws -> JSON {
+        var f = fields
+        refLock.lock()
+        let given = ref == refGiven ? nil : ref
+        refLock.unlock()
+        if let given { f["ref"] = given }
+        let j = try callJSON(name, fields: f)
+        if let given {
+            refLock.lock()
+            refGiven = given
+            refLock.unlock()
+        }
+        return j
     }
 
-    func symbolNames() throws -> [String] {
+    /// The chart's symbol images with how each looks (PGF.symbolNames()).
+    func symbolNames() throws -> [SymbolInfo] {
         let j = try JSON.parse(try call("symbolNames", json: nil))
-        return (j.array ?? []).compactMap(\.string)
+        return (j.array ?? []).compactMap(SymbolInfo.init)
     }
 
-    /// The MapLibre style JSON (text). `vector`: OpenFreeMap's style JSON text, or nil.
-    func chartStyle(base: String, vector: String?) throws -> String {
-        try call("chartStyle", fields: ["base": JSON.string(base).text, "vector": vector ?? "null"])
+    /// The style's layer ids by the layer toggle that shows them (PGF.layerGroups()).
+    func layerGroups() throws -> [String: [String]] {
+        let j = try JSON.parse(try call("layerGroups", json: nil))
+        return (j.object ?? [:]).mapValues { ($0.array ?? []).compactMap(\.string) }
+    }
+
+    /// The MapLibre style JSON (text). `vector`: OpenFreeMap's style JSON text, or nil; `layers`: the
+    /// flight's map layers (JSON text), or nil for all of them.
+    func chartStyle(base: String, vector: String?, layers: String? = nil) throws -> String {
+        try call(
+            "chartStyle",
+            fields: ["base": JSON.string(base).text, "vector": vector ?? "null", "layers": layers ?? "null"])
     }
 
     /// { sourceId: FeatureCollection }
-    func chartData(ref: String, flight: String, notams: String?, layers: String?) throws -> JSON {
-        try callJSON(
-            "chartData", fields: ["ref": ref, "flight": flight, "notams": notams ?? "null", "layers": layers ?? "null"])
+    func chartData(
+        ref: String?, flight: String, notams: String?, layers: String?, waypoints: String? = nil, now: Date? = nil
+    ) throws -> JSON {
+        var f = [
+            "flight": flight, "notams": notams ?? "null", "layers": layers ?? "null", "waypoints": waypoints ?? "null",
+        ]
+        if let now { f["now"] = Core.ms(now) }
+        return try callWithRef("chartData", ref: ref, fields: f)
     }
 
-    func weatherRequests(flight: String) throws -> [String] {
-        (try callJSON("weatherRequests", fields: ["flight": flight]).array ?? []).compactMap(\.string)
+    /// The GET paths (starting with /api/) of the flight's weather.
+    func weatherRequests(flight: String, ref: String?, now: Date? = nil) throws -> [String] {
+        var f = ["flight": flight]
+        if let now { f["now"] = Core.ms(now) }
+        return (try callWithRef("weatherRequests", ref: ref, fields: f).array ?? []).compactMap(\.string)
     }
 
-    func computeFlight(flight: String, aircraft: String?, pilot: String?, ref: String, weather: String) throws -> JSON {
-        try callJSON(
-            "computeFlight",
-            fields: [
-                "flight": flight, "aircraft": aircraft ?? "null", "pilot": pilot ?? "null", "ref": ref,
-                "weather": weather,
-            ])
+    /// The terrain grid (greece.bin) for the following computeFlight calls; whether the core took it.
+    @discardableResult
+    func setTerrain(_ grid: Data?) throws -> Bool {
+        let field = grid.map { JSON.string($0.base64EncodedString()).text } ?? "null"
+        return try callJSON("setTerrain", fields: ["base64": field])["ok"]?.bool ?? false
+    }
+
+    /// The flight as the website's editor computes it. `weather`: { path: answer } (JSON text) for the
+    /// paths of weatherRequests; `notams`: the briefing; `notamsRead`: its relevant NOTAMs were read.
+    func computeFlight(
+        flight: String, aircraft: String?, pilot: String?, ref: String?, weather: String, notams: String? = nil,
+        notamsRead: Bool = false, now: Date? = nil
+    ) throws -> JSON {
+        var f = [
+            "flight": flight, "aircraft": aircraft ?? "null", "pilot": pilot ?? "null", "weather": weather,
+            "notams": notams ?? "null", "notamsRead": notamsRead ? "true" : "false",
+        ]
+        if let now { f["now"] = Core.ms(now) }
+        return try callWithRef("computeFlight", ref: ref, fields: f)
     }
 
     func paperwork(filing: String?, forms: String?, declarations: String?) throws -> JSON {
@@ -175,8 +221,47 @@ final class Core: @unchecked Sendable {
             fields: ["filing": filing ?? "null", "forms": forms ?? "null", "declarations": declarations ?? "null"])
     }
 
-    func progress(flight: String, computed: String, position: Position) throws -> JSON {
-        try callJSON("progress", fields: ["flight": flight, "computed": computed, "position": position.json.text])
+    /// Where the aircraft is along the route. `computed`: computeFlight's answer (JSON text);
+    /// `lastLegIndex`: the leg of the previous answer (legs before it are not gone back to).
+    func progress(computed: String, position: Position, lastLegIndex: Int?) throws -> JSON {
+        try callJSON(
+            "progress",
+            fields: [
+                "computed": computed, "position": position.json.text,
+                "lastLegIndex": lastLegIndex.map(String.init) ?? "null",
+            ])
+    }
+
+    private static func ms(_ d: Date) -> String {
+        String(Int64((d.timeIntervalSince1970 * 1000).rounded()))
+    }
+}
+
+/// One of the chart's symbol images (PGF.symbolNames()): its name in the style, its size in points,
+/// its colours (keys of the website's CHART palette, the first the main one), whether the layer
+/// rotates it and whether it is a fill pattern.
+struct SymbolInfo: Equatable, Sendable {
+    var name: String
+    var size: Double
+    var colors: [String]
+    var rotates: Bool
+    var pattern: Bool
+
+    init(name: String, size: Double, colors: [String] = [], rotates: Bool = false, pattern: Bool = false) {
+        self.name = name
+        self.size = size
+        self.colors = colors
+        self.rotates = rotates
+        self.pattern = pattern
+    }
+
+    init?(_ j: JSON) {
+        guard let name = j["name"]?.string, !name.isEmpty else { return nil }
+        self.name = name
+        size = j["size"]?.double ?? 0
+        colors = (j["colors"]?.array ?? []).compactMap(\.string)
+        rotates = j["rotates"]?.bool ?? false
+        pattern = j["pattern"]?.bool ?? false
     }
 }
 
