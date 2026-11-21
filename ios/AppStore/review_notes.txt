@@ -1,15 +1,15 @@
-Pig's Gotta Fly is a VFR flight planner for pilots in Greece (the Athinai FIR). The app loads its interface from https://pigsgottafly.com, the same service as the website, and adds native parts: sign-in through Apple's authentication sheet, printing with AirPrint, touch editing of the route on the map, and an offline screen when there is no connection.
+Pig's Gotta Fly is a VFR flight planner for pilots in Greece (the Athinai FIR). The app loads its interface from https://pigsgottafly.com, the same service as the website, and adds native parts: sign-in with Apple's sign-in sheet, printing with AirPrint, an offline page when there is no connection, and touch editing of the route on the map.
 
 SIGNING IN
-Tap "Sign in with Apple" (or "Sign in with Google") on the first screen. A new account starts empty: the app first asks for a name, phone and home aerodrome (any values will do, for example home aerodrome LGTT), then shows the list of flights.
+No demo account is needed: tap "Sign in with Apple" (or sign in with Google) on the first screen using your own account. A new account starts empty: the app first asks for a name, phone and home aerodrome (any values will do, for example home aerodrome LGTT), then shows the list of flights.
 
 TRYING IT
 1. Tap "New flight". The flight opens on the map from the home aerodrome.
 2. Add points: type an aerodrome (for example LGSO, Syros) as the destination, or drag the middle dot of a leg on the map to insert a point. Press and hold a point for its menu.
 3. Add an aircraft in the hangar (account menu at the top right > Hangar; a Reims/Cessna F172M template is offered) and choose it on the flight to see the navlog, fuel, weight and balance and performance.
-4. The documents (navigation log, Form 731, General Declaration, flight plan, weight and balance, NOTAM briefing) open from the flight; each one prints with AirPrint.
+4. The flight's stages are Plan, Brief and File & forms. The documents (navigation log, NOTAM briefing, flight plan, Form 731, General Declaration, weight and balance) open from the flight; each one prints with AirPrint.
 
-PLEASE DO NOT PRESS "FILE"
-Filing the flight plan sends a real ICAO flight plan message to air traffic services, and sending Form 731 or the General Declaration e-mails the Hellenic Civil Aviation Authority. Please look at these forms without pressing "File" or "Send to HCAA".
+PLEASE DO NOT PRESS "FILE", "SEND" OR "SEND TO HCAA"
+Flight plan filing (the "File" button on the File & forms page) sends real messages to air traffic control, and the form e-mails (Form 731, General Declaration) go to the Hellenic Civil Aviation Authority. Please look at these pages without pressing "File", "Send" or "Send to HCAA".
 
-Contact: dionyziz@gmail.com
+Contact: Dionysis Zindros, dionyziz@gmail.com
