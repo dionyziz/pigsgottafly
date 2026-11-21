@@ -134,7 +134,9 @@ npm run ios:upload       # ios:version, xcodegen, Release archive, export and up
 
 Versions: bump `"version"` in package.json for a new App Store version; `npm run ios:version` (which
 `ios:upload` runs first) writes it and a new build number into `native/ios/project.yml` (commit the change).
-Every upload needs a higher build number.
+Every upload needs a higher build number. The export signs with the team's Apple Distribution certificate and the
+"com.pigsgottafly.app AppStore" profile (both made with fastlane's get_certificates / get_provisioning_profile and
+the App Store Connect API key in `~/.appstoreconnect/private_keys/`), and uploads with that key.
 
 ### Publishing
 

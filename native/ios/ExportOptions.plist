@@ -9,7 +9,14 @@
 	<key>teamID</key>
 	<string>F2UQTZ295F</string>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.pigsgottafly.app</key>
+		<string>com.pigsgottafly.app AppStore</string>
+	</dict>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>manageAppVersionAndBuildNumber</key>
