@@ -1,0 +1,613 @@
+{
+ "registration": "SX-ASV",
+ "makeModel": "Reims/Cessna F172M",
+ "icaoType": "C172",
+ "wake": "L",
+ "serial": "F172M01513",
+ "operator": "Aeroclub Mesogeion",
+ "operatorId": null,
+ "homeBase": "LGTT",
+ "colours": "",
+ "cruiseTasKt": 92,
+ "patternTasKt": 80,
+ "climbTasKt": null,
+ "fuel": {
+  "types": [
+   {
+    "type": "AVGAS",
+    "densityKgPerL": 0.72
+   },
+   {
+    "type": "MOGAS",
+    "densityKgPerL": 0.75
+   }
+  ],
+  "totalL": 159,
+  "usableL": 144,
+  "unusableL": 15,
+  "unusableIncludedInEmptyMass": true,
+  "tanks": "standard",
+  "burnLph": 30,
+  "taxiAllowanceL": 4
+ },
+ "massBalance": {
+  "datum": "Forward face of firewall",
+  "emptyMassKg": 691.2,
+  "emptyArmM": 1.0403,
+  "emptyMomentKgM": 719.12,
+  "weighingDate": "2024-11-14",
+  "weighingSource": "DAS (EL.145.0078) weight and balance report, 14-11-2024",
+  "includesOil": true,
+  "mtowKg": 1043,
+  "mlwKg": null,
+  "stations": [
+   {
+    "id": "front",
+    "name": "PIC and front passenger",
+    "kind": "seat",
+    "armM": 0.94,
+    "armRangeM": [
+     0.85,
+     1.17
+    ],
+    "maxKg": null,
+    "seats": [
+     {
+      "id": "front-left",
+      "label": "Front left"
+     },
+     {
+      "id": "front-right",
+      "label": "Front right"
+     }
+    ]
+   },
+   {
+    "id": "rear",
+    "name": "Rear passengers",
+    "kind": "seat",
+    "armM": 1.85,
+    "armRangeM": null,
+    "maxKg": null,
+    "seats": [
+     {
+      "id": "rear-left",
+      "label": "Rear left"
+     },
+     {
+      "id": "rear-right",
+      "label": "Rear right"
+     }
+    ]
+   },
+   {
+    "id": "bag1",
+    "name": "Baggage area 1",
+    "kind": "baggage",
+    "armM": 2.41,
+    "armRangeM": null,
+    "maxKg": 54,
+    "seats": null
+   },
+   {
+    "id": "bag2",
+    "name": "Baggage area 2",
+    "kind": "baggage",
+    "armM": 3.12,
+    "armRangeM": null,
+    "maxKg": 23,
+    "seats": null
+   },
+   {
+    "id": "fuel",
+    "name": "Fuel",
+    "kind": "fuel",
+    "armM": 1.215,
+    "armRangeM": null,
+    "maxKg": null,
+    "seats": null
+   }
+  ],
+  "combinedLimits": [
+   {
+    "stations": [
+     "bag1",
+     "bag2"
+    ],
+    "maxKg": 54
+   }
+  ],
+  "envelopes": {
+   "normal": {
+    "category": "normal",
+    "maxKg": 1043,
+    "polygon": [
+     [
+      0.89,
+      600
+     ],
+     [
+      0.89,
+      885
+     ],
+     [
+      0.98,
+      1043
+     ],
+     [
+      1.2,
+      1043
+     ],
+     [
+      1.2,
+      600
+     ]
+    ],
+    "momentPolygon": [
+     [
+      600,
+      675
+     ],
+     [
+      780,
+      890
+     ],
+     [
+      1020,
+      1043
+     ],
+     [
+      1258,
+      1043
+     ],
+     [
+      805,
+      675
+     ]
+    ]
+   },
+   "utility": {
+    "category": "utility",
+    "maxKg": 907,
+    "polygon": [
+     [
+      0.89,
+      600
+     ],
+     [
+      0.89,
+      885
+     ],
+     [
+      0.9,
+      907
+     ],
+     [
+      1.03,
+      907
+     ],
+     [
+      1.03,
+      600
+     ]
+    ],
+    "momentPolygon": [
+     [
+      600,
+      675
+     ],
+     [
+      780,
+      890
+     ],
+     [
+      810.6,
+      907
+     ],
+     [
+      929,
+      907
+     ],
+     [
+      700,
+      675
+     ]
+    ],
+    "notes": "No rear passengers, no baggage."
+   }
+  }
+ },
+ "performance": {
+  "takeoff": {
+   "source": "AFM 5-8 Table 5: take-off distance, flaps retracted, hard surface runway",
+   "flaps": "0°",
+   "altitudesFt": [
+    0,
+    2500,
+    5000,
+    7500
+   ],
+   "standardTempC": [
+    15,
+    10,
+    5,
+    0
+   ],
+   "rows": [
+    {
+     "massKg": 750,
+     "liftoffIasKt": 50,
+     "headwindKt": [
+      0,
+      10,
+      20
+     ],
+     "distances": [
+      [
+       [
+        125,
+        224
+       ],
+       [
+        149,
+        264
+       ],
+       [
+        178,
+        314
+       ],
+       [
+        218,
+        390
+       ]
+      ],
+      [
+       [
+        84,
+        163
+       ],
+       [
+        101,
+        195
+       ],
+       [
+        122,
+        233
+       ],
+       [
+        152,
+        294
+       ]
+      ],
+      [
+       [
+        49,
+        110
+       ],
+       [
+        61,
+        133
+       ],
+       [
+        76,
+        163
+       ],
+       [
+        98,
+        209
+       ]
+      ]
+     ]
+    },
+    {
+     "massKg": 900,
+     "liftoffIasKt": 55,
+     "headwindKt": [
+      0,
+      10,
+      20
+     ],
+     "distances": [
+      [
+       [
+        189,
+        328
+       ],
+       [
+        226,
+        396
+       ],
+       [
+        271,
+        485
+       ],
+       [
+        334,
+        640
+       ]
+      ],
+      [
+       [
+        130,
+        245
+       ],
+       [
+        158,
+        300
+       ],
+       [
+        192,
+        372
+       ],
+       [
+        241,
+        500
+       ]
+      ],
+      [
+       [
+        82,
+        172
+       ],
+       [
+        102,
+        215
+       ],
+       [
+        126,
+        271
+       ],
+       [
+        163,
+        372
+       ]
+      ]
+     ]
+    },
+    {
+     "massKg": 1043,
+     "liftoffIasKt": 59,
+     "headwindKt": [
+      0,
+      10,
+      20
+     ],
+     "distances": [
+      [
+       [
+        263,
+        465
+       ],
+       [
+        317,
+        582
+       ],
+       [
+        383,
+        756
+       ],
+       [
+        477,
+        1175
+       ]
+      ],
+      [
+       [
+        187,
+        357
+       ],
+       [
+        229,
+        453
+       ],
+       [
+        280,
+        596
+       ],
+       [
+        354,
+        948
+       ]
+      ],
+      [
+       [
+        123,
+        259
+       ],
+       [
+        154,
+        335
+       ],
+       [
+        192,
+        451
+       ],
+       [
+        247,
+        739
+       ]
+      ]
+     ]
+    }
+   ],
+   "tempIncreasePer15C": 0.1,
+   "grassAddFractionOfTotal": 0.07,
+   "notes": [
+    "Increase the distance by 10% for each 15 °C above standard temperature for the altitude.",
+    "Dry grass: increase both distances by 7% of the total-to-clear-15-m figure."
+   ]
+  },
+  "landing": {
+   "source": "AFM 5-9 Table 6: landing distance, flaps 40°, power off, zero wind, hard surface runway",
+   "flaps": "40°",
+   "massKg": 1043,
+   "approachIasKt": 60,
+   "altitudesFt": [
+    0,
+    2500,
+    5000,
+    7500
+   ],
+   "standardTempC": [
+    15,
+    10,
+    5,
+    0
+   ],
+   "distances": [
+    [
+     158,
+     381
+    ],
+    [
+     170,
+     400
+    ],
+    [
+     184,
+     422
+    ],
+    [
+     200,
+     445
+    ]
+   ],
+   "headwindDecreasePer5Kt": 0.1,
+   "tempIncreasePer15C": 0.1,
+   "grassAddFractionOfTotal": 0.2,
+   "notes": [
+    "Decrease distances by 10% for each 5 kt headwind.",
+    "Increase the distance by 10% for each 15 °C above standard temperature.",
+    "Dry grass: increase both distances by 20% of the total-to-clear-15-m figure."
+   ]
+  },
+  "factors": {
+   "source": "",
+   "safetyFactorTakeoff": 1.33,
+   "safetyFactorLanding": 1.43,
+   "runwayCondition": {
+    "short dry grass": 1.2,
+    "short wet grass": 1.3,
+    "long dry grass": 1.3,
+    "long wet grass": 1.4,
+    "paved RWYCC 5": 1.15
+   },
+   "slopeFactorPer2Pct": 1.1,
+   "maxCrosswindKt": {
+    "takeoff": 20,
+    "landing": 15
+   },
+   "notes": [
+    "Short grass: up to 5 in; long grass: 5–10 in. Grass longer than 10 in, and runways with RWYCC 4 or less, are prohibited."
+   ]
+  },
+  "stallIasKt": {
+   "flapsUp": [
+    47,
+    48,
+    54,
+    66
+   ],
+   "flaps10": [
+    44,
+    45,
+    50,
+    62
+   ],
+   "flaps40": [
+    42,
+    43,
+    48,
+    59
+   ]
+  }
+ },
+ "equipment": {
+  "item10a": "S",
+  "item10b": "C",
+  "pbn": "",
+  "item18Extras": "",
+  "emergencyRadio": {
+   "uhf": false,
+   "vhf": false,
+   "elt": true
+  },
+  "survival": {
+   "polar": false,
+   "desert": false,
+   "maritime": false,
+   "jungle": false
+  },
+  "jackets": {
+   "present": false,
+   "light": false,
+   "fluorescein": false,
+   "uhf": false,
+   "vhf": false
+  },
+  "dinghies": null,
+  "remarks": ""
+ },
+ "compassCards": [
+  {
+   "name": "Magnetic compass",
+   "swung": "2026-02-05",
+   "expires": "2028-02-05",
+   "source": "",
+   "points": [
+    [
+     0,
+     2
+    ],
+    [
+     30,
+     31
+    ],
+    [
+     60,
+     62
+    ],
+    [
+     90,
+     92
+    ],
+    [
+     120,
+     121
+    ],
+    [
+     150,
+     148
+    ],
+    [
+     180,
+     181
+    ],
+    [
+     210,
+     211
+    ],
+    [
+     240,
+     239
+    ],
+    [
+     270,
+     268
+    ],
+    [
+     300,
+     298
+    ],
+    [
+     330,
+     329
+    ]
+   ]
+  }
+ ],
+ "notes": "",
+ "id": "fixture-sx-asv",
+ "created": 1763700000000,
+ "updated": 1763700000000
+}

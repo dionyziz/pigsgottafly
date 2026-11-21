@@ -1,0 +1,29 @@
+{
+  "id": "fixture-pilot",
+  "email": "pilot@example.com",
+  "name": "Fixture Pilot",
+  "picture": "",
+  "fullName": "FIXTURE PILOT",
+  "phone": "+30 210 0000000",
+  "dateOfBirth": "1985-04-12",
+  "weightKg": 80,
+  "idNumber": "AB123456",
+  "idType": "ID",
+  "nationality": "GREEK",
+  "relation": "",
+  "licenceNo": "EL.FCL.0000",
+  "homeAerodrome": "LGTT",
+  "defaultAircraftId": "fixture-sx-asv",
+  "settings": {
+    "taxiOutMin": 15,
+    "taxiInMin": 10,
+    "reserveMin": 45,
+    "finalReserveMin": 0,
+    "windModel": "best_match",
+    "enrouteAerodromeRadiusNm": 2,
+    "defaultAlternate": "LGTG",
+    "mapLayers": null
+  },
+  "created": 1763000000000,
+  "lastLogin": 1763720000000
+}

@@ -1,0 +1,108 @@
+# The native iPhone app (NATIVE.md). XcodeGen: `xcodegen` here writes PigsGottaFly.xcodeproj (not committed).
+name: PigsGottaFly
+options:
+  bundleIdPrefix: com.pigsgottafly
+  deploymentTarget:
+    iOS: '17.0'
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: F2UQTZ295F
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: '2.0.0'
+    CURRENT_PROJECT_VERSION: '1'
+    SWIFT_VERSION: '5.0'
+    TARGETED_DEVICE_FAMILY: '1,2'
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    exactVersion: 6.31.0
+
+targets:
+  PigsGottaFly:
+    type: application
+    platform: iOS
+    sources:
+      - path: PigsGottaFly
+        excludes:
+          - Fixtures
+      - path: PigsGottaFly/Fixtures
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: MapLibre
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pigsgottafly.app
+        PRODUCT_NAME: PigsGottaFly
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SUPPORTS_MACCATALYST: NO
+    info:
+      path: PigsGottaFly/Info.plist
+      properties:
+        CFBundleDisplayName: "Pig's Gotta Fly"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        NSLocationWhenInUseUsageDescription: Shows your aircraft on the map and your progress along the route.
+        UILaunchScreen:
+          UIColorName: ''
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CFBundleURLTypes:
+          - CFBundleURLName: com.pigsgottafly.app
+            CFBundleURLSchemes:
+              - pigsgottafly
+
+  PigsGottaFlyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - PigsGottaFlyTests
+    dependencies:
+      - target: PigsGottaFly
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pigsgottafly.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  PigsGottaFlyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - PigsGottaFlyUITests
+    dependencies:
+      - target: PigsGottaFly
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pigsgottafly.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  PigsGottaFly:
+    build:
+      targets:
+        PigsGottaFly: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PigsGottaFlyTests
+        - PigsGottaFlyUITests
+    archive:
+      config: Release

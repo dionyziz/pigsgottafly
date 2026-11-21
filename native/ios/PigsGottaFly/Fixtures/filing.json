@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "reason": null,
+  "addressees": [{ "address": "LGGGZFZX", "reasons": ["ATHINAI ACC (VFR)"] }],
+  "copyTo": [],
+  "filing": {
+    "provider": "autorouter",
+    "providerId": "fx-1",
+    "status": "filed",
+    "eobt": 1795336200000,
+    "fpl": "(FPL-SXASV-VG -C172/L-S/C -LGTT0830 -N0100VFR DCT KALAMO DCT KIMI DCT -LGSY0045 LGTG -DOF/261122)",
+    "addresses": ["LGGGZFZX"],
+    "message": "",
+    "filed": 1795284000000,
+    "updated": 1795284000000,
+    "polled": 1795284000000
+  },
+  "log": []
+}
