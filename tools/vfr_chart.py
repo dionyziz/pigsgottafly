@@ -129,7 +129,6 @@ def georef_by_points(tris, known, dpi=600):
     K = np.array([[k['lon'] * 60 * cosr, k['lat'] * 60] for k in known])
     T = np.array([[t[0], t[1]] for t in tris])
     smin, smax = dpi / 25.4 * 1852 / 700000 * 1000, dpi / 25.4 * 1852 / 180000 * 1000   # px per NM
-    # all pairs
     ti, tj = np.triu_indices(len(T), 1)
     tv = T[tj] - T[ti]
     tl = np.hypot(tv[:, 0], tv[:, 1])

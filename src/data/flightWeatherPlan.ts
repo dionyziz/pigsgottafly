@@ -16,7 +16,6 @@ export function metarRelevant(date: string, nowMs = Date.now()): boolean {
 }
 
 export interface WeatherStop {
-  /** Index of the route point. */
   pointIndex: number;
   aerodrome: RefAerodrome | null;
   /** Where its surface weather is sampled: the aerodrome, else the route point. */

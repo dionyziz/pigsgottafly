@@ -45,7 +45,6 @@ export function comboKey(s: ComboKeyState, key: string): ComboKeyResult {
 }
 
 export interface ComboboxProps<T> {
-  /** The text in the input. */
   text: string;
   onText: (s: string) => void;
   options: T[];

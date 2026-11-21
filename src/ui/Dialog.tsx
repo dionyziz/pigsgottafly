@@ -1,4 +1,3 @@
-// Modal dialog, its standard footer, and a confirmation dialog.
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 /** Modal dialog. Escape or a click on the backdrop closes it (unless `busy`). */

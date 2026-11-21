@@ -63,7 +63,6 @@ function loadScript(src: string): Promise<void> {
   return p;
 }
 
-/** Apple's logo for the Sign in with Apple button. */
 function AppleLogo() {
   return (
     <svg width="16" height="19" viewBox="0 0 17 20" aria-hidden="true" focusable="false" fill="currentColor">

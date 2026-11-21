@@ -1,4 +1,3 @@
-// ESLint (flat config): typescript-eslint with type information, React and its hooks rules, sorted imports.
 // Formatting is Prettier's (eslint-config-prettier turns the stylistic rules off).
 import js from '@eslint/js';
 import eslintReact from '@eslint-react/eslint-plugin';

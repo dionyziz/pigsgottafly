@@ -254,8 +254,6 @@ export function hazardWeatherFrom(
   }
 }
 
-// ---- the flight's hazards ---------------------------------------------------------------------------
-
 export interface RouteHazardsInput {
   hw: HazardWeather | null;
   navlog: NavlogResult | null;

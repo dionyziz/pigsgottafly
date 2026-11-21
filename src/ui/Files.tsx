@@ -14,7 +14,6 @@ export function FilePicker({
   /** e.g. 'application/pdf' or a list joined by commas. */
   accept?: string;
   onPick: (file: File) => void;
-  /** The button's content. */
   children: ReactNode;
   disabled?: boolean;
   /** Classes of the button (default 'sm'). */

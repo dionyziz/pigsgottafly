@@ -35,7 +35,6 @@ export interface DateFieldProps {
   invalid?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Classes of the <input>. */
   className?: string;
 }
 
@@ -97,7 +96,6 @@ export function DateField({
   });
   useEffect(() => syncDraft(), [value]);
 
-  // A click anywhere outside closes the calendar.
   useEffect(() => {
     if (!calendar) return;
     const away = (e: MouseEvent) => {
@@ -235,11 +233,6 @@ const HEAD: Record<View, [prev: string, next: string, page: number]> = {
   year: ['Previous years', 'Next years', 12 * YEARS],
 };
 
-/**
- * A month of days; the arrows move a day or a week, PageUp/PageDown a month, Enter picks, Escape
- * closes. The title opens a grid of years (PageUp/PageDown: twenty years), a year its twelve months,
- * a month its days; Escape goes back a level.
- */
 /** Places the fixed popover at its field: below it, or above it when only there it fits; within the window. */
 function place(anchor: HTMLElement, el: HTMLElement) {
   const GAP = 4,

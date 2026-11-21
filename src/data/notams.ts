@@ -1,7 +1,7 @@
 // NOTAM briefing on the client: GET /api/flights/:id/notams (the server fetches, decodes and
 // assesses relevance, see api/_lib/notams.ts) and pure helpers that turn a Notam into the texts
 // the editor panel, the map and the briefing export show, plus its map geometry (the areas its
-// text describes, else its Q-line circle). No DOM here; unit-tested in tests/unit/data/notams.test.ts.
+// text describes, else its Q-line circle).
 import type { Notam, NotamBriefing } from '../shared/briefing';
 import { fmtAltitude, fmtDateTimeMs } from '../shared/format';
 import { FIR_WIDE_NM, type NotamArea } from '../shared/notamAreas';

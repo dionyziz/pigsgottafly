@@ -196,7 +196,6 @@ function stitch(ways: LonLat[][], name: string): LonLat[] {
   return line;
 }
 
-/** The line oriented to start at `start`. */
 function from(line: LonLat[], start: LonLat, name: string): LonLat[] {
   if (same(line[0], start)) return line;
   if (same(line[line.length - 1], start)) return reversed(line);
@@ -207,7 +206,6 @@ function from(line: LonLat[], start: LonLat, name: string): LonLat[] {
 const M_LAT = 111_045,
   M_LON = M_LAT * Math.cos((40 * Math.PI) / 180);
 
-/** Douglas-Peucker with a tolerance in metres. */
 function simplify(p: LonLat[], tolM: number): LonLat[] {
   const keep = new Uint8Array(p.length);
   keep[0] = keep[p.length - 1] = 1;

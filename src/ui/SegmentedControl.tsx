@@ -1,6 +1,4 @@
-// Segmented control: one of a few options, side by side (the map's base map, a filter). One outer
-// border, even 1px dividers (the buttons overlap by their border), rounded only at the outer ends; the
-// pressed option's border is the accent on all four sides. Buttons with aria-pressed; ←/→ move between them.
+// One of a few options, side by side (the map's base map, a filter); ←/→ move between them.
 import type { KeyboardEvent } from 'react';
 
 export interface SegmentedOption<T extends string> {

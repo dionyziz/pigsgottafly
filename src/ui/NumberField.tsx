@@ -45,7 +45,6 @@ export interface NumberFieldProps {
   testId?: string;
   disabled?: boolean;
   autoFocus?: boolean;
-  /** Extra classes of the <input>. */
   className?: string;
   step?: number;
   style?: CSSProperties;

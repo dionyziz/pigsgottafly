@@ -2,15 +2,6 @@
 // /api/weather/grid, src/data/weatherGrid.ts), ported from the v2 js/weather.js: values interpolated
 // in height (geopotential) and time.
 //
-//   - sampleAt: wind (u/v interpolated) and temperature at altitude ft MSL and time.
-//   - sampleSurface / surfaceConditions: 2 m temperature, dewpoint, MSL pressure (≈ QNH), 10 m wind.
-//   - fetchRouteWeather: everything a flight needs (winds aloft at each leg midpoint, interpolated
-//     bilinearly between the four model grid nodes around it: blendLocations; surface conditions at
-//     the departure, stops and destination), with the source recorded (provider, model, model run,
-//     fetch time, coverage).
-//   - chooseSurface: METAR (src/data/weatherMetar.ts) when it is recent and close to the time of
-//     interest, otherwise the forecast.
-//
 // Directions are TRUE everywhere (Open-Meteo and METAR both report true north).
 import type { WindProvider, WindSample } from '../calc';
 import { qnhFromStationPressure } from '../calc/performance';
@@ -227,8 +218,6 @@ export function fmtSky(s: SurfaceSample | null): string {
   return (s.low || 0) + (s.mid || 0) + (s.high || 0) > 0 ? 'NSC' : 'SKC';
 }
 
-// ---- fetching -----------------------------------------------------------------------------------
-
 export const clearCache = () => clearGridCache();
 
 /** A WindProvider over per-leg midpoint data: perLeg[i] is the response for leg i's midpoint. */
@@ -238,8 +227,6 @@ export function windProviderFromLegs(perLeg: (OpenMeteoLocation | null)[]): Wind
     return loc && loc.hourly && isFinite(altFt) && isFinite(timeMs) ? sampleAt(loc.hourly, altFt, timeMs) : null;
   };
 }
-
-// ---- route weather --------------------------------------------------------------------------------
 
 export interface ForecastSource {
   provider: 'Open-Meteo';
@@ -291,7 +278,6 @@ const runLabel = (ms: number) => {
   return `${d.toISOString().slice(0, 10)} ${String(d.getUTCHours()).padStart(2, '0')}Z`;
 };
 
-/** One-line description of a forecast source for the UI and printouts. */
 export function describeSource(s: ForecastSource): string {
   const parts = [s.modelLabel];
   if (s.endpoint === 'historical') parts.push('archived forecast');
@@ -536,8 +522,6 @@ export function routeWeatherFrom(
   }
 }
 
-// ---- surface conditions -----------------------------------------------------------------------------
-
 export interface SurfaceConditions {
   source: 'metar' | 'forecast';
   /** For display: 'METAR LGAV 151320Z' or 'ECMWF IFS 0.25° forecast for 14:00Z'. */
@@ -556,7 +540,6 @@ export interface SurfaceConditions {
 
 const fin = (x: number) => (isFinite(x) ? x : null);
 
-/** Forecast surface conditions at a time from an Open-Meteo location. */
 export function surfaceConditions(loc: OpenMeteoLocation | null, timeMs: number): SurfaceConditions | null {
   const s = loc && loc.hourly ? sampleSurface(loc.hourly, timeMs, loc.elevation) : null;
   if (!s) return null;

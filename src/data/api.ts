@@ -125,7 +125,6 @@ interface AlsoChanges {
   remove?: EntityKey[];
 }
 
-/** List/get/create/update/remove of one entity; every mutation invalidates `key` (plus `also`). */
 /** A PUT that outlives the page (fetch keepalive): an editor's autosave when the tab closes. Best effort. */
 export function keepalivePut(path: string, body: unknown): void {
   try {

@@ -17,7 +17,7 @@ const GLYPHS = {
   /** Section caret (rotated by CSS when collapsed). */
   caret: { d: 'M4 6l4 4 4-4', sw: 1.6 },
   x: { d: 'M4.5 4.5l7 7M11.5 4.5l-7 7' },
-  /** The close/remove cross, filling the box (the old XIcon). */
+  /** The close/remove cross, filling the box. */
   close: { d: 'M2.4 2.4l11.2 11.2M13.6 2.4 2.4 13.6', sw: 2.56 },
   plus: { d: 'M8 3.5v9M3.5 8h9' },
   check: { d: 'M3.5 8.5l3 3 6-7' },

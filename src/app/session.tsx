@@ -21,5 +21,4 @@ export function useSession(): SessionValue {
   if (!v) throw new Error('useSession outside <AuthGate>');
   return v;
 }
-/** The current pilot. */
 export const usePilot = () => useSession().pilot;
