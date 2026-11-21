@@ -168,7 +168,6 @@ export interface PerfConditions {
   surface: string | null;
   /** Slope in the direction of travel, %: positive uphill. */
   slopePct: number;
-  /** Default DEFAULT_PERF_METHOD ('da'). */
   method?: PerfMethod;
 }
 
@@ -195,7 +194,6 @@ export interface PerfDistances {
   /** Method used; the altitude the table was entered at (PA or DA), ft. */
   method?: PerfMethod;
   tableAltFt?: number;
-  /** Notes such as 'tailwind above 10 kt', 'unknown surface'. */
   notes?: string[];
 }
 
@@ -244,7 +242,6 @@ function interpPair(xs: number[], pairs: DistancePair[], x: number): { v: Distan
   return { v: [g.y, t.y], extrapolated: g.extrapolated || t.extrapolated };
 }
 
-/** Condition factors (surface × slope). */
 function conditionFactors(tables: PerformanceTables, surface: string | null, adverseSlopePct: number, notes: string[]) {
   let s = 1;
   if (surface) {

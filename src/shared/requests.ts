@@ -69,7 +69,6 @@ export function activeRequests(
   return out;
 }
 
-/** Whether point `index` of the route may carry a request of this kind. */
 export function requestAllowed(route: RoutePoint[], index: number, kind: AerodromeRequest['kind']): boolean {
   const p = route[index];
   if (!p || p.kind !== 'aerodrome') return false;
@@ -91,7 +90,6 @@ export function requestRemark(r: AerodromeRequest, where: string, index: number,
   return `${index === 0 ? 'INITIALLY ' : ''}REQUEST TOUCH N GO AT ${where}`;
 }
 
-/** Every request's remark, in route order. */
 export function requestRemarks(
   route: RoutePoint[],
   options: Pick<FlightOptions, 'aerodromeRequests'> | null | undefined,

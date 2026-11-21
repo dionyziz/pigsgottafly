@@ -80,7 +80,7 @@ const isIdSegment = (seg: string): boolean =>
 export function scrubUrl(u: string | null | undefined): string | null {
   if (!u) return null;
   let p = String(u).trim();
-  p = p.replace(/^[a-z][\w+.-]*:\/\/[^/]*/i, ''); // origin
+  p = p.replace(/^[a-z][\w+.-]*:\/\/[^/]*/i, '');
   p = p.split(/[?#]/)[0] || '/';
   if (!p.startsWith('/')) p = '/' + p;
   const segs = p.split('/').map((s) => {

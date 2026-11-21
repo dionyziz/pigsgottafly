@@ -354,7 +354,6 @@ export interface GenDecHandling {
   autoPilotSends: boolean;
   /** The flight's override (FlightOptions.genDecHandled): true = a handler submits it, false = the PIC does; null = automatic. */
   override: boolean | null;
-  /** The decision: override, else automatic. */
   pilotSends: boolean;
 }
 
@@ -372,7 +371,6 @@ export interface HandlingEndInput {
 const aipRef = (source: string, icao: string | null) =>
   `AIP ${icao && source.startsWith(icao + ' ') ? source.slice(icao.length + 1) : source}`;
 
-/** Handling at one end. */
 export function handlingEnd(e: HandlingEndInput, opts: AdStatusOptions = {}): HandlingEnd {
   const ad = e.aerodrome;
   const base = { role: e.role, code: e.code, icao: ad?.icao ?? null };

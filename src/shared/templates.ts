@@ -14,7 +14,6 @@ export interface AircraftTypeTemplate {
   id: string;
   /** e.g. 'Reims/Cessna F172M' */
   label: string;
-  /** Builds a blank aircraft of this type. */
   build: () => AircraftInput;
 }
 

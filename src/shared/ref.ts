@@ -37,7 +37,6 @@ export interface RefAerodrome {
   freqs: RefFrequency[];
   /** Aerodrome traffic zones (circles). */
   zones: { radiusNm: number; lat: number; lon: number }[];
-  /** Water aerodrome. */
   water: boolean;
   /** AIP section, e.g. 'AD 2 LGAV', 'AD 1.6.5'. */
   source: string;
@@ -128,8 +127,10 @@ export interface RefAdHours {
   remarks: string;
 }
 
-/** One runway direction with its declared distances (AD 2.12/2.13). null = not published/known. */
-/** A runway direction; the detail fields (RefRunwayDetail) are present in data generated since migration 005. */
+/**
+ * One runway direction with its declared distances (AD 2.12/2.13). null = not published/known. The
+ * detail fields (RefRunwayDetail) are present in data generated since migration 005.
+ */
 export interface RefRunway extends Partial<RefRunwayDetail> {
   aerodromeId: string;
   /** This direction, e.g. '03', '26L'. */

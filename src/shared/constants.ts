@@ -148,7 +148,6 @@ export const EMPTY_SUMMARY: FlightSummary = {
   fuelL: null,
 };
 
-/** A complete FlightDoc with every field at its empty default. */
 export function emptyFlightDoc(date: string): FlightDoc {
   return {
     title: '',
@@ -183,7 +182,6 @@ export function uid(n = 8): string {
   return s;
 }
 
-/** Automatic flight title: the flight's date (ISO), else 'Untitled flight'. */
 export function autoTitle(f: { date?: string | null }): string {
   return f.date || 'Untitled flight';
 }

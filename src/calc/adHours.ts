@@ -56,7 +56,6 @@ export function normalizeAipText(s: string): string {
 
 const DAY_MS = 86400e3;
 const pad2 = (n: number) => String(n).padStart(2, '0');
-/** 'YYYY-MM-DD' of an instant (UTC). */
 /** Last Sunday of a month (0-based month), as a UTC day number (ms at 00:00). */
 function lastSunday(year: number, month: number): number {
   const last = Date.UTC(year, month + 1, 0);
@@ -261,7 +260,6 @@ function clockOf(
 function tokenize(text: string): Tok[] | null {
   let s = normalizeAipText(text).toUpperCase();
   const out: Tok[] = [];
-  // date-range seasons first ('01 MAY - 31 OCT', 'FROM APRIL TO OCTOBER', 'APR-OCT')
   while (s.length) {
     s = s.replace(/^\s+/, '');
     if (!s) break;
@@ -737,7 +735,6 @@ export function parseHours(text: string, ctx: HoursContext, remarks?: string | n
   notes.push(...noteLines);
   let r = chosen.r;
   const core = chosen.v.core.toUpperCase();
-  // footnotes
   if (chosen.v.footnote && /^HR$/.test(core)) {
     const def = footnote(remarks, 'HR');
     r = def ? footnoteRules(def, ctx) : null;
@@ -918,7 +915,6 @@ const WHY: Record<string, string> = {
   OR: 'on request',
 };
 
-/** The spec's status at an instant. */
 export function hoursAt(spec: HoursSpec, ms: number, ctx: HoursEvalCtx): HoursAt {
   if (spec.partial) return { status: 'unknown', why: 'see the AIP text' };
   const day = isoDay(ms);

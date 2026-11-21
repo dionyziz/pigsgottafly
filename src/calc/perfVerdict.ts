@@ -20,7 +20,6 @@ export interface PerfVerdictInput {
   massKg: number | null;
   perf: AerodromePerf | null;
   massBalance: Pick<MassBalance, 'mtowKg' | 'mlwKg'> | null;
-  /** The route end is an aerodrome. */
   hasAerodrome: boolean;
 }
 
@@ -38,7 +37,6 @@ export interface PerfVerdictResult {
   /** e.g. 'Take-off mass above MTOW', 'Outside the AFM table'. */
   text: string;
   overMass: PerfOverMass | null;
-  /** The distances are extrapolated beyond the AFM table. */
   extrapolated: boolean;
 }
 

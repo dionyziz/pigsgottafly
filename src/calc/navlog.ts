@@ -123,7 +123,6 @@ export interface NavlogLeg extends ComputedLeg {
   tempC: number;
   /** True when no forecast was available and no override given (calm wind assumed). */
   windMissing: boolean;
-  /** Where the wind came from. */
   windSource: 'forecast' | 'override' | 'none';
   /** Magnetic course, rounded, as on the map label (1..360). */
   mc: number;
@@ -188,9 +187,6 @@ export function navlogAircraft(
 const PASSES = 4;
 const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
 
-/**
- * Computes the whole navlog. Pure and synchronous.
- */
 export function computeNavlog(input: NavlogInput): NavlogResult {
   const { legs, aircraft: ac } = input;
   const n = legs.length;
