@@ -10,7 +10,7 @@ import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/en
 import { clearAsyncCache } from '../data/useAsync';
 import type { Pilot, SessionResponse } from '../shared';
 import { Loading } from '../ui';
-import { APP_LOGIN_PATH, handBackToApp } from './native';
+import { APP_LOGIN_PATH, handBackToApp } from './appLogin';
 import { SessionContext, type SessionValue } from './session';
 import { SignIn } from './SignIn';
 

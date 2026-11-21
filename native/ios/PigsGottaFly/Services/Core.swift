@@ -140,9 +140,10 @@ final class Core: @unchecked Sendable {
         queue.sync { context.evaluateScript("__pgfGet('stub')")?.toString() == "true" }
     }
 
+    /// The names of PGF.symbolNames() ([{ name, size, colors, … }]).
     func symbolNames() throws -> [String] {
         let j = try JSON.parse(try call("symbolNames", json: nil))
-        return (j.array ?? []).compactMap(\.string)
+        return (j.array ?? []).compactMap { $0["name"]?.string ?? $0.string }
     }
 
     /// The MapLibre style JSON (text). `vector`: OpenFreeMap's style JSON text, or nil.
@@ -150,22 +151,48 @@ final class Core: @unchecked Sendable {
         try call("chartStyle", fields: ["base": JSON.string(base).text, "vector": vector ?? "null"])
     }
 
-    /// { sourceId: FeatureCollection }
-    func chartData(ref: String, flight: String, notams: String?, layers: String?) throws -> JSON {
+    /// { sourceId: FeatureCollection }. `waypoints`: GET /api/waypoints (the pilot's saved points).
+    func chartData(ref: String, flight: String, notams: String?, layers: String?, waypoints: String? = nil) throws
+        -> JSON
+    {
         try callJSON(
-            "chartData", fields: ["ref": ref, "flight": flight, "notams": notams ?? "null", "layers": layers ?? "null"])
+            "chartData",
+            fields: [
+                "ref": ref, "flight": flight, "notams": notams ?? "null", "layers": layers ?? "null",
+                "waypoints": waypoints ?? "null",
+            ])
     }
 
-    func weatherRequests(flight: String) throws -> [String] {
-        (try callJSON("weatherRequests", fields: ["flight": flight]).array ?? []).compactMap(\.string)
+    /// The hangar's type templates (offered when the pilot has no aircraft).
+    func aircraftTemplates() throws -> [AircraftTemplate] {
+        (try JSON.parse(try call("aircraftTemplates", json: nil)).array ?? []).compactMap { t in
+            guard let id = t["id"]?.string, let label = t["label"]?.string else { return nil }
+            return AircraftTemplate(id: id, label: label, description: t["description"]?.string ?? "")
+        }
     }
 
-    func computeFlight(flight: String, aircraft: String?, pilot: String?, ref: String, weather: String) throws -> JSON {
+    /// The body of POST /api/aircraft for a template and a registration (JSON text).
+    func aircraftFromTemplate(id: String, registration: String) throws -> String {
+        try call(
+            "aircraftFromTemplate",
+            fields: ["id": JSON.string(id).text, "registration": JSON.string(registration).text])
+    }
+
+    /// `ref`: GET /api/ref/bundle (nil: the last one given).
+    func weatherRequests(flight: String, ref: String? = nil) throws -> [String] {
+        (try callJSON("weatherRequests", fields: ["flight": flight, "ref": ref ?? "null"]).array ?? []).compactMap(
+            \.string)
+    }
+
+    /// `notams`: the NOTAM briefing (GET /api/flights/:id/notams), for the aerodrome hours and the NOTAMs row.
+    func computeFlight(
+        flight: String, aircraft: String?, pilot: String?, ref: String, weather: String, notams: String? = nil
+    ) throws -> JSON {
         try callJSON(
             "computeFlight",
             fields: [
                 "flight": flight, "aircraft": aircraft ?? "null", "pilot": pilot ?? "null", "ref": ref,
-                "weather": weather,
+                "weather": weather, "notams": notams ?? "null",
             ])
     }
 

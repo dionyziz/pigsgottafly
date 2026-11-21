@@ -1,0 +1,1 @@
+VFR,moving map,GPS,navlog,pilot,aviation,Greece,METAR,NOTAM,flight plan,offline,PPL,Cessna,aeroclub

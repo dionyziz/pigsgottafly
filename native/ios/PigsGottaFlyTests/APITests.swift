@@ -5,14 +5,15 @@ import XCTest
 final class APITests: XCTestCase {
     func testDecodesTheFlightList() throws {
         let list = try JSONDecoder().decode([FlightListItem].self, from: try Fixtures.data("flights.json"))
-        XCTAssertEqual(list.count, 2)
+        XCTAssertEqual(list.count, 3)
         XCTAssertEqual(list[0].id, "fixture-lgtt-lgsy")
         XCTAssertEqual(list[0].title, "LGTT → LGSY")
         XCTAssertEqual(list[0].filingStatus, "filed")
         XCTAssertNil(list[0].sharedBy)
-        XCTAssertEqual(list[1].sharedBy?.name, "Another Pilot")
-        XCTAssertEqual(list[1].role, "view")
-        XCTAssertNil(list[1].filingStatus)
+        XCTAssertEqual(list[1].title, "LGTT → LGSK")
+        XCTAssertEqual(list[2].sharedBy?.name, "Another Pilot")
+        XCTAssertEqual(list[2].role, "view")
+        XCTAssertNil(list[2].filingStatus)
     }
 
     func testDecodesSessionMetarNotamsAndFiling() throws {
@@ -125,7 +126,7 @@ final class APITests: XCTestCase {
     func testFixtureTransportAnswersLikeTheServer() async throws {
         let api = API(transport: FixtureTransport.bundled()!)
         let list = try api.decode([FlightListItem].self, try await api.flights())
-        XCTAssertEqual(list.count, 2)
+        XCTAssertEqual(list.count, 3)
         let f = try JSON.parse(try await api.flight("fixture-lgtt-lgsy"))
         XCTAssertEqual(f["version"]?.int, 7)
         let r = try await api.updateFlight("fixture-lgtt-lgsy", doc: FlightModel.docOf(f), version: 7)

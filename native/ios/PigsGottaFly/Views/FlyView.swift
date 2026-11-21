@@ -38,6 +38,7 @@ struct FlyView: View {
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             Orientation.allow(.allButUpsideDown)
+            Orientation.applyLaunchArgument()
             location.start()
         }
         .onDisappear {

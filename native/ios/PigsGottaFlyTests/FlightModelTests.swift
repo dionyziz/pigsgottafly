@@ -46,6 +46,7 @@ final class FlightModelTests: XCTestCase {
         server["title"] = "Renamed elsewhere"
         let serverCopy = try server.data()
         let baseCopy = try base.data()
+        let aircraft = try Fixtures.data("aircraft.json")
         let fake = FakeTransport { req in
             if req.httpMethod == "PUT" {
                 let body = try JSON.parse(req.httpBody!)
@@ -53,6 +54,7 @@ final class FlightModelTests: XCTestCase {
                 return (409, serverCopy, [:])
             }
             if req.url!.path == "/api/flights/fixture-lgtt-lgsy" { return (200, baseCopy, [:]) }
+            if req.url!.path.hasPrefix("/api/aircraft/") { return (200, aircraft, [:]) }
             return (404, Data(), [:])
         }
         let store = temporaryStore()

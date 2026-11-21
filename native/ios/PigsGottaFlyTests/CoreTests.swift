@@ -46,8 +46,24 @@ final class CoreTests: XCTestCase {
         XCTAssertGreaterThan(data["aerodromes"]?["features"]?.array?.count ?? 0, 0)
     }
 
+    func testChartDataDrawsTheSavedWaypoints() throws {
+        let data = try core.chartData(
+            ref: ref, flight: flight, notams: nil, layers: nil, waypoints: try Fixtures.text("waypoints.json"))
+        XCTAssertEqual(data["waypoints"]?["features"]?.array?.count, 1)
+    }
+
+    func testTheHangarsTemplateBuildsTheFirstAircraft() throws {
+        let templates = try core.aircraftTemplates()
+        XCTAssertEqual(templates.first?.id, "reims-f172m")
+        XCTAssertEqual(templates.first?.label, "Reims/Cessna F172M")
+        let a = try JSON.parse(try core.aircraftFromTemplate(id: "reims-f172m", registration: " sx-abc "))
+        XCTAssertEqual(a["registration"]?.string, "SX-ABC")
+        XCTAssertEqual(a["icaoType"]?.string, "C172")
+        XCTAssertGreaterThan(a["massBalance"]?["stations"]?.array?.count ?? 0, 2)
+    }
+
     func testWeatherRequests() throws {
-        let paths = try core.weatherRequests(flight: flight)
+        let paths = try core.weatherRequests(flight: flight, ref: ref)
         XCTAssertTrue(paths.contains { $0.contains("weather/metar") && $0.contains("LGSY") })
     }
 
@@ -111,9 +127,10 @@ final class CoreTests: XCTestCase {
     func testCallsFromManyThreads() async throws {
         let core = self.core!
         let flight = self.flight!
+        let ref = self.ref!
         try await withThrowingTaskGroup(of: Int.self) { group in
             for _ in 0..<8 {
-                group.addTask { try core.weatherRequests(flight: flight).count }
+                group.addTask { try core.weatherRequests(flight: flight, ref: ref).count }
             }
             for try await n in group { XCTAssertGreaterThan(n, 0) }
         }

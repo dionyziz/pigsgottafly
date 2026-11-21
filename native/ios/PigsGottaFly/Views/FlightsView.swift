@@ -4,6 +4,8 @@ struct FlightsView: View {
     @EnvironmentObject private var app: AppModel
     @Binding var selection: String?
     @Binding var showAccount: Bool
+    /// `-newFlight [ICAO]` opens New flight at launch, with that destination (screenshots).
+    @State private var showNewFlight = ProcessInfo.processInfo.arguments.contains("-newFlight")
 
     var body: some View {
         List(selection: $selection) {
@@ -26,14 +28,29 @@ struct FlightsView: View {
                 } else if let e = app.flightsError {
                     ContentUnavailableView("No flights", systemImage: "wifi.slash", description: Text(e))
                 } else {
-                    ContentUnavailableView(
-                        "No flights yet", systemImage: "airplane",
-                        description: Text("Plan a flight on pigsgottafly.com and it shows here."))
+                    ContentUnavailableView {
+                        Label("No flights yet", systemImage: "airplane")
+                    } description: {
+                        Text("Start one here, or plan it on pigsgottafly.com with the same account.")
+                    } actions: {
+                        Button("New flight") { showNewFlight = true }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("new-flight-empty")
+                    }
                 }
             }
         }
         .navigationTitle("Flights")
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showNewFlight = true
+                } label: {
+                    Image(systemName: "plus").imageScale(.large)
+                }
+                .accessibilityLabel("New flight")
+                .accessibilityIdentifier("new-flight")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showAccount = true
@@ -43,6 +60,9 @@ struct FlightsView: View {
                 .accessibilityLabel("Account")
                 .accessibilityIdentifier("account")
             }
+        }
+        .sheet(isPresented: $showNewFlight) {
+            NewFlightView(destination: LaunchArgs.value("-newFlight")) { id in selection = id }
         }
         .refreshable { await app.loadFlights() }
         .task { await app.loadFlights() }

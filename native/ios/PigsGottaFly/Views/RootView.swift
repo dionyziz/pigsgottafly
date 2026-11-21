@@ -34,10 +34,20 @@ struct MainView: View {
                 FlightView(id: id, app: app).id(id)
             } else {
                 ContentUnavailableView(
-                    "Choose a flight", systemImage: "airplane", description: Text("Plan flights on pigsgottafly.com."))
+                    "Choose a flight", systemImage: "airplane",
+                    description: Text("Or start one with New flight. Full planning is on pigsgottafly.com."))
             }
         }
         .sheet(isPresented: $showAccount) { AccountView() }
+        .fullScreenCover(isPresented: welcome) {
+            NavigationStack { ProfileView(welcome: true) }
+        }
+        .task { await app.loadPilot() }
+    }
+
+    /// A new pilot's profile is asked for first (name, phone, home aerodrome), as on the website.
+    private var welcome: Binding<Bool> {
+        Binding(get: { app.needsProfile }, set: { _ in })
     }
 }
 

@@ -8,19 +8,27 @@ struct AccountView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let p = session.pilot {
+                if let email = app.pilot?.email ?? session.pilot?.email {
                     Section("Signed in") {
-                        Text(p.fullName.flatMap { $0.isEmpty ? nil : $0 } ?? p.name).font(.headline)
-                        Text(p.email).foregroundStyle(.secondary)
+                        Text(displayName).font(.headline)
+                        Text(email).foregroundStyle(.secondary)
                     }
                 }
                 Section {
+                    NavigationLink {
+                        ProfileView(welcome: false)
+                    } label: {
+                        Label("Profile", systemImage: "person.text.rectangle")
+                    }
+                    .accessibilityIdentifier("profile")
                     Link(destination: API.site.appendingPathComponent("profile")) {
-                        Label("Profile on the website", systemImage: "person.text.rectangle")
+                        Label("Settings on the website", systemImage: "safari")
                     }
                     .frame(minHeight: 44)
                 } footer: {
-                    Text("Your details for the forms, your settings, and deleting the account are on the website.")
+                    Text(
+                        "Your name, phone and home aerodrome. Your other details for the forms, the hangar and your settings are on pigsgottafly.com."
+                    )
                 }
                 Section {
                     Button(role: .destructive) {
@@ -32,6 +40,12 @@ struct AccountView: View {
                         Text("Sign out").frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .accessibilityIdentifier("sign-out")
+                    NavigationLink {
+                        DeleteAccountView { dismiss() }
+                    } label: {
+                        Text("Delete account").foregroundStyle(.red)
+                    }
+                    .accessibilityIdentifier("delete-account")
                 }
                 Section("About") {
                     ValueRow(label: "App", value: appVersion)
@@ -44,6 +58,13 @@ struct AccountView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
+        .task { await app.loadPilot() }
+    }
+
+    private var displayName: String {
+        if let n = app.pilot?.fullName, !n.isEmpty { return n }
+        if let n = session.pilot?.fullName, !n.isEmpty { return n }
+        return app.pilot?.name ?? session.pilot?.name ?? ""
     }
 
     private var appVersion: String {

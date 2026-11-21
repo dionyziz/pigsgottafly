@@ -48,8 +48,9 @@ struct FlightListItem: Codable, Equatable, Identifiable {
     var sharedBy: SharedBy?
     var role: String?
 
+    /// The flight's title; an untitled flight (the server names it after its date) by its route.
     var title: String {
-        if !summary.title.isEmpty { return summary.title }
+        if !summary.title.isEmpty, summary.title != summary.date, summary.title != date { return summary.title }
         if !summary.from.isEmpty || !summary.to.isEmpty { return "\(summary.from) → \(summary.to)" }
         return "Untitled flight"
     }

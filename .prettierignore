@@ -11,19 +11,12 @@ tests/e2e/artifacts/
 tests/fixtures/
 /public/
 server/pgdata/
-# iOS: Xcode's build output and the web app copied into the app (npm run ios:sync)
-/ios/build/
-/ios/App/App/public/
-/ios/App/CapApp-SPM/
 # Native app: Xcode's build output, the generated core.js and the API fixtures (as the server answers)
 /native/ios/build/
 /native/ios/*.xcodeproj/
 /native/ios/PigsGottaFly/Resources/core.js
 /native/ios/PigsGottaFly/Fixtures/
 /native/ios/PigsGottaFly/Assets.xcassets/
-# written by Xcode and by cap sync in their own style
-/ios/App/App/Assets.xcassets/
-/ios/App/App/capacitor.config.json
 # agents' git worktrees
 /.claude/
 # Applied migrations are frozen (byte for byte)

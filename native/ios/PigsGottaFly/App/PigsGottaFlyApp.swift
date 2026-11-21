@@ -38,4 +38,12 @@ enum Orientation {
             if mask == .portrait { scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) }
         }
     }
+
+    /// `-orientation landscape` (screenshots): Fly turns to landscape when it shows.
+    static func applyLaunchArgument() {
+        guard LaunchArgs.value("-orientation") == "landscape" else { return }
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+        }
+    }
 }

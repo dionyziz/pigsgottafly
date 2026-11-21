@@ -1,0 +1,28 @@
+Pig's Gotta Fly is the companion in the cockpit for VFR flights in Greece (the Athinai FIR). Plan the flight at your desk on pigsgottafly.com; on the iPhone and the iPad, fly it, brief it on the morning of the flight and make the last changes. The same account works on both.
+
+FLY
+- A full-screen moving map with the VFR chart: aerodromes, VFR reporting points and routes with their altitudes, controlled airspace, restricted and danger areas, and the NOTAM areas of the day.
+- Your route with the active leg, and your aircraft from the GPS with its track.
+- At the top: the next waypoint, its bearing and distance, the time to it and the ETA, the ground speed, and the leg's planned altitude and heading.
+- At the bottom: the frequency to be on now and the next one.
+- Track up or north up, re-centre, a dimmed night mode, portrait or landscape. The screen stays on.
+- Works with no connection: the flight, the weather, the NOTAMs and the map of the route are saved when you open the flight.
+
+BRIEF
+- The "Ready to fly" checklist: route, aircraft, fuel, weight and balance, performance, weather, NOTAMs, flight plan and forms.
+- METAR and TAF for the aerodromes of the route.
+- The NOTAMs that concern the departure, the destination and the airspace on the way, at your altitudes.
+- Aerodrome hours and handling for the times of the flight, sunset, and the flight plan's status.
+
+NAVLOG
+- Every leg with its altitude, magnetic heading, distance, time, ETA and fuel, worked out with the forecast winds aloft.
+- Totals: distance, time en route, trip fuel, take-off and landing times.
+- Change the date, the block-off time or a leg's altitude, add a VFR reporting point, an aerodrome or one of your waypoints to the route, or take a point out. The navlog follows at once.
+
+NEW FLIGHTS
+- Start a flight on the phone: departure, destination, date, block-off time and aircraft. Altitudes are proposed from the charted VFR routes and the terrain.
+
+ON THE WEBSITE
+Full planning, filing and the forms are on pigsgottafly.com, a tap away from every flight: drawing the route on the map, passengers and seats, the hangar with weighing reports and performance tables, the ICAO flight plan, Form 731 and the General Declaration, and every document ready to print.
+
+Sign in with Apple or Google. Your flights, aircraft and passengers are the same on the website, the iPhone and the iPad.

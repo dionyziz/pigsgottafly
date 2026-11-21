@@ -19,6 +19,12 @@ enum OfflineMaps {
         try? JSONDecoder().decode(Context.self, from: pack.context)
     }
 
+    /// Every flight's pack (sign-out, account deleted).
+    static func removeAll() {
+        let storage = MLNOfflineStorage.shared
+        for p in storage.packs ?? [] where context(of: p) != nil { storage.removePack(p, withCompletionHandler: nil) }
+    }
+
     static func ensurePack(
         flightId: String, version: Int, styleURL: URL,
         bounds b: (minLat: Double, minLon: Double, maxLat: Double, maxLon: Double)

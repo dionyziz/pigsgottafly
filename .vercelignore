@@ -9,4 +9,4 @@ node_modules/
 .env*
 *.md
 PLAN*.md
-ios/
+/native/

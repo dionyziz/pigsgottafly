@@ -7,10 +7,22 @@
       "blockOff": "08:30",
       "aircraft": "SX-ASV",
       "route": [
-        [38.109, 23.783],
-        [38.292, 23.864],
-        [38.646, 24.155],
-        [38.968, 24.488]
+        [
+          38.109,
+          23.783
+        ],
+        [
+          38.292,
+          23.864
+        ],
+        [
+          38.646,
+          24.155
+        ],
+        [
+          38.968,
+          24.488
+        ]
       ],
       "from": "LGTT",
       "to": "LGSY",
@@ -18,7 +30,12 @@
       "eteMin": 45,
       "fuelL": 27
     },
-    "points": ["LGTT", "KALAMO", "KIMI", "LGSY"],
+    "points": [
+      "LGTT",
+      "KALAMO",
+      "KIMI",
+      "LGSY"
+    ],
     "passengers": [],
     "date": "2026-11-22",
     "aircraftId": "fixture-sx-asv",
@@ -30,6 +47,48 @@
     "filingStatus": "filed"
   },
   {
+    "id": "fixture-lgtt-lgsk",
+    "summary": {
+      "title": "LGTT → LGSK",
+      "date": "2026-11-28",
+      "blockOff": "07:45",
+      "aircraft": "SX-ASV",
+      "route": [
+        [
+          38.109,
+          23.783
+        ],
+        [
+          38.292,
+          23.864
+        ],
+        [
+          39.178,
+          23.504
+        ]
+      ],
+      "from": "LGTT",
+      "to": "LGSK",
+      "distNm": 66,
+      "eteMin": 47,
+      "fuelL": 29
+    },
+    "points": [
+      "LGTT",
+      "KALAMO",
+      "LGSK"
+    ],
+    "passengers": [],
+    "date": "2026-11-28",
+    "aircraftId": "fixture-sx-asv",
+    "version": 3,
+    "created": 1763650000000,
+    "updated": 1763660000000,
+    "opened": 1763660000000,
+    "deleted": false,
+    "filingStatus": null
+  },
+  {
     "id": "fixture-shared",
     "summary": {
       "title": "Megara circuits",
@@ -37,8 +96,14 @@
       "blockOff": "",
       "aircraft": "SX-ASG",
       "route": [
-        [37.981, 23.366],
-        [37.981, 23.366]
+        [
+          37.981,
+          23.366
+        ],
+        [
+          37.981,
+          23.366
+        ]
       ],
       "from": "LGMG",
       "to": "LGMG",
@@ -46,8 +111,13 @@
       "eteMin": 20,
       "fuelL": 12
     },
-    "points": ["LGMG", "LGMG"],
-    "passengers": ["A. Passenger"],
+    "points": [
+      "LGMG",
+      "LGMG"
+    ],
+    "passengers": [
+      "A. Passenger"
+    ],
     "date": "2026-11-29",
     "aircraftId": null,
     "version": 2,
@@ -56,7 +126,11 @@
     "opened": 1763610000000,
     "deleted": false,
     "filingStatus": null,
-    "sharedBy": { "pilotId": "p-other", "name": "Another Pilot", "email": "other@example.com" },
+    "sharedBy": {
+      "pilotId": "p-other",
+      "name": "Another Pilot",
+      "email": "other@example.com"
+    },
     "role": "view"
   }
 ]

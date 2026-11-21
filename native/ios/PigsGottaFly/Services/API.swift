@@ -142,6 +142,33 @@ final class API: Sendable {
     func forms(_ id: String) async throws -> Data { try await get("flights/\(escape(id))/forms") }
     func declarations(_ id: String) async throws -> Data { try await get("flights/\(escape(id))/declarations") }
 
+    /// POST /flights (FlightCreateRequest: a partial flight; the server fills in the profile's
+    /// defaults: taxi times, wind model, PIC on the manifest) → 201 the new Flight.
+    func createFlight(_ doc: JSON) async throws -> Data {
+        try await request("POST", "flights", body: try doc.data())
+    }
+
+    /// GET /aircraft: the pilot's own aircraft and those shared with them.
+    func aircraftList() async throws -> Data { try await get("aircraft") }
+
+    /// POST /aircraft (AircraftInput, as PGF.aircraftFromTemplate builds it) → 201 the aircraft.
+    func createAircraft(_ input: Data) async throws -> Data {
+        try await request("POST", "aircraft", body: input)
+    }
+
+    /// GET /waypoints: the pilot's saved points.
+    func waypoints() async throws -> Data { try await get("waypoints") }
+
+    /// PUT /me (PilotUpdate: only the fields sent change) → the pilot.
+    func updateMe(_ patch: JSON) async throws -> Data {
+        try await request("PUT", "me", body: try patch.data())
+    }
+
+    /// DELETE /me { confirm: the account's e-mail }: the account and everything it owns.
+    func deleteAccount(confirm: String) async throws {
+        _ = try await request("DELETE", "me", body: try JSON.object(["confirm": .string(confirm)]).data())
+    }
+
     private func escape(_ s: String) -> String {
         s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/")))
             ?? s

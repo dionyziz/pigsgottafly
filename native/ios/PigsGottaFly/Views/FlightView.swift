@@ -9,6 +9,7 @@ struct FlightView: View {
     @StateObject private var model: FlightModel
     /// `-tab brief` opens on that tab (screenshots).
     @State private var tab: Tab = LaunchArgs.value("-tab").flatMap(Tab.init(rawValue:)) ?? .fly
+    @State private var showWebsite = false
 
     init(id: String, app: AppModel) {
         _model = StateObject(wrappedValue: FlightModel(id: id, app: app))
@@ -30,12 +31,25 @@ struct FlightView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showWebsite = true
+                } label: {
+                    Image(systemName: "safari")
+                }
+                .accessibilityLabel("Open in the website's editor")
+                .accessibilityIdentifier("open-website")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 if model.loading || model.saving {
                     ProgressView().accessibilityLabel(model.saving ? "Saving" : "Loading")
                 } else if model.offline {
                     Image(systemName: "wifi.slash").accessibilityLabel("Offline: showing the saved copy")
                 }
             }
+        }
+        .sheet(isPresented: $showWebsite, onDismiss: { Task { await model.refresh() } }) {
+            // the full editor (route drawing, manifest, W&B, filing and forms) on pigsgottafly.com
+            SafariView(url: API.site.appendingPathComponent("flights/\(model.id)")).ignoresSafeArea()
         }
         .task { await model.open() }
         .alert(
