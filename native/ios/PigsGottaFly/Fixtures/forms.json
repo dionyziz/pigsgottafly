@@ -1,0 +1,17 @@
+{
+  "form731": {
+    "content": { "people": [] },
+    "signatures": [],
+    "allSigned": true,
+    "submission": { "sentAt": 1795284000000, "to": "atc@example.com" }
+  },
+  "gendec": {
+    "content": {},
+    "submission": null,
+    "pilotSends": false,
+    "handling": {},
+    "picSignature": { "name": "FIXTURE PILOT", "signedAt": 1795284000000 }
+  },
+  "emailEnabled": true,
+  "emailReason": null
+}
