@@ -18,6 +18,12 @@ export default defineConfig(
     'public/',
     'server/pgdata/',
     'tests/e2e/artifacts/',
+    // iOS: Xcode's build output and the web app copied into the app (npm run ios:sync)
+    'ios/build/',
+    'ios/App/App/public/',
+    'ios/App/CapApp-SPM/',
+    // agents' git worktrees
+    '.claude/',
     // applied migrations are frozen
     'api/_lib/migrations/',
     // the browser-side weather code before the proxy, kept verbatim for the equivalence test

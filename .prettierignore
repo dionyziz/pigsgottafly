@@ -11,6 +11,15 @@ tests/e2e/artifacts/
 tests/fixtures/
 /public/
 server/pgdata/
+# iOS: Xcode's build output and the web app copied into the app (npm run ios:sync)
+/ios/build/
+/ios/App/App/public/
+/ios/App/CapApp-SPM/
+# written by Xcode and by cap sync in their own style
+/ios/App/App/Assets.xcassets/
+/ios/App/App/capacitor.config.json
+# agents' git worktrees
+/.claude/
 # Applied migrations are frozen (byte for byte)
 api/_lib/migrations/
 # Hand-aligned one-rule-per-line CSS and prose

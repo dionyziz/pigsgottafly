@@ -77,8 +77,8 @@ export const routes: Route[] = [
           relevantCount: 0,
           hiddenCount: 0,
           message: autorouterDenied
-            ? 'NOTAMs are not available for this account: the server’s autorouter NOTAM source is limited to its listed pilots. Get the NOTAM briefing from AIS before flight.'
-            : 'NOTAMs are not available: the autorouter NOTAM source is not configured on this server. Get the NOTAM briefing from AIS before flight.',
+            ? 'NOTAMs are not available for this account. Get the NOTAM briefing from AIS before flight.'
+            : 'NOTAMs are not available on this server. Get the NOTAM briefing from AIS before flight.',
         };
       }
       let notams: Notam[];

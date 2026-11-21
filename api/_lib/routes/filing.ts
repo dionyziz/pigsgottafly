@@ -65,13 +65,12 @@ export function filingAvailability(
   if (denied)
     return {
       enabled: false,
-      reason:
-        'Filing is not available for this account: the server’s autorouter account is limited to its listed pilots.',
+      reason: 'Filing is not available for this account.',
     };
   if (!ar)
     return {
       enabled: false,
-      reason: 'Filing is not available: the autorouter account is not configured on this server.',
+      reason: 'Filing is not available on this server.',
     };
   if (!ar.filingEnabled)
     return {
@@ -148,10 +147,15 @@ async function sendCopy(
   flightId: string,
   kind: CopyKind,
   plan: { providerId: string; fpl: string; addresses: string[] },
+  /** The copies the pilot left ticked (out of copyTo); undefined = all of them. */
+  chosen?: string[],
 ): Promise<void> {
   const ctx = await flightContext(db, pilot.id, flightId);
   const pilotEmail = String(pilot.email || '').trim();
-  const others = (await copyTo(db, pilot.id, flightId, ctx)).map((r) => r.email);
+  const wanted = chosen && new Set(chosen.map((e) => e.toLowerCase()));
+  const others = (await copyTo(db, pilot.id, flightId, ctx))
+    .map((r) => r.email)
+    .filter((e) => !wanted || wanted.has(e.toLowerCase()));
   const emails = others.length ? others : pilotEmail ? [pilotEmail] : [];
   const at = Date.now();
   const sent = await ar.aftnOut(plan.providerId).catch(() => []);
@@ -256,6 +260,14 @@ export function checkFpl(v: unknown): string {
   if (!/^[A-Z0-9 \n()\-/.:+,]*$/.test(fpl)) throw badRequest('fpl contains characters AFTN cannot carry');
   return fpl;
 }
+/** The ticked e-mail copies: a list of addresses, or undefined (all). */
+function checkCopyTo(v: unknown): string[] | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (!Array.isArray(v) || v.length > MAX_ADDRESSES || !v.every((e) => typeof e === 'string'))
+    throw badRequest('copyTo must be a list of e-mail addresses');
+  return v;
+}
+
 export function checkAddresses(v: unknown): string[] {
   if (!Array.isArray(v)) throw badRequest('addresses must be an array');
   if (v.length > MAX_ADDRESSES) throw badRequest('too many addresses');
@@ -346,7 +358,15 @@ export const routes: Route[] = [
           now,
         ],
       );
-      await sendCopy(db, ar, pilot, params.id, 'file', { providerId: filed.providerId, fpl, addresses });
+      await sendCopy(
+        db,
+        ar,
+        pilot,
+        params.id,
+        'file',
+        { providerId: filed.providerId, fpl, addresses },
+        checkCopyTo(input.copyTo),
+      );
       return state(db, pilot.id, params.id, autorouter, autorouterDenied);
     },
   },
@@ -406,11 +426,15 @@ export const routes: Route[] = [
         "UPDATE flight_filings SET status = 'cancelled', message = $3, updated = $4 WHERE flight_id = $1 AND pilot_id = $2",
         [params.id, pilot.id, reason, Date.now()],
       );
-      await sendCopy(db, ar, pilot, params.id, 'cancel', {
-        providerId: cur.providerId,
-        fpl: cur.fpl,
-        addresses: cur.addresses,
-      });
+      await sendCopy(
+        db,
+        ar,
+        pilot,
+        params.id,
+        'cancel',
+        { providerId: cur.providerId, fpl: cur.fpl, addresses: cur.addresses },
+        checkCopyTo(input.copyTo),
+      );
       return state(db, pilot.id, params.id, autorouter, autorouterDenied);
     },
   },

@@ -263,10 +263,8 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   assert.ok(await page.eval(() => !!document.querySelector('[data-testid=readiness] [data-testid=ready-summary]')));
   await stage('brief');
   assert.deepEqual(
-    await page.eval(() =>
-      ['plan', 'brief', 'file'].map((s) => document.querySelector(`[data-testid=stage-body-${s}]`).hidden),
-    ),
-    [true, false, true],
+    await page.eval(() => ['plan', 'brief'].map((s) => document.querySelector(`[data-testid=stage-body-${s}]`).hidden)),
+    [true, false],
   );
 
   // frame the area of the route
@@ -473,8 +471,13 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
       [pts[2].lon, pts[2].lat],
     ],
   ]);
-  await sleep(250);
-  assert.notEqual((await legFocus()).dash, leg2.dash, 'the dashes move');
+  // the dashes move (frames can be slow on a busy machine: up to 3 s)
+  let moved = false;
+  for (let i = 0; i < 30 && !moved; i++) {
+    await sleep(100);
+    moved = (await legFocus()).dash !== leg2.dash;
+  }
+  assert.ok(moved, 'the dashes move');
   await mouseTo(5, 5);
   await page.waitFor(() => {
     const m = document.querySelector('.pgf-map-canvas').__pgfMap;
@@ -510,6 +513,35 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.key('Escape');
   await page.waitFor(() => !document.querySelector('[data-testid=aerodrome-pop]'));
   await shot('3-panels');
+  // scrolling the panel: the pinned summary and stage tabs stay on top, never covered by a section
+  // header (a header sticks just below them, and slides under them as its section ends), on every stage
+  for (const s of ['plan', 'brief']) {
+    await stage(s);
+    for (const y of [250, 700, 1500]) {
+      const covered = await page.eval((y) => {
+        document.querySelector('.editor-panel').scrollTop = y;
+        const pin = document.querySelector('[data-testid=readiness]');
+        const r = pin.getBoundingClientRect();
+        const pts = [];
+        for (const fx of [0.1, 0.5, 0.9])
+          for (const fy of [0.15, 0.5, 0.9]) pts.push([r.left + r.width * fx, r.top + r.height * fy]);
+        return pts.filter(([x, py]) => !document.elementFromPoint(x, py)?.closest('[data-testid=readiness]')).length;
+      }, y);
+      assert.equal(covered, 0, `stage ${s}, scrolled ${y}: the pinned bar is covered`);
+    }
+  }
+  await page.eval(() => (document.querySelector('.editor-panel').scrollTop = 0));
+  // File & forms is its own page, without the map: the flight plan with its filing, a tab per form with
+  // its state; the back link returns to the editor
+  await page.click('[data-testid=stage-file]');
+  await page.waitFor(() => document.querySelector('[data-testid=export-page]')?.dataset.kind === 'fpl', {
+    timeout: 10000,
+  });
+  assert.equal(await page.eval(() => !!document.querySelector('.pgf-map-canvas')), false);
+  assert.ok(await page.eval(() => !!document.querySelector('[data-testid=fpl-filing]')));
+  await page.waitFor(() => !!document.querySelector('[data-testid=export-tab-fpl]')?.dataset.state, { timeout: 10000 });
+  await page.click('.export-back');
+  await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
 
   // ---- 6a. take-off performance at LGTT against the club calculator (case 60). The old
   // /export/performance link redirects to the merged W&B and performance export.

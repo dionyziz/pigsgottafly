@@ -178,4 +178,6 @@ export interface FileRequest {
   addresses: string[];
   /** EOBT; default: the flight's date + block start. */
   eobt?: EpochMs;
+  /** The e-mail copies to send, out of FilingState.copyTo (default all of them). */
+  copyTo?: string[];
 }

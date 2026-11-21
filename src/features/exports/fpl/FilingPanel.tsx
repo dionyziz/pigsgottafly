@@ -2,18 +2,19 @@
 // "Flight plan addressing (Greek VFR)"), on the flight plan export, screen only:
 //   - the AFTN addressees the server proposes from AIP Greece ENR 1.11 (api/_lib/addressees.ts),
 //     each with why it is there, for review: untick to leave one out, add one by hand;
-//   - File / Delay / Cancel / Refresh status, with the plan's status and this flight's filing log;
+//   - File / Cancel / Refresh status, with the plan's status and this flight's filing log; the e-mail
+//     copies proposed (operator, aerodromes), each ticked and free to untick;
 //   - when the server cannot file, why not (the buttons stay disabled; the addressees are still
 //     shown, for filing by other means).
 // The reviewed addressees also fill the ADDRESSEE(S) box of the printed form (onAddresses).
-import { Fragment, useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { api, ApiRequestError, peekGet } from '../../../data/api';
 import { invalidate } from '../../../data/entities';
 import type { Flight } from '../../../shared';
 import { FILING_STATUS_LABEL, type FilingState, type FilingStatus } from '../../../shared/briefing';
 import { fmtClockMs, fmtDateTimeMs } from '../../../shared/format';
-import { Chip, Loading, Panel, TimeField } from '../../../ui';
+import { Chip, Loading, Panel } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
 
 const OPEN = new Set<FilingStatus>([
@@ -45,12 +46,14 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   // the last state this session shows at once (filing.get updates it)
   const [st, setSt] = useState<FilingState | null>(() => peekGet<FilingState>(`flights/${flight.id}/filing`) ?? null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'' | 'file' | 'delay' | 'cancel' | 'refresh'>('');
+  const [busy, setBusy] = useState<'' | 'file' | 'cancel' | 'refresh'>('');
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [extra, setExtra] = useState<string[]>([]);
   const [typed, setTyped] = useState('');
-  const [delayTo, setDelayTo] = useState(flight.blockOff || '');
+  // the copies proposed (the operator's, the route's aerodromes'), all ticked; the pilot may untick any
+  const [noCopy, setNoCopy] = useState<Set<string>>(new Set());
+  const copyTo = useMemo(() => (st?.copyTo ?? []).map((r) => r.email).filter((e) => !noCopy.has(e)), [st, noCopy]);
 
   const load = useCallback(() => {
     setLoadErr(null);
@@ -112,11 +115,6 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
     });
     setTyped('');
   };
-  const delayMs = (() => {
-    const m = /^(\d{2}):(\d{2})$/.exec(delayTo);
-    const day = Date.parse(`${flight.date}T00:00:00Z`);
-    return m && isFinite(day) ? day + (+m[1] * 60 + +m[2]) * 60000 : NaN;
-  })();
 
   return (
     <Panel
@@ -140,27 +138,17 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
             data-testid="fpl-file"
             disabled={!enabled || !complete || open || !!busy || !addresses.length}
             title={!complete ? 'The message has missing fields' : undefined}
-            onClick={() => run('file', () => api.filing.file(flight.id, { fpl: message, addresses }))}
+            onClick={() => run('file', () => api.filing.file(flight.id, { fpl: message, addresses, copyTo }))}
           >
             {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
           </button>
-          <label className="fpl-filing-delay">
-            <TimeField value={delayTo} onChange={setDelayTo} ariaLabel="New EOBT (UTC)" testId="fpl-delay-to" />
-            <button
-              data-testid="fpl-delay"
-              disabled={!enabled || !open || !!busy || !isFinite(delayMs)}
-              onClick={() => run('delay', () => api.filing.delay(flight.id, delayMs))}
-            >
-              {busy === 'delay' ? 'Delaying…' : 'Delay'}
-            </button>
-          </label>
           <button
             data-testid="fpl-cancel"
             className="danger"
             disabled={!enabled || !open || !!busy}
             onClick={() => {
               if (window.confirm('Cancel the filed flight plan?'))
-                void run('cancel', () => api.filing.cancel(flight.id));
+                void run('cancel', () => api.filing.cancel(flight.id, undefined, copyTo));
             }}
           >
             {busy === 'cancel' ? 'Cancelling…' : 'Cancel'}
@@ -199,17 +187,26 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       )}
 
       {st && st.copyTo.length > 0 && (
-        <div className="fpl-filing-record" data-testid="fpl-copy-to">
-          <span>
-            Copy by e-mail to{' '}
-            {st.copyTo.map((r, i) => (
-              <Fragment key={r.email}>
-                {i > 0 && ', '}
-                {r.email} <span className="muted">({r.for})</span>
-              </Fragment>
-            ))}
-          </span>
-        </div>
+        <fieldset className="fpl-copies" data-testid="fpl-copy-to">
+          <legend className="fpl-filing-sub">Copy by e-mail</legend>
+          {st.copyTo.map((r) => (
+            <label key={r.email} className="fpl-copy">
+              <input
+                type="checkbox"
+                checked={!noCopy.has(r.email)}
+                onChange={(e) =>
+                  setNoCopy((s) => {
+                    const n = new Set(s);
+                    if (e.target.checked) n.delete(r.email);
+                    else n.add(r.email);
+                    return n;
+                  })
+                }
+              />{' '}
+              {r.email} <span className="muted">{r.for}</span>
+            </label>
+          ))}
+        </fieldset>
       )}
 
       <div className="fpl-addressees" data-testid="fpl-addressees">

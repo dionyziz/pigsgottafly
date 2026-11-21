@@ -8,6 +8,7 @@ import { Link } from 'react-router';
 
 import { AipRefText } from '../../../app/AipLink';
 import { fmtAltitude, fmtHdg } from '../../../calc';
+import { flightStore } from '../../../data/flightStore';
 import type { RouteWeather } from '../../../data/weather';
 import { fmtClock, fmtDuration, fmtEte } from '../../../shared/format';
 import { Icon, NumberField } from '../../../ui';
@@ -168,7 +169,7 @@ function LegWarnings({
 }
 
 export function NavlogStrip() {
-  const { doc, legs, aircraft, altitudeDefaults, update, readOnly } = useEditor();
+  const { flight, doc, legs, aircraft, altitudeDefaults, update, readOnly } = useEditor();
   const setHoveredLeg = useSetHoveredLeg();
   const { navlog, weather, weatherLoading, refreshWeather, warnings, dayMs } = useFlightCalc();
   const { selectedNotam } = useNotams();
@@ -310,6 +311,17 @@ export function NavlogStrip() {
         >
           <Icon name="refresh" />
         </button>
+        {/* the one sheet that is printed: the navlog, on its own page */}
+        <Link
+          to={`/flights/${flight.id}/export/navlog`}
+          className="btn icon"
+          title="Print the navlog"
+          aria-label="Print the navlog"
+          onClick={() => void flightStore.flushNow()}
+          data-testid="print-navlog"
+        >
+          <Icon name="print" />
+        </Link>
       </header>
       {state === 'warnings' && (
         <div className="ns-body">

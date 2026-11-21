@@ -183,7 +183,7 @@ export class AutorouterClient {
         const wait = Math.max(this.refused, (await this.store?.refusedUntil().catch(() => 0)) ?? 0);
         if (wait > this.now())
           throw new AutorouterError(
-            `autorouter sign-in refused (too many active access tokens); not retrying before ${new Date(wait).toISOString().slice(11, 16)}Z`,
+            `the NOTAM and flight plan service refused sign-in (too many active access tokens); not retrying before ${new Date(wait).toISOString().slice(11, 16)}Z`,
           );
         const res = await this.doFetch(`${this.base}/oauth2/token`, {
           method: 'POST',
@@ -208,7 +208,7 @@ export class AutorouterClient {
           }
           // never echo the credentials; autorouter's error text is safe to show
           throw new AutorouterError(
-            `autorouter sign-in failed: ${body.error_description || body.error || `HTTP ${res.status}`}`,
+            `the NOTAM and flight plan service refused sign-in: ${body.error_description || body.error || `HTTP ${res.status}`}`,
           );
         }
         this.token = { value: body.access_token, expires: this.now() + (Number(body.expires_in) || 3600) * 1000 };
@@ -245,10 +245,10 @@ export class AutorouterClient {
       // A plan autorouter cannot parse comes back as a 5xx with the reasons: the pilot's to fix.
       if (!res.ok)
         throw new AutorouterError(
-          `autorouter: ${error || `HTTP ${res.status}`}`,
+          error || `the NOTAM and flight plan service answered HTTP ${res.status}`,
           res.status >= 500 && !hasDetails(out) ? 502 : 400,
         );
-      if (error) throw new AutorouterError(`autorouter: ${error}`, 400);
+      if (error) throw new AutorouterError(error, 400);
       return out as T;
     }
   }
@@ -275,7 +275,7 @@ export class AutorouterClient {
   async file(fpl: string, addresses: string[]): Promise<FiledPlan> {
     const routeId = await this.call<unknown>('POST', '/router', { aircraftid: 0, fpl });
     if (typeof routeId !== 'string' || !routeId.trim())
-      throw new AutorouterError('autorouter: no route id in the answer');
+      throw new AutorouterError('the flight plan service gave no route id');
     const path = `/flightplan/file/${encodeURIComponent(routeId.trim())}`;
     const r = await this.call<{ flightid?: number | string; queued?: boolean }>('POST', path, {
       fpl,
@@ -286,7 +286,7 @@ export class AutorouterClient {
       briefing: { requested: [] },
     });
     if (r?.flightid === undefined || r?.flightid === null)
-      throw new AutorouterError('autorouter: no flight plan id in the answer');
+      throw new AutorouterError('the flight plan service gave no flight plan id');
     return { providerId: String(r.flightid), queued: !!r.queued };
   }
 

@@ -325,8 +325,8 @@ export const api = {
       request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing`, req),
     delay: (id: string, eobt: number) =>
       request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/delay`, { eobt }),
-    cancel: (id: string, reason?: string) =>
-      request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/cancel`, { reason }),
+    cancel: (id: string, reason?: string, copyTo?: string[]) =>
+      request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/cancel`, { reason, copyTo }),
     refresh: (id: string) => request<FilingState>('POST', `flights/${encodeURIComponent(id)}/filing/refresh`),
   },
   weather: {

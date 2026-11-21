@@ -16,6 +16,7 @@ import { flightStore } from '../../data/flightStore';
 import { useAsync } from '../../data/useAsync';
 import { EXPORT_KINDS, EXPORT_LABEL, EXPORT_REDIRECTS, type ExportKind, type Flight } from '../../shared';
 import { EmptyState, Loading } from '../../ui';
+import { type ItemState, paperwork, PAPERWORK_KIND } from '../editor/panels/readiness';
 import { BriefingExport } from './briefing';
 import { Form731 } from './form731';
 import { shownSignatures, SignaturesPanel, useFormsState } from './form731/SignaturesPanel';
@@ -81,6 +82,25 @@ function Body({ flight, kind }: { flight: Flight; kind: ExportKind }) {
   }
 }
 
+/** Each form's state, as the editor's "Ready to fly" sees it (readiness.ts paperwork): a dot on its tab. */
+function useFormStates(id: string): Partial<Record<ExportKind, ItemState>> {
+  const opts = (cache: string) => ({ cache, refetchOnFocus: true, invalidatedBy: 'flights' as const });
+  const filing = useAsync(() => api.filing.get(id), [id], opts(`filing:${id}`));
+  const forms = useAsync(() => api.forms.get(id), [id], opts(`forms:${id}`));
+  const declarations = useAsync(() => api.declarations.get(id), [id], {
+    ...opts(`declarations:${id}`),
+    invalidatedBy: ['operators', 'aircraft', 'flights'],
+  });
+  const out: Partial<Record<ExportKind, ItemState>> = {};
+  for (const it of paperwork({
+    filing: filing.data ?? null,
+    forms: forms.data ?? null,
+    declarations: declarations.data ?? null,
+  }))
+    out[PAPERWORK_KIND[it.id]] = it.state;
+  return out;
+}
+
 export function ExportPage() {
   const { id = '', kind = '' } = useParams();
   const { data: flight, error } = useAsync(
@@ -91,6 +111,7 @@ export function ExportPage() {
     [id],
     { refetchOnFocus: true, invalidatedBy: 'flights', cache: `flight:${id}` },
   );
+  const formStates = useFormStates(id);
   if (Object.hasOwn(EXPORT_REDIRECTS, kind))
     return <Navigate replace to={`/flights/${id}/export/${EXPORT_REDIRECTS[kind]}`} />;
   if (!(EXPORT_KINDS as readonly string[]).includes(kind)) {
@@ -123,7 +144,10 @@ export function ExportPage() {
               aria-selected={x === k}
               aria-current={x === k ? 'page' : undefined}
               className={x === k ? 'active' : undefined}
+              data-testid={`export-tab-${x}`}
+              data-state={formStates[x]}
             >
+              {formStates[x] && <span className={'rd-dot is-' + formStates[x]} aria-hidden />}
               {EXPORT_LABEL[x]}
             </Link>
           ))}
