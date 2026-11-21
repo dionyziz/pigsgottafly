@@ -71,7 +71,6 @@ const numbers = (v: unknown, field: string, min: number, max: number, maxLen = 5
   list<unknown>(v, field, maxLen).map((x, i) => num(x, `${field}[${i}]`, min, max));
 const texts = (v: unknown, field: string, maxLen = 50) =>
   v === undefined || v === null ? [] : list<unknown>(v, field, maxLen).map((x, i) => text(x, `${field}[${i}]`, 2000));
-/** [a, b] with each in its range. */
 function pair(v: unknown, field: string, a: [number, number], b: [number, number]): [number, number] {
   if (!Array.isArray(v) || v.length !== 2) throw badRequest(`${field} must be a pair of numbers`);
   return [num(v[0], `${field}[0]`, a[0], a[1]), num(v[1], `${field}[1]`, b[0], b[1])];

@@ -173,7 +173,6 @@ export function idType(v: unknown): PersonDetails['idType'] {
   throw badRequest('idType must be ID, PASSPORT or empty');
 }
 
-/** Person fields (merged over `base`) → column values. */
 export function personColumns(input: Partial<PersonDetails>, base: PersonDetails) {
   const p = { ...base };
   if ('fullName' in input) p.fullName = str(input.fullName, 'fullName', 200);

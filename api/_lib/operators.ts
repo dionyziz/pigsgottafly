@@ -62,7 +62,6 @@ function toItem(r: Row, pilotId: string): OperatorItem & { _owner: string } {
 }
 const strip = ({ _owner: _o, ...x }: OperatorItem & { _owner: string }): OperatorItem => x;
 
-/** Every operator the pilot owns, is shared with, or sees through an aircraft, by name. */
 export async function listOperators(db: Queryable, pilotId: string): Promise<OperatorItem[]> {
   const rows = await db.query(`${SELECT()} WHERE ${VISIBLE()} ORDER BY lower(o.name), o.created`, [pilotId]);
   return rows.map((r) => strip(toItem(r, pilotId)));

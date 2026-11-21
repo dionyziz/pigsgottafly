@@ -102,7 +102,6 @@ async function applied(q: Queryable): Promise<Set<string>> {
 // would interleave their BEGIN/COMMIT on the same session.
 const running = new WeakMap<Db, Promise<unknown>>();
 
-/** Applies pending migrations; returns the names applied now. */
 export function migrate(db: Db, list: Migration[] = MIGRATIONS): Promise<string[]> {
   const prev = running.get(db) ?? Promise.resolve();
   const next = prev.catch(() => {}).then(() => migrateLocked(db, list));

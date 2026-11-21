@@ -77,7 +77,6 @@ export function parseIds(q: string | null): string[] {
   return [...new Set(ids)];
 }
 
-/** Latest METAR per station from the provider's JSON rows. */
 export function pickMetars(rows: MetarRow[]): Map<string, MetarValue> {
   const out = new Map<string, MetarValue>();
   for (const r of rows) {
@@ -94,7 +93,6 @@ export function pickMetars(rows: MetarRow[]): Map<string, MetarValue> {
   return out;
 }
 
-/** Most recent TAF per station from the provider's JSON rows. */
 export function pickTafs(rows: TafRow[]): Map<string, string> {
   const best = new Map<string, { raw: string; t: number }>();
   for (const r of rows) {

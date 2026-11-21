@@ -35,7 +35,6 @@ import { sendLogged } from '../sendCaps.js';
 
 /** Longest FPL message accepted (an AFTN message is far shorter). */
 const MAX_FPL_CHARS = 4000;
-/** Most AFTN addressees per filing. */
 const MAX_ADDRESSES = 50;
 /** An EOBT may be this far in the past (a late delay)… */
 const EOBT_PAST_MS = 30 * 60e3;

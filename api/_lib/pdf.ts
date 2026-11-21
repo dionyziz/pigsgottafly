@@ -73,7 +73,6 @@ const WIN_ANSI_HIGH: Record<number, number> = {
   0x9f: 0x0178,
 };
 const UNI_TO_WIN = new Map<number, number>(Object.entries(WIN_ANSI_HIGH).map(([k, v]) => [v, Number(k)]));
-/** Unicode code point of WinAnsi code c. */
 const winToUni = (c: number) => WIN_ANSI_HIGH[c] ?? c;
 
 export function parseTtf(buf: Buffer): TtfInfo {
@@ -261,7 +260,6 @@ export class PdfDoc {
     }
     return ((w / 1000) * size) / MM;
   }
-  /** The PDF file. */
   bytes(meta: { title?: string } = {}): Buffer {
     const objs: Buffer[] = [];
     const add = (b: Buffer | string) => {

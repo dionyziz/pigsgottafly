@@ -24,12 +24,10 @@ import { arr, obj } from './rows.js';
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-/** A JSON number in [min, max], or throws. */
 function num(v: unknown, field: string, min: number, max: number): number {
   if (!isNum(v) || v < min || v > max) throw badRequest(`${field} must be a number in [${min}, ${max}]`);
   return v;
 }
-/** null/undefined → null, else num(). */
 function optNumber(v: unknown, field: string, min: number, max: number): number | null {
   return v === null || v === undefined ? null : num(v, field, min, max);
 }
@@ -143,7 +141,6 @@ export function checkBaggage(v: unknown): Record<string, number> {
 
 const CATEGORIES = new Set<WbCategory>(['normal', 'utility']);
 
-/** The flight's options, merged over `base`; only the known fields, each checked. */
 export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OPTIONS): FlightOptions {
   const i = obj<Record<string, unknown>>(v, 'options');
   const o: FlightOptions = { ...DEFAULT_FLIGHT_OPTIONS, ...base };

@@ -131,7 +131,6 @@ async function loadForms(
   };
 }
 
-/** The current version (hash) of a flight's Form 731. */
 export async function form731Hash(db: Queryable, pilot: Pilot, flightId: string): Promise<string> {
   return (await loadForms(db, pilot, flightId)).hash731;
 }
@@ -377,7 +376,6 @@ function mailFor(L: Loaded): { enabled: boolean; reason: string | null } {
   if (typeof L.mailDenied === 'string') return { enabled: false, reason: L.mailDenied };
   return L.mailDenied ? { enabled: false, reason: MAIL_DENIED } : mailAvailability();
 }
-/** 403 for a pilot without an e-mail address, 503 when e-mail is not configured. */
 function requireMail(L: Loaded): void {
   const mail = mailFor(L);
   if (!mail.enabled)

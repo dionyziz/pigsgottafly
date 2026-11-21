@@ -42,7 +42,6 @@ const WHAT: Record<keyof typeof COUNT_SQL, string> = {
   waypoints: 'waypoints',
 };
 
-/** 409 when the pilot already has the most `kind` allowed. */
 export async function checkCount(
   db: Queryable,
   pilotId: string,
@@ -54,7 +53,6 @@ export async function checkCount(
     throw new HttpError(409, `You have reached the limit of ${LIMITS[kind]} ${WHAT[kind]}.`);
 }
 
-/** Bytes of every file the pilot owns (aircraft, operator and own files, incomplete uploads included). */
 export async function storageUsed(db: Queryable, pilotId: string): Promise<number> {
   const [r] = await db.query(
     `SELECT (SELECT COALESCE(sum(size), 0) FROM aircraft_attachments WHERE pilot_id = $1)
@@ -67,7 +65,7 @@ export async function storageUsed(db: Queryable, pilotId: string): Promise<numbe
 
 const mb = (b: number) => `${Math.round(b / 1048576)} MB`;
 
-/** 413 when `adding` more bytes (0: re-check what is reserved) would put the pilot over the quota. */
+/** `adding` 0 re-checks what is already reserved. */
 export async function checkQuota(db: Queryable, pilotId: string, adding: number): Promise<void> {
   const quota = storageQuotaBytes();
   const used = await storageUsed(db, pilotId);
@@ -79,14 +77,13 @@ export async function checkQuota(db: Queryable, pilotId: string, adding: number)
   }
 }
 
-/** Removes every upload left incomplete for over an hour (any pilot): one cheap indexed delete per table. */
+/** Any pilot's: one cheap indexed delete per table. */
 export async function sweepStaleUploads(db: Queryable, now = Date.now()): Promise<void> {
   await db.query(`DELETE FROM aircraft_attachments WHERE NOT complete AND created < $1`, [now - STALE_UPLOAD_MS]);
   await db.query(`DELETE FROM operator_files WHERE NOT complete AND created < $1`, [now - STALE_UPLOAD_MS]);
   await db.query(`DELETE FROM pilot_files WHERE NOT complete AND created < $1`, [now - STALE_UPLOAD_MS]);
 }
 
-/** 429 when the pilot already has MAX_OPEN_UPLOADS incomplete uploads. */
 export async function checkOpenUploads(db: Queryable, pilotId: string): Promise<void> {
   const [r] = await db.query(
     `SELECT (SELECT count(*) FROM aircraft_attachments WHERE pilot_id = $1 AND NOT complete)
@@ -102,7 +99,6 @@ export async function checkOpenUploads(db: Queryable, pilotId: string): Promise<
   }
 }
 
-/** The leading bytes each accepted type must start with. */
 const MAGIC: Record<string, (b: Buffer) => boolean> = {
   'application/pdf': (b) => b.subarray(0, 5).toString('latin1') === '%PDF-',
   'image/jpeg': (b) => b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
@@ -111,7 +107,6 @@ const MAGIC: Record<string, (b: Buffer) => boolean> = {
     b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
 };
 
-/** 400 unless the content (its first bytes, base64) is of the declared type. */
 export function checkMagic(mime: string, base64: string): void {
   const head = Buffer.from(base64.slice(0, 24), 'base64');
   const ok = MAGIC[mime];

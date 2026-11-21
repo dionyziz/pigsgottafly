@@ -61,7 +61,6 @@ export const routes: Route[] = [
       if ('defaultAircraftId' in input) {
         defaultAircraftId = input.defaultAircraftId || null;
         if (defaultAircraftId) {
-          // one of the pilot's own aircraft or one shared with them
           if (!(await canUseAircraft(db, pilot.id, defaultAircraftId))) throw badRequest('no such aircraft');
         }
       }

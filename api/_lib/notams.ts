@@ -366,7 +366,6 @@ export function normalizeNotam(r: AutorouterNotamRow): Notam | null {
 }
 
 export interface RelevanceInput {
-  /** Route points in order. */
   route: LatLon[];
   /** Aerodromes the flight uses (departure, destination, stops, alternates): ICAO → role label. */
   aerodromes: Map<string, string>;

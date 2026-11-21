@@ -32,7 +32,6 @@ async function docs(db: Queryable, kind: keyof typeof TABLES, airac: string) {
   return (await db.query(`SELECT doc FROM ${t.table} WHERE airac = $1 ORDER BY ${t.order}`, [airac])).map((r) => r.doc);
 }
 
-/** Aerodrome by id or ICAO in the current AIRAC, or null. */
 export async function findAerodrome(db: Queryable, idOrIcao: string): Promise<RefAerodrome | null> {
   const [r] = await db.query(
     `SELECT a.doc FROM ref_aerodromes a JOIN ref_airac c ON c.id = a.airac AND c.current WHERE a.id = $1 OR a.icao = $1 LIMIT 1`,

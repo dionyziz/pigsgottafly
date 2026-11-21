@@ -22,7 +22,6 @@ export interface CopyInput {
   /** The plan as filed and the app's addressees: the fallback, and where the PIC comes from. */
   fpl: string;
   addresses: string[];
-  /** When the action was taken. */
   at: number;
 }
 
@@ -113,7 +112,6 @@ export async function copyRecipients(
       if (r) out.push({ email: r.fpl_copy_email, for: icao });
     }
   }
-  // one entry per address, naming everyone who asked for it
   const by = new Map<string, FplCopyRecipient>();
   for (const r of out) {
     const k = r.email.toLowerCase();

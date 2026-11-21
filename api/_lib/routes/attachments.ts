@@ -16,7 +16,6 @@ import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { checkMagic, checkQuota, LIMITS } from '../limits.js';
 
-/** The owner's pilot id of an aircraft the session pilot has `need` access to (404/403 otherwise). */
 async function ownerOf(db: Queryable, pilotId: string, id: string, need: 'view' | 'edit'): Promise<string> {
   return (await aircraftFor(db, pilotId, id, need)).pilot_id;
 }
@@ -29,7 +28,6 @@ const ref = (r: Row): AttachmentRef => ({
   uploaded: Number(r.created),
 });
 
-/** Validates the upload: name, accepted type, base64 content within the size limit. */
 export function attachmentInput(v: Record<string, unknown>): {
   name: string;
   mime: AttachmentType;

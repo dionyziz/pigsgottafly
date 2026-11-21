@@ -70,7 +70,6 @@ export interface Ctx {
   req: Req;
   db: Db;
   config: ApiConfig;
-  /** Path parameters (':id' → params.id). */
   params: Record<string, string>;
   query: URLSearchParams;
   /** The session's pilot; always set for routes with auth !== false. */
@@ -85,7 +84,6 @@ export interface Ctx {
   autorouterDenied: boolean;
   /** True when this pilot may not send forms by e-mail (no e-mail address to cc). */
   formsMailDenied: boolean;
-  /** True when the session pilot is an admin (config.adminEmails). */
   isAdmin: boolean;
 }
 
@@ -97,7 +95,6 @@ export class Reply {
     public headers?: Record<string, string>,
   ) {}
 }
-/** Resolves to the body (200), a Reply, or undefined (204). */
 export type Handler = (ctx: Ctx) => Promise<unknown>;
 
 export interface Route {
@@ -184,7 +181,6 @@ export async function readJsonObject(req: Req): Promise<JsonBody> {
   return v;
 }
 
-/** Compiles '/flights/:id/restore' to a matcher. */
 export function compilePath(p: string): (path: string) => Record<string, string> | null {
   const names: string[] = [];
   const re = new RegExp(

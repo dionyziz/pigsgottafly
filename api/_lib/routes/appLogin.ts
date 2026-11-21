@@ -13,7 +13,6 @@ import type { Route } from '../http.js';
 import { Reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';
 
-/** How long a code may wait for the app to use it. */
 export const APP_CODE_MS = 2 * 60e3;
 
 export const routes: Route[] = [

@@ -8,19 +8,16 @@ export const SQLSTATE = {
   NOT_NULL_VIOLATION: '23502',
 } as const;
 
-/** The SQLSTATE of a database error, or null for anything else. */
 export function sqlState(e: unknown): string | null {
   const code = (e as { code?: unknown } | null)?.code;
   return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code) ? code : null;
 }
 
-/** The name of the constraint a database error is about ('' when it names none). */
 export function constraintOf(e: unknown): string {
   const c = (e as { constraint?: unknown } | null)?.constraint;
   return typeof c === 'string' ? c : '';
 }
 
-/** A unique constraint was violated (optionally: that constraint). */
 export function isUniqueViolation(e: unknown, constraint?: string): boolean {
   return sqlState(e) === SQLSTATE.UNIQUE_VIOLATION && (constraint === undefined || constraintOf(e) === constraint);
 }

@@ -305,7 +305,6 @@ export const routes: Route[] = [
           ? pilot.defaultAircraftId
           : null;
       base.options = { ...base.options, windModel: pilot.settings.windModel };
-      // the profile's map layers for new flights
       const layers = mapLayersOf(pilot.settings.mapLayers);
       if (layers) base.options.mapLayers = layers;
       // PIC in the PIC seat of the aircraft the flight starts with (front left, else its first seat),

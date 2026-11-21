@@ -5,7 +5,7 @@
 //                  local use, or 'memory://' for tests.
 // openDb() also runs pending migrations (api/_lib/migrate.ts) before returning.
 
-/** Rows come back as plain objects keyed by column name; each column is typed where it is read (rows.ts). */
+/** Each column is typed where it is read (rows.ts). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the one untyped boundary: driver rows
 export type Row = Record<string, any>;
 
@@ -17,7 +17,6 @@ export interface Queryable {
 }
 
 export interface Db extends Queryable {
-  /** Runs fn inside BEGIN … COMMIT on one connection (ROLLBACK if it throws). */
   transaction: <T>(fn: (tx: Queryable) => Promise<T>) => Promise<T>;
   /** Runs fn on one dedicated connection without a transaction (advisory locks). */
   session: <T>(fn: (s: Queryable) => Promise<T>) => Promise<T>;

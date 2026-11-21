@@ -34,7 +34,6 @@ export interface GoogleClaims {
   exp: number;
 }
 
-/** Verify a JWT (RS256) against a key set and return its claims, or throw. */
 async function verifyJwt<T extends { aud: string; iss: string; exp: number }>(
   token: string,
   o: { audience: string; issuers: string[]; getKeys: () => Promise<JsonWebKey[]> },
@@ -62,7 +61,6 @@ async function verifyJwt<T extends { aud: string; iss: string; exp: number }>(
 
 const verified = (v: unknown) => v === true || v === 'true';
 
-/** Verify a Google ID token (JWT, RS256) and return its claims, or throw. */
 export async function verifyGoogleToken(
   token: string,
   clientId: string,
@@ -174,7 +172,6 @@ export async function purgeExpiredSessions(q: Queryable): Promise<void> {
   await q.query('DELETE FROM sessions WHERE created < $1', [Date.now() - SESSION_MS]);
 }
 
-/** True when the allow-list is empty (anyone) or contains the email (case-insensitive). */
 export function emailAllowed(email: unknown, allowedEmails: string[]): boolean {
   return (
     !allowedEmails.length ||

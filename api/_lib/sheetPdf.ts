@@ -23,7 +23,6 @@ export interface SheetSignature {
   name: string;
   signedAt: number;
 }
-/** Prints the sheets to PDF; throws when it cannot. */
 export type SheetPdfRenderer = (content: WbPerfContent, signature: SheetSignature | null) => Promise<Buffer>;
 
 export interface ChromiumSheetPdfOptions {
@@ -55,7 +54,6 @@ const LOCAL_BROWSERS = [
   '/usr/bin/chromium-browser',
 ];
 
-/** A local Chrome/Chromium (CHROME first), or null. */
 export function localChrome(env: NodeJS.ProcessEnv = process.env): string | null {
   return [env.CHROME, ...LOCAL_BROWSERS].find((p): p is string => !!p && fs.existsSync(p)) ?? null;
 }
@@ -96,7 +94,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   ]).finally(() => clearTimeout(timer));
 }
 
-/** The renderer: headless Chromium printing src/pdf/ from distDir. */
 export function chromiumSheetPdf(opts: ChromiumSheetPdfOptions): SheetPdfRenderer {
   const timeoutMs = opts.timeoutMs ?? 25_000;
   return async (content, signature) => {

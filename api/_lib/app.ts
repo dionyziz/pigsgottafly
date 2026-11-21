@@ -15,7 +15,6 @@ import { ROUTES } from './routes/index.js';
 import { toPilot } from './rows.js';
 import { chromiumSheetPdf } from './sheetPdf.js';
 
-/** The `error` text of a thrown { error } object, if any. */
 const errorField = (e: unknown): string | null =>
   e && typeof e === 'object' && 'error' in e && typeof e.error === 'string' ? e.error : null;
 

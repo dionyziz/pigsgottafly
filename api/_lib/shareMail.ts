@@ -21,7 +21,6 @@ export interface ShareNotice {
   /** A flight shared with an address no account uses yet (an invite). */
   invite?: boolean;
   role: ShareRole;
-  /** The recipient's address. */
   to: string;
 }
 

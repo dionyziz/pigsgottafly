@@ -36,7 +36,6 @@ export const toHangarAircraft = (r: Row): HangarAircraft => ({
   placeholder: Number(r.placeholder) || 1,
 });
 
-/** Every aircraft the pilot owns or that is shared with them, by registration (own first on a tie). */
 export async function listAircraft(db: Queryable, pilotId: string): Promise<HangarAircraft[]> {
   const rows = await db.query(`${SELECT} ORDER BY a.registration, (a.pilot_id = $1) DESC, a.created`, [pilotId]);
   return rows.map(toHangarAircraft);
@@ -81,10 +80,8 @@ export async function flightAircraft(
   return { ...ac, access: { ...ac.access, role: 'view' } };
 }
 
-/** SQL select list + join for toAircraft(): the aircraft `a` with its operator's name (operator_name). */
 export const AIRCRAFT_FROM = `SELECT a.*, op.name AS operator_name FROM aircraft a LEFT JOIN operators op ON op.id = a.operator_id`;
 
-/** True when the pilot owns the aircraft or it is shared with them. */
 export async function canUseAircraft(db: Queryable, pilotId: string, id: string): Promise<boolean> {
   const rows = await db.query(`SELECT 1 FROM aircraft a WHERE a.id = $2 AND ${accessibleSql('a', '$1')}`, [
     pilotId,
@@ -95,7 +92,6 @@ export async function canUseAircraft(db: Queryable, pilotId: string, id: string)
 
 // ---------------------------------------------------------------- flights
 
-/** A flight the session pilot may use, with their role and the flight's owner. */
 export interface FlightGrant {
   id: string;
   role: FlightRole;

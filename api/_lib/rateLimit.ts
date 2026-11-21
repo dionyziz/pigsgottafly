@@ -70,7 +70,6 @@ export async function takeTokens(
   return { ok: !!r.ok, tokens: Number(r.tokens), perMs };
 }
 
-/** Takes one token from the bucket of (name, subject); 429 when it is empty. */
 export async function rateLimit(
   db: Queryable,
   name: keyof typeof RATES,

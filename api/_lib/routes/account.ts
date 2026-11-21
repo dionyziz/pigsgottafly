@@ -23,7 +23,7 @@ import { toFile } from './files.js';
 
 const OWNER_COLUMNS = ['pilot_id', 'owner_id', 'owner_pilot_id'];
 
-/** Deletes the pilot and everything they own. Run inside a transaction. */
+/** Run inside a transaction. */
 export async function deletePilotData(q: Queryable, pilotId: string): Promise<void> {
   const cols = await q.query<{ table_name: string; column_name: string }>(
     `SELECT c.table_name, c.column_name FROM information_schema.columns c
