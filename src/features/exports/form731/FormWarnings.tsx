@@ -2,7 +2,6 @@
 import type { Fix, PersonField as PF } from '../fix';
 import { ExportWarnings } from '../WarningList';
 
-/** Where a warning is fixed (src/features/exports/fix.ts). */
 export type FormFix = Fix;
 export type PersonField = PF;
 

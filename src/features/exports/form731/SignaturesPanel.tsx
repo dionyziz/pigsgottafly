@@ -1,14 +1,5 @@
 // Form 731 signatures and "Send to HCAA" (PLAN-v3 "Form 731: signatures and submission to HCAA"),
-// above the print sheet, screen only:
-//   - the PIC is signed automatically; each passenger gets a /sign/<token> link ("Request
-//     signatures"), sent with the phone's share sheet or copied; per person: link created, opened,
-//     signed, with renew (a new link; the old one stops working) and revoke;
-//   - "2 of 3 signed · Maria opened 10:42, not signed"; after a change to the form, who must sign again;
-//   - "E-mail" sends a passenger (a saved one with an address) the form as PDF and a new signing link;
-//     "E-mail all" does so for everyone who has not signed yet;
-//   - when everyone has signed, "Send to HCAA" e-mails the signed PDF to 731@hcaa.gov.gr (cc and
-//     reply-to the pilot); sent time, and "Re-send" after changes.
-// The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
+// screen only. The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
 import { useCallback, useState } from 'react';
 
 import { FlowLink } from '../../../app/FlowLinks';
@@ -41,7 +32,6 @@ export function useFormsState(flightId: string) {
   return { st: q.data ?? null, setSt: q.setData as (s: FormsState) => void, err, setErr, load };
 }
 
-/** Current signatures by person key, for the sheet. */
 export function shownSignatures(st: FormsState | null): Record<string, ShownSignature> {
   const out: Record<string, ShownSignature> = {};
   for (const s of st?.form731.signatures ?? [])

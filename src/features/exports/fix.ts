@@ -1,11 +1,3 @@
-// Where an export warning is fixed, and the link that takes the pilot there (pure: no React).
-//
-//   flight     the flight editor, /flights/:id?focus=<EditorFocus> (the panel section opens, the input
-//              is scrolled to, focused and highlighted: src/app/focusParam.ts)
-//   aircraft   the aircraft in the hangar, /hangar/:id?focus=<field> (data-focus on its Field)
-//   profile    the pilot's profile, /profile?focus=<input name>
-//   person     the passenger dialog, /passengers?edit=<id|me>&fields=<names>
-//
 // Models whose warnings are generated here (FPL, Form 731, GenDec) attach a Fix to each warning.
 // Warnings that come as text from src/calc (navlog, fuel, W&B, performance) are mapped by
 // planningFix().
@@ -26,7 +18,6 @@ export type EditorFocus =
   | 'remarks'
   | 'requests';
 
-/** The editor panel section (Section id) that holds each focus key. */
 export const EDITOR_FOCUS_SECTION: Record<EditorFocus, string> = {
   date: 'when',
   blockOff: 'when',

@@ -1,8 +1,6 @@
-// Label placement for the CG envelope chart (MD 4.3): the envelope captions ('NORMAL CATEGORY',
-// 'UTILITY CATEGORY') and the take-off / landing / zero-fuel value labels must not cover each
-// other, the point markers or the fuel-burn line, whatever the loading. Pure geometry in the SVG's
-// pixel space (y down): candidates are scored by how much they overlap what is already drawn and
-// the cheapest wins. Text widths are estimated (Arial: digits 0.556 em, capitals ~0.7 em).
+// Label placement for the CG envelope chart (MD 4.3): captions and value labels must not cover each other,
+// the point markers or the fuel-burn line, whatever the loading. SVG pixel space (y down). Text widths are
+// estimated (Arial: digits 0.556 em, capitals ~0.7 em).
 
 export interface Box {
   x0: number;
@@ -43,7 +41,6 @@ export function segmentInBox(s: Segment, b: Box): number {
   return Math.max(0, t1 - t0) * Math.hypot(dx, dy);
 }
 
-/** Estimated width of a text run in px. */
 export function textWidth(text: string, fontPx: number, bold = false, letterSpacingEm = 0): number {
   let em = 0;
   for (const ch of text) {
@@ -57,7 +54,6 @@ export function textWidth(text: string, fontPx: number, bold = false, letterSpac
   return em * fontPx * (bold ? 1.06 : 1);
 }
 
-/** The horizontal extent of a polygon at height y (pixel space), or null when y misses it. */
 export function spanAt(poly: [number, number][], y: number): [number, number] | null {
   const xs: number[] = [];
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -96,7 +92,6 @@ export interface EnvelopeLabelInput {
   text: string;
   fontPx: number;
   letterSpacingEm: number;
-  /** Outline in pixel space. */
   outline: [number, number][];
   /** Preferred height (px) for the caption's centre line: near the top for the main envelope. */
   preferY: number;
@@ -179,7 +174,6 @@ export function layoutChartLabels(o: {
         const lo = Math.max(a[0], b[0]) + 6,
           hi = Math.min(a[1], b[1]) - 6;
         if (hi - lo < w) continue;
-        // centred in the envelope, then shifted to either side
         for (const f of [0.5, 0.3, 0.7, 0.15, 0.85]) {
           const cx = lo + w / 2 + (hi - lo - w) * f;
           cands.push({ cx, cy, anchor: 'middle', pen: k * 4 + Math.abs(f - 0.5) * 20 });

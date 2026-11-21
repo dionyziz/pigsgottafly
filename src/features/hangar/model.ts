@@ -1,10 +1,6 @@
-// Pure helpers for the hangar screens: validation of an aircraft, FPL equipment codes, compass card
-// status, envelope geometry, and the editing operations of the aircraft page (approved fuels,
-// stations and seats, combined limits, envelopes, performance tables, runway condition factors,
-// stall speeds, compass cards). The page applies them to its draft (a copy of the AircraftInput),
-// so everything an aircraft holds can be created, changed and removed from the page. No DOM, no
-// React (unit-tested in tests/unit/screens/hangar.test.ts and hangarScratch.test.ts, which builds
-// the owner's SX-ASV and SX-ASG from a blank aircraft with these operations).
+// The aircraft page applies these editing operations to its draft, so everything an aircraft holds can be
+// created, changed and removed from the page (tests/unit/screens/hangarScratch.test.ts builds the owner's
+// SX-ASV and SX-ASG from a blank aircraft with them).
 import { isIsoDate, parseIsoDate } from '../../shared/date';
 import { FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
 import type {
@@ -276,7 +272,6 @@ export function newStationId(stations: Station[], base: string): string {
   if (!ids.has(base)) return base;
   for (let i = 2; ; i++) if (!ids.has(`${base}${i}`)) return `${base}${i}`;
 }
-/** A new seat id unique among all seats of the aircraft. */
 export function newSeatId(stations: Station[], stationId: string): string {
   const ids = new Set(stations.flatMap((s) => (s.seats || []).map((p) => p.id)));
   for (let i = 1; ; i++) if (!ids.has(`${stationId}-${i}`)) return `${stationId}-${i}`;
@@ -378,7 +373,6 @@ export function makePrimaryFuel(f: FuelSpec, t: FuelType): void {
   const i = f.types.findIndex((g) => g.type === t);
   if (i > 0) f.types.unshift(...f.types.splice(i, 1));
 }
-/** Fuel types not approved on this aircraft yet. */
 export const otherFuelTypes = (f: FuelSpec): FuelType[] => FUEL_TYPES.filter((t) => !f.types.some((g) => g.type === t));
 
 // ---------------------------------------------------------------------------------------------
@@ -389,7 +383,6 @@ export const runwayConditions = (f: PerformanceFactors): [string, number][] => O
 export function setRunwayConditions(f: PerformanceFactors, entries: [string, number][]): void {
   f.runwayCondition = Object.fromEntries(entries);
 }
-/** Adds a condition under a name not used yet; returns the name. */
 export function addRunwayCondition(f: PerformanceFactors, name = 'new condition', factor = 1.1): string {
   const names = new Set(Object.keys(f.runwayCondition));
   let n = name;
@@ -589,7 +582,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   const warn = (section: SectionId, path: string, message: string) =>
     out.push({ level: 'warning', section, path, message });
 
-  // identity
   if (!a.registration.trim()) err('identity', 'registration', 'Registration is required.');
   else if (!/^[A-Z0-9]{1,3}-?[A-Z0-9]{1,6}$/.test(a.registration))
     warn('identity', 'registration', 'Registration is usually letters and digits with one hyphen, e.g., SX-ASV.');
@@ -604,7 +596,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (a.homeBase && !/^[A-Z]{4}$/.test(a.homeBase))
     warn('identity', 'homeBase', 'Home base should be a 4-letter ICAO code.');
 
-  // FPL
   const e = a.equipment;
   if (!e.item10a) warn('fpl', 'equipment.item10a', 'Item 10a not set.');
   else if (!ITEM10A_RE.test(e.item10a))
@@ -637,7 +628,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
     if (!e.dinghies.colour.trim()) warn('fpl', 'equipment.dinghies.colour', 'Dinghy colour not set.');
   }
 
-  // speeds
   if (!(a.cruiseTasKt > 0)) warn('speeds', 'cruiseTasKt', 'Cruise TAS not set.');
   if (!(a.patternTasKt > 0)) warn('speeds', 'patternTasKt', 'Pattern TAS not set.');
   if (a.cruiseTasKt > 0 && a.patternTasKt > a.cruiseTasKt)
@@ -645,7 +635,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (a.climbTasKt != null && a.cruiseTasKt > 0 && a.climbTasKt > a.cruiseTasKt)
     warn('speeds', 'climbTasKt', 'Climb TAS is higher than cruise TAS.');
 
-  // fuel
   const f = a.fuel;
   if (!f.types.length) err('fuel', 'fuel.types', 'Give at least one approved fuel.');
   if (new Set(f.types.map((g) => g.type)).size !== f.types.length)
@@ -672,7 +661,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (!(f.burnLph > 0)) warn('fuel', 'fuel.burnLph', 'Burn rate not set.');
   else if (f.burnLph > 500) err('fuel', 'fuel.burnLph', 'Burn rate looks wrong (over 500 L/h).');
 
-  // mass & balance
   const mb = a.massBalance;
   if (!(mb.mtowKg > 0)) warn('mb', 'massBalance.mtowKg', 'MTOW not set.');
   if (!(mb.emptyMassKg > 0)) warn('mb', 'massBalance.emptyMassKg', 'Empty mass not set.');
@@ -774,7 +762,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
       warn('mb', 'massBalance.emptyArmM', 'Empty CG arm is far outside the envelope arms: check the units (metres).');
   }
 
-  // performance
   const t = a.performance.takeoff;
   const ascending = (xs: number[]) => xs.every((x, i) => i === 0 || x > xs[i - 1]);
   if (t.rows.length) {
@@ -843,7 +830,6 @@ export function validateAircraft(a: AircraftInput, today: string, cardWarnDays =
   if (!(pf.maxCrosswindKt.takeoff > 0) || !(pf.maxCrosswindKt.landing > 0))
     err('performance', 'performance.factors.maxCrosswindKt', 'Crosswind limits must be positive.');
 
-  // compass cards
   const names = new Set<string>();
   a.compassCards.forEach((c, i) => {
     const p = `compassCards.${i}`;

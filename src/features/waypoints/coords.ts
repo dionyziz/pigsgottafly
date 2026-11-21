@@ -1,4 +1,3 @@
-// Coordinate parsing and formatting for saved waypoints (unit-tested in tests/unit/screens).
 import type { LatLon } from '../../shared';
 
 /**

@@ -1,5 +1,3 @@
-// The MD 4.2 sheet model: cells as computeNavlog results formatted like the paper sheet,
-// multi-sheet splitting, header weather (forecast vs METAR), terminal information, notes.
 import { describe, expect, test } from 'vitest';
 
 import cards from '../../../../../data/aircraft/compass-cards.json';

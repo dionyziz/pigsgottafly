@@ -60,14 +60,12 @@ export function flightLayers(flight: unknown, pilot: unknown): MapLayers {
   return mapLayersOf(flight) ?? mapLayersOf(pilot) ?? legacyLayers() ?? { ...DEFAULT_MAP_LAYERS };
 }
 
-/** The ENR 5 area kinds and the toggle that shows each. */
 export type AreaToggle = 'prd' | 'mil' | 'act';
 export const areaToggle = (kind: string): AreaToggle => (kind === 'MIL' ? 'mil' : kind === 'ACT' ? 'act' : 'prd');
 
-/** Which ENR 5 area kinds the layer toggles show. */
 export const areaShown = (l: MapLayers, kind: string): boolean => l[areaToggle(kind)];
 
-/** Whether an airspace / zone / area type is shown (hover and click details follow the layers). */
+/** Hover and click details follow the layers. */
 export function airspaceShown(l: MapLayers, type: string): boolean {
   if (type === 'TMA' || type === 'MTMA') return l.tma;
   if (type === 'CTR' || type === 'ATZ') return l.zones;

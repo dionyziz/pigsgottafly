@@ -1,12 +1,7 @@
-// The map's hover tooltip and click popover frames, shared by the airspace, NOTAM and aerodrome details:
-// MapTip follows the cursor; MapPopover opens at a click and has a close button; both stay inside the
-// map (flipped left / up near its right / bottom edge);
-// PopItem + useAccordion make its list of items, one open at a time.
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 
 import { CloseButton } from '../../../ui';
 
-/** Margin kept between a tooltip or popover and the edges of the map. */
 const EDGE = 8;
 
 /**
@@ -31,10 +26,7 @@ export function placeBeside(
   return { left, top };
 }
 
-/**
- * Keeps an absolutely placed element (a child of the map) beside (x, y) and fully inside the map,
- * after every render (its content may have grown). Sets left/top directly: no extra render.
- */
+/** Runs after every render (the content may have grown); sets left/top directly to avoid an extra render. */
 export function useInsideMap(x: number, y: number, gap: { x: number; y: number }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -53,7 +45,6 @@ export function useInsideMap(x: number, y: number, gap: { x: number; y: number }
 const TIP_GAP = { x: 16, y: 14 };
 const POP_GAP = { x: 12, y: 12 };
 
-/** Cursor tooltip (pointer-events none), kept inside the map. */
 export function MapTip({
   x,
   y,
@@ -80,7 +71,6 @@ export function MapTip({
   );
 }
 
-/** Click details, placed beside (x, y) and kept inside the map. */
 export function MapPopover({
   x,
   y,
@@ -113,7 +103,7 @@ export function MapPopover({
   );
 }
 
-/** Which item of a popover is open ('' = none); the first one to start with. */
+/** '' = none open; the first one starts open. */
 export function useAccordion(first: string | undefined) {
   const [open, setOpen] = useState(first ?? '');
   return {
@@ -124,7 +114,6 @@ export function useAccordion(first: string | undefined) {
   };
 }
 
-/** One item of a popover: a header (a toggle when `onToggle` is given) and, when open, its body. */
 export function PopItem({
   open,
   onToggle,
@@ -139,9 +128,7 @@ export function PopItem({
   head: ReactNode;
   children?: ReactNode;
   testId?: string;
-  /** data-* attributes of the section (data-id, data-key). */
   data?: Record<string, string>;
-  /** The pointer entered (true) or left (false) the item. */
   onHover?: (on: boolean) => void;
 }) {
   const attrs = Object.fromEntries(Object.entries(data ?? {}).map(([k, v]) => ['data-' + k, v]));

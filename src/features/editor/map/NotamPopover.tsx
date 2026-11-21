@@ -1,6 +1,3 @@
-// NOTAM hover tooltip and click popover on the route map (PLAN-v3 "Map interaction for weather and
-// NOTAMs"): ID, validity and limits on hover; on click the decoded content, the affected leg and the
-// raw ICAO text.
 import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
@@ -11,7 +8,6 @@ const Badge = ({ n }: { n: Notam }) => (
   <b className={'pgf-air-type t-notam' + (n.relevant ? '' : ' is-hidden')}>NOTAM</b>
 );
 
-/** The NOTAM areas under the pointer, in the map's hover box (MapHoverTip). */
 export function NotamTipRows({ items }: { items: Notam[] }) {
   const shown = items.slice(0, 4);
   return (

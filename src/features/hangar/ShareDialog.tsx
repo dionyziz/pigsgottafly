@@ -1,10 +1,6 @@
-// Share an aircraft, an operator or a flight, like sharing a Google Doc: add pilots by the e-mail of
-// their Pig's Gotta Fly account as viewer or editor, change their role or remove them. The owner is
-// listed first and cannot be changed. Viewers see who has access but cannot change it. An operator
-// also lists the pilots who see it through one of its aircraft (changed by sharing that aircraft). A
-// flight can also be shared with an address no account uses yet: the invite is listed as pending
-// until someone signs in with it. Also: the "Shared by" chip of shared aircraft and operators in the
-// lists and on their pages.
+// Sharing like a Google Doc. An operator also lists the pilots who see it through one of its aircraft
+// (changed by sharing that aircraft). A flight can also be shared with an address no account uses yet:
+// the invite is listed as pending until someone signs in with it.
 import './share.css';
 
 import { useEffect, useState } from 'react';
@@ -34,7 +30,6 @@ export function SharedChip({ access }: { access: Pick<AircraftAccess, 'role' | '
 
 const message = errorMessage;
 
-/** What both kinds of sharing state have in common (AircraftSharing, OperatorSharing). */
 interface SharingState {
   role: AircraftRole;
   canManage: boolean;
@@ -52,7 +47,6 @@ export function ShareDialog({
 }: {
   kind?: 'aircraft' | 'operator' | 'flight';
   id: string;
-  /** Registration, operator name or flight title, for the title. */
   name: string;
   onClose: () => void;
   /** The pilot removed their own access (the aircraft left their hangar, the flight their list). */

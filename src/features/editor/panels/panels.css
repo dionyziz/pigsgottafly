@@ -28,7 +28,6 @@
 .ep-inline-num.is-set { color: var(--accent); }
 input.ep-num.invalid { border-color: var(--danger); background: var(--danger-soft); }
 
-/* key/value lines */
 .ep-kvs, .ep-times { display: flex; flex-direction: column; gap: 2px; }
 .ep-times { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; }
 .ep-kv { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--fs-sm); padding: 2px 0; }
@@ -39,7 +38,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-kv.danger .v, .ep-kv.danger .k { color: var(--danger); }
 .ep-kv.ok .v { color: var(--ok); }
 
-/* manifest */
 .ep-crew { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .ep-crew-row { display: flex; align-items: center; gap: var(--s2); padding: 8px 6px 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
 .ep-role { flex: none; width: 36px; text-align: center; box-sizing: border-box; font-size: var(--fs-2xs); font-weight: 600; letter-spacing: 0.04em; padding: 2px 6px; border-radius: var(--r-sm); background: var(--hover); color: var(--ink-2); }
@@ -81,7 +79,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-env .stop circle { fill: var(--surface-2); stroke: var(--ink-2); stroke-width: 1.4; }
 .ep-env text:not(.tick) { font-size: 9px; font-weight: 600; fill: var(--ink-2); font-family: var(--font); }
 
-/* fuel */
 .ep-fob { display: flex; flex-direction: column; gap: 6px; }
 .ep-fob .row { flex-wrap: wrap; }
 .ep-fob .row button.ghost { padding: 4px 8px; font-size: var(--fs-sm); color: var(--accent); }
@@ -92,7 +89,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-gauge .req { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); border-radius: 1px; transform: translateX(-1px); }
 .ep-gauge-legend { display: flex; justify-content: space-between; font-size: var(--fs-xs); }
 
-/* performance */
 /* a stop's landing and take-off cards sit in the section like the others */
 .ep-stop { display: contents; }
 .ep-perf { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); }
@@ -108,7 +104,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-perf select { font-size: var(--fs-sm); padding: 4px 6px; }
 .ep-metar { font-size: var(--fs-2xs); color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 4px 6px; word-break: break-word; }
 
-/* ATC */
 .ep-atc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .ep-atc-group { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 0 4px; }
 .ep-atc-item:first-child .ep-atc-group { padding-top: 0; }
@@ -129,7 +124,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-atc-edit button { padding: 5px 12px; font-size: var(--fs-sm); }
 @media (hover: none) { .ep-atc-row .ep-row-actions { opacity: 1; } }
 
-/* exports */
 .ep-exports { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .ep-exports a { display: flex; align-items: center; gap: var(--s3); padding: 8px 10px; border-radius: var(--r); color: var(--ink); }
 .ep-exports a:hover { background: var(--hover); text-decoration: none; }
@@ -137,7 +131,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-exports a > .ep-icon:last-child { color: var(--muted); }
 .ep-export-label { flex: 1; font-size: var(--fs); }
 
-/* navlog strip */
 .ns { flex: none; display: flex; flex-direction: column; background: var(--surface); border-top: 1px solid var(--line); max-height: 40vh; min-height: 0; min-width: 0; }
 .ns-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s3); padding: 4px var(--s3) 4px 12px; min-height: 40px; border-bottom: 1px solid var(--line); flex: none; cursor: pointer; user-select: none; }
 .ns-head:hover { background: var(--hover); }
@@ -192,11 +185,9 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
   .ns-wx { display: none; }
 }
 
-/* flight plan options */
 .ep-fpl { display: flex; flex-direction: column; gap: var(--s3); }
 .ep-fpl textarea { width: 100%; resize: vertical; min-height: 52px; }
 
-/* NOTAMs */
 .ep-notams { display: flex; flex-direction: column; gap: var(--s2); }
 .ep-notam-group { border-bottom: 0; }
 .ep-notam-group > .collapsible-head { min-height: 32px; padding: 4px 6px; font-size: var(--fs-sm); }
@@ -220,7 +211,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-notam-raw { margin: 0; padding: 6px 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); font-family: var(--mono); font-size: var(--fs-2xs); white-space: pre-wrap; overflow-wrap: anywhere; }
 .ns-table tr.is-notam td { background: var(--accent-soft); }
 
-/* touch-and-go / stop requests (Flight plan section) */
 .ep-requests ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, max-content) max-content max-content; gap: 6px 12px; }
 .ep-requests li { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; align-items: center; min-height: 28px; font-size: var(--fs-sm); }
 .ep-requests .ep-req-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -229,7 +219,6 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-req-stop .numfield input { padding-top: 3px; padding-bottom: 3px; text-align: right; }
 .ep-req-off { visibility: hidden; }
 
-/* aerodrome hours (AerodromeSection) */
 .ep-ad-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
 .ep-ad { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-size: var(--fs-sm); }
 .ep-ad.is-closed { border-left: 3px solid var(--danger); }
@@ -248,13 +237,11 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-fob-total { padding-bottom: 6px; }
 .ns-tas input { width: 5ch; }
 
-/* METAR */
 .ep-metars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
 .ep-metar-head { display: flex; align-items: baseline; gap: var(--s2); font-size: var(--fs-xs); margin-bottom: 2px; min-width: 0; }
 .ep-metar-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ep-metar-age { flex: none; }
 
-/* "Ready to fly" and the stages (ReadinessBar.tsx) */
 /* the summary and the stage tabs stay on top while the panel scrolls; section headers stick just below */
 .rd-pinned { position: sticky; top: 0; z-index: 3; background: var(--surface); padding: var(--s3) var(--s4) var(--s2); display: flex; flex-direction: column; gap: var(--s2); }
 .rd-head { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--fs-sm); }

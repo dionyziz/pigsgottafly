@@ -1,6 +1,5 @@
-/* Shared by the W&B (MD 4.3) and performance (MD 4.4) exports: A4 portrait sheets, typed-in
-   values, verdict badge, notes and signature line. Screen: the sheet on the page background;
-   print: one sheet per A4 page, no margins outside the sheet's own. */
+/* Shared by the W&B (MD 4.3) and performance (MD 4.4) exports.
+print: one sheet per A4 page, no margins outside the sheet's own. */
 
 .xp-doc { display: flex; flex-direction: column; gap: 16px; }
 /* the status panel (src/ui Panel) is as wide as the sheet */
@@ -48,7 +47,6 @@
 .xp-sign > span { display: flex; align-items: flex-end; gap: 1.6mm; white-space: nowrap; }
 .xp-sign b { font-weight: 400; font-size: 9.5pt; border-bottom: 0.25mm solid #111; min-width: 18mm; padding: 0 1mm; }
 .xp-sign .sign { flex: 1; }
-/* the signature line, with the PIC's e-signature standing on it */
 .xp-sign .xp-sigline { position: relative; flex: 1; border-bottom: 0.25mm solid #111; min-width: 30mm; height: 1em; }
 .xp-pic-signature { position: absolute; left: 4mm; bottom: 0.4mm; font-weight: 400; text-align: left; }
 

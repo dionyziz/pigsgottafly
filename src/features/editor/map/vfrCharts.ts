@@ -7,7 +7,6 @@ import type { RefAerodrome, RefVfrPoint } from '../../../shared/ref';
 import { type AirspaceInfo, isArea, pointInRing } from './airspace';
 
 export interface VfrChart {
-  /** ICAO of the chart's aerodrome ('LGAV'). */
   icao: string;
   url: string;
 }
@@ -20,9 +19,8 @@ interface Cover {
 }
 
 export interface VfrChartIndex {
-  /** Charts with the area they show, smallest first. */
+  /** Smallest first. */
   covers: Cover[];
-  /** Aerodromes with a VFR chart, by id. */
   byAerodrome: Map<string, { a: RefAerodrome; chart: VfrChart }>;
 }
 

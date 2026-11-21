@@ -1,5 +1,3 @@
-// Small building blocks of the editor panel: collapsible sections (Collapsible that opens on a focus
-// request) and key/value rows.
 import { type ReactNode, use, useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { findFocusTarget, focusAndHighlight, focusParam } from '../../../app/focusParam';
@@ -30,7 +28,6 @@ export function useFocusRequest(matches: (key: string) => boolean) {
     let timer = 0;
     // the box opens on this render; its body (and data still loading) may take a moment
     const attempt = () => {
-      // a whole section: open, and scrolled to
       if (req.key.startsWith('section:') && ref.current) {
         ref.current.scrollIntoView({ block: 'start', behavior: 'smooth' });
         setReq(null);
@@ -102,7 +99,6 @@ export function Section({
   );
 }
 
-/** A label/value line of computed figures. */
 export function KV({
   k,
   v,

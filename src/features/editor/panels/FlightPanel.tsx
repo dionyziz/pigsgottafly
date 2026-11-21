@@ -1,9 +1,4 @@
-// The editor's left panel: "Ready to fly" and the stages (ReadinessBar.tsx, UX-PLAN.md):
-//   Plan          Route, When, Aircraft, Manifest & loading, Fuel, Flight plan (alternates, remarks)
-//   Brief         METAR (near the flight), NOTAMs, Aerodrome hours, Take-off & landing, ATC
-//   File & forms  its own page, without the map: the flight plan and filing, the forms (the exports)
-// Every section stays mounted (a stage switch keeps their state). Numbers come from useFlightCalc()
-// (src/calc); edits go through useEditor().update().
+// Every section stays mounted, so a stage switch keeps its state (stages: ReadinessBar.tsx, UX-PLAN.md).
 import { AerodromeSection } from './AerodromeSection';
 import { AircraftSection } from './AircraftSection';
 import { AtcSection } from './AtcSection';

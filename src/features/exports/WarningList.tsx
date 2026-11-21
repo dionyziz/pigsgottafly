@@ -1,6 +1,4 @@
-// The warnings box of the export pages (screen only): the shared WarningList (src/ui) in one warn
-// (or danger) box, each warning with a link to where it is fixed (the flight editor with the input
-// focused, the hangar, the profile, the passenger dialog: fix.ts); those elsewhere come back here (back.ts).
+// Each warning links to where it is fixed (fix.ts); those fixed elsewhere come back here (back.ts).
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router';
 
@@ -8,7 +6,6 @@ import { useWithBack } from '../../app/back';
 import { type WarningLevel, WarningList } from '../../ui';
 import { type Fix, type FixContext, fixLink, planningFix } from './fix';
 
-/** A warning: its text, or the text with its fix. */
 export type ExportWarning = string | { text: string; fix?: Fix | null };
 
 interface Entry {
@@ -35,7 +32,6 @@ export function ExportWarnings({
   fixes?: Record<string, Fix>;
   aircraftId?: string | null;
   classify?: boolean;
-  /** A heading above the list ("Missing details"). */
   title?: ReactNode;
   /** 'danger' when the warnings block the document (an incomplete flight plan). */
   level?: 'warn' | 'danger';

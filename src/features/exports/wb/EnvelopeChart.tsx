@@ -6,7 +6,6 @@ import type { WbPoint } from '../../../calc';
 import { type Box, layoutChartLabels, type Segment } from './chartLayout';
 import { chartDomain, type ChartEnvelope, fmtKg } from './model';
 
-/** An envelope as the chart draws it. */
 export type EnvelopeOutline = Pick<ChartEnvelope, 'category' | 'label' | 'outline' | 'cgOutline'>;
 
 export interface ChartPoint {
@@ -35,7 +34,6 @@ export function envelopeChartGeometry(envelopes: EnvelopeOutline[], points: Char
   const ldg = byKey.get('landing');
   const zf = byKey.get('zerofuel');
   const stops = valid.filter((p) => p.key.startsWith('stop'));
-  // fuel burn: take-off → each stop → landing
   const burnPath = [to, ...stops, ldg].filter((p): p is ChartPoint => !!p);
 
   // Captions and value labels placed clear of each other, the markers and the fuel-burn line.
@@ -112,7 +110,6 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: EnvelopeOutlin
         </clipPath>
       </defs>
 
-      {/* grid */}
       <g className="wb-grid-minor">
         {minor.map((x) => (
           <line key={`mx${x}`} x1={sx(x)} x2={sx(x)} y1={M.t} y2={H - M.b} />
@@ -131,7 +128,6 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: EnvelopeOutlin
       </g>
       <rect className="wb-frame" x={M.l} y={M.t} width={W - M.l - M.r} height={H - M.t - M.b} />
 
-      {/* envelopes */}
       <g clipPath="url(#wb-plot)">
         {envelopes.map((e, i) => (
           <g key={e.category} className={`wb-env wb-env-${e.category}`}>
@@ -185,7 +181,6 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: EnvelopeOutlin
           })}
       </g>
 
-      {/* points */}
       {valid.map((p) => {
         const x = sx(p.point.momentKgM);
         const y = sy(p.point.massKg);
@@ -221,7 +216,6 @@ export function EnvelopeChart({ envelopes, points }: { envelopes: EnvelopeOutlin
         );
       })}
 
-      {/* axes */}
       <g className="wb-axis">
         {d.xTicks.map((x) => (
           <text key={`tx${x}`} x={sx(x)} y={H - M.b + 22} textAnchor="middle">

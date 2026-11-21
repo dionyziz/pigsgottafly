@@ -1,5 +1,4 @@
-// Small MapLibre map of the pilot's saved waypoints (OpenStreetMap raster, no API key).
-// Click a marker to select it; click elsewhere to start a new waypoint there.
+// OpenStreetMap raster: no API key.
 import { useEffect, useEffectEvent, useRef } from 'react';
 
 import { maplibregl } from '../../app/maplibre';
@@ -71,7 +70,6 @@ export function WaypointMap({
     };
   }, []);
 
-  // sync markers
   useEffect(() => {
     const m = map.current;
     if (!m) return;
@@ -105,7 +103,6 @@ export function WaypointMap({
     }
   }, [waypoints, selectedId]);
 
-  // fly to the selection
   const flyTo = useEffectEvent((id: string | null) => {
     const m = map.current;
     const w = waypoints.find((x) => x.id === id);

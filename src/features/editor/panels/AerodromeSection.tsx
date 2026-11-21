@@ -1,7 +1,5 @@
-// Aerodrome hours: each aerodrome of the route (departure, stops, touch-and-goes, destination) with
-// its status at the planned time there, its hours, ATS and handling on the flight's date (AIP AD 2.3 /
-// AD 1.6 + the flight's NOTAMs, marked by NOTAM id) and the AIP text. Warnings for a closed
-// aerodrome are in the warnings list (calc.tsx) and on the map.
+// Aerodrome status at the planned time there (AIP AD 2.3 / AD 1.6 + the flight's NOTAMs). Warnings for a
+// closed aerodrome are in the warnings list (calc.tsx) and on the map.
 import { useMemo } from 'react';
 
 import { clockZ } from '../../../calc';

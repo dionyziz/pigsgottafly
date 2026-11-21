@@ -1,5 +1,3 @@
-// Mass & balance section: empty aircraft from the weighing report, MTOW/MLW, loading stations with
-// their seat layout, combined limits, and the normal/utility CG and moment envelopes.
 import { useState } from 'react';
 
 import { moveAt } from '../../shared/list';
@@ -496,7 +494,6 @@ function Stations({ a, edit, issues }: SectionProps) {
   );
 }
 
-/** Side-view ruler of the station arms, with the empty CG and the envelope's CG range. */
 function ArmRuler({ a }: { a: AircraftInput }) {
   const mb = a.massBalance;
   const items = mb.stations.filter((s) => isFinite(s.armM));

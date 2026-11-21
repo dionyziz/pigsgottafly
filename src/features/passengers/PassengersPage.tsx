@@ -1,6 +1,4 @@
-// Passengers: the pilot's list of people who may fly with them (search, add, edit, delete: the bin
-// on the row or Delete in the dialog, confirmed, with Undo). These are added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
-// The pilot is listed first (PIC) and edited with the same form, saved to the profile.
+// These are added to a flight's manifest as PAX; Form 731, the General Declaration and W&B use their details.
 import './passengers.css';
 import '../lobby/lists.css';
 
@@ -55,11 +53,9 @@ function PersonRow({
   passengerId,
 }: {
   person: PersonDetails & { email?: string };
-  /** Set for the pilot's own row. */
   pilot?: Pilot;
   today: string;
   onEdit: (fields?: PersonField[]) => void;
-  /** The row's bin (passengers only). */
   onDelete?: () => void;
   testId?: string;
   passengerId?: string;

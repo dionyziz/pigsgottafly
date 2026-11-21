@@ -1,7 +1,5 @@
-// Admin → Errors (/admin/errors; ADMIN_EMAILS only, the API answers 403 to everyone else): the error
-// groups recorded by the monitor (api/_lib/monitor.ts): server errors and 5xx answers, client errors,
-// failed migrations and health-check warnings, newest first. A row opens its last stack; "Resolve"
-// hides it until it happens again (which e-mails the admins again).
+// Error groups recorded by the monitor (api/_lib/monitor.ts). "Resolve" hides a group until it happens
+// again (which e-mails the admins again).
 import '../lobby/lists.css';
 
 import { useState } from 'react';

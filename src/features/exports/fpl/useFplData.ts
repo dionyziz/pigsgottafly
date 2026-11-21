@@ -1,6 +1,4 @@
-// What the FPL needs outside the editor: the flight's aircraft (shared entity cache), the winds
-// aloft for the navlog (EET), and the fuel plan (endurance). Calculations come from src/calc; the
-// weather from useFlightWeather, as for the other exports and the editor.
+// What the FPL needs outside the editor: the winds aloft for the navlog (EET) and the fuel plan (endurance).
 import { useMemo } from 'react';
 
 import {

@@ -1,4 +1,3 @@
-// The admin tabs: Pilots (/admin) | Errors (/admin/errors) | E-mails (/admin/mail).
 import { useNavigate } from 'react-router';
 
 export function AdminNav({ current }: { current: 'pilots' | 'errors' | 'mail' }) {

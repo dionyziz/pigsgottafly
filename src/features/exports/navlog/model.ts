@@ -133,9 +133,6 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
   return { legs, altitudesFt, navlog, fuel };
 }
 
-// ---------------------------------------------------------------------------------------------
-// Sheet model
-
 export interface SheetLeg {
   tc: string;
   alt: string;
@@ -202,7 +199,6 @@ export interface NavlogSheet {
   bottomLabel: string;
   /** The checkpoint ending the sheet's last row ('' when that row is unused). */
   bottomName: string;
-  /** Terminal information for this sheet's legs. */
   terminal: TerminalRow[];
   totals: { dist: string; ete: string; fuel: string; sunset: string };
 }
@@ -473,7 +469,6 @@ function legRow(nl: NavlogResult['legs'][number]): SheetLeg {
 
 const clockZ = (m: number) => (isFinite(m) ? fmtClock(m) + 'Z' : '');
 
-/** The whole printed document (sheets, terminal information) plus on-screen warnings and sources. */
 export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const { doc, aircraft, computed, weather, metar, nowMs } = input;
   const { navlog, fuel, legs } = computed;

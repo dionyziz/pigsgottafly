@@ -1,4 +1,3 @@
-// Route direction arrows, the route-point hover halo, the layer toggles, the FIR and the chart colours (design tokens).
 import fs from 'node:fs';
 
 import { describe, expect, it } from 'vitest';

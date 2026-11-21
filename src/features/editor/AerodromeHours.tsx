@@ -1,7 +1,5 @@
-// An aerodrome's hours on the flight's date (AIP AD 2.3 / AD 1.6 overlaid with the flight's NOTAMs,
-// src/calc/aerodromeStatus.ts): operating hours, ATS, handling and customs, the NOTAMs that change them
-// (by NOTAM id), the AIP section (a link to its PDF) and the text the parser could not represent. Shared by the editor's "Aerodrome hours" section and the
-// map's aerodrome tooltip / details.
+// AIP AD 2.3 / AD 1.6 overlaid with the flight's NOTAMs (src/calc/aerodromeStatus.ts). Shared by the
+// editor's "Aerodrome hours" section and the map's aerodrome tooltip / details.
 import { AipLink } from '../../app/AipLink';
 import { type AdDay, type AdNotamEffect, aerodromeDay } from '../../calc';
 import { SUN_TABLES } from '../../data/ref';
@@ -12,13 +10,12 @@ export interface AdDayInfo {
   ad: AdDay | null;
   ats: AdDay | null;
   handling: AdDay | null;
-  /** NOTAMs of this aerodrome that change its hours, ATS or handling on that day. */
   notams: AdNotamEffect[];
 }
 
 const DAY_MS = 86400e3;
 
-/** The aerodrome's hours on `day` ('' = today, UTC). */
+/** `day` '' = today (UTC). */
 export function adDayInfo(a: RefAerodrome, day: string, effects: readonly AdNotamEffect[]): AdDayInfo {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : new Date().toISOString().slice(0, 10);
   const start = Date.parse(d + 'T00:00:00Z');
@@ -66,7 +63,6 @@ function DayText({ d, testId }: { d: AdDay; testId?: string }) {
   );
 }
 
-/** Definition list of the hours (used inside the map popover and the panel section). */
 export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdDayInfo; compact?: boolean }) {
   const h = a.hours;
   if (!h || !info.ad) return <p className="muted">No operational hours published for this aerodrome.</p>;

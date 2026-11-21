@@ -1,5 +1,5 @@
-// The NOTAM briefing export: the server's briefing for the saved flight (GET
-// /api/flights/:id/notams) laid out for print. Pure: no I/O, no DOM.
+// The server's briefing for the saved flight (GET /api/flights/:id/notams) laid out for print.
+// Pure: no I/O, no DOM.
 import { fmtNotamTime, notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
 import type { FlightDoc } from '../../../shared';
 import type { Notam, NotamBriefing } from '../../../shared/briefing';
@@ -32,7 +32,6 @@ export interface BriefingModel {
   status: NotamBriefing['status'] | 'loading';
   message: string | null;
   relevant: BriefingRow[];
-  /** NOTAMs filtered out (not listed). */
   hiddenCount: number;
 }
 

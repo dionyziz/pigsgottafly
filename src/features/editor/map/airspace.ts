@@ -1,6 +1,4 @@
-// Airspace on the map: one shape for TMAs/MTMAs (ENR 2.1), aerodrome CTRs/ATZs (AD 2.17) and the ENR 5
-// navigation-warning areas (prohibited, restricted, danger, military, other activities), chart labels,
-// and which of them lie under the cursor. Pure (no map), unit-tested.
+// TMAs/MTMAs (ENR 2.1), aerodrome CTRs/ATZs (AD 2.17) and the ENR 5 navigation-warning areas. Pure (no map).
 import polygonClipping from 'polygon-clipping';
 
 import { deg, R_NM, rad } from '../../../calc';
@@ -9,7 +7,7 @@ import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef, RefFir } from 
 import type { LatLon } from '../../../shared/types';
 import { FAR_NM } from './style';
 
-/** Point at distance/bearing from a start (great circle), [lon, lat]. */
+/** Great circle; returns [lon, lat]. */
 export function destination(lat: number, lon: number, bearingDeg: number, distNm: number): [number, number] {
   const d = distNm / R_NM,
     b = rad(bearingDeg),
@@ -20,7 +18,7 @@ export function destination(lat: number, lon: number, bearingDeg: number, distNm
   return [deg(l2), deg(p2)];
 }
 
-/** Closed ring approximating a circle, [lon, lat] (64 vertices). */
+/** Closed ring, [lon, lat]. */
 export function circleRing(lat: number, lon: number, radiusNm: number, n = 64): [number, number][] {
   const ring: [number, number][] = [];
   for (let i = 0; i < n; i++) ring.push(destination(lat, lon, (360 * i) / n, radiusNm));
@@ -30,7 +28,6 @@ export function circleRing(lat: number, lon: number, radiusNm: number, n = 64): 
 
 export type AirspaceType = 'TMA' | 'MTMA' | 'CTR' | 'ATZ' | RefArea['kind'];
 
-/** ENR 5 area kinds. */
 export const AREA_TYPES: readonly AirspaceType[] = ['P', 'R', 'D', 'MIL', 'ACT'];
 export const isArea = (t: AirspaceType) => AREA_TYPES.includes(t);
 
@@ -119,7 +116,6 @@ function bboxOf(ring: [number, number][]): [number, number, number, number] {
 /** The AIP limits this airspace by the FIR boundary ("limited to East by ATHINAI - ISTANBUL FIR boundaries"). */
 const FIR_LIMITED = /\bFIR\b/i;
 
-/** The FIR as a closed [lon, lat] ring, for clipping. */
 export function firRing(fir: RefFir | undefined): [number, number][] | null {
   return fir && fir.boundary.length >= 3
     ? closed(fir.boundary.map(([lat, lon]) => [lon, lat] as [number, number]))

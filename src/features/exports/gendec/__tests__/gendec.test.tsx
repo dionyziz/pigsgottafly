@@ -1,5 +1,3 @@
-// General Declaration: header fields, routing (origin and destination only) and crew, passenger
-// counts, warnings, render.
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';

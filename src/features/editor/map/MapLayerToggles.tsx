@@ -1,5 +1,4 @@
-// The map layer selection (base map and one toggle per layer): the map's layers popover and the
-// profile's "Map layers for new flights" use this one list.
+// Shared by the map's layers popover and the profile's "Map layers for new flights".
 import './map.css';
 
 import type { ReactNode } from 'react';
@@ -69,9 +68,7 @@ export function MapLayerToggles({
 }: {
   value: MapLayers;
   onChange: (v: MapLayers) => void;
-  /** Counts shown beside the area toggles (the map). */
   counts?: Partial<Record<'prd' | 'mil' | 'act' | 'notams', number>>;
-  /** More toggles at the end (the map's editing tips). */
   extra?: ReactNode;
 }) {
   return (

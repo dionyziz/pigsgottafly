@@ -1,7 +1,3 @@
-// Airspace hover tooltip and click popover on the route map (PLAN-v3 "Airspace on the map"): what the
-// airspace or area is, independent of the route: name, class and vertical limits on hover; on click its
-// type, limits, lateral limits in short, activity, units and frequencies, remarks, the AIP VFR chart(s)
-// showing it and the AIP section (links to the AIP PDFs).
 import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
@@ -32,7 +28,6 @@ const Limits = ({ a }: { a: AirspaceInfo }) => (
   </>
 );
 
-/** The airspaces under the pointer, in the map's hover box (MapHoverTip). */
 export function AirspaceTipRows({ items }: { items: AirspaceInfo[] }) {
   const shown = items.slice(0, 4);
   return (
@@ -59,7 +54,6 @@ export function AirspaceDetails({
 }: {
   items: AirspaceInfo[];
   airac: string;
-  /** The AIP VFR charts showing an airspace. */
   chartsFor?: (a: AirspaceInfo) => VfrChart[];
   /** The airspace to outline on the map: the one under the pointer, else the open one. */
   onFocus?: (id: string | null) => void;

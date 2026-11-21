@@ -1,9 +1,5 @@
-// The numbers behind the W&B (MD 4.3) and performance (MD 4.4) exports, computed the way the
-// flight editor computes them (src/features/editor/panels/calc.tsx), but without the editor
-// context: navlog + fuel (via the navlog export's computeFlightNavlog), W&B from the manifest and
-// the fuel plan, and the take-off / landing performance at the departure and destination, and at
-// each intermediate full stop (its landing and its take-off, with the sector masses: sectors.ts).
-// Pure: no I/O, no DOM (the hook in useExportCalc.ts fetches the inputs).
+// Computed the way the flight editor computes them (src/features/editor/panels/calc.tsx), without the
+// editor context, so the exports agree with the editor.
 import {
   type AerodromePerf,
   aerodromePerformance,
@@ -97,7 +93,6 @@ export interface ExportStop {
 export interface ExportCalc {
   computed: NavlogComputed;
   wb: WbResult | null;
-  /** Manifest problems found while building the loads (missing weights…). */
   wbLoadWarnings: string[];
   /** People on the manifest with no weight (0 kg in the W&B): the balance is incomplete. */
   missingWeights: string[];
@@ -112,7 +107,6 @@ export interface ExportCalc {
   arrival: EndpointPerf;
   /** Take-off → landing sectors (one per leg run between full stops); [] without a route. */
   sectors: FlightSector[];
-  /** Intermediate full stops in route order. */
   stops: ExportStop[];
 }
 
@@ -186,7 +180,6 @@ export function computeExportCalc(input: ExportCalcInput): ExportCalc {
     }
   }
 
-  // ---- performance at both ends and at each stop
   const route = doc.route;
   const depPoint = route[0] ?? null;
   const arrPoint = route.length > 1 ? route[route.length - 1] : null;

@@ -31,7 +31,6 @@ export function Form731(props: FormExportProps & { signatures?: Record<string, S
 
 const stamp = (ms: number) => fmtDateTimeMs(ms);
 
-/** "D. Zindros" in the handwriting font over a faint Pig's Gotta Fly mark, with when it was signed. */
 export function Signature({ s, size = 4.6 }: { s: ShownSignature; size?: number }) {
   return (
     <span className="pgf-signature-wrap" data-testid="signature">

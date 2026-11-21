@@ -1,4 +1,3 @@
-// Form 731: field contents, manifest order, pagination, warnings, and the rendered sheet.
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';

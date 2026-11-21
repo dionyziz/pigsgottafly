@@ -100,7 +100,6 @@
 .ed-table td, .pt-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .ed-table input, .pt-table input { padding: 5px 8px; font-size: var(--fs-sm); }
 .ed-table .num, .ed-table th.num, .pt-table .num { text-align: right; }
-/* numbers right-aligned in the editable tables */
 .ed-table .numfield input, .pt-table .numfield input { text-align: right; }
 td.drag, th.drag { width: 24px; padding-left: 0; padding-right: 0; }
 /* stations: one fixed grid, rows top-aligned, every control one height (--cell-h) */

@@ -11,7 +11,6 @@
 .wb-note { display: block; font-size: 7pt; color: #666; line-height: 1.2; }
 .wb-row-empty th .wb-label, .wb-row-fuel th .wb-label, .wb-row-station th .wb-label { font-weight: 600; }
 
-/* people under a seat station: lighter rules, indented */
 .wb-person th, .wb-person td { border-top: 0; border-bottom-style: dotted; border-bottom-color: #aaa; padding-top: 0.5mm; padding-bottom: 0.5mm; }
 .wb-person th { padding-left: 6mm; }
 .wb-person-name { display: inline; font-size: 8.5pt; margin-right: 2mm; }

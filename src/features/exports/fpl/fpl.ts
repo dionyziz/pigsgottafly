@@ -127,7 +127,6 @@ export interface FplInput {
 export interface Item19 {
   endurance: string;
   persons: string;
-  /** Emergency radio carried. */
   radio: { uhf: boolean; vhf: boolean; elt: boolean };
   survival: { present: boolean; polar: boolean; desert: boolean; maritime: boolean; jungle: boolean };
   jackets: { present: boolean; light: boolean; fluorescein: boolean; uhf: boolean; vhf: boolean };
@@ -161,14 +160,10 @@ export interface FplResult {
   lines: string[];
   /** True when nothing is missing (no ???? in the message). */
   complete: boolean;
-  /** Problems the pilot should look at before filing. */
   warnings: string[];
   /** Where each warning is fixed (by its text); an aircraft fix has no id (the flight's aircraft). */
   fixes: Record<string, Fix>;
 }
-
-// ------------------------------------------------------------------------------------------------
-// Text
 
 export { transliterate } from '../../../shared/translit';
 import { transliterate } from '../../../shared/translit';
@@ -223,9 +218,6 @@ export function picName(fullName: string): string {
   if (w.length < 2) return w[0] ?? '';
   return `${w[w.length - 1]} ${w[0][0]}`;
 }
-
-// ------------------------------------------------------------------------------------------------
-// Field formats
 
 /** Item 7: registration without hyphen/spaces, upper case. */
 export function aircraftId(registration: string): string {
@@ -378,10 +370,6 @@ export function parseItem18(s: string): { indicator: string; text: string }[] {
 /** Item 10a/10b: upper case, letters and digits only. */
 const equipField = (s: string) => transliterate(s || '').replace(/[^A-Z0-9]/g, '');
 
-// ------------------------------------------------------------------------------------------------
-// Item 19
-
-/** Records a warning and where it is fixed. */
 type Warn = (text: string, fix?: Fix) => void;
 
 export function buildItem19(input: FplInput, warn: Warn): Item19 {
@@ -451,9 +439,6 @@ export function buildItem19(input: FplInput, warn: Warn): Item19 {
   return { endurance, persons, radio, survival, jackets, dinghies, colours, remarks, pic, text: parts.join(' ') };
 }
 
-// ------------------------------------------------------------------------------------------------
-// Wrapping
-
 /** Wraps one field at spaces so no line exceeds `width` (a single longer word stays whole). */
 export function wrapLine(s: string, width = AFTN_LINE): string[] {
   const words = s.split(' ');
@@ -470,9 +455,6 @@ export function wrapLine(s: string, width = AFTN_LINE): string[] {
   if (cur) lines.push(cur);
   return lines;
 }
-
-// ------------------------------------------------------------------------------------------------
-// The message
 
 export function buildFpl(input: FplInput): FplResult {
   const warnings: string[] = [];

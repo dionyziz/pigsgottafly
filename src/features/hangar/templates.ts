@@ -6,7 +6,6 @@ import { aircraftFromTypeJson, type AircraftTypeTemplate, blankAircraft } from '
 import type { AircraftInput } from '../../shared/types';
 
 export interface HangarTemplate extends AircraftTypeTemplate {
-  /** One line about what the template fills in. */
   description: string;
 }
 

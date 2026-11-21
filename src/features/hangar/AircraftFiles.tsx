@@ -1,7 +1,5 @@
-// The aircraft's photo or its placeholder picture (hangar cards, aircraft page header) and documents (POH/AFM and other PDFs,
-// read in an in-app viewer). Content comes and goes in chunks (src/data/aircraftFiles.ts). Anyone
-// with access sees them; owners and editors add, replace, rename and remove. The documents section
-// and the PDF viewer also serve an operator's documents (operations manual): they take a FileScope.
+// Content comes and goes in chunks (src/data/aircraftFiles.ts). The documents section and the PDF viewer
+// also serve an operator's documents (operations manual): they take a FileScope.
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { aircraftScope, fileBlob, type FileScope, resizePhoto, saveBlob, uploadFile } from '../../data/aircraftFiles';
@@ -191,7 +189,6 @@ export function PhotoControl({
   );
 }
 
-/** A document in the full-screen PDF viewer (src/ui PdfViewer), with download. */
 export function DocumentViewer({
   scope,
   file,
@@ -218,7 +215,6 @@ export function DocumentViewer({
   );
 }
 
-/** A document's icon in a .doc-list row. */
 export function PdfIcon() {
   return (
     <svg viewBox="0 0 20 24" className="doc-ico" aria-hidden="true">

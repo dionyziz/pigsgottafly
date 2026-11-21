@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ResizableOpts {
-  /** localStorage key. */
   key: string;
   /** 'x': the handle moves left/right and sets a width; 'y': up/down and sets a height. */
   axis: 'x' | 'y';

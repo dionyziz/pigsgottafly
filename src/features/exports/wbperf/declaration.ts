@@ -1,7 +1,5 @@
-// The W&B and performance sheets as WbPerfContent (src/shared/declarations.ts): what the export page
-// draws (../wb/WbExport.tsx, ../performance/PerformanceExport.tsx), as printed text plus the chart
-// and runway diagram geometry. The page draws its sheets from it and sends the same content to the
-// aircraft's operator, which the server prints with the same sheets. Pure: built from the sheet models.
+// The page draws its sheets from WbPerfContent and sends the same content to the aircraft's operator,
+// which the server prints with the same sheets.
 import {
   type PerfBlockContent,
   type WbPerfChart,

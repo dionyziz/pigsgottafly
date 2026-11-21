@@ -1,6 +1,4 @@
-// Aircraft page sections: identity, flight plan items, speeds, fuel. (Mass & balance, performance
-// and compass cards are in their own files.) Each section edits the draft through `edit`. Inputs are
-// named by the issue path they fix (name="fuel.usableL"), so the save bar's issues can focus them.
+// Inputs are named by the issue path they fix (name="fuel.usableL"), so the save bar's issues can focus them.
 import { fmtDuration } from '../../shared/format';
 import { fuelDensity } from '../../shared/fuel';
 import type { AircraftInput, WakeCategory } from '../../shared/types';

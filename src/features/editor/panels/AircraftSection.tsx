@@ -1,5 +1,4 @@
-// Aircraft: pick one from the hangar; shows the planning figures and the compass card in use. On a
-// flight shared with the pilot the aircraft is its owner's choice (from the owner's hangar): shown,
+// On a flight shared with the pilot the aircraft is its owner's choice (from the owner's hangar): shown,
 // not changed here.
 import { FlowLink } from '../../../app/FlowLinks';
 import { pickCompassCard } from '../../../calc';

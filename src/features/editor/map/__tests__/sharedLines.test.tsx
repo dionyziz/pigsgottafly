@@ -1,7 +1,4 @@
 // @vitest-environment jsdom
-// Lines carrying more than one thing: the labels of legs flown both ways (or twice), the arrows of one-way
-// VFR route segments published in both directions or on two charts; and the AIP VFR chart links of the
-// map's info boxes.
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 

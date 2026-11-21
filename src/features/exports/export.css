@@ -1,5 +1,4 @@
 .export-page { max-width: 1240px; }
-/* back to the flight and Print on top; below them one tab per export, the current one selected */
 .export-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: var(--s2); margin: 0 0 var(--s4); }
 .export-back { justify-self: start; max-width: 100%; color: var(--muted); text-decoration: none; font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .export-back:hover { color: var(--ink); text-decoration: none; }
@@ -10,21 +9,17 @@
 .export-bar > button { grid-column: 2; grid-row: 1; }
 @media print { .export-bar { display: none !important; } }
 
-/* Screen panels above the sheets (src/ui Panel): centred over the sheet */
 .export-page .panel { margin-inline: auto; }
 .export-page .panel > * { min-width: 0; }
 
-/* The one warnings box of the exports (ExportWarnings: src/ui WarningList inside) */
 .export-warnings { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; border-radius: var(--r); font-size: var(--fs-sm); background: var(--warn-soft); border: 1px solid var(--warn-line); color: var(--warn); }
 .export-warnings.danger { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
 .export-warnings-title { font-weight: 600; }
 
-/* each form's state on its tab, as the editor's "Ready to fly" sees it (readiness.ts paperwork) */
 .export-tabs a { display: inline-flex; align-items: center; gap: 6px; }
 .export-tabs .rd-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ok); }
 .export-tabs .rd-dot.is-todo { background: var(--warn); }
 .export-tabs .xp-tab-ok { color: var(--ok); flex: none; }
-/* the open form's state under the tabs */
 .xp-status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
 .xp-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r); font-size: var(--fs-sm); border: 1px solid var(--warn-line); background: var(--warn-soft); color: var(--warn); }
 .xp-status b { font-weight: 600; }

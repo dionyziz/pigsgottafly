@@ -1,6 +1,3 @@
-// Radio navaid hover tooltip and click popover on the route map: type, ident, name and frequency on
-// hover; on click also the channel, hours, coverage, DME elevation, variation / declination and links to
-// the AIP sections that publish it (ENR 4.1, the aerodromes' AD 2.19) and the AIP VFR chart showing it.
 import { Fragment } from 'react';
 
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
@@ -40,7 +37,6 @@ function Head({ n, tip }: { n: RefNavaid; tip?: boolean }) {
   );
 }
 
-/** The radio navaid under the pointer, in the map's hover box (MapHoverTip). */
 export function NavaidTipRows({ n }: { n: RefNavaid }) {
   return (
     <div className="pgf-tip-section" data-testid="navaid-tip">
@@ -51,16 +47,7 @@ export function NavaidTipRows({ n }: { n: RefNavaid }) {
   );
 }
 
-export function NavaidDetails({
-  n,
-  airac,
-  charts = [],
-}: {
-  n: RefNavaid;
-  airac: string;
-  /** The AIP VFR chart showing the navaid. */
-  charts?: VfrChart[];
-}) {
+export function NavaidDetails({ n, airac, charts = [] }: { n: RefNavaid; airac: string; charts?: VfrChart[] }) {
   return (
     <section className="pgf-pop-section" aria-label="Radio navaid" data-testid="navaid-pop">
       <PopItem open head={<Head n={n} />}>

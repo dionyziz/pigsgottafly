@@ -1,6 +1,4 @@
-// Compass swing section: deviation cards (for / steer), swing and expiry dates, source, the swing
-// report itself (PDF or image, stored with the aircraft), with a deviation curve and an expiry
-// warning. The first card is the flights' default.
+// The first card is the flights' default.
 import { useState } from 'react';
 
 import { deviation, fmtHdg } from '../../calc';
@@ -136,12 +134,8 @@ function base64Blob(data: string, mime: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
-/**
- * The swing report of one card: attach (PDF/PNG/JPEG/WebP up to 3 MB), open (a PDF in the viewer,
- * an image inline), download, replace, remove. The upload is stored at once; the card's reference
- * to it is saved with the aircraft (files no saved card refers to are deleted by the server on the
- * next save).
- */
+// The upload is stored at once; the card's reference to it is saved with the aircraft (files no saved
+// card refers to are deleted by the server on the next save).
 export function SwingReport({
   aircraftId,
   report,
@@ -153,7 +147,6 @@ export function SwingReport({
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  // the report's content while it is shown (a PDF in the viewer, an image inline)
   const [shown, setShown] = useState<{ id: string; blob: Blob | null } | null>(null);
   const open = shown && report && shown.id === report.id ? shown : null;
   const isPdf = report?.mime === 'application/pdf';

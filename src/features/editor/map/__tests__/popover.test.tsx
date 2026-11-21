@@ -1,7 +1,4 @@
 // @vitest-environment jsdom
-// The map's shared popover frame (MapPopover, PopItem, useAccordion), the point menu, the layers
-// control (SegmentedControl base map, layer toggles), tooltip placement near the map's edges and the
-// hint's close button.
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

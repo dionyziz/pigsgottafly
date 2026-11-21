@@ -1,6 +1,4 @@
-// What the W&B and performance exports need (the session pilot, the flight's aircraft, Open-Meteo
-// winds aloft and surface forecast, METAR when the flight is near), through computeExportCalc. The
-// weather comes from useFlightWeather, as for the navlog and the editor, so the printouts agree.
+// The weather comes from useFlightWeather, as for the navlog and the editor, so the printouts agree.
 import { useMemo, useState } from 'react';
 
 import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
@@ -18,7 +16,6 @@ export interface ExportCalcState {
   aircraft: Aircraft | null;
   weather: RouteWeather | null;
   metar: MetarTafResult | null;
-  /** Winds/surface forecast still loading. */
   weatherPending: boolean;
   refresh: () => void;
   calc: ExportCalc | null;

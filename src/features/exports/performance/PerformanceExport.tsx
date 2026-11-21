@@ -1,10 +1,6 @@
-// Take-off and landing performance, laid out like the club's MD 4.4 performance log
-// (trn-docs/MD4_4_Performance_Log_C172M.pdf): departure and destination blocks in the form's
-// order, a runway/wind diagram for each, the condition-factor table, crosswind limits, the
-// weather used and a pass/fail. One A4 portrait page per sector: a flight with an intermediate
-// full stop gets a page for each take-off → landing (the landing at the stop and the take-off
-// from it included). Each page carries the PIC's signature. These pages follow the loading sheet
-// in the "Weight & balance and performance" export (../wbperf).
+// Laid out like the club's MD 4.4 performance log (trn-docs/MD4_4_Performance_Log_C172M.pdf).
+// One A4 portrait page per sector: a flight with an intermediate full stop gets a page for each
+// take-off → landing (the landing at the stop and the take-off from it included).
 import '../wb/xp.css';
 import './performance.css';
 

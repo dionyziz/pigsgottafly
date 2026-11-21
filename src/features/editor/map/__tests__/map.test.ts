@@ -1,6 +1,3 @@
-// Unit tests of the map's pure parts: snapping, leg-label text and placement, route edits, GeoJSON.
-// Run: npx vitest run --config src/features/editor/map/__tests__/vitest.config.ts
-// (or move to tests/unit/map/ — the root vitest config only includes tests/unit/**).
 import { describe, expect, it } from 'vitest';
 
 import { distanceNm } from '../../../../calc';

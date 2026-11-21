@@ -3,7 +3,6 @@
 // one column or region share one size. Sizes are set in sheet units (calc(n * var(--u))), so a
 // fit computed on screen holds when printing.
 
-/** The sheet is this many units wide. */
 export const SHEET_UNITS = 1145;
 
 const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
@@ -123,7 +122,6 @@ const groupBy = (els: HTMLElement[], key: (el: HTMLElement) => string | undefine
   return [...m.values()];
 };
 
-/** Fits every sheet under `root`. */
 export function fitSheets(root: HTMLElement | null) {
   if (!root) return;
   root.querySelectorAll<HTMLElement>('.md42').forEach((sheet) => {

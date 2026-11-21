@@ -1,7 +1,4 @@
-// Collapsible navlog strip under the map: live legs (altitude, editable in place; TC/MC, wind, WCA,
-// MH, DEV/CH, GS, ETE, ETA, fuel) from computeNavlog(), a winds refresh, and every warning of the
-// flight (winds, compass card, W&B, performance, crosswind, fuel, manifest), each with its fix: the
-// ones about one leg (hazards, crosswind, altitude…) under that leg's row, the rest in the list.
+// Warnings about one leg (hazards, crosswind, altitude…) sit under that leg's row, the rest in the list.
 // A click anywhere on the header (not on its buttons) opens or closes it.
 import { Fragment, type KeyboardEvent, type MouseEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -180,7 +177,6 @@ export function NavlogStrip() {
     setState(s);
     save(s);
   };
-  // Height of the open strip, set by dragging its top edge.
   const r = useResizable({
     key: 'pgf.editor.stripHeight',
     axis: 'y',

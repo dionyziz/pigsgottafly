@@ -1,10 +1,9 @@
-// A route point's context menu (right-click) and the name prompt for custom points.
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 import type { MenuItem } from '../../../ui';
 import { cleanWaypointName } from './snap';
 
-/** Menu at (x, y) in map coordinates; the items have the shape of the shared Menu's; ↑/↓ move. */
+/** (x, y) in map coordinates; the items have the shape of the shared Menu's. */
 export function PointMenu({
   x,
   y,

@@ -32,9 +32,7 @@ export function useFormIssues<F extends string>(root: RefObject<HTMLElement | nu
     if (next.length) setShown((n) => n + 1);
     return next.length === 0;
   }, []);
-  /** The messages of one field. */
   const of = useCallback((field: F) => issues.filter((i) => i.field === field).map((i) => i.message), [issues]);
-  /** A field was edited: its messages go. */
   const clear = useCallback(
     (field: F) => setIssues((is) => (is.some((i) => i.field === field) ? is.filter((i) => i.field !== field) : is)),
     [],

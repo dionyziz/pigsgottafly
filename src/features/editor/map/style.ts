@@ -40,7 +40,6 @@ const CHART_DEFAULTS = {
 };
 export type ChartColor = keyof typeof CHART_DEFAULTS;
 
-/** The design token of each chart colour. */
 export const CHART_TOKENS: Record<ChartColor, string> = {
   aerodrome: '--map-aerodrome',
   navaid: '--map-navaid',
@@ -67,10 +66,10 @@ export const CHART_TOKENS: Record<ChartColor, string> = {
 };
 export const CHART_DEFAULT_VALUES: Readonly<Record<ChartColor, string>> = CHART_DEFAULTS;
 
-/** The chart colours in use (the defaults until loadChartTokens()). */
+/** The defaults until loadChartTokens(). */
 export const CHART: Record<ChartColor, string> = { ...CHART_DEFAULTS };
 
-/** Takes the chart colours from the page's --map-* tokens (a token that is not set keeps its default). */
+/** A token that is not set keeps its default. */
 export function loadChartTokens(
   root: Element | null = typeof document === 'undefined' ? null : document.documentElement,
 ): void {
@@ -786,7 +785,6 @@ function chartLayers(): LayerSpecification[] {
   ];
 }
 
-/** Feature-state `hover` (route points and midpoint handles under the cursor). */
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false];
 
 /** Dash phases of a focused outline (airspace, leg): stepping through them walks the dashes along it. */

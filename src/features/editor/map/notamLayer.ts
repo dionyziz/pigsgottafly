@@ -1,8 +1,5 @@
-// NOTAM areas on the map: the areas each NOTAM's text describes (polygons, circles, corridors),
-// else its Q-line circle, drawn translucent with a dashed outline (relevant: amber; hidden ones,
-// with "show all": grey; the one picked in the panel or on the map: accent). FIR-wide NOTAMs and
-// those without a position have no area; aerodrome NOTAMs are not drawn (the panel lists them). Hovering shows the NOTAM's ID, validity and limits; a click opens the
-// details (NotamPopover). Self-contained: adds its own source and layers on demand.
+// The areas each NOTAM's text describes (polygons, circles, corridors), else its Q-line circle. FIR-wide
+// NOTAMs and those without a position have no area; aerodrome NOTAMs are not drawn (the panel lists them).
 import type { GeoJSONSource, LayerSpecification, Map as MlMap } from 'maplibre-gl';
 
 import { isAerodromeNotam, notamRings, ringsSizeNm } from '../../../data/notams';
@@ -21,7 +18,6 @@ export interface MapNotam {
 export const NOTAM_SOURCE = 'notam-areas';
 export const NOTAM_LAYER_IDS = ['notam-fill', 'notam-line'] as const;
 
-/** Map areas of the NOTAMs that have one. */
 export function mapNotams(list: Notam[]): MapNotam[] {
   const out: MapNotam[] = [];
   for (const n of list) {
@@ -32,7 +28,7 @@ export function mapNotams(list: Notam[]): MapNotam[] {
   return out;
 }
 
-/** The GeoJSON of the NOTAM areas (the 'notam-areas' source); feature ids are indices into the list. */
+/** Feature ids are indices into the list. */
 export function notamFeatures(list: MapNotam[], selected: string | null) {
   return {
     type: 'FeatureCollection' as const,
@@ -83,7 +79,6 @@ function ensureLayers(m: MlMap, beforeId: string | undefined) {
   for (const l of notamLayers()) m.addLayer(l, before);
 }
 
-/** Sets the NOTAM areas (adds the layers the first time) and their visibility. */
 export function setNotamLayer(
   m: MlMap,
   list: MapNotam[],
@@ -101,7 +96,6 @@ export function setNotamLayer(
   }
 }
 
-/** Keys of the NOTAM areas under a screen point, smallest area first, or []. */
 export function notamKeysAt(m: MlMap, point: { x: number; y: number }, list: MapNotam[]): string[] {
   if (!list.length || !m.getLayer('notam-fill') || m.getLayoutProperty('notam-fill', 'visibility') === 'none')
     return [];

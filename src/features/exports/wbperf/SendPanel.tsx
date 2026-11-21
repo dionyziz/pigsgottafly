@@ -1,9 +1,6 @@
-// "Send to <operator>": when the flight's aircraft's operator asks for the W&B and performance
-// sheets before each flight (src/shared/operators.ts), e-mails what this page shows, as PDF, to the
-// operator's declarations address (the pilot in cc, replies to the pilot), like the GenDec's "Send to
-// HCAA" (../gendec/SendPanel.tsx). "Changed since it was sent" compares the hash of what is shown
-// now with the version sent; then "Re-send". Screen only. The operator's settings are refetched when
-// an operator or aircraft changes (here or in another tab) and on focus.
+// Shown when the aircraft's operator asks for the W&B and performance sheets before each flight
+// (src/shared/operators.ts). The operator's settings are refetched when an operator or aircraft changes
+// (here or in another tab) and on focus.
 import '../form731/forms.css';
 
 import { useEffect, useState } from 'react';
@@ -19,7 +16,7 @@ import { sha256Url } from './declaration';
 const errText = (e: unknown) =>
   e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.';
 
-/** The panel, or nothing when the operator does not ask for the sheets. `content`: null while the sheets are loading. */
+/** `content`: null while the sheets are loading. */
 export function OperatorSendPanel({ flightId, content }: { flightId: string; content: WbPerfContent | null }) {
   const q = useAsync(() => api.declarations.get(flightId), [flightId], {
     refetchOnFocus: true,

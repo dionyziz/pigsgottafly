@@ -1,5 +1,3 @@
-// Leg label text and placement (VFR-chart style: "062°  24 NM" along the leg, altitude "3000").
-// Pure functions, unit-tested.
 import { fmtAltitude as fmtAlt, fmtHdg } from '../../../calc';
 import { ARROW_AT } from './features';
 import type { ScreenPoint } from './snap';
@@ -16,7 +14,6 @@ export function fmtDistance(nm: number): string {
   return `${Math.round(nm)} NM`;
 }
 
-/** Altitude label: the app-wide altitude format (calc fmtAltitude): '3000', 'FL065'; '---' if unknown. */
 export function fmtAltitude(ft: number): string {
   return fmtAlt(ft);
 }
@@ -59,11 +56,9 @@ export function labelMode(screenLenPx: number): LabelMode {
 export interface LabelPlacement {
   /** Rotation of the label, degrees clockwise from screen horizontal, always in (−90, 90]. */
   angleDeg: number;
-  /** Midpoint of the leg on screen. */
   mid: ScreenPoint;
   /** Unit normal pointing to the side the label sits on (the upper side of the line on screen). */
   normal: ScreenPoint;
-  /** Screen length of the leg, px. */
   lengthPx: number;
   /**
    * The side the label goes, along `normal`: +1 (above) when the text reads in the direction of

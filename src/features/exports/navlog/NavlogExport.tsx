@@ -1,11 +1,5 @@
-// Export (a): the MD 4.2 navigation log ("Flight Planner" sheet), A4 landscape, one sheet per 9
-// legs. A faithful port of the v2 print sheet (legacy index.html / css/style.css / js/app.js
-// sheetHtml), read-only and fed by the v3 flight model: calc/computeNavlog with live Open-Meteo
-// winds aloft, METAR (when current) or forecast surface conditions at each end, and the flight's
-// ATC list as the terminal information (on each sheet, the units its legs touch).
-//
-// Usage (ExportPage): <NavlogExport flight={flight} />. On screen the sheets are scaled to the
-// container width; in print each sheet fills one A4 landscape page (named page "md42").
+// The MD 4.2 navigation log ("Flight Planner" sheet), one sheet per 9 legs: a faithful port of the
+// v2 print sheet (legacy index.html / css/style.css / js/app.js sheetHtml).
 import '../form731/forms.css';
 import './navlog.css';
 
@@ -47,7 +41,6 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   const { weather, metar, legs } = wx;
   const terrain = useTerrain();
 
-  // ---- the document
   const doc: NavlogDocument | null = useMemo(() => {
     if (ac.loading) return null;
     const computed = computeFlightNavlog({

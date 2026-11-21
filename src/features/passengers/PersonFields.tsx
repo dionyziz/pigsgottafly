@@ -1,6 +1,4 @@
-// The one person editor: a passenger's details, or the pilot's (licence number instead of notes,
-// phone required). Used by the passenger dialog, the pilot's details dialog and the profile page.
-// Renders fields only; the caller owns the <form>. Problems show under their field.
+// Renders fields only; the caller owns the <form>.
 import { DateField, Field, NumberField } from '../../ui';
 import { type PersonField, type PersonForm, WEIGHT_MAX_KG, WEIGHT_MIN_KG } from './person';
 
@@ -16,12 +14,10 @@ export function PersonFields({
 }: {
   f: PersonForm;
   set: SetPerson;
-  /** The messages of a field. */
   issues: (field: PersonField) => string[];
   pilot?: boolean;
   /** Name and phone only (first use). */
   minimal?: boolean;
-  /** Focus the name when shown. */
   autoFocus?: boolean;
 }) {
   const text = (k: 'fullName' | 'phone' | 'email' | 'nationality' | 'idNumber' | 'licenceNo') => ({

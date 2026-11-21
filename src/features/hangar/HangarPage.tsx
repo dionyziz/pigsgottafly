@@ -1,7 +1,4 @@
-// Hangar: the pilot's aircraft as cards (key figures, what is still missing, compass card status),
-// with "Add aircraft" from a type template, as a same-type copy of another aircraft, or blank.
-// Aircraft shared with the pilot are listed with their own, with a "Shared by" chip; the row menu
-// shares an aircraft, and removes a shared one from the pilot's hangar (their access only).
+// Removing a shared aircraft from the hangar removes only the pilot's access.
 import '../lobby/lists.css';
 import './hangar.css';
 
