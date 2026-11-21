@@ -103,6 +103,9 @@ function useFormStates(id: string): Partial<Record<ExportKind, ReadyItem>> {
   return out;
 }
 
+/** A form's name in the browser tab where pilots call it something shorter than its label. */
+const TAB_TITLE: Record<string, string> = { navlog: 'Navlog' };
+
 /** The file name (without .pdf) a printed form is saved under: the flight's date and the form. */
 function printFileName(date: string | null | undefined, kind: string): string {
   return [date || '', kind].filter(Boolean).join('-');
@@ -150,7 +153,10 @@ export function ExportPage() {
     { refetchOnFocus: true, invalidatedBy: 'flights', cache: `flight:${id}` },
   );
   const formStates = useFormStates(id);
-  usePageTitle(flight && (EXPORT_LABEL as Record<string, string>)[kind], flight && flightTitle(flight));
+  usePageTitle(
+    flight && (TAB_TITLE[kind] ?? (EXPORT_LABEL as Record<string, string>)[kind]),
+    flight && flightTitle(flight),
+  );
   // a printed PDF is named after the flight's date and the form: 2026-11-22-navlog.pdf
   const printName = flight ? printFileName(flight.date, kind) : null;
   useEffect(() => {
