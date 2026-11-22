@@ -10,3 +10,5 @@ node_modules/
 *.md
 PLAN*.md
 /native/
+# agents' worktrees and local settings
+.claude/
