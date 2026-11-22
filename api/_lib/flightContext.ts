@@ -5,6 +5,7 @@
 import { defaultAltitudes } from '../../src/calc/altitudes.js';
 import { distanceNm, parseClock } from '../../src/calc/nav.js';
 import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
+import { isLocalFlight, localDuration } from '../../src/shared/local.js';
 import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
 import { requestTiming } from '../../src/shared/requests.js';
 import type { RoutePoint } from '../../src/shared/types.js';
@@ -56,6 +57,8 @@ export async function loadRef(db: Queryable): Promise<RefDocs> {
 export interface FlightContext {
   id: string;
   route: RoutePoint[];
+  /** A local flight (isLocalFlight): no legs, the pilot's duration. */
+  local: boolean;
   alternates: string[];
   /** Effective altitude per leg, ft (NaN = no rule gave one). */
   altitudesFt: number[];
@@ -112,9 +115,10 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
     let dist = 0;
     for (let i = 0; i + 1 < route.length; i++) dist += distanceNm(route[i], route[i + 1]);
     const ete =
-      Number(f.summary?.eteMin) > 0
+      localDuration(route, f.options) ??
+      (Number(f.summary?.eteMin) > 0
         ? Number(f.summary.eteMin)
-        : (dist / (Number(f.cruise_tas_kt) || FALLBACK_TAS_KT)) * 60;
+        : (dist / (Number(f.cruise_tas_kt) || FALLBACK_TAS_KT)) * 60);
     blockOff = day + clock * 60e3;
     blockOn = blockOff + ((Number(f.taxi_out_min) || 0) + ete + (Number(f.taxi_in_min) || 0)) * 60e3;
   } else {
@@ -145,6 +149,7 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
   return {
     id: f.id,
     route,
+    local: isLocalFlight(route),
     alternates,
     altitudesFt,
     blockOff,

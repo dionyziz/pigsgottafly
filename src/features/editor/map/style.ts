@@ -180,6 +180,7 @@ export const DATA_SOURCES = [
   'aerodromes',
   'waypoints',
   'air-focus',
+  'local-area',
   'route-line',
   'leg-focus',
   'route-arrows',
@@ -815,6 +816,24 @@ function routeLayers(): LayerSpecification[] {
       source: 'air-focus',
       layout: { 'line-join': 'round' },
       paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': ['literal', FOCUS_DASHES[0]] },
+    },
+    // a local flight's area around its aerodrome: faint, under the route
+    {
+      id: 'local-area-fill',
+      type: 'fill',
+      source: 'local-area',
+      paint: { 'fill-color': CHART.route, 'fill-opacity': 0.05 },
+    },
+    {
+      id: 'local-area-line',
+      type: 'line',
+      source: 'local-area',
+      paint: {
+        'line-color': CHART.route,
+        'line-width': 1.5,
+        'line-opacity': 0.45,
+        'line-dasharray': ['literal', [3, 2]],
+      },
     },
     {
       id: 'route-casing',

@@ -24,6 +24,7 @@
 //     out of it), a stop adds its minutes between landing and the next take-off, and a touch-and-go
 //     followed by a stop there adds the circuit between them (airborne). A touch-and-go alone at
 //     the departure or the destination adds no time.
+import { isLocalFlight } from './local.js';
 import type { AerodromeRequest, FlightOptions, RoutePoint } from './types.js';
 
 export const MAX_STOP_MIN = 600;
@@ -72,6 +73,8 @@ export function activeRequests(
 export function requestAllowed(route: RoutePoint[], index: number, kind: AerodromeRequest['kind']): boolean {
   const p = route[index];
   if (!p || p.kind !== 'aerodrome') return false;
+  // a local flight's circuits and stops are inside the pilot's duration, not timed or filed apart
+  if (isLocalFlight(route)) return false;
   if (kind === 'stop') return route.length > 1;
   return true;
 }

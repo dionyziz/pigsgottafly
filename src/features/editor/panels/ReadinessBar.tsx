@@ -9,6 +9,7 @@ import { focusParam } from '../../../app/focusParam';
 import { api } from '../../../data/api';
 import { flightStore } from '../../../data/flightStore';
 import { useAsync } from '../../../data/useAsync';
+import { isLocalFlight } from '../../../shared';
 import { Icon } from '../../../ui';
 import { editorWarningFix, focusSection, onEditorFocus, sectionOf } from '../focus';
 import { useNotams } from '../notams';
@@ -81,6 +82,7 @@ export function useReadiness() {
         // a shared flight's PIC is its owner: their details are not the viewer's to add
         picMissing: flight.access ? [] : picMissingOf(doc.crew, pilot),
         routePoints: doc.route.length,
+        local: isLocalFlight(doc.route),
         hasAircraft: !!doc.aircraftId,
         warnings: readinessWarnings(warnings),
         notams: briefing,
@@ -93,7 +95,7 @@ export function useReadiness() {
       flight.access,
       doc.crew,
       pilot,
-      doc.route.length,
+      doc.route,
       doc.aircraftId,
       warnings,
       briefing,

@@ -10,7 +10,7 @@ import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { OpenMeteoLocation, RouteWeather } from '../../../data/weather';
 import type { MetarTafResult } from '../../../data/weatherMetar';
-import { requestTiming, type RoutePoint, taxiAllowanceOf } from '../../../shared';
+import { localDuration, requestTiming, type RoutePoint, taxiAllowanceOf } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { useNotams } from '../notams';
 import { useEditor } from '../state';
@@ -172,7 +172,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
           taxiOutMin: doc.taxiOutMin,
           taxiInMin: doc.taxiInMin,
           legOverrides: doc.legOverrides,
-          options: { compassCard: doc.options.compassCard },
+          route: doc.route,
+          options: { compassCard: doc.options.compassCard, localDurationMin: doc.options.localDurationMin },
         },
         legs,
         altitudesFt,
@@ -193,6 +194,8 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       altitudesFt,
       doc.legOverrides,
       doc.options.compassCard,
+      doc.route,
+      doc.options.localDurationMin,
       taxiAllowanceL,
       timing,
     ],
@@ -367,8 +370,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
   );
 
   // ETE and fuel for the lobby summary (setDerived: no undo step).
-  const eteMin = navlog && navlog.legs.length ? navlog.totals.ete : null;
-  const fuelL = navlog && navlog.legs.length && aircraft ? navlog.totals.fuel : null;
+  const planned = !!navlog && (navlog.legs.length > 0 || navlog.local);
+  // a local flight's time is known without an aircraft
+  const eteMin = planned ? navlog.totals.ete : localDuration(doc.route, doc.options);
+  const fuelL = planned && aircraft ? navlog.totals.fuel : null;
   useEffect(() => {
     if (doc.summary.eteMin === eteMin && doc.summary.fuelL === fuelL) return;
     if (weatherLoading) return;

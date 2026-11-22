@@ -5,6 +5,7 @@
 // booleans and null are not coerced (null / absent means "not set" where a field is optional).
 import { DEFAULT_FLIGHT_OPTIONS, EMPTY_SUMMARY, uid, WIND_MODELS } from '../../src/shared/constants.js';
 import { FUEL_TYPES } from '../../src/shared/fuel.js';
+import { MAX_LOCAL_DURATION_MIN } from '../../src/shared/local.js';
 import { mapLayersOf } from '../../src/shared/mapLayers.js';
 import { MAX_STOP_MIN } from '../../src/shared/requests.js';
 import type {
@@ -205,6 +206,8 @@ export function checkOptions(v: unknown, base: FlightOptions = DEFAULT_FLIGHT_OP
     }
   }
   if ('taxiAllowanceL' in i) o.taxiAllowanceL = optNumber(i.taxiAllowanceL, 'options.taxiAllowanceL', 0, 1000);
+  if ('localDurationMin' in i)
+    o.localDurationMin = optNumber(i.localDurationMin, 'options.localDurationMin', 1, MAX_LOCAL_DURATION_MIN);
   if ('mapLayers' in i) {
     if (i.mapLayers === null || i.mapLayers === undefined) o.mapLayers = null;
     else {

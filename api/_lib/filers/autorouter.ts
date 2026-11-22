@@ -1,6 +1,8 @@
 // autorouter behind the filing driver interface (types.ts): the client (../autorouter.ts) files over
 // AFTN and reports ATC's status, so every capability is there. Only for the pilots on
 // AUTOROUTER_PILOTS (the client is null for anyone else, app.ts) and with AUTOROUTER_FILING=1.
+// A local flight goes like any other, as its plan's text (route LOCAL, destination = departure,
+// total EET = the pilot's duration): both the stored route and the filing take the fpl given.
 import { type AutorouterClient, AutorouterError } from '../autorouter.js';
 import { toStatus } from './status.js';
 import type { Filer } from './types.js';

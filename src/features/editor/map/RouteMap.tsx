@@ -32,6 +32,7 @@ import {
   areaFeatures,
   firFeatures,
   focusFeatures,
+  localAreaFeatures,
   midpointFeatures,
   navaidFeatures,
   notamFocusFeatures,
@@ -594,6 +595,7 @@ export function RouteMap(props: RouteMapProps) {
     const m = mapRef.current;
     if (!m || !loaded) return;
     setData(m, 'route-line', routeLineFeatures(shown));
+    setData(m, 'local-area', localAreaFeatures(shown));
     setData(m, 'route-arrows', routeArrowFeatures(shown));
     setData(m, 'route-points', routePointFeatures(shown, selected));
     setData(m, 'route-mid', drawing || draft ? EMPTY : midpointFeatures(shown));

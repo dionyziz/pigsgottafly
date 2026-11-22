@@ -15,7 +15,7 @@ import { FILING_STATUS_LABEL } from '../../shared/briefing';
 import { fmtDate, localDepartureDay, localToday, relativeDay, todayUtc, utcToLocalMarked } from '../../shared/date';
 import { errorMessage, fmtDuration } from '../../shared/format';
 import { AsyncView, Chip, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, rowClick, SearchBox } from '../../ui';
-import { flightSearchText, matchesQuery, passengerNames, splitFlights } from './format';
+import { flightSearchText, matchesQuery, passengerNames, routeLine, splitFlights } from './format';
 import { RouteThumb } from './RouteThumb';
 
 const titleOf = (r: FlightListItem) => r.summary.title || 'Untitled flight';
@@ -136,7 +136,7 @@ export function LobbyPage() {
     const date = r.date || s.date;
     const rel = relativeDay(localDepartureDay(date, s.blockOff), today);
     const local = utcToLocalMarked(date, s.blockOff);
-    const route = s.from && s.to ? (s.from === s.to ? `Local flight · ${s.from}` : `${s.from} → ${s.to}`) : '';
+    const route = routeLine(s);
     const dash = <span className="muted">—</span>;
     const pax = passengerNames(r);
     const items = trashView

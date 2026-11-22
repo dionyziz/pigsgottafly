@@ -181,9 +181,9 @@ final class AppModel: ObservableObject {
     }
 
     /// POST /api/flights (after POST /api/aircraft for a template); returns the new flight's id.
-    func createFlight(from: Place, to: Place, date: String, blockOff: String, aircraft: AircraftChoice?)
-        async throws -> String
-    {
+    func createFlight(
+        from: Place, to: Place, date: String, blockOff: String, aircraft: AircraftChoice?, localDurationMin: Int? = nil
+    ) async throws -> String {
         var aircraftId: String?
         switch aircraft {
         case .existing(let id): aircraftId = id
@@ -194,7 +194,9 @@ final class AppModel: ObservableObject {
             aircraftId = created["id"]?.string
         case nil: aircraftId = nil
         }
-        let request = NewFlight.request(from: from, to: to, date: date, blockOff: blockOff, aircraftId: aircraftId)
+        let request = NewFlight.request(
+            from: from, to: to, date: date, blockOff: blockOff, aircraftId: aircraftId,
+            localDurationMin: localDurationMin)
         let data = try await api.createFlight(request)
         guard let id = try JSON.parse(data)["id"]?.string else { throw APIError.http(0, "The server sent no flight.") }
         try? store.write(data, .flight(id))

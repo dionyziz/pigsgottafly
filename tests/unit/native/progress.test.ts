@@ -7,7 +7,7 @@ import { distanceNm, trueCourse } from '../../../src/calc';
 import { destination } from '../../../src/features/editor/map/airspace';
 import { computeFlight, progress } from '../../../src/native/core';
 import { alongCross } from '../../../src/native/progress';
-import type { LatLon } from '../../../src/shared';
+import type { Flight, LatLon } from '../../../src/shared';
 import { AC, ad, API_REF, custom, flight, NOW, PILOT, ROUTE } from './fixtures';
 
 const f = flight(ROUTE());
@@ -145,5 +145,31 @@ test('no route: nothing to show', () => {
     legIndex: null,
     toWaypoint: null,
     offRoute: false,
+  });
+});
+
+describe('a local flight (LGTT → LGTT, no legs)', () => {
+  const lf = flight([ad('LGTT'), ad('LGTT')], { options: { localDurationMin: 90 } as Flight['options'] });
+  const lc = computeFlight({ flight: lf, aircraft: AC, pilot: PILOT, ref: API_REF, weather: {}, now: NOW });
+
+  test('computeFlight: no legs, the duration gives the times and the ETE', () => {
+    expect(lc.legs).toEqual([]);
+    expect(lc.local).toMatchObject({ aerodrome: 'LGTT', durationMin: 90 });
+    expect(lc.navlog?.local).toBe(true);
+    expect(lc.times.eteMin).toBe(90);
+    expect(lc.times.landingMs! - lc.times.takeoffMs!).toBe(90 * 60000);
+  });
+
+  test('progress: back to the aerodrome, counting down to the planned landing', () => {
+    const p = { lat: lf.route[0].lat + 0.2, lon: lf.route[0].lon };
+    const r = progress({ computed: lc, position: { ...p, time: lc.times.takeoffMs! + 30 * 60000, gsKt: 90 } });
+    expect(r.legIndex).toBeNull();
+    expect(r.toWaypoint).toMatchObject({ name: 'LGTT' });
+    expect(r.distNm).toBeCloseTo(distanceNm(p, lf.route[0]), 6);
+    expect(r.bearingDeg).toBeCloseTo(180, 0);
+    expect(r.bearingMagDeg).not.toBeNull();
+    expect(r.eteDestMin).toBeCloseTo(60, 6);
+    expect(r.etaDest).toBe(lc.times.landingMs);
+    expect(r.offRoute).toBe(false);
   });
 });

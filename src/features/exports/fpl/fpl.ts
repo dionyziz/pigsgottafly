@@ -24,9 +24,11 @@
 //     points and named saved/custom points as their name (one word: spaces and punctuation
 //     dropped), aerodromes by ICAO location indicator, and coordinates (3802N02347E, degrees and
 //     minutes) only for a point without a usable name (WP1, WP2 … as the map names unnamed
-//     points). Consecutive equal elements are written once. No intermediate point: DCT.
+//     points). Consecutive equal elements are written once. No intermediate point: DCT. A local
+//     flight (FplInput.local): LOCAL.
 //   - Item 16: destination + total EET (HHMM, take-off to landing) + up to two alternates; ZZZZ +
-//     DEST/ / ALTN/ for aerodromes without an ICAO indicator.
+//     DEST/ / ALTN/ for aerodromes without an ICAO indicator. A local flight's destination is its
+//     departure and its EET the pilot's duration (-LGTT0100).
 //   - Item 18 in the Doc 4444 order (STS PBN NAV COM DAT SUR DEP DEST REG EET SEL TYP CODE DLE OPR
 //     ORGN PER ALTN RALT TALT RIF RMK) except DOF/, which goes last as EuroFPL writes it (IFPS
 //     accepts the indicators in any order). The hangar's item 18 extras are merged in. RMK/ = the
@@ -50,6 +52,8 @@ import type { Equipment, RoutePointKind, WakeCategory } from '../../../shared';
 import type { AircraftFocus, Fix } from '../fix';
 
 export const MISSING = '????';
+/** Item 15 route of a local flight. */
+export const LOCAL_ROUTE = 'LOCAL';
 /** AFTN text line length. */
 export const AFTN_LINE = 69;
 
@@ -101,6 +105,8 @@ export interface FplInput {
   alternates: FplAerodrome[];
   /** Every point of the route, endpoints included (the endpoints are left out of item 15). */
   route: FplRoutePoint[];
+  /** A local flight (isLocalFlight): item 15 route LOCAL. */
+  local?: boolean;
   /** Cruising speed, kt TAS. */
   cruiseTasKt: number;
   /** Item 15 level; default 'VFR'. */
@@ -521,7 +527,7 @@ export function buildFpl(input: FplInput): FplResult {
   const speed = speedField(input.cruiseTasKt);
   if (speed.includes(MISSING)) warn('Cruising speed not set in the hangar (item 15).', ac('cruiseTasKt'));
   const level = (input.level || 'VFR').toUpperCase();
-  const route = routeField(input.route);
+  const route = input.local ? LOCAL_ROUTE : routeField(input.route);
 
   // item 16
   const ades = locationField(input.destination);

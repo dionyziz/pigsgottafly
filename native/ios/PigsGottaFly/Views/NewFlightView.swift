@@ -13,6 +13,8 @@ struct NewFlightView: View {
 
     @State private var from: Place?
     @State private var to: Place?
+    @State private var localChosen = false
+    @State private var localMinutes = 60
     @State private var date = NewFlightView.defaultDate()
     @State private var aircraft: [AircraftItem]?
     @State private var aircraftId: String?
@@ -33,7 +35,27 @@ struct NewFlightView: View {
             Form {
                 Section("Route") {
                     placeRow(noHome ? "Your home aerodrome" : "From", place: $from, id: "new-from")
-                    placeRow("To", place: $to, id: "new-to")
+                    if localChosen {
+                        HStack {
+                            Text("To")
+                            Spacer()
+                            Text(from.map { "Back to \($0.code)" } ?? "Back to the origin").foregroundStyle(.secondary)
+                        }
+                        .accessibilityIdentifier("new-to-local")
+                    } else {
+                        placeRow("To", place: $to, id: "new-to")
+                    }
+                    Toggle("Local flight", isOn: $localChosen).accessibilityIdentifier("new-local")
+                    if isLocal {
+                        Stepper(value: $localMinutes, in: 5...600, step: 5) {
+                            HStack {
+                                Text("Duration")
+                                Spacer()
+                                Text(Fmt.hoursMinutes(Double(localMinutes))).monospacedDigit()
+                            }
+                        }
+                        .accessibilityIdentifier("new-duration")
+                    }
                 }
                 Section {
                     DatePicker("Date", selection: $date, displayedComponents: .date)
@@ -113,7 +135,13 @@ struct NewFlightView: View {
         .accessibilityIdentifier(id)
     }
 
-    private var ready: Bool { from != nil && to != nil && !busy }
+    private var target: Place? { localChosen ? from : to }
+    private var ready: Bool { from != nil && target != nil && !busy }
+    /// Back where it left with nothing between, whether chosen or typed as the destination.
+    private var isLocal: Bool {
+        guard let from, let dest = target else { return localChosen }
+        return from.refId == dest.refId && from.code == dest.code
+    }
 
     /// Offered only once the pilot has loaded without one.
     private var noHome: Bool { app.pilot.map { ($0.homeAerodrome ?? "").isEmpty } ?? false }
@@ -138,7 +166,7 @@ struct NewFlightView: View {
     }
 
     private func create() async {
-        guard let from, let to else { return }
+        guard let from, let to = target else { return }
         busy = true
         error = nil
         defer { busy = false }
@@ -156,7 +184,8 @@ struct NewFlightView: View {
         if noHome { try? await app.saveHome(from) }
         do {
             let id = try await app.createFlight(
-                from: from, to: to, date: Fmt.isoDay(from: date), blockOff: Fmt.clock(date), aircraft: choice)
+                from: from, to: to, date: Fmt.isoDay(from: date), blockOff: Fmt.clock(date), aircraft: choice,
+                localDurationMin: isLocal ? localMinutes : nil)
             dismiss()
             onCreated(id)
         } catch {

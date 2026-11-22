@@ -1,8 +1,8 @@
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 
-import type { RoutePoint, Waypoint } from '../../../shared';
+import { isLocalFlight, LOCAL_AREA_NM, type RoutePoint, type Waypoint } from '../../../shared';
 import type { NavaidType, RefAerodrome, RefFir, RefNavaid, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
-import { type AirspaceInfo, airspaceLabel, type AirspaceType, fmtVertical, isArea } from './airspace';
+import { type AirspaceInfo, airspaceLabel, type AirspaceType, circleRing, fmtVertical, isArea } from './airspace';
 import { mercatorMid } from './routeEdit';
 import { aerodromeName } from './snap';
 import { CHART, type ChartColor } from './style';
@@ -361,9 +361,24 @@ export function routePointFeatures(route: RoutePoint[], selectedUid: string | nu
   );
 }
 
+/** A local flight's area: a ring around its aerodrome (no route line: it has no legs). */
+export function localAreaFeatures(route: RoutePoint[]): FC<Polygon> {
+  if (!isLocalFlight(route)) return fc([]);
+  const a = route[0];
+  return fc([
+    {
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [circleRing(a.lat, a.lon, LOCAL_AREA_NM, 96)] },
+      properties: {},
+    },
+  ]);
+}
+
 /** Drag one to insert a point into that leg. */
 export function midpointFeatures(route: Pick<RoutePoint, 'lat' | 'lon'>[]): FC<Point> {
   const out: Feature<Point, Record<string, unknown>>[] = [];
+  // a zero-length leg (a local flight) has nothing to split
+  if (route.length === 2 && route[0].lat === route[1].lat && route[0].lon === route[1].lon) return fc(out);
   for (let i = 0; i + 1 < route.length; i++) {
     const a = route[i],
       b = route[i + 1];

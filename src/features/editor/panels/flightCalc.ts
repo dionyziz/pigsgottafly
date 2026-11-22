@@ -13,8 +13,8 @@ import {
   type Hazard,
   hazardLines,
   isaTempC,
-  isLocalFlight,
   type LegGeometry,
+  localNavlog,
   lowLegs,
   magneticVariation,
   navlogAircraft,
@@ -22,6 +22,7 @@ import {
   performanceMass,
   pickCompassCard,
   planFuel,
+  returnsToStart,
   sectorBalances,
   stopsOf,
   TERRAIN_CLEARANCE_FT,
@@ -135,8 +136,8 @@ function safe<T>(f: () => T): T | null {
 }
 
 export function calcNavlog(a: {
-  doc: Pick<FlightDoc, 'date' | 'blockOff' | 'taxiOutMin' | 'taxiInMin' | 'legOverrides'> & {
-    options: Pick<FlightOptions, 'compassCard'>;
+  doc: Pick<FlightDoc, 'date' | 'blockOff' | 'taxiOutMin' | 'taxiInMin' | 'legOverrides' | 'route'> & {
+    options: Pick<FlightOptions, 'compassCard' | 'localDurationMin'>;
   };
   legs: LegGeometry[];
   altitudesFt: number[];
@@ -148,7 +149,8 @@ export function calcNavlog(a: {
   sunTables: Record<string, RefSunTable>;
 }): NavlogResult | null {
   const { doc, legs, aircraft } = a;
-  if (!legs.length || !aircraft) return null;
+  const local = localNavlog(doc.route, doc.options);
+  if ((!legs.length && !local.local) || !aircraft) return null;
   const haveAny = a.perLeg.some(Boolean);
   return safe(() =>
     computeNavlog({
@@ -163,6 +165,7 @@ export function calcNavlog(a: {
       winds: haveAny ? windProviderFromLegs(a.perLeg) : null,
       sunTables: a.sunTables,
       ...navlogTiming(a.timing),
+      ...local,
     }),
   );
 }
@@ -187,7 +190,7 @@ export function calcFuel(a: {
       fobL: a.doc.fobL,
       usableL: aircraft.fuel.usableL,
       tripMin: navlog ? navlog.flightMin : 0,
-      localFlight: isLocalFlight(a.doc.route),
+      localFlight: returnsToStart(a.doc.route),
       stops: a.timing.stops,
     }),
   );

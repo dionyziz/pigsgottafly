@@ -13,6 +13,7 @@
 // from, so autorouter's NOTAMs never reach a pilot it is not for. A flight shared with the pilot
 // (access.ts flightFor) is briefed as its owner's: the stored briefing keeps the owner's id.
 import type { Notam, NotamBriefing, NotamSourceStatus } from '../../../src/shared/briefing.js';
+import { LOCAL_AREA_NM } from '../../../src/shared/local.js';
 import { flightFor } from '../access.js';
 import { aerodromesNear, flightContext } from '../flightContext.js';
 import type { Route } from '../http.js';
@@ -63,7 +64,9 @@ export const routes: Route[] = [
       const maxAltFt =
         numParam(query.get('maxAltFt'), 'maxAltFt', 0, 60000) ??
         (planned.length ? Math.max(...planned) : DEFAULT_MAX_ALT_FT);
-      const corridorNm = numParam(query.get('corridorNm'), 'corridorNm', 0, 100) ?? DEFAULT_CORRIDOR_NM;
+      // a local flight goes anywhere in its local area, not along a line
+      const corridorNm =
+        numParam(query.get('corridorNm'), 'corridorNm', 0, 100) ?? (ctx.local ? LOCAL_AREA_NM : DEFAULT_CORRIDOR_NM);
       const window = { from: ctx.blockOff - MARGIN_MIN * 60e3, to: ctx.blockOn + MARGIN_MIN * 60e3 };
       const locations = [...new Set([...ctx.used.keys(), ...aerodromesNear(ctx, corridorNm), FIR])].slice(
         0,

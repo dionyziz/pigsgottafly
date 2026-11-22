@@ -9,6 +9,7 @@
 // mail log and in app_errors (the dispatcher records every 5xx, app.ts). Every send is a mail_log row
 // ('navlog') under the sending caps (sendCaps.ts: per pilot and per flight, a minute between sends).
 import { sheetText } from '../../../src/shared/declarations.js';
+import { isLocalFlight } from '../../../src/shared/local.js';
 import { type NavlogContent, navlogContentOf, type NavlogMailState } from '../../../src/shared/navlogSheets.js';
 import { flightFor } from '../access.js';
 import type { Queryable } from '../db.js';
@@ -19,6 +20,7 @@ import { mailFailed, mailSent, reserveMail } from '../sendCaps.js';
 
 const NO_EMAIL = 'Your account has no e-mail address to send the navlog to.';
 const NO_PRINT = 'Printing the navlog is not available on this server.';
+const LOCAL = 'A local flight has no navlog: its time is the duration you set.';
 
 /** A name as it may appear in a subject: letters, digits, spaces and - . / ( ) only. */
 const token = (v: unknown, max: number) =>
@@ -46,16 +48,20 @@ async function state(
   flightId: string,
   canPrint: boolean,
 ): Promise<NavlogMailState> {
+  const [f] = await db.query('SELECT route FROM flights WHERE id = $1', [flightId]);
+  const local = Array.isArray(f?.route) && isLocalFlight(f.route);
   const [s] = await db.query(
     `SELECT at, recipient FROM mail_log WHERE pilot_id = $1 AND flight_id = $2 AND form = 'navlog' AND result = 'sent'
      ORDER BY at DESC LIMIT 1`,
     [pilotId, flightId],
   );
-  const mail = !email
-    ? { enabled: false, reason: NO_EMAIL }
-    : !canPrint
-      ? { enabled: false, reason: NO_PRINT }
-      : mailAvailability();
+  const mail = local
+    ? { enabled: false, reason: LOCAL }
+    : !email
+      ? { enabled: false, reason: NO_EMAIL }
+      : !canPrint
+        ? { enabled: false, reason: NO_PRINT }
+        : mailAvailability();
   return {
     to: email,
     sent: s ? { sentAt: Number(s.at), to: s.recipient as string } : null,

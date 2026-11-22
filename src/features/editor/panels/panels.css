@@ -286,3 +286,9 @@ fieldset.ep-readonly {
   padding: 0;
   min-width: 0;
 }
+
+/* ---- Route: a local flight */
+.ep-local-title { margin: 0 0 var(--s2); }
+.ep-local-dest { margin-top: var(--s2); }
+.ep-local-dest input { width: 100%; box-sizing: border-box; }
+.ep-make-local { margin-top: var(--s2); }

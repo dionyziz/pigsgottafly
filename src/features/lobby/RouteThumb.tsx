@@ -3,6 +3,16 @@ import './lists.css';
 /** Route sketch from summary.route ([lat, lon] pairs), equirectangular with cos(lat) scaling. */
 export function RouteThumb({ route, size = 44 }: { route: [number, number][]; size?: number }) {
   const pad = 5;
+  const onePlace = route.length > 0 && route.every((p) => p[0] === route[0][0] && p[1] === route[0][1]);
+  // a local flight: the aerodrome and a ring for the local area around it
+  if (route.length > 1 && onePlace) {
+    return (
+      <svg className="thumb" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={size / 2 - pad} className="thumb-area" />
+        <circle cx={size / 2} cy={size / 2} r={2.6} className="thumb-start" />
+      </svg>
+    );
+  }
   if (route.length < 2) {
     return (
       <svg className="thumb" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">

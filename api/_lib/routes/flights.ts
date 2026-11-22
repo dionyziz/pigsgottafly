@@ -318,7 +318,13 @@ export const routes: Route[] = [
       if (home) {
         base.route = [aerodromePoint(home), aerodromePoint(home)];
       }
-      const d = await checkDoc(db, pilot.id, input, base);
+      // options given at creation (a local flight's duration) go on top of the profile's, not instead
+      const { options, ...rest } = input;
+      const given: Partial<FlightDoc> =
+        options && typeof options === 'object'
+          ? { ...rest, options: { ...base.options, ...options } }
+          : (input as Partial<FlightDoc>);
+      const d = await checkDoc(db, pilot.id, given, base);
       // the profile's alternate (FPL item 16), unless the request gave alternates or the flight ends there
       const givenAlternates = !!input.options && typeof input.options === 'object' && 'alternates' in input.options;
       const altn =

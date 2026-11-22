@@ -5,9 +5,11 @@ import {
   computeNavlog,
   defaultAltitudes,
   type FuelPlan,
+  localNavlog,
   navlogAircraft,
   type NavlogResult,
   planFuel,
+  returnsToStart,
 } from '../../../calc';
 import { REF, SUN_TABLES } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
@@ -64,8 +66,9 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
   }, [flight.route, overrides, timing, terrain]);
 
   const taxiAllowanceL = aircraft ? taxiAllowanceOf(aircraft.fuel, flight.options) : 0;
+  const local = useMemo(() => localNavlog(flight.route, flight.options), [flight.route, flight.options]);
   const navlog = useMemo(() => {
-    if (!legs.length || !aircraft) return null;
+    if ((!legs.length && !local.local) || !aircraft) return null;
     const perLeg = weather ? weather.legs : [];
     return safe(() =>
       computeNavlog({
@@ -80,9 +83,11 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         winds: perLeg.some(Boolean) ? windProviderFromLegs(perLeg) : null,
         sunTables: SUN_TABLES,
         ...navlogTiming(timing),
+        ...local,
       }),
     );
   }, [
+    local,
     legs,
     aircraft,
     weather,
@@ -109,10 +114,12 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         fobL: flight.fobL,
         usableL: aircraft.fuel.usableL,
         tripMin: navlog ? navlog.flightMin : 0,
+        localFlight: returnsToStart(flight.route),
         stops: timing.stops,
       }),
     );
   }, [
+    flight.route,
     aircraft,
     navlog,
     pilot.settings.finalReserveMin,

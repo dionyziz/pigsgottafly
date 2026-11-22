@@ -24,8 +24,19 @@
 //   - the timeline (leg start/end, landing, block stop) uses the unrounded leg minutes (as v2); the
 //     written ETE column rounds each leg.
 //   - sunset at the destination (AIP GEN 2.7 tables when given, else NOAA).
+//   - a local flight (NavlogInput.local) has no legs: landing = take-off + the pilot's duration,
+//     trip fuel = that duration at the burn rate (rounded up, as a leg).
+import { localDuration } from '../shared/local.js';
 import type { RefSunTable } from '../shared/ref.js';
-import type { ClockUtc, CompassCard, IsoDate, LegOverride } from '../shared/types.js';
+import type {
+  ClockUtc,
+  CompassCard,
+  FlightOptions,
+  IsoDate,
+  LatLon,
+  LegOverride,
+  RoutePoint,
+} from '../shared/types.js';
 import type { LegGeometry } from './legs.js';
 import type { ComputedLeg, NavTotals } from './nav.js';
 import { computeLeg, fmtClock, norm360, parseClock, summarize } from './nav.js';
@@ -94,6 +105,8 @@ export interface NavlogInput {
   departureGroundMin?: number;
   /** A stop at the destination: the circuit after the new take-off there, before the final landing. */
   finalCircuitMin?: number;
+  /** A local flight (localNavlog()): legs is empty and the airborne time is given. */
+  local?: { durationMin: number; at: LatLon & { name: string } } | null;
 }
 
 /**
@@ -135,6 +148,8 @@ export interface NavlogLeg extends ComputedLeg {
 
 export interface NavlogResult {
   legs: NavlogLeg[];
+  /** A local flight: no legs, its times and trip fuel from the pilot's duration. */
+  local: boolean;
   /** dist, ete, tripFuel, fuel = tripFuel + taxi allowance. */
   totals: NavTotals;
   /** Minutes after 00:00 UTC of the flight date (may exceed 1440 past midnight). */
@@ -184,27 +199,40 @@ export function navlogAircraft(
   };
 }
 
+/** NavlogInput.local for a route: set when it is a local flight. */
+export function localNavlog(
+  route: RoutePoint[],
+  options: Pick<FlightOptions, 'localDurationMin'> | null | undefined,
+): Pick<NavlogInput, 'local'> {
+  const durationMin = localDuration(route, options);
+  return durationMin === null ? {} : { local: { durationMin, at: route[0] } };
+}
+
 const PASSES = 4;
 const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
 
 export function computeNavlog(input: NavlogInput): NavlogResult {
-  const { legs, aircraft: ac } = input;
+  const { aircraft: ac } = input;
+  const local = input.local && fin(input.local.durationMin) && input.local.durationMin > 0 ? input.local : null;
+  const legs = local ? [] : input.legs;
   const n = legs.length;
+  // what applies to any flight that goes somewhere (the per-leg parts need legs)
+  const flies = n > 0 || !!local;
   const warnings: string[] = [];
 
   const bo = parseClock(input.blockOff);
   const blockOffSet = isFinite(bo);
   const blockOffMin = blockOffSet ? bo : 12 * 60;
-  if (n && !blockOffSet) warnings.push('Block start time not set: 12:00Z assumed.');
+  if (flies && !blockOffSet) warnings.push('Block start time not set: 12:00Z assumed.');
   const taxiOut = fin(input.taxiOutMin) && input.taxiOutMin >= 0 ? input.taxiOutMin : 0;
   const taxiIn = fin(input.taxiInMin) && input.taxiInMin >= 0 ? input.taxiInMin : 0;
-  if (n && !fin(input.taxiOutMin)) warnings.push('Taxi-out time not set: 0 min used.');
-  if (n && !fin(input.taxiInMin)) warnings.push('Taxi-in time not set: 0 min used.');
+  if (flies && !fin(input.taxiOutMin)) warnings.push('Taxi-out time not set: 0 min used.');
+  if (flies && !fin(input.taxiInMin)) warnings.push('Taxi-in time not set: 0 min used.');
   const takeoffMin = blockOffMin + taxiOut;
   const dayMs = input.date ? Date.parse(input.date + 'T00:00:00Z') : NaN;
   if (n && !isFinite(dayMs)) warnings.push('Flight date not set: winds cannot be looked up.');
   if (n && !input.winds) warnings.push('No winds aloft forecast: calm wind assumed.');
-  if (n && !(ac.burnLph > 0)) warnings.push('Aircraft burn rate not set: leg fuel cannot be computed.');
+  if (flies && !(ac.burnLph > 0)) warnings.push('Aircraft burn rate not set: leg fuel cannot be computed.');
 
   const tas = legs.map((_, i) => {
     const o = input.overrides[i]?.tasKt;
@@ -294,12 +322,20 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   const totals = summarize(rows, (ac.taxiAllowanceL || 0) * (1 + stops));
   totals.tripFuel += circuitFuel;
   totals.fuel += circuitFuel;
+  if (local) {
+    const fuel = circuitFuelOf(local.durationMin);
+    totals.ete = Math.round(local.durationMin);
+    totals.tripFuel += fuel;
+    totals.fuel += fuel;
+  }
   const lastCircuit = circuits[circuits.length - 1];
-  const landingMin = !n
-    ? takeoffMin
-    : lastCircuit && lastCircuit.ends === 'destination'
-      ? lastCircuit.endMin
-      : rows[n - 1].endMin;
+  const landingMin = local
+    ? takeoffMin + local.durationMin
+    : !n
+      ? takeoffMin
+      : lastCircuit && lastCircuit.ends === 'destination'
+        ? lastCircuit.endMin
+        : rows[n - 1].endMin;
   const blockOnMin = landingMin + taxiIn;
 
   const legWarnings: NavlogResult['legWarnings'] = [];
@@ -319,11 +355,12 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
   });
 
   let sunsetMin: number | null = null;
-  if (n && input.date && isFinite(dayMs)) {
-    sunsetMin = sunsetMinutes(input.date, legs[n - 1].to, input.sunTables ?? {});
+  const arrival = local ? local.at : n ? legs[n - 1].to : null;
+  if (arrival && input.date && isFinite(dayMs)) {
+    sunsetMin = sunsetMinutes(input.date, arrival, input.sunTables ?? {});
     if (sunsetMin !== null && blockOffSet && landingMin > sunsetMin)
       warnings.push(
-        `Landing at ${fmtClock(landingMin)}Z is after sunset (${fmtClock(sunsetMin)}Z) at ${legs[n - 1].to.name}.`,
+        `Landing at ${fmtClock(landingMin)}Z is after sunset (${fmtClock(sunsetMin)}Z) at ${arrival.name}.`,
       );
   }
   if (n && ac.cardExpires && input.date && ac.cardExpires < input.date)
@@ -333,6 +370,7 @@ export function computeNavlog(input: NavlogInput): NavlogResult {
 
   return {
     legs: rows,
+    local: !!local,
     totals,
     times: { blockOffMin, takeoffMin, landingMin, blockOnMin },
     flightMin: landingMin - takeoffMin,
