@@ -62,18 +62,19 @@ export function MetarSection() {
     .map((s) => {
       const r = reports.stations[s.icao];
       const metar = r?.metar && !r.metar.nil ? r.metar : null;
-      if (!metar && s.role === 'area') return null;
-      return { s, metar, observedMs: metar ? r.observedMs : null };
+      const taf = r?.taf ?? null;
+      if (!metar && !taf && s.role === 'area') return null;
+      return { s, metar, taf, observedMs: metar ? r.observedMs : null };
     })
     .filter((x) => x != null);
-  const withReport = rows.filter((x) => x.metar).length;
+  const withReport = rows.filter((x) => x.metar || x.taf).length;
   if (!withReport) return null;
   const where = (s: MetarStation) => metarWhere(s, stations);
 
   return (
-    <Section id="metar" title="METAR" edits={false} badge={<span className="muted">{withReport}</span>}>
+    <Section id="metar" title="METAR & TAF" edits={false} badge={<span className="muted">{withReport}</span>}>
       <ul className="ep-metars" data-testid="metar-list">
-        {rows.map(({ s, metar: m, observedMs }) => (
+        {rows.map(({ s, metar: m, taf, observedMs }) => (
           <li key={s.icao} data-icao={s.icao} data-role={s.role}>
             <div className="ep-metar-head">
               <b className="mono">{s.icao}</b>
@@ -94,6 +95,11 @@ export function MetarSection() {
             ) : (
               <div className="muted" data-testid="metar-none">
                 No METAR from this aerodrome.
+              </div>
+            )}
+            {taf && (
+              <div className="ep-metar ep-taf mono" data-testid="taf">
+                {taf.raw}
               </div>
             )}
           </li>

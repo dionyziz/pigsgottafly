@@ -227,8 +227,19 @@ test('the start-up, taxi, take-off and landing fuel is edited per flight in the 
       return [i.value, i.placeholder, i.classList.contains('is-set')];
     });
   assert.deepEqual(await field(), ['', '4', false]);
-  const before = await required();
   await stage('plan');
+  // the required fuel changes once the winds arrive: read it when it has stopped changing
+  const settled = async () => {
+    let last = await required();
+    for (let same = 0; same < 4;) {
+      await page.idle(250);
+      const v = await required();
+      same = v === last ? same + 1 : 0;
+      last = v;
+    }
+    return last;
+  };
+  const before = await settled();
   await page.type('[data-testid=taxi-allowance]', '10');
   await page.blur();
   await page.waitFor((b) => parseInt(document.querySelector('[data-testid=fuel-required]').textContent, 10) === b + 6, {
@@ -242,7 +253,10 @@ test('the start-up, taxi, take-off and landing fuel is edited per flight in the 
   // kept after a reload
   await page.goto(`${server.url}/flights/${flightId}`);
   await page.waitFor(() => document.querySelector('[data-testid=taxi-allowance]')?.value === '10', { timeout: 20000 });
-  assert.equal(await required(), before + 6);
+  await page.waitFor((b) => parseInt(document.querySelector('[data-testid=fuel-required]').textContent, 10) === b + 6, {
+    args: [before],
+    timeout: 15000,
+  });
   // cleared: the aircraft's value again
   await page.type('[data-testid=taxi-allowance]', '');
   await page.blur();

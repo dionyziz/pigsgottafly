@@ -94,7 +94,11 @@ before(async () => {
     const stations = {};
     for (const id of ids)
       if (METARS[id])
-        stations[id] = { metar: METARS[id], taf: null, observed: obs.getTime() - (obs.getTime() % 60000) };
+        stations[id] = {
+          metar: METARS[id],
+          taf: id === 'LGTT' ? `TAF ${id} 010500Z 0106/0115 03005KT 9999 FEW030` : null,
+          observed: obs.getTime() - (obs.getTime() % 60000),
+        };
     return { body: { stations, fetched: Date.now() } };
   });
 });
@@ -456,6 +460,15 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
     ],
   );
   assert.match(await page.eval(() => document.querySelector('[data-testid=metar-age]').textContent), /^1\d min ago$/);
+  // each station's TAF under its METAR
+  assert.deepEqual(
+    await page.eval(() =>
+      [...document.querySelectorAll('[data-testid=metar-list] li')].map(
+        (li) => !!li.querySelector('[data-testid=taf]'),
+      ),
+    ),
+    [true, false, false],
+  );
   assert.deepEqual(
     f.crew.map((c) => [c.role, c.seat, c.snapshot.fullName, c.snapshot.weightKg]),
     [['PIC', f.crew[0].seat, 'Test Pilot', 80]],
