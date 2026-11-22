@@ -7,12 +7,6 @@ import './performance.css';
 import type { PerfBlockContent, PerfDiagram, WbPerfContent } from '../../../shared/declarations';
 import type { ShownSignature } from '../form731/Form731';
 import { SignLine } from '../wb/SignLine';
-import type { PerfBlock } from './model';
-
-/** 'Departure', or 'Landing at stop LGSY' for a stop's block. */
-export function blockName(b: Pick<PerfBlock, 'title' | 'aerodrome'>): string {
-  return b.title === 'Departure' || b.title === 'Destination' ? b.title : `${b.title} ${b.aerodrome.split(' ')[0]}`;
-}
 
 /** One MD 4.4 page: the take-off and landing of one sector (`pageNo`, from 1). Drawn from
  *  WbPerfContent, like the loading sheet (../wb/WbExport.tsx): on the export page and in the PDF. */

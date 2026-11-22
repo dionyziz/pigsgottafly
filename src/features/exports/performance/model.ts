@@ -96,6 +96,11 @@ const f2 = (x: number) => (Math.round(x * 100 + 1e-7) / 100).toFixed(2);
 const pad3 = (x: number) => String(Math.round(((x % 360) + 360) % 360) || 360).padStart(3, '0');
 const signed = (x: number) => (x >= 0 ? '+' : '−') + Math.abs(Math.round(x));
 
+/** 'Departure', or 'Landing at stop LGSY' for a stop's block. */
+export function blockName(b: Pick<PerfBlock, 'title' | 'aerodrome'>): string {
+  return b.title === 'Departure' || b.title === 'Destination' ? b.title : `${b.title} ${b.aerodrome.split(' ')[0]}`;
+}
+
 /** Minutes after 00:00 UTC → 'HH:MMZ'. */
 export function clockZ(min: number): string {
   return fmtClock(min, { z: true });

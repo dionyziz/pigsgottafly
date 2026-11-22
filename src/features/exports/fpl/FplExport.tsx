@@ -7,14 +7,13 @@ import { useMemo, useState } from 'react';
 
 import type { Flight } from '../../../shared';
 import { Panel } from '../../../ui';
-import type { Fix } from '../fix';
 import type { ShownSignature } from '../form731/Form731';
 import { useFlightPilot } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
 import { FilingPanel } from './FilingPanel';
 import { buildFpl, oneLine } from './fpl';
 import { FplForm } from './FplForm';
-import { fplInputFrom } from './input';
+import { fplInputFrom, fplWarnings } from './input';
 import { useFplData } from './useFplData';
 
 async function copyText(text: string): Promise<boolean> {
@@ -57,15 +56,11 @@ export function FplExport({ flight }: { flight: Flight }) {
   };
 
   const loading = data.aircraftLoading || data.weatherLoading;
-  const warnings: { text: string; fix?: Fix }[] = [];
-  if (!flight.aircraftId)
-    warnings.push({ text: 'No aircraft chosen for this flight.', fix: { kind: 'flight', focus: 'aircraft' } });
-  else if (!data.aircraftLoading && !data.aircraft)
-    warnings.push({
-      text: 'The flight’s aircraft is no longer in the hangar.',
-      fix: { kind: 'flight', focus: 'aircraft' },
-    });
-  for (const w of fpl.warnings) warnings.push({ text: w, fix: fpl.fixes[w] });
+  const warnings = fplWarnings(fpl, {
+    aircraftId: flight.aircraftId,
+    aircraftFound: !!data.aircraft,
+    aircraftLoading: data.aircraftLoading,
+  });
 
   return (
     <div className="fpl-export print-sheet-page" data-testid="fpl-export">

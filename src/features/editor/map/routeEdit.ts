@@ -1,6 +1,6 @@
 // Pure (unit-tested); the editor turns each result into one update(), i.e. one undo step.
-import type { LegOverride, RoutePoint } from '../../../shared';
-import { legKey } from '../../../shared';
+import type { LegOverride, RefAerodrome, RoutePoint } from '../../../shared';
+import { aerodromePoint, isLocalFlight, legKey, uid } from '../../../shared';
 
 /**
  * Comes back to where it started (A … A), as a new flight home → home does. Points are the same when
@@ -112,6 +112,24 @@ export function setAltitudeOverride(
   }
   if (cur.altFt === altFt) return overrides;
   return { ...overrides, [key]: { ...cur, altFt } };
+}
+
+/** The route made local at its origin (its other points dropped); null without an aerodrome origin. */
+export function makeLocal(route: RoutePoint[]): RoutePoint[] | null {
+  const from = route[0];
+  if (!from || from.kind !== 'aerodrome') return null;
+  return [from, { ...from, uid: uid() }];
+}
+
+/** The route with an aerodrome picked as its origin or destination (RouteSection's fields). */
+export function setRouteEnd(route: RoutePoint[], end: 'from' | 'to', a: RefAerodrome): RoutePoint[] {
+  const p = aerodromePoint(a);
+  // a local flight moves as a whole: it stays local at the new aerodrome
+  if (end === 'from' && isLocalFlight(route)) return [p, aerodromePoint(a)];
+  if (end === 'from') return route.length ? [p, ...route.slice(1)] : [p];
+  if (route.length === 0) return route; // no origin yet: nothing to end
+  if (route.length === 1) return [...route, p];
+  return [...route.slice(0, -1), p];
 }
 
 /** Midpoint on a Web Mercator map (where the straight leg line is drawn), [lon, lat]. */

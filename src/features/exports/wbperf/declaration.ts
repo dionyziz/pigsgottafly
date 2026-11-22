@@ -7,8 +7,17 @@ import {
   wbPerfContentOf,
   type WbPerfRow,
 } from '../../../shared/declarations';
-import type { PerfBlock, PerfSheetModel } from '../performance/model';
-import { fmtArm, fmtCg, fmtKg, fmtMoment, type WbLine, type WbSheetModel } from '../wb/model';
+import { blockName, type PerfBlock, type PerfSheetModel, perfSheetModel } from '../performance/model';
+import {
+  fmtArm,
+  fmtCg,
+  fmtKg,
+  fmtMoment,
+  type WbLine,
+  type WbSheetInput,
+  type WbSheetModel,
+  wbSheetModel,
+} from '../wb/model';
 
 function rows(l: WbLine): WbPerfRow[] {
   return [
@@ -149,6 +158,34 @@ export function wbPerfContent(wb: WbSheetModel | null, perf: PerfSheetModel | nu
     wb: wb && wbPart(wb),
     perf: perf && perfPart(perf),
   });
+}
+
+/**
+ * The W&B and performance sheets of a flight, their content (drawn and sent to the operator) and the
+ * page's warnings ("W&B: …", "Performance: …", a block's prefixed by its name). Shared by
+ * WbPerfExport.tsx and the native core.
+ */
+export function wbPerfOf(input: WbSheetInput): {
+  wb: WbSheetModel;
+  perf: PerfSheetModel;
+  content: WbPerfContent;
+  warnings: string[];
+} {
+  const wb = wbSheetModel(input);
+  const perf = perfSheetModel(input);
+  const perfWarnings = [
+    ...perf.warnings,
+    ...perf.pages
+      .flatMap((pg) => [pg.takeoff, pg.landing])
+      .filter((b, i, all) => all.indexOf(b) === i)
+      .flatMap((b) => b.warnings.map((w) => `${blockName(b)}: ${w}`)),
+  ];
+  return {
+    wb,
+    perf,
+    content: wbPerfContent(wb, perf),
+    warnings: [...wb.warnings.map((w) => `W&B: ${w}`), ...perfWarnings.map((w) => `Performance: ${w}`)],
+  };
 }
 
 /** SHA-256 (base64url) of wbPerfText(content), as the server records a sent version. */

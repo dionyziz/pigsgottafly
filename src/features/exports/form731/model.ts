@@ -1,14 +1,7 @@
 // Form 731 (HCAA "Official statement of persons boarding private aircraft"): what goes in each field.
-import {
-  chunk,
-  formatDate,
-  type FormExportProps,
-  formPeople,
-  idText,
-  placeLong,
-  routeEnds,
-  routePlaces,
-} from './common';
+import { aerodrome } from '../../../data/ref';
+import { type AerodromeLookup, routePlacesWith } from '../../../shared/forms';
+import { chunk, formatDate, type FormExportProps, formPeople, idText, placeLong, routeEndsWith } from './common';
 import type { FormFix, PersonField } from './FormWarnings';
 
 export const ROWS_PER_SHEET = 6;
@@ -42,8 +35,13 @@ export interface Form731Model {
 }
 
 export function form731Model(props: FormExportProps): Form731Model {
+  return form731ModelWith(props, aerodrome);
+}
+
+/** form731Model with other reference data (the native core's GET /api/ref/bundle). */
+export function form731ModelWith(props: FormExportProps, find: AerodromeLookup): Form731Model {
   const { flight, aircraft } = props;
-  const places = routePlaces(flight.route);
+  const places = routePlacesWith(flight.route, find);
   const people = formPeople(props);
   const rows: Form731Row[] = people.map((p, i) => ({
     no: i + 1,
@@ -87,7 +85,7 @@ export function form731Model(props: FormExportProps): Form731Model {
     airport: places[0] ? placeLong(places[0]) : '',
     date: formatDate(flight.date),
     registration: aircraft?.registration ?? '',
-    route: routeEnds(flight.route),
+    route: routeEndsWith(flight.route, find),
     sheets: chunk(rows, ROWS_PER_SHEET),
     picName: rows.find((r) => r.role === 'PIC')?.name ?? '',
     warnings,

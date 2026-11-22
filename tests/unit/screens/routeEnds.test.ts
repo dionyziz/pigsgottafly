@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { aerodrome } from '../../../src/data/ref';
-import { setRouteEnd } from '../../../src/features/editor/panels/RouteSection';
+import { setRouteEnd } from '../../../src/features/editor/map/routeEdit';
 import type { RoutePoint } from '../../../src/shared';
 
 const pt = (uid: string, name: string): RoutePoint => ({ uid, kind: 'custom', refId: null, name, lat: 38, lon: 23.5 });

@@ -134,7 +134,7 @@ HTTPS origins, so use a tunnel) and run with `APPLE_CLIENT_ID` set.
 `native/ios/` is the native app (Swift, SwiftUI, MapLibre Native), described in [NATIVE.md](NATIVE.md): Fly (a
 moving map with GPS that works offline), Brief and Navlog for a flight, New flight, small route edits, the
 profile and account deletion. Full planning, filing and the forms stay on the website; a flight opens there in
-an in-app Safari view. Everything it computes comes from `src/native/core.ts`, built into `core.js` and run in
+an in-app Safari view. Everything it computes comes from `src/native/core/`, built into `core.js` and run in
 JavaScriptCore, so the app and the website show the same numbers.
 
 - XcodeGen: `native/ios/project.yml` → `PigsGottaFly.xcodeproj` (generated, not committed). Team Dionysis

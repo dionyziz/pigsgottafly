@@ -1,6 +1,6 @@
 // What a flight's weather is fetched for (pure): the points useFlightWeather.ts asks the server about
 // (winds aloft at the leg midpoints; surface forecast and METAR/TAF at the departure, the stops and
-// the destination). The website's hook and the native core (src/native/core.ts) share it.
+// the destination). The website's hook and the native core (src/native/core/) share it.
 import type { LegGeometry } from '../calc';
 import type { FlightOptions, LatLon, RefAerodrome, RoutePoint, WindModel } from '../shared';
 import { landingPointIndices } from '../shared';

@@ -7,13 +7,11 @@ import type { Flight } from '../../../shared';
 import { Chip, type ChipTone, Loading, Panel } from '../../../ui';
 import { routeText } from '../form731/common';
 import type { ShownSignature } from '../form731/Form731';
-import { perfSheetModel } from '../performance/model';
-import { blockName, PerfSheet } from '../performance/PerformanceExport';
+import { PerfSheet } from '../performance/PerformanceExport';
 import { ExportWarnings } from '../WarningList';
-import { wbSheetModel } from '../wb/model';
 import { useExportCalc } from '../wb/useExportCalc';
 import { WbSheet } from '../wb/WbExport';
-import { wbPerfContent } from './declaration';
+import { wbPerfOf } from './declaration';
 import { OperatorSendPanel } from './SendPanel';
 
 const chipTone = (v: string): ChipTone => (v === 'pass' ? 'ok' : v === 'fail' ? 'danger' : 'warn');
@@ -21,16 +19,14 @@ const chipTone = (v: string): ChipTone => (v === 'pass' ? 'ok' : v === 'fail' ? 
 export function WbPerfExport({ flight }: { flight: Flight }) {
   const st = useExportCalc(flight);
   if (st.loading || !st.calc) return <Loading />;
-  const wb = wbSheetModel({
+  // the sheets as drawn here and as sent to the operator (printed from the same content)
+  const { wb, perf, content, warnings } = wbPerfOf({
     doc: flight,
     aircraft: st.aircraft,
     pilot: st.pilot,
     calc: st.calc,
     route: routeText(flight.route),
   });
-  const perf = perfSheetModel({ doc: flight, aircraft: st.aircraft, pilot: st.pilot, calc: st.calc });
-  // the sheets as drawn here and as sent to the operator (printed from the same content)
-  const content = wbPerfContent(wb, perf);
   const signer = st.pilot.fullName.trim() || wb.pilot.trim();
   const signature: ShownSignature | null = signer ? { name: signer, signedAt: st.nowMs } : null;
   const legs = st.calc.computed.navlog.legs.length;
@@ -40,14 +36,6 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
     st.calc.arrival.conditions ||
     st.calc.stops.some((x) => x.landing.conditions || x.takeoff.conditions)
   );
-  const perfWarnings = [
-    ...perf.warnings,
-    ...perf.pages
-      .flatMap((pg) => [pg.takeoff, pg.landing])
-      .filter((b, i, all) => all.indexOf(b) === i)
-      .flatMap((b) => b.warnings.map((w) => `${blockName(b)}: ${w}`)),
-  ];
-  const warnings = [...wb.warnings.map((w) => `W&B: ${w}`), ...perfWarnings.map((w) => `Performance: ${w}`)];
   return (
     <div
       className="xp-doc print-sheet-page"

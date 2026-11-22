@@ -9,7 +9,7 @@
     "tests/api/**/*.test.ts",
     "src/**/__tests__/**/*.test.{ts,tsx}",
     "tests/setup/*.ts",
-    "src/native/core.ts"
+    "src/native/core/index.ts"
   ],
   "project": ["src/**/*.{ts,tsx}", "api/**/*.ts", "server/**/*.ts", "tools/*.ts", "tests/**/*.{ts,tsx,mjs}"],
   "ignore": ["api/_lib/migrations/**"],

@@ -1,7 +1,13 @@
 // Shared by Form 731 and the General Declaration. Pure: no DOM, no I/O.
 import { aerodrome } from '../../../data/ref';
 import type { Aircraft, FlightDoc, Passenger, Pilot, RoutePoint } from '../../../shared';
-import { formPeopleOf, type FormPerson, type Place, routePlacesWith } from '../../../shared/forms';
+import {
+  type AerodromeLookup,
+  formPeopleOf,
+  type FormPerson,
+  type Place,
+  routePlacesWith,
+} from '../../../shared/forms';
 
 export interface FormExportProps {
   flight: FlightDoc;
@@ -14,7 +20,8 @@ export interface FormExportProps {
 }
 
 // The form content rules live in src/shared/forms.ts (shared with the API: signing page, PDF);
-// here they are bound to the client's reference data.
+// here they are bound to the client's reference data (the …With variants: to other reference data,
+// as the native core binds them to GET /api/ref/bundle).
 export { formatDate, type FormPerson, idText, type Place, placeLong } from '../../../shared/forms';
 
 const lookup = (k: string | null | undefined) => aerodrome(k);
@@ -26,14 +33,18 @@ export function routePlaces(route: RoutePoint[]): Place[] {
 
 /** "LGTT – LGMG – LGTT" */
 export function routeText(route: RoutePoint[]): string {
-  return routePlaces(route)
+  return routeTextWith(route, lookup);
+}
+
+export function routeTextWith(route: RoutePoint[], find: AerodromeLookup): string {
+  return routePlacesWith(route, find)
     .map((p) => p.code)
     .join(' – ');
 }
 
 /** Form 731 route: origin – destination only ("LGTT – LGMG"). */
-export function routeEnds(route: RoutePoint[]): string {
-  const p = routePlaces(route);
+export function routeEndsWith(route: RoutePoint[], find: AerodromeLookup): string {
+  const p = routePlacesWith(route, find);
   return p.length ? [p[0], p[p.length - 1]].map((x) => x.code).join(' – ') : '';
 }
 
