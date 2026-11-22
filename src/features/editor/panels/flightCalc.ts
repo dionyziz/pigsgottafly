@@ -1,5 +1,5 @@
 // Pure (no React, no I/O): calc.tsx calls each function in its own memo; the native app's core
-// (src/native/core.ts) calls computeFlightCalc, which runs them all in order, so the website and the
+// (src/native/core/) calls computeFlightCalc, which runs them all in order, so the website and the
 // app compute the same numbers and the same warnings.
 import {
   type AdNotamEffect,

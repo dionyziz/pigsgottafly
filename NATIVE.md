@@ -7,7 +7,7 @@ changes. Planning at a desk stays on the website; every flight opens in the webs
 
 The app and the website are maintained together. **Everything computed comes from one TypeScript source.**
 The flight's numbers, the chart's style and features, the checklist and progress along the route are
-built into `core.js` from `src/native/core.ts` (which reuses src/calc, src/shared, src/data,
+built into `core.js` from `src/native/core/` (which reuses src/calc, src/shared, src/data,
 src/features/editor/map/{style,features,airspace,labels}.ts and the panels' pure models). The app runs
 `core.js` in JavaScriptCore. The website and the app therefore show the same numbers and draw the same
 chart. The app calls the same API at https://pigsgottafly.com/api.
@@ -16,7 +16,7 @@ chart. The app calls the same API at https://pigsgottafly.com/api.
 native/ios/                    the app (XcodeGen: project.yml → PigsGottaFly.xcodeproj, generated, not committed)
   PigsGottaFly/                Swift sources
   PigsGottaFly/Resources/core.js   built by `npm run native:core` (committed, so Xcode needs no Node)
-src/native/core.ts             the core's API (below); unit-tested in tests/unit/native/
+src/native/core/               the core's API (below), one file per domain; unit-tested in tests/unit/native/
 ```
 
 ## Screens
@@ -55,7 +55,7 @@ src/native/core.ts             the core's API (below); unit-tested in tests/unit
 
 ## core.js API (global `PGF`, JSON in and out, synchronous)
 
-`core.js` is an IIFE that sets `globalThis.PGF` (ES2020, minified, about 470 KB with the reference
+`core.js` is an IIFE that sets `globalThis.PGF` (ES2020, minified, about 600 KB with the reference
 data the API does not serve). It needs only the ECMAScript globals: no `window`, `document`, `fetch`,
 timers, `console`, `URL` or `atob` (tests/unit/native/bundle.test.ts runs it so). Every function takes
 one argument, an object or its JSON text, and returns a plain object: `JSON.stringify(PGF.f(json))` is
@@ -134,6 +134,126 @@ extra fields below were added while building the core.
   the same ground) apart. Without a track the earlier leg wins: pass the leg shown last as
   `lastLegIndex` (earlier legs are then not gone back to). The GPS groundspeed gives the ETE from 30 kt;
   below that, the navlog's GS. `offRoute` is more than 2 NM off the leg.
+
+The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest,
+exports, hangar, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
+wraps the website's own module (named in brackets); where the website kept a rule inside a React
+component, it moved to that module and the component imports it. tests/unit/native/<domain>.test.ts
+checks each answer equals the website module's for the same input.
+
+**Plan** (src/native/core/plan.ts)
+
+- `PGF.routeEdit({ route, legOverrides?, op, … })` → `{ route, legOverrides }`: one edit of the route
+  as the editor makes it (one undo step), with the overrides of legs that are gone dropped, as the map
+  does (`pruneOverrides`) [editor/map/routeEdit.ts]. `op`: `add { point, toEnd? }` (drawing: before a
+  round trip's closing point unless `toEnd`), `removeDrawn { toEnd? }`, `insert { index, point }`
+  (index = leg + 1 to split a leg), `replace { uid, point }`, `move { uid, point, newUid? }` (a point
+  that becomes another one gets `newUid`), `remove { uid }`, `rename { uid, name }`, `setEnd { end:
+  'from' | 'to', aerodrome, ref? }` (the route fields; `aerodrome` an id/ICAO or a RefAerodrome; a
+  local flight moves as a whole), `makeLocal`, `setAltitude { key, altFt }` (the navlog strip's
+  override; null clears it). A `point` without a `uid` gets one.
+- `PGF.routeInfo({ route })` → `{ roundTrip, bareRoundTrip, drawIndex, local, autoWaypointName }`.
+- `PGF.snap({ ref?, route?, waypoints?, layers?, lat, lon, zoom, exceptUid?, newUid? })` → `{ hit,
+  point }`: what a tap or drag at (lat, lon) snaps to at map zoom `zoom`, as the website's map
+  (`findSnap` on the route's own points and on the aerodromes, VFR points and waypoints the `layers`
+  show, `bestSnap` between them; 12 px on MapLibre's 512 px Web Mercator) [editor/map/snap.ts]. `hit`
+  is `{ cand: { kind, refId, name, detail, lat, lon, penaltyPx }, distPx, shadowed? }` or null;
+  `point` the route point (uid `newUid`). `exceptUid`: the point being dragged.
+- `PGF.localFlight({ route, options })` → `{ local, durationMin, durationOf, defaultMin, maxMin,
+  areaNm }` [shared/local.ts].
+- `PGF.setRequest({ aerodromeRequests, pointUid, op?, kind, stopMin?, key?, value? })` → the new
+  `options.aerodromeRequests`: `op` 'set' (default; a stop's minutes), 'remove' (one kind, or all of
+  the point's without `kind`) or 'choice' (`key` 'landingRunway' | 'takeoffRunway' | 'surface',
+  `value` null for automatic) [shared/requests.ts].
+- `PGF.requests({ route, options, ref? })` → `{ active, allowed, remarks, stopPoints, landingPoints,
+  stopMin }`: the active requests in route order, `allowed[i]` `{ 'touch-and-go', stop }` per route
+  point, the FPL RMK/ remarks, the full-stop and landing point indices [shared/requests.ts].
+- `PGF.fplOptions({ fields, ref? })` → `{ alternates, max }`: FlightOptions.alternates from the
+  alternate fields [editor/panels/fplOptions.ts].
+- `PGF.fuelLoad({ fuel, totalL, byType?, options? })` → `{ load, byType, byTypeTotal, taxiAllowanceL,
+  types, density }`: the fuel on board by type (`load` is FuelLoad: parts, kg, density, mixed,
+  unapproved) and the taxi allowance per take-off [shared/fuel.ts].
+- `PGF.readinessStages({ items })` → `[{ stage, label, state, open }]` for plan, brief and file, from
+  `computeFlight`'s `readiness` and `paperwork`'s rows [editor/panels/readiness.ts stageSummary].
+- `PGF.focusTarget({ text?, fix?, flightId?, aircraftId? })` → `{ fix, focus, section, stage, link }`:
+  where a warning's Fix leads (a warning's `text`, or an export model's `fix`): a flight field
+  (`focus`, its editor `section` and readiness `stage`) or a page (`link: { to, label }`, the website's
+  path) [exports/fix.ts planningFix, fixLink; editor/focus.ts]. `PGF.focusSections()` → `{ fields,
+  stages }`: the editor's focus keys by section and the sections by stage.
+- `PGF.regenerateAtc({ flight, altitudesFt, pilot?, ref? })` → `{ generated, list, stale, atc }`: the
+  ATC list generated for the route at `computeFlight`'s `altitudesFt`, the list shown, whether the
+  edited list is stale, and `atc`, doc.atc after Regenerate (null: follow the generator) [data/atc.ts].
+
+**Manifest** (src/native/core/manifest.ts)
+
+- `PGF.manifest({ crew, stations?, op, … })` → `{ crew, ok, moved, seats, full, picSeat, errors }`: one
+  change of the manifest [editor/panels/manifest.ts]. `stations`: the aircraft's M&B stations (none:
+  a four-seater's seats). `op`: `seats`, `addPassenger { passenger }` (first free seat; `ok: false`
+  when full or on board), `addPic { pilot }` (front left; `moved` is who made room; `ok: false` when
+  every seat is taken), `changeSeat { index, seat }` (swaps), `remove { index }`, `editField { index,
+  key, value }` (the field stops following its person), `apply { index, person }`, `reset { index,
+  person }`, `sync { before, now }` (`{ 'PIC' | passengerId: person }`: snapshots follow their people).
+  `errors` is `validateCrew` [shared/constants.ts].
+- `PGF.wbChart({ massBalance, points? })` → `{ envelopes, domain }`: the MD 4.3 chart's envelopes
+  (`{ category, label, maxKg, outline, cgOutline }` in [moment, mass]) and axes `{ x0, x1, y0, y1,
+  xTicks, yTicks }` holding them and the points (e.g. `computeFlight`'s wb.takeoff, wb.landing,
+  wb.zeroFuel) [exports/wb/model.ts]. `PGF.cgToMoment({ polygon })` → `{ moment, outline }`: a CG
+  envelope in moment space, as stored and as drawn [hangar/model.ts, exports/wb/model.ts].
+- `PGF.shareSuggestions({ crew, passengers, people? })` → `{ contacts, suggestions }`: the manifest's
+  passengers with an e-mail, and those the flight is not shared with (`people` from GET
+  /api/flights/:id/shares) [shared/sharing.ts].
+
+**File & forms** (src/native/core/exports.ts). The flight's ones take `computeFlight`'s `{ flight,
+aircraft, pilot, ref, weather, now? }`.
+
+- `PGF.fplMessage(…)` → `{ fpl, oneLine, warnings }`: `fpl` is `{ fields, message, lines, complete,
+  warnings, fixes }`; `message` is the AFTN text POST /api/flights/:id/filing takes; `warnings` the
+  FPL page's `[{ text, fix? }]` [exports/fpl/input.ts fplInputWith, fpl.ts buildFpl, planning.ts].
+- `PGF.navlogContent(…)` → `{ document, content }`: the navlog page's `{ sheets, terminal, warnings,
+  sources }` and the body of POST /api/flights/:id/exports/navlog/email [exports/navlog/model.ts
+  navlogDocumentOf, shared/navlogSheets.ts navlogContentOf].
+- `PGF.wbPerfContent(…)` → `{ wb, perf, content, warnings, text }`: the W&B and performance sheet
+  models (with `verdict`), `content` the body of POST /api/flights/:id/declarations/send, `text` what
+  the server hashes (SHA-256, base64url) to tell the sheets changed since sent [exports/wbperf/declaration.ts
+  wbPerfOf, exports/wb/exportCalc.ts].
+- `PGF.formModel({ kind: '731' | 'gendec', flight, aircraft?, pilot, passengers?, ref? })`: Form 731 or
+  the General Declaration as the forms pages fill them, with `warnings` and their `fixes`
+  [exports/form731/model.ts, exports/gendec/model.ts].
+- `PGF.briefingModel({ flight, briefing })`: the NOTAM briefing laid out for print
+  [exports/briefing/model.ts].
+
+**Hangar** (src/native/core/hangar.ts)
+
+- `PGF.validateAircraft({ aircraft, today?, cardWarnDays?, path?, exact?, now? })` → `{ issues, errors,
+  missing, at }`: the issues bar's `{ level, section, path, message }` (errors refuse the save), the
+  essentials not set, and one field's issues when `path` is given [hangar/model.ts].
+- `PGF.aircraftHelpers({ op, … })`: the editors' helpers [hangar/model.ts, shared/templates.ts]. Read:
+  `codes`, `split10a { text }`, `join10a { codes }`, `split10b { text }`, `join10b { ssr, ads }`,
+  `badPbn { text }`, `item18Dropped { aircraft }`, `cardStatus { card, today?, warnDays? }`, `deviation
+  { forDeg, steerDeg }`, `blankCard`, `momentPolygon { polygon, steps? }`, `polygonCheck { polygon,
+  point? }`, `blank`, `sameTypeCopy { aircraft, registration }`. Change (the changed copy comes back):
+  `addCompassCard { aircraft, today? }`, `addStation { massBalance, kind }`, `setStationKind`,
+  `removeStation`, `addSeat`, `removeSeat`, `addCombinedLimit`, `addUtilityEnvelope` (on
+  `massBalance`), `setArmRange { station, end, value }`, `addFuelType`, `removeFuelType`,
+  `makePrimaryFuel` (`{ fuel, type }`, with `others`), `addRunwayCondition`, `setRunwayConditions`
+  (`factors`), `addStallSpeeds { performance }`, `takeoffTable { table, edit, index?, row? }`,
+  `landingTable { table, edit, index? }`.
+- `PGF.historyText({ entries, myId, versionChanges? })` → `{ entries: [{ title, changes, summary }],
+  versionChanges }`: the version history in words [shared/aircraftHistory.ts].
+
+**People** (src/native/core/people.ts)
+
+- `PGF.personIssues({ form? | person?, pilot?, today?, now? })` → `{ form, issues, input }`: the
+  passenger (or profile) form's `[{ field, message }]` and the body it saves (null while there are
+  issues) [passengers/person.ts].
+- `PGF.parseCoords({ text?, name? })` → `{ latLon, dms, icao, name }` [waypoints/coords.ts].
+- `PGF.parseTyped({ kind, text, min?, max?, step? })`: `time` → `{ value }` (HH:MM or null),
+  `duration` → `{ value, field }`, `date` → `{ value, problem, masked }`, `slot` → `{ value }`,
+  `routePoint` → `{ value }` (a route point name, '' when invalid) [shared/typedInput.ts,
+  editor/map/snap.ts].
+
+New route points and ATC rows get random uids; JavaScriptCore has no Web Crypto, so the core gives
+`uid()` a Math.random source when it is missing.
 
 ## Offline
 

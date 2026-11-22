@@ -3,7 +3,6 @@
 // are NavlogSheet.tsx, which also draws the PDF e-mailed to the pilot (./MailPanel.tsx).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { atcInput, atcLegRelevance, generateAtcList } from '../../../data/atc';
 import { REF, SUN_TABLES } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
@@ -13,7 +12,7 @@ import { useFlightAircraft, useFlightPilot } from '../useExportData';
 import { ExportWarnings } from '../WarningList';
 import { fitSheets, SHEET_UNITS } from './fit';
 import { NavlogMailPanel } from './MailPanel';
-import { buildNavlogDocument, computeFlightNavlog, type NavlogDocument } from './model';
+import { type NavlogDocument, navlogDocumentOf } from './model';
 import { NavlogStage } from './NavlogSheet';
 
 export function NavlogExport({ flight }: { flight: Flight }) {
@@ -33,30 +32,21 @@ export function NavlogExport({ flight }: { flight: Flight }) {
 
   const doc: NavlogDocument | null = useMemo(() => {
     if (ac.loading) return null;
-    const computed = computeFlightNavlog({
-      doc: flight,
+    return navlogDocumentOf({
+      flight,
       aircraft,
       settings: pilot.settings,
       weather,
+      metar,
       ref: {
         aerodromes: REF.aerodromes,
         vfrPoints: REF.vfrPoints,
         vfrRoutes: REF.vfrRoutes,
         sunTables: SUN_TABLES,
         terrain,
+        airspaces: REF.airspaces,
+        fis: REF.fis,
       },
-    });
-    const gen = atcInput(flight.route, computed.altitudesFt, REF, pilot.settings.enrouteAerodromeRadiusNm ?? 2);
-    const atc = flight.atc ?? generateAtcList(gen);
-    return buildNavlogDocument({
-      doc: flight,
-      aircraft,
-      computed,
-      atc,
-      atcRelevance: atcLegRelevance(gen),
-      aerodromes: REF.aerodromes,
-      weather,
-      metar,
       nowMs: Date.now(),
     });
   }, [ac.loading, flight, aircraft, pilot, weather, metar, terrain]);

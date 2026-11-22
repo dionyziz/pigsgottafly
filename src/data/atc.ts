@@ -409,6 +409,26 @@ export function regenerateAtcList(edited: AtcEntry[] | null, generated: AtcEntry
   return [...generated.map((g) => byKey.get(g.sourceKey!) ?? g), ...custom];
 }
 
+/**
+ * The ATC section's "Regenerate": the generated list, with the rows added by hand kept at the end;
+ * null (follow the generator again) when there are none.
+ */
+export function atcAfterRegenerate(edited: AtcEntry[] | null, generated: AtcEntry[]): AtcEntry[] | null {
+  const custom = (edited ?? []).filter((e) => e.sourceKey === null);
+  return custom.length ? regenerateAtcList(edited, generated) : null;
+}
+
+/** An edited list whose generated rows are no longer what the generator gives (the route changed). */
+export function atcStale(edited: AtcEntry[] | null, generated: AtcEntry[]): boolean {
+  if (!edited) return false;
+  const a = edited
+    .filter((e) => e.sourceKey)
+    .map((e) => e.sourceKey)
+    .join('|');
+  const b = generated.map((e) => e.sourceKey).join('|');
+  return a !== b;
+}
+
 /** Convenience for the editor: build the generator input from route + effective leg altitudes. */
 export function atcInput(
   route: RoutePoint[],

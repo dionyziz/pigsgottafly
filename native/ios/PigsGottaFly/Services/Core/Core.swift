@@ -140,19 +140,50 @@ final class Core: @unchecked Sendable {
     private var refGiven: String?
 
     /// Calls a function that takes `ref`, passing it only when the core does not have this one yet.
-    private func callWithRef(_ name: String, ref: String?, fields: [String: String]) throws -> JSON {
+    func callWithRef(_ name: String, ref: String?, fields: [String: String]) throws -> JSON {
+        let text = try callTextWithRef(name, ref: ref, fields: fields)
+        do { return try JSON.parse(text) } catch { throw CoreError.badResult("PGF.\(name): \(error)") }
+    }
+
+    func callTextWithRef(_ name: String, ref: String?, fields: [String: String]) throws -> String {
         var f = fields
         refLock.lock()
         let given = ref == refGiven ? nil : ref
         refLock.unlock()
         if let given { f["ref"] = given }
-        let j = try callJSON(name, fields: f)
+        let text = try call(name, fields: f)
         if let given {
             refLock.lock()
             refGiven = given
             refLock.unlock()
         }
-        return j
+        return text
+    }
+
+    /// PGF[name]'s answer decoded as `T` (the Codable models of Core+<Domain>.swift).
+    func decode<T: Decodable>(_ name: String, _ text: String, as type: T.Type = T.self) throws -> T {
+        do {
+            return try JSONDecoder().decode(T.self, from: Data(text.utf8))
+        } catch {
+            throw CoreError.badResult("PGF.\(name): \(error)")
+        }
+    }
+
+    func callDecoding<T: Decodable>(_ name: String, fields: [String: String], as type: T.Type = T.self) throws -> T {
+        try decode(name, try call(name, fields: fields))
+    }
+
+    func callDecoding<T: Decodable>(
+        _ name: String, ref: String?, fields: [String: String], as type: T.Type = T.self
+    ) throws -> T {
+        try decode(name, try callTextWithRef(name, ref: ref, fields: fields))
+    }
+
+    /// The JSON text of a value (a field of `call(_:fields:)`).
+    static func text<T: Encodable>(_ value: T) -> String {
+        let e = JSONEncoder()
+        e.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return (try? e.encode(value)).flatMap { String(data: $0, encoding: .utf8) } ?? "null"
     }
 
     /// The chart's symbol images with how each looks (PGF.symbolNames()).
@@ -246,7 +277,7 @@ final class Core: @unchecked Sendable {
             ])
     }
 
-    private static func ms(_ d: Date) -> String {
+    static func ms(_ d: Date) -> String {
         String(Int64((d.timeIntervalSince1970 * 1000).rounded()))
     }
 }

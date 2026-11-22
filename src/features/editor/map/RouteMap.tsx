@@ -76,6 +76,7 @@ import {
 } from './routeEdit';
 import {
   autoWaypointName,
+  bestSnap,
   buildCandidates,
   findSnap,
   pointFromCandidate,
@@ -932,15 +933,7 @@ export function RouteMap(props: RouteMapProps) {
     const project = (lon: number, lat: number) => m.project([lon, lat]);
     const own = findSnap(pt, routeCandidates(live.current.shown, exceptUid), project, SNAP_RADIUS_PX, box);
     const ref = findSnap(pt, live.current.candidates, project, SNAP_RADIUS_PX, box);
-    // the aerodrome keeps its priority over the route's own copy of the point it shadowed
-    const shadowedOwn = !!(
-      own &&
-      ref?.shadowed &&
-      own.cand.lat === ref.shadowed.lat &&
-      own.cand.lon === ref.shadowed.lon
-    );
-    if (own && !shadowedOwn && (!ref || own.distPx <= ref.distPx + ref.cand.penaltyPx)) return own;
-    return ref;
+    return bestSnap(own, ref);
   }, []);
 
   function showSnap(m: MlMap, hit: SnapHit | null) {

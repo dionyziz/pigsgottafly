@@ -92,6 +92,94 @@ describe('core.js in a bare JavaScript context', () => {
     expect(a).toEqual({ ...buildFromTemplate('reims-f172m'), registration: 'SX-ABC' });
     expect(call('aircraftFromTemplate', { id: 'nope', registration: 'SX-ABC' }).icaoType).toBe('');
   });
+
+  // The parity of each with the website is in its domain's test file; here, that each runs with only
+  // the ECMAScript globals (no Web Crypto for new uids, no URL, no atob).
+  const route = ROUTE();
+  const f = flight(route);
+  const calls: Record<string, () => void> = {
+    routeEdit: () => {
+      const r = call('routeEdit', {
+        route,
+        op: 'add',
+        point: { kind: 'custom', refId: null, name: 'WP1', lat: 38, lon: 24 },
+      });
+      expect(r.route).toHaveLength(5);
+      expect(r.route[4].uid).toMatch(/^[a-z0-9]{8}$/);
+      expect(call('routeEdit', { route, op: 'setEnd', end: 'to', aerodrome: 'LGSY', ref: API_REF }).route[3].name).toBe(
+        'LGSY',
+      );
+    },
+    routeInfo: () => expect(call('routeInfo', { route }).autoWaypointName).toBe('WP1'),
+    snap: () => {
+      const tt = route[0];
+      expect(call('snap', { ref: API_REF, lat: tt.lat, lon: tt.lon, zoom: 10 }).point.name).toBe('LGTT');
+    },
+    localFlight: () => expect(call('localFlight', { route, options: {} }).local).toBe(false),
+    setRequest: () => expect(call('setRequest', { pointUid: 'a', kind: 'stop' })).toHaveLength(1),
+    requests: () => expect(call('requests', { route, options: f.options }).allowed).toHaveLength(4),
+    fplOptions: () => expect(call('fplOptions', { fields: ['lgav'] }).alternates).toEqual(['LGAV']),
+    fuelLoad: () => expect(call('fuelLoad', { fuel: AC.fuel, totalL: 100 }).load.totalL).toBe(100),
+    readinessStages: () => expect(call('readinessStages', { items: call('paperwork', {}) })).toHaveLength(3),
+    focusTarget: () => expect(call('focusTarget', { text: 'Block start time not set.' }).section).toBe('when'),
+    focusSections: () => expect(call('focusSections').fields.blockOff).toBe('when'),
+    regenerateAtc: () =>
+      expect(call('regenerateAtc', { flight: f, altitudesFt: [2500, 2500, 2500] }).generated.length).toBeGreaterThan(0),
+    manifest: () =>
+      expect(call('manifest', { crew: f.crew, stations: AC.massBalance.stations, op: 'seats' }).errors).toEqual([]),
+    wbChart: () => expect(call('wbChart', { massBalance: AC.massBalance }).envelopes.length).toBeGreaterThan(0),
+    cgToMoment: () =>
+      expect(call('cgToMoment', { polygon: AC.massBalance.envelopes.normal.polygon }).moment.length).toBeGreaterThan(2),
+    shareSuggestions: () => expect(call('shareSuggestions', { crew: f.crew, passengers: [] }).contacts).toEqual([]),
+    fplMessage: () =>
+      expect(call('fplMessage', { flight: f, aircraft: AC, pilot: PILOT, weather: {}, now: NOW }).fpl.message).toMatch(
+        /^\(FPL-SXASV/,
+      ),
+    navlogContent: () =>
+      expect(
+        call('navlogContent', { flight: f, aircraft: AC, pilot: PILOT, weather: {}, now: NOW }).content.sheets,
+      ).toHaveLength(1),
+    wbPerfContent: () =>
+      expect(call('wbPerfContent', { flight: f, aircraft: AC, pilot: PILOT, weather: {}, now: NOW }).text).toContain(
+        'SX-ASV',
+      ),
+    formModel: () =>
+      expect(call('formModel', { kind: '731', flight: f, aircraft: AC, pilot: PILOT }).registration).toBe('SX-ASV'),
+    briefingModel: () =>
+      expect(call('briefingModel', { flight: f, briefing: briefing([notam()]) }).relevant).toHaveLength(1),
+    validateAircraft: () => expect(call('validateAircraft', { aircraft: AC, now: NOW }).errors).toBe(0),
+    aircraftHelpers: () =>
+      expect(call('aircraftHelpers', { op: 'split10b', text: 'SB2' })).toEqual({ ssr: 'S', ads: ['B2'] }),
+    historyText: () => expect(call('historyText', {}).entries).toEqual([]),
+    personIssues: () => expect(call('personIssues', { person: null, now: NOW }).issues.length).toBeGreaterThan(0),
+    parseCoords: () => expect(call('parseCoords', { text: '375430N 0234334E' }).latLon.lat).toBeCloseTo(37.908, 3),
+    parseTyped: () => expect(call('parseTyped', { kind: 'time', text: '930' }).value).toBe('09:30'),
+  };
+  test.each(Object.keys(calls))('%s', (name) => calls[name]());
+
+  test('every PGF function is called in this file', () => {
+    const fns = JSON.parse(
+      vm.runInContext(
+        `JSON.stringify(Object.keys(PGF).filter(function (k) { return typeof PGF[k] === 'function'; }))`,
+        ctx,
+      ),
+    ) as string[];
+    const before = [
+      'chartStyle',
+      'chartData',
+      'symbolNames',
+      'layerGroups',
+      'weatherRequests',
+      'computeFlight',
+      'setTerrain',
+      'progress',
+      'paperwork',
+      'aircraftTemplates',
+      'aircraftFromTemplate',
+      'fromBase64',
+    ];
+    expect(fns.filter((k) => !before.includes(k) && !(k in calls))).toEqual([]);
+  });
 });
 
 test('the committed core.js is what the sources build (else: npm run native:core)', async () => {

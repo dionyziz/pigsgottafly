@@ -149,7 +149,7 @@ export function gridRequests(
 
 /**
  * A query string exactly as URLSearchParams writes it (application/x-www-form-urlencoded), without
- * URLSearchParams: the native app's JavaScriptCore has no URL API (src/native/core.ts).
+ * URLSearchParams: the native app's JavaScriptCore has no URL API (src/native/core/).
  */
 export function formQuery(params: [string, string][]): string {
   const enc = (s: string) =>

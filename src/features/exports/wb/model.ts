@@ -9,7 +9,7 @@
 // adds a total at the stop (landing there, and the take-off from there with the same fuel: no
 // refuelling, no taxi burn before take-off) and its own check against MLW, MTOW and the envelope.
 import type { WbCheck, WbPoint, WbResult } from '../../../calc';
-import type { Aircraft, Envelope, FlightDoc, Pilot, WbCategory } from '../../../shared';
+import type { Aircraft, Envelope, FlightDoc, MassBalance, Pilot, WbCategory } from '../../../shared';
 import { fuelLoad, primaryFuel, seatLayout } from '../../../shared';
 import { fmtDate } from '../../../shared/date';
 import type { ExportCalc } from './exportCalc';
@@ -131,6 +131,13 @@ export function chartEnvelope(env: Envelope, label: string): ChartEnvelope {
     outline: hasMoment ? (env.momentPolygon as [number, number][]) : cg,
     cgOutline: hasMoment && cg.length ? cg : null,
   };
+}
+
+/** The envelopes the MD 4.3 chart draws: normal, then utility when the aircraft has one. */
+export function chartEnvelopes(mb: Pick<MassBalance, 'envelopes'>): ChartEnvelope[] {
+  const envelopes: ChartEnvelope[] = [chartEnvelope(mb.envelopes.normal, 'Normal category')];
+  if (mb.envelopes.utility) envelopes.push(chartEnvelope(mb.envelopes.utility, 'Utility category'));
+  return envelopes;
 }
 
 const ROLE_ORDER = { PIC: 0, PAX: 1 } as const;
@@ -541,8 +548,7 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
     if (t) limits.push(t);
   }
 
-  const envelopes: ChartEnvelope[] = [chartEnvelope(mb.envelopes.normal, 'Normal category')];
-  if (mb.envelopes.utility) envelopes.push(chartEnvelope(mb.envelopes.utility, 'Utility category'));
+  const envelopes = chartEnvelopes(mb);
 
   return {
     registration: aircraft.registration,

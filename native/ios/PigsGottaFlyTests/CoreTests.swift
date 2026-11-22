@@ -2,7 +2,7 @@ import XCTest
 
 @testable import PigsGottaFly
 
-/// The bundled core.js (src/native/core.ts) called with the fixtures, function by function (NATIVE.md
+/// The bundled core.js (src/native/core/) called with the fixtures, function by function (NATIVE.md
 /// "core.js API"): the numbers are the website's for the same flight.
 final class CoreTests: XCTestCase {
     private var core: Core!

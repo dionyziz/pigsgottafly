@@ -2,8 +2,14 @@
 // content is src/shared/forms.ts genDecContent (shared with the PDF e-mailed to HCAA); here it is
 // bound to the client's reference data, with what is missing as warnings.
 import { aerodrome } from '../../../data/ref';
-import { GENDEC_ROUTING_ROWS, type GenDecContent, genDecContent } from '../../../shared/forms';
-import { type FormExportProps, routePlaces } from '../form731/common';
+import {
+  type AerodromeLookup,
+  GENDEC_ROUTING_ROWS,
+  type GenDecContent,
+  genDecContent,
+  routePlacesWith,
+} from '../../../shared/forms';
+import type { FormExportProps } from '../form731/common';
 import type { FormFix } from '../form731/FormWarnings';
 
 export const ROUTING_ROWS = GENDEC_ROUTING_ROWS;
@@ -14,9 +20,14 @@ export interface GenDecModel extends GenDecContent {
 }
 
 export function genDecModel(props: FormExportProps): GenDecModel {
+  return genDecModelWith(props, aerodrome);
+}
+
+/** genDecModel with other reference data (the native core's GET /api/ref/bundle). */
+export function genDecModelWith(props: FormExportProps, find: AerodromeLookup): GenDecModel {
   const { flight, aircraft, pilot, passengers } = props;
-  const c = genDecContent(flight, aircraft, pilot, passengers, (k) => aerodrome(k));
-  const places = routePlaces(flight.route);
+  const c = genDecContent(flight, aircraft, pilot, passengers, find);
+  const places = routePlacesWith(flight.route, find);
   const warnings: string[] = [];
   const fixes: Record<string, FormFix> = {};
   const warn = (text: string, fix: FormFix | null) => {

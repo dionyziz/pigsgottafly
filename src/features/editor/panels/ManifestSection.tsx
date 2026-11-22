@@ -2,42 +2,25 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { FlowLink } from '../../../app/FlowLinks';
 import { api } from '../../../data/api';
-import {
-  FALLBACK_SEATS,
-  type FlightCrew,
-  type Passenger,
-  type PersonDetails,
-  type Pilot,
-  seatLayout,
-} from '../../../shared';
+import type { FlightCrew, Passenger, PersonDetails } from '../../../shared';
 import { accessByEmail } from '../../../shared/sharing';
 import { Chip, ConfirmDialog, Icon, NumberField, PersonPicker } from '../../../ui';
 import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
 import { EnvelopeChart } from './EnvelopeChart';
-import { addPicToCrew, applyPerson, editCrewField, followPerson, resetCrew } from './manifest';
+import {
+  addPassengerToCrew,
+  addPicToCrew,
+  applyPerson,
+  changeSeat,
+  editCrewField,
+  manifestSeats,
+  personOf,
+  resetCrew,
+  syncCrew,
+} from './manifest';
 import { KV, Section } from './ui';
-
-export function personOf(p: Pilot | Passenger): PersonDetails {
-  return {
-    fullName: p.fullName,
-    phone: p.phone,
-    dateOfBirth: p.dateOfBirth,
-    weightKg: p.weightKg,
-    idNumber: p.idNumber,
-    idType: p.idType,
-    nationality: p.nationality,
-    relation: p.relation,
-  };
-}
-
-const FALLBACK_LABELS: Record<string, string> = {
-  'front-left': 'Front left',
-  'front-right': 'Front right',
-  'rear-left': 'Rear left',
-  'rear-right': 'Rear right',
-};
 
 /**
  * Keeps the manifest's linked people in step with the passenger list and the profile: an edit there
@@ -54,17 +37,7 @@ function useCrewSync() {
     const before = seen.current;
     seen.current = now;
     const crew = doc.crew;
-    const keyOf = (c: FlightCrew) => (c.role === 'PIC' ? 'PIC' : c.passengerId);
-    const next = crew.map((c) => {
-      const k = keyOf(c);
-      if (!k) return c;
-      const after = now.get(k);
-      if (!after) return c.role === 'PAX' ? { ...c, passengerId: null } : c;
-      const was = before?.get(k);
-      if (!was) return c;
-      const snapshot = followPerson(c.snapshot, was, after, c.overrides);
-      return snapshot === c.snapshot ? c : { ...c, snapshot };
-    });
+    const next = syncCrew(crew, before, now);
     if (next.some((c, i) => c !== crew[i]))
       update((d) => ({ ...d, crew: d.crew.map((c, i) => (crew[i] === c ? next[i] : c)) }), { coalesce: 'crew-sync' });
   });
@@ -82,10 +55,7 @@ export function ManifestSection() {
   const [unshare, setUnshare] = useState<{ name: string; key: string } | null>(null);
   useCrewSync();
 
-  const seats = useMemo(() => {
-    if (aircraft) return seatLayout(aircraft.massBalance.stations).map((s) => ({ id: s.id, label: s.label }));
-    return FALLBACK_SEATS.map((id) => ({ id, label: FALLBACK_LABELS[id] ?? id }));
-  }, [aircraft]);
+  const seats = useMemo(() => manifestSeats(aircraft ? aircraft.massBalance.stations : null), [aircraft]);
   const seatLabel = (id: string) => seats.find((s) => s.id === id)?.label ?? id;
   const used = new Set(doc.crew.map((c) => c.seat));
   const full = doc.crew.length >= seats.length;
@@ -98,11 +68,12 @@ export function ManifestSection() {
 
   const addPassenger = (p: Passenger) => {
     update((d) => {
-      if (d.crew.some((c) => c.passengerId === p.id)) return d;
-      const taken = new Set(d.crew.map((c) => c.seat));
-      const seat = seats.find((s) => !taken.has(s.id))?.id;
-      if (!seat) return d;
-      return { ...d, crew: [...d.crew, { role: 'PAX', passengerId: p.id, seat, snapshot: personOf(p) }] };
+      const crew = addPassengerToCrew(
+        d.crew,
+        seats.map((s) => s.id),
+        p,
+      );
+      return crew === d.crew ? d : { ...d, crew };
     });
   };
 
@@ -120,13 +91,7 @@ export function ManifestSection() {
 
   const setCrew = (i: number, fn: (c: FlightCrew) => FlightCrew, coalesce?: string) =>
     update((d) => ({ ...d, crew: d.crew.map((c, j) => (j === i ? fn(c) : c)) }), coalesce ? { coalesce } : undefined);
-  const changeSeat = (i: number, seat: string) =>
-    update((d) => {
-      const other = d.crew.findIndex((c, j) => j !== i && c.seat === seat);
-      const mine = d.crew[i].seat;
-      // swap with whoever sits there
-      return { ...d, crew: d.crew.map((c, j) => (j === i ? { ...c, seat } : j === other ? { ...c, seat: mine } : c)) };
-    });
+  const setSeat = (i: number, seat: string) => update((d) => ({ ...d, crew: changeSeat(d.crew, i, seat) }));
   const refresh = (i: number) => {
     const c = doc.crew[i];
     const src = c.role === 'PIC' ? pilot : passengers.find((p) => p.id === c.passengerId);
@@ -216,7 +181,7 @@ export function ManifestSection() {
                   <select
                     value={c.seat}
                     aria-label={`Seat of ${c.snapshot.fullName}`}
-                    onChange={(e) => changeSeat(i, e.target.value)}
+                    onChange={(e) => setSeat(i, e.target.value)}
                     data-testid="crew-seat"
                   >
                     {!seats.some((s) => s.id === c.seat) && (

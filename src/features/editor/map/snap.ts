@@ -153,6 +153,22 @@ export function findSnap(
   return best;
 }
 
+/**
+ * The snap of a point where the route's own points (`own`) and the reference points (`ref`) both
+ * offer one: the route's point when it is as near (counting the reference's penalty), except that an
+ * aerodrome keeps its priority over the route's own copy of the point it shadowed.
+ */
+export function bestSnap(own: SnapHit | null, ref: SnapHit | null): SnapHit | null {
+  const shadowedOwn = !!(
+    own &&
+    ref?.shadowed &&
+    own.cand.lat === ref.shadowed.lat &&
+    own.cand.lon === ref.shadowed.lon
+  );
+  if (own && !shadowedOwn && (!ref || own.distPx <= ref.distPx + ref.cand.penaltyPx)) return own;
+  return ref;
+}
+
 export function pointFromCandidate(c: SnapCandidate, uid: string): RoutePoint {
   return { uid, kind: c.kind, refId: c.refId, name: c.name, lat: c.lat, lon: c.lon };
 }

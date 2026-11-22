@@ -36,7 +36,7 @@ import {
   planFuel,
   returnsToStart,
 } from '../../../calc';
-import { atcEntryLegs, endpointAerodrome } from '../../../data/atc';
+import { atcEntryLegs, atcInput, atcLegRelevance, endpointAerodrome, generateAtcList } from '../../../data/atc';
 import {
   chooseSurface,
   fmtSky,
@@ -60,7 +60,7 @@ import type {
 } from '../../../shared';
 import { LEGS_PER_SHEET, navlogTiming, requestTiming, taxiAllowanceOf } from '../../../shared';
 import { fmtEte } from '../../../shared/format';
-import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
+import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 
 /** Rows of the terminal information table (at least; more rows shrink to fit the same height). */
 export const MIN_TERMINAL_ROWS = 5;
@@ -517,4 +517,32 @@ export function buildNavlogDocument(input: SheetBuildInput): NavlogDocument {
   const warnings = [...navlog.warnings, ...(fuel?.warnings ?? [])].filter((w) => !/calm wind assumed/i.test(w));
 
   return { sheets, terminal: terminalRows(input.atc, input.aerodromes), warnings: [...new Set(warnings)], sources };
+}
+
+/** The navlog sheets of a flight as the export page draws them: the navlog, the flight's ATC list (or the
+ *  generated one) and the weather. Shared by NavlogExport.tsx and the native core. */
+export function navlogDocumentOf(input: {
+  flight: FlightDoc;
+  aircraft: Aircraft | null;
+  settings: PilotSettings;
+  weather: RouteWeather | null;
+  metar: MetarTafResult | null;
+  ref: NavlogComputeInput['ref'] & { airspaces: RefAirspace[]; fis: RefFis };
+  nowMs: number;
+}): NavlogDocument {
+  const { flight, aircraft, settings, weather, metar, ref, nowMs } = input;
+  const computed = computeFlightNavlog({ doc: flight, aircraft, settings, weather, ref });
+  const gen = atcInput(flight.route, computed.altitudesFt, ref, settings.enrouteAerodromeRadiusNm ?? 2);
+  const atc = flight.atc ?? generateAtcList(gen);
+  return buildNavlogDocument({
+    doc: flight,
+    aircraft,
+    computed,
+    atc,
+    atcRelevance: atcLegRelevance(gen),
+    aerodromes: ref.aerodromes,
+    weather,
+    metar,
+    nowMs,
+  });
 }

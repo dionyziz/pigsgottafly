@@ -4,7 +4,7 @@
 // keeping the rows added by hand.
 import { useMemo, useState } from 'react';
 
-import { atcFreqText, atcInput, generateAtcList, regenerateAtcList } from '../../../data/atc';
+import { atcAfterRegenerate, atcFreqText, atcInput, atcStale, generateAtcList } from '../../../data/atc';
 import { type AtcEntry, uid } from '../../../shared';
 import { Chip, Icon } from '../../../ui';
 import { useEditor } from '../state';
@@ -132,23 +132,11 @@ export function AtcSection() {
 
   const edited = doc.atc !== null;
   const list = doc.atc ?? generated;
-  const stale = useMemo(() => {
-    if (!doc.atc) return false;
-    const a = doc.atc
-      .filter((e) => e.sourceKey)
-      .map((e) => e.sourceKey)
-      .join('|');
-    const b = generated.map((e) => e.sourceKey).join('|');
-    return a !== b;
-  }, [doc.atc, generated]);
+  const stale = useMemo(() => atcStale(doc.atc, generated), [doc.atc, generated]);
 
   /** Every edit materializes the list on the flight. */
   const edit = (fn: (l: AtcEntry[]) => AtcEntry[]) => update((d) => ({ ...d, atc: fn(d.atc ?? generated) }));
-  const regenerate = () =>
-    update((d) => {
-      const custom = (d.atc ?? []).filter((e) => e.sourceKey === null);
-      return { ...d, atc: custom.length ? regenerateAtcList(d.atc, generated) : null };
-    });
+  const regenerate = () => update((d) => ({ ...d, atc: atcAfterRegenerate(d.atc, generated) }));
   const add = () => {
     const e: AtcEntry = {
       id: uid(),

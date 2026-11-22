@@ -9,39 +9,21 @@ import { useEffect, useState } from 'react';
 
 import { fmtHmm } from '../../../calc';
 import {
-  aerodromePoint as pointOf,
   type FlightDoc,
   isLocalFlight,
   localDurationOf,
   MAX_LOCAL_DURATION_MIN,
   type RefAerodrome,
   type RoutePoint,
-  uid,
 } from '../../../shared';
 import { AerodromeTextInput, DurationField } from '../../../ui';
+import { makeLocal, setRouteEnd } from '../map/routeEdit';
 import { useEditor } from '../state';
 import { Section } from './ui';
-
-/** The route made local at its origin (its other points dropped); null without an aerodrome origin. */
-export function makeLocal(route: RoutePoint[]): RoutePoint[] | null {
-  const from = route[0];
-  if (!from || from.kind !== 'aerodrome') return null;
-  return [from, { ...from, uid: uid() }];
-}
 
 /** What the field shows for a route end: the aerodrome's code, else the point's name. */
 export function endText(p: RoutePoint | undefined): string {
   return p ? p.name : '';
-}
-
-export function setRouteEnd(route: RoutePoint[], end: 'from' | 'to', a: RefAerodrome): RoutePoint[] {
-  const p = pointOf(a);
-  // a local flight moves as a whole: it stays local at the new aerodrome
-  if (end === 'from' && isLocalFlight(route)) return [p, pointOf(a)];
-  if (end === 'from') return route.length ? [p, ...route.slice(1)] : [p];
-  if (route.length === 0) return route; // no origin yet: nothing to end
-  if (route.length === 1) return [...route, p];
-  return [...route.slice(0, -1), p];
 }
 
 function EndField({
