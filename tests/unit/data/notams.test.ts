@@ -13,10 +13,10 @@ import {
   notamRings,
   notamSourcesLine,
   notamsPath,
-  onlyFromAutorouter,
   notamSubject,
   notamValidity,
   notamWhere,
+  onlyFromAutorouter,
   visibleNotams,
 } from '../../../src/data/notams';
 import { mapNotams } from '../../../src/features/editor/map/notamLayer';
