@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
-import { notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
+import { notamLimits, notamSubject, notamValidity, notamWhere, onlyFromAutorouter } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
 import { PopItem, useAccordion } from './MapPopover';
 
@@ -18,6 +18,7 @@ export function NotamTipRows({ items }: { items: Notam[] }) {
             <Badge n={n} />
             <span className="pgf-air-tip-name">
               {n.key} · {notamSubject(n)}
+              {onlyFromAutorouter(n) && ' · autorouter'}
             </span>
             <span className="pgf-air-tip-lim">{notamLimits(n)}</span>
           </div>

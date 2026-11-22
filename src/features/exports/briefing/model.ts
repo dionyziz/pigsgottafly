@@ -1,6 +1,13 @@
 // The server's briefing for the saved flight (GET /api/flights/:id/notams) laid out for print.
 // Pure: no I/O, no DOM.
-import { fmtNotamTime, notamLimits, notamSubject, notamValidity, notamWhere } from '../../../data/notams';
+import {
+  fmtNotamTime,
+  notamLimits,
+  notamSubject,
+  notamValidity,
+  notamWhere,
+  onlyFromAutorouter,
+} from '../../../data/notams';
 import type { FlightDoc } from '../../../shared';
 import type { Notam, NotamBriefing } from '../../../shared/briefing';
 
@@ -16,6 +23,7 @@ export interface BriefingRow {
   /** Why it is shown (route position, aerodrome role) or hidden. */
   reasons: string;
   leg: string | null;
+  autorouterOnly: boolean;
 }
 
 export interface BriefingModel {
@@ -47,6 +55,7 @@ function row(n: Notam, legName: (i: number) => string): BriefingRow {
     raw: n.raw,
     reasons: n.reasons.join(' · '),
     leg: n.legIndex !== null ? legName(n.legIndex) : null,
+    autorouterOnly: onlyFromAutorouter(n),
   };
 }
 

@@ -9,6 +9,7 @@ import {
   notamSubject,
   notamValidity,
   notamWhere,
+  onlyFromAutorouter,
   visibleNotams,
 } from '../../../data/notams';
 import { aerodrome } from '../../../data/ref';
@@ -52,6 +53,11 @@ function NotamItem({
       <button type="button" className="ep-notam-head" onClick={onSelect} aria-pressed={selected}>
         <span className="ep-notam-key mono">{n.key}</span>
         <span className="ep-notam-where">{notamWhere(n)}</span>
+        {onlyFromAutorouter(n) && (
+          <span className="ep-notam-src" data-testid="notam-autorouter-only">
+            autorouter
+          </span>
+        )}
         <span className="spacer" />
         {n.legIndex !== null && <span className="ep-notam-leg">leg {n.legIndex + 1}</span>}
       </button>

@@ -91,8 +91,11 @@ struct Notam: Codable, Equatable, Identifiable {
     var lowerText: String?
     var upperText: String?
     var legIndex: Int?
+    var sources: [String]?
 
     var id: String { key }
+    /// Only autorouter returned it (src/data/notams.ts onlyFromAutorouter).
+    var onlyFromAutorouter: Bool { !(sources ?? []).isEmpty && (sources ?? []).allSatisfy { $0 == "autorouter" } }
     /// An aerodrome NOTAM (src/data/notams.ts isAerodromeNotam): one location that is not the FIR.
     var isAerodrome: Bool { itemA.count == 1 && itemA[0] != fir }
 }
