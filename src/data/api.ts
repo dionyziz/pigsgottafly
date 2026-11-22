@@ -336,7 +336,7 @@ export const api = {
     details: (token: string, d: SignerDetails) =>
       request<SigningView>('PUT', `sign/${encodeURIComponent(token)}/details`, d),
   },
-  /** Flight-plan filing through autorouter (api/_lib/routes/filing.ts). 503 = filing not enabled. */
+  /** Flight-plan filing through the filing backends (api/_lib/routes/filing.ts). 503 = filing not enabled. */
   filing: {
     get: (id: string) => request<FilingState>('GET', `flights/${encodeURIComponent(id)}/filing`),
     file: (id: string, req: FileRequest) =>

@@ -8,7 +8,7 @@
 //            then the addressees it went to.
 //
 // The message and addressees are what autorouter transmitted (its message queue: it adds ORGN/ and
-// its own addressees); without them, the plan and addressees the app sent.
+// its own addressees), or what was faxed and to whom; without them, the plan and addressees the app sent.
 import type { FplCopyRecipient } from '../../src/shared/briefing.js';
 import type { AftnMessage } from './autorouter.js';
 import type { Queryable } from './db.js';
@@ -23,6 +23,8 @@ export interface CopyInput {
   fpl: string;
   addresses: string[];
   at: number;
+  /** The backend that sent it (default autorouter). */
+  via?: 'autorouter' | 'fax';
 }
 
 const PURPOSE: Record<CopyKind, string> = { file: 'filing', delay: 'delay', cancel: 'cancellation' };
@@ -61,7 +63,7 @@ export function fplCopyMail(i: CopyInput): { subject: string; text: string } {
   const pic = picOf(i.fpl);
   const subject = [
     '-TITLE ACK',
-    `-MSGTYP ${msgtyp} ${h.ident} ${h.dep} ${h.dest} autorouter MSG`,
+    `-MSGTYP ${msgtyp} ${h.ident} ${h.dep} ${h.dest} ${i.via ?? 'autorouter'} MSG`,
     `-FILTIM ${filtim}`,
     `-ORIGINDT ${origindt}`,
     pic ? `(${pic})` : '',

@@ -38,7 +38,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
   - NOTAM briefing.
 - **Optional services** (enabled by environment variables):
   - e-mailing Form 731 and the GenDec to HCAA;
-  - NOTAMs and flight-plan filing through autorouter.
+  - NOTAMs and flight-plan filing through autorouter, or by fax to Athens Central AIS when autorouter is down or not set up.
 - **Operators.** The club or owner who operates an aircraft: name, contacts, operations manual (PDF), shared like an aircraft (anyone with one of its aircraft sees it). Its name is the operator on the GenDec, FPL OPR/ and the W&B sheet. An operator can ask for the W&B and performance sheets before each flight: the export then sends them to it as PDF.
 - **Hangar.** Identity, FPL equipment and item 19, speeds, fuel, mass and balance with envelopes, performance tables, and compass swing cards with attached reports. A new aircraft can start from a type template (Reims F172M).
 
@@ -78,6 +78,20 @@ vercel deploy --prod
   - `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD`: optional, for the NOTAM briefing. Add `AUTOROUTER_FILING=1` for flight-plan filing.
     - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it; `*` lets every signed-in pilot use it. With both lists empty, nobody can.
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
+  - Filing by fax (optional, see ARCHITECTURE.md "Filing backends"):
+    - The plan goes as a cover page plus the filled ICAO form to Athens Central AIS (`FAX_AIS_NUMBER`, default `+302103532635`). The office's fax machine confirms delivery; no ACK or REJ comes back.
+    - The provider is Sinch Fax API v3 (`FAX_PROVIDER=sinch`, the default). It needs:
+      - `FAX_PROJECT_ID`;
+      - `FAX_API_KEY` (access key id) and `FAX_API_SECRET` (key secret);
+      - `FAX_WEBHOOK_SECRET`, a long random string of our own: each fax's callback URL carries an HMAC of its id under it, since Sinch does not sign callbacks.
+    - Optional: `FAX_SERVICE_ID` (the fax service; default the project's) and `FAX_FROM` (sender number).
+    - Nothing to set in Sinch's dashboard: every fax names its own callback, `https://<origin>/api/filing/fax/webhook/sinch?ref=…&token=…`.
+    - `FAX_PROVIDER=telnyx` uses Telnyx instead, with `FAX_API_KEY` (API v2 key), `FAX_CONNECTION_ID` (Fax Application), `FAX_FROM` and `FAX_WEBHOOK_PUBLIC_KEY`. Its Fax Application's webhook is `https://pigsgottafly.com/api/filing/fax/webhook/telnyx`.
+    - `FAX_DRY_RUN=1` prints and logs the fax without sending it.
+    - `FAX_PILOTS` (default `ALLOWED_EMAILS`; `*` = everyone) lists who may file by fax.
+    - `FILERS` (default `autorouter,fax`) is the order the backends are tried in. A backend that is down falls through to the next.
+    - `FAX_DAILY_CAP` (default 100) caps the faxes for the whole service.
+    - `FAX_WEBHOOK_BASE` overrides the origin in callback URLs.
   - `RESEND_API_KEY`: optional. E-mails Form 731 and the GenDec to HCAA, and the W&B and performance sheets to an operator that asks for them, with `FORMS_FROM` as the sender (default `Pig's Gotta Fly <noreply@pigsgottafly.com>`).
     - Any signed-in pilot may send. The pilot is cc'd on every e-mail and is its reply-to address.
     - A form version that was already sent goes again only on an explicit re-send.

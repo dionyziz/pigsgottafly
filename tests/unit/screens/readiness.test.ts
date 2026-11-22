@@ -63,6 +63,16 @@ describe('readiness', () => {
     expect(byId(readiness(base)).filing).toMatchObject({ state: 'todo', text: 'Not filed yet.' });
     expect(byId(readiness({ ...base, filing: filing('filed') })).filing.state).toBe('ok');
     expect(byId(readiness({ ...base, filing: filing('rejected') })).filing.state).toBe('danger');
+    // by fax: delivered is filed, a failed fax is to be filed again, sending is not yet
+    expect(byId(readiness({ ...base, filing: filing('delivered') })).filing).toMatchObject({
+      state: 'ok',
+      text: 'Delivered by fax.',
+    });
+    expect(byId(readiness({ ...base, filing: filing('failed') })).filing.state).toBe('danger');
+    expect(byId(readiness({ ...base, filing: filing('sending') })).filing).toMatchObject({
+      state: 'todo',
+      text: 'Sending by fax.',
+    });
     const forms = (o: { signed: boolean[]; sent?: boolean; changed?: boolean; pilotSends?: boolean }) =>
       ({
         form731: {

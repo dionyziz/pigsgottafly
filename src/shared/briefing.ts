@@ -84,7 +84,10 @@ export interface NotamBriefing {
 // POST /api/flights/:id/filing/refresh            → FilingState   (polls the status)
 // GET  /api/filing/log                            → FilingLogEntry[] (the pilot's actions, newest first)
 
-/** autorouter flight plan status codes (+ 'not-filed'). */
+/**
+ * autorouter flight plan status codes (+ 'not-filed'), and a fax's delivery: 'sending' (with the
+ * fax service), 'delivered' (the office's fax machine took every page), 'failed' (it did not).
+ */
 export type FilingStatus =
   | 'not-filed'
   | 'created'
@@ -98,6 +101,9 @@ export type FilingStatus =
   | 'closed'
   | 'cancelled'
   | 'rejected'
+  | 'sending'
+  | 'delivered'
+  | 'failed'
   | 'unknown';
 
 /** How a filing status reads (the editor, the export, the flight list). */
@@ -114,8 +120,36 @@ export const FILING_STATUS_LABEL: Record<FilingStatus, string> = {
   closed: 'Closed',
   cancelled: 'Cancelled',
   rejected: 'Rejected',
+  sending: 'Sending by fax',
+  delivered: 'Delivered by fax',
+  failed: 'Fax failed',
   unknown: 'Unknown',
 };
+
+/** The filing backends (api/_lib/filers/): which service sends the plan. */
+export type FilerId = 'autorouter' | 'fax';
+
+/** What a backend can do: a fax is delivered, but nobody answers it with ACK or REJ. */
+export interface FilerCapabilities {
+  file: boolean;
+  delay: boolean;
+  cancel: boolean;
+  /** Its status can be asked again (autorouter: the plan's; fax: the delivery's). */
+  status: boolean;
+  /** ATC's acknowledgement or rejection of the plan comes back. */
+  ackRej: boolean;
+}
+
+/** A filing backend as this pilot and flight see it, in the order they are tried. */
+export interface FilerInfo {
+  id: FilerId;
+  /** 'autorouter', 'Fax to Athens Central AIS'. */
+  label: string;
+  capabilities: FilerCapabilities;
+  available: boolean;
+  /** Why it is not available (null when it is). */
+  reason: string | null;
+}
 
 /** One AFTN addressee proposed for the plan (AIP Greece ENR 1.11), for the pilot to review. */
 export interface Addressee {
@@ -126,9 +160,15 @@ export interface Addressee {
 }
 
 export interface FilingRecord {
-  provider: 'autorouter';
-  /** autorouter flight plan id. */
+  /** The backend that filed it; its delay and cancellation go through the same one. */
+  provider: FilerId;
+  /** How it reads: 'autorouter', 'Fax to Athens Central AIS'. */
+  providerLabel: string;
+  capabilities: FilerCapabilities;
+  /** The backend's reference: autorouter's flight plan id, the fax's id. */
   providerId: string | null;
+  /** Where a faxed plan went (its delay and cancellation go to the same number); null otherwise. */
+  faxTo: { number: string; unit: string } | null;
   status: FilingStatus;
   /** Estimated off-block time as filed. */
   eobt: EpochMs | null;
@@ -146,8 +186,10 @@ export interface FilingLogEntry {
   id: Id;
   flightId: Id | null;
   at: EpochMs;
-  /** copy: the e-mail copy of what was sent (api/_lib/fplCopy.ts). */
-  action: 'file' | 'delay' | 'cancel' | 'refresh' | 'copy';
+  /** copy: the e-mail copy of what was sent (api/_lib/fplCopy.ts); delivery: the fax service's report. */
+  action: 'file' | 'delay' | 'cancel' | 'refresh' | 'copy' | 'delivery';
+  /** The backend that acted (null: none, e.g. refused before any was tried). */
+  via: FilerId | null;
   ok: boolean;
   message: string;
 }
@@ -159,10 +201,12 @@ export interface FplCopyRecipient {
 }
 
 export interface FilingState {
-  /** False when the server cannot file (no autorouter account, filing off, pilot not listed). */
+  /** False when no backend can file this flight (none configured, filing off, pilot not listed). */
   enabled: boolean;
   /** Why filing is disabled (null when enabled). */
   reason: string | null;
+  /** The backends, in the order they are tried (FILERS); a transient failure falls through to the next. */
+  filers: FilerInfo[];
   addressees: Addressee[];
   /** Who gets an e-mail copy of the plan (its operator, the route's aerodromes that ask for one). */
   copyTo: FplCopyRecipient[];
@@ -180,4 +224,6 @@ export interface FileRequest {
   eobt?: EpochMs;
   /** The e-mail copies to send, out of FilingState.copyTo (default all of them). */
   copyTo?: string[];
+  /** File through this backend only (no fallback); default: the first available, in order. */
+  via?: FilerId;
 }

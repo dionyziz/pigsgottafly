@@ -43,7 +43,8 @@ function FilingChip() {
   });
   const f = q.data?.filing;
   if (!f) return null;
-  const tone = f.status === 'rejected' ? 'danger' : f.status === 'cancelled' ? undefined : 'ok';
+  const tone =
+    f.status === 'rejected' || f.status === 'failed' ? 'danger' : f.status === 'cancelled' ? undefined : 'ok';
   return (
     <button type="button" className="ep-chip-btn" onClick={() => focusSection('filing')} data-testid="filing-chip">
       <Chip tone={tone}>

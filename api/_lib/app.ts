@@ -7,13 +7,18 @@ import type { Pilot } from '../../src/shared/types.js';
 import { appleKeys, googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
 import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
 import type { Db } from './db.js';
+import { autorouterFiler } from './filers/autorouter.js';
+import { faxFiler } from './filers/fax.js';
+import { faxFromEnv, faxProvider } from './filers/faxProviders.js';
+import { filerOrder } from './filers/select.js';
+import type { Filer } from './filers/types.js';
 import type { ApiConfig, Ctx, JsonBody, Req, Res, Route } from './http.js';
-import { compilePath, HttpError, isJsonContentType, readJsonObject, Reply, send } from './http.js';
+import { appOrigin, compilePath, HttpError, isJsonContentType, readJsonObject, readRaw, Reply, send } from './http.js';
 import { recordError } from './monitor.js';
 import { isConstraintViolation } from './pgErrors.js';
 import { ROUTES } from './routes/index.js';
 import { toPilot } from './rows.js';
-import { chromiumNavlogPdf, chromiumSheetPdf } from './sheetPdf.js';
+import { chromiumFaxPdf, chromiumNavlogPdf, chromiumSheetPdf } from './sheetPdf.js';
 
 const errorField = (e: unknown): string | null =>
   e && typeof e === 'object' && 'error' in e && typeof e.error === 'string' ? e.error : null;
@@ -73,14 +78,21 @@ export function configFromEnv(
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots ('*': every signed-in
     // pilot); unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
+    // filing backends: FILERS orders them; the fax service (faxProviders.ts) only when configured,
+    // for the pilots on FAX_PILOTS (default ALLOWED_EMAILS)
+    filers: filerOrder(env.FILERS),
+    fax: faxFromEnv(env),
+    ...(env.FAX_PILOTS !== undefined ? { faxPilots: emailList(env.FAX_PILOTS) } : {}),
+    ...(env.FAX_WEBHOOK_BASE ? { faxWebhookBase: env.FAX_WEBHOOK_BASE.trim().replace(/\/+$/, '') } : {}),
     // the operator's W&B and performance PDF and the pilot's navlog, printed by headless Chromium
     // from the built client (dist/: on Vercel shipped with the function, vercel.json); SHEET_PDF=off:
     // the server's own writer for the operator's sheets, and no navlog by e-mail
     ...(env.SHEET_PDF === 'off'
-      ? { sheetPdf: null, navlogPdf: null }
+      ? { sheetPdf: null, navlogPdf: null, faxPdf: null }
       : {
           sheetPdf: chromiumSheetPdf({ distDir: sheetDist(env) }),
           navlogPdf: chromiumNavlogPdf({ distDir: sheetDist(env) }),
+          faxPdf: chromiumFaxPdf({ distDir: sheetDist(env) }),
         }),
   };
 }
@@ -136,7 +148,13 @@ export function createApi(
     aviationWeather: opts.aviationWeather,
     sheetPdf: opts.sheetPdf ?? null,
     navlogPdf: opts.navlogPdf ?? null,
+    filers: opts.filers ?? filerOrder(undefined),
+    fax: opts.fax ?? null,
+    faxPilots: (opts.faxPilots ?? allowedEmails).map((e) => e.trim().toLowerCase()).filter(Boolean),
+    faxPdf: opts.faxPdf ?? null,
+    faxWebhookBase: opts.faxWebhookBase,
   };
+  const fax = config.fax ? faxProvider(config.fax) : null;
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter, tokenStore(opts.db)) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {
     console.warn(
@@ -154,6 +172,25 @@ export function createApi(
   /** The shared autorouter account is for the listed pilots ('*': all of them; local mode: the local pilot). */
   const autorouterFor = (p: Pilot | null): boolean =>
     config.autorouterPilots!.includes('*') ? !!p : listed(config.autorouterPilots!, p);
+  const faxFor = (p: Pilot | null): boolean => (config.faxPilots!.includes('*') ? !!p : listed(config.faxPilots!, p));
+  /** The filing backends for this pilot, in order (filers/select.ts). */
+  const filersFor = (req: Req, p: Pilot | null, arOk: boolean): Filer[] =>
+    config.filers!.flatMap((id): Filer[] => {
+      if (id === 'autorouter') return [autorouterFiler(arOk ? autorouter : null, !!autorouter && !arOk)];
+      if (!fax) return [];
+      const origin = config.faxWebhookBase || appOrigin(req, config.secureCookie);
+      // a callback to this machine would never arrive: such a fax is polled instead
+      const local = /^https?:\/\/(localhost|127\.|\[::1\])/.test(origin);
+      return [
+        faxFiler({
+          provider: fax,
+          render: config.faxPdf ?? null,
+          allowed: faxFor(p),
+          webhookUrl: local ? null : `${origin}/api/filing/fax/webhook/${fax.id}`,
+        }),
+      ];
+    });
+  const webhookPaths = routes.filter((r) => r.webhook).map((r) => compilePath(r.path));
   /** Any signed-in pilot may e-mail forms; the pilot is cc'd, so an e-mail address is needed. */
   const formsMailFor = (p: Pilot | null): boolean => !!p && !!String(p.email || '').trim();
   const db = opts.db;
@@ -180,10 +217,10 @@ export function createApi(
     let route: string | null = null;
     let pilot: Pilot | null = null;
     try {
-      const refused = crossSiteRefusal(req);
-      if (refused) return send(res, refused.status, { error: refused.error });
       const url = new URL(req.url || '/', 'http://x');
       const path = '/' + url.pathname.replace(/^\/api\/?/, '').replace(/\/+$/, '');
+      const refused = webhookPaths.some((m) => m(path)) ? null : crossSiteRefusal(req);
+      if (refused) return send(res, refused.status, { error: refused.error });
       route = '/api' + path; // until a route matches: scrubbed by the monitor
       let pathMatched = false;
       for (const r of compiled) {
@@ -214,6 +251,9 @@ export function createApi(
           headers: renewed ? { 'Set-Cookie': renewed } : {},
           autorouter: arOk ? autorouter : null,
           autorouterDenied: !!autorouter && !arOk,
+          filers: filersFor(req, pilot, arOk),
+          faxProvider: fax,
+          rawBody: () => readRaw(req),
           formsMailDenied: !formsMailFor(pilot),
           isAdmin: isAdmin(config, pilot),
           body: () => (bodyP ||= readJsonObject(req)),

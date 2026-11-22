@@ -91,7 +91,16 @@ function fromWarnings(
   };
 }
 
-const FILED_OPEN = new Set(['filed', 'manual_correction', 'departed', 'arriving', 'arrived', 'closed', 'terminated']);
+const FILED_OPEN = new Set([
+  'filed',
+  'manual_correction',
+  'departed',
+  'arriving',
+  'arrived',
+  'closed',
+  'terminated',
+  'delivered',
+]);
 
 export function readiness(i: ReadinessInput): ReadyItem[] {
   const w = i.warnings;
@@ -194,11 +203,23 @@ export function paperwork(i: Pick<ReadinessInput, 'filing' | 'forms' | 'declarat
     warning: null,
     ...(f && f.status === 'rejected'
       ? { state: 'danger', text: 'Rejected: file it again.' }
-      : f && f.status === 'cancelled'
-        ? { state: 'todo', text: 'Cancelled.' }
-        : f && FILED_OPEN.has(f.status)
-          ? { state: 'ok', text: f.status === 'manual_correction' ? 'Filed (in manual correction).' : 'Filed.' }
-          : { state: 'todo', text: 'Not filed yet.' }),
+      : f && f.status === 'failed'
+        ? { state: 'danger', text: 'The fax did not go through: file it again.' }
+        : f && f.status === 'sending'
+          ? { state: 'todo', text: 'Sending by fax.' }
+          : f && f.status === 'cancelled'
+            ? { state: 'todo', text: 'Cancelled.' }
+            : f && FILED_OPEN.has(f.status)
+              ? {
+                  state: 'ok',
+                  text:
+                    f.status === 'manual_correction'
+                      ? 'Filed (in manual correction).'
+                      : f.status === 'delivered'
+                        ? 'Delivered by fax.'
+                        : 'Filed.',
+                }
+              : { state: 'todo', text: 'Not filed yet.' }),
   });
   const f731 = i.forms?.form731;
   if (f731) {

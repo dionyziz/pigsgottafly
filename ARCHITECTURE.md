@@ -226,6 +226,9 @@ api/
                            dist/pdf.html (src/pdf/: the export pages' sheets and CSS) from the sent WbPerfContent /
                            NavlogContent, A4 with the print CSS; no session, no network (requests answered from dist/ on
                            disk, the rest aborted); ApiConfig.sheetPdf / navlogPdf (configFromEnv; SHEET_PDF=off)
+  _lib/filers/             filing backends behind one driver interface (types.ts): autorouter.ts, fax.ts (+ faxProviders.ts:
+                           Telnyx, Sinch, dry run; faxRoutes.ts: where a departure's plan is faxed; icaoMessages.ts: DLA/CNL),
+                           select.ts (FILERS order, fallback on transient failures); see "Filing backends"
   _lib/declarationPdf.ts   the fallback when that print fails (recorded in app_errors): the same sheets drawn with the
                            pdf.ts writer
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
@@ -296,7 +299,7 @@ tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calcul
 src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
 tests/api/                 vitest: API, auth, migrations (PGlite in memory); sheetPdf.test.ts prints the W&B and performance
                            sheets and a navlog in a local Chrome/Chromium (CHROME; skipped when there is none), building dist/pdf.html
-tests/setup/               noExternalApis.ts: the test process's fetch refuses Open-Meteo, aviationweather.gov and autorouter
+tests/setup/               noExternalApis.ts: the test process's fetch refuses Open-Meteo, aviationweather.gov, autorouter and the fax services
                            (vitest setupFiles and the e2e harness; startServer's close() fails the test if anything tried)
 tests/helpers/             openMeteoGrid.ts: fake Open-Meteo from recorded ECMWF responses + gridApi (the real route on PGlite)
 tests/e2e/                 harness.mjs (CDP; API server with mocked Open-Meteo/METAR upstreams, pages refuse external APIs), oracle.mjs (independent navlog reference), sharing.e2e.test.mjs,
@@ -393,6 +396,102 @@ Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/a
 Shared flights (migration 054, `access.ts` `flightFor`, `api/_lib/routes/flightShares.ts`, `tests/api/flightSharing.test.ts`): `flights.pilot_id` is the owner, `flight_shares` gives `view` (read the flight, its briefing, filing and forms state; GET answers `Flight.access` with the owner, their details and settings and the flight's aircraft as the owner sees it) or `edit` (also PUT the flight and its manifest, the GenDec override, manage sharing). Owner only: trash/restore, filing (file, delay, cancel, refresh), Form 731/GenDec sends and signing links, declarations. Rows kept per pilot for the flight (flight_crew, flight_filings, flight_notams, the forms' tables) always use the owner's id. A shared flight in its owner's trash is out of reach of the others. GET /flights lists shared flights with `sharedBy` and `role` (never in the trash); a copy is the copier's.
 
 **Adding a route**: add it to the module that owns it (e.g. `api/_lib/routes/weather.ts` exports `routes: Route[]`). Every module is already listed in `routes/index.ts`, so the dispatcher needs no edits. A handler returns the body (200), `reply(status, body, headers)`, or `undefined` (204), and throws `HttpError` for errors.
+
+## Filing backends
+
+Flight plans are filed through drivers behind one interface (`api/_lib/filers/types.ts`), so a backend that
+fails does not stop the pilot from filing:
+
+```ts
+interface Filer {
+  id: 'autorouter' | 'fax';
+  labelFor: (adep: string) => string;            // 'autorouter', 'Fax to Athens Central AIS'
+  capabilities: { file; delay; cancel; status; ackRej: boolean };
+  availableFor: (pilot, { adep }) => { available: boolean; reason: string | null };
+  file:   (db, plan)            => Promise<{ providerId, status, message, logText, faxTo?, after? }>;
+  delay:  (db, ref, newEobt)    => Promise<{ status?, message, logText, sent?, after? }>;
+  cancel: (db, ref, reason)     => Promise<{ status?, message, logText, sent?, after? }>;
+  status: (db, ref)             => Promise<{ status, eobt?, logText }>;
+  transmitted: (ref, message)   => Promise<AftnMessage[]>;   // for the e-mail copy
+}
+```
+
+A failure is a `FilerError(message, httpStatus, transient)`. It is transient when the service is down,
+timed out or refused for its own reasons (5xx, 429, network). A refusal of the plan itself (autorouter's
+parse errors, the caps) is not transient.
+
+- **autorouter** (`filers/autorouter.ts`): wraps `AutorouterClient` unchanged. It has every capability,
+  including ATC's ACK/REJ through the plan status. It is only for `AUTOROUTER_PILOTS` and needs `AUTOROUTER_FILING=1`.
+- **fax** (`filers/fax.ts`): the plan is printed by the website's own print path. `sheetPdf.ts` `chromiumFaxPdf`
+  renders `src/pdf/` kind `fplfax` (`FaxSheets.tsx`) as two pages:
+  - a cover page: to the unit, from the pilot (name, phone, e-mail), flight id, EOBT, route, the FPL
+    message, and "please acknowledge to …";
+  - the filled ICAO form, drawn from the filed message (`parseFpl.ts`).
+
+  The PDF is faxed through the deployment's fax service (`filers/faxProviders.ts`). Where it goes depends on
+  the departure (`filers/faxRoutes.ts`): `FAX_ROUTES` overrides by ICAO, and the default is Athens Central AIS,
+  +30 210 35 32 635, 24 h, per AIP GEN 3.1.5.3 and AOPA Hellas 2025. `FAX_AIS_NUMBER` replaces the default
+  number. The number used is stored on the filing (`flight_filings.fax_to`), and the DLA and CNL go to the same
+  number, as one cover page with the ICAO message (`filers/icaoMessages.ts`).
+
+  Capabilities: file, delay, cancel and status (delivery). There is no ACK/REJ: the office re-keys the plan by
+  hand. Statuses: `sending` → `delivered` | `failed`. A failed plan fax is final and can be filed again; a failed
+  DLA or CNL puts the plan back as it was.
+
+  Every fax is a `fax_log` row (migration 057), written before the print and capped (429):
+  - 10 per pilot and 6 per flight per 24 h;
+  - `FAX_DAILY_CAP` (default 100) for the whole service;
+  - anything the service accepted counts, delivered or not.
+
+  Delivery comes back by webhook, `POST /api/filing/fax/webhook/:provider` (`Route.webhook`: no session and no
+  JSON/same-origin check; the handler verifies the signature on the raw body), or by polling on "Refresh status".
+  Either way it is applied idempotently (`applyDelivery`) and logged as `delivery`.
+
+Selection (`filers/select.ts`): `FILERS` orders the backends (default `autorouter,fax`; an unconfigured fax
+service is left out). A flight is filed by the first backend available for the pilot and its departure. On a
+transient failure the next one is tried, and each attempt is logged with `via`. The pilot can pick one
+(`FileRequest.via`), and then there is no fallback.
+
+`flight_filings.provider` and `provider_id` record which backend filed the plan and its reference. Delay,
+cancel and refresh always go to that backend, and are refused with 503 if it is no longer available.
+`FilingState.filers` lists each backend with its label, capabilities and availability. The UI
+(`FilingPanel.tsx`) says which service filed the plan and what it can report, e.g. "Delivered by fax to Athens
+Central AIS (+30 210 3532635) — no acknowledgement".
+
+### Fax services
+
+The comparison, researched 2026-11, to send 2-page PDFs to +30 from a Node server:
+
+| Service | Greece (+30) | Delivery report | PDF | Account | Status |
+|---|---|---|---|---|---|
+| Telnyx Programmable Fax (first choice; implemented, `FAX_PROVIDER=telnyx`) | yes; $0.007/page plus the per-minute voice rate to Greece, which is in the rate deck and not published per page ([pricing](https://telnyx.com/pricing/fax)) | webhooks `fax.delivered` / `fax.failed`, **signed with Ed25519** (`telnyx-signature-ed25519` over `timestamp\|body`) ([docs](https://developers.telnyx.com/docs/messaging/messages/receiving-webhooks)) | multipart `contents` ([send a fax](https://developers.telnyx.com/api-reference/programmable-fax-commands/send-a-fax)) | pay-as-you-go, no monthly fee; Level 2 verification for international; one number (~$1/mo) | active |
+| **Sinch Fax v3** (ex-Phaxio; the default) | likely; no per-country rate published; $0.045/page headline ([pricing](https://sinch.com/apis/fax-api/)) | one `FAX_COMPLETED` callback, **unsigned**: our URL carries an HMAC of the fax log id | multipart `file` | prepaid balance | active ([v2→v3](https://developers.sinch.com/docs/fax/v2-v3migration)) |
+| Fax.Plus (Alohi) | yes | HMAC-signed webhooks | upload, then send | API only on Enterprise (from ~$960/yr) ([pricing](https://www.fax.plus/pricing)) | active |
+| eFax Corporate (Consensus) | yes | HMAC (on request) | — | enterprise contract | active |
+| Documo / mFax | international disabled by default, extra cost | basic auth / OAuth only | multipart | subscription + Enterprise API | active |
+| Notifyre | Greece listed, rate after login | webhooks | — | pay per page | active |
+| ClickSend | €0.0431/page to Greece | — | — | **fax closed to new customers** ([pricing](https://www.clicksend.com/us/pricing/gr/)) | closed |
+| Twilio | — | — | — | — | **shut down 2021-12-17** |
+| SRFax, InterFAX, FAXAGE, RingCentral | stale API / no international (FAXAGE) / subscription add-on | unsigned or token echo | — | — | — |
+
+Telnyx was the first choice, as the only pay-as-you-go service with **signed** delivery webhooks and a plain
+multipart PDF upload that reaches Greece. Its sign-up refused the pilot's accounts, so Sinch is the default:
+pay-as-you-go with prepaid credit, multipart PDF, and polling and callbacks.
+
+Sinch does not sign its callbacks, so each fax's callback URL carries its `fax_log` id and our HMAC-SHA256 of
+that id under `FAX_WEBHOOK_SECRET`. The token is compared in constant time; a wrong or missing token, or no
+secret configured, gets a 404. The report must also name the fax that log row sent.
+
+Sinch needs `FAX_PROJECT_ID`, `FAX_API_KEY` (key id), `FAX_API_SECRET` and `FAX_WEBHOOK_SECRET`, and optionally
+`FAX_SERVICE_ID` and `FAX_FROM`. To use Telnyx, set `FAX_PROVIDER=telnyx` with `FAX_API_KEY`, `FAX_CONNECTION_ID`,
+`FAX_FROM` and `FAX_WEBHOOK_PUBLIC_KEY`.
+
+Adding a service means one more `FaxProvider` in `faxProviders.ts`, with `send`, `get` and `webhook` (verify, then
+report `{ faxId, state, error, pages }`), plus its settings in `faxFromEnv`.
+
+Tests never fax. `tests/setup/noExternalApis.ts` refuses telnyx.com and sinch.com, and the services are mocked
+(`tests/api/faxFiling.test.ts`). `FAX_DRY_RUN=1` prints the PDF and logs it (and writes it to `FAX_DRY_RUN_DIR`)
+instead of sending, then reports it delivered (`tests/e2e/faxFiling.e2e.test.mjs`).
 
 ## Database, migrations and seeds
 

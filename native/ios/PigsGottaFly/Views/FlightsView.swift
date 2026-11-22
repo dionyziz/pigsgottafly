@@ -138,9 +138,9 @@ struct FilingBadge: View {
 
     private var color: Color {
         switch status {
-        case "filed", "departed", "arriving", "arrived", "closed": .green
-        case "rejected", "cancelled", "suspended": .red
-        case "manual_correction", "created": .orange
+        case "filed", "departed", "arriving", "arrived", "closed", "delivered": .green
+        case "rejected", "cancelled", "suspended", "failed": .red
+        case "manual_correction", "created", "sending": .orange
         default: .secondary
         }
     }

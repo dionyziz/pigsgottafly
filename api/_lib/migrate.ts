@@ -43,6 +43,7 @@ import appleSignIn053 from './migrations/053_apple_sign_in.js';
 import flightShares054 from './migrations/054_flight_shares.js';
 import pilotInvitations055 from './migrations/055_pilot_invitations.js';
 import formLinkDetailsChanged056 from './migrations/056_form_link_details_changed.js';
+import filingBackends057 from './migrations/057_filing_backends.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -92,6 +93,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '054_flight_shares', sql: flightShares054 },
   { name: '055_pilot_invitations', sql: pilotInvitations055 },
   { name: '056_form_link_details_changed', sql: formLinkDetailsChanged056 },
+  { name: '057_filing_backends', sql: filingBackends057 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

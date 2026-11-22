@@ -168,6 +168,9 @@ enum FilingStatusLabel {
         "closed": "Closed",
         "cancelled": "Cancelled",
         "rejected": "Rejected",
+        "sending": "Sending by fax",
+        "delivered": "Delivered by fax",
+        "failed": "Fax failed",
         "unknown": "Unknown",
     ]
     static func label(_ status: String?) -> String {
