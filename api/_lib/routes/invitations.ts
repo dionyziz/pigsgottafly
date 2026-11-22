@@ -11,6 +11,7 @@ import { aircraftFor } from '../access.js';
 import type { Queryable, Row } from '../db.js';
 import type { ApiConfig, Req, Route } from '../http.js';
 import { badRequest, conflict, newId, notFound, reply } from '../http.js';
+import { mailAvailability, sendSystemMail } from '../mail.js';
 import { rateLimit } from '../rateLimit.js';
 import { notifyInvite } from '../shareMail.js';
 
@@ -138,6 +139,18 @@ export async function acceptInvitations(db: Queryable, pilotId: string, email: s
   );
   if (!accepted.length) return 0;
   const ids = accepted.map((r: Row) => r.id as string);
+  // read before the pending rows go: each inviter is told who joined and what they now share
+  const told = await db.query(
+    `SELECT i.id, p.email AS inviter_email,
+            COALESCE(array_agg(a.registration ORDER BY a.registration) FILTER (WHERE a.id IS NOT NULL), '{}') AS regs
+     FROM pilot_invitations i
+     JOIN pilots p ON p.id = i.pilot_id
+     LEFT JOIN pilot_invitation_aircraft ia ON ia.invitation_id = i.id
+     LEFT JOIN aircraft a ON a.id = ia.aircraft_id
+     WHERE i.id = ANY($1::text[])
+     GROUP BY i.id, p.email`,
+    [ids],
+  );
   // one row per aircraft (two inviters may have shared the same one): the higher role first
   await db.query(
     `INSERT INTO aircraft_shares (aircraft_id, pilot_id, role, created, created_by)
@@ -153,7 +166,30 @@ export async function acceptInvitations(db: Queryable, pilotId: string, email: s
     [ids, pilotId],
   );
   await db.query('DELETE FROM pilot_invitation_aircraft WHERE invitation_id = ANY($1::text[])', [ids]);
+  if (mailAvailability().enabled)
+    for (const t of told) {
+      const to = String(t.inviter_email || '').trim();
+      if (!to) continue;
+      const { subject, text } = inviteAcceptedMail(addr, t.regs as string[]);
+      // never blocks or fails the new pilot's sign-in
+      await sendSystemMail({ to: [to], subject, text }).catch((e) =>
+        console.warn('invitation accepted mail:', String((e as Error)?.message || e)),
+      );
+    }
   return accepted.length;
+}
+
+/** The inviter's notice that the invited address has signed up. */
+export function inviteAcceptedMail(email: string, registrations: string[]): { subject: string; text: string } {
+  return {
+    subject: `${email} joined Pig's Gotta Fly`,
+    text: [
+      `${email}, whom you invited, has signed up to Pig's Gotta Fly.`,
+      registrations.length ? `They now share: ${registrations.join(', ')}.` : '',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  };
 }
 
 export const routes: Route[] = [

@@ -2,8 +2,8 @@ import SwiftUI
 
 /// New flight: departure and destination, date and block-off time (UTC), and the aircraft; POST
 /// /api/flights, then the flight opens. Only the route is required. A pilot with no aircraft may name
-/// one, and it is made from the hangar's type template, as the website's Add aircraft does. Without a
-/// home aerodrome the departure can become it, so the next new flight starts there.
+/// one, and it is made from the hangar's type template, as the website's Add aircraft does. A pilot's
+/// first flight asks for their home aerodrome (sign-up asks nothing), saved to the profile; it departs there.
 struct NewFlightView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -17,7 +17,6 @@ struct NewFlightView: View {
     @State private var aircraft: [AircraftItem]?
     @State private var aircraftId: String?
     @State private var registration = ""
-    @State private var makeHome = false
     @State private var busy = false
     @State private var error: String?
 
@@ -33,12 +32,8 @@ struct NewFlightView: View {
         NavigationStack {
             Form {
                 Section("Route") {
-                    placeRow("From", place: $from, id: "new-from")
+                    placeRow(noHome ? "Your home aerodrome" : "From", place: $from, id: "new-from")
                     placeRow("To", place: $to, id: "new-to")
-                    if noHome {
-                        Toggle("Make the departure my home aerodrome", isOn: $makeHome)
-                            .accessibilityIdentifier("new-make-home")
-                    }
                 }
                 Section {
                     DatePicker("Date", selection: $date, displayedComponents: .date)
@@ -158,7 +153,7 @@ struct NewFlightView: View {
             choice = nil
         }
         // a failed save does not stop the flight: the home aerodrome can be set in Account
-        if noHome && makeHome { try? await app.saveHome(from) }
+        if noHome { try? await app.saveHome(from) }
         do {
             let id = try await app.createFlight(
                 from: from, to: to, date: Fmt.isoDay(from: date), blockOff: Fmt.clock(date), aircraft: choice)

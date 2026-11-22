@@ -62,7 +62,7 @@ describe('lobby format', () => {
     expect(utcToLocal('2026-12-01', '09:30', 'Europe/Athens')).toBe('11:30'); // EET, UTC+2
     expect(utcToLocal('2026-12-01', '', 'Europe/Athens')).toBe('');
   });
-  it('puts upcoming flights first (soonest first) and past ones most recent first', () => {
+  it('lists both sections newest first (an undated draft at the top)', () => {
     const rows = [
       item('a', '2026-11-10'),
       item('b', '2026-11-20', { blockOff: '10:00' }),
@@ -72,7 +72,7 @@ describe('lobby format', () => {
       item('f', ''),
     ];
     const { upcoming, past } = splitFlights(rows, '2026-11-15');
-    expect(upcoming.map((r) => r.id)).toEqual(['c', 'e', 'b', 'f']);
+    expect(upcoming.map((r) => r.id)).toEqual(['f', 'b', 'e', 'c']);
     expect(past.map((r) => r.id)).toEqual(['a', 'd']);
   });
   it('searches title, aerodromes, aircraft and date', () => {

@@ -39,9 +39,10 @@ export function splitFlights(
   today: string,
 ): { upcoming: FlightListItem[]; past: FlightListItem[] } {
   const key = (r: FlightListItem) => `${r.date || '9999-99-99'} ${r.summary.blockOff || '99:99'}`;
+  // newest first in both sections (reverse chronological)
   const upcoming = rows
     .filter((r) => !r.date || r.date >= today)
-    .sort((a, b) => key(a).localeCompare(key(b)) || b.updated - a.updated);
+    .sort((a, b) => key(b).localeCompare(key(a)) || b.updated - a.updated);
   const past = rows
     .filter((r) => r.date && r.date < today)
     .sort((a, b) => key(b).localeCompare(key(a)) || b.updated - a.updated);

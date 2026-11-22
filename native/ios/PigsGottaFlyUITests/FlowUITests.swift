@@ -99,10 +99,8 @@ final class FlowUITests: XCTestCase {
         let reg = app.textFields["new-registration"]
         XCTAssertTrue(reg.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["create-flight"].isEnabled, "an aircraft is not needed")
-        let home = app.switches["new-make-home"]
-        XCTAssertTrue(home.exists)
-        home.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        XCTAssertEqual(home.value as? String, "1")
+        // the first flight asks for the home aerodrome (the departure row)
+        XCTAssertTrue(app.staticTexts["Your home aerodrome"].exists)
         reg.tap()
         reg.typeText("SX-ABC")
         app.buttons["create-flight"].tap()

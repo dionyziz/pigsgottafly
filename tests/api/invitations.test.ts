@@ -200,6 +200,7 @@ describe('inviting a pilot with aircraft', () => {
   });
 
   test('accepted on the Google sign-in: only the remaining aircraft is shared', async () => {
+    mockMail();
     const n = client(api.base);
     expect((await n.login('sub-new', 'new.pilot@EXAMPLE.com')).status).toBe(200);
     expect(await hangar(n)).toEqual([['SX-IN1', 'edit']]);
@@ -215,6 +216,13 @@ describe('inviting a pilot with aircraft', () => {
       await db()
     ).query(`SELECT accepted_at FROM pilot_invitations WHERE email = 'new.pilot@example.com'`);
     expect(Number(row.accepted_at)).toBeGreaterThan(0);
+    // the inviter is told who joined and what they share now
+    const joined = sent.find((m) => m.subject === "new.pilot@example.com joined Pig's Gotta Fly");
+    expect(joined?.to).toEqual(['Olga@Example.com']);
+    expect(joined?.text).toContain('They now share: SX-IN1.');
+    // a new account starts with the usual taxi times
+    const me = (await n.call('GET', 'me')).body;
+    expect([me.settings.taxiOutMin, me.settings.taxiInMin]).toEqual([15, 15]);
   });
 
   test('an editor invites with the aircraft they edit; accepted on the Apple sign-in', async () => {

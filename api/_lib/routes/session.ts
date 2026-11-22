@@ -2,6 +2,7 @@
 import { randomBytes } from 'node:crypto';
 
 import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
+import { SETTING_SUGGESTIONS } from '../../../src/shared/constants.js';
 import {
   admitted,
   createSession,
@@ -117,6 +118,13 @@ const newPilotId = () => `pl_${randomBytes(9).toString('base64url')}`;
  * session cookie.
  */
 async function signedIn(db: Queryable, config: ApiConfig, row: Row, isNew: boolean, at: number, email: string) {
+  // sign-up asks nothing: a new account starts with the usual taxi times, changeable in the profile
+  if (isNew)
+    [row] = await db.query(
+      `UPDATE pilots SET settings = jsonb_build_object('taxiOutMin', $2::int, 'taxiInMin', $3::int) || settings
+       WHERE id = $1 RETURNING *`,
+      [row.id, SETTING_SUGGESTIONS.taxiOutMin, SETTING_SUGGESTIONS.taxiInMin],
+    );
   await claimInvites(db, row.id, email);
   await acceptInvitations(db, row.id, email);
   // a new account: tell the admins (never blocks or fails the sign-in)

@@ -85,7 +85,7 @@ test('sign-up, lobby, passengers, waypoints and profile', async () => {
     ['Test Pilot', '+30 690 000 0000', 15, 15, null],
   );
 
-  // flights: two upcoming (out of creation order), one past
+  // flights: newest first in each section
   const day = 86400000;
   const later = await api('POST', 'flights', { date: iso(new Date(Date.now() + 10 * day)), title: 'Later trip' });
   const soon = await api('POST', 'flights', { date: iso(new Date(Date.now() + 2 * day)), title: 'Soon trip' });
@@ -93,7 +93,7 @@ test('sign-up, lobby, passengers, waypoints and profile', async () => {
   assert.equal(soon.taxiOutMin, 15);
   await page.goto(server.url + '/');
   await page.waitFor(() => document.querySelectorAll('[data-flight-id]').length === 3);
-  assert.deepEqual(await rowIds(), [soon.id, later.id, old.id]);
+  assert.deepEqual(await rowIds(), [later.id, soon.id, old.id]);
   assert.deepEqual(
     await page.eval(() => [...document.querySelectorAll('.lobby-section')].map((e) => e.firstChild.textContent)),
     ['Upcoming', 'Past'],

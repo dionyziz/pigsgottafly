@@ -47,11 +47,11 @@ describe('session', () => {
     const s = (await anon.call('GET', 'session')).body;
     expect(s).toMatchObject({ authed: false, mode: 'google' });
   });
-  test('a new pilot starts with an empty profile and an empty hangar', async () => {
+  test('a new pilot starts with an empty profile (but the usual taxi times) and an empty hangar', async () => {
     const me = (await a.call('GET', 'me')).body;
     expect(me.email).toBe('a@example.com');
     expect(me.homeAerodrome).toBeNull();
-    expect(me.settings.taxiOutMin).toBeNull();
+    expect([me.settings.taxiOutMin, me.settings.taxiInMin]).toEqual([15, 15]);
     expect((await a.call('GET', 'aircraft')).body).toEqual([]);
   });
   test('signing in again keeps the account; sign-out ends only that session', async () => {

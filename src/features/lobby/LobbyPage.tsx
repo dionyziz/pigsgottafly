@@ -210,7 +210,8 @@ export function LobbyPage() {
         <div className="cell hide-sm" title={local ? `${local} local time` : undefined}>
           {s.blockOff ? (
             <>
-              <b>{s.blockOff}</b> UTC{local && <div className="sub">{local} local</div>}
+              <b className="tnum">{s.blockOff}Z</b>
+              {local && <div className="sub tnum">{local}LT</div>}
             </>
           ) : (
             <span className="muted">—</span>
