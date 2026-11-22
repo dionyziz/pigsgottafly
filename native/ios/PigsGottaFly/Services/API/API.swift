@@ -119,91 +119,35 @@ final class API: Sendable {
         try JSONDecoder().decode(type, from: data)
     }
 
-    // MARK: routes
-
-    func session() async throws -> SessionResponse {
-        try decode(SessionResponse.self, try await get("session"))
+    /// One call with an Encodable body, decoded as `T`: the domain files (API+<Domain>.swift) build on
+    /// it, so a screen can pass its own Codable model or take the JSON as it came.
+    func call<T: Decodable>(
+        _ method: String, _ path: String, body: (any Encodable)? = nil, as type: T.Type = JSON.self
+    ) async throws -> T {
+        try decode(type, try await send(method, path, body: body))
     }
 
-    func logout() async throws {
-        _ = try await request("POST", "logout", body: Data("{}".utf8))
+    /// The API refuses any non-GET without a JSON body (CSRF defence, api/_lib/app.ts): "{}" when there
+    /// is nothing to send.
+    func send(_ method: String, _ path: String, body: (any Encodable)? = nil) async throws -> Data {
+        let data: Data?
+        if let json = body as? JSON {
+            data = try json.data()
+        } else if let body {
+            data = try JSONEncoder().encode(body)
+        } else {
+            data = method == "GET" ? nil : Data("{}".utf8)
+        }
+        return try await request(method, path, body: data)
     }
 
-    /// GET /flights (the pilot's and the shared ones).
-    func flights() async throws -> Data { try await get("flights") }
-
-    func flight(_ id: String) async throws -> Data { try await get("flights/\(escape(id))") }
-
-    /// PUT /flights/:id with { flight, version }; 409 → APIError.conflict(current flight).
-    func updateFlight(_ id: String, doc: JSON, version: Int) async throws -> FlightUpdateResponse {
-        let body = try JSON.object(["flight": doc, "version": .number(Double(version))]).data()
-        return try decode(FlightUpdateResponse.self, try await request("PUT", "flights/\(escape(id))", body: body))
+    /// A 204 has no body: decoding it as JSON would fail.
+    func sendIgnoringBody(_ method: String, _ path: String, body: (any Encodable)? = nil) async throws {
+        _ = try await send(method, path, body: body)
     }
 
-    /// POST /flights/:id/copy: "Fly again" (title '' names it after the route).
-    func copyFlight(_ id: String, date: String) async throws -> Data {
-        let body = try JSON.object(["title": "", "date": .string(date)]).data()
-        return try await request("POST", "flights/\(escape(id))/copy", body: body)
-    }
-
-    func markOpened(_ id: String) async { _ = try? await request("POST", "flights/\(escape(id))/opened") }
-
-    func aircraft(_ id: String) async throws -> Data { try await get("aircraft/\(escape(id))") }
-    func me() async throws -> Data { try await get("me") }
-    func refBundle() async throws -> Data { try await get("ref/bundle") }
-
-    func notams(_ id: String, maxAltFt: Int?) async throws -> Data {
-        try await get("flights/\(escape(id))/notams" + (maxAltFt.map { "?maxAltFt=\($0)" } ?? ""))
-    }
-    func filing(_ id: String) async throws -> Data { try await get("flights/\(escape(id))/filing") }
-    func forms(_ id: String) async throws -> Data { try await get("flights/\(escape(id))/forms") }
-    func declarations(_ id: String) async throws -> Data { try await get("flights/\(escape(id))/declarations") }
-
-    /// POST /flights (FlightCreateRequest: a partial flight; the server fills in the profile's
-    /// defaults: taxi times, wind model, PIC on the manifest) → 201 the new Flight.
-    func createFlight(_ doc: JSON) async throws -> Data {
-        try await request("POST", "flights", body: try doc.data())
-    }
-
-    /// GET /aircraft: the pilot's own aircraft and those shared with them.
-    func aircraftList() async throws -> Data { try await get("aircraft") }
-
-    /// POST /aircraft (AircraftInput, as PGF.aircraftFromTemplate builds it) → 201 the aircraft.
-    func createAircraft(_ input: Data) async throws -> Data {
-        try await request("POST", "aircraft", body: input)
-    }
-
-    /// GET /waypoints: the pilot's saved points.
-    func waypoints() async throws -> Data { try await get("waypoints") }
-
-    /// PUT /me (PilotUpdate: only the fields sent change) → the pilot.
-    func updateMe(_ patch: JSON) async throws -> Data {
-        try await request("PUT", "me", body: try patch.data())
-    }
-
-    /// DELETE /me { confirm: the account's e-mail }: the account and everything it owns.
-    func deleteAccount(confirm: String) async throws {
-        _ = try await request("DELETE", "me", body: try JSON.object(["confirm": .string(confirm)]).data())
-    }
-
-    func autorouter() async throws -> AutorouterLink {
-        try decode(AutorouterLink.self, try await get("autorouter"))
-    }
-
-    /// POST /autorouter/app-connect → the page that starts linking, for the sign-in sheet (it has
-    /// Safari's cookies, not the app's session, so the URL carries a short-lived ticket).
-    func autorouterConnectURL() async throws -> URL {
-        let r = try decode(
-            [String: String].self, try await request("POST", "autorouter/app-connect", body: Data("{}".utf8)))
-        guard let s = r["url"], let url = URL(string: s) else { throw APIError.http(0, "No link to autorouter.") }
-        return url
-    }
-
-    func autorouterDisconnect() async throws -> AutorouterLink {
-        try decode(AutorouterLink.self, try await request("POST", "autorouter/disconnect", body: Data("{}".utf8)))
-    }
-
-    private func escape(_ s: String) -> String {
+    /// A path segment: an id with "/" or spaces stays one segment.
+    func seg(_ s: String) -> String {
         s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/")))
             ?? s
     }

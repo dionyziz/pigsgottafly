@@ -14,6 +14,7 @@ struct SessionResponse: Codable, Equatable {
     var authed: Bool
     var mode: String
     var pilot: PilotInfo?
+    var admin: Bool?
 }
 
 /// GET /api/autorouter: the pilot's own autorouter account (src/shared/api.ts AutorouterLinkStatus).

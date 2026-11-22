@@ -70,7 +70,7 @@ struct NavlogView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .accessibilityIdentifier("navlog")
+        .accessibilityIdentifier(FlightSection.navlog.screenID)
         .sheet(item: $editing) { edit in
             EditSheet(edit: edit, model: model)
                 .presentationDetents([.medium, .large])

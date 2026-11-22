@@ -28,8 +28,16 @@ final class FlightModel: ObservableObject {
     /// The relevant NOTAMs of the briefing were marked read (and none came since).
     @Published private(set) var notamsRead = false
 
+    /// Plan, Brief and File's summaries (PGF.readinessStages of the readiness and paperwork rows).
+    @Published private(set) var stages: [CoreStageSummary] = []
+
+    /// The workspace's: every edit can be undone (Undo/Redo in the toolbar, shake, ⌘Z).
+    weak var undoManager: UndoManager?
+
     private var flightText: String?
     private var computedText: String?
+    private var readinessRows: [JSON] = []
+    private var paperworkRows: [JSON] = []
     private var progressBusy = false
     /// The leg of the last progress answer (PGF.progress lastLegIndex).
     private var lastLegIndex: Int?
@@ -68,6 +76,12 @@ final class FlightModel: ObservableObject {
             return code.count == 4 ? code : nil
         }
     }
+    /// Route and aircraft are chosen: there is something to fly (FlightTab.initial).
+    var planned: Bool { route.count >= 2 && flight?["aircraftId"]?.string != nil }
+
+    /// The route's points (RoutePoint JSON).
+    var route: [JSON] { flight?["route"]?.array ?? [] }
+
     /// The last point's name (the Fly strip's destination line).
     var destinationName: String? { flight?["route"]?.array?.last?["name"]?.string }
 
@@ -164,7 +178,7 @@ final class FlightModel: ObservableObject {
         }
     }
 
-    private func fetchWeather() async {
+    func fetchWeather() async {
         guard let core, let flightText else { return }
         let ref = store.text(.ref)
         let paths = (try? await core.run { try $0.weatherRequests(flight: flightText, ref: ref) }) ?? []
@@ -198,7 +212,7 @@ final class FlightModel: ObservableObject {
         metar = stations.isEmpty ? nil : MetarTafResponse(stations: stations, fetched: fetched)
     }
 
-    private func fetchBriefing() async {
+    func fetchBriefing() async {
         if let d = try? await api.notams(id, maxAltFt: computed?.maxAltFt) {
             try? store.write(d, .notams(id))
             setNotams(try? JSONDecoder().decode(NotamBriefing.self, from: d))
@@ -237,6 +251,7 @@ final class FlightModel: ObservableObject {
             }
             computedText = result.text
             computed = ComputedFlight(result)
+            readinessRows = result["readiness"]?.array ?? []
         } catch  where isCancellation(error) {
         } catch {
             self.error = error.localizedDescription
@@ -253,7 +268,22 @@ final class FlightModel: ObservableObject {
             try $0.paperwork(filing: filing, forms: forms, declarations: declarations)
         }) {
             paperwork = ReadyItem.list(rows)
+            paperworkRows = rows.array ?? []
         }
+        let items = JSON.array(readinessRows + paperworkRows).text
+        if let s = try? await core.run({ try $0.readinessStages(items: items) }) { stages = s }
+    }
+
+    /// The rows of one stage ("plan", "brief", "file"), the core's and the paperwork's.
+    func readiness(stage: String) -> [ReadyItem] {
+        ((computed?.readiness ?? []) + paperwork).filter { $0.stage == stage }
+    }
+
+    /// Where a warning's Fix leads (PGF.focusTarget).
+    func focusTarget(text: String) async -> CoreFocusTarget? {
+        guard let core else { return nil }
+        let id = self.id
+        return try? await core.run { try $0.focusTarget(text: text, flightId: id) }
     }
 
     /// Where the aircraft is along the route (nil while the core is busy with the last fix).
@@ -274,7 +304,7 @@ final class FlightModel: ObservableObject {
 
     // MARK: the chart
 
-    private func prepareChart() async {
+    func prepareChart() async {
         guard let core, let flightText else { return }
         var fetched = store.text(.vectorStyle)
         if fetched == nil, !app.noNetwork { fetched = await fetchVectorStyle() }
@@ -316,8 +346,10 @@ final class FlightModel: ObservableObject {
     // MARK: edits
 
     /// Applies `change` here at once, then PUTs the flight; on 409 applies it again to the server's copy.
+    /// The flight as it was goes on the undo stack first.
     func edit(_ change: @escaping (inout JSON) -> Void) async {
         guard var f = flight, !readOnly else { return }
+        registerUndo(restoring: f)
         change(&f)
         setFlight(f)
         try? store.write(try f.data(), .flight(id))
@@ -339,6 +371,8 @@ final class FlightModel: ObservableObject {
                 return
             } catch APIError.conflict(let body) {
                 guard var server = try? JSON.parse(body) else { break }
+                // the snapshots on the stack predate the server's copy: undoing one would drop its changes
+                undoManager?.removeAllActions(withTarget: self)
                 change(&server)
                 setFlight(server)
                 try? store.write(try server.data(), .flight(id))
@@ -357,6 +391,30 @@ final class FlightModel: ObservableObject {
                 self.error = "Not saved: \(error.localizedDescription)"
                 return
             }
+        }
+    }
+
+    /// Registered synchronously, so that UndoManager files the inverse of an undo as its redo.
+    private func registerUndo(restoring before: JSON) {
+        guard let undoManager else { return }
+        undoManager.registerUndo(withTarget: self) { model in
+            guard let now = model.flight else { return }
+            model.registerUndo(restoring: now)
+            let doc = Self.docOf(before)
+            Task { await model.save(replacingDocWith: doc) }
+        }
+    }
+
+    /// An undo or redo: the editable part becomes `doc`, saved as any edit but with no undo step of its
+    /// own (`registerUndo` filed the inverse already).
+    private func save(replacingDocWith doc: JSON) async {
+        let manager = undoManager
+        undoManager = nil
+        defer { undoManager = manager }
+        await edit { f in
+            guard var next = doc.object else { return }
+            for k in ["id", "version", "created", "updated", "opened", "deleted", "access"] { next[k] = f[k] }
+            f = .object(next)
         }
     }
 
@@ -408,56 +466,5 @@ final class FlightModel: ObservableObject {
         }
         d["summary"] = .object(s)
         return d
-    }
-
-    func setDate(_ day: String) async {
-        await edit { $0["date"] = .string(day) }
-    }
-
-    func setBlockOff(_ clock: String) async {
-        await edit { $0["blockOff"] = .string(clock) }
-    }
-
-    /// A local flight's airborne time (FlightOptions.localDurationMin), minutes.
-    func setLocalDuration(_ minutes: Int) async {
-        await edit { f in
-            var o = f["options"]?.object ?? [:]
-            o["localDurationMin"] = .number(Double(minutes))
-            f["options"] = .object(o)
-        }
-    }
-
-    /// The route's points (RoutePoint JSON).
-    var route: [JSON] { flight?["route"]?.array ?? [] }
-
-    /// Adds a point where it lengthens the route least; then the chart, the weather and the
-    /// briefing follow the new route.
-    func addPoint(_ place: Place) async {
-        await edit { RouteEdit.add(place, to: &$0) }
-        await routeChanged()
-    }
-
-    func removePoint(uid: String) async {
-        guard route.count > 2 else { return }
-        await edit { RouteEdit.remove(uid: uid, from: &$0) }
-        await routeChanged()
-    }
-
-    private func routeChanged() async {
-        await prepareChart()
-        await fetchWeather()
-        await fetchBriefing()
-        await recompute()
-        await prepareChart()
-    }
-
-    func setAltitude(legKey: String, feet: Int) async {
-        await edit { f in
-            var all = f["legOverrides"]?.object ?? [:]
-            var o = all[legKey]?.object ?? [:]
-            o["altFt"] = .number(Double(feet))
-            all[legKey] = .object(o)
-            f["legOverrides"] = .object(all)
-        }
     }
 }

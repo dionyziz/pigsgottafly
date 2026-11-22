@@ -1,9 +1,8 @@
 # The native iPhone and iPad app
 
-The app is native (Swift, SwiftUI, MapLibre Native), designed for what a pilot does with a phone or a
-tablet in the cockpit: fly the route, check the flight on the morning of the flight, and make small
-changes. Planning at a desk stays on the website; every flight opens in the website's editor from the app
-(SFSafariViewController). The iPad runs the same app, with the flights beside the open flight.
+The app is native (Swift, SwiftUI, MapLibre Native): the whole of the website (plan, brief, file, the
+hangar, passengers, waypoints, operators, the profile), laid out for the iPhone and the iPad, plus Fly,
+the moving map for the cockpit.
 
 The app and the website are maintained together. **Everything computed comes from one TypeScript source.**
 The flight's numbers, the chart's style and features, the checklist and progress along the route are
@@ -21,37 +20,94 @@ src/native/core/               the core's API (below), one file per domain; unit
 
 ## Screens
 
-- **Flights**: the pilot's flights and the ones shared with them (GET /api/flights), with date, route, the
-  readiness summary and the filing status. Pull to refresh. "Fly again" (POST /flights/:id/copy).
-- **New flight**: departure and destination (the reference data's aerodromes, searched by ICAO code or
-  name; the departure starts as the home aerodrome), date, block-off time (UTC) and aircraft (GET
-  /api/aircraft). POST /api/flights with the website's shape (the route as two aerodrome points: `uid`,
-  `kind`, `refId`, `name`, `lat`, `lon`); the server fills in the profile's defaults and the altitudes are
-  the core's defaults, as on the website. With an empty hangar the pilot types a registration and the
-  aircraft is made from the hangar's type template (`PGF.aircraftFromTemplate`, POST /api/aircraft). The
-  new flight opens.
-- **A flight**: three tabs, and a button that opens it in the website's editor
-  (https://pigsgottafly.com/flights/:id in an in-app Safari view; the flight is read again when it closes).
-  - **Fly**: a full-screen moving map. It shows the chart (the same style and layers as the website),
-    the route with the active leg, the own aircraft from GPS with its track line, and a top strip with
-    the next waypoint, bearing, distance, ETE and ETA, groundspeed and the leg's planned altitude and
-    heading. The bottom strip shows the current leg's frequency and the next one. Track up or north up;
-    re-centre. The screen stays on. It works offline: the flight, reference data, weather and map tiles
-    for the route are saved when the flight is opened with a connection.
-  - **Brief**: the "Ready to fly" checklist; METAR and TAF for the route's aerodromes; the relevant
-    NOTAMs (departure, destination, airspace); aerodrome hours and sunset; the filing status. Native
-    lists. The forms (filing, Form 731, GenDec, W&B) open the website's File & forms page in an in-app
-    browser.
-  - **Navlog**: the legs as a native list (altitude, heading, distance, ETE, ETA, fuel), the totals.
-    Quick edits: date, block-off time, a leg's altitude; the route: add an aerodrome, a VFR reporting
-    point or a saved waypoint (searched; it goes where it lengthens the route least), remove a point
-    (swipe; two stay). PUT the flight with the version; the summary follows (title, route, totals) and
-    the overrides of legs that are gone are dropped, as the website's editor does.
-- **Account**: sign in with Apple's sign-in sheet on /app-login (Google or Apple ID) → one-time code →
-  GET /api/app-session?code=… with URLSession, which keeps the session cookie (HTTPCookieStorage). The
-  profile (name, phone, home aerodrome; PUT /api/me), asked for first when it is missing, as the website
-  asks a new pilot. Sign out. Delete account: the account's e-mail typed as the confirmation, DELETE
-  /api/me { confirm }, then signed out with the cache and the map packs cleared.
+The app does everything the website does, laid out for the iPhone and the iPad, and adds **Fly**. A
+section the app has the place for but not yet the form shows the website's page for it in an in-app
+browser (SFSafariViewController); the flight, aircraft or list is read again when it closes. The
+section files are listed below with the phase that builds each one.
+
+**Shell** (`App/AppShell.swift`). iPhone (compact width): a tab bar, **Flights · Hangar · People ·
+Me**. iPad (regular width): a three-column split view, sidebar **Flights, Hangar, Passengers,
+Waypoints, Operators, Profile**, the area's list in the middle column, the open record in the detail.
+
+- **Flights** (`Views/FlightsView.swift`): the pilot's flights and the ones shared with them (GET
+  /api/flights), with date, route, aircraft and the filing status. Pull to refresh. "Fly again" (POST
+  /flights/:id/copy with today's date). To come (1A): search, the trash and restore, rename, copy, leave
+  a shared flight, the route thumbnail and the passengers.
+- **New flight** (`Views/NewFlightView.swift`): departure and destination (the reference data's
+  aerodromes, searched by ICAO code or name; the departure starts as the home aerodrome), date,
+  block-off time (UTC), aircraft (GET /api/aircraft) or, for a local flight, its duration. POST
+  /api/flights with the website's shape (the route as aerodrome points: `uid`, `kind`, `refId`, `name`,
+  `lat`, `lon`); the server fills in the profile's defaults and the altitudes are the core's defaults.
+  With an empty hangar the pilot types a registration and the aircraft is made from the hangar's type
+  template (`PGF.aircraftFromTemplate`, POST /api/aircraft). The first flight offers to make the
+  departure the home aerodrome. The new flight opens on Plan.
+- **A flight** (`Views/Flight/FlightWorkspace.swift`). iPhone: its own tab bar, **Fly · Map · Plan ·
+  Brief · File**; the shell's tab bar gives way to it. iPad: the map fills the detail, Plan / Brief /
+  File sit in an inspector beside it, and Fly is the toolbar's prominent button. A flight opens on the
+  tab it was left on in this session; else a planned flight (route and aircraft) of today (UTC) opens
+  in Fly, and any other flight, or one just made in New flight whatever its date, on Plan
+  (`FlightTab.initial`, as the website's stage default). The toolbar has Undo and Redo (every edit
+  goes through `FlightModel.edit`, which registers the flight as it was with the UndoManager; a 409
+  clears the stack) and the saving or offline state.
+  - **Fly** (`Views/Flight/FlyView.swift`): a full-screen moving map, with no tab bar and no navigation
+    bar. It shows the chart (the same style and layers as the website), the route with the active leg,
+    the own aircraft from GPS with its track line, and a top strip with the next waypoint, bearing,
+    distance, ETE and ETA, groundspeed and the leg's planned altitude and heading. The bottom strip
+    shows the current leg's frequency and the next one. Track up or north up; re-centre; night
+    display. The screen stays on. Its own control goes back to the flights (iPad: back to the map), to
+    Brief and to Plan's Navlog. It works offline: the flight, reference data, weather and map tiles for
+    the route are saved when the flight is opened with a connection. On iPad it hides the sidebar and
+    keeps the aircraft centred in the whole screen.
+  - **Map** (`Views/Flight/MapTab.swift`): the planning chart framed on the route. To come (1E): route
+    editing (draw, tap to add with snap, drag, insert, custom points), the layer and base-map menu,
+    the aerodrome, airspace, navaid and NOTAM sheets.
+  - **Plan, Brief, File** (`StageView` in FlightWorkspace.swift): each starts with its stage's readiness
+    (`Views/Common/ReadinessHeader.swift`: `PGF.readinessStages` of the core's readiness and paperwork
+    rows, each row with its Fix), then its sections. A Fix asks `PGF.focusTarget` where it leads and
+    the workspace switches tab and opens the section with that field focused
+    (`Views/Common/FocusRouter.swift`), or opens the website's page (the profile).
+    - Plan (`Views/Flight/Plan/`): Route (1B), When (the times in UTC and the sunset; taxi times 1B),
+      Aircraft (1B), Manifest & loading (1C), Fuel (1B), Flight plan options (1B), **Navlog**: the
+      legs (altitude, heading, distance, ETE, ETA, fuel) and the totals; quick edits of the date, the
+      block-off time, a local flight's duration and a leg's altitude; a point added (an aerodrome, a
+      VFR reporting point or a saved waypoint, where it lengthens the route least) or removed (swipe;
+      two stay). PUT the flight with the version; the summary follows (title, route, totals) and the
+      overrides of legs that are gone are dropped, as the website's editor does. Per-leg TAS, wind and
+      temperature come with 1H.
+    - Brief (`Views/Flight/Brief/`): **METAR and TAF** for the route's aerodromes and alternates;
+      **NOTAMs**, relevant ones by departure, destination and airspace, marked read as on the website;
+      **Aerodromes**, each at the time the flight uses it (aerodrome, ATS and handling hours);
+      Take-off & landing (1D); ATC (1D); **Warnings**, the core's, each with its Fix.
+    - File (`Views/Flight/File/`): **Flight plan**, the filing status and EOBT (filing, delay, cancel:
+      2A); Form 731, General Declaration, W&B & performance (2A); Navigation log and NOTAM briefing as
+      PDFs to preview, share, print and e-mail (1H, with `Views/Common/PDFPreview.swift`).
+- **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones; each opens its sections:
+  Identity, Flight plan items, Speeds, Fuel, Mass & balance (1F); Performance, Compass cards,
+  Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
+  the pilot pauses, with the version; on 409 the unsaved changes are applied again to the server's
+  copy).
+- **People** (`Views/People/`; on iPad three sidebar areas): Passengers and their editor, Waypoints
+  (list; map, typed coordinates and notes 1G), Operators and their editor (1G; people 2B, documents
+  2C).
+- **Me** (`Views/Me/`; Profile in the iPad sidebar): the signed-in account; **Profile** (name, phone,
+  home aerodrome, PUT /api/me; the pilot's own autorouter account, linked in Apple's sign-in sheet);
+  planning defaults, map layers for new flights, licence and medical, data export and "Sign out
+  everywhere" (1G, 2C); **Sign out**; **Delete account**: the account's e-mail typed as the
+  confirmation, DELETE /api/me { confirm }, then signed out with the cache and the map packs cleared;
+  legal pages; the admin pages for admins; the app's and the core's versions.
+- **Sign-in**: Apple's sign-in sheet on /app-login (Google or Apple ID) → one-time code → GET
+  /api/app-session?code=… with URLSession, which keeps the session cookie (HTTPCookieStorage).
+
+**API** (`Services/API/`): `API.swift` sends a request and maps the status (401 signed out, 404, 409
+with the current record, offline); `API+Flights`, `+Aircraft`, `+People`, `+Files`, `+Forms` and
+`+Account` wrap every endpoint the website calls (src/data/api.ts), with typed request bodies and the
+answer decoded as the caller's Codable type or as JSON. In fixture mode (`-fixtures`) the answers come
+from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files.
+
+**Launch arguments** (tests, screenshots): `-fixtures`, `-emptyAccount`, `-noNetwork`,
+`-fixturePosition lat,lon,track,gs`, `-today YYYY-MM-DD`, `-openFlight <id>`, `-tab
+fly|map|plan|brief|file`, `-section <FlightSection>`, `-shellTab flights|hangar|people|me`, `-newFlight
+[ICAO]`, `-orientation landscape`.
 
 ## core.js API (global `PGF`, JSON in and out, synchronous)
 

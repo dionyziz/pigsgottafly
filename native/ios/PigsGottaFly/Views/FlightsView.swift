@@ -3,7 +3,6 @@ import SwiftUI
 struct FlightsView: View {
     @EnvironmentObject private var app: AppModel
     @Binding var selection: String?
-    @Binding var showAccount: Bool
     /// `-newFlight [ICAO]` opens New flight at launch, with that destination (screenshots).
     @State private var showNewFlight = ProcessInfo.processInfo.arguments.contains("-newFlight")
 
@@ -30,8 +29,6 @@ struct FlightsView: View {
                 } else {
                     ContentUnavailableView {
                         Label("No flights yet", systemImage: "airplane")
-                    } description: {
-                        Text("Start one here, or plan it on pigsgottafly.com with the same account.")
                     } actions: {
                         Button("New flight") { showNewFlight = true }
                             .buttonStyle(.borderedProminent)
@@ -51,20 +48,12 @@ struct FlightsView: View {
                 .accessibilityLabel("New flight")
                 .accessibilityIdentifier("new-flight")
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showAccount = true
-                } label: {
-                    Image(systemName: "person.crop.circle").imageScale(.large)
-                }
-                .accessibilityLabel("Account")
-                .accessibilityIdentifier("account")
-            }
         }
         .sheet(isPresented: $showNewFlight) {
             NewFlightView(destination: LaunchArgs.value("-newFlight")) { id in selection = id }
         }
         .refreshable { await app.loadFlights() }
+        .accessibilityIdentifier("flight-list")
         .task { await app.loadFlights() }
     }
 

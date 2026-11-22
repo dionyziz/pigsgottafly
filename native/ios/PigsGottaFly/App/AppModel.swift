@@ -15,6 +15,22 @@ final class AppModel: ObservableObject {
     let simulatedPosition: Position?
     /// `-noNetwork` (tests): not even the base map's style is fetched.
     let noNetwork: Bool
+    /// `-today YYYY-MM-DD` (tests, screenshots): the fixture flights' date counts as today.
+    private let todayOverride: String?
+
+    /// Today in UTC, the flight dates' time zone.
+    var today: String { todayOverride ?? Fmt.isoDay(from: Date()) }
+
+    /// The tab each flight was left on in this session (the website keeps the stage in sessionStorage
+    /// the same way: readiness.ts rememberStage).
+    private var tabs: [String: FlightTab] = [:]
+
+    func rememberTab(_ tab: FlightTab, for id: String) { tabs[id] = tab }
+    func rememberedTab(for id: String) -> FlightTab? { tabs[id] }
+
+    /// The flights made in New flight in this session.
+    private var createdHere: Set<String> = []
+    func isNew(_ id: String) -> Bool { createdHere.contains(id) }
 
     /// The symbol images the chart style uses (PGF.symbolNames()).
     private(set) lazy var symbols: [SymbolInfo] = (try? core?.symbolNames()) ?? Symbols.known
@@ -57,6 +73,7 @@ final class AppModel: ObservableObject {
         fixtures = arguments.contains("-fixtures")
         simulatedPosition = LocationFeed.simulated(from: arguments)
         noNetwork = arguments.contains("-noNetwork")
+        todayOverride = LaunchArgs.value("-today", arguments)
         if let testAPI, let testStore {
             api = testAPI
             store = testStore
@@ -200,6 +217,7 @@ final class AppModel: ObservableObject {
         let data = try await api.createFlight(request)
         guard let id = try JSON.parse(data)["id"]?.string else { throw APIError.http(0, "The server sent no flight.") }
         try? store.write(data, .flight(id))
+        createdHere.insert(id)
         await loadFlights()
         return id
     }
