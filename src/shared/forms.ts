@@ -368,6 +368,7 @@ export function genDecText(c: GenDecContent): string {
 //   of the same form is in progress; 403 for a pilot without an e-mail address (emailEnabled false, emailReason says so).
 //   GET  /sign/:token                               → SigningView (no sign-in)
 //   POST /sign/:token                               → SigningView (signs)
+//   PUT  /sign/:token/details                       → SigningView; body SignerDetails: the signer corrects their own row
 
 export interface SignatureState {
   key: string;
@@ -435,6 +436,20 @@ export interface SigningView {
   signatures: { key: string; name: string; signedAt: number | null }[];
   flightDate: string;
   expired: boolean;
+}
+
+/** What a passenger may correct on the signing page: their own row of Form 731 (name, ID, phone). */
+export const SIGNER_DETAIL_KEYS = ['fullName', 'idNumber', 'phone'] as const;
+export type SignerDetails = Pick<PersonDetails, (typeof SIGNER_DETAIL_KEYS)[number]>;
+export const SIGNER_DETAIL_LABELS: Record<keyof SignerDetails, string> = {
+  fullName: 'Name',
+  idNumber: 'ID / passport number',
+  phone: 'Phone',
+};
+
+/** A person's row of Form 731 as the details it was made from. */
+export function signerDetailsOf(p: Pick<Form731Person, 'name' | 'idPassport' | 'contact'>): SignerDetails {
+  return { fullName: p.name, idNumber: p.idPassport, phone: p.contact };
 }
 
 export const FORM731_TO = '731@hcaa.gov.gr';

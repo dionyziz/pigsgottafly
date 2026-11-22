@@ -1,22 +1,86 @@
 // /sign/:token: a passenger signs Form 731 (PLAN-v3 "Form 731: signatures and submission to HCAA").
 // No account needed: the link is the key, and it opens this one form only, so other people's ID and
-// contact are masked.
+// contact are masked. The passenger may correct their own row first (the pilot is told when they sign).
 import '../exports/form731/forms.css';
 import './sign.css';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 
 import { api, ApiRequestError } from '../../data/api';
-import type { SigningView } from '../../shared/forms';
-import { Loading } from '../../ui';
+import { EMPTY_PERSON } from '../../shared';
+import { type SignerDetails, signerDetailsOf, type SigningView } from '../../shared/forms';
+import { Field, Loading } from '../../ui';
 import { Signature } from '../exports/form731/Form731';
+import { useFormIssues } from '../passengers/formIssues';
+import { type PersonField, personForm, personInput, validatePerson } from '../passengers/person';
+
+type Editable = 'fullName' | 'idNumber' | 'phone';
+const EDITABLE: readonly PersonField[] = ['fullName', 'idNumber', 'phone'];
+
+/** The signer's own row of the form, editable; validated and normalized as the passenger form does. */
+function DetailsEditor({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: SignerDetails;
+  onSave: (d: SignerDetails) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLFormElement>(null);
+  const [f, setF] = useState(() => personForm({ ...EMPTY_PERSON, ...initial }));
+  const [busy, setBusy] = useState(false);
+  const issues = useFormIssues<PersonField>(ref);
+  const set = (k: Editable, v: string) => {
+    setF((x) => ({ ...x, [k]: v }));
+    issues.clear(k);
+  };
+  const submit = async (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    if (!issues.check(validatePerson(f).filter((i) => EDITABLE.includes(i.field)))) return;
+    const p = personInput(f);
+    setBusy(true);
+    try {
+      await onSave({ fullName: p.fullName, idNumber: p.idNumber, phone: p.phone });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const input = (k: Editable) => ({
+    name: k,
+    value: f[k],
+    onChange: (e: { target: { value: string } }) => set(k, e.target.value),
+  });
+  return (
+    <form ref={ref} className="sign-edit" onSubmit={submit} noValidate data-testid="sign-edit-form">
+      <Field label="Full name" req issues={issues.of('fullName')}>
+        <input {...input('fullName')} required autoComplete="name" autoFocus />
+      </Field>
+      <Field label="ID / passport number" issues={issues.of('idNumber')}>
+        <input {...input('idNumber')} autoComplete="off" />
+      </Field>
+      <Field label="Phone" issues={issues.of('phone')}>
+        <input {...input('phone')} type="tel" autoComplete="tel" />
+      </Field>
+      <div className="sign-edit-actions">
+        <button type="button" className="ghost" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button type="submit" className="primary" disabled={busy} data-testid="sign-edit-save">
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  );
+}
 
 export function SignPage() {
   const { token = '' } = useParams();
   const [view, setView] = useState<SigningView | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     document.title = 'Sign Form 731';
     api.sign
@@ -40,6 +104,16 @@ export function SignPage() {
       setErr(e instanceof ApiRequestError ? e.message : 'Signing failed. Try again.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const saveDetails = async (d: SignerDetails) => {
+    setErr(null);
+    try {
+      setView(await api.sign.details(token, d));
+      setEditing(false);
+    } catch (e) {
+      setErr(e instanceof ApiRequestError ? e.message : 'Your details could not be saved. Try again.');
     }
   };
 
@@ -107,10 +181,24 @@ export function SignPage() {
                     <span className="sign-role">You</span>
                   ) : null}
                 </div>
-                <div className="sign-details">
-                  {p.idPassport && <span>{p.idPassport}</span>}
-                  {p.contact && <span>{p.contact}</span>}
-                </div>
+                {p.key === view.me && editing ? (
+                  <DetailsEditor initial={signerDetailsOf(p)} onSave={saveDetails} onCancel={() => setEditing(false)} />
+                ) : (
+                  <div className="sign-details">
+                    {p.idPassport && <span>{p.idPassport}</span>}
+                    {p.contact && <span>{p.contact}</span>}
+                    {p.key === view.me && (
+                      <button
+                        type="button"
+                        className="ghost sign-edit-button"
+                        onClick={() => setEditing(true)}
+                        data-testid="sign-edit"
+                      >
+                        Edit my details
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="sign-sig">
                   {s?.signedAt ? (
                     <Signature s={{ name: p.name, signedAt: s.signedAt }} size={6} />
@@ -132,11 +220,10 @@ export function SignPage() {
             Signed. Thank you{me?.name ? `, ${me.name.split(/\s+/)[0]}` : ''}: you can close this page.
           </p>
         ) : (
-          <button className="primary sign-button" onClick={sign} disabled={busy} data-testid="sign-button">
+          <button className="primary sign-button" onClick={sign} disabled={busy || editing} data-testid="sign-button">
             {busy ? 'Signing…' : `Sign as ${me?.name || 'passenger'}`}
           </button>
         )}
-        {!mySig?.signedAt && <p className="sign-fine">Details wrong? Tell the PIC before signing.</p>}
       </div>
     </main>
   );

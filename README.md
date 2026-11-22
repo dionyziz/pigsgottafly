@@ -31,7 +31,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
 - **METAR/TAF** from aviationweather.gov, fetched through the API.
 - **Exports.** Print-ready A4 pages, one route per document:
   - navigation log (one sheet per 9 legs);
-  - Form 731, with e-signatures: passengers sign through a share link;
+  - Form 731, with e-signatures: passengers sign through a share link, correcting their own details first if need be (the pilot is told);
   - General Declaration, with who submits it worked out from the handling hours at both ends (AIP + NOTAMs; per-flight override);
   - ICAO 2012 FPL message plus a filled form, with AFTN addressees from AIP ENR 1.11;
   - weight & balance with the CG envelope chart, and take-off/landing performance, as one signed document;
