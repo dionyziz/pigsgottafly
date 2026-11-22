@@ -116,9 +116,31 @@ struct AerodromeCheck: Equatable, Identifiable {
     }
 }
 
+/// A local flight (computeFlight's `local`): back to the aerodrome it left, nothing between, so no
+/// legs: the pilot's airborne time stands for the navlog.
+struct LocalFlight: Equatable {
+    var aerodrome: String
+    var durationMin: Double
+
+    init(aerodrome: String, durationMin: Double) {
+        self.aerodrome = aerodrome
+        self.durationMin = durationMin
+    }
+
+    init?(_ j: JSON?) {
+        guard let j, let name = j["aerodrome"]?.string, let d = j["durationMin"]?.double else { return nil }
+        aerodrome = name
+        durationMin = d
+    }
+
+    /// 'Local flight · LGTT · 1:30'
+    var title: String { "Local flight · \(aerodrome) · \(Fmt.hoursMinutes(durationMin))" }
+}
+
 /// PGF.computeFlight's result, as the Brief and the Navlog read it.
 struct ComputedFlight: Equatable {
     var raw: JSON
+    var local: LocalFlight?
     var readiness: [ReadyItem]
     var rows: [NavRow]
     /// The navlog was computed (it needs the flight's aircraft); else `rows` are the bare legs.
@@ -144,6 +166,7 @@ struct ComputedFlight: Equatable {
 
     init(_ j: JSON) {
         raw = j
+        local = LocalFlight(j["local"])
         readiness = ReadyItem.list(j["readiness"])
         let legs = j["legs"]?.array ?? []
         let navlog = j["navlog"]
@@ -178,7 +201,8 @@ struct ComputedFlight: Equatable {
         hasNavlog = navlog?["legs"]?.array != nil
         let totals = navlog?["totals"]
         totalDistNm = totals?["dist"]?.double
-        totalEteMin = totals?["ete"]?.double
+        // without an aircraft there is no navlog, but a local flight's time is still the pilot's
+        totalEteMin = totals?["ete"]?.double ?? times?["eteMin"]?.double
         totalFuelL = totals?["fuel"]?.double
         tripFuelL = totals?["tripFuel"]?.double
         let fuel = j["fuel"]
@@ -234,7 +258,8 @@ struct Frequency: Equatable {
 
 /// PGF.progress's result.
 struct Progress: Equatable {
-    var legIndex: Int
+    /// nil for a local flight: it has no legs, the aerodrome is the waypoint.
+    var legIndex: Int?
     var toWaypoint: String
     var distNm: Double?
     /// To the next waypoint, degrees true and magnetic.
@@ -260,7 +285,7 @@ struct Progress: Equatable {
     var arrived: Bool
 
     init(
-        legIndex: Int, toWaypoint: String, distNm: Double? = nil, bearingDeg: Double? = nil,
+        legIndex: Int?, toWaypoint: String, distNm: Double? = nil, bearingDeg: Double? = nil,
         bearingMagDeg: Double? = nil, crossTrackNm: Double? = nil, eteMin: Double? = nil, eta: Date? = nil,
         gsKt: Double? = nil, gsSource: String? = nil, remainingNm: Double? = nil, eteDestMin: Double? = nil,
         etaDest: Date? = nil, plannedAltFt: Double? = nil, plannedHdg: Double? = nil, freq: Frequency? = nil,
@@ -287,9 +312,10 @@ struct Progress: Equatable {
         self.arrived = arrived
     }
 
-    /// nil when the core found no leg (no route, no position).
+    /// nil when the core found nowhere to go (no route, no position).
     init?(_ j: JSON) {
-        guard let legIndex = j["legIndex"]?.int, let to = j["toWaypoint"]?["name"]?.string else { return nil }
+        guard let to = j["toWaypoint"]?["name"]?.string else { return nil }
+        let legIndex = j["legIndex"]?.int
         let date = { (k: String) in j[k]?.double.map { Date(timeIntervalSince1970: $0 / 1000) } }
         self.init(
             legIndex: legIndex, toWaypoint: to, distNm: j["distNm"]?.double, bearingDeg: j["bearingDeg"]?.double,

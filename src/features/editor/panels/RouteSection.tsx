@@ -2,12 +2,32 @@
 // first and last points (the map edits the same points; drawing on the map still works). Picking an
 // aerodrome replaces that end of the route (a new point, so only the leg touching it loses its
 // per-leg overrides); on a route with one point, picking the destination adds it.
+// A local flight (the same aerodrome at both ends, nothing between) has no legs: the section shows
+// the aerodrome and the pilot's airborne time instead; picking a destination makes it a
+// cross-country flight again.
 import { useEffect, useState } from 'react';
 
-import { aerodromePoint as pointOf, type FlightDoc, type RefAerodrome, type RoutePoint } from '../../../shared';
-import { AerodromeTextInput } from '../../../ui';
+import { fmtHmm } from '../../../calc';
+import {
+  aerodromePoint as pointOf,
+  type FlightDoc,
+  isLocalFlight,
+  localDurationOf,
+  MAX_LOCAL_DURATION_MIN,
+  type RefAerodrome,
+  type RoutePoint,
+  uid,
+} from '../../../shared';
+import { AerodromeTextInput, DurationField } from '../../../ui';
 import { useEditor } from '../state';
 import { Section } from './ui';
+
+/** The route made local at its origin (its other points dropped); null without an aerodrome origin. */
+export function makeLocal(route: RoutePoint[]): RoutePoint[] | null {
+  const from = route[0];
+  if (!from || from.kind !== 'aerodrome') return null;
+  return [from, { ...from, uid: uid() }];
+}
 
 /** What the field shows for a route end: the aerodrome's code, else the point's name. */
 export function endText(p: RoutePoint | undefined): string {
@@ -16,6 +36,8 @@ export function endText(p: RoutePoint | undefined): string {
 
 export function setRouteEnd(route: RoutePoint[], end: 'from' | 'to', a: RefAerodrome): RoutePoint[] {
   const p = pointOf(a);
+  // a local flight moves as a whole: it stays local at the new aerodrome
+  if (end === 'from' && isLocalFlight(route)) return [p, pointOf(a)];
   if (end === 'from') return route.length ? [p, ...route.slice(1)] : [p];
   if (route.length === 0) return route; // no origin yet: nothing to end
   if (route.length === 1) return [...route, p];
@@ -27,6 +49,7 @@ function EndField({
   point,
   disabled,
   hint,
+  placeholder = 'ICAO or name',
   testId,
   onPick,
 }: {
@@ -34,6 +57,7 @@ function EndField({
   point: RoutePoint | undefined;
   disabled?: boolean;
   hint?: string;
+  placeholder?: string;
   testId: string;
   onPick: (a: RefAerodrome) => void;
 }) {
@@ -62,7 +86,7 @@ function EndField({
         <AerodromeTextInput
           name={testId}
           value={text}
-          placeholder="ICAO or name"
+          placeholder={placeholder}
           status={!custom || focused}
           onChange={(v, a) => {
             setText(v);
@@ -76,26 +100,76 @@ function EndField({
 }
 
 export function RouteSection() {
-  const { doc, update } = useEditor();
+  const { doc, update, readOnly } = useEditor();
   const route = doc.route;
   const from = route[0];
   const to = route.length > 1 ? route[route.length - 1] : undefined;
   const set = (end: 'from' | 'to') => (a: RefAerodrome) =>
     update((d: FlightDoc) => ({ ...d, route: setRouteEnd(d.route, end, a) }), { coalesce: `route-${end}` });
-  const badge = <span className="muted">{from ? `${from.name} → ${to ? to.name : '?'}` : 'No route'}</span>;
+  const local = isLocalFlight(route);
+  const duration = localDurationOf(doc.options);
+  const badge = (
+    <span className="muted">
+      {!from ? 'No route' : local ? `${from.name} local · ${fmtHmm(duration)}` : `${from.name} → ${to ? to.name : '?'}`}
+    </span>
+  );
+  const canGoLocal = !local && !readOnly && from?.kind === 'aerodrome' && route.length <= 2;
   return (
     <Section id="route" title="Route" badge={badge}>
+      {local && (
+        <p className="ep-local-title" data-testid="route-local">
+          Local flight · <b>{from.name}</b>
+        </p>
+      )}
       <div className="ep-grid2" data-testid="route-ends" data-focus="route">
         <EndField label="Origin" point={from} testId="route-origin" onPick={set('from')} />
-        <EndField
-          label="Destination"
-          point={to}
-          testId="route-destination"
-          onPick={set('to')}
-          disabled={!from}
-          hint="Set the origin first"
-        />
+        {local ? (
+          <label className="field" data-focus="localDuration">
+            Duration
+            <DurationField
+              value={duration}
+              max={MAX_LOCAL_DURATION_MIN}
+              testId="local-duration"
+              disabled={readOnly}
+              onChange={(m) =>
+                update((d) => ({ ...d, options: { ...d.options, localDurationMin: m } }), {
+                  coalesce: 'local-duration',
+                })
+              }
+            />
+          </label>
+        ) : (
+          <EndField
+            label="Destination"
+            point={to}
+            testId="route-destination"
+            onPick={set('to')}
+            disabled={!from}
+            hint="Set the origin first"
+          />
+        )}
       </div>
+      {local && !readOnly && (
+        <div className="ep-local-dest">
+          <EndField
+            label="Fly somewhere instead"
+            point={undefined}
+            placeholder="Destination: ICAO or name"
+            testId="route-destination"
+            onPick={set('to')}
+          />
+        </div>
+      )}
+      {canGoLocal && (
+        <button
+          type="button"
+          className="ghost sm ep-make-local"
+          data-testid="route-make-local"
+          onClick={() => update((d) => ({ ...d, route: makeLocal(d.route) ?? d.route }))}
+        >
+          Local flight from {from.name}
+        </button>
+      )}
     </Section>
   );
 }

@@ -27,6 +27,21 @@ struct FlightSummary: Codable, Equatable {
     var distNm: Double?
     var eteMin: Double?
     var fuelL: Double?
+    /// [lat, lon] of every route point (the website's thumbnail).
+    var route: [[Double]]?
+
+    /// One aerodrome at both ends and nothing between (src/features/lobby/format.ts isLocalSummary).
+    var isLocal: Bool {
+        guard let r = route, r.count == 2, !from.isEmpty, from == to else { return false }
+        return r[0] == r[1]
+    }
+
+    /// 'LGTT → LGMG', 'LGTT local · 1:00' (src/features/lobby/format.ts routeLine); nil without both ends.
+    var routeLine: String? {
+        guard !from.isEmpty, !to.isEmpty else { return nil }
+        if isLocal { return "\(from) local" + (eteMin.map { " · \(Fmt.hoursMinutes($0))" } ?? "") }
+        return "\(from) → \(to)"
+    }
 }
 
 /// GET /api/flights → [FlightListItem]
@@ -51,6 +66,7 @@ struct FlightListItem: Codable, Equatable, Identifiable {
     /// The flight's title; an untitled flight (the server names it after its date) by its route.
     var title: String {
         if !summary.title.isEmpty, summary.title != summary.date, summary.title != date { return summary.title }
+        if let line = summary.routeLine { return line }
         if !summary.from.isEmpty || !summary.to.isEmpty { return "\(summary.from) → \(summary.to)" }
         return "Untitled flight"
     }

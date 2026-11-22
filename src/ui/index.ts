@@ -6,6 +6,7 @@ export { Collapsible, useCollapsed } from './Collapsible';
 export { Combobox, type ComboboxProps, comboKey, type ComboKeyResult, type ComboKeyState } from './Combobox';
 export { DateField, type DateFieldProps } from './DateField';
 export { ConfirmDialog, Dialog, type DialogAction, DialogFooter } from './Dialog';
+export { DurationField, type DurationFieldProps } from './DurationField';
 export { Check, Field, type FieldIssue, type IssueLevel, IssueList } from './Field';
 export { FilePicker, PdfViewer, useObjectUrl } from './Files';
 export { CloseButton, Icon, ICON_NAMES, type IconName, RowRemove } from './Icon';

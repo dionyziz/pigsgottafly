@@ -6,6 +6,7 @@
 // mid-leg value is the one that best fits the whole leg. The magnetic course on the map label is the
 // sheet's TC + VAR written values (round(TC) − round(variation)), so label and navlog never disagree.
 import { legKey } from '../shared/constants.js';
+import { isLocalFlight } from '../shared/local.js';
 import type { IsoDate, LatLon, RoutePoint } from '../shared/types.js';
 import { distanceNm, midpoint, norm360, trueCourse } from './nav.js';
 import { magneticVariation } from './wmm.js';
@@ -33,11 +34,13 @@ export interface LegGeometry {
 }
 
 /**
- * Legs between consecutive route points.
+ * Legs between consecutive route points; none for a local flight (A → A: its time is the pilot's
+ * duration, not a zero-length leg).
  * @param date flight date for the magnetic variation
  */
 export function buildLegs(route: RoutePoint[], date: IsoDate): LegGeometry[] {
   const legs: LegGeometry[] = [];
+  if (isLocalFlight(route)) return legs;
   for (let i = 0; i + 1 < route.length; i++) {
     const from = route[i],
       to = route[i + 1];

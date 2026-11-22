@@ -27,6 +27,7 @@ import {
   areaFeatures,
   firFeatures,
   focusFeatures,
+  localAreaFeatures,
   midpointFeatures,
   navaidFeatures,
   routeArrowFeatures,
@@ -72,6 +73,8 @@ import {
   DEFAULT_MAP_LAYERS,
   DEFAULT_SETTINGS,
   type Flight,
+  isLocalFlight,
+  localDuration,
   type MapLayers,
   mapLayersOf,
   type MetarTafResponse,
@@ -296,6 +299,7 @@ export function chartData(
     aerodromes: aerodromeFeatures(r.aerodromes, magneticVariation(38, 24, day)),
     waypoints: waypointFeatures(i.waypoints ?? []),
     'air-focus': focusFeatures(null),
+    'local-area': localAreaFeatures(route),
     'route-line': routeLineFeatures(route),
     'leg-focus': routeLineFeatures([]),
     'route-arrows': routeArrowFeatures(route),
@@ -532,6 +536,7 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
           })
         : [],
     routePoints: flight.route.length,
+    local: isLocalFlight(flight.route),
     hasAircraft: !!flight.aircraftId,
     warnings: readinessWarnings(calc.warnings),
     notams: i.notams ?? null,
@@ -542,11 +547,17 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
   }).filter((x) => x.stage !== 'file');
   const nav = calc.navlog;
   const dayMs = calc.dayMs;
+  const localMin = localDuration(flight.route, flight.options);
   const at = (min: number | undefined) => (nav?.blockOffSet && fin(dayMs) && fin(min) ? dayMs + min * 60000 : null);
   return plain({
     version,
     legs: legs.map((l, k) => ({ ...l, altFt: altitudesFt[k], altSource: defaults[k]?.source ?? null })),
     altitudesFt,
+    // a local flight: no legs, the pilot's airborne time
+    local:
+      localMin != null
+        ? { aerodrome: flight.route[0].name, lat: flight.route[0].lat, lon: flight.route[0].lon, durationMin: localMin }
+        : null,
     navlog: nav,
     fuel: calc.fuel,
     wb: calc.wb,
@@ -563,7 +574,7 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
       takeoffMs: at(nav?.times.takeoffMin),
       landingMs: at(nav?.times.landingMin),
       blockOnMs: at(nav?.times.blockOnMin),
-      eteMin: nav && nav.legs.length ? nav.totals.ete : null,
+      eteMin: nav && (nav.legs.length || nav.local) ? nav.totals.ete : localMin,
     },
     departure: calc.departure,
     arrival: calc.arrival,
@@ -621,6 +632,9 @@ export function progress(
       atc: c?.atc ?? null,
       position: i.position,
       lastLegIndex: i.lastLegIndex ?? null,
+      local: c?.local
+        ? { aerodrome: { name: c.local.aerodrome, lat: c.local.lat, lon: c.local.lon }, landingMs: c.times.landingMs }
+        : null,
     }),
   );
 }

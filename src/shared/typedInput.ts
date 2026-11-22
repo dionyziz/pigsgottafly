@@ -23,6 +23,29 @@ export function parseTime(s: string): string | null {
   return `${pad2(h)}:${pad2(m)}`;
 }
 
+/**
+ * A typed duration → minutes; null when it is not one. '1:30', '1.30', '1h30', '1h' → 90 / 60;
+ * digits alone are minutes ('90'), except 3–4 digits read as H MM / HH MM ('130' → 1:30) the way
+ * clock times are typed.
+ */
+export function parseDuration(s: string): number | null {
+  const t = s.trim().toLowerCase();
+  const sep = /^(\d{1,2})\s*[:.h]\s*(\d{1,2})?\s*m?$/.exec(t);
+  if (sep) {
+    const m = sep[2] ? +sep[2] : 0;
+    return m < 60 ? +sep[1] * 60 + m : null;
+  }
+  const d = /^(\d{1,4})\s*(m|min)?$/.exec(t);
+  if (!d) return null;
+  if (d[2] || d[1].length <= 2) return +d[1];
+  const m = +d[1].slice(-2);
+  return m < 60 ? +d[1].slice(0, -2) * 60 + m : null;
+}
+
+/** Minutes as a duration field writes them: 90 → '1:30'. */
+export const fmtDurationField = (min: number): string =>
+  `${Math.floor(Math.round(min) / 60)}:${pad2(Math.round(min) % 60)}`;
+
 /** 'HH:MM' → minutes after midnight; NaN otherwise. */
 export const clockMinutes = (hhmm: string): number => {
   const m = /^(\d{2}):(\d{2})$/.exec(hhmm);

@@ -76,6 +76,22 @@ final class PlanningTests: XCTestCase {
         XCTAssertNil(none["aircraftId"], "no aircraft: the server's default")
     }
 
+    func testALocalFlightIsBackToTheOriginWithItsDuration() throws {
+        let lgtt = try XCTUnwrap(Places.aerodromes(ref: ref).first { $0.refId == "LGTT" })
+        let r = NewFlight.request(
+            from: lgtt, to: lgtt, date: "2026-11-22", blockOff: "08:30", aircraftId: nil, localDurationMin: 90)
+        XCTAssertEqual(r["route"]?.array?.map { $0["refId"]?.string }, ["LGTT", "LGTT"])
+        XCTAssertEqual(r["options"]?["localDurationMin"]?.double, 90)
+        let summary = FlightSummary(
+            title: "", date: "", blockOff: "", aircraft: "", from: "LGTT", to: "LGTT", eteMin: 60,
+            route: [[38.109, 23.783], [38.109, 23.783]])
+        XCTAssertTrue(summary.isLocal)
+        XCTAssertEqual(summary.routeLine, "LGTT local · 1:00")
+        var circular = summary
+        circular.route = [[38.109, 23.783], [38.3, 23.9], [38.109, 23.783]]
+        XCTAssertEqual(circular.routeLine, "LGTT → LGTT", "a circular route is not local")
+    }
+
     func testTheDefaultBlockOffIsTheNextFullHour() {
         let at = Date(timeIntervalSince1970: 1_763_712_000 + 20 * 60)  // 08:00Z + 20 min
         XCTAssertEqual(Fmt.clock(NewFlightView.defaultDate(now: at)), "09:00")

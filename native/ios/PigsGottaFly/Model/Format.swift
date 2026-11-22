@@ -42,6 +42,13 @@ enum Fmt {
         return m < 60 ? "\(m) min" : String(format: "%d:%02d h", m / 60, m % 60)
     }
 
+    /// A duration as the website's duration field writes it: '1:30', '0:45'.
+    static func hoursMinutes(_ min: Double?) -> String {
+        guard let min, min.isFinite, min >= 0 else { return dash }
+        let m = Int(min.rounded())
+        return String(format: "%d:%02d", m / 60, m % 60)
+    }
+
     /// '5500 ft'
     static func altitude(_ ft: Double?) -> String {
         guard let ft, ft.isFinite else { return dash }

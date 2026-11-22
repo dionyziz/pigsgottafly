@@ -496,7 +496,8 @@ export function wbSheetModel(input: WbSheetInput): WbSheetModel {
   }
   if (!wb) warnings.push('The weight and balance could not be computed for this aircraft.');
   if (!doc.crew.length) warnings.push('The manifest is empty: no pilot or passengers in the balance.');
-  if (!calc.computed.navlog.legs.length) warnings.push('No route: no trip fuel, landing figures equal take-off.');
+  if (!calc.computed.navlog.legs.length && !calc.computed.navlog.local)
+    warnings.push('No route: no trip fuel, landing figures equal take-off.');
 
   let verdict: WbSheetModel['verdict'];
   let verdictText: string;

@@ -136,6 +136,8 @@ button.close-btn { padding: 7px; border-radius: var(--r-sm); }
 
 /* ---- Field issues (Field, IssueList) */
 label.field.invalid input, label.field.invalid select, label.field.invalid textarea { border-color: var(--danger); background: var(--danger-soft); }
+input.duration-field { width: 6em; }
+input.duration-field.invalid { border-color: var(--danger); background: var(--danger-soft); }
 .issue { font-size: var(--fs-xs); }
 .issue.error { color: var(--danger); }
 .issue.warning { color: var(--warn); }

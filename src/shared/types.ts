@@ -596,6 +596,11 @@ export interface FlightOptions {
   taxiAllowanceL?: number | null;
   /** The map's layer selection for this flight; missing on older flights (the pilot's setting applies). */
   mapLayers?: MapLayers | null;
+  /**
+   * A local flight's airborne time (take-off to landing), minutes: FPL item 16 total EET, trip time
+   * and fuel. Only read while the route is local (isLocalFlight); null / missing = 60.
+   */
+  localDurationMin?: number | null;
 }
 
 /** Lobby row data, computed by the client on save. */

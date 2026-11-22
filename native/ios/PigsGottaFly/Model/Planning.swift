@@ -181,13 +181,17 @@ enum Places {
 /// route as two aerodrome points; the date, the block-off time and the aircraft. The altitudes are left
 /// to the core's defaults (charted VFR routes, terrain), as on the website.
 enum NewFlight {
-    static func request(from: Place, to: Place, date: String, blockOff: String, aircraftId: String?) -> JSON {
+    /// `localDurationMin`: a local flight's airborne time (the server puts it over the profile's options).
+    static func request(
+        from: Place, to: Place, date: String, blockOff: String, aircraftId: String?, localDurationMin: Int? = nil
+    ) -> JSON {
         var o: [String: JSON] = [
             "route": [from.routePoint(), to.routePoint()],
             "date": .string(date),
             "blockOff": .string(blockOff),
         ]
         if let aircraftId { o["aircraftId"] = .string(aircraftId) }
+        if let localDurationMin { o["options"] = .object(["localDurationMin": .number(Double(localDurationMin))]) }
         return .object(o)
     }
 }

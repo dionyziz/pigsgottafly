@@ -116,8 +116,13 @@ struct FlightRow: View {
     private var details: String {
         var parts: [String] = []
         if !item.summary.aircraft.isEmpty { parts.append(item.summary.aircraft) }
-        if let d = item.summary.distNm, d > 0 { parts.append(Fmt.distance(d)) }
-        if let e = item.summary.eteMin { parts.append(Fmt.duration(e)) }
+        if item.summary.isLocal {
+            // the title may be the pilot's own: the row still says it is local
+            if let line = item.summary.routeLine, line != item.title { parts.append(line) }
+        } else {
+            if let d = item.summary.distNm, d > 0 { parts.append(Fmt.distance(d)) }
+            if let e = item.summary.eteMin { parts.append(Fmt.duration(e)) }
+        }
         return parts.isEmpty ? " " : parts.joined(separator: " · ")
     }
 }
