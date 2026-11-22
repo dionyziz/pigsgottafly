@@ -52,7 +52,7 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   // first use: profile in welcome mode; an unknown aerodrome is refused, nothing is prefilled
   await page.goto(server.url + '/');
   await page.waitFor(() => location.pathname === '/profile' && !!document.querySelector('[data-testid=profile-form]'));
-  assert.equal(await page.eval(() => document.querySelector('input[name=taxiOutMin]').value), '');
+  assert.equal(await page.eval(() => !!document.querySelector('input[name=taxiOutMin]')), false);
   await page.type('input[name=fullName]', 'Test Pilot');
   await page.type('input[name=phone]', '+30 690 000 0000');
   await page.type('input[name=homeAerodrome]', 'ZZZZ');
@@ -70,19 +70,18 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   );
   await clickText('.combo-list li .code', 'LGTT');
   assert.equal(await page.eval(() => document.querySelector('input[name=homeAerodrome]').value), 'LGTT');
-  await page.type('input[name=taxiOutMin]', '12');
   await page.click('[data-testid=profile-form] button[type=submit]');
   await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
   const me = await api('GET', 'me');
   assert.equal(me.homeAerodrome, 'LGTT');
-  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin, me.settings.reserveMin], [12, 15, null]);
+  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin, me.settings.reserveMin], [15, 15, null]);
 
   // flights: two upcoming (out of creation order), one past
   const day = 86400000;
   const later = await api('POST', 'flights', { date: iso(new Date(Date.now() + 10 * day)), title: 'Later trip' });
   const soon = await api('POST', 'flights', { date: iso(new Date(Date.now() + 2 * day)), title: 'Soon trip' });
   const old = await api('POST', 'flights', { date: iso(new Date(Date.now() - 5 * day)), title: 'Old trip' });
-  assert.equal(soon.taxiOutMin, 12);
+  assert.equal(soon.taxiOutMin, 15);
   await page.goto(server.url + '/');
   await page.waitFor(() => document.querySelectorAll('[data-flight-id]').length === 3);
   assert.deepEqual(await rowIds(), [soon.id, later.id, old.id]);

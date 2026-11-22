@@ -1,6 +1,6 @@
 import { parseClock } from '../../../calc';
 import { SETTING_SUGGESTIONS } from '../../../shared';
-import { localOffsetLabel, utcToLocal } from '../../../shared/date';
+import { isoDay, localDayMark, localOffsetLabel, utcToLocalMarked } from '../../../shared/date';
 import { fmtClock, fmtDuration, fmtLocalClock } from '../../../shared/format';
 import { DateField, NumberField, TimeField } from '../../../ui';
 import { useEditor } from '../state';
@@ -28,7 +28,14 @@ function TimeRow({
       k={label}
       tone={tone}
       testId={testId}
-      sub={isFinite(ms) ? <span className="tnum">{fmtLocalClock(ms)}LT</span> : undefined}
+      sub={
+        isFinite(ms) ? (
+          <span className="tnum">
+            {fmtLocalClock(ms)}
+            {localDayMark(isoDay(dayMs), ms)}LT
+          </span>
+        ) : undefined
+      }
       v={
         <>
           <span className="tnum">{fmtClock(min, { fallback: '--:--' })}Z</span>
@@ -74,12 +81,13 @@ export function WhenSection() {
             value={doc.blockOff}
             testId="block-off"
             focusKey="blockOff"
-            optionNote={doc.date ? (hhmm) => `${utcToLocal(doc.date, hhmm)}LT` : undefined}
+            optionNote={doc.date ? (hhmm) => `${utcToLocalMarked(doc.date, hhmm)}LT` : undefined}
             onChange={(v) => update((d) => ({ ...d, blockOff: v }), { coalesce: 'blockOff' })}
           />
           {isFinite(boMs) && (
             <span className="hint tnum" data-testid="block-off-local">
-              {fmtLocalClock(boMs)} local ({localOffsetLabel(boMs)})
+              {fmtLocalClock(boMs)}
+              {localDayMark(doc.date, boMs)} local ({localOffsetLabel(boMs)})
             </span>
           )}
         </label>

@@ -57,7 +57,7 @@ import { flightContext, loadRef } from '../flightContext.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
 import type { Route } from '../http.js';
 import { appOrigin, badRequest, conflict, HttpError, newId, notFound } from '../http.js';
-import { mailAvailability, MailError, sendMail } from '../mail.js';
+import { mailAvailability, MailError, sendMail, sendSystemMail } from '../mail.js';
 import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
 import { checkLinkCap, mailFailed, mailSent, reserveMail } from '../sendCaps.js';
 
@@ -726,9 +726,10 @@ export const routes: Route[] = [
     method: 'POST',
     path: '/sign/:token',
     auth: false,
-    async handler({ db, params }) {
+    async handler({ db, params, req, config }) {
       const { l, L, me } = await linkOf(db, params.token);
       const now = Date.now();
+      const before = await signingView(db, L, me);
       await upsertSignature(db, {
         flightId: L.flight.id,
         pilotId: L.pilot.id,
@@ -741,7 +742,31 @@ export const routes: Route[] = [
         'UPDATE form_links SET first_opened = COALESCE(first_opened, $2), last_opened = $2 WHERE id = $1',
         [l.id, now],
       );
-      return signingView(db, L, me);
+      const after = await signingView(db, L, me);
+      // only a new signature of this version: opening the link again or re-signing sends nothing
+      if (!before.signatures.find((s) => s.key === me.key)?.signedAt)
+        await notifySigned(L, me, after, appOrigin(req, config.secureCookie));
+      return after;
     },
   },
 ];
+
+/** Tells the pilot a passenger signed Form 731 (best effort: the signature stands even if the mail fails). */
+async function notifySigned(L: Loaded, signer: Form731Person, view: SigningView, origin: string): Promise<void> {
+  const to = String(L.pilot.email || '').trim();
+  if (!to || !mailAvailability().enabled) return;
+  const signed = view.signatures.filter((s) => s.signedAt != null).length;
+  const total = view.signatures.length;
+  const flight = [L.flight.title.trim(), fmtDate(L.flight.date)].filter(Boolean).join(', ');
+  const text = [
+    `${signer.name} signed Form 731 for your flight ${flight}.`,
+    signed === total
+      ? `Everyone has signed (${signed} of ${total}): it is ready to send to HCAA.`
+      : `${signed} of ${total} signed.`,
+    '',
+    `${origin}/flights/${L.flight.id}/export/form731`,
+  ].join('\n');
+  await sendSystemMail({ to: [to], subject: `Form 731 signed by ${signer.name}`, text }).catch((e) =>
+    console.warn('731 signed mail:', String((e as Error)?.message || e)),
+  );
+}

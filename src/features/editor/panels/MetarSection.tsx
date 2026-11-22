@@ -6,19 +6,12 @@ import { REF } from '../../../data/ref';
 import { fetchMetarTaf, type MetarTafResult } from '../../../data/weatherMetar';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
-import { metarBoxShown, type MetarStation, metarStations } from './metarStations';
+import { metarBoxShown, type MetarStation, metarStations, metarWhere } from './metarStations';
 import { Section } from './ui';
 
 const REFETCH_MS = 5 * 60 * 1000;
 /** Older than this, the report's age is shown as a warning. */
 const STALE_MS = 75 * 60 * 1000;
-
-const ROLE: Record<MetarStation['role'], string> = {
-  departure: 'Departure',
-  stop: 'Stop',
-  destination: 'Destination',
-  area: '',
-};
 
 function age(ms: number, now: number): string {
   const min = Math.max(0, Math.round((now - ms) / 60000));
@@ -64,24 +57,28 @@ export function MetarSection() {
     };
   }, [key, round]);
 
-  if (!shown) return null;
+  if (!shown || !reports) return null;
   const rows = stations
     .map((s) => {
-      const r = reports?.stations[s.icao];
-      return r?.metar && !r.metar.nil ? { s, metar: r.metar, observedMs: r.observedMs } : null;
+      const r = reports.stations[s.icao];
+      const metar = r?.metar && !r.metar.nil ? r.metar : null;
+      if (!metar && s.role === 'area') return null;
+      return { s, metar, observedMs: metar ? r.observedMs : null };
     })
     .filter((x) => x != null);
-  if (!rows.length) return null;
+  const withReport = rows.filter((x) => x.metar).length;
+  if (!withReport) return null;
+  const where = (s: MetarStation) => metarWhere(s, stations);
 
   return (
-    <Section id="metar" title="METAR" edits={false} badge={<span className="muted">{rows.length}</span>}>
+    <Section id="metar" title="METAR" edits={false} badge={<span className="muted">{withReport}</span>}>
       <ul className="ep-metars" data-testid="metar-list">
         {rows.map(({ s, metar: m, observedMs }) => (
           <li key={s.icao} data-icao={s.icao} data-role={s.role}>
             <div className="ep-metar-head">
               <b className="mono">{s.icao}</b>
               <span className="muted ep-metar-name">
-                {ROLE[s.role] || `${Math.round(s.offRouteNm ?? 0)} NM off route`} · {s.aerodrome.name}
+                {where(s)} · {s.aerodrome.name}
               </span>
               {observedMs != null && (
                 <span
@@ -92,7 +89,13 @@ export function MetarSection() {
                 </span>
               )}
             </div>
-            <div className="ep-metar mono">{m.raw}</div>
+            {m ? (
+              <div className="ep-metar mono">{m.raw}</div>
+            ) : (
+              <div className="muted" data-testid="metar-none">
+                No METAR from this aerodrome.
+              </div>
+            )}
           </li>
         ))}
       </ul>

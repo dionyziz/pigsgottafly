@@ -6,11 +6,21 @@ import {
   METAR_LEAD_MS,
   metarBoxShown,
   metarStations,
+  metarWhere,
 } from '../../../src/features/editor/panels/metarStations';
 
 const ad = (icao: string) => REF.aerodromes.find((a) => a.icao === icao)!;
 
 describe('METAR box', () => {
+  test('a report near the departure says how far from it (LGTT has no METAR); others how far off route', () => {
+    const route = [ad('LGTT'), ad('LGSY')];
+    const s = metarStations(route, route, REF.aerodromes);
+    const by = (icao: string) => s.find((x) => x.icao === icao)!;
+    expect(metarWhere(by('LGTT'), s)).toBe('Departure');
+    expect(metarWhere(by('LGSY'), s)).toBe('Destination');
+    expect(metarWhere(by('LGAV'), s)).toMatch(/^\d+ NM from LGTT$/);
+  });
+
   test('the route aerodromes first, then those near it in the order the route passes them', () => {
     const route = [ad('LGTT'), ad('LGSY')];
     const s = metarStations(route, route, REF.aerodromes);

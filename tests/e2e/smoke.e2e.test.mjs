@@ -25,11 +25,15 @@ const stage = async (s) => {
 test('first use asks for the profile, then the lobby, a new flight and the editor work', async () => {
   await page.goto(server.url + '/');
   await page.waitFor(() => location.pathname === '/profile' && !!document.querySelector('[data-testid=profile-form]'));
+  // taxi times aren't asked at sign-up: they default to 15 min each way
+  assert.equal(await page.eval(() => !!document.querySelector('input[name=taxiOutMin], input[name=taxiInMin]')), false);
   await page.type('input[name=fullName]', 'Test Pilot');
   await page.type('input[name=phone]', '+30 690 000 0000');
   await page.type('input[name=homeAerodrome]', 'LGTT');
   await page.click('[data-testid=profile-form] button[type=submit]');
   await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
+  const me = await (await fetch(`${server.url}/api/me`)).json();
+  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin], [15, 15]);
 
   await page.click('[data-testid=new-flight]');
   await page.waitFor(

@@ -166,9 +166,10 @@ describe('Form 731 e-mailed to a passenger', () => {
     const log = await (
       await db()
     ).query(`SELECT form, recipient, result, message_id FROM mail_log WHERE flight_id = $1 ORDER BY at`, [flightId]);
-    expect(log).toEqual([
-      { form: '731-pax', recipient: 'maria@example.com', result: 'sent', message_id: `m-${sent.length}` },
-    ]);
+    expect(log).toEqual([{ form: '731-pax', recipient: 'maria@example.com', result: 'sent', message_id: 'm-1' }]);
+    // her signature is news to the pilot
+    expect(sent).toHaveLength(2);
+    expect(sent[1].subject).toMatch(/^Form 731 signed by /);
   });
 
   test('capped per recipient: the same passenger again waits 10 minutes, another passenger does not', async () => {

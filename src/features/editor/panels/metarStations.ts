@@ -5,7 +5,7 @@
 //     shown (most small aerodromes have none).
 //   - Shown from METAR_LEAD_MS before take-off until METAR_TAIL_MS after landing; without a block
 //     start time, when the flight's day is near (metarRelevant).
-import { pointSegDistNm } from '../../../calc/nav';
+import { distanceNm, pointSegDistNm } from '../../../calc/nav';
 import { metarRelevant } from '../../../data/useFlightWeather';
 import type { RefAerodrome } from '../../../shared/ref';
 import type { LatLon } from '../../../shared/types';
@@ -63,4 +63,26 @@ export function metarStations(
   }
   area.sort((a, b) => a.at - b.at);
   return [...out, ...area.map(({ at: _at, ...s }) => s)];
+}
+
+const ROLE: Record<MetarStation['role'], string> = {
+  departure: 'Departure',
+  stop: 'Stop',
+  destination: 'Destination',
+  area: '',
+};
+
+/**
+ * Where a station is, for its row: the route's own aerodromes by role; a nearby one by its distance from the
+ * closest of them when that is about as near as the route itself (it stands in for one with no METAR, like
+ * LGTT), else by its distance off the route.
+ */
+export function metarWhere(s: MetarStation, stations: MetarStation[]): string {
+  if (s.role !== 'area') return ROLE[s.role];
+  const off = s.offRouteNm ?? 0;
+  const near = stations
+    .filter((o) => o.role !== 'area')
+    .map((o) => ({ icao: o.icao, nm: distanceNm(o.aerodrome, s.aerodrome) }))
+    .sort((a, b) => a.nm - b.nm)[0];
+  return near && near.nm < off + 5 ? `${Math.round(near.nm)} NM from ${near.icao}` : `${Math.round(off)} NM off route`;
 }

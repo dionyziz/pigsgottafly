@@ -106,7 +106,10 @@ enum Fmt {
 
     /// A date at 'HH:MM' UTC on `day` ('YYYY-MM-DD'); today when either is missing.
     static func date(day: String, clock: String) -> Date {
-        let base = isoDay(day) ?? Calendar.current.startOfDay(for: Date())
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = utc
+        // the clock is UTC, so the day it is added to must start at 00:00Z too, not the device's midnight
+        let base = isoDay(day) ?? cal.startOfDay(for: Date())
         let p = clock.split(separator: ":").compactMap { Int($0) }
         guard p.count == 2 else { return base.addingTimeInterval(12 * 3600) }
         return base.addingTimeInterval(TimeInterval(p[0] * 3600 + p[1] * 60))

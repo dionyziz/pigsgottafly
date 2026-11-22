@@ -13,6 +13,7 @@
 //   - Slow upstream: the first request from a cold instance has been seen to take ~12 s (later ones
 //     ~0.2 s). Each attempt may take TIMEOUT_MS; a timeout, network error or 5xx is retried once.
 import type { MetarTafResponse } from '../../../src/shared/api.js';
+import type { AutorouterClient } from '../autorouter.js';
 import type { Route } from '../http.js';
 import { HttpError, reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';
@@ -102,6 +103,54 @@ export function pickTafs(rows: TafRow[]): Map<string, string> {
     if (!prev || t > prev.t) best.set(r.icaoId, { raw: r.rawTAF.trim(), t });
   }
   return new Map([...best].map(([k, v]) => [k, v.raw]));
+}
+
+/** The instant of a METAR's 'DDHHMMZ' group: the latest such instant not after `now` (+10 min of clock skew). */
+export function metarTime(raw: string, now: number): number | null {
+  const m = /\b(\d{2})(\d{2})(\d{2})Z\b/.exec(raw);
+  if (!m) return null;
+  const d = new Date(now);
+  for (let back = 0; back < 2; back++) {
+    const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - back, +m[1], +m[2], +m[3]);
+    if (t <= now + 10 * 60000) return t;
+  }
+  return null;
+}
+
+// Reports from the pilot's own autorouter account (personal use: AUTOROUTER_PILOTS) fill the stations
+// aviationweather.gov lacks. Kept apart from the shared cache, so they are never served to anyone else.
+const autorouterMet = new Map<string, { at: number; metar: string | null; taf: string | null }>();
+
+async function fillFromAutorouter(
+  body: MetarTafResponse,
+  ids: string[],
+  ar: AutorouterClient,
+  now: number,
+): Promise<void> {
+  const missing = ids.filter((id) => !body.stations[id]?.metar || !body.stations[id]?.taf);
+  await Promise.all(
+    missing.map(async (id) => {
+      let e = autorouterMet.get(id);
+      if (!e || now - e.at > METAR_TTL_MS) {
+        try {
+          e = { at: now, ...(await ar.metarTaf(id)) };
+          autorouterMet.set(id, e);
+        } catch (err) {
+          console.warn('weather: autorouter', id, String((err as Error)?.message || err));
+          return;
+        }
+      }
+      const cur = body.stations[id];
+      const metar = cur?.metar ?? e.metar;
+      const taf = cur?.taf ?? e.taf;
+      if (!metar && !taf) return;
+      body.stations[id] = {
+        metar,
+        taf,
+        observed: cur?.metar ? cur.observed : e.metar ? metarTime(e.metar, now) : null,
+      };
+    }),
+  );
 }
 
 export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
@@ -198,6 +247,7 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
         if (ids.length > MAX_IDS) throw new HttpError(400, `at most ${MAX_IDS} aerodromes`);
         if (ctx.db) await rateLimit(ctx.db, 'metar', { pilotId: ctx.pilot?.id, req: ctx.req });
         const body = await get(ids);
+        if (ctx.autorouter) await fillFromAutorouter(body, ids, ctx.autorouter, now());
         return reply(200, body, { 'Cache-Control': 'private, max-age=60' });
       },
     },

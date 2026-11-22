@@ -12,7 +12,7 @@ import { api, ApiRequestError } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
 import { autoTitle, type Flight, type FlightListItem } from '../../shared';
 import { FILING_STATUS_LABEL } from '../../shared/briefing';
-import { fmtDate, localToday, relativeDay, utcToLocal } from '../../shared/date';
+import { fmtDate, localDepartureDay, localToday, relativeDay, todayUtc, utcToLocalMarked } from '../../shared/date';
 import { errorMessage, fmtDuration } from '../../shared/format';
 import { AsyncView, Chip, Dialog, DialogFooter, EmptyState, Icon, KebabMenu, rowClick, SearchBox } from '../../ui';
 import { flightSearchText, matchesQuery, passengerNames, splitFlights } from './format';
@@ -60,7 +60,8 @@ export function LobbyPage() {
   const rows = useMemo(() => (data || []).filter((r) => matchesQuery(flightSearchText(r), q)), [data, q]);
   const own = useMemo(() => rows.filter((r) => !r.sharedBy), [rows]);
   const shared = useMemo(() => rows.filter((r) => r.sharedBy), [rows]);
-  const { upcoming, past } = useMemo(() => splitFlights(own, today), [own, today]);
+  // flight dates are UTC dates (the flight plan's DOF): before 02:00/03:00 local, the local date is a day ahead
+  const { upcoming, past } = useMemo(() => splitFlights(own, todayUtc()), [own]);
 
   const fail = useCallback((what: string) => (e: unknown) => toast(`${what}: ${errorMessage(e)}`), [toast]);
 
@@ -133,8 +134,8 @@ export function LobbyPage() {
   const row = (r: FlightListItem) => {
     const s = r.summary;
     const date = r.date || s.date;
-    const rel = relativeDay(date, today);
-    const local = utcToLocal(date, s.blockOff);
+    const rel = relativeDay(localDepartureDay(date, s.blockOff), today);
+    const local = utcToLocalMarked(date, s.blockOff);
     const route = s.from && s.to ? (s.from === s.to ? `Local flight · ${s.from}` : `${s.from} → ${s.to}`) : '';
     const dash = <span className="muted">—</span>;
     const pax = passengerNames(r);

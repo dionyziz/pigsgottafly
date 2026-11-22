@@ -166,6 +166,9 @@ export class Page {
         return { status: 503, body: { error: true, reason: 'offline in tests' } };
       });
     await this.viewport(1600, 1300);
+    // E2E_TZ / E2E_LOCALE: the browser as it is abroad (e.g. Europe/Berlin, de-DE); the app must not care
+    if (process.env.E2E_TZ) await this.send('Emulation.setTimezoneOverride', { timezoneId: process.env.E2E_TZ });
+    if (process.env.E2E_LOCALE) await this.send('Emulation.setLocaleOverride', { locale: process.env.E2E_LOCALE });
   }
   on(method, h) {
     if (!this.handlers.has(method)) this.handlers.set(method, []);

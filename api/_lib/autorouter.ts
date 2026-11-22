@@ -254,6 +254,21 @@ export class AutorouterClient {
   }
 
   /** NOTAMs whose item A is one of `itemas`, valid at some time in [from, to] (ms). Pages through all results. */
+  /**
+   * The latest METAR and TAF of an aerodrome from EUROCONTROL's database, which has stations the international
+   * feeds lack (Tatoi). An aerodrome without reports: nulls, not an error.
+   */
+  async metarTaf(icao: string): Promise<{ metar: string | null; taf: string | null }> {
+    try {
+      const r = await this.call<{ metar?: unknown; taf?: unknown }>('GET', `/met/metartaf/${encodeURIComponent(icao)}`);
+      const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+      return { metar: text(r?.metar), taf: text(r?.taf) };
+    } catch (e) {
+      if (e instanceof AutorouterError && e.status === 400) return { metar: null, taf: null };
+      throw e;
+    }
+  }
+
   async notams(itemas: string[], from: number, to: number, maxRows = 1000): Promise<AutorouterNotamRow[]> {
     const rows: AutorouterNotamRow[] = [];
     for (let offset = 0; offset < maxRows; offset += NOTAM_PAGE_ROWS) {

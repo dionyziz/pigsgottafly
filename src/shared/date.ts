@@ -112,6 +112,30 @@ export function utcToLocal(date: string, hhmm: string, timeZone = LOCAL_TZ): str
   return localDayTime(d + (+m[1] * 60 + +m[2]) * 60000, timeZone)!.clock;
 }
 
+/** '+1' / '-1' when the instant falls on another local day than the UTC date `day`, else ''. */
+export function localDayMark(day: string, ms: number, timeZone = LOCAL_TZ): string {
+  const local = localDayTime(ms, timeZone)?.day;
+  const n = local ? daysBetween(day, local) : null;
+  return n ? (n > 0 ? `+${n}` : String(n)) : '';
+}
+
+/** Local clock of a UTC 'HH:MM' on a date, marked when it is another local day: '01:30+1'. '' when either is missing. */
+export function utcToLocalMarked(date: string, hhmm: string, timeZone = LOCAL_TZ): string {
+  const d = parseIsoDate(date);
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
+  if (d === null || !m) return '';
+  const ms = d + (+m[1] * 60 + +m[2]) * 60000;
+  return localDayTime(ms, timeZone)!.clock + localDayMark(date, ms, timeZone);
+}
+
+/** The local (Greek) day a flight leaves on: its UTC date moved by the block-off time, if any. */
+export function localDepartureDay(date: string, hhmm: string | null | undefined, timeZone = LOCAL_TZ): string {
+  const d = parseIsoDate(date);
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm || '');
+  if (d === null || !m) return date;
+  return localDayTime(d + (+m[1] * 60 + +m[2]) * 60000, timeZone)!.day;
+}
+
 /** Offset of local time at an instant, e.g. 'UTC+2', 'UTC+3' ('LT' if unknown). */
 export function localOffsetLabel(ms: number, timeZone = LOCAL_TZ): string {
   if (!Number.isFinite(ms)) return 'LT';

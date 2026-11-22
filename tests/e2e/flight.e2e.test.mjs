@@ -259,6 +259,20 @@ test('plan a flight end to end: map, panels, navlog, exports, W&B and performanc
   await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
   const id = await flightId();
   assert.match(await text('[data-testid=flight-title]'), /^\d{4}-\d{2}-\d{2}$/);
+  // the automatic title is real, selected text in the box: typing replaces it; Escape keeps it
+  const autoTitle = await text('[data-testid=flight-title]');
+  await page.click('[data-testid=flight-title]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=flight-title-input]'));
+  assert.deepEqual(
+    await page.eval(() => {
+      const i = document.querySelector('[data-testid=flight-title-input]');
+      return [i.value, i.selectionStart, i.selectionEnd === i.value.length];
+    }),
+    [autoTitle, 0, true],
+  );
+  await page.key('Escape');
+  await page.waitFor(() => !document.querySelector('[data-testid=flight-title-input]'));
+  assert.equal(await text('[data-testid=flight-title]'), autoTitle);
   // the "Ready to fly" checklist heads the panel; a stage tab shows that stage's sections only
   assert.ok(await page.eval(() => !!document.querySelector('[data-testid=readiness] [data-testid=ready-summary]')));
   // the summary names what is left and takes the pilot to the first of it

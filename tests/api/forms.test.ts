@@ -139,6 +139,26 @@ describe('Form 731 signatures', () => {
     expect(st.form731.allSigned).toBe(true);
   });
 
+  test('the pilot is e-mailed when a passenger signs, once per version of the form', async () => {
+    const sent: SentMail[] = [];
+    setMailTransport(async (m) => {
+      sent.push(m);
+      return { id: `m-${sent.length}` };
+    });
+    const { flightId, paxKey } = await setup();
+    const token = (await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links`)).body.links![paxKey];
+    await anon.call('POST', `sign/${token}`);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toEqual([(await A.call('GET', 'me')).body.email]);
+    expect(sent[0].subject).toBe('Form 731 signed by Maria Papadopoulou');
+    expect(sent[0].text).toMatch(/Everyone has signed \(2 of 2\)/);
+    expect(sent[0].text).toContain(`/flights/${flightId}/export/form731`);
+    // signing again (or opening the link) is no news
+    await anon.call('POST', `sign/${token}`);
+    await anon.call('GET', `sign/${token}`);
+    expect(sent).toHaveLength(1);
+  });
+
   test('a change to the form clears the signatures (the PIC re-signs automatically, the passenger must sign again)', async () => {
     const { flightId, paxKey } = await setup();
     const token = (await A.call<FormsState>('POST', `flights/${flightId}/forms/731/links`)).body.links![paxKey];

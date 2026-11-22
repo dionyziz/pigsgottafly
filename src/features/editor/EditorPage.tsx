@@ -3,7 +3,7 @@
 import './editor.css';
 import './panels/panels.css';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { AccountMenu } from '../../app/AccountMenu';
@@ -125,30 +125,44 @@ function ShareButton() {
   );
 }
 
-/** Empty = automatic (from the route). */
+/** Empty = automatic. The automatic title is real text in the box, so it can be selected and edited. */
 function Title() {
   const { doc, update, readOnly } = useEditor();
-  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
+  const cancelled = useRef(false);
   const auto = autoTitle(doc);
+  const shown = doc.title.trim() || auto;
   if (readOnly)
     return (
       <span className="editor-title" data-testid="flight-title">
-        {doc.title.trim() || auto}
+        {shown}
       </span>
     );
-  if (!editing) {
+  if (draft == null) {
     return (
       <button
         type="button"
         className="editor-title"
         data-testid="flight-title"
         title="Rename"
-        onClick={() => setEditing(true)}
+        onClick={() => setDraft(shown)}
       >
-        {doc.title.trim() || auto}
+        {shown}
       </button>
     );
   }
+  const save = () => {
+    if (cancelled.current) {
+      cancelled.current = false;
+      setDraft(null);
+      return;
+    }
+    const t = draft.trim();
+    // left as the automatic title (or emptied): stays automatic, following the date
+    const title = t === auto ? '' : t;
+    setDraft(null);
+    if (title !== doc.title) update((d) => ({ ...d, title }), { coalesce: 'title' });
+  };
   return (
     <input
       className="editor-title"
@@ -156,17 +170,17 @@ function Title() {
       aria-label="Flight title"
       autoFocus
       onFocus={(e) => e.target.select()}
-      value={doc.title}
+      value={draft}
       placeholder={auto}
-      size={Math.max(16, Math.min(60, (doc.title || auto).length + 2))}
-      onChange={(e) => update((d) => ({ ...d, title: e.target.value }), { coalesce: 'title' })}
-      onBlur={(e) => {
-        setEditing(false);
-        const t = e.target.value.trim();
-        if (t !== doc.title) update((d) => ({ ...d, title: t }), { coalesce: 'title' });
-      }}
+      size={Math.max(16, Math.min(60, (draft || auto).length + 2))}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={save}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Escape') {
+          cancelled.current = true;
+          (e.target as HTMLInputElement).blur();
+        }
       }}
     />
   );
