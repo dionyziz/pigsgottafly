@@ -88,7 +88,9 @@ export function fixLink(f: Fix, ctx: FixContext): { to: string; label: string } 
     case 'person': {
       const me = f.key === 'PIC';
       const fields = f.fields ?? [];
-      const what = fields.map((x) => FIELD_LABEL[x]).join(' and ');
+      const names = fields.map((x) => FIELD_LABEL[x]);
+      const what =
+        names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names.join('');
       const q = `edit=${encodeURIComponent(me ? 'me' : f.key)}${fields.length ? `&fields=${fields.join(',')}` : ''}`;
       return {
         to: `/passengers?${q}`,

@@ -60,7 +60,7 @@ import { SYMBOL_INFO } from '../features/editor/map/symbols';
 import { computeFlightCalc } from '../features/editor/panels/flightCalc';
 import {
   paperwork as paperworkRows,
-  profileMissingOf,
+  picMissingOf,
   readiness,
   readinessWarnings,
 } from '../features/editor/panels/readiness';
@@ -522,7 +522,15 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
     nowMs,
   });
   const rows = readiness({
-    profileMissing: profileMissingOf({ fullName: pilot.fullName ?? '', phone: pilot.phone ?? '' }),
+    // a shared flight's PIC is its owner: their details are not the viewer's to add
+    picMissing:
+      session && !flight.access
+        ? picMissingOf(flight.crew ?? [], {
+            fullName: session.fullName ?? '',
+            phone: session.phone ?? '',
+            idNumber: session.idNumber ?? '',
+          })
+        : [],
     routePoints: flight.route.length,
     hasAircraft: !!flight.aircraftId,
     warnings: readinessWarnings(calc.warnings),

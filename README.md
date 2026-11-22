@@ -6,7 +6,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
 
 ## Features
 
-- **Accounts.** Sign in with Google or with Apple. Every pilot has their own profile, hangar, passengers, saved waypoints and flights; the API scopes every query to the signed-in pilot. A new pilot starts empty and is asked for name, phone and home aerodrome on first use.
+- **Accounts.** Sign in with Google or with Apple. Every pilot has their own profile, hangar, passengers, saved waypoints and flights; the API scopes every query to the signed-in pilot. A new account starts empty with only its e-mail (a passenger needs no more); pilot details are asked for when a paper needs them (the flight plan and the forms say what is missing, with a link that comes back).
 - **Lobby.** Works like Google Docs: search, upcoming flights first, and a ⋮ menu to open, rename, copy, or move to trash (with undo and restore).
 - **Flight editor.** A full-window MapLibre map with layers drawn from the AIP in VFR-chart style:
   - aerodromes (hover or click one for its hours and handling on the flight's date), TMA/CTR/ATZ sectors with class and vertical limits, VFR reporting points, and VFR routes with their charted altitudes;

@@ -1,4 +1,4 @@
-// End-to-end test of the lobby and the account list pages: onboarding, lobby order/search/⋮ menu
+// End-to-end test of the lobby and the account list pages: sign-up, lobby order/search/⋮ menu
 // (rename, copy, trash + undo, trash view + restore), passengers, saved waypoints, profile; Form 731
 // e-mailed to each passenger from the export (mail transport MOCKED: nothing is sent for real).
 import assert from 'node:assert/strict';
@@ -48,21 +48,23 @@ const shot = async (name) => {
 };
 const iso = (d) => d.toISOString().slice(0, 10);
 
-test('onboarding, lobby, passengers, waypoints and profile', async () => {
-  // first use: profile in welcome mode; an unknown aerodrome is refused, nothing is prefilled
+test('sign-up, lobby, passengers, waypoints and profile', async () => {
+  // sign-up asks for nothing: the lobby; the profile is filled when the pilot wants to
   await page.goto(server.url + '/');
-  await page.waitFor(() => location.pathname === '/profile' && !!document.querySelector('[data-testid=profile-form]'));
-  assert.equal(await page.eval(() => !!document.querySelector('input[name=taxiOutMin]')), false);
+  await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
+  await page.goto(server.url + '/profile');
+  await page.waitFor(() => !!document.querySelector('[data-testid=profile-form] input[name=licenceNo]'));
+  // nothing is required, nothing is prefilled
+  assert.equal(await page.eval(() => document.querySelectorAll('[data-testid=profile-form] .req').length), 0);
+  assert.equal(await page.eval(() => document.querySelector('input[name=fullName]').value), '');
   await page.type('input[name=fullName]', 'Test Pilot');
   await page.type('input[name=phone]', '+30 690 000 0000');
   await page.type('input[name=homeAerodrome]', 'ZZZZ');
-  await page.click('[data-testid=profile-form] button[type=submit]');
-  // the error is at the field: the aerodrome turns red, says why, and has the focus
+  // an unknown aerodrome is held back and says why at its field
   await page.waitFor(
     () =>
       /Not an aerodrome/.test(document.querySelector('[data-testid=aerodrome-status]')?.textContent || '') &&
-      document.activeElement?.name === 'homeAerodrome' &&
-      document.activeElement.classList.contains('invalid'),
+      document.querySelector('[data-testid=save-status]')?.textContent === 'Not saved',
   );
   await page.type('input[name=homeAerodrome]', 'tatoi');
   await page.waitFor(() =>
@@ -70,11 +72,18 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   );
   await clickText('.combo-list li .code', 'LGTT');
   assert.equal(await page.eval(() => document.querySelector('input[name=homeAerodrome]').value), 'LGTT');
-  await page.click('[data-testid=profile-form] button[type=submit]');
-  await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
+  await page.type('input[name=taxiOutMin]', '15');
+  await page.type('input[name=taxiInMin]', '15');
+  await page.blur();
+  await page.waitFor(async () => {
+    const p = await (await fetch('/api/me')).json();
+    return p.homeAerodrome === 'LGTT' && p.settings.taxiInMin === 15;
+  });
   const me = await api('GET', 'me');
-  assert.equal(me.homeAerodrome, 'LGTT');
-  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin, me.settings.reserveMin], [15, 15, null]);
+  assert.deepEqual(
+    [me.fullName, me.phone, me.settings.taxiOutMin, me.settings.taxiInMin, me.settings.reserveMin],
+    ['Test Pilot', '+30 690 000 0000', 15, 15, null],
+  );
 
   // flights: two upcoming (out of creation order), one past
   const day = 86400000;
@@ -349,15 +358,15 @@ test('onboarding, lobby, passengers, waypoints and profile', async () => {
   await page.waitFor(async () => (await (await fetch('/api/me')).json()).settings.reserveMin === 60);
   await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved');
   // an invalid value is held back and shown at its field
-  await page.type('input[name=fullName]', '');
+  await page.type('input[name=defaultAlternate]', 'nowhere');
   await page.waitFor(
     () =>
       document.querySelector('[data-testid=save-status]')?.textContent === 'Not saved' &&
-      !!document.querySelector('.field.invalid input[name=fullName]'),
+      document.querySelector('input[name=defaultAlternate]').classList.contains('invalid'),
   );
   await page.idle(1200);
-  assert.equal((await api('GET', 'me')).fullName, 'Test Pilot');
-  await page.type('input[name=fullName]', 'Test Pilot');
+  assert.equal((await api('GET', 'me')).settings.defaultAlternate ?? null, null);
+  await page.type('input[name=defaultAlternate]', '');
   await page.type('input[name=taxiInMin]', '14');
   await page.waitFor(async () => (await (await fetch('/api/me')).json()).settings.taxiInMin === 14);
   assert.deepEqual(page.errors, []);

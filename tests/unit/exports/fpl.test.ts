@@ -421,8 +421,9 @@ describe('the message', () => {
     expect(r.fields.item16.eet).toBe(MISSING);
     expect(r.fields.item19.text).toBe('E/???? P/TBN R/E C/????');
     expect(r.fixes['Pilot phone number not set in the profile (item 19 C/).']).toEqual({
-      kind: 'profile',
-      focus: 'phone',
+      kind: 'person',
+      key: 'PIC',
+      fields: ['phone'],
     });
     expect(r.fields.item18).not.toContain('DOF/');
     expect(r.warnings.length).toBeGreaterThanOrEqual(6);

@@ -51,8 +51,8 @@ const call = (page, method, path, body) =>
     body ?? null,
   );
 /**
- * Signs the browser in (Google, faked with the test key) on a public page, fills the profile the
- * welcome page would ask for, then opens the lobby.
+ * Signs the browser in (Google, faked with the test key) on a public page, fills the pilot's profile,
+ * then opens the lobby.
  */
 async function signIn(page, sub, email, fullName) {
   await page.goto(`${url}/privacy`);
@@ -323,3 +323,46 @@ test('share a flight with its passengers; removing one asks to stop sharing', { 
   });
   assert.deepEqual(alice.errors, []);
 });
+
+test(
+  'a passenger signs up with nothing but the e-mail and sees the flight shared with them, asked for nothing',
+  { timeout: 120000 },
+  async () => {
+    const f = (await call(alice, 'POST', 'flights', { title: 'Passenger ride' })).body;
+    const r = await call(alice, 'POST', `flights/${f.id}/shares`, { email: 'rider@example.com', role: 'view' });
+    assert.equal(r.status, 201);
+
+    const browserC = await launch();
+    try {
+      const rider = await browserC.newPage();
+      await rider.goto(`${url}/privacy`);
+      const login = await call(rider, 'POST', 'login', {
+        credential: signToken(googleClaims('sub-rider', 'rider@example.com')),
+      });
+      assert.equal(login.status, 200);
+      // the lobby at once, with the shared flight; no profile asked for
+      await rider.goto(`${url}/`);
+      await rider.waitFor((id) => !!document.querySelector(`[data-flight-id="${id}"]`), { args: [f.id] });
+      assert.equal(await rider.eval(() => location.pathname), '/');
+      const me = (await call(rider, 'GET', 'me')).body;
+      assert.deepEqual([me.fullName, me.phone, me.homeAerodrome], ['', '', null]);
+
+      // the flight, view only: nothing asks for pilot details
+      await rider.goto(`${url}/flights/${f.id}`);
+      await rider.waitFor(() => !!document.querySelector('[data-testid=view-only-chip]'));
+      await rider.waitFor(() => document.querySelectorAll('[data-testid=ready-item]').length > 0);
+      assert.equal(
+        await rider.eval(() => !!document.querySelector('[data-testid=ready-item][data-id=profile]')),
+        false,
+      );
+      assert.equal(await rider.eval(() => location.pathname), `/flights/${f.id}`);
+      assert.equal(
+        await rider.eval(() => !!document.querySelector('[data-testid=profile-form], [data-testid=pilot-dialog]')),
+        false,
+      );
+      assert.deepEqual(rider.errors, []);
+    } finally {
+      await browserC.close();
+    }
+  },
+);

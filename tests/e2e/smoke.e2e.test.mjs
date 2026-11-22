@@ -1,4 +1,4 @@
-// End-to-end smoke test of the v3 shell: onboarding → lobby → new flight → editor → export page.
+// End-to-end smoke test of the v3 shell: sign-up → lobby → new flight → editor → export page.
 import assert from 'node:assert/strict';
 import test, { after, before } from 'node:test';
 
@@ -22,19 +22,84 @@ const stage = async (s) => {
   await page.waitFor((s) => document.querySelector(`[data-testid=stage-body-${s}]`)?.hidden === false, { args: [s] });
 };
 
-test('first use asks for the profile, then the lobby, a new flight and the editor work', async () => {
+test('a new account lands in the lobby; a new flight asks for its origin; the papers ask for the PIC details', async () => {
+  // sign-up asks for nothing: the lobby, with only the e-mail
   await page.goto(server.url + '/');
-  await page.waitFor(() => location.pathname === '/profile' && !!document.querySelector('[data-testid=profile-form]'));
-  // taxi times aren't asked at sign-up: they default to 15 min each way
-  assert.equal(await page.eval(() => !!document.querySelector('input[name=taxiOutMin], input[name=taxiInMin]')), false);
-  await page.type('input[name=fullName]', 'Test Pilot');
-  await page.type('input[name=phone]', '+30 690 000 0000');
-  await page.type('input[name=homeAerodrome]', 'LGTT');
-  await page.click('[data-testid=profile-form] button[type=submit]');
   await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
-  const me = await (await fetch(`${server.url}/api/me`)).json();
-  assert.deepEqual([me.settings.taxiOutMin, me.settings.taxiInMin], [15, 15]);
+  assert.equal(await page.eval(() => !!document.querySelector('[data-testid=profile-form]')), false);
+  const me0 = await (await fetch(`${server.url}/api/me`)).json();
+  assert.deepEqual([me0.fullName, me0.phone, me0.homeAerodrome], ['', '', null]);
 
+  // no home aerodrome: New flight asks for the origin, which can become the home aerodrome
+  await page.click('[data-testid=new-flight]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=new-flight-form]'));
+  await page.type('input[name=from]', 'LGTT');
+  await page.type('input[name=to]', 'LGMG');
+  await page.click('[data-testid=make-home]');
+  await page.click('[data-testid=create-flight]');
+  await page.waitFor(
+    () => /^\/flights\/[\w-]+$/.test(location.pathname) && !!document.querySelector('[data-testid=editor]'),
+  );
+  await page.waitFor(async () => (await (await fetch('/api/me')).json()).homeAerodrome === 'LGTT');
+  const first = await page.eval(() => location.pathname);
+
+  // Ready to fly says what the papers need from the PIC, and its link comes back to the flight
+  await stage('plan');
+  await page.waitFor(() => !!document.querySelector('[data-testid=ready-item][data-id=profile]'));
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=ready-item][data-id=profile]').textContent),
+    'Your detailsThe flight plan and Form 731 need your name, phone and ID or passport number.Add your name, phone and ID number →',
+  );
+  await page.click('[data-testid=ready-item][data-id=profile] a.rd-act');
+  await page.waitFor(
+    () => !!document.querySelector('[data-testid=pilot-dialog]') && document.activeElement?.name === 'fullName',
+  );
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=flow-back]')?.textContent),
+    'Back to the flight',
+  );
+  await page.key('Escape');
+  await page.waitFor((p) => location.pathname === p && !!document.querySelector('[data-testid=editor]'), {
+    args: [first],
+  });
+
+  // the flight plan: the PIC's name and phone are missing, each with its fix; Done comes back
+  const fpl = `${first}/export/fpl`;
+  await page.goto(server.url + fpl);
+  await page.waitFor(() =>
+    /name not set/.test(document.querySelector('[data-testid=fpl-warnings]')?.textContent || ''),
+  );
+  const hrefs = await page.eval(() =>
+    [...document.querySelectorAll('[data-testid=fpl-warnings] a')].map((a) => a.getAttribute('href')),
+  );
+  const back = `&back=${encodeURIComponent(fpl)}`;
+  assert.ok(hrefs.includes(`/passengers?edit=me&fields=fullName${back}`), hrefs.join(' '));
+  assert.ok(hrefs.includes(`/passengers?edit=me&fields=phone${back}`), hrefs.join(' '));
+  await page.eval(
+    (h) => document.querySelector(`[data-testid=fpl-warnings] a[href="${h}"]`).click(),
+    `/passengers?edit=me&fields=fullName${back}`,
+  );
+  await page.waitFor(() => !!document.querySelector('[data-testid=pilot-dialog]'));
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=flow-back]')?.textContent),
+    'Back to Flight plan (AFTN)',
+  );
+  await page.type('[data-testid=pilot-dialog] input[name=fullName]', 'Test Pilot');
+  await page.type('[data-testid=pilot-dialog] input[name=phone]', '+30 690 000 0000');
+  await page.click('[data-testid=dialog-done]');
+  await page.waitFor(
+    (p) =>
+      location.pathname === p &&
+      !!document.querySelector('[data-testid=fpl-warnings]') &&
+      !/name not set|phone number not set/.test(document.querySelector('[data-testid=fpl-warnings]').textContent),
+    { args: [fpl] },
+  );
+  const me = await (await fetch(`${server.url}/api/me`)).json();
+  assert.deepEqual([me.fullName, me.phone], ['Test Pilot', '+30 690 000 0000']);
+
+  // the next new flight starts at home without asking
+  await page.goto(server.url + '/');
+  await page.waitFor(() => !!document.querySelector('[data-testid=new-flight]'));
   await page.click('[data-testid=new-flight]');
   await page.waitFor(
     () => /^\/flights\/[\w-]+$/.test(location.pathname) && !!document.querySelector('[data-testid=editor]'),

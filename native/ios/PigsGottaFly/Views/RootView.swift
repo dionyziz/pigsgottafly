@@ -39,15 +39,7 @@ struct MainView: View {
             }
         }
         .sheet(isPresented: $showAccount) { AccountView() }
-        .fullScreenCover(isPresented: welcome) {
-            NavigationStack { ProfileView(welcome: true) }
-        }
         .task { await app.loadPilot() }
-    }
-
-    /// A new pilot's profile is asked for first (name, phone, home aerodrome), as on the website.
-    private var welcome: Binding<Bool> {
-        Binding(get: { app.needsProfile }, set: { _ in })
     }
 }
 

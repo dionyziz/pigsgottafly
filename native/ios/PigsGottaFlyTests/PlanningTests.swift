@@ -104,28 +104,20 @@ final class PlanningTests: XCTestCase {
 
     // MARK: profile
 
-    func testANewPilotIsAskedForNamePhoneAndHome() throws {
-        let full = try JSONDecoder().decode(PilotProfile.self, from: try Fixtures.data("pilot.json"))
-        XCTAssertTrue(full.missing.isEmpty)
-        var p = full
-        p.fullName = " "
-        p.phone = ""
-        p.homeAerodrome = nil
-        XCTAssertEqual(p.missing, [.fullName, .phone, .homeAerodrome])
-    }
-
-    func testTheProfileUpdateIsTheWebsitesFirstUseUpdate() throws {
+    func testTheProfileUpdateIsTheWebsites() throws {
         var p = try JSONDecoder().decode(PilotProfile.self, from: try Fixtures.data("pilot.json"))
         let home = Places.aerodromes(ref: ref).first { $0.refId == "LGTT" }
         let u = p.update(fullName: "  Jane   Pilot ", phone: " +30 210 1 ", home: home)
         XCTAssertEqual(u["fullName"]?.string, "Jane Pilot")
         XCTAssertEqual(u["phone"]?.string, "+30 210 1")
         XCTAssertEqual(u["homeAerodrome"]?.string, "LGTT")
-        XCTAssertNil(u["settings"], "the taxi times are set already")
+        XCTAssertNil(u["settings"])
+        // nothing is required, and taxi times are not made up
         p.settings = ["taxiOutMin": nil, "taxiInMin": 5]
-        let fresh = p.update(fullName: "J", phone: "1", home: home)
-        XCTAssertEqual(fresh["settings"]?["taxiOutMin"]?.int, 15)
-        XCTAssertNil(fresh["settings"]?["taxiInMin"])
+        let empty = p.update(fullName: " ", phone: "", home: nil)
+        XCTAssertEqual(empty["fullName"]?.string, "")
+        XCTAssertEqual(empty["homeAerodrome"], .null)
+        XCTAssertNil(empty["settings"])
     }
 
     func testAnUntitledFlightIsShownByItsRoute() throws {
@@ -175,7 +167,7 @@ final class PlanningTests: XCTestCase {
         let noAircraft = try api.decode([AircraftItem].self, try await api.aircraftList())
         XCTAssertTrue(noAircraft.isEmpty)
         let me = try api.decode(PilotProfile.self, try await api.me())
-        XCTAssertEqual(me.missing.count, 3)
+        XCTAssertEqual([me.fullName, me.phone, me.homeAerodrome ?? ""], ["", "", ""], "only the e-mail")
 
         let core = try Core.bundled()
         let template = try XCTUnwrap(try core.aircraftTemplates().first)
@@ -205,7 +197,8 @@ final class PlanningTests: XCTestCase {
 
         let updated = try api.decode(
             PilotProfile.self, try await api.updateMe(me.update(fullName: "J P", phone: "1", home: ads.first)))
-        XCTAssertTrue(updated.missing.isEmpty)
+        XCTAssertEqual([updated.fullName, updated.phone], ["J P", "1"])
+        XCTAssertNotNil(updated.homeAerodrome)
         do {
             try await api.deleteAccount(confirm: "someone@else")
             XCTFail("a wrong e-mail is refused")

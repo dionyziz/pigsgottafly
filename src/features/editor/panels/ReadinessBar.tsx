@@ -17,7 +17,7 @@ import { useFlightCalc } from './calc';
 import {
   type ItemState,
   PAPERWORK_KIND,
-  profileMissingOf,
+  picMissingOf,
   readiness,
   readinessWarnings,
   type ReadyItem,
@@ -78,7 +78,8 @@ export function useReadiness() {
   const items = useMemo(
     () =>
       readiness({
-        profileMissing: profileMissingOf({ fullName: pilot.fullName, phone: pilot.phone }),
+        // a shared flight's PIC is its owner: their details are not the viewer's to add
+        picMissing: flight.access ? [] : picMissingOf(doc.crew, pilot),
         routePoints: doc.route.length,
         hasAircraft: !!doc.aircraftId,
         warnings: readinessWarnings(warnings),
@@ -89,8 +90,9 @@ export function useReadiness() {
         declarations: declarations.data ?? null,
       }),
     [
-      pilot.fullName,
-      pilot.phone,
+      flight.access,
+      doc.crew,
+      pilot,
       doc.route.length,
       doc.aircraftId,
       warnings,

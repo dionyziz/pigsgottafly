@@ -72,37 +72,37 @@ final class FlowUITests: XCTestCase {
         waitForExpectations(timeout: 10)
     }
 
-    /// What App Review does with a brand-new account: the profile first, a new flight from the
-    /// fixture aerodromes with a first aircraft from the template, a point added and removed, then the
-    /// account deleted.
+    /// What App Review does with a brand-new account: straight to the (empty) flights, a new flight
+    /// from the fixture aerodromes that makes its departure the home aerodrome, with a first aircraft
+    /// from the template, a point added and removed, the profile filled in Account, then the account
+    /// deleted.
     func testNewAccountNewFlightAndDeleteAccount() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-fixtures", "-noNetwork", "-emptyAccount"]
         app.launch()
 
-        // the profile is asked for first
-        let name = app.textFields["profile-name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 15))
-        name.tap()
-        name.typeText("Test Pilot")
-        let phone = app.textFields["profile-phone"]
-        phone.tap()
-        phone.typeText("+302101234567")
-        app.buttons["profile-home"].tap()
-        pick(app, search: "LGTT", place: "place-aerodrome:LGTT")
-        XCTAssertTrue(app.staticTexts["LGTT · Dekelia / Tatoi"].waitForExistence(timeout: 5))
-        app.buttons["save-profile"].tap()
-
-        // no flights: New flight, from home to Skyros, with a first aircraft from the template
-        XCTAssertTrue(app.navigationBars["Flights"].waitForExistence(timeout: 10))
+        // nothing is asked at sign-up: the flights, empty
+        XCTAssertTrue(app.navigationBars["Flights"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.staticTexts["No flights yet"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.textFields["profile-name"].exists)
+
+        // New flight asks for the route only; with no home aerodrome, the departure can become it
         app.buttons["new-flight"].tap()
-        XCTAssertTrue(app.staticTexts["LGTT · Dekelia / Tatoi"].waitForExistence(timeout: 10), "from home")
+        let from = app.buttons["new-from"]
+        XCTAssertTrue(from.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Choose"].exists, "no departure assumed")
+        from.tap()
+        pick(app, search: "LGTT", place: "place-aerodrome:LGTT")
+        XCTAssertTrue(app.staticTexts["LGTT · Dekelia / Tatoi"].waitForExistence(timeout: 10))
         app.buttons["new-to"].tap()
         pick(app, search: "skiros", place: "place-aerodrome:LGSY")
         let reg = app.textFields["new-registration"]
         XCTAssertTrue(reg.waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["create-flight"].isEnabled, "an aircraft is needed")
+        XCTAssertTrue(app.buttons["create-flight"].isEnabled, "an aircraft is not needed")
+        let home = app.switches["new-make-home"]
+        XCTAssertTrue(home.exists)
+        home.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertEqual(home.value as? String, "1")
         reg.tap()
         reg.typeText("SX-ABC")
         app.buttons["create-flight"].tap()
@@ -132,8 +132,18 @@ final class FlowUITests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["LGTT → LGSY"].waitForExistence(timeout: 10))
 
-        // Account → Delete account: the e-mail typed, then back to the sign-in screen
+        // Account → Profile: the home aerodrome from New flight; name and phone added there
         app.buttons["account"].tap()
+        app.buttons["profile"].tap()
+        let name = app.textFields["profile-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["LGTT · Dekelia / Tatoi"].waitForExistence(timeout: 10), "the home aerodrome")
+        name.tap()
+        name.typeText("Test Pilot")
+        app.buttons["save-profile"].tap()
+        XCTAssertTrue(app.buttons["delete-account"].waitForExistence(timeout: 10))
+
+        // Account → Delete account: the e-mail typed, then back to the sign-in screen
         app.buttons["delete-account"].tap()
         let confirm = app.buttons["confirm-delete"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))

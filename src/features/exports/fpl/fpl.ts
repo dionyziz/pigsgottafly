@@ -406,7 +406,12 @@ export function buildItem19(input: FplInput, warn: Warn): Item19 {
     warn('Aircraft colours and markings not set in the hangar (item 19 A/).', { kind: 'aircraft', focus: 'colours' });
   const remarkParts = [cleanText(eq?.remarks || '')].filter(Boolean);
   const name = picName(input.pic.fullName);
-  if (!name) warn('Pilot in command name not set in the profile (item 19 C/).', { kind: 'profile', focus: 'fullName' });
+  if (!name)
+    warn('Pilot in command name not set in the profile (item 19 C/).', {
+      kind: 'person',
+      key: 'PIC',
+      fields: ['fullName'],
+    });
   const pic = [name || MISSING, intlPhone(input.pic.phone)].filter(Boolean).join(' ');
 
   const parts: string[] = [];
@@ -587,7 +592,8 @@ export function buildFpl(input: FplInput): FplResult {
   }
   for (const t of [...flightRmk, ...hangarRmk]) if (t && !rmk.includes(t)) rmk.push(t);
   const phone = cleanPhone(input.pic.phone);
-  if (!phone) warn('Pilot phone number not set in the profile (item 19 C/).', { kind: 'profile', focus: 'phone' });
+  if (!phone)
+    warn('Pilot phone number not set in the profile (item 19 C/).', { kind: 'person', key: 'PIC', fields: ['phone'] });
   if (rmk.length) add('RMK', rmk.join(' '));
 
   const order = [...ITEM18_ORDER] as string[];

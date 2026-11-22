@@ -29,19 +29,6 @@ export const DEFAULT_SETTINGS: PilotSettings = {
 /** Generic suggestions shown as input PLACEHOLDERS only; never stored without the pilot typing them. */
 export const SETTING_SUGGESTIONS = { taxiOutMin: 15, taxiInMin: 15, reserveMin: 45 } as const;
 
-/** Profile fields the app asks for on first use (onboarding) before anything else. */
-export function profileMissing(p: {
-  fullName: string;
-  phone: string;
-  homeAerodrome: string | null;
-}): ('fullName' | 'phone' | 'homeAerodrome')[] {
-  const out: ('fullName' | 'phone' | 'homeAerodrome')[] = [];
-  if (!p.fullName.trim()) out.push('fullName');
-  if (!p.phone.trim()) out.push('phone');
-  if (!p.homeAerodrome) out.push('homeAerodrome');
-  return out;
-}
-
 export const WIND_MODELS: Record<WindModel, string> = {
   ecmwf_ifs025: 'ECMWF IFS 0.25°',
   gfs_seamless: 'GFS',

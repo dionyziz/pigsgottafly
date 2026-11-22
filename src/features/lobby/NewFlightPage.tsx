@@ -1,6 +1,7 @@
 // The server fills in the profile defaults (home → home route, default aircraft, taxi times, wind model,
 // PIC on the manifest). When the profile has no home aerodrome (or ?ask=1), the pilot is asked for the
-// origin first; nothing is assumed.
+// origin first; nothing is assumed. Without a home aerodrome the origin can become it, so the next
+// new flight starts there.
 import './lists.css';
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
@@ -23,6 +24,8 @@ export function NewFlightPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const noHome = !pilot.homeAerodrome;
+  const [makeHome, setMakeHome] = useState(false);
 
   const create = (req: FlightCreateRequest) => {
     if (started.current) return;
@@ -82,7 +85,10 @@ export function NewFlightPage() {
         data-testid="new-flight-form"
         onSubmit={(e) => {
           e.preventDefault();
-          if (ad && dest) create({ route: [aerodromePoint(ad), aerodromePoint(dest)] });
+          if (!ad || !dest) return;
+          // the flight does not wait for the profile; a failed save leaves the home aerodrome to the profile page
+          if (noHome && makeHome) void api.me.update({ homeAerodrome: ad.icao || ad.id }).catch(() => undefined);
+          create({ route: [aerodromePoint(ad), aerodromePoint(dest)] });
         }}
       >
         <div className="grid2">
@@ -98,6 +104,17 @@ export function NewFlightPage() {
             />
           </Field>
         </div>
+        {noHome && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={makeHome}
+              onChange={(e) => setMakeHome(e.target.checked)}
+              data-testid="make-home"
+            />{' '}
+            Make the origin my home aerodrome
+          </label>
+        )}
         {error && (
           <p className="form-error" role="alert">
             {error}

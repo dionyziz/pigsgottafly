@@ -186,52 +186,50 @@ describe('profile form', () => {
     enrouteAerodromeRadiusNm: null,
     mapLayers: null,
   };
-  it('taxi left empty at sign-up is 15 min; other pilot-specific values stay empty', () => {
-    const u = toUpdate(base, true);
-    expect(u).toEqual({
-      fullName: 'Test Pilot',
-      phone: '+30 690',
-      homeAerodrome: 'LGTT',
-      settings: { taxiOutMin: 15, taxiInMin: 12, reserveMin: null },
-    });
-  });
-  it('sends the full profile outside onboarding, without the wind model', () => {
-    const u = toUpdate(base, false);
+  it('sends the full profile, without the wind model', () => {
+    const u = toUpdate(base);
+    expect(u).toMatchObject({ fullName: 'Test Pilot', phone: '+30 690', homeAerodrome: 'LGTT' });
     expect(u.nationality).toBe('GREEK');
     expect(u.weightKg).toBe(80);
     expect(u.defaultAircraftId).toBeNull();
+    // taxi times are not made up: what the pilot left empty stays empty
+    expect(u.settings).toMatchObject({ taxiOutMin: null, taxiInMin: 12, reserveMin: null });
     expect(u.settings).toMatchObject({ finalReserveMin: 0, enrouteAerodromeRadiusNm: 2, defaultAlternate: null });
     expect(u.settings).not.toHaveProperty('windModel');
-    expect(toUpdate({ ...base, defaultAlternate: 'lgav' }, false).settings?.defaultAlternate).toBe('LGAV');
+    expect(toUpdate({ ...base, defaultAlternate: 'lgav' }).settings?.defaultAlternate).toBe('LGAV');
     // map layers for new flights: sent once chosen
     expect(u.settings).not.toHaveProperty('mapLayers');
     const layers = { ...DEFAULT_MAP_LAYERS, vfrRoutes: false };
-    expect(toUpdate({ ...base, mapLayers: layers }, false).settings?.mapLayers).toEqual(layers);
-    expect(toUpdate({ ...base, mapLayers: layers }, true).settings).not.toHaveProperty('mapLayers');
-    expect(() => toUpdate({ ...base, defaultAlternate: 'nowhere' }, false)).toThrow(/not an aerodrome/);
+    expect(toUpdate({ ...base, mapLayers: layers }).settings?.mapLayers).toEqual(layers);
+    expect(() => toUpdate({ ...base, defaultAlternate: 'nowhere' })).toThrow(/not an aerodrome/);
   });
-  it('rejects a missing name/phone, an unknown aerodrome and bad numbers', () => {
-    expect(() => toUpdate({ ...base, fullName: ' ' }, true)).toThrow(/name/);
-    expect(() => toUpdate({ ...base, phone: '' }, true)).toThrow(/phone/);
-    expect(() => toUpdate({ ...base, homeAerodrome: 'ZZZZ' }, true)).toThrow(/not an aerodrome/);
-    expect(() => toUpdate({ ...base, homeAerodrome: '' }, true)).toThrow(/home aerodrome/);
-    expect(() => toUpdate({ ...base, taxiOutMin: -5 }, true)).toThrow(/Taxi out/);
-    expect(() => toUpdate({ ...base, weightKg: 400 }, false)).toThrow(/Weight/);
+  it('an account with only its e-mail can be saved: nothing is required', () => {
+    const empty = {
+      ...base,
+      fullName: '',
+      phone: '',
+      homeAerodrome: '',
+      nationality: '',
+      relation: '',
+      weightKg: null,
+    };
+    expect(validateProfile(empty)).toEqual([]);
+    expect(toUpdate(empty)).toMatchObject({ fullName: '', phone: '', homeAerodrome: null });
+  });
+  it('rejects an unknown aerodrome and bad numbers', () => {
+    expect(() => toUpdate({ ...base, homeAerodrome: 'ZZZZ' })).toThrow(/not an aerodrome/);
+    expect(() => toUpdate({ ...base, taxiOutMin: -5 })).toThrow(/Taxi out/);
+    expect(() => toUpdate({ ...base, weightKg: 400 })).toThrow(/Weight/);
   });
   it('names every bad field, the person fields first', () => {
-    const issues = validateProfile(
-      { ...base, fullName: '', phone: '', homeAerodrome: 'ZZZZ', defaultAlternate: 'nowhere', reserveMin: 9999 },
-      false,
-    );
-    expect(issues.map((i) => i.field)).toEqual([
-      'fullName',
-      'phone',
-      'homeAerodrome',
-      'reserveMin',
-      'defaultAlternate',
-    ]);
-    // first use asks only name, phone, home and the three planning numbers
-    expect(validateProfile({ ...base, weightKg: 400, defaultAlternate: 'nowhere' }, true)).toEqual([]);
+    const issues = validateProfile({
+      ...base,
+      weightKg: 400,
+      homeAerodrome: 'ZZZZ',
+      defaultAlternate: 'nowhere',
+      reserveMin: 9999,
+    });
+    expect(issues.map((i) => i.field)).toEqual(['weightKg', 'homeAerodrome', 'reserveMin', 'defaultAlternate']);
   });
   it('fills the form from the pilot', () => {
     const f = formOf({

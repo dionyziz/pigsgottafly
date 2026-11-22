@@ -244,14 +244,11 @@ test('profile: download my data, then delete the account with a typed confirmati
 
   await page.eval(() => localStorage.setItem('pgf-e2e-marker', '1'));
   await page.click('[data-testid=delete-account-confirm]');
-  // a fresh (local) account: the onboarding again, no data, local storage cleared
-  await page.waitFor(
-    () =>
-      location.pathname + location.search === '/profile?welcome=1' &&
-      !!document.querySelector('[data-testid=profile-form]'),
-    { timeout: 10000 },
-  );
-  assert.equal(await page.eval(() => document.querySelector('input[name=fullName]').value), '');
+  // a fresh (local) account: straight to the empty lobby, no data, local storage cleared
+  await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'), {
+    timeout: 10000,
+  });
+  assert.equal((await api('GET', 'me')).fullName, '');
   assert.equal(await page.eval(() => localStorage.getItem('pgf-e2e-marker')), null);
   assert.deepEqual(await api('GET', 'passengers'), []);
   assert.deepEqual(await api('GET', 'aircraft'), []);
