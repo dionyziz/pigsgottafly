@@ -43,8 +43,7 @@ test('a local flight: chosen on the new-flight page, 1:30 in the editor, LOCAL -
   );
   const id = await page.eval(() => location.pathname.split('/').pop());
 
-  // the route section (in the Plan stage): the aerodrome and the duration, no navlog strip
-  await page.click('[data-testid=stage-plan]');
+  // a new flight opens on Plan even though it is for today: the route section, the duration, no navlog strip
   await page.waitFor(() => document.querySelector('[data-testid=stage-body-plan]')?.hidden === false);
   await page.waitFor(() => !!document.querySelector('[data-testid=route-local]'));
   assert.equal(await text('[data-testid=route-local]'), 'Local flight · LGTT');

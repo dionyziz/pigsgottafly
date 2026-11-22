@@ -22,9 +22,11 @@ import {
   readiness,
   readinessWarnings,
   type ReadyItem,
+  rememberStage,
   SECTION_STAGE,
   type Stage,
   STAGE_LABEL,
+  stageKey,
   STAGES,
   stageSummary,
 } from './readiness';
@@ -109,8 +111,6 @@ export function useReadiness() {
   return { items, markNotamsRead };
 }
 
-const stageKey = (flightId: string) => `pgf.editor.stage.${flightId}`;
-
 export function useStage(): [Stage, (s: Stage) => void] {
   const { flight, doc } = useEditor();
   const [stage, setStageState] = useState<Stage>(() => {
@@ -129,11 +129,7 @@ export function useStage(): [Stage, (s: Stage) => void] {
   const setStage = useCallback(
     (s: Stage) => {
       setStageState(s);
-      try {
-        sessionStorage.setItem(stageKey(flight.id), s);
-      } catch {
-        /* no storage: this visit only */
-      }
+      rememberStage(flight.id, s);
     },
     [flight.id],
   );

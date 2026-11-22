@@ -65,6 +65,8 @@ export function flightTitle(f: {
   const ads = (f.route || []).filter((p) => p.kind === 'aerodrome');
   const from = ads[0]?.name;
   const to = ads.length > 1 ? ads[ads.length - 1]?.name : undefined;
-  const route = from && to ? (from === to ? `Local flight · ${from}` : `${from} → ${to}`) : from || '';
+  // a round trip with points between is a navigation flight, not a local one (src/shared/local.ts)
+  const local = from && from === to && (f.route || []).length === 2;
+  const route = from && to ? (local ? `Local flight · ${from}` : `${from} → ${to}`) : from || '';
   return [route, f.date || ''].filter(Boolean).join(' · ') || 'Untitled flight';
 }

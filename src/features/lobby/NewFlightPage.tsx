@@ -14,6 +14,7 @@ import { resolveAerodrome } from '../../data/ref';
 import { aerodromeName, aerodromePoint, DEFAULT_LOCAL_DURATION_MIN, type FlightCreateRequest } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, Check, DurationField, EmptyState, Field, Loading } from '../../ui';
+import { rememberStage } from '../editor/panels/readiness';
 
 export function NewFlightPage() {
   const navigate = useNavigate();
@@ -34,7 +35,11 @@ export function NewFlightPage() {
     started.current = true;
     setError(null);
     api.flights.create(req).then(
-      (f) => void navigate(`/flights/${f.id}`, { replace: true }),
+      (f) => {
+        // a flight that has just been created has nothing to brief yet, even when it is for today
+        rememberStage(f.id, 'plan');
+        void navigate(`/flights/${f.id}`, { replace: true });
+      },
       (e) => {
         started.current = false;
         setError(errorMessage(e));

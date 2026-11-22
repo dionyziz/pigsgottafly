@@ -18,6 +18,17 @@ import type { CalcWarning, WarningArea } from './flightCalc';
 
 export type Stage = 'plan' | 'brief' | 'file';
 export const STAGES: readonly Stage[] = ['plan', 'brief', 'file'];
+
+export const stageKey = (flightId: string) => `pgf.editor.stage.${flightId}`;
+
+/** Opens the flight on this stage next time (this tab only); without storage the date default applies. */
+export function rememberStage(flightId: string, stage: Stage): void {
+  try {
+    sessionStorage.setItem(stageKey(flightId), stage);
+  } catch {
+    /* no storage */
+  }
+}
 export const STAGE_LABEL: Record<Stage, string> = { plan: 'Plan', brief: 'Brief', file: 'File & forms' };
 
 export const SECTION_STAGE: Record<string, Stage> = {

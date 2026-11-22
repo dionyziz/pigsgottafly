@@ -29,6 +29,9 @@ describe('page titles', () => {
     expect(flightTitle({ title: '', date: '2026-11-22', route: [ad('LGTT'), ad('LGTT')] })).toBe(
       'Local flight · LGTT · 2026-11-22',
     );
+    expect(
+      flightTitle({ title: '', date: '2026-11-22', route: [ad('LGTT'), { kind: 'vrp', name: 'YDRA' }, ad('LGTT')] }),
+    ).toBe('LGTT → LGTT · 2026-11-22');
     expect(flightTitle({ title: '', date: null, route: [] })).toBe('Untitled flight');
   });
 });
