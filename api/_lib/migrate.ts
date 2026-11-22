@@ -44,6 +44,7 @@ import flightShares054 from './migrations/054_flight_shares.js';
 import pilotInvitations055 from './migrations/055_pilot_invitations.js';
 import formLinkDetailsChanged056 from './migrations/056_form_link_details_changed.js';
 import aircraftLog057 from './migrations/057_aircraft_log.js';
+import notamSourceCache058 from './migrations/058_notam_source_cache.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -94,6 +95,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '055_pilot_invitations', sql: pilotInvitations055 },
   { name: '056_form_link_details_changed', sql: formLinkDetailsChanged056 },
   { name: '057_aircraft_log', sql: aircraftLog057 },
+  { name: '058_notam_source_cache', sql: notamSourceCache058 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

@@ -10,6 +10,8 @@ import type { Db } from './db.js';
 import type { ApiConfig, Ctx, JsonBody, Req, Res, Route } from './http.js';
 import { compilePath, HttpError, isJsonContentType, readJsonObject, Reply, send } from './http.js';
 import { recordError } from './monitor.js';
+import { sourceOrderFromEnv } from './notamSources/index.js';
+import { notamifyFromEnv } from './notamSources/notamify.js';
 import { isConstraintViolation } from './pgErrors.js';
 import { ROUTES } from './routes/index.js';
 import { toPilot } from './rows.js';
@@ -66,6 +68,8 @@ export function configFromEnv(
     appleClientId: env.APPLE_CLIENT_ID || '',
     allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
+    notamify: notamifyFromEnv(env),
+    notamSources: sourceOrderFromEnv(env.NOTAM_SOURCES),
     adminEmails: emailList(env.ADMIN_EMAILS),
     ...(env.OPEN_METEO_DAILY_BUDGET
       ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } }
@@ -131,6 +135,8 @@ export function createApi(
     appleKeys: opts.appleKeys || appleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
+    notamify: opts.notamify ?? null,
+    notamSources: opts.notamSources,
     adminEmails: (opts.adminEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),
     openMeteo: opts.openMeteo,
     aviationWeather: opts.aviationWeather,

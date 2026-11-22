@@ -19,12 +19,12 @@
 // Everything else is returned with relevant = false and the reasons, for "show all".
 import { distanceNm, pointSegDistNm } from '../../src/calc/nav.js';
 import { TERRAIN_GRID } from '../../src/calc/terrain.js';
-import type { Notam } from '../../src/shared/briefing.js';
+import type { Notam, NotamSource } from '../../src/shared/briefing.js';
 import { areasToRoute, FIR_WIDE_NM, type NotamArea, parseNotamAreas } from '../../src/shared/notamAreas.js';
 import type { LatLon } from '../../src/shared/types.js';
 import type { AutorouterNotamRow } from './autorouter.js';
-
-const GARMIN = 90 / 2 ** 30;
+import { fromAutorouterRow } from './notamSources/autorouter.js';
+import type { RawNotam } from './notamSources/types.js';
 
 // ICAO Doc 8126 NOTAM code, 2nd+3rd letters (subject), most common for VFR in Greece.
 export const SUBJECTS: Record<string, string> = {
@@ -285,43 +285,34 @@ const fmtTime = (ms: number) => {
   return `${pad(d.getUTCFullYear() % 100, 2)}${pad(d.getUTCMonth() + 1, 2)}${pad(d.getUTCDate(), 2)}${pad(d.getUTCHours(), 2)}${pad(d.getUTCMinutes(), 2)}`;
 };
 
-/** An autorouter row → Notam (relevance not evaluated yet). Rows without a usable start time are dropped (null). */
+/** An autorouter row → Notam (relevance not evaluated yet); null without a usable start time. */
 export function normalizeNotam(r: AutorouterNotamRow): Notam | null {
-  if (!r || typeof r !== 'object') return null;
-  const from = Number(r.startvalidity) * 1000;
-  if (!Number.isFinite(from)) return null;
-  const endRaw = r.endvalidity;
-  // autorouter uses 2^32-1 style far-future values for PERM
-  const to =
-    endRaw === null || endRaw === undefined || !Number.isFinite(Number(endRaw)) || Number(endRaw) >= 2 ** 31 - 1
-      ? null
-      : Number(endRaw) * 1000;
-  const code23 = String(r.code23 || '')
-    .toUpperCase()
-    .trim();
-  const code45 = String(r.code45 || '')
-    .toUpperCase()
-    .trim();
-  const hasPos = Number.isFinite(r.lat) && Number.isFinite(r.lon) && !(r.lat === 0 && r.lon === 0);
-  const center = hasPos
-    ? { lat: +(Number(r.lat) * GARMIN).toFixed(5), lon: +(Number(r.lon) * GARMIN).toFixed(5) }
-    : null;
-  const radiusNm = Number.isFinite(r.radius) ? Number(r.radius) : null;
-  const lowerFt = (Number.isFinite(r.lower) ? Number(r.lower) : 0) * 100;
-  const upperFt = (Number.isFinite(r.upper) ? Number(r.upper) : 999) * 100;
-  const type = (['N', 'R', 'C'].includes(String(r.type)) ? r.type : 'N') as Notam['type'];
-  const itemA = (Array.isArray(r.itema) ? r.itema : []).map((x) => String(x).toUpperCase().trim()).filter(Boolean);
-  const fir = String(r.fir || '')
-    .toUpperCase()
-    .trim();
-  const traffic = String(r.traffic || '').trim();
-  const purpose = String(r.purpose || '').trim();
-  const scope = String(r.scope || '').trim();
-  const k = key(r.series, r.number, r.year) || `#${r.id ?? '?'}`;
-  const refers = type === 'N' ? null : key(r.referredseries, r.referrednumber, r.referredyear) || null;
+  const raw = fromAutorouterRow(r);
+  return raw ? toNotam(raw) : null;
+}
+
+/** A source's NOTAM (notamSources/) → Notam (relevance not evaluated yet); null without a start time. */
+export function toNotam(r: RawNotam, sources: NotamSource[] = [r.source]): Notam | null {
+  if (r.from === null || !Number.isFinite(r.from)) return null;
+  const from = r.from;
+  const to = r.to !== null && Number.isFinite(r.to) ? r.to : null;
+  const code23 = (r.code23 ?? '').toUpperCase().trim();
+  const code45 = (r.code45 ?? '').toUpperCase().trim();
+  const center = r.center;
+  const radiusNm = r.radiusNm !== null && Number.isFinite(r.radiusNm) ? r.radiusNm : null;
+  const lowerFt = (r.lowerFl ?? 0) * 100;
+  const upperFt = (r.upperFl ?? 999) * 100;
+  const type = r.type;
+  const itemA = r.itemA.map((x) => x.toUpperCase().trim()).filter(Boolean);
+  const fir = (r.fir ?? '').toUpperCase().trim();
+  const traffic = r.traffic ?? '';
+  const purpose = r.purpose ?? '';
+  const scope = r.scope ?? '';
+  const k = key(r.series, r.number, r.year) || `#${r.source}:${r.sourceId ?? '?'}`;
+  const refers = type === 'N' || !r.refers ? null : key(r.refers.series, r.refers.number, r.refers.year) || null;
   const qcode = `Q${code23}${code45}`;
-  const text = String(r.iteme || '').trim();
-  const estimated = !!(r.estimation && String(r.estimation).trim());
+  const text = (r.itemE ?? '').trim();
+  const estimated = r.estimated;
   const n: Notam = {
     key: k,
     type,
@@ -342,26 +333,30 @@ export function normalizeNotam(r: AutorouterNotamRow): Notam | null {
     from,
     to,
     estimated,
-    schedule: r.itemd ? String(r.itemd).trim() || null : null,
+    schedule: r.itemD?.trim() || null,
     text,
-    lowerText: r.itemf ? String(r.itemf).trim() || null : null,
-    upperText: r.itemg ? String(r.itemg).trim() || null : null,
+    lowerText: r.itemF?.trim() || null,
+    upperText: r.itemG?.trim() || null,
     raw: '',
     relevant: false,
     reasons: [],
     legIndex: null,
+    sources,
   };
   const q = `Q) ${fir}/${qcode}/${traffic}/${purpose}/${scope}/${pad(lowerFt / 100, 3)}/${pad(upperFt / 100, 3)}/${center ? fmtCoord(center.lat, center.lon) + pad(radiusNm ?? 999, 3) : ''}`;
-  n.raw = [
-    `${k} NOTAM${type}${refers ? ' ' + refers : ''}`,
-    q,
-    `A) ${itemA.join(' ')} B) ${fmtTime(from)} C) ${to === null ? 'PERM' : fmtTime(to) + (estimated ? ' EST' : '')}`,
-    n.schedule ? `D) ${n.schedule}` : '',
-    `E) ${text}`,
-    n.lowerText || n.upperText ? `F) ${n.lowerText ?? ''} G) ${n.upperText ?? ''}`.trim() : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  // the source's own ICAO text when it gave one; else written from the fields
+  n.raw =
+    r.raw?.trim() ||
+    [
+      `${k} NOTAM${type}${refers ? ' ' + refers : ''}`,
+      q,
+      `A) ${itemA.join(' ')} B) ${fmtTime(from)} C) ${to === null ? 'PERM' : fmtTime(to) + (estimated ? ' EST' : '')}`,
+      n.schedule ? `D) ${n.schedule}` : '',
+      `E) ${text}`,
+      n.lowerText || n.upperText ? `F) ${n.lowerText ?? ''} G) ${n.upperText ?? ''}`.trim() : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
   return n;
 }
 

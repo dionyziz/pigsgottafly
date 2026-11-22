@@ -50,6 +50,30 @@ const autorouterFetch = async (input) => {
   return new Response(JSON.stringify({ error: 'no such endpoint' }), { status: 404 });
 };
 
+// Notamify has the same NOTAM, without its Q line: merged into one
+const notamifyFetch = async (input) => {
+  const url = new URL(String(input));
+  const notams = url.searchParams.getAll('location').includes('LGGG')
+    ? [
+        {
+          id: 'nf-1',
+          notam_number: 'A9001/26',
+          location: 'LGGG',
+          starts_at: new Date(at('06:00') * 1000).toISOString(),
+          ends_at: new Date(at('18:00') * 1000).toISOString(),
+          is_estimated: false,
+          is_permanent: false,
+          message: NOTAM.iteme,
+          icao_message: null,
+        },
+      ]
+    : [];
+  return new Response(JSON.stringify({ notams, total_count: notams.length, page: 1, per_page: 30 }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
 let server, browser, page, flightId;
 const api = async (method, p, body) => {
   const r = await fetch(`${server.url}/api/${p}`, {
@@ -63,6 +87,7 @@ const api = async (method, p, body) => {
 before(async () => {
   server = await startServer({
     autorouter: { email: 'app@example.com', password: 'x', filing: false, fetch: autorouterFetch },
+    notamify: { apiKey: 'x', maxCredits: 10, fetch: notamifyFetch },
   });
   await api('PUT', 'me', { fullName: 'Test Pilot', phone: '+30 690 000 0000', homeAerodrome: 'LGTT' });
   const ac = await api('POST', 'aircraft', fleetSeed()[0]);
@@ -88,6 +113,11 @@ test('hovering a NOTAM in the panel outlines its area on the map; leaving clears
   await page.waitFor(() => document.querySelector('[data-testid=map]')?.dataset.ready === '1', { timeout: 20000 });
   await page.click('[data-testid=stage-brief]');
   await page.waitFor(() => !!document.querySelector('[data-testid=notam][data-key="A9001/26"]'), { timeout: 20000 });
+  // one NOTAM from both sources
+  assert.match(
+    await page.eval(() => document.querySelector('[data-testid=notams-meta]').textContent),
+    /^1 NOTAM from autorouter, Notamify, fetched/,
+  );
   // the departure's and the destination's groups are there with no NOTAM, then the airspace's
   assert.deepEqual(
     await page.eval(() =>

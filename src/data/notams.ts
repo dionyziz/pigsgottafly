@@ -189,3 +189,22 @@ export function visibleNotams(b: NotamBriefing | null, showAll: boolean): Notam[
   if (!b) return [];
   return showAll ? b.notams : b.notams.filter((n) => n.relevant);
 }
+
+/**
+ * The briefing's sources for its meta line: 'autorouter, Notamify', and the ones that did not answer
+ * ('Notamify timed out'). Briefings stored before there were several sources: their one.
+ */
+export function notamSourcesLine(b: Pick<NotamBriefing, 'source' | 'sources'>): { from: string; failed: string[] } {
+  const list = b.sources ?? (b.source ? [{ id: b.source, label: b.source, status: 'ok' as const, message: null }] : []);
+  return {
+    from: list
+      .filter((s) => s.status === 'ok')
+      .map((s) => s.label)
+      .join(', '),
+    failed: list
+      .filter((s) => s.status !== 'ok')
+      .map((s) =>
+        s.status === 'timeout' ? `${s.label} timed out` : `${s.label} failed${s.message ? ` (${s.message})` : ''}`,
+      ),
+  };
+}

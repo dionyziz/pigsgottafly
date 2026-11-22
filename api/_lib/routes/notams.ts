@@ -1,18 +1,25 @@
 // GET /flights/:id/notams → NotamBriefing (src/shared/briefing.ts).
-// Source: the autorouter NOTAM API (Eurocontrol EAD data) with the app's account. There is no keyless
-// source that covers Greek NOTAMs completely (the FAA NOTAM search refuses automated clients and
-// lacks NOTAMs not marked for international dissemination), so without autorouter credentials the
-// briefing says so ('not-configured') instead of showing an incomplete list.
-// The last briefing is stored per flight (flight_notams): served again for 10 minutes while the
-// query is unchanged, and as a fallback (with a message) when the source fails. A flight shared with
-// the pilot (access.ts flightFor) is briefed as its owner's: the stored briefing keeps the owner's id.
-import type { Notam, NotamBriefing } from '../../../src/shared/briefing.js';
+// Sources (api/_lib/notamSources/): autorouter (Eurocontrol EAD data, the app's account, for the
+// AUTOROUTER_PILOTS on their own flights) and Notamify (NOTAMIFY_API_KEY, every pilot), in NOTAM_SOURCES
+// order. Those available to the pilot on this flight are queried together; their NOTAMs are merged and
+// de-duplicated, then assessed for the flight. There is no keyless source that covers Greek NOTAMs
+// completely (the FAA NOTAM search refuses automated clients and lacks NOTAMs not marked for
+// international dissemination), so without a source the briefing says so ('not-configured') instead
+// of showing an incomplete list.
+// The last briefing is stored per flight (flight_notams): served again for 10 minutes while the query
+// and the pilot's sources are unchanged and every source answered, and as a fallback (with a message)
+// when every source fails. A stored briefing is served only to a pilot entitled to every source it came
+// from, so autorouter's NOTAMs never reach a pilot it is not for. A flight shared with the pilot
+// (access.ts flightFor) is briefed as its owner's: the stored briefing keeps the owner's id.
+import type { Notam, NotamBriefing, NotamSourceStatus } from '../../../src/shared/briefing.js';
 import { flightFor } from '../access.js';
-import { AutorouterError } from '../autorouter.js';
 import { aerodromesNear, flightContext } from '../flightContext.js';
 import type { Route } from '../http.js';
 import { badRequest } from '../http.js';
-import { assessNotams, normalizeNotam } from '../notams.js';
+import { assessNotams, toNotam } from '../notams.js';
+import { configuredSources } from '../notamSources/index.js';
+import { gatherNotams } from '../notamSources/multiplex.js';
+import type { NotamSource } from '../notamSources/types.js';
 import { rateLimit } from '../rateLimit.js';
 import { serverTerrain } from '../terrain.js';
 
@@ -30,18 +37,26 @@ function numParam(v: string | null, field: string, min: number, max: number): nu
   return n;
 }
 
+/** What a stored briefing came from (briefings stored before there were several sources: their one). */
+const storedSources = (params: { sources?: unknown } | null, doc: NotamBriefing): NotamSource[] =>
+  Array.isArray(params?.sources) ? (params.sources as NotamSource[]) : doc?.source ? [doc.source] : [];
+
+const failures = (st: NotamSourceStatus[]) =>
+  st.length === 1 ? (st[0].message ?? 'the NOTAM source failed') : st.map((s) => `${s.label}: ${s.message}`).join('; ');
+
 export const routes: Route[] = [
   {
     method: 'GET',
     path: '/flights/:id/notams',
-    async handler({ db, pilot, params, query, autorouter, autorouterDenied }): Promise<NotamBriefing> {
+    async handler(c): Promise<NotamBriefing> {
+      const { db, pilot, params, query } = c;
       await rateLimit(db, 'notams', { pilotId: pilot.id });
       const owner = (await flightFor(db, pilot, params.id)).owner.id;
-      // The autorouter account is personal (AUTOROUTER_PILOTS): it serves only its pilots' own flights, and
-      // what it fetched is shown to no one else (not even on a flight shared with them).
-      const own = owner === pilot.id;
-      const ar = own ? autorouter : null;
-      const denied = autorouterDenied || (!!autorouter && !own);
+      const refresh = query.get('refresh') === '1';
+      const configured = configuredSources(c, refresh);
+      // the licensing gate: a source not available here is not queried, nor its stored NOTAMs served
+      const sources = configured.filter((d) => d.availableFor({ pilotId: pilot.id, ownerId: owner }));
+      const ids = sources.map((d) => d.id);
       const ctx = await flightContext(db, owner, params.id);
       const planned = ctx.altitudesFt.filter(Number.isFinite);
       const maxAltFt =
@@ -61,38 +76,45 @@ export const routes: Route[] = [
         locations,
         route: ctx.route.map((r) => [r.lat, r.lon]),
         alts: ctx.altitudesFt,
+        sources: ids,
       });
       const base = { window, params: p, locations };
 
-      const [cached] = await db.query<{ fetched: string; params: { key?: string }; doc: NotamBriefing }>(
-        'SELECT fetched, params, doc FROM flight_notams WHERE flight_id = $1 AND pilot_id = $2',
-        [ctx.id, owner],
-      );
-      const sameQuery = cached && cached.params?.key === paramsKey;
-      if (ar && sameQuery && query.get('refresh') !== '1' && Date.now() - Number(cached.fetched) < NOTAM_TTL_MS)
-        return cached.doc;
-
-      if (!ar) {
+      if (!sources.length) {
         return {
           ...base,
           status: 'not-configured',
           source: null,
+          sources: [],
           fetched: null,
           notams: [],
           relevantCount: 0,
           hiddenCount: 0,
-          message: denied
+          message: configured.length
             ? 'NOTAMs are not available for this account. Get the NOTAM briefing from AIS before flight.'
             : 'NOTAMs are not available on this server. Get the NOTAM briefing from AIS before flight.',
         };
       }
-      let notams: Notam[];
-      try {
-        const rows = await ar.notams(locations, window.from, window.to);
-        notams = rows.map(normalizeNotam).filter((n): n is Notam => !!n);
-      } catch (e) {
-        const msg = e instanceof AutorouterError ? e.message : 'the NOTAM source failed';
-        if (!(e instanceof AutorouterError)) console.warn('notams:', String((e as Error)?.message || e));
+
+      const [row] = await db.query<{
+        fetched: string;
+        params: { key?: string; sources?: unknown; complete?: boolean };
+        doc: NotamBriefing;
+      }>('SELECT fetched, params, doc FROM flight_notams WHERE flight_id = $1 AND pilot_id = $2', [ctx.id, owner]);
+      const cached = row && storedSources(row.params, row.doc).every((s) => ids.includes(s)) ? row : null;
+      if (
+        cached &&
+        cached.params?.key === paramsKey &&
+        cached.params.complete !== false &&
+        !refresh &&
+        Date.now() - Number(cached.fetched) < NOTAM_TTL_MS
+      )
+        return cached.doc;
+
+      const { notams: merged, statuses } = await gatherNotams(sources, { locations, window });
+      const ok = statuses.filter((s) => s.status === 'ok');
+      if (!ok.length) {
+        const msg = failures(statuses);
         if (cached)
           return {
             ...cached.doc,
@@ -101,7 +123,8 @@ export const routes: Route[] = [
         return {
           ...base,
           status: 'error',
-          source: 'autorouter',
+          source: ids[0],
+          sources: statuses,
           fetched: null,
           notams: [],
           relevantCount: 0,
@@ -109,25 +132,26 @@ export const routes: Route[] = [
           message: msg,
         };
       }
-      // a replaced NOTAM may appear next to its replacement: keep the newest of each key
-      const byKey = new Map<string, Notam>();
-      for (const n of notams) byKey.set(n.key, n);
-      const assessed = assessNotams([...byKey.values()], {
-        route: ctx.route,
-        aerodromes: ctx.used,
-        window,
-        maxAltFt,
-        corridorNm,
-        legAltFt: ctx.altitudesFt,
-        fields: ctx.route.filter((p) => p.kind === 'aerodrome'),
-        terrain: serverTerrain(),
-      });
+      const assessed = assessNotams(
+        merged.map((m) => toNotam(m.notam, m.sources)).filter((n): n is Notam => !!n),
+        {
+          route: ctx.route,
+          aerodromes: ctx.used,
+          window,
+          maxAltFt,
+          corridorNm,
+          legAltFt: ctx.altitudesFt,
+          fields: ctx.route.filter((p) => p.kind === 'aerodrome'),
+          terrain: serverTerrain(),
+        },
+      );
       const relevantCount = assessed.filter((n) => n.relevant).length;
       const fetched = Date.now();
       const doc: NotamBriefing = {
         ...base,
         status: 'ok',
-        source: 'autorouter',
+        source: ok[0].id,
+        sources: statuses,
         fetched,
         notams: assessed,
         relevantCount,
@@ -138,7 +162,13 @@ export const routes: Route[] = [
         `INSERT INTO flight_notams (flight_id, pilot_id, fetched, params, doc) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
          ON CONFLICT (flight_id) DO UPDATE SET fetched = EXCLUDED.fetched, params = EXCLUDED.params, doc = EXCLUDED.doc
          WHERE flight_notams.pilot_id = EXCLUDED.pilot_id`,
-        [ctx.id, owner, fetched, JSON.stringify({ key: paramsKey }), JSON.stringify(doc)],
+        [
+          ctx.id,
+          owner,
+          fetched,
+          JSON.stringify({ key: paramsKey, sources: ids, complete: ok.length === statuses.length }),
+          JSON.stringify(doc),
+        ],
       );
       return doc;
     },

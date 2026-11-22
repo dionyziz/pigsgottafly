@@ -22,7 +22,7 @@ export const RATES = {
   weather: { burst: 200, windowMs: 10 * MIN },
   /** Open-Meteo calls (weighted as Open-Meteo counts them) made for one pilot, per day */
   weatherFetch: { burst: 2000, windowMs: 24 * HOUR },
-  /** GET /flights/:id/notams (autorouter), per pilot */
+  /** GET /flights/:id/notams (the NOTAM sources), per pilot */
   notams: { burst: 30, windowMs: 10 * MIN },
   /** GET /ref/bundle (and /ref/:kind), per pilot or IP */
   ref: { burst: 60, windowMs: HOUR },

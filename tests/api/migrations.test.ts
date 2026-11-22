@@ -648,6 +648,7 @@ describe('migrations', () => {
       '055_pilot_invitations',
       '056_form_link_details_changed',
       '057_aircraft_log',
+      '058_notam_source_cache',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -689,6 +690,7 @@ describe('migrations', () => {
       '055_pilot_invitations',
       '056_form_link_details_changed',
       '057_aircraft_log',
+      '058_notam_source_cache',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -797,6 +799,7 @@ describe('migrations', () => {
       '055_pilot_invitations',
       '056_form_link_details_changed',
       '057_aircraft_log',
+      '058_notam_source_cache',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -871,7 +874,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-20)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-21)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -892,6 +895,7 @@ describe('migrations', () => {
       '055_pilot_invitations',
       '056_form_link_details_changed',
       '057_aircraft_log',
+      '058_notam_source_cache',
     ]);
     await db.close();
   });

@@ -4,6 +4,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { Db } from './db.js';
+import type { NotamifySettings } from './notamSources/notamify.js';
+import type { NotamSource } from './notamSources/types.js';
 import type { WeatherProxyOptions } from './routes/weather.js';
 import type { WeatherGridOptions } from './routes/weatherGrid.js';
 import type { NavlogPdfRenderer, SheetPdfRenderer } from './sheetPdf.js';
@@ -42,6 +44,10 @@ export interface ApiConfig {
    * list means NOBODY (never "anyone"). Default: allowedEmails. Local mode: the local pilot.
    */
   autorouterPilots?: string[];
+  /** Notamify (NOTAMIFY_API_KEY): a NOTAM source for every pilot; null/undefined = not configured. */
+  notamify?: NotamifySettings | null;
+  /** NOTAM_SOURCES: the NOTAM sources to use, in priority order; undefined = every configured one. */
+  notamSources?: NotamSource[];
   /**
    * Lower-cased e-mails of the admins (ADMIN_EMAILS): they see /admin (every pilot) and get an
    * e-mail for each new signup. Empty (the default) = no admin.
