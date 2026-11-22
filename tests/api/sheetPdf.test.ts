@@ -17,7 +17,13 @@ import zlib from 'node:zlib';
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 
 import { type SentMail, setMailTransport } from '../../api/_lib/mail';
-import { chromiumSheetPdf, localChrome, servedFile, type SheetSignature } from '../../api/_lib/sheetPdf';
+import {
+  chromiumNavlogPdf,
+  chromiumSheetPdf,
+  localChrome,
+  servedFile,
+  type SheetSignature,
+} from '../../api/_lib/sheetPdf';
 import { REF, runwaysOf, SUN_TABLES } from '../../src/data/ref';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import { perfSheetModel } from '../../src/features/exports/performance/model';
@@ -38,6 +44,7 @@ import {
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
 import { fleetSeed } from '../../tools/build_seed';
+import { fixtureNavlog, NAVLOG_POINTS } from '../helpers/navlogFixture';
 import { type Client, client, startApi } from './helpers';
 
 const ROOT = path.resolve(__dirname, '../..');
@@ -276,6 +283,43 @@ describe.skipIf(!chrome)('the real print in headless Chromium', () => {
       expect(text).toContain('CENTRE OF GRAVITY MOMENT ENVELOPE');
       expect(text).toContain('LOADED AIRCRAFT MOMENT');
       expect(text).toContain('Electronically signed 2026-11-21 08:00Z');
+    }
+  }, 60e3);
+
+  test('a fixture navlog: the website’s MD 4.2 sheets, A4 landscape, one page per sheet', async () => {
+    const content = fixtureNavlog();
+    expect(content.sheets).toHaveLength(2);
+    const t0 = Date.now();
+    const pdf = await chromiumNavlogPdf({ distDir: dist })(content);
+    console.info(`sheetPdf.test: navlog printed in ${Date.now() - t0} ms, ${pdf.length} bytes`);
+    if (process.env.NAVLOG_PDF_OUT) fs.writeFileSync(process.env.NAVLOG_PDF_OUT, pdf);
+    const raw = pdf.toString('latin1');
+    expect(raw).toMatch(/Skia\/PDF/);
+    expect(raw).toMatch(/\/Type\s*\/Pages[\s\S]{0,200}?\/Count 2\b/);
+    const boxes = [...raw.matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [+m[1], +m[2]]);
+    expect(boxes.length).toBeGreaterThan(0);
+    for (const [w, h] of boxes) {
+      expect(Math.abs(w - 841.92)).toBeLessThan(2);
+      expect(Math.abs(h - 595.92)).toBeLessThan(2);
+    }
+    let text = '';
+    try {
+      const file = path.join(dist, 'navlog.pdf');
+      fs.writeFileSync(file, pdf);
+      text = execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' });
+    } catch {
+      console.warn('sheetPdf.test: no pdftotext: the text of the navlog print is not checked');
+    }
+    if (text) {
+      const pages = text.split('\f');
+      expect(pages[0]).toContain('Flight Planner');
+      expect(pages[1]).toContain('Flight Planner');
+      expect(text).toContain('Terminal Information');
+      expect(text).toContain('DEPARTURE');
+      expect(text).toContain('SX-ASV');
+      expect(text).toContain('2026-11-21');
+      for (const name of NAVLOG_POINTS) expect(text).toContain(name);
+      expect(pages[1]).toContain('LGMG');
     }
   }, 60e3);
 

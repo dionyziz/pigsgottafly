@@ -13,7 +13,7 @@ import { recordError } from './monitor.js';
 import { isConstraintViolation } from './pgErrors.js';
 import { ROUTES } from './routes/index.js';
 import { toPilot } from './rows.js';
-import { chromiumSheetPdf } from './sheetPdf.js';
+import { chromiumNavlogPdf, chromiumSheetPdf } from './sheetPdf.js';
 
 const errorField = (e: unknown): string | null =>
   e && typeof e === 'object' && 'error' in e && typeof e.error === 'string' ? e.error : null;
@@ -56,6 +56,8 @@ const emailList = (v: string | undefined) =>
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
+const sheetDist = (env: NodeJS.ProcessEnv) => path.resolve(env.SHEET_PDF_DIST || path.join(process.cwd(), 'dist'));
+
 export function configFromEnv(
   env: NodeJS.ProcessEnv = process.env,
 ): Omit<ApiConfig, 'googleKeys' | 'appleKeys' | 'secureCookie'> {
@@ -71,12 +73,15 @@ export function configFromEnv(
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots ('*': every signed-in
     // pilot); unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
-    // the operator's W&B and performance PDF, printed by headless Chromium from the built client
-    // (dist/: on Vercel shipped with the function, vercel.json); SHEET_PDF=off: the server's own writer
-    sheetPdf:
-      env.SHEET_PDF === 'off'
-        ? null
-        : chromiumSheetPdf({ distDir: path.resolve(env.SHEET_PDF_DIST || path.join(process.cwd(), 'dist')) }),
+    // the operator's W&B and performance PDF and the pilot's navlog, printed by headless Chromium
+    // from the built client (dist/: on Vercel shipped with the function, vercel.json); SHEET_PDF=off:
+    // the server's own writer for the operator's sheets, and no navlog by e-mail
+    ...(env.SHEET_PDF === 'off'
+      ? { sheetPdf: null, navlogPdf: null }
+      : {
+          sheetPdf: chromiumSheetPdf({ distDir: sheetDist(env) }),
+          navlogPdf: chromiumNavlogPdf({ distDir: sheetDist(env) }),
+        }),
   };
 }
 
@@ -130,6 +135,7 @@ export function createApi(
     openMeteo: opts.openMeteo,
     aviationWeather: opts.aviationWeather,
     sheetPdf: opts.sheetPdf ?? null,
+    navlogPdf: opts.navlogPdf ?? null,
   };
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter, tokenStore(opts.db)) : null;
   if (autorouter && config.googleClientId && !config.autorouterPilots!.length) {

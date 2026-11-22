@@ -14,7 +14,7 @@ The design is in PLAN-v3.md. This file covers how the code is laid out and the c
 ```
 index.html                 Vite entry (→ src/main.tsx)
 pdf.html                   second Vite entry (→ src/pdf/main.tsx): the page the server prints the operator's W&B and
-                           performance PDF from (api/_lib/sheetPdf.ts)
+                           performance PDF and the pilot's e-mailed navlog from (api/_lib/sheetPdf.ts)
 public/                    icons, manifest, fonts/Inter (copied to dist/ as-is)
 src/
   shared/                  THE CONTRACT: domain + API + ref types, constants, type templates
@@ -221,10 +221,11 @@ api/
   _lib/shareMail.ts        the e-mail to a person an aircraft or an operator is shared with (who, what, access, link); logged, capped, never fails the share
   _lib/monitor.ts          error monitoring: recordError (app_errors, grouped by fingerprint) + throttled alert e-mails,
                            migrateReporting (a failed migration is recorded and e-mailed, then rethrown), client report rate limit
-  _lib/sheetPdf.ts         the W&B and performance PDF e-mailed to an operator: headless Chromium (CHROME / a local Chrome;
-                           on Vercel @sparticuz/chromium, x86_64) prints dist/pdf.html (src/pdf/: the export page's sheets
-                           and CSS) from the sent WbPerfContent, A4 with the print CSS; no session, no network (requests
-                           answered from dist/ on disk, the rest aborted); ApiConfig.sheetPdf (configFromEnv; SHEET_PDF=off)
+  _lib/sheetPdf.ts         the W&B and performance PDF e-mailed to an operator and the navlog e-mailed to the pilot:
+                           headless Chromium (CHROME / a local Chrome; on Vercel @sparticuz/chromium, x86_64) prints
+                           dist/pdf.html (src/pdf/: the export pages' sheets and CSS) from the sent WbPerfContent /
+                           NavlogContent, A4 with the print CSS; no session, no network (requests answered from dist/ on
+                           disk, the rest aborted); ApiConfig.sheetPdf / navlogPdf (configFromEnv; SHEET_PDF=off)
   _lib/declarationPdf.ts   the fallback when that print fails (recorded in app_errors): the same sheets drawn with the
                            pdf.ts writer
   _lib/db.ts               connect()/openDb(): Neon or PGlite behind one Db interface (query/exec/transaction/session)
@@ -294,7 +295,7 @@ data/                      aip.js, vfr.js, sun.js (made by the Python tools from
 tests/unit/                vitest: calc/ (incl. club.test.ts: all 90 club calculator cases), data/, exports/, screens/
 src/**/__tests__/          vitest: map and export-model tests next to their code (also run by npm test)
 tests/api/                 vitest: API, auth, migrations (PGlite in memory); sheetPdf.test.ts prints the W&B and performance
-                           sheets in a local Chrome/Chromium (CHROME; skipped when there is none), building dist/pdf.html
+                           sheets and a navlog in a local Chrome/Chromium (CHROME; skipped when there is none), building dist/pdf.html
 tests/setup/               noExternalApis.ts: the test process's fetch refuses Open-Meteo, aviationweather.gov and autorouter
                            (vitest setupFiles and the e2e harness; startServer's close() fails the test if anything tried)
 tests/helpers/             openMeteoGrid.ts: fake Open-Meteo from recorded ECMWF responses + gridApi (the real route on PGlite)
@@ -358,6 +359,8 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET, POST, PUT, DELETE | /operators/:id/files… | Documents (operations manual), chunked like the aircraft files. |
 | GET | /flights/:id/declarations | `DeclarationsState`: the flight's aircraft's operator, the last sending (`hash`). |
 | POST | /flights/:id/declarations/send | `{content: WbPerfContent, resend?}`: PDF to the operator's declarations e-mail, pilot cc'd. Subject and body from the server's records only; the content (bounded, links and e-mail addresses removed) only draws the PDF: the website's own print of the sheets (sheetPdf.ts), its registration, aircraft, operator, date, pilot and route replaced by the server's; if the print fails, the server's writer (declarationPdf.ts) and an app_errors entry. 409 when not asked for / already sent (without resend); 429 over the sending caps; 503 e-mail not configured. |
+| GET | /flights/:id/exports/navlog/email | `NavlogMailState`: the signed-in pilot's address, the last navlog of the flight e-mailed to them, whether it can be sent (and why not). Owner or a pilot the flight is shared with. |
+| POST | /flights/:id/exports/navlog/email | `{content: NavlogContent}`: the navlog as shown (bounded, links and e-mail addresses removed: navlogContentOf), printed as the website prints it (sheetPdf.ts) and e-mailed to the signed-in pilot only, `<date>-navlog.pdf` ('navlog' in mail_log). No other writer: a failed print is a 502 (in mail_log and app_errors). 403 no e-mail address; 429 over the sending caps (a minute between sends of a flight); 503 e-mail or printing not available. |
 | GET | /admin/pilots | `AdminPilot[]` (ADMIN_EMAILS only; 403 otherwise). `GET /session` says `admin`. |
 | GET | /admin/mail?pilot=&kind= | `AdminMail[]`: the e-mail action log, newest first (300), ADMIN_EMAILS only. |
 | GET | /admin/errors?status=open\|resolved\|all | `AppErrorGroup[]` (src/shared/monitoring.ts), newest first (ADMIN_EMAILS only). |

@@ -26,6 +26,8 @@ import type {
   InviteResponse,
   LoginResponse,
   MetarTafResponse,
+  NavlogContent,
+  NavlogMailState,
   OperatorFiles,
   OperatorInput,
   OperatorItem,
@@ -306,6 +308,12 @@ export const api = {
     get: (id: string) => request<DeclarationsState>('GET', `flights/${encodeURIComponent(id)}/declarations`),
     send: (id: string, content: WbPerfContent, resend: boolean) =>
       request<DeclarationsState>('POST', `flights/${encodeURIComponent(id)}/declarations/send`, { content, resend }),
+  },
+  /** The navlog e-mailed to the signed-in pilot as PDF (src/shared/navlogSheets.ts). */
+  navlogMail: {
+    get: (id: string) => request<NavlogMailState>('GET', `flights/${encodeURIComponent(id)}/exports/navlog/email`),
+    send: (id: string, content: NavlogContent) =>
+      request<NavlogMailState>('POST', `flights/${encodeURIComponent(id)}/exports/navlog/email`, { content }),
   },
   /** Admins only (403 for everyone else). */
   admin: {

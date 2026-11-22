@@ -6,7 +6,7 @@ import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { Db } from './db.js';
 import type { WeatherProxyOptions } from './routes/weather.js';
 import type { WeatherGridOptions } from './routes/weatherGrid.js';
-import type { SheetPdfRenderer } from './sheetPdf.js';
+import type { NavlogPdfRenderer, SheetPdfRenderer } from './sheetPdf.js';
 
 /** Node request, possibly with a body pre-parsed by Vercel. */
 export type Req = IncomingMessage & { body?: unknown };
@@ -55,6 +55,11 @@ export interface ApiConfig {
    * writer (declarationPdf.ts), which is also the fallback when the print fails.
    */
   sheetPdf?: SheetPdfRenderer | null;
+  /**
+   * Prints the navlog e-mailed to the pilot, as the website prints it (sheetPdf.ts; configFromEnv sets
+   * it up). null/undefined: the navlog cannot be e-mailed (there is no other writer for it).
+   */
+  navlogPdf?: NavlogPdfRenderer | null;
   /** aviationweather.gov through GET /weather/metar: upstream fetch (tests). */
   aviationWeather?: WeatherProxyOptions;
 }
