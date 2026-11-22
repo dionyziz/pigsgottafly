@@ -52,6 +52,10 @@ describe('client error reporter', () => {
     expect(report({ source: 'error', message: 'boom', stack: 'at x (chrome-extension://abc/content.js:1:1)' })).toBe(
       false,
     );
+    // Outlook/Defender Safe Links scanners opening a link from an e-mail
+    expect(
+      report({ source: 'rejection', message: 'Object Not Found Matching Id:1, MethodName:update, ParamCount:4' }),
+    ).toBe(false);
     expect(out).toHaveLength(0);
   });
 

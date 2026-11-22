@@ -15,6 +15,9 @@ export function isIgnorable(message: string, stack?: string): boolean {
   if (isChunkLoadError(message)) return true;
   if (/^Script error\.?$/i.test(message.trim())) return true; // cross-origin, no details
   if (/ResizeObserver loop/i.test(message)) return true;
+  // Microsoft's link scanners (Outlook/Defender Safe Links) open e-mailed links in a headless browser
+  // and reject a promise with this string
+  if (/^Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/.test(message)) return true;
   if (/(chrome|moz|safari(-web)?)-extension:\/\//i.test(stack || '')) return true;
   if (/^AbortError|The (operation|user) aborted|signal is aborted/i.test(message)) return true;
   // errors raised entirely inside third-party scripts (e.g. Google's sign-in client): every stack
