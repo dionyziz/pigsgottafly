@@ -4,6 +4,7 @@
 // access answers 404 (it does not exist for that pilot), too little access answers 403.
 import type { AircraftAccess, AircraftRole, FlightRole, HangarAircraft } from '../../src/shared/sharing.js';
 import type { Pilot } from '../../src/shared/types.js';
+import { LAST_EDIT_COLUMNS, LAST_EDIT_JOIN, lastEdit } from './aircraftLog.js';
 import type { Queryable, Row } from './db.js';
 import { HttpError, notFound } from './http.js';
 import { photoJsonSql, toFile } from './routes/files.js';
@@ -14,10 +15,12 @@ export const accessibleSql = (alias: string, param: string) =>
   `(${alias}.pilot_id = ${param} OR EXISTS (SELECT 1 FROM aircraft_shares s_ WHERE s_.aircraft_id = ${alias}.id AND s_.pilot_id = ${param}))`;
 
 const SELECT = `SELECT a.*, CASE WHEN a.pilot_id = $1 THEN 'owner' ELSE s.role END AS access_role,
-    o.email AS owner_email, o.full_name AS owner_full_name, o.name AS owner_name, ${photoJsonSql('a')} AS photo_file, op.name AS operator_name
+    o.email AS owner_email, o.full_name AS owner_full_name, o.name AS owner_name, ${photoJsonSql('a')} AS photo_file, op.name AS operator_name,
+    ${LAST_EDIT_COLUMNS}
   FROM aircraft a JOIN pilots o ON o.id = a.pilot_id
   LEFT JOIN operators op ON op.id = a.operator_id
   LEFT JOIN aircraft_shares s ON s.aircraft_id = a.id AND s.pilot_id = $1
+  ${LAST_EDIT_JOIN}
   WHERE (a.pilot_id = $1 OR s.pilot_id IS NOT NULL)`;
 
 export const personName = (fullName: unknown, name: unknown) => String(fullName || '') || String(name || '');
@@ -34,6 +37,7 @@ export const toHangarAircraft = (r: Row): HangarAircraft => ({
   access: access(r),
   photo: r.photo_file ? toFile(r.photo_file) : null,
   placeholder: Number(r.placeholder) || 1,
+  ...lastEdit(r),
 });
 
 export async function listAircraft(db: Queryable, pilotId: string): Promise<HangarAircraft[]> {

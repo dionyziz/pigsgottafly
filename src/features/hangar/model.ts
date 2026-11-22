@@ -21,7 +21,8 @@ import type {
 import { parseItem18 } from '../exports/fpl/fpl';
 
 export type IssueLevel = 'error' | 'warning';
-export type SectionId = 'identity' | 'fpl' | 'speeds' | 'fuel' | 'mb' | 'performance' | 'compass' | 'documents';
+export type SectionId =
+  'identity' | 'fpl' | 'speeds' | 'fuel' | 'mb' | 'performance' | 'compass' | 'documents' | 'history';
 
 export interface Issue {
   level: IssueLevel;

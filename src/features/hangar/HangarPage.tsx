@@ -19,6 +19,7 @@ import { Chip, ConfirmDialog, Dialog, DialogFooter, EmptyState, KebabMenu, Loadi
 import { AircraftPhoto } from './AircraftFiles';
 import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
+import { updatedText } from './history';
 import { InviteDialog } from './InviteDialog';
 import { missingEssentials, sameTypeCopy } from './model';
 import { SharedChip, ShareDialog } from './ShareDialog';
@@ -197,6 +198,11 @@ export function HangarPage() {
                     )}
                   </div>
                   {miss.length > 0 && <div className="hint missing">Not set: {miss.join(', ')}</div>}
+                  {a.updatedAt ? (
+                    <div className="hint ac-card-updated" data-testid="aircraft-updated">
+                      {updatedText(a.updatedAt, a.updatedBy, pilot.id)}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );

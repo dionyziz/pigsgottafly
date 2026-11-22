@@ -40,7 +40,75 @@ export interface AircraftAccess {
  * `photo`: the aircraft's photo (metadata; null without one). `placeholder`: the picture shown
  * without a photo (public/aircraft/placeholder-N.webp), chosen at random when the aircraft was created.
  */
-export type HangarAircraft = Aircraft & { access: AircraftAccess; photo?: AircraftFile | null; placeholder?: number };
+export type HangarAircraft = Aircraft & {
+  access: AircraftAccess;
+  photo?: AircraftFile | null;
+  placeholder?: number;
+  /** The newest change in the aircraft's log (sharing aside); `updated` for an aircraft with no log yet. */
+  updatedAt?: EpochMs;
+  /** Who made it; null when the log is empty. */
+  updatedBy?: AircraftEditor | null;
+};
+
+/** A pilot named in an aircraft's log. pilotId null: an account deleted since ("a former pilot"). */
+export interface AircraftEditor {
+  pilotId: Id | null;
+  /** Full name, else the Google name, else the e-mail ('' for a deleted account). */
+  name: string;
+}
+
+// The edit log of an aircraft (migration 056, api/_lib/aircraftLog.ts).
+//   GET /api/aircraft/:id/log[?before=<entry id>&limit=<1–100, 50>] → AircraftLogPage, newest first;
+//   anyone who can view the aircraft. Consecutive saves by one pilot within AIRCRAFT_LOG_COALESCE_MS
+//   are one entry: each field from its first old value to its latest new one.
+export const AIRCRAFT_LOG_COALESCE_MS = 10 * 60 * 1000;
+
+export type AircraftLogKind =
+  | 'create'
+  | 'edit'
+  | 'document-add'
+  | 'document-remove'
+  | 'document-rename'
+  | 'photo-set'
+  | 'photo-remove'
+  | 'share-add'
+  | 'share-role'
+  | 'share-remove';
+
+export type AircraftLogValue = string | number | boolean | null;
+
+/**
+ * One changed field: `path` as in the aircraft record ('fuel.usableL'). `from`/`to` when both are
+ * short; `summary` (e.g. '3 stations changed') for lists and tables; neither for long text.
+ */
+export interface AircraftLogChange {
+  path: string;
+  from?: AircraftLogValue;
+  to?: AircraftLogValue;
+  summary?: string;
+}
+
+export interface AircraftLogEntry {
+  id: number;
+  /** The latest save in it. */
+  at: EpochMs;
+  kind: AircraftLogKind;
+  by: AircraftEditor;
+  /** 'edit', and 'document-rename' (path 'title'). */
+  changes: AircraftLogChange[];
+  /** document-*: the document's title. */
+  file?: string;
+  /** share-*: the person (name, else e-mail; '' for a deleted account), and their pilot id. */
+  person?: string;
+  personId?: Id | null;
+  role?: ShareRole;
+}
+
+export interface AircraftLogPage {
+  entries: AircraftLogEntry[];
+  /** The `before` of the next page; null at the end. */
+  next: number | null;
+}
 
 /**
  * GET /api/aircraft/:id/shares → AircraftSharing (anyone with access; the owner first, then by name).

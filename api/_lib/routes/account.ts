@@ -10,7 +10,8 @@
 // the pilot's own files (licence, medical) → their chunks; flights → manifest, forms, briefings, filings). The aircraft
 // the pilot owned are deleted even when shared: other pilots' flights lose them (aircraft_id SET
 // NULL, as when an owner deletes an aircraft). The e-mails of other pilots' shares with the pilot
-// stay in their log without the address. tests/api/account.test.ts checks that no column of
+// stay in their log without the address. The pilot's entries in the edit logs of aircraft they did
+// not own stay, by "a former pilot" (aircraft_log.author_id is SET NULL). tests/api/account.test.ts checks that no column of
 // any table still holds the pilot's id or e-mail afterwards.
 import { sessionCookie } from '../auth.js';
 import type { Queryable } from '../db.js';
@@ -48,6 +49,7 @@ export async function deletePilotData(q: Queryable, pilotId: string): Promise<vo
     // flights shared with the address and not claimed yet, and the invitations to the app it got
     await q.query('DELETE FROM flight_invites WHERE email = lower($1)', [me.email]);
     await q.query('DELETE FROM pilot_invitations WHERE email = lower($1)', [me.email]);
+    await q.query('UPDATE aircraft_log SET subject_email = NULL WHERE subject_email = lower($1)', [me.email]);
   }
   await q.query('DELETE FROM pilots WHERE id = $1', [pilotId]);
 }
@@ -114,6 +116,11 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
   );
   const invited = await q.query(
     'SELECT id, email, message, created, accepted_at FROM pilot_invitations WHERE pilot_id = $1 ORDER BY created',
+    [pilotId],
+  );
+  const aircraftLog = await q.query(
+    `SELECT l.aircraft_id, a.registration, l.kind, l.started, l.at, l.changes, l.detail FROM aircraft_log l
+     JOIN aircraft a ON a.id = l.aircraft_id WHERE l.author_id = $1 ORDER BY l.id`,
     [pilotId],
   );
   const all = (sql: string) => q.query(sql, [pilotId]);
@@ -201,6 +208,16 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
       owner: s.owner_email,
       role: s.role,
       created: num(s.created),
+    })),
+    /** The pilot's changes to aircraft (theirs and shared ones), oldest first. */
+    aircraftEdits: aircraftLog.map((l) => ({
+      aircraftId: l.aircraft_id,
+      registration: l.registration,
+      kind: l.kind,
+      started: num(l.started),
+      at: num(l.at),
+      changes: l.changes,
+      ...l.detail,
     })),
     invitationsSent: invited.map((i) => ({
       email: i.email,

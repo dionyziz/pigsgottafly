@@ -6,6 +6,7 @@
 // listed as pending, keyed by the address, and removing one cancels this aircraft only.
 import type { AircraftRole, AircraftSharing, ShareRole } from '../../../src/shared/sharing.js';
 import { aircraftFor, personName } from '../access.js';
+import { logEvent } from '../aircraftLog.js';
 import type { Queryable, Row } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, conflict, HttpError, notFound, reply } from '../http.js';
@@ -19,6 +20,8 @@ function shareRole(v: unknown): ShareRole {
 }
 
 const isAddress = (key: string) => key.includes('@');
+/** Who a sharing log entry is about: `key` is a pilot id or an invited address. */
+const subject = (key: string) => (isAddress(key) ? { subjectEmail: key } : { subjectId: key });
 
 /** The open invitations to `email` that share the aircraft (any inviter). */
 const PENDING = `SELECT id FROM pilot_invitations WHERE email = $2 AND accepted_at IS NULL`;
@@ -93,6 +96,7 @@ export const routes: Route[] = [
       if (!p) {
         const inv = await openInvitation(db, pilot.id, email, '', [{ id: ac.id, role }]);
         if (!inv.added.length) throw conflict(`${email} is already invited with this aircraft.`);
+        await logEvent(db, ac.id, pilot.id, { kind: 'share-add', role, subjectEmail: email });
         await sendInvitation(db, { req, config, pilot }, inv.id, email);
         return reply(201, await sharing(db, ac));
       }
@@ -103,6 +107,7 @@ export const routes: Route[] = [
         [ac.id, p.id, role, Date.now(), pilot.id],
       );
       if (!ins.length) throw conflict(`${email} already has access to this aircraft.`);
+      await logEvent(db, ac.id, pilot.id, { kind: 'share-add', role, subjectId: p.id });
       await notifyShare(
         db,
         { req, config, pilot },
@@ -135,6 +140,7 @@ export const routes: Route[] = [
             [ac.id, params.pilotId, role],
           );
       if (!r.length) throw notFound('this person has no access to the aircraft');
+      await logEvent(db, ac.id, pilot.id, { kind: 'share-role', role, ...subject(params.pilotId) });
       // an editor who made themselves a viewer still sees the list
       return sharing(db, await aircraftFor(db, pilot.id, params.id));
     },
@@ -154,6 +160,7 @@ export const routes: Route[] = [
           [ac.id, params.pilotId.toLowerCase()],
         );
         if (!r.length) throw notFound('this address is not invited with the aircraft');
+        await logEvent(db, ac.id, pilot.id, { kind: 'share-remove', ...subject(params.pilotId) });
         return undefined;
       }
       const r = await db.query(
@@ -161,6 +168,7 @@ export const routes: Route[] = [
         [ac.id, params.pilotId],
       );
       if (!r.length) throw notFound('this person has no access to the aircraft');
+      await logEvent(db, ac.id, pilot.id, { kind: 'share-remove', ...subject(params.pilotId) });
       // Their flights keep the aircraft (shown as unavailable); a default they can no longer use is cleared.
       await db.query('UPDATE pilots SET default_aircraft_id = NULL WHERE id = $1 AND default_aircraft_id = $2', [
         params.pilotId,

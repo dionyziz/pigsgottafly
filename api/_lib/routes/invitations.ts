@@ -8,6 +8,7 @@ import { isEmail } from '../../../src/shared/operators.js';
 import type { InviteResponse, PilotInvitation, ShareRole } from '../../../src/shared/sharing.js';
 import type { Pilot } from '../../../src/shared/types.js';
 import { aircraftFor } from '../access.js';
+import { logEvent } from '../aircraftLog.js';
 import type { Queryable, Row } from '../db.js';
 import type { ApiConfig, Req, Route } from '../http.js';
 import { badRequest, conflict, newId, notFound, reply } from '../http.js';
@@ -197,7 +198,10 @@ export const routes: Route[] = [
              ON CONFLICT (aircraft_id, pilot_id) DO NOTHING RETURNING aircraft_id`,
             [ac.id, p.id, role, Date.now(), pilot.id],
           );
-          if (ins.length) shared.push({ ...ac, role });
+          if (ins.length) {
+            shared.push({ ...ac, role });
+            await logEvent(db, ac.id, pilot.id, { kind: 'share-add', role, subjectId: p.id });
+          }
         }
         if (!shared.length)
           throw conflict(
@@ -226,6 +230,9 @@ export const routes: Route[] = [
         aircraft.map(({ ac, role }) => ({ id: ac.id, role })),
       );
       if (!inv.created && !inv.added.length) throw conflict(`${email} is already invited.`);
+      for (const { ac, role } of aircraft)
+        if (inv.added.includes(ac.id))
+          await logEvent(db, ac.id, pilot.id, { kind: 'share-add', role, subjectEmail: email });
       await sendInvitation(db, ctx, inv.id, email);
       const out: InviteResponse = { existing: false, shared: [], invitations: await listInvitations(db, pilot.id) };
       return reply(201, out);
@@ -235,11 +242,18 @@ export const routes: Route[] = [
     method: 'DELETE',
     path: '/invitations/:id',
     async handler({ db, pilot, params }) {
+      const shared = await db.query(
+        `SELECT ia.aircraft_id, i.email FROM pilot_invitation_aircraft ia JOIN pilot_invitations i ON i.id = ia.invitation_id
+         WHERE i.id = $1 AND i.pilot_id = $2 AND i.accepted_at IS NULL`,
+        [params.id, pilot.id],
+      );
       const r = await db.query(
         'DELETE FROM pilot_invitations WHERE id = $1 AND pilot_id = $2 AND accepted_at IS NULL RETURNING id',
         [params.id, pilot.id],
       );
       if (!r.length) throw notFound('no such invitation');
+      for (const s of shared)
+        await logEvent(db, s.aircraft_id, pilot.id, { kind: 'share-remove', subjectEmail: s.email });
       return undefined;
     },
   },
@@ -250,10 +264,11 @@ export const routes: Route[] = [
       const r = await db.query(
         `DELETE FROM pilot_invitation_aircraft ia USING pilot_invitations i
          WHERE ia.invitation_id = i.id AND i.id = $1 AND i.pilot_id = $2 AND i.accepted_at IS NULL AND ia.aircraft_id = $3
-         RETURNING ia.aircraft_id`,
+         RETURNING ia.aircraft_id, i.email`,
         [params.id, pilot.id, params.aircraftId],
       );
       if (!r.length) throw notFound('no such aircraft in this invitation');
+      await logEvent(db, params.aircraftId, pilot.id, { kind: 'share-remove', subjectEmail: r[0].email });
       return undefined;
     },
   },

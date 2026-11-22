@@ -4,6 +4,7 @@
 // item 18 field warns only about indicators the flight plan drops, the approved fuels, the placeholder
 // picture and the photo, and documents (chunked upload through the file inputs, the PDF opened in the
 // in-app viewer). The performance tables: units in the headers, speeds in knots, no unit over a value.
+// The edit log: a saved field in History and "Updated … by you" on the hangar card.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -158,7 +159,7 @@ test('aircraft page: layout, autosave, item 18, fuels, photo and documents', asy
   await new Promise((r) => setTimeout(r, 1200));
   assert.equal(await activeNav(), 'Performance');
   await page.eval(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Documents');
+  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'History');
   await page.eval(() => window.scrollTo(0, 0));
   await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Identity');
 
@@ -554,4 +555,57 @@ test('performance tables: units in the headers, speeds in knots, no unit over a 
   await page.waitFor((s) => document.querySelector(s).value === '60', { args: [APP] });
   await until(async () => (await api('GET', `aircraft/${ac.id}`)).performance.landing.approachIasKt === 60);
   assert.deepEqual(page.errors, []);
+});
+
+test('edit log: History lists a saved change; the hangar card says who updated the aircraft', async () => {
+  await api('PUT', 'me', { fullName: 'Test Pilot', phone: '+30 690 000 0000', homeAerodrome: 'LGTT' });
+  const [asv] = fleetSeed();
+  const ac = await api('POST', 'aircraft', { ...asv, registration: 'SX-HIS', serial: '' });
+  await page.viewport(1400, 1000);
+  await page.goto(`${server.url}/hangar/${ac.id}`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=history] li'));
+  assert.deepEqual(
+    await page.eval(() =>
+      [...document.querySelectorAll('[data-testid=history] .history-what')].map((e) => e.textContent),
+    ),
+    ['You added the aircraft'],
+  );
+  await page.type('input[name=serial]', '17262');
+  await page.blur();
+  await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved');
+  await page.waitFor(
+    () => document.querySelector('[data-testid=history] > li .history-what')?.textContent === 'You changed 1 field',
+  );
+  const first = await page.eval(() => {
+    const li = document.querySelector('[data-testid=history] > li');
+    return {
+      changes: [...li.querySelectorAll('.history-changes li')].map((e) => e.textContent),
+      when: li.querySelector('.history-head .muted').textContent,
+    };
+  });
+  assert.deepEqual(first.changes, ['Serial number: — → 17262']);
+  assert.match(first.when, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+  // another save soon after is the same entry
+  await page.type('input[name=colours]', 'WHITE');
+  await page.blur();
+  await page.waitFor(() => {
+    const li = document.querySelector('[data-testid=history] > li');
+    return li?.querySelectorAll('.history-changes li').length === 2;
+  });
+  assert.equal(await page.eval(() => document.querySelectorAll('[data-testid=history] > li').length), 2);
+  await page.eval(() => document.getElementById('history').scrollIntoView());
+  await shot('aircraft-history');
+
+  await page.goto(`${server.url}/hangar`);
+  await page.waitFor((id) => !!document.querySelector(`[data-aircraft-id="${id}"] [data-testid=aircraft-updated]`), {
+    args: [ac.id],
+  });
+  assert.equal(
+    await page.eval(
+      (id) => document.querySelector(`[data-aircraft-id="${id}"] [data-testid=aircraft-updated]`).textContent,
+      ac.id,
+    ),
+    'Updated just now by you',
+  );
+  await shot('hangar-updated');
 });
