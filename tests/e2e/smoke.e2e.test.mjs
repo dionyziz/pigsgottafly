@@ -22,7 +22,7 @@ const stage = async (s) => {
   await page.waitFor((s) => document.querySelector(`[data-testid=stage-body-${s}]`)?.hidden === false, { args: [s] });
 };
 
-test('a new account lands in the lobby; a new flight asks for its origin; the papers ask for the PIC details', async () => {
+test('a new account lands in the lobby; its first flight asks for the home aerodrome; the papers ask for the PIC details', async () => {
   // sign-up asks for nothing: the lobby, with only the e-mail
   await page.goto(server.url + '/');
   await page.waitFor(() => location.pathname === '/' && !!document.querySelector('[data-testid=new-flight]'));
@@ -30,12 +30,13 @@ test('a new account lands in the lobby; a new flight asks for its origin; the pa
   const me0 = await (await fetch(`${server.url}/api/me`)).json();
   assert.deepEqual([me0.fullName, me0.phone, me0.homeAerodrome], ['', '', null]);
 
-  // no home aerodrome: New flight asks for the origin, which can become the home aerodrome
+  // the first flight asks for the home aerodrome (only that), which the flight then starts from
   await page.click('[data-testid=new-flight]');
-  await page.waitFor(() => !!document.querySelector('[data-testid=new-flight-form]'));
-  await page.type('input[name=from]', 'LGTT');
-  await page.type('input[name=to]', 'LGMG');
-  await page.click('[data-testid=make-home]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=home-form]'));
+  assert.equal(await page.eval(() => !!document.querySelector('input[name=from]')), false);
+  await page.type('input[name=home]', 'LGTT');
+  await page.click('h1');
+  await page.waitFor(() => !document.querySelector('[data-testid=create-flight]').disabled);
   await page.click('[data-testid=create-flight]');
   await page.waitFor(
     () => /^\/flights\/[\w-]+$/.test(location.pathname) && !!document.querySelector('[data-testid=editor]'),
