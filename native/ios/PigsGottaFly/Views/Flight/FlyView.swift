@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// Fly: the moving map with the strips (NATIVE.md "Fly"), full screen: no tab bar and no navigation
-/// bar; a compact control reaches the flights, Brief and Navlog. The screen stays on while it is shown.
+/// bar; a compact control reaches the flights, Brief and the Navlog. The screen stays on while it is shown.
 struct FlyView: View {
     @ObservedObject var model: FlightModel
-    @Binding var tab: FlightView.Tab
+    @Binding var tab: FlightTab
     var close: (() -> Void)?
+    var closeLabel = "Flights"
+    var openNavlog: () -> Void
     @EnvironmentObject private var app: AppModel
     @StateObject private var location: LocationFeed
     @State private var progress: Progress?
@@ -15,10 +17,15 @@ struct FlyView: View {
     @Environment(\.verticalSizeClass) private var verticalSize
     private static let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
-    init(model: FlightModel, tab: Binding<FlightView.Tab>, close: (() -> Void)?) {
+    init(
+        model: FlightModel, tab: Binding<FlightTab>, close: (() -> Void)?, closeLabel: String = "Flights",
+        openNavlog: @escaping () -> Void
+    ) {
         self.model = model
         _tab = tab
         self.close = close
+        self.closeLabel = closeLabel
+        self.openNavlog = openNavlog
         _location = StateObject(
             wrappedValue: LocationFeed(simulated: LocationFeed.simulated(from: ProcessInfo.processInfo.arguments)))
     }
@@ -43,6 +50,8 @@ struct FlyView: View {
             .environment(\.colorScheme, night ? .dark : .light)
         }
         .toolbar(.hidden, for: .tabBar)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(FlightTab.fly.bodyID)
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             Orientation.allow(.allButUpsideDown)
@@ -79,7 +88,7 @@ struct FlyView: View {
 
     private var controls: some View {
         HStack(spacing: 12) {
-            FlyNavigation(tab: $tab, close: close)
+            FlyNavigation(tab: $tab, close: close, closeLabel: closeLabel, openNavlog: openNavlog)
             Spacer()
             if !following && location.fix != nil {
                 MapButton(systemImage: "location.fill", label: "Re-centre") { following = true }
@@ -101,20 +110,22 @@ struct FlyView: View {
     }
 }
 
-/// Fly hides the tab bar and the navigation bar: back to the flights, Brief and Navlog from here.
+/// Fly hides the tab bar and the navigation bar: back to the flights, Brief and the Navlog from here.
 struct FlyNavigation: View {
-    @Binding var tab: FlightView.Tab
+    @Binding var tab: FlightTab
     var close: (() -> Void)?
+    var closeLabel = "Flights"
+    var openNavlog: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
             if let close {
-                item("chevron.backward", "Flights", id: "fly-back", action: close)
+                item("chevron.backward", closeLabel, id: "fly-back", action: close)
                 Divider().frame(height: 28)
             }
             item("checklist", "Brief", id: "fly-brief") { tab = .brief }
             Divider().frame(height: 28)
-            item("list.number", "Navlog", id: "fly-navlog") { tab = .navlog }
+            item("list.number", "Navlog", id: "fly-navlog", action: openNavlog)
         }
         .padding(.horizontal, 4)
         .background(.regularMaterial, in: Capsule())

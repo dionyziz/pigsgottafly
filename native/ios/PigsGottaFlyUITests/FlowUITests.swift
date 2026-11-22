@@ -1,14 +1,19 @@
 import XCTest
 
-/// Flights → Fly → Brief → Navlog in fixture mode (no network, no sign-in, the bundled flight and core).
+/// Flights → Fly → Brief → File → Navlog on iPhone in fixture mode (no network, no sign-in, the bundled
+/// flight and core).
 final class FlowUITests: XCTestCase {
-    override func setUp() {
+    override func setUpWithError() throws {
         continueAfterFailure = false
+        try XCTSkipIf(XCUIApplication().isPad, "iPhone's tab bars (ShellUITests covers the iPad)")
     }
 
     func testFlightsFlyBriefNavlog() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-fixtures", "-noNetwork", "-fixturePosition", "38.45,24.0,32,105"]
+        // the fixture flight's date as today: a planned flight of today opens in Fly
+        app.launchArguments = [
+            "-fixtures", "-noNetwork", "-fixturePosition", "38.45,24.0,32,105", "-today", "2026-11-22",
+        ]
         app.launch()
 
         XCTAssertTrue(app.navigationBars["Flights"].waitForExistence(timeout: 15))
@@ -37,10 +42,12 @@ final class FlowUITests: XCTestCase {
         app.buttons["night"].tap()
 
         app.buttons["fly-brief"].tap()
-        XCTAssertTrue(app.tabBars.buttons["Brief"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.element("stage-body-brief").waitForExistence(timeout: 5))
+        app.tapRow("section-weather")
         let wx = app.staticTexts["LGSY 220820Z 01012KT CAVOK 15/07 Q1020"]
-        for _ in 0..<6 where !wx.exists { app.swipeUp() }
-        XCTAssertTrue(wx.exists, "the METAR")
+        XCTAssertTrue(wx.waitForExistence(timeout: 10), "the METAR")
+        app.back()
+        app.tapRow("section-notams")
         let noNotams = app.staticTexts["No relevant NOTAMs."]
         for _ in 0..<4 where !noNotams.exists { app.swipeUp() }
         XCTAssertTrue(noNotams.exists, "the departure's group shows with no NOTAM")
@@ -51,11 +58,18 @@ final class FlowUITests: XCTestCase {
         for _ in 0..<4 where !markRead.exists { app.swipeUp() }
         markRead.tap()
         XCTAssertTrue(app.descendants(matching: .any)["notams-read"].waitForExistence(timeout: 10))
-        for _ in 0..<4 where !app.buttons["File & forms"].exists { app.swipeUp() }
-        XCTAssertTrue(app.buttons["File & forms"].exists)
+        app.back()
 
-        // Navlog: the legs, and a leg's altitude changed and saved
-        app.tabBars.buttons["Navlog"].tap()
+        // File: the filing status, and the website's File & forms page until the app files
+        app.tapTab("stage-file")
+        app.tapRow("section-flightPlan")
+        XCTAssertTrue(app.buttons["File & forms"].waitForExistence(timeout: 5))
+        app.back()
+
+        // back in Fly, its Navlog button opens Plan's Navlog: the legs, and a leg's altitude changed
+        app.tapTab("flight-tab-fly")
+        XCTAssertTrue(app.buttons["fly-navlog"].waitForExistence(timeout: 5))
+        app.buttons["fly-navlog"].tap()
         let leg = app.buttons["leg-0"]
         XCTAssertTrue(leg.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["leg-2"].exists)
@@ -74,7 +88,7 @@ final class FlowUITests: XCTestCase {
 
     /// What App Review does with a brand-new account: straight to the (empty) flights, a new flight
     /// from the fixture aerodromes that makes its departure the home aerodrome, with a first aircraft
-    /// from the template, a point added and removed, the profile filled in Account, then the account
+    /// from the template, a point added and removed, the profile filled in Me, then the account
     /// deleted.
     func testNewAccountNewFlightAndDeleteAccount() throws {
         let app = XCUIApplication()
@@ -105,10 +119,11 @@ final class FlowUITests: XCTestCase {
         reg.typeText("SX-ABC")
         app.buttons["create-flight"].tap()
 
-        // it opens in Fly; the Navlog has the leg, then a point is added and removed
-        XCTAssertTrue(app.buttons["fly-navlog"].waitForExistence(timeout: 15))
-        app.buttons["fly-navlog"].tap()
-        XCTAssertTrue(app.navigationBars["LGTT → LGSY"].waitForExistence(timeout: 10))
+        // a new flight opens on Plan, even for today; the Navlog has the leg, then a point is added and removed
+        XCTAssertTrue(app.element("stage-body-plan").waitForExistence(timeout: 15))
+        XCTAssertFalse(app.element("fly-top-strip").exists)
+        XCTAssertTrue(app.navigationBars["LGTT → LGSY"].exists)
+        app.tapRow("section-navlog")
         let leg = app.buttons["leg-0"]
         XCTAssertTrue(leg.waitForExistence(timeout: 15))
         XCTAssertTrue(leg.label.contains("LGTT → LGSY"), leg.label)
@@ -127,11 +142,12 @@ final class FlowUITests: XCTestCase {
         waitForExpectations(timeout: 15)
 
         // the flight is in the list
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.back(from: "Navlog")
+        app.back(from: "LGTT → LGSY")
         XCTAssertTrue(app.staticTexts["LGTT → LGSY"].waitForExistence(timeout: 10))
 
-        // Account → Profile: the home aerodrome from New flight; name and phone added there
-        app.buttons["account"].tap()
+        // Me → Profile: the home aerodrome from New flight; name and phone added there
+        app.tapTab("tab-me", label: "Me")
         app.buttons["profile"].tap()
         let name = app.textFields["profile-name"]
         XCTAssertTrue(name.waitForExistence(timeout: 10))
@@ -141,7 +157,7 @@ final class FlowUITests: XCTestCase {
         app.buttons["save-profile"].tap()
         XCTAssertTrue(app.buttons["delete-account"].waitForExistence(timeout: 10))
 
-        // Account → Delete account: the e-mail typed, then back to the sign-in screen
+        // Me → Delete account: the e-mail typed, then back to the sign-in screen
         app.buttons["delete-account"].tap()
         let confirm = app.buttons["confirm-delete"]
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))

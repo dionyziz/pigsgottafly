@@ -16,6 +16,8 @@ final class Session: NSObject, ObservableObject {
 
     @Published private(set) var state: State = .unknown
     @Published private(set) var pilot: SessionResponse.PilotInfo?
+    /// ADMIN_EMAILS: Me links to the website's admin pages.
+    @Published private(set) var admin = false
     @Published var error: String?
     @Published private(set) var busy = false
 
@@ -36,6 +38,7 @@ final class Session: NSObject, ObservableObject {
         do {
             let s = try await api.session()
             pilot = s.pilot
+            admin = s.admin ?? false
             set(signedIn: s.authed)
         } catch APIError.unauthorized {
             set(signedIn: false)
