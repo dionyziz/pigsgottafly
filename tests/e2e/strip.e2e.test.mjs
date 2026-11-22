@@ -228,10 +228,14 @@ test('the start-up, taxi, take-off and landing fuel is edited per flight in the 
     });
   assert.deepEqual(await field(), ['', '4', false]);
   await stage('plan');
-  // the required fuel changes once the winds arrive: read it when it has stopped changing
+  // the required fuel changes once the winds arrive: under load they can take longer than the settle
+  // window, so wait for the fetch to finish first, then read it when it has stopped changing
+  await page.waitFor(() => document.querySelector('[data-testid=winds-status]')?.textContent !== 'Fetching winds…', {
+    timeout: 30000,
+  });
   const settled = async () => {
     let last = await required();
-    for (let same = 0; same < 4;) {
+    for (let same = 0; same < 8;) {
       await page.idle(250);
       const v = await required();
       same = v === last ? same + 1 : 0;
