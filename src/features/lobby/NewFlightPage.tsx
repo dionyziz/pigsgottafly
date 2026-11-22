@@ -1,6 +1,6 @@
 // The server fills in the profile defaults (home → home route, default aircraft, taxi times, wind model,
-// PIC on the manifest). When the profile has no home aerodrome (or ?ask=1), the pilot is asked for the
-// origin first; nothing is assumed.
+// PIC on the manifest). A pilot's first flight asks for their home aerodrome (sign-up asks nothing), saved
+// to the profile; ?ask=1 asks for the origin and destination instead.
 import './lists.css';
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
@@ -18,11 +18,13 @@ export function NewFlightPage() {
   const navigate = useNavigate();
   const pilot = usePilot();
   const [params] = useSearchParams();
-  const ask = !pilot.homeAerodrome || params.get('ask') === '1';
+  const noHome = !pilot.homeAerodrome;
+  const ask = noHome || params.get('ask') === '1';
   const started = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [home, setHome] = useState('');
 
   const create = (req: FlightCreateRequest) => {
     if (started.current) return;
@@ -66,6 +68,50 @@ export function NewFlightPage() {
     );
   }
 
+  if (noHome) {
+    const h = resolveAerodrome(home);
+    return (
+      <Shell>
+        <div className="page-head">
+          <h1>New flight</h1>
+        </div>
+        <form
+          className="card form-section"
+          style={{ maxWidth: 520 }}
+          data-testid="home-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!h || started.current) return;
+            setError(null);
+            // the home route needs the home aerodrome saved before the server builds the flight
+            api.me.update({ homeAerodrome: h.icao || h.id }).then(
+              () => create({}),
+              (err) => setError(errorMessage(err)),
+            );
+          }}
+        >
+          <Field label="Your home aerodrome" req>
+            <AerodromeTextInput name="home" value={home} onChange={(t) => setHome(t)} autoFocus required />
+          </Field>
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="row">
+            <span className="spacer" />
+            <Link to="/" className="btn ghost">
+              Cancel
+            </Link>
+            <button className="primary" type="submit" disabled={!h} data-testid="create-flight">
+              Create flight
+            </button>
+          </div>
+        </form>
+      </Shell>
+    );
+  }
+
   // An unknown aerodrome says so under its field ("Not an aerodrome in the current AIP"); an
   // empty destination means back to the origin.
   const ad = resolveAerodrome(from);
@@ -82,7 +128,8 @@ export function NewFlightPage() {
         data-testid="new-flight-form"
         onSubmit={(e) => {
           e.preventDefault();
-          if (ad && dest) create({ route: [aerodromePoint(ad), aerodromePoint(dest)] });
+          if (!ad || !dest) return;
+          create({ route: [aerodromePoint(ad), aerodromePoint(dest)] });
         }}
       >
         <div className="grid2">

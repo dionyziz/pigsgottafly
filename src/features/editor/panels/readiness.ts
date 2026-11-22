@@ -12,7 +12,8 @@
 import type { FilingState, NotamBriefing } from '../../../shared/briefing';
 import type { DeclarationsState } from '../../../shared/declarations';
 import type { FormsState } from '../../../shared/forms';
-import { planningFix } from '../../exports/fix';
+import type { FlightCrew, PersonDetails } from '../../../shared/types';
+import { fixLink, type PersonField, planningFix } from '../../exports/fix';
 import type { CalcWarning, WarningArea } from './flightCalc';
 
 export type Stage = 'plan' | 'brief' | 'file';
@@ -45,13 +46,13 @@ export interface ReadyItem {
   /** The warning behind the text (its fix is offered), if any. */
   warning: CalcWarning | null;
   section: string;
-  /** A page elsewhere that fixes it (the profile). */
+  /** A page elsewhere that fixes it (the pilot's details). */
   link?: { label: string; to: string };
 }
 
 export interface ReadinessInput {
-  /** What the pilot's profile lacks for the forms and the flight plan ('name', 'phone'). */
-  profileMissing: string[];
+  /** What the PIC's details lack for this flight's papers (picMissingOf); empty on a flight shared with the pilot. */
+  picMissing: PersonField[];
   routePoints: number;
   hasAircraft: boolean;
   warnings: CalcWarning[];
@@ -64,8 +65,27 @@ export interface ReadinessInput {
   declarations: DeclarationsState | null;
 }
 
-export const profileMissingOf = (p: { fullName: string; phone: string }): string[] =>
-  [!p.fullName.trim() && 'name', !p.phone.trim() && 'phone'].filter((x): x is string => !!x);
+/** The papers that need each of the PIC's details: the flight plan's item 19 C/ and Form 731's PIC row. */
+const NEEDED_BY: Record<PersonField, string[]> = {
+  fullName: ['the flight plan', 'Form 731'],
+  phone: ['the flight plan', 'Form 731'],
+  idNumber: ['Form 731'],
+};
+
+/**
+ * What the PIC lacks for this flight's papers: the flight's PIC entry first, then the pilot's details
+ * (as the forms resolve them, src/shared/forms.ts).
+ */
+export function picMissingOf(
+  crew: Pick<FlightCrew, 'role' | 'snapshot'>[],
+  pilot: Pick<PersonDetails, 'fullName' | 'phone' | 'idNumber'>,
+): PersonField[] {
+  const snap = crew.find((c) => c.role === 'PIC')?.snapshot;
+  const has = (k: PersonField) => !!(snap?.[k]?.trim() || pilot[k]?.trim());
+  return (['fullName', 'phone', 'idNumber'] as const).filter((k) => !has(k));
+}
+
+const joinAnd = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0]);
 
 /** The warnings as the checklist files them: what is fixed in the aircraft's record (TAS, burn rate,
  *  envelope) belongs to the Aircraft row. */
@@ -96,18 +116,24 @@ const FILED_OPEN = new Set(['filed', 'manual_correction', 'departed', 'arriving'
 export function readiness(i: ReadinessInput): ReadyItem[] {
   const w = i.warnings;
   const items: ReadyItem[] = [];
-  // A new pilot's profile first: it goes on the flight plan and the forms.
-  if (i.profileMissing.length)
+  // The PIC's details first: the papers cannot be finished without them.
+  if (i.picMissing.length) {
+    const papers = [...new Set(i.picMissing.flatMap((k) => NEEDED_BY[k]))];
+    const what = joinAnd(
+      i.picMissing.map((k) => ({ fullName: 'name', phone: 'phone', idNumber: 'ID or passport number' })[k]),
+    );
+    const link = fixLink({ kind: 'person', key: 'PIC', fields: i.picMissing }, {});
     items.push({
       id: 'profile',
       stage: 'plan',
       state: 'todo',
-      label: 'Your profile',
-      text: `Add your ${i.profileMissing.join(' and ')}: they go on the flight plan and the forms.`,
+      label: 'Your details',
+      text: `${joinAnd(papers).replace(/^t/, 'T')} need${papers.length > 1 ? '' : 's'} your ${what}.`,
       warning: null,
       section: 'route',
-      link: { label: 'Profile', to: '/profile' },
+      ...(link ? { link } : {}),
     });
+  }
   items.push(
     i.routePoints >= 2
       ? fromWarnings(w, ['navlog'], { id: 'route', stage: 'plan', label: 'Route and altitudes', section: 'route' })

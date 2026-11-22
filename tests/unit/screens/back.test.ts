@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { backLabel, backTarget, safePath, withBack } from '../../../src/app/back';
-import { nextPath } from '../../../src/features/profile/ProfilePage';
 
 describe('out and back (?back=)', () => {
   it('takes in-app paths only', () => {
@@ -39,11 +38,5 @@ describe('out and back (?back=)', () => {
     expect(backLabel('/flights/f1?x=1')).toBe('Back to the flight');
     expect(backLabel('/flights/f1/export/nope')).toBe('Back');
     expect(backLabel('/hangar')).toBe('Back');
-  });
-
-  it('the first-use profile goes on to ?next= the same way', () => {
-    expect(nextPath('/flights/f1/export/form731')).toBe('/flights/f1/export/form731');
-    expect(nextPath('/\\evil.example')).toBe('/');
-    expect(nextPath('/profile?focus=phone')).toBe('/');
   });
 });

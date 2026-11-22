@@ -1,10 +1,10 @@
 Pig's Gotta Fly is a native app (SwiftUI and MapLibre) for VFR pilots in Greece (the Athinai FIR): a moving map for flying the route with GPS, the morning-of-flight brief and the navlog. Full planning, filing and the forms are on the website, pigsgottafly.com, with the same account.
 
 SIGNING IN
-No demo account is needed. Tap "Sign in": a sign-in sheet opens on pigsgottafly.com. Choose "Sign in with Apple" (Google also works). A new account starts empty: the app first asks for a name, a phone number and a home aerodrome (any values will do; for the home aerodrome search "LGTT").
+No demo account is needed. Tap "Sign in": a sign-in sheet opens on pigsgottafly.com. Choose "Sign in with Apple" (Google also works). A new account starts empty and nothing is asked at sign-up.
 
 TRYING IT WITH THE EMPTY ACCOUNT
-1. Flights → "New flight" (the + at the top, or the button on the empty list). From is the home aerodrome (LGTT); for To, search "LGSY" (Skyros). Keep the date and time. The hangar is empty, so type a registration (for example SX-ABC): a Reims/Cessna F172M is added from the template. Tap Create: the flight opens.
+1. Flights → "New flight" (the + at the top, or the button on the empty list). For From, search "LGTT" (switch on "Make the departure my home aerodrome" to start there next time); for To, search "LGSY" (Skyros). Keep the date and time. The hangar is empty: type a registration (for example SX-ABC) and a Reims/Cessna F172M is added from the template, or leave it empty. Tap Create: the flight opens.
 2. Fly: the moving map with the route. Allow location when asked. On a device or in the Simulator (Features → Location), the app works anywhere: the map shows where you are relative to the route, and the strips show the next waypoint, its distance and bearing, the ETA and the frequencies. In Greece, near Athens, you see it as a pilot would in flight.
 3. Brief: the "Ready to fly" checklist, METAR and TAF, NOTAMs, aerodrome hours and the flight plan's status.
 4. Navlog: the legs with altitude, heading, distance, time and fuel. Tap a leg to change its altitude; under Route, "Add a point" (search "KALAMO", a VFR reporting point) and swipe a point to remove it.

@@ -1,13 +1,10 @@
 import SwiftUI
 
-/// The pilot's name, phone and home aerodrome (PUT /api/me). A new pilot is asked for them first
-/// (`welcome`), as on the website: the name and phone go on the flight plan and the forms, and new
-/// flights start at the home aerodrome.
+/// The pilot's name, phone and home aerodrome (PUT /api/me). None is required, as on the website: a
+/// new account has only its e-mail, and the flight plan and the forms ask for what they lack.
 struct ProfileView: View {
     @EnvironmentObject private var app: AppModel
-    @EnvironmentObject private var session: Session
     @Environment(\.dismiss) private var dismiss
-    var welcome: Bool
 
     @State private var fullName = ""
     @State private var phone = ""
@@ -18,14 +15,6 @@ struct ProfileView: View {
 
     var body: some View {
         Form {
-            if welcome {
-                Section {
-                    Text(
-                        "Welcome. Your name and phone go on the flight plan and the forms; new flights start at your home aerodrome."
-                    )
-                    .font(.callout)
-                }
-            }
             Section("Pilot") {
                 TextField("Full name", text: $fullName)
                     .textContentType(.name)
@@ -52,32 +41,20 @@ struct ProfileView: View {
             if let error {
                 Section { Text(error).foregroundStyle(.red) }
             }
-            if welcome {
-                Section {
-                    Button("Sign out", role: .destructive) { Task { await session.signOut() } }
-                        .frame(minHeight: 44)
-                }
-            }
         }
-        .navigationTitle(welcome ? "Your profile" : "Profile")
+        .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 if busy {
                     ProgressView()
                 } else {
-                    Button(welcome ? "Continue" : "Save") { Task { await save() } }
-                        .disabled(!ready)
+                    Button("Save") { Task { await save() } }
                         .accessibilityIdentifier("save-profile")
                 }
             }
         }
         .task { await load() }
-    }
-
-    private var ready: Bool {
-        !fullName.trimmingCharacters(in: .whitespaces).isEmpty && !phone.trimmingCharacters(in: .whitespaces).isEmpty
-            && home != nil && !busy
     }
 
     private func load() async {
@@ -98,7 +75,7 @@ struct ProfileView: View {
         defer { busy = false }
         do {
             try await app.saveProfile(fullName: fullName, phone: phone, home: home)
-            if !welcome { dismiss() }
+            dismiss()
         } catch {
             if !isCancellation(error) { self.error = error.localizedDescription }
         }

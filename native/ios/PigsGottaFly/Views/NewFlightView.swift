@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// New flight: departure and destination, date and block-off time (UTC), and the aircraft; POST
-/// /api/flights, then the flight opens. A pilot with no aircraft names one, and it is made from the
-/// hangar's type template, as the website's Add aircraft does.
+/// /api/flights, then the flight opens. Only the route is required. A pilot with no aircraft may name
+/// one, and it is made from the hangar's type template, as the website's Add aircraft does. Without a
+/// home aerodrome the departure can become it, so the next new flight starts there.
 struct NewFlightView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -16,6 +17,7 @@ struct NewFlightView: View {
     @State private var aircraft: [AircraftItem]?
     @State private var aircraftId: String?
     @State private var registration = ""
+    @State private var makeHome = false
     @State private var busy = false
     @State private var error: String?
 
@@ -33,6 +35,10 @@ struct NewFlightView: View {
                 Section("Route") {
                     placeRow("From", place: $from, id: "new-from")
                     placeRow("To", place: $to, id: "new-to")
+                    if noHome {
+                        Toggle("Make the departure my home aerodrome", isOn: $makeHome)
+                            .accessibilityIdentifier("new-make-home")
+                    }
                 }
                 Section {
                     DatePicker("Date", selection: $date, displayedComponents: .date)
@@ -72,7 +78,7 @@ struct NewFlightView: View {
         if let list = aircraft {
             if list.isEmpty, let t = app.aircraftTemplates.first {
                 Section {
-                    TextField("Registration, e.g., SX-ABC", text: $registration)
+                    TextField("Registration (optional), e.g., SX-ABC", text: $registration)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("new-registration")
@@ -112,13 +118,10 @@ struct NewFlightView: View {
         .accessibilityIdentifier(id)
     }
 
-    private var ready: Bool {
-        guard from != nil, to != nil, !busy else { return false }
-        if aircraft?.isEmpty == true, !app.aircraftTemplates.isEmpty {
-            return !registration.trimmingCharacters(in: .whitespaces).isEmpty
-        }
-        return true
-    }
+    private var ready: Bool { from != nil && to != nil && !busy }
+
+    /// Offered only once the pilot has loaded without one.
+    private var noHome: Bool { app.pilot.map { ($0.homeAerodrome ?? "").isEmpty } ?? false }
 
     private func load() async {
         if from == nil, let home = app.pilot?.homeAerodrome {
@@ -147,11 +150,15 @@ struct NewFlightView: View {
         let choice: AppModel.AircraftChoice?
         if let id = aircraftId {
             choice = .existing(id)
-        } else if aircraft?.isEmpty == true, let t = app.aircraftTemplates.first {
-            choice = .template(id: t.id, registration: registration.trimmingCharacters(in: .whitespaces))
+        } else if aircraft?.isEmpty == true, let t = app.aircraftTemplates.first,
+            case let reg = registration.trimmingCharacters(in: .whitespaces), !reg.isEmpty
+        {
+            choice = .template(id: t.id, registration: reg)
         } else {
             choice = nil
         }
+        // a failed save does not stop the flight: the home aerodrome can be set in Account
+        if noHome && makeHome { try? await app.saveHome(from) }
         do {
             let id = try await app.createFlight(
                 from: from, to: to, date: Fmt.isoDay(from: date), blockOff: Fmt.clock(date), aircraft: choice)

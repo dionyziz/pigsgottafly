@@ -108,9 +108,6 @@ final class AppModel: ObservableObject {
     /// GET /api/me (the cached copy until it answers).
     @Published private(set) var pilot: PilotProfile?
 
-    /// A new pilot is asked for name, phone and home aerodrome first, as on the website.
-    var needsProfile: Bool { !(pilot?.missing.isEmpty ?? true) }
-
     func loadPilot() async {
         if pilot == nil { pilot = store.decode(PilotProfile.self, .pilot) }
         do {
@@ -125,6 +122,13 @@ final class AppModel: ObservableObject {
     func saveProfile(fullName: String, phone: String, home: Place?) async throws {
         guard let current = pilot else { throw APIError.http(0, "The profile has not loaded yet.") }
         let data = try await api.updateMe(current.update(fullName: fullName, phone: phone, home: home))
+        pilot = try api.decode(PilotProfile.self, data)
+        try? store.write(data, .pilot)
+    }
+
+    /// New flight's "Make it my home aerodrome": only the home aerodrome changes.
+    func saveHome(_ home: Place) async throws {
+        let data = try await api.updateMe(["homeAerodrome": .string(home.code)])
         pilot = try api.decode(PilotProfile.self, data)
         try? store.write(data, .pilot)
     }

@@ -2,12 +2,14 @@
 import { describe, expect, test } from 'vitest';
 
 import type { CalcWarning } from '../../../src/features/editor/panels/calc';
-import { readiness, stageSummary } from '../../../src/features/editor/panels/readiness';
+import { picMissingOf, readiness, stageSummary } from '../../../src/features/editor/panels/readiness';
+import type { PersonField } from '../../../src/features/exports/fix';
+import { EMPTY_PERSON } from '../../../src/shared';
 import type { FilingState, NotamBriefing } from '../../../src/shared/briefing';
 import type { FormsState } from '../../../src/shared/forms';
 
 const base = {
-  profileMissing: [] as string[],
+  picMissing: [] as PersonField[],
   routePoints: 2,
   hasAircraft: true,
   warnings: [] as CalcWarning[],
@@ -25,14 +27,28 @@ describe('readiness', () => {
     expect([r.route.state, r.aircraft.state, r.fuel.state, r.wb.state]).toEqual(['todo', 'todo', 'ok', 'ok']);
     expect(r.route.text).toBe('Draw the route on the map.');
   });
-  test('a missing name or phone comes first, with the way to the profile', () => {
-    const r = readiness({ ...base, profileMissing: ['name', 'phone'] });
+  test("the PIC's missing details come first, each with the papers that need it and the way to add them", () => {
+    const r = readiness({ ...base, picMissing: ['fullName', 'phone', 'idNumber'] });
     expect(r[0]).toMatchObject({
       id: 'profile',
       state: 'todo',
-      text: 'Add your name and phone: they go on the flight plan and the forms.',
-      link: { to: '/profile' },
+      label: 'Your details',
+      text: 'The flight plan and Form 731 need your name, phone and ID or passport number.',
+      link: { to: '/passengers?edit=me&fields=fullName,phone,idNumber', label: 'Add your name, phone and ID number' },
     });
+    expect(readiness({ ...base, picMissing: ['idNumber'] })[0]).toMatchObject({
+      text: 'Form 731 needs your ID or passport number.',
+      link: { to: '/passengers?edit=me&fields=idNumber' },
+    });
+    // nothing missing (a pilot with all three, or a flight shared with them): no row
+    expect(readiness(base).some((x) => x.id === 'profile')).toBe(false);
+  });
+  test("what the PIC lacks: the flight's PIC entry first, then the pilot's details", () => {
+    const pilot = { ...EMPTY_PERSON, fullName: 'Test Pilot' };
+    expect(picMissingOf([], pilot)).toEqual(['phone', 'idNumber']);
+    expect(picMissingOf([], EMPTY_PERSON)).toEqual(['fullName', 'phone', 'idNumber']);
+    const crew = [{ role: 'PIC' as const, snapshot: { ...EMPTY_PERSON, phone: '+30 1', idNumber: ' ' } }];
+    expect(picMissingOf(crew, pilot)).toEqual(['idNumber']);
   });
   test('warnings go to their row: the worst sets the state and the text, with a count of the rest', () => {
     const warnings: CalcWarning[] = [

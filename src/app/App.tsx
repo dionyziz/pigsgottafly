@@ -1,18 +1,16 @@
 // The /admin pages are for ADMIN_EMAILS only. v2 links (/#/f/<id>) still work (LegacyHashRedirect).
-import { lazy, type ReactNode, Suspense, useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router';
 
 import { AircraftPage, HangarPage } from '../features/hangar';
 import { LobbyPage } from '../features/lobby';
 import { NewFlightPage } from '../features/lobby/NewFlightPage';
 import { PassengersPage } from '../features/passengers';
 import { ProfilePage } from '../features/profile';
-import { profileMissing } from '../shared';
 import { Loading } from '../ui';
 import { AboutPage } from './AboutPage';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
-import { useSession } from './session';
 import { RouteTitle } from './title';
 import { ToastProvider } from './toast';
 
@@ -50,18 +48,6 @@ function LegacyHashRedirect() {
     else if (window.location.hash === '#/new') void navigate('/flights/new', { replace: true });
   }, [navigate]);
   return null;
-}
-
-/** First use: until name, phone and home aerodrome are set, the profile page (welcome mode) comes first,
- * then the page that was being opened (e.g. the link in a share e-mail). */
-function Onboarding({ children }: { children: ReactNode }) {
-  const { pilot } = useSession();
-  const loc = useLocation();
-  if (profileMissing(pilot).length && !loc.pathname.startsWith('/profile')) {
-    const next = loc.pathname === '/' ? '' : `&next=${encodeURIComponent(loc.pathname + loc.search)}`;
-    return <Navigate to={`/profile?welcome=1${next}`} replace />;
-  }
-  return <>{children}</>;
 }
 
 export function App() {
@@ -108,28 +94,26 @@ export function App() {
               element={
                 <AuthGate>
                   <LegacyHashRedirect />
-                  <Onboarding>
-                    <Suspense fallback={<Loading variant="screen" />}>
-                      <Routes>
-                        <Route path="/" element={<LobbyPage />} />
-                        <Route path="/flights/new" element={<NewFlightPage />} />
-                        <Route path="/flights/:id" element={<EditorPage />} />
-                        <Route path="/flights/:id/export/:kind" element={<ExportPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/hangar" element={<HangarPage />} />
-                        <Route path="/hangar/:id" element={<AircraftPage />} />
-                        <Route path="/operators" element={<OperatorsPage />} />
-                        <Route path="/operators/:id" element={<OperatorPage />} />
-                        <Route path="/admin" element={<AdminPage />} />
-                        <Route path="/admin/errors" element={<ErrorsPage />} />
-                        <Route path="/admin/mail" element={<MailPage />} />
-                        <Route path="/passengers" element={<PassengersPage />} />
-                        <Route path="/waypoints" element={<WaypointsPage />} />
-                        <Route path="/about" element={<AboutPage />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                      </Routes>
-                    </Suspense>
-                  </Onboarding>
+                  <Suspense fallback={<Loading variant="screen" />}>
+                    <Routes>
+                      <Route path="/" element={<LobbyPage />} />
+                      <Route path="/flights/new" element={<NewFlightPage />} />
+                      <Route path="/flights/:id" element={<EditorPage />} />
+                      <Route path="/flights/:id/export/:kind" element={<ExportPage />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/hangar" element={<HangarPage />} />
+                      <Route path="/hangar/:id" element={<AircraftPage />} />
+                      <Route path="/operators" element={<OperatorsPage />} />
+                      <Route path="/operators/:id" element={<OperatorPage />} />
+                      <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/admin/errors" element={<ErrorsPage />} />
+                      <Route path="/admin/mail" element={<MailPage />} />
+                      <Route path="/passengers" element={<PassengersPage />} />
+                      <Route path="/waypoints" element={<WaypointsPage />} />
+                      <Route path="/about" element={<AboutPage />} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Suspense>
                 </AuthGate>
               }
             />

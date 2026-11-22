@@ -16,7 +16,7 @@ struct AccountView: View {
                 }
                 Section {
                     NavigationLink {
-                        ProfileView(welcome: false)
+                        ProfileView()
                     } label: {
                         Label("Profile", systemImage: "person.text.rectangle")
                     }

@@ -6,7 +6,7 @@ import Foundation
 // and VFR points, the pilot's saved waypoints) and the route edits, as the website makes them
 // (src/shared/aerodrome.ts aerodromePoint, src/features/editor/map/snap.ts, routeEdit.ts).
 
-/// GET /api/me: the fields the app shows and asks a new pilot for.
+/// GET /api/me: the fields the app shows (a new account has only its e-mail).
 struct PilotProfile: Codable, Equatable {
     var id: String
     var email: String
@@ -17,33 +17,16 @@ struct PilotProfile: Codable, Equatable {
     var defaultAircraftId: String?
     var settings: JSON?
 
-    enum Field: String, CaseIterable {
-        case fullName, phone, homeAerodrome
-    }
-
-    /// What the website asks a new pilot for before anything else (src/shared/constants.ts profileMissing).
-    var missing: [Field] {
-        var out: [Field] = []
-        if fullName.trimmingCharacters(in: .whitespaces).isEmpty { out.append(.fullName) }
-        if phone.trimmingCharacters(in: .whitespaces).isEmpty { out.append(.phone) }
-        if (homeAerodrome ?? "").isEmpty { out.append(.homeAerodrome) }
-        return out
-    }
-
-    /// PUT /api/me as the website's first-use profile sends it (src/features/profile/ProfilePage.tsx
-    /// profileUpdate): the name with single spaces, the phone, the home aerodrome's code, and taxi
-    /// times of 15 minutes when the profile has none yet.
+    /// PUT /api/me as the website's profile sends these fields (src/features/profile/ProfilePage.tsx
+    /// profileUpdate): the name with single spaces, the phone, the home aerodrome's code. Any of them
+    /// may be empty.
     func update(fullName: String, phone: String, home: Place?) -> JSON {
         let name = fullName.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        var patch: [String: JSON] = [
+        return [
             "fullName": .string(name),
             "phone": .string(phone.trimmingCharacters(in: .whitespacesAndNewlines)),
             "homeAerodrome": home.map { .string($0.code) } ?? .null,
         ]
-        var s: [String: JSON] = [:]
-        for k in ["taxiOutMin", "taxiInMin"] where settings?[k]?.double == nil { s[k] = 15 }
-        if !s.isEmpty { patch["settings"] = .object(s) }
-        return .object(patch)
     }
 }
 
