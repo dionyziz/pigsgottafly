@@ -19,5 +19,8 @@
 .sign-button { width: 100%; padding: 14px; font-size: 16px; border-radius: 10px; }
 .sign-done { padding: 12px 14px; border-radius: 10px; background: var(--ok-soft); color: var(--ok); font-weight: 600; margin: 0; }
 .sign-err { color: var(--danger); }
-.sign-fine { font-size: 12.5px; color: var(--muted); margin: 14px 0 0; }
+.sign-edit { display: grid; gap: 10px; margin-top: 6px; }
+.sign-edit input { width: 100%; box-sizing: border-box; }
+.sign-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.sign-edit-button { padding: 2px 8px; font-size: 13px; margin-left: auto; }
 @media (max-width: 420px) { .sign-facts { grid-template-columns: 1fr; } }

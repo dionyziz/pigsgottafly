@@ -28,6 +28,8 @@ export const RATES = {
   ref: { burst: 60, windowMs: HOUR },
   /** POST /aircraft/:id/shares, /operators/:id/shares, /flights/:id/shares and /invitations, per pilot */
   share: { burst: 30, windowMs: 24 * HOUR },
+  /** PUT /sign/:token/details (a passenger correcting their details, no sign-in), per signing link */
+  signDetails: { burst: 20, windowMs: HOUR },
   /** POST /client-errors (unauthenticated error reports), per IP */
   clientErrors: { burst: 30, windowMs: 10 * MIN },
 } satisfies Record<string, Rate>;
@@ -45,12 +47,12 @@ export function clientIp(req: Req): string {
 export async function takeTokens(
   db: Queryable,
   name: keyof typeof RATES,
-  who: { pilotId?: string | null; req?: Req },
+  who: { pilotId?: string | null; req?: Req; subject?: string },
   cost = 1,
   rate: Rate = RATES[name],
 ): Promise<{ ok: boolean; tokens: number; perMs: number }> {
   const pilotId = who.pilotId || null;
-  const subject = pilotId ? `p:${pilotId}` : `ip:${who.req ? clientIp(who.req) : 'unknown'}`;
+  const subject = who.subject ?? (pilotId ? `p:${pilotId}` : `ip:${who.req ? clientIp(who.req) : 'unknown'}`);
   const now = Date.now();
   const perMs = rate.burst / rate.windowMs;
   const [r] = await db.query(
@@ -73,7 +75,7 @@ export async function takeTokens(
 export async function rateLimit(
   db: Queryable,
   name: keyof typeof RATES,
-  who: { pilotId?: string | null; req?: Req },
+  who: { pilotId?: string | null; req?: Req; subject?: string },
   rate: Rate = RATES[name],
 ): Promise<void> {
   const r = await takeTokens(db, name, who, 1, rate);

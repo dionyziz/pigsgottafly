@@ -15,6 +15,9 @@
 // signing links are capped per pilot and per flight in any 24 hours (api/_lib/sendCaps.ts, 429).
 //   GET  /sign/:token                              the signing page's view (no sign-in): own row in full, others masked
 //   POST /sign/:token                              signs the current version of the form
+//   PUT  /sign/:token/details                      the signer corrects their own row (name, ID, phone): their saved
+//                                                  passenger record and this flight's manifest; what changed is kept
+//                                                  with the link and told to the pilot in the "signed" e-mail
 // A signature is for one version of the form (SHA-256 of every field, form731SigningText): when
 // anything on the form changes, earlier signatures no longer count and the panel shows who must sign
 // again. Links give access to that one form only, are stored hashed, can be revoked and expire at the
@@ -28,6 +31,7 @@ import crypto from 'node:crypto';
 
 import { aerodromeNotamEffects, type GenDecHandling, genDecHandling } from '../../../src/calc/aerodromeStatus.js';
 import type { NotamBriefing } from '../../../src/shared/briefing.js';
+import { EMPTY_PERSON } from '../../../src/shared/constants.js';
 import { fmtDate } from '../../../src/shared/date.js';
 import {
   type AerodromeLookup,
@@ -44,21 +48,26 @@ import {
   genDecText,
   maskTail,
   type SignatureState,
+  SIGNER_DETAIL_KEYS,
+  SIGNER_DETAIL_LABELS,
+  type SignerDetails,
+  signerDetailsOf,
   type SigningView,
   type SubmissionState,
 } from '../../../src/shared/forms.js';
 import type { RefAerodrome } from '../../../src/shared/ref.js';
 import type { RoutePoint } from '../../../src/shared/types.js';
-import type { Aircraft, Flight, Pilot } from '../../../src/shared/types.js';
+import type { Aircraft, Flight, PersonKey, Pilot } from '../../../src/shared/types.js';
 import { accessibleSql, AIRCRAFT_FROM, flightFor } from '../access.js';
 import { hashToken } from '../auth.js';
-import type { Queryable, Row } from '../db.js';
+import type { Db, Queryable, Row } from '../db.js';
 import { flightContext, loadRef } from '../flightContext.js';
 import { form731Pdf, genDecPdf, type PdfSignature } from '../formPdf.js';
-import type { Route } from '../http.js';
+import type { JsonBody, Route } from '../http.js';
 import { appOrigin, badRequest, conflict, HttpError, newId, notFound } from '../http.js';
 import { mailAvailability, MailError, sendMail, sendSystemMail } from '../mail.js';
-import { toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
+import { rateLimit } from '../rateLimit.js';
+import { personColumns, toAircraft, toFlight, toPassenger, toPilot } from '../rows.js';
 import { checkLinkCap, mailFailed, mailSent, reserveMail } from '../sendCaps.js';
 
 const DAY = 86400e3;
@@ -560,6 +569,94 @@ async function signingView(db: Queryable, L: Loaded, holder: Form731Person): Pro
   };
 }
 
+// ---------------------------------------------------------------- the signer's own details
+
+type DetailKey = keyof SignerDetails;
+/** What a signer changed since their link last signed: each field's first value → latest value. */
+interface DetailsChanged {
+  fields: Partial<Record<DetailKey, { from: string; to: string }>>;
+  /** Other passengers (the PIC re-signs automatically) whose signatures the change invalidated. */
+  resign: string[];
+}
+
+/** The body of PUT /sign/:token/details, checked and normalized as a passenger record is (rows.ts personColumns). */
+function signerInput(b: JsonBody, cur: SignerDetails): SignerDetails {
+  const unknown = Object.keys(b).filter((k) => !(SIGNER_DETAIL_KEYS as readonly string[]).includes(k));
+  if (unknown.length) throw badRequest(`only ${SIGNER_DETAIL_KEYS.join(', ')} can be changed here`);
+  const p = personColumns(b, { ...EMPTY_PERSON, ...cur });
+  const out: SignerDetails = { fullName: p.fullName.replace(/\s+/g, ' '), idNumber: p.idNumber, phone: p.phone };
+  if (!out.fullName) throw badRequest('fullName is required');
+  return out;
+}
+
+/**
+ * Saves the signer's corrections to the pilot's passenger record (a passenger without one has only the
+ * manifest) and to this flight's manifest row, whose snapshot the forms read first; the corrected
+ * fields follow the record again. The flight's version moves on, so an editor still open on the old
+ * manifest reloads it instead of saving it back.
+ */
+async function saveSignerDetails(
+  db: Db,
+  L: Loaded,
+  me: Form731Person,
+  linkId: string,
+  next: SignerDetails,
+  changed: DetailKey[],
+): Promise<void> {
+  const seat = me.key.startsWith('seat:') ? me.key.slice(5) : null;
+  await db.transaction(async (tx) => {
+    if (!seat)
+      await tx.query(
+        'UPDATE passengers SET full_name = $3, id_number = $4, phone = $5, updated = $6 WHERE id = $1 AND pilot_id = $2',
+        [me.key, L.pilot.id, next.fullName, next.idNumber, next.phone, Date.now()],
+      );
+    const rows = await tx.query(
+      seat
+        ? "SELECT position, snapshot, overrides FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2 AND role = 'PAX' AND passenger_id IS NULL AND seat = $3"
+        : 'SELECT position, snapshot, overrides FROM flight_crew WHERE flight_id = $1 AND pilot_id = $2 AND passenger_id = $3',
+      [L.flight.id, L.pilot.id, seat ?? me.key],
+    );
+    for (const r of rows) {
+      const snapshot = { ...(r.snapshot ?? {}) };
+      for (const k of changed) snapshot[k] = next[k];
+      const overrides = ((r.overrides ?? []) as PersonKey[]).filter((k) => seat || !changed.includes(k as DetailKey));
+      await tx.query(
+        'UPDATE flight_crew SET snapshot = $4::jsonb, overrides = $5::jsonb WHERE flight_id = $1 AND pilot_id = $2 AND position = $3',
+        [L.flight.id, L.pilot.id, r.position, JSON.stringify(snapshot), JSON.stringify(overrides)],
+      );
+    }
+    await tx.query(
+      `UPDATE flights SET version = version + 1, updated = (extract(epoch FROM clock_timestamp()) * 1000)::BIGINT
+       WHERE id = $1 AND pilot_id = $2`,
+      [L.flight.id, L.pilot.id],
+    );
+    // a passenger without a record is their name and ID number (personHash): their link follows the correction
+    if (seat)
+      await tx.query('UPDATE form_links SET person_hash = $2 WHERE id = $1', [
+        linkId,
+        personHash({ key: me.key, name: next.fullName, idPassport: next.idNumber }),
+      ]);
+  });
+}
+
+/** This edit added to what the link holds already: first value → latest value; a field back where it began is dropped. */
+function accumulate(
+  prev: DetailsChanged | null,
+  cur: SignerDetails,
+  next: SignerDetails,
+  changed: DetailKey[],
+  resign: string[],
+): DetailsChanged | null {
+  const fields = { ...(prev?.fields ?? {}) };
+  for (const k of changed) {
+    const from = fields[k]?.from ?? cur[k];
+    if (from === next[k]) delete fields[k];
+    else fields[k] = { from, to: next[k] };
+  }
+  if (!Object.keys(fields).length) return null;
+  return { fields, resign: [...new Set([...(prev?.resign ?? []), ...resign])] };
+}
+
 export const routes: Route[] = [
   {
     method: 'GET',
@@ -744,29 +841,93 @@ export const routes: Route[] = [
       );
       const after = await signingView(db, L, me);
       // only a new signature of this version: opening the link again or re-signing sends nothing
-      if (!before.signatures.find((s) => s.key === me.key)?.signedAt)
-        await notifySigned(L, me, after, appOrigin(req, config.secureCookie));
+      if (!before.signatures.find((s) => s.key === me.key)?.signedAt) {
+        const changes = (l.details_changed ?? null) as DetailsChanged | null;
+        await notifySigned(L, me, after, appOrigin(req, config.secureCookie), changes);
+        if (changes) await db.query('UPDATE form_links SET details_changed = NULL WHERE id = $1', [l.id]);
+      }
       return after;
+    },
+  },
+  {
+    method: 'PUT',
+    path: '/sign/:token/details',
+    auth: false,
+    async handler({ db, params, body }) {
+      const { l, L, me } = await linkOf(db, params.token);
+      await rateLimit(db, 'signDetails', { subject: `link:${l.id}` });
+      const cur = signerDetailsOf(me);
+      const next = signerInput(await body(), cur);
+      const changed = SIGNER_DETAIL_KEYS.filter((k) => next[k] !== cur[k]);
+      if (!changed.length) return signingView(db, L, me);
+      const validBefore = (await signatureRows(db, L.pilot.id, L.flight.id))
+        .filter((s) => s.text_hash === L.hash731 && s.person_key !== me.key)
+        .map((s) => s.person_key as string);
+      await saveSignerDetails(db, L, me, l.id, next, changed);
+      const after = await linkOf(db, params.token);
+      await signPic(db, after.L);
+      const validAfter = new Set(
+        (await signatureRows(db, L.pilot.id, L.flight.id))
+          .filter((s) => s.text_hash === after.L.hash731)
+          .map((s) => s.person_key as string),
+      );
+      const resign = validBefore.filter(
+        (k) => !validAfter.has(k) && after.L.c731.people.some((p) => p.key === k && p.role === 'PAX'),
+      );
+      const changes = accumulate(after.l.details_changed ?? null, cur, next, changed, resign);
+      await db.query('UPDATE form_links SET details_changed = $2::jsonb WHERE id = $1', [
+        l.id,
+        changes && JSON.stringify(changes),
+      ]);
+      return signingView(db, after.L, after.me);
     },
   },
 ];
 
-/** Tells the pilot a passenger signed Form 731 (best effort: the signature stands even if the mail fails). */
-async function notifySigned(L: Loaded, signer: Form731Person, view: SigningView, origin: string): Promise<void> {
+/**
+ * Tells the pilot a passenger signed Form 731 (best effort: the signature stands even if the mail fails),
+ * with the details they corrected before signing, unmasked (they are the pilot's own records), and who
+ * has to sign again because of it.
+ */
+async function notifySigned(
+  L: Loaded,
+  signer: Form731Person,
+  view: SigningView,
+  origin: string,
+  changes: DetailsChanged | null,
+): Promise<void> {
   const to = String(L.pilot.email || '').trim();
   if (!to || !mailAvailability().enabled) return;
   const signed = view.signatures.filter((s) => s.signedAt != null).length;
   const total = view.signatures.length;
   const flight = [L.flight.title.trim(), fmtDate(L.flight.date)].filter(Boolean).join(', ');
+  const fields = SIGNER_DETAIL_KEYS.flatMap((k) => {
+    const c = changes?.fields[k];
+    return c ? [{ k, ...c }] : [];
+  });
+  const resign = (changes?.resign ?? [])
+    .filter((k) => !view.signatures.find((s) => s.key === k)?.signedAt)
+    .map((k) => L.c731.people.find((p) => p.key === k)?.name)
+    .filter((n): n is string => !!n);
+  const shown = (v: string) => v || '(none)';
   const text = [
     `${signer.name} signed Form 731 for your flight ${flight}.`,
     signed === total
       ? `Everyone has signed (${signed} of ${total}): it is ready to send to HCAA.`
       : `${signed} of ${total} signed.`,
+    ...(fields.length
+      ? [
+          '',
+          `${signer.name} changed their details:`,
+          ...fields.map((f) => `  ${SIGNER_DETAIL_LABELS[f.k]}: ${shown(f.from)} → ${shown(f.to)}`),
+        ]
+      : []),
+    ...(resign.length ? ['', `These signatures need to be given again: ${resign.join(', ')}.`] : []),
     '',
     `${origin}/flights/${L.flight.id}/export/form731`,
   ].join('\n');
-  await sendSystemMail({ to: [to], subject: `Form 731 signed by ${signer.name}`, text }).catch((e) =>
+  const subject = `Form 731 signed by ${signer.name}${fields.length ? ' (details changed)' : ''}`;
+  await sendSystemMail({ to: [to], subject, text }).catch((e) =>
     console.warn('731 signed mail:', String((e as Error)?.message || e)),
   );
 }

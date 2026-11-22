@@ -47,7 +47,7 @@ import type {
   WbPerfContent,
 } from '../shared';
 import type { FileRequest, FilingState } from '../shared/briefing';
-import type { FormsState, SigningView } from '../shared/forms';
+import type { FormsState, SignerDetails, SigningView } from '../shared/forms';
 import type { AppErrorDetail, AppErrorGroup } from '../shared/monitoring';
 import { type EntityKey, invalidate, putEntity } from './entityStore';
 
@@ -333,6 +333,8 @@ export const api = {
   sign: {
     view: (token: string) => request<SigningView>('GET', `sign/${encodeURIComponent(token)}`),
     sign: (token: string) => request<SigningView>('POST', `sign/${encodeURIComponent(token)}`),
+    details: (token: string, d: SignerDetails) =>
+      request<SigningView>('PUT', `sign/${encodeURIComponent(token)}/details`, d),
   },
   /** Flight-plan filing through autorouter (api/_lib/routes/filing.ts). 503 = filing not enabled. */
   filing: {
