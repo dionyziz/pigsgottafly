@@ -124,7 +124,7 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     [pilotId],
   );
   const all = (sql: string) => q.query(sql, [pilotId]);
-  const [links, signatures, submissions, briefings, filings, filingLog, mailLog, faxLog] = await Promise.all([
+  const [links, signatures, submissions, briefings, filings, filingLog, mailLog, faxLog, arLinks] = await Promise.all([
     all(
       'SELECT flight_id, person_key, created, first_opened, last_opened, revoked, expires FROM form_links WHERE pilot_id = $1 ORDER BY created',
     ),
@@ -143,6 +143,8 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     all(
       'SELECT flight_id, kind, at, recipient, unit, pages, result, error FROM fax_log WHERE pilot_id = $1 ORDER BY at',
     ),
+    // never the tokens: they act as the pilot's autorouter account
+    all('SELECT account, linked_at, broken_at FROM autorouter_links WHERE pilot_id = $1'),
   ]);
   const crewOf = (id: string) => crew.filter((c) => c.flight_id === id);
   return {
@@ -222,6 +224,12 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
       changes: l.changes,
       ...l.detail,
     })),
+    autorouter:
+      arLinks.map((l) => ({
+        account: l.account,
+        linkedAt: num(l.linked_at),
+        broken: num(l.broken_at),
+      }))[0] ?? null,
     invitationsSent: invited.map((i) => ({
       email: i.email,
       message: i.message,

@@ -1,6 +1,7 @@
 // autorouter behind the filing driver interface (types.ts): the client (../autorouter.ts) files over
-// AFTN and reports ATC's status, so every capability is there. Only for the pilots on
-// AUTOROUTER_PILOTS (the client is null for anyone else, app.ts) and with AUTOROUTER_FILING=1.
+// AFTN and reports ATC's status, so every capability is there. The client is the pilot's own linked
+// account (autorouterLinks.ts: the plan goes in their name), else the deployment's for the pilots on
+// AUTOROUTER_PILOTS with AUTOROUTER_FILING=1, else null (app.ts), and then the pilot is asked to connect.
 import { type AutorouterClient, AutorouterError } from '../autorouter.js';
 import { toStatus } from './status.js';
 import type { Filer } from './types.js';
@@ -17,12 +18,22 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export function autorouterFiler(ar: AutorouterClient | null, denied: boolean): Filer {
+export function autorouterFiler(
+  ar: AutorouterClient | null,
+  denied: boolean,
+  connect?: 'connect' | 'reconnect',
+): Filer {
   return {
     id: 'autorouter',
     labelFor: () => 'autorouter',
     capabilities: { file: true, delay: true, cancel: true, status: true, ackRej: true },
     availableFor() {
+      if (connect)
+        return {
+          available: false,
+          reason: connect === 'reconnect' ? 'Reconnect autorouter to file.' : 'Connect autorouter to file.',
+          connect,
+        };
       if (denied) return { available: false, reason: 'Filing is not available for this account.' };
       if (!ar) return { available: false, reason: 'Filing is not available on this server.' };
       if (!ar.filingEnabled) return { available: false, reason: 'Filing is not enabled on this server.' };

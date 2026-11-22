@@ -6,6 +6,7 @@ import { routes as admin } from './admin.js';
 import { routes as aircraft } from './aircraft.js';
 import { routes as appLogin } from './appLogin.js';
 import { routes as attachments } from './attachments.js';
+import { routes as autorouter } from './autorouter.js';
 import { routes as declarations } from './declarations.js';
 import { routes as files } from './files.js';
 import { routes as filing } from './filing.js';
@@ -31,6 +32,7 @@ export const ROUTES: Route[] = [
   ...appLogin,
   ...me,
   ...account,
+  ...autorouter,
   ...aircraft,
   ...attachments,
   ...files,

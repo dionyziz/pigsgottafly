@@ -28,6 +28,7 @@ import type { FormIssue } from '../passengers/formIssues';
 import { type PersonField, type PersonForm, personForm, personInput, validatePerson } from '../passengers/person';
 import { PersonFields, type SetPerson } from '../passengers/PersonFields';
 import { AccountSection } from './AccountSection';
+import { AutorouterSection } from './AutorouterSection';
 import { PilotDocuments } from './PilotDocuments';
 
 export interface ProfileForm extends PersonForm {
@@ -335,6 +336,7 @@ export function ProfilePage() {
         )}
       </form>
       <PilotDocuments />
+      <AutorouterSection />
       <AccountSection />
     </Shell>
   );

@@ -12,6 +12,9 @@ struct ProfileView: View {
     @State private var loaded = false
     @State private var busy = false
     @State private var error: String?
+    @State private var autorouter: AutorouterLink?
+    @State private var linking = false
+    @State private var connector = AutorouterConnect()
 
     var body: some View {
         Form {
@@ -38,6 +41,30 @@ struct ProfileView: View {
                 }
                 .accessibilityIdentifier("profile-home")
             }
+            if let link = autorouter, link.enabled {
+                Section("autorouter") {
+                    HStack {
+                        Text(
+                            link.connected
+                                ? "Connected" + (link.account.map { " · \($0)" } ?? "")
+                                : link.broken ? "Connection refused by autorouter" : "Not connected"
+                        )
+                        .accessibilityIdentifier("autorouter-state")
+                        Spacer()
+                        if linking { ProgressView() }
+                    }
+                    if !link.connected {
+                        Button(link.broken ? "Reconnect" : "Connect") { Task { await connect() } }
+                            .disabled(linking)
+                            .accessibilityIdentifier("autorouter-connect")
+                    }
+                    if link.connected || link.broken {
+                        Button("Disconnect", role: .destructive) { Task { await disconnect() } }
+                            .disabled(linking)
+                            .accessibilityIdentifier("autorouter-disconnect")
+                    }
+                }
+            }
             if let error {
                 Section { Text(error).foregroundStyle(.red) }
             }
@@ -55,6 +82,31 @@ struct ProfileView: View {
             }
         }
         .task { await load() }
+        .task { autorouter = try? await app.api.autorouter() }
+    }
+
+    private func connect() async {
+        linking = true
+        error = nil
+        defer { linking = false }
+        do {
+            let result = await connector.run(try await app.api.autorouterConnectURL())
+            if result == "failed" { error = "autorouter did not connect. Try again." }
+            autorouter = try await app.api.autorouter()
+        } catch {
+            if !isCancellation(error) { self.error = error.localizedDescription }
+        }
+    }
+
+    private func disconnect() async {
+        linking = true
+        error = nil
+        defer { linking = false }
+        do {
+            autorouter = try await app.api.autorouterDisconnect()
+        } catch {
+            if !isCancellation(error) { self.error = error.localizedDescription }
+        }
     }
 
     private func load() async {

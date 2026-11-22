@@ -324,6 +324,7 @@ export const routes: Route[] = [
   {
     method: 'GET',
     path: '/flights/:id/filing',
+    autorouter: true,
     async handler({ db, pilot, params, filers }) {
       // a pilot the flight is shared with sees its filing (read-only): the owner's record and log
       const g = await flightFor(db, pilot, params.id);
@@ -333,6 +334,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/filing',
+    autorouter: true,
     async handler({ db, pilot, params, body, filers }) {
       await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       const ctx = await flightContext(db, pilot.id, params.id); // 404 for someone else's flight, before anything is logged
@@ -411,6 +413,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/filing/delay',
+    autorouter: true,
     async handler({ db, pilot, params, body, filers }) {
       await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       await flightContext(db, pilot.id, params.id);
@@ -449,6 +452,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/filing/cancel',
+    autorouter: true,
     async handler({ db, pilot, params, body, filers }) {
       await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       await flightContext(db, pilot.id, params.id);
@@ -496,6 +500,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/filing/refresh',
+    autorouter: true,
     async handler({ db, pilot, params, filers }) {
       await flightFor(db, pilot, params.id, 'owner'); // sends ATC messages in the owner's name
       await flightContext(db, pilot.id, params.id);

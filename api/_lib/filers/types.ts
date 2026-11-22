@@ -78,6 +78,8 @@ export interface StatusOutcome {
 export interface Availability {
   available: boolean;
   reason: string | null;
+  /** Available once the pilot connects (or reconnects) their own account. */
+  connect?: 'connect' | 'reconnect';
 }
 
 export interface Filer {

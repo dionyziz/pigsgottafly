@@ -3,9 +3,11 @@
 // filed the plan and what it can tell: autorouter reports ATC's acknowledgement or rejection, a fax only
 // its delivery. The AFTN addressees the server proposes from AIP Greece ENR 1.11
 // (api/_lib/addressees.ts) are still shown when the server cannot file, for filing by other means.
+// autorouter files with the pilot's own account: until it is linked, the panel offers to connect it
+// (and comes back here).
 import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
-import { api, ApiRequestError, peekGet } from '../../../data/api';
+import { api, ApiRequestError, autorouterConnectUrl, peekGet } from '../../../data/api';
 import { invalidate } from '../../../data/entities';
 import type { Flight } from '../../../shared';
 import {
@@ -127,6 +129,13 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   const enabled = !!st?.enabled;
   const usable = (st?.filers ?? []).filter((f) => f.available);
   const chosen = usable.some((f) => f.id === via) ? via : '';
+  // not for a pilot the flight is only shared with: the owner files it
+  const connect = (st?.filers ?? []).find(
+    (f) => f.id === 'autorouter' && f.connect && (enabled || st?.reason === f.reason),
+  )?.connect;
+  const connectOnly = !!connect && !usable.length && !open;
+  const connectHref = () =>
+    autorouterConnectUrl(window.location.pathname + window.location.search + window.location.hash);
   const addTyped = () => {
     const a = typed.trim().toUpperCase();
     if (!/^[A-Z]{8}$/.test(a)) return;
@@ -164,19 +173,31 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       }
       actions={
         <>
-          <button
-            className="primary"
-            data-testid="fpl-file"
-            disabled={!enabled || !complete || open || !!busy || !addresses.length}
-            title={!complete ? 'The message has missing fields' : undefined}
-            onClick={() =>
-              run('file', () =>
-                api.filing.file(flight.id, { fpl: message, addresses, copyTo, ...(chosen ? { via: chosen } : {}) }),
-              )
-            }
-          >
-            {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
-          </button>
+          {connect && (
+            <a
+              className={connectOnly ? 'btn primary' : 'btn ghost'}
+              href={connectHref()}
+              data-testid="fpl-autorouter-connect"
+            >
+              {connect === 'reconnect' ? 'Reconnect autorouter' : 'Connect autorouter'}
+              {connectOnly ? ' to file' : ''}
+            </a>
+          )}
+          {!connectOnly && (
+            <button
+              className="primary"
+              data-testid="fpl-file"
+              disabled={!enabled || !complete || open || !!busy || !addresses.length}
+              title={!complete ? 'The message has missing fields' : undefined}
+              onClick={() =>
+                run('file', () =>
+                  api.filing.file(flight.id, { fpl: message, addresses, copyTo, ...(chosen ? { via: chosen } : {}) }),
+                )
+              }
+            >
+              {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
+            </button>
+          )}
           {open && filing.capabilities.cancel && (
             <button
               data-testid="fpl-cancel"
@@ -202,7 +223,7 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       }
     >
       <ExportWarnings warnings={loadErr ? [loadErr] : []} classify={false} />
-      {st && !enabled && (
+      {st && !enabled && !connectOnly && (
         <ExportWarnings
           warnings={[st.reason ?? 'Filing is not enabled yet.']}
           classify={false}

@@ -16,6 +16,15 @@ struct SessionResponse: Codable, Equatable {
     var pilot: PilotInfo?
 }
 
+/// GET /api/autorouter: the pilot's own autorouter account (src/shared/api.ts AutorouterLinkStatus).
+struct AutorouterLink: Codable, Equatable {
+    /// The server can link accounts; false: nothing to show.
+    var enabled: Bool
+    var connected: Bool
+    var broken: Bool
+    var account: String?
+}
+
 /// FlightSummary: the lobby row data.
 struct FlightSummary: Codable, Equatable {
     var title: String

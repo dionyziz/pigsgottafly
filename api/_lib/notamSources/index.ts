@@ -27,12 +27,13 @@ export function sourceOrderFromEnv(v: string | undefined): NotamSource[] | undef
  * (its driver applies the pilot gate), Notamify with NOTAMIFY_API_KEY. `refresh`: past the source caches.
  */
 export function configuredSources(
-  ctx: Pick<Ctx, 'db' | 'config' | 'autorouter' | 'autorouterDenied'>,
+  ctx: Pick<Ctx, 'db' | 'config' | 'autorouter' | 'autorouterLinked' | 'autorouterDenied'>,
   refresh: boolean,
 ): NotamSourceDriver[] {
   const store = dbNotamCache(ctx.db);
   const all: Partial<Record<NotamSource, NotamSourceDriver>> = {};
-  if (ctx.autorouter || ctx.autorouterDenied) all.autorouter = autorouterNotamSource(ctx.autorouter);
+  if (ctx.autorouter || ctx.autorouterDenied)
+    all.autorouter = autorouterNotamSource(ctx.autorouter, ctx.autorouterLinked);
   if (ctx.config.notamify) all.notamify = notamifyNotamSource(ctx.config.notamify);
   return (ctx.config.notamSources ?? NOTAM_SOURCE_IDS)
     .map((id) => all[id])

@@ -1,5 +1,6 @@
 // autorouter as a NOTAM source (GET /notam, Eurocontrol EAD data; the client is api/_lib/autorouter.ts).
-// Its licence is personal to the account: the source serves only the pilots on AUTOROUTER_PILOTS (the
+// Its licence is personal to the account. A pilot's own linked account (autorouterLinks.ts) serves them
+// on every flight they are on. The deployment's account serves only the pilots on AUTOROUTER_PILOTS (the
 // route context gives it a client only for them) and only their own flights, so what it returns is
 // never shown to another pilot, not even on a flight shared with them.
 import type { AutorouterClient, AutorouterNotamRow } from '../autorouter.js';
@@ -61,13 +62,13 @@ export function fromAutorouterRow(r: AutorouterNotamRow): RawNotam | null {
   };
 }
 
-/** `client`: the request's autorouter client, null when the account is not for this pilot. */
-export function autorouterNotamSource(client: AutorouterClient | null): NotamSourceDriver {
+/** `client`: the request's autorouter client, null when no account is for this pilot; `linked`: the pilot's own. */
+export function autorouterNotamSource(client: AutorouterClient | null, linked = false): NotamSourceDriver {
   return {
     id: 'autorouter',
     label: 'autorouter',
     timeoutMs: 25_000,
-    availableFor: ({ pilotId, ownerId }) => !!client && pilotId === ownerId,
+    availableFor: ({ pilotId, ownerId }) => !!client && (linked || pilotId === ownerId),
     async fetch({ locations, window }) {
       if (!client) throw new NotamSourceError('autorouter is not available');
       try {
