@@ -1,6 +1,7 @@
 // GET /flights/:id/notams → NotamBriefing (src/shared/briefing.ts).
 // Sources (api/_lib/notamSources/): autorouter (Eurocontrol EAD data, the app's account, for the
-// AUTOROUTER_PILOTS on their own flights) and Notamify (NOTAMIFY_API_KEY, every pilot), in NOTAM_SOURCES
+// AUTOROUTER_PILOTS on their own flights), the international NOTAM feed (NMS, every pilot) and Notamify
+// (NOTAMIFY_API_KEY, every pilot), in NOTAM_SOURCES
 // order. Those available to the pilot on this flight are queried together; their NOTAMs are merged and
 // de-duplicated, then assessed for the flight. There is no keyless source that covers Greek NOTAMs
 // completely (the FAA NOTAM search refuses automated clients and lacks NOTAMs not marked for
@@ -143,6 +144,7 @@ export const routes: Route[] = [
           legAltFt: ctx.altitudesFt,
           fields: ctx.route.filter((p) => p.kind === 'aerodrome'),
           terrain: serverTerrain(),
+          homeFir: FIR,
         },
       );
       const relevantCount = assessed.filter((n) => n.relevant).length;

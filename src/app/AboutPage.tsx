@@ -58,7 +58,7 @@ export function AboutPage() {
               [
                 'NOTAMs',
                 <>
-                  {ext('https://www.autorouter.aero', 'autorouter')} (EUROCONTROL EAD) and{' '}
+                  {ext('https://www.autorouter.aero', 'autorouter')} (EUROCONTROL EAD), an international NOTAM feed and{' '}
                   {ext('https://notamify.com', 'Notamify')}, merged
                 </>,
               ],
