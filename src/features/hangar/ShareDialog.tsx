@@ -140,7 +140,7 @@ export function ShareDialog({
                   setEmail(e.target.value);
                   setError(null);
                 }}
-                placeholder={kind === 'flight' ? 'Add people by e-mail (any address)' : 'Add people by e-mail'}
+                placeholder="Add people by email"
                 aria-label="E-mail address"
                 autoComplete="off"
                 spellCheck={false}
