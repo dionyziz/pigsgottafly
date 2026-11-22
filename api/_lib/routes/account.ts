@@ -124,7 +124,7 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     [pilotId],
   );
   const all = (sql: string) => q.query(sql, [pilotId]);
-  const [links, signatures, submissions, briefings, filings, filingLog, mailLog] = await Promise.all([
+  const [links, signatures, submissions, briefings, filings, filingLog, mailLog, faxLog] = await Promise.all([
     all(
       'SELECT flight_id, person_key, created, first_opened, last_opened, revoked, expires FROM form_links WHERE pilot_id = $1 ORDER BY created',
     ),
@@ -136,10 +136,13 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
     ),
     all('SELECT flight_id, fetched, params, doc FROM flight_notams WHERE pilot_id = $1 ORDER BY fetched'),
     all(
-      'SELECT flight_id, provider, provider_id, status, eobt, fpl, addresses, message, filed, updated FROM flight_filings WHERE pilot_id = $1',
+      'SELECT flight_id, provider, provider_id, status, eobt, fpl, addresses, message, filed, updated, fax_to FROM flight_filings WHERE pilot_id = $1',
     ),
-    all('SELECT flight_id, at, action, ok, message, detail FROM filing_log WHERE pilot_id = $1 ORDER BY at'),
+    all('SELECT flight_id, at, action, via, ok, message, detail FROM filing_log WHERE pilot_id = $1 ORDER BY at'),
     all('SELECT flight_id, form, at, recipient, subject, result FROM mail_log WHERE pilot_id = $1 ORDER BY at'),
+    all(
+      'SELECT flight_id, kind, at, recipient, unit, pages, result, error FROM fax_log WHERE pilot_id = $1 ORDER BY at',
+    ),
   ]);
   const crewOf = (id: string) => crew.filter((c) => c.flight_id === id);
   return {
@@ -257,6 +260,16 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
         subject: m.subject,
         result: m.result,
       })),
+      faxesSent: faxLog.map((x) => ({
+        flightId: x.flight_id,
+        kind: x.kind,
+        at: num(x.at),
+        to: x.recipient,
+        unit: x.unit,
+        pages: x.pages ?? null,
+        result: x.result,
+        error: x.error ?? null,
+      })),
     },
     notamBriefings: briefings.map((b) => ({
       flightId: b.flight_id,
@@ -275,11 +288,13 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
       message: f.message,
       filed: num(f.filed),
       updated: num(f.updated),
+      faxTo: f.fax_to ?? null,
     })),
     filingLog: filingLog.map((l) => ({
       flightId: l.flight_id,
       at: num(l.at),
       action: l.action,
+      via: l.via ?? null,
       ok: !!l.ok,
       message: l.message,
       detail: l.detail,

@@ -18,6 +18,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 
 import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import {
+  chromiumFaxPdf,
   chromiumNavlogPdf,
   chromiumSheetPdf,
   localChrome,
@@ -320,6 +321,50 @@ describe.skipIf(!chrome)('the real print in headless Chromium', () => {
       expect(text).toContain('2026-11-21');
       for (const name of NAVLOG_POINTS) expect(text).toContain(name);
       expect(pages[1]).toContain('LGMG');
+    }
+  }, 60e3);
+
+  test('a faxed flight plan: the cover page and the filled ICAO form, A4 portrait', async () => {
+    const fpl =
+      '(FPL-SXASV-VG\n-C172/L-SDFGY/C\n-LGTT0800\n-N0092VFR DCT\n-LGMG0030 LGAV\n-DOF/261116 REG/SXASV\n-E/0400 P/002 R/VE A/WHITE BLUE C/PILOT P +30 6900000000)';
+    const pdf = await chromiumFaxPdf({ distDir: dist })({
+      kind: 'file',
+      to: { number: '+302103532635', unit: 'Athens Central AIS' },
+      from: { name: 'Pat Pilot', phone: '+30 6900000000', email: 'pat@example.com' },
+      fpl,
+      addresses: ['LGGGZFZX', 'LGTTZTZX'],
+      message: fpl,
+      sentAt: Date.UTC(2026, 10, 16, 7, 0),
+      signature: { name: 'Pat Pilot', signedAt: Date.UTC(2026, 10, 16, 7, 0) },
+    });
+    if (process.env.FAX_PDF_OUT) fs.writeFileSync(process.env.FAX_PDF_OUT, pdf);
+    const raw = pdf.toString('latin1');
+    expect(raw).toMatch(/Skia\/PDF/);
+    expect(raw).toMatch(/\/Type\s*\/Pages[\s\S]{0,200}?\/Count 2\b/);
+    const boxes = [...raw.matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [+m[1], +m[2]]);
+    for (const [w, h] of boxes) {
+      expect(Math.abs(w - 595.92)).toBeLessThan(2);
+      expect(Math.abs(h - 841.92)).toBeLessThan(2);
+    }
+    let text = '';
+    try {
+      const file = path.join(dist, 'fax.pdf');
+      fs.writeFileSync(file, pdf);
+      text = execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' });
+    } catch {
+      console.warn('sheetPdf.test: no pdftotext: the text of the fax is not checked');
+    }
+    if (text) {
+      const [cover, form] = text.split('\f');
+      expect(cover).toContain('FAX');
+      expect(cover).toContain('Athens Central AIS, fax +30 210 3532635');
+      expect(cover).toContain('Pat Pilot, pilot in command');
+      expect(cover).toContain('(FPL-SXASV-VG');
+      expect(cover).toContain('Please acknowledge receipt to +30 6900000000 or pat@example.com.');
+      expect(form).toContain('FLIGHT PLAN');
+      expect(form).toContain('PILOT P +30 6900000000');
+      expect(form).toContain('WHITE BLUE');
+      expect(form).toMatch(/L\s*G\s*G\s*G\s*Z\s*F\s*Z\s*X/);
     }
   }, 60e3);
 

@@ -3,6 +3,8 @@
 //   kind 'wbperf'  the W&B and performance sheets to the aircraft's operator
 //                  (../features/exports/wb/WbExport.tsx, performance/PerformanceExport.tsx)
 //   kind 'navlog'  the navigation log to the pilot (../features/exports/navlog/NavlogSheet.tsx)
+//   kind 'fplfax'  a flight plan (or its DLA / CNL) faxed to an ATS reporting office: a cover page and
+//                  the ICAO form (../features/exports/fpl/FaxSheets.tsx)
 // Opened only by the server's headless Chromium (api/_lib/sheetPdf.ts), which puts the snapshot in
 // window.__PGF_SHEETS__ before the page loads, serves this build from disk (no network) and prints
 // the page to PDF with the print CSS (A4, the sheets' @page) once the html element says
@@ -16,17 +18,20 @@ import './pdf.css';
 import { createRoot } from 'react-dom/client';
 
 import type { ShownSignature } from '../features/exports/form731/Form731';
+import { FaxSheets } from '../features/exports/fpl/FaxSheets';
 import { fitSheets } from '../features/exports/navlog/fit';
 import { NavlogStage } from '../features/exports/navlog/NavlogSheet';
 import { PerfSheet } from '../features/exports/performance/PerformanceExport';
 import { WbSheet } from '../features/exports/wb/WbExport';
 import { type WbPerfContent, wbPerfContentOf } from '../shared/declarations';
+import { type FplFaxContent, fplFaxContentOf } from '../shared/fax';
 import { type NavlogContent, navlogContentOf } from '../shared/navlogSheets';
 
 /** What the server hands the page. */
 type SheetsSnapshot =
   | { kind?: 'wbperf'; content: WbPerfContent; signature: ShownSignature | null }
-  | { kind: 'navlog'; content: NavlogContent };
+  | { kind: 'navlog'; content: NavlogContent }
+  | { kind: 'fplfax'; content: FplFaxContent };
 
 declare global {
   interface Window {
@@ -83,6 +88,11 @@ else if (snap.kind === 'navlog') {
   createRoot(document.getElementById('root')!).render(<Navlog content={content} />);
   // as the export page does once the fonts are in (NavlogExport.tsx)
   whenDrawn(() => fitSheets(document.querySelector<HTMLElement>('.md42-stage')));
+} else if (snap.kind === 'fplfax') {
+  const content = fplFaxContentOf(snap.content);
+  document.title = 'Flight plan fax';
+  createRoot(document.getElementById('root')!).render(<FaxSheets c={content} />);
+  whenDrawn();
 } else {
   const content = wbPerfContentOf(snap.content);
   const s = snap.signature;

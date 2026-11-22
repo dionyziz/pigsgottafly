@@ -1,6 +1,7 @@
 // Sheets e-mailed as PDF, printed by headless Chromium exactly as the website prints them: the W&B
 // and performance sheets to an operator (routes/declarations.ts), the navlog to the pilot
-// (routes/navlogMail.ts). Chromium opens the PDF page of the built client (pdf.html →
+// (routes/navlogMail.ts), and a flight plan faxed to an ATS reporting office (filers/fax.ts: a cover
+// page and the filled ICAO form). Chromium opens the PDF page of the built client (pdf.html →
 // src/pdf/main.tsx: the export pages' own sheet components and CSS), drawn from the content the
 // pilot sent, and prints it to PDF with the print CSS (A4, the sheets' @page, vector text).
 //
@@ -19,6 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import type { WbPerfContent } from '../../src/shared/declarations.js';
+import type { FplFaxContent } from '../../src/shared/fax.js';
 import type { NavlogContent } from '../../src/shared/navlogSheets.js';
 
 /** The PIC's e-signature on the sheets (name, when it was signed: epoch ms). */
@@ -28,10 +30,12 @@ export interface SheetSignature {
 }
 export type SheetPdfRenderer = (content: WbPerfContent, signature: SheetSignature | null) => Promise<Buffer>;
 export type NavlogPdfRenderer = (content: NavlogContent) => Promise<Buffer>;
+export type FaxPdfRenderer = (content: FplFaxContent) => Promise<Buffer>;
 /** What the PDF page draws (src/pdf/main.tsx). */
 type Snapshot =
   | { kind: 'wbperf'; content: WbPerfContent; signature: SheetSignature | null }
-  | { kind: 'navlog'; content: NavlogContent };
+  | { kind: 'navlog'; content: NavlogContent }
+  | { kind: 'fplfax'; content: FplFaxContent };
 
 export interface ChromiumSheetPdfOptions {
   /** The built client (vite build): holds pdf.html, assets/ and fonts/. */
@@ -110,6 +114,11 @@ export function chromiumSheetPdf(opts: ChromiumSheetPdfOptions): SheetPdfRendere
 export function chromiumNavlogPdf(opts: ChromiumSheetPdfOptions): NavlogPdfRenderer {
   const print = chromiumPrint(opts);
   return (content) => print({ kind: 'navlog', content });
+}
+
+export function chromiumFaxPdf(opts: ChromiumSheetPdfOptions): FaxPdfRenderer {
+  const print = chromiumPrint(opts);
+  return (content) => print({ kind: 'fplfax', content });
 }
 
 function chromiumPrint(opts: ChromiumSheetPdfOptions): (snapshot: Snapshot) => Promise<Buffer> {

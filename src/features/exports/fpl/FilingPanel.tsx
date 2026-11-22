@@ -1,12 +1,20 @@
-// Filing through autorouter (PLAN-v3 "Filing the flight plan via autorouter" and "Flight plan
-// addressing (Greek VFR)"). The AFTN addressees the server proposes from AIP Greece ENR 1.11
+// Filing through the server's filing backends (api/_lib/filers/: autorouter, fax; PLAN-v3 "Filing the
+// flight plan via autorouter" and "Flight plan addressing (Greek VFR)"). The panel says which service
+// filed the plan and what it can tell: autorouter reports ATC's acknowledgement or rejection, a fax only
+// its delivery. The AFTN addressees the server proposes from AIP Greece ENR 1.11
 // (api/_lib/addressees.ts) are still shown when the server cannot file, for filing by other means.
 import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import { api, ApiRequestError, peekGet } from '../../../data/api';
 import { invalidate } from '../../../data/entities';
 import type { Flight } from '../../../shared';
-import { FILING_STATUS_LABEL, type FilingState, type FilingStatus } from '../../../shared/briefing';
+import {
+  type FilerId,
+  FILING_STATUS_LABEL,
+  type FilingRecord,
+  type FilingState,
+  type FilingStatus,
+} from '../../../shared/briefing';
 import { fmtDateTimeMs } from '../../../shared/format';
 import { Chip, Loading, Panel } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
@@ -19,7 +27,27 @@ const OPEN = new Set<FilingStatus>([
   'departed',
   'terminated',
   'arriving',
+  'sending',
+  'delivered',
 ]);
+
+/** '+302103532635' → '+30 210 3532635'. */
+const showNumber = (n: string) => n.replace(/^\+30(\d{3})(\d+)$/, '+30 $1 $2');
+
+/** Which service filed the plan, and what it reports. */
+export function filedVia(f: FilingRecord): string {
+  if (f.provider !== 'fax') return 'Filed via autorouter';
+  const to = f.faxTo ? `${f.faxTo.unit} (${showNumber(f.faxTo.number)})` : 'the ATS office';
+  const what =
+    f.status === 'delivered'
+      ? 'Delivered by fax to'
+      : f.status === 'sending'
+        ? 'Sending by fax to'
+        : f.status === 'failed'
+          ? 'Fax failed to'
+          : 'Faxed to';
+  return `${what} ${to}${f.capabilities.ackRej ? '' : ' — no acknowledgement'}`;
+}
 
 const dateTimeZ = (ms: number) => fmtDateTimeMs(ms);
 
@@ -44,6 +72,8 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   const [typed, setTyped] = useState('');
   // the copies proposed (the operator's, the route's aerodromes'), all ticked; the pilot may untick any
   const [noCopy, setNoCopy] = useState<Set<string>>(new Set());
+  // '' = the first available backend, then the next on a transient failure
+  const [via, setVia] = useState<'' | FilerId>('');
   const copyTo = useMemo(() => (st?.copyTo ?? []).map((r) => r.email).filter((e) => !noCopy.has(e)), [st, noCopy]);
 
   const load = useCallback(() => {
@@ -95,6 +125,8 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   const filing = st?.filing ?? null;
   const open = !!filing?.providerId && OPEN.has(filing.status);
   const enabled = !!st?.enabled;
+  const usable = (st?.filers ?? []).filter((f) => f.available);
+  const chosen = usable.some((f) => f.id === via) ? via : '';
   const addTyped = () => {
     const a = typed.trim().toUpperCase();
     if (!/^[A-Z]{8}$/.test(a)) return;
@@ -115,7 +147,15 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       status={
         st && (
           <Chip
-            tone={filing ? (filing.status === 'rejected' ? 'danger' : open ? 'ok' : undefined) : undefined}
+            tone={
+              filing
+                ? filing.status === 'rejected' || filing.status === 'failed'
+                  ? 'danger'
+                  : open
+                    ? 'ok'
+                    : undefined
+                : undefined
+            }
             testId="fpl-filing-status"
           >
             {filing ? FILING_STATUS_LABEL[filing.status] : 'Not filed'}
@@ -129,11 +169,15 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
             data-testid="fpl-file"
             disabled={!enabled || !complete || open || !!busy || !addresses.length}
             title={!complete ? 'The message has missing fields' : undefined}
-            onClick={() => run('file', () => api.filing.file(flight.id, { fpl: message, addresses, copyTo }))}
+            onClick={() =>
+              run('file', () =>
+                api.filing.file(flight.id, { fpl: message, addresses, copyTo, ...(chosen ? { via: chosen } : {}) }),
+              )
+            }
           >
             {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
           </button>
-          {open && (
+          {open && filing.capabilities.cancel && (
             <button
               data-testid="fpl-cancel"
               className="danger"
@@ -149,7 +193,7 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
           <button
             className="ghost"
             data-testid="fpl-refresh"
-            disabled={!enabled || !filing?.providerId || !!busy}
+            disabled={!enabled || !filing?.providerId || !filing.capabilities.status || !!busy}
             onClick={() => run('refresh', () => api.filing.refresh(flight.id))}
           >
             {busy === 'refresh' ? 'Checking…' : 'Refresh status'}
@@ -170,8 +214,28 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
           {actionErr}
         </div>
       )}
+      {usable.length > 1 && !open && (
+        <label className="fpl-filing-via" data-testid="fpl-filing-via-choice">
+          Send via{' '}
+          <select value={chosen} onChange={(e) => setVia(e.target.value as '' | FilerId)}>
+            <option value="">{usable.map((f) => f.label).join(', then ')}</option>
+            {usable.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label} only
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {usable.length === 1 && !filing && (
+        <div className="muted fpl-filing-via" data-testid="fpl-filing-via-choice">
+          Files via {usable[0].label}
+          {usable[0].capabilities.ackRej ? '' : ' — no acknowledgement'}
+        </div>
+      )}
       {filing && (
         <div className="fpl-filing-record">
+          <span data-testid="fpl-filing-via">{filedVia(filing)}</span>
           {filing.filed != null && <span>Filed {dateTimeZ(filing.filed)}</span>}
           {filing.polled != null && <span className="muted">checked {dateTimeZ(filing.polled)}</span>}
           {filing.message && <span>{filing.message}</span>}
@@ -264,7 +328,8 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
           <ul>
             {st.log.map((l) => (
               <li key={l.id} className={l.ok ? '' : 'fpl-log-bad'}>
-                {dateTimeZ(l.at)} · {l.action} · {l.ok ? 'ok' : 'refused'}: {l.message}
+                {dateTimeZ(l.at)} · {l.action}
+                {l.via ? ` (${l.via})` : ''} · {l.ok ? 'ok' : 'refused'}: {l.message}
               </li>
             ))}
           </ul>

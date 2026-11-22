@@ -1,14 +1,17 @@
 // HTTP plumbing shared by the route modules: the route type, errors, JSON helpers.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import type { FilerId } from '../../src/shared/briefing.js';
 import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { Db } from './db.js';
+import type { FaxProvider, FaxSettings } from './filers/faxProviders.js';
+import type { Filer } from './filers/types.js';
 import type { NotamifySettings } from './notamSources/notamify.js';
 import type { NotamSource } from './notamSources/types.js';
 import type { WeatherProxyOptions } from './routes/weather.js';
 import type { WeatherGridOptions } from './routes/weatherGrid.js';
-import type { NavlogPdfRenderer, SheetPdfRenderer } from './sheetPdf.js';
+import type { FaxPdfRenderer, NavlogPdfRenderer, SheetPdfRenderer } from './sheetPdf.js';
 
 /** Node request, possibly with a body pre-parsed by Vercel. */
 export type Req = IncomingMessage & { body?: unknown };
@@ -68,6 +71,20 @@ export interface ApiConfig {
   navlogPdf?: NavlogPdfRenderer | null;
   /** aviationweather.gov through GET /weather/metar: upstream fetch (tests). */
   aviationWeather?: WeatherProxyOptions;
+  /** The filing backends in the order they are tried (FILERS; default autorouter, then fax). */
+  filers?: FilerId[];
+  /** The fax service plans are faxed through (FAX_PROVIDER …, faxProviders.ts); null: no filing by fax. */
+  fax?: FaxSettings | null;
+  /**
+   * Lower-cased e-mails of the pilots who may file by fax (FAX_PILOTS; '*' = all). Faxes cost the
+   * deployment money and reach ATS in the pilot's name: as for autorouter, an empty list in Google
+   * mode means nobody. Default: allowedEmails.
+   */
+  faxPilots?: string[];
+  /** Prints a faxed flight plan (sheetPdf.ts); null/undefined: no filing by fax. */
+  faxPdf?: FaxPdfRenderer | null;
+  /** The origin fax delivery callbacks go to (FAX_WEBHOOK_BASE); default: the origin the pilot used. */
+  faxWebhookBase?: string;
 }
 
 /**
@@ -93,6 +110,12 @@ export interface Ctx {
   autorouter: AutorouterClient | null;
   /** True when autorouter is configured but this pilot is not on the autorouter allow-list. */
   autorouterDenied: boolean;
+  /** The filing backends for this pilot, in the order they are tried (filers/select.ts). */
+  filers: Filer[];
+  /** The fax service (its delivery webhooks); null when not configured. */
+  faxProvider: FaxProvider | null;
+  /** The request body as sent (webhooks check its signature); never parsed by the platform first. */
+  rawBody: () => Promise<Buffer>;
   /** True when this pilot may not send forms by e-mail (no e-mail address to cc). */
   formsMailDenied: boolean;
   isAdmin: boolean;
@@ -114,6 +137,11 @@ export interface Route {
   path: string;
   /** Default true: requires a signed-in pilot. */
   auth?: boolean;
+  /**
+   * A service's callback (auth: false): not a browser's request, so the cross-site checks (JSON
+   * only, same origin) do not apply; the handler checks the service's signature on rawBody instead.
+   */
+  webhook?: boolean;
   handler: Handler;
 }
 
@@ -183,6 +211,19 @@ export async function readJson(req: Req): Promise<unknown> {
     }
   }
   return raw; // pre-parsed by the platform (Vercel parses application/json bodies)
+}
+
+/** The body's bytes as sent (at most 1 MB). */
+export async function readRaw(req: Req): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let n = 0;
+  for await (const c of req) {
+    const b = Buffer.isBuffer(c) ? c : Buffer.from(c);
+    n += b.length;
+    if (n > 1e6) throw new HttpError(413, 'too large');
+    chunks.push(b);
+  }
+  return Buffer.concat(chunks);
 }
 
 /** readJson, and the body must be a JSON object (every route takes one): null, arrays and scalars are 400. */

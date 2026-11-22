@@ -191,7 +191,13 @@ export function LobbyPage() {
                 {' '}
                 <Chip
                   sm
-                  tone={r.filingStatus === 'rejected' ? 'danger' : r.filingStatus === 'cancelled' ? undefined : 'ok'}
+                  tone={
+                    r.filingStatus === 'rejected' || r.filingStatus === 'failed'
+                      ? 'danger'
+                      : r.filingStatus === 'cancelled'
+                        ? undefined
+                        : 'ok'
+                  }
                   testId="flight-filing"
                 >
                   {FILING_STATUS_LABEL[r.filingStatus]}

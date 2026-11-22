@@ -7,6 +7,8 @@
 // both empty = nobody).
 // Optional NOTAMIFY_API_KEY (NOTAMIFY_MAX_CREDITS): Notamify, a NOTAM source for every pilot; NOTAM_SOURCES
 // orders the sources (api/_lib/notamSources/).
+// Optional FAX_PROVIDER / FAX_API_KEY / … (or FAX_DRY_RUN=1): filing by fax, for the pilots on FAX_PILOTS;
+// FILERS orders the filing backends (ARCHITECTURE.md "Filing backends").
 // Optional RESEND_API_KEY / FORMS_FROM e-mail forms to HCAA for any signed-in pilot, who is cc'd.
 // Pending migrations run on cold start, before the first request is served. A failed migration is
 // recorded in app_errors and e-mailed to ADMIN_EMAILS (api/_lib/monitor.ts); every request then

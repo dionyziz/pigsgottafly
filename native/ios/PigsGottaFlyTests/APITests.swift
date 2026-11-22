@@ -26,6 +26,7 @@ final class APITests: XCTestCase {
         XCTAssertEqual(f.filing?.status, "filed")
         XCTAssertEqual(FilingStatusLabel.label(f.filing?.status), "Filed")
         XCTAssertEqual(FilingStatusLabel.label(nil), "Not filed")
+        XCTAssertEqual(FilingStatusLabel.label("delivered"), "Delivered by fax")
     }
 
     func testGroupsNotamsLikeTheWebsite() throws {
