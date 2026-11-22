@@ -40,6 +40,8 @@ src/
     aerodrome.ts           aerodromeName(a) (ICAO, else the last part of the name), aerodromePoint(a): the one rule for
                            route points (new flight, editor, map, server home route)
     operators.ts           Operator, OperatorItem (access, viaAircraft), OperatorSharing; isEmail
+    aircraftHistory.ts     the aircraft edit log and version history in words (entryTitle, changeText,
+                           versionChangeText, revisionSummary: also the API's revision summaries)
     declarations.ts        WbPerfContent (the W&B and performance sheets as drawn: the export page draws them from it,
                            sends it to an operator, and the server prints it with the same sheets), wbPerfContentOf
                            (normalization, both sides), wbPerfText (hashed: "changed since sent"), DeclarationsState
@@ -157,7 +159,10 @@ src/
                            useScrollSpy: the section nav follows the scroll); stations, envelope points, compass cards
                            and their points reorder by drag handle; AircraftFiles (photo, else the aircraft's placeholder
                            picture public/aircraft/placeholder-N.webp; DocumentsSection for any FileScope), ShareDialog,
-                           HistorySection + history.ts (the edit log in words; the cards' "Updated … by …")
+                           HistorySection (Version history: the revisions; one opens the aircraft as it left it in
+                           place of the form, read-only, its differences highlighted: VersionPreview + versions.ts
+                           (markChanged, pathTarget); Restore, confirmed in the page, then a toast with Undo),
+                           history.ts (the cards' "Updated … by …")
     operators/             OperatorsPage (useEntity('operators')), OperatorPage (autosaves; header as the aircraft
                            page's; details, W&B/performance requirement, documents, aircraft, who has access), OperatorPicker (the aircraft page's operator dropdown
                            with "New operator…")
@@ -219,7 +224,10 @@ api/
   _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql, AIRCRAFT_FROM
   _lib/aircraftLog.ts      the aircraft edit log: diffAircraft (short values old → new, lists and tables summarized),
                            logEdit (one pilot's saves within AIRCRAFT_LOG_COALESCE_MS are one entry), logEvent
-                           (creation, files, photo, sharing), listLog (GET /aircraft/:id/log), updatedAt/updatedBy
+                           (creation, files, photo, sharing), listLog (GET /aircraft/:id/log), updatedAt/updatedBy;
+                           the version history: snapshotOf (the aircraft and its attached files by reference, kept on
+                           every entry but sharing), listRevisions, getRevision, headRevision, diffSnapshots; restoring
+                           is routes/aircraft.ts restore()
   _lib/operators.ts        operator access (owner / shared edit / view / view through an aircraft): operatorFor, listOperators
   _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices, error alerts, share notices)
   _lib/shareMail.ts        the e-mail to a person an aircraft or an operator is shared with (who, what, access, link); logged, capped, never fails the share
@@ -259,7 +267,9 @@ api/
                            045_passenger_email.ts (passengers.email, NULL for existing passengers),
                            054_flight_shares.ts (flight_shares, flight_invites: flights shared by e-mail)
                            055_pilot_invitations.ts (pilot_invitations, pilot_invitation_aircraft: invitations to the app),
-                           056_aircraft_log.ts (aircraft_log: the edit log; author_id SET NULL when an account is deleted)
+                           057_aircraft_log.ts (aircraft_log: the edit log; author_id SET NULL when an account is deleted)
+                           060_aircraft_revisions.ts (aircraft_log.snapshot: the version history; kinds restore and
+                           baseline; aircraft_attachments.detached; backfill: a revision of every aircraft as it is)
                            055_pilot_invitations.ts (pilot_invitations, pilot_invitation_aircraft: invitations to the app)
                            058_notam_source_cache.ts (notam_source_cache: a paid NOTAM source's results per location
                            and UTC-day window)
@@ -364,6 +374,10 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET, POST, DELETE | /invitations[/:id[/aircraft/:aircraftId]] | Inviting pilots to the app (migration 055, `routes/invitations.ts`): `PilotInvitation[]` (open ones); POST `InviteRequest` (e-mail, note, aircraft the pilot owns or edits) → `InviteResponse`; an address with an account gets the aircraft shared at once (`existing: true`). Every sign-in with the invited address accepts it and shares the aircraft (if the inviter may still share them). E-mailed ('invite'), capped and rate-limited like shares. An invitation admits its address past `ALLOWED_EMAILS`. DELETE cancels it, or one of its aircraft. |
 | POST | /aircraft/:id/attachments | (editor or owner) `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
 | GET, DELETE | /aircraft/:id/attachments/:fileId | GET returns `Attachment` (`AttachmentRef` + base64 `data`). |
+| GET | /aircraft/:id/log | `AircraftLogPage`: the edit log, newest first (`?before=&limit=`), anyone with access. |
+| GET | /aircraft/:id/revisions | `AircraftRevisionPage`: the version history, newest first (`?before=&limit=`): every log entry but sharing, with `summary` (its History line, by name). Anyone with access. |
+| GET | /aircraft/:id/revisions/:rev | `AircraftRevisionDetail`: the snapshot, the differences from the current aircraft (`from` now, `to` the version; files no longer stored say so) and `head` (the newest revision). |
+| POST | /aircraft/:id/revisions/:rev/restore | (editor or owner; 403 for viewers) `AircraftRestoreRequest {head?, headAt?}`: 409 with the current `HangarAircraft` when the newest revision is not that one any more. Validated as a PUT (400, 409 for a registration in use). Writes the version as a new `restore` revision ("restored the version of … by …"), so it can be undone by restoring `previous`. Files: those of the version still stored are attached again (titles too); the others are detached, not deleted; a photo, document or swing report deleted since is skipped and named (`skipped`), as is a link to an operator no longer ours. → `AircraftRestoreResult`. |
 | GET | /aircraft/:id/files | `AircraftFiles` {photo, documents} (anyone with access). The aircraft list/get also carry `photo` and `placeholder` (1–3, the picture shown without a photo; set at creation, never changed). |
 | POST | /aircraft/:id/files | (editor or owner) `AircraftFileStart` {kind photo (JPEG/PNG/WebP ≤ 5 MB, resized to 1600 px in the browser) or document (PDF ≤ 80 MB), name, title, mime, size} → 201 `AircraftFile` (incomplete). |
 | PUT | /aircraft/:id/files/:fileId/chunks/:seq | (editor or owner) `{data}` base64, `AIRCRAFT_FILE_CHUNK_BYTES` (2 MiB) each but the last: a POH never needs a request above the ~4.5 MB serverless limit. |
@@ -407,6 +421,8 @@ Tenancy: every query includes `pilot_id = <session pilot>`. Another pilot's reco
 Operators (migration 018, `api/_lib/operators.ts`, `tests/api/operators.test.ts`) are shared the same way (`operator_shares`), and everyone with access to an aircraft views its operator: derived on every query, so it ends with the aircraft's share unless the operator is shared directly. Assigning an aircraft to an operator needs edit access to the operator. `Aircraft.operator` is the linked operator's name (joined as `operator_name`), else the old free text.
 
 Shared aircraft are the exception (migration 013, `api/_lib/access.ts`, `tests/api/sharing.test.ts`): `aircraft.pilot_id` is the owner, `aircraft_shares` gives other pilots `view` (see it, use it on their flights) or `edit` (also change it and its files, manage sharing). Only the owner deletes. No access answers 404, too little 403. flights.aircraft_id and pilots.default_aircraft_id are plain FKs to aircraft(id) (ON DELETE SET NULL) and the API checks access. When access ends, the pilot's flights keep the aircraft id: the editor shows it as unavailable, a PUT keeps that unchanged id without the seat checks, forms/filing/exports see no aircraft; the pilot's default is cleared. Attachments keep pilot_id = owner.
+
+Version history (migration 060, `api/_lib/aircraftLog.ts`, `tests/api/aircraftRevisions.test.ts`): every aircraft_log entry that changes the aircraft or its files (creation, an editing session, a file or photo change, a restore; not sharing) keeps `snapshot`, the aircraft as it left it: the AircraftInput record and the photo and documents attached, as file metadata (the content stays in aircraft_attachments, never copied). One pilot's saves within AIRCRAFT_LOG_COALESCE_MS are one entry, so one revision per editing session, its snapshot updated by each save. All revisions are kept: a snapshot is the aircraft's jsonb (a few kB, mostly the performance tables), so even hundreds of sessions are well under a megabyte per aircraft; prune the oldest if that ever matters. Restoring never deletes a file: what the version does not have is `detached` (listed nowhere, readable by no route, still counted in the owner's quota) so that undoing the restore can attach it again. Files deleted by hand stay deleted: a version referring to one restores without it. Swing reports a restore leaves unreferenced stay until a later save sweeps them (the usual 30-minute rule).
 
 Shared flights (migration 054, `access.ts` `flightFor`, `api/_lib/routes/flightShares.ts`, `tests/api/flightSharing.test.ts`): `flights.pilot_id` is the owner, `flight_shares` gives `view` (read the flight, its briefing, filing and forms state; GET answers `Flight.access` with the owner, their details and settings and the flight's aircraft as the owner sees it) or `edit` (also PUT the flight and its manifest, the GenDec override, manage sharing). Owner only: trash/restore, filing (file, delay, cancel, refresh), Form 731/GenDec sends and signing links, declarations. Rows kept per pilot for the flight (flight_crew, flight_filings, flight_notams, the forms' tables) always use the owner's id. A shared flight in its owner's trash is out of reach of the others. GET /flights lists shared flights with `sharedBy` and `role` (never in the trash); a copy is the copier's.
 

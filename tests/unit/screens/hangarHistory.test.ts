@@ -2,7 +2,8 @@
 // hangar card's "Updated … by …".
 import { describe, expect, test } from 'vitest';
 
-import { changeText, entryTitle, relativeTime, updatedText } from '../../../src/features/hangar/history';
+import { relativeTime, updatedText } from '../../../src/features/hangar/history';
+import { changeText, entryTitle } from '../../../src/shared/aircraftHistory';
 import type { AircraftLogEntry } from '../../../src/shared/sharing';
 
 const ME = 'p_me';

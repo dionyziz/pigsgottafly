@@ -650,11 +650,24 @@ describe('migrations', () => {
       '057_aircraft_log',
       '058_notam_source_cache',
       '059_filing_backends',
+      '060_aircraft_revisions',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
     for (const r of await db2.query<{ placeholder: number }>(`SELECT placeholder FROM aircraft`))
       expect([1, 2, 3]).toContain(r.placeholder);
+    // 060: every existing aircraft has a baseline revision, its current state
+    const { toAircraft } = await import('../../api/_lib/rows');
+    const revs = await db2.query(
+      `SELECT a.*, l.kind AS l_kind, l.author_id AS l_author, l.snapshot FROM aircraft a
+       JOIN aircraft_log l ON l.aircraft_id = a.id AND l.snapshot IS NOT NULL`,
+    );
+    expect(revs.length).toBe((await db2.query('SELECT id FROM aircraft')).length);
+    for (const r of revs) {
+      const { id: _i, created: _c, updated: _u, ...doc } = toAircraft(r);
+      expect(r).toMatchObject({ l_kind: 'baseline', l_author: null });
+      expect(r.snapshot).toEqual({ aircraft: JSON.parse(JSON.stringify(doc)), photo: null, documents: [] });
+    }
     await db2.close();
   });
 
@@ -693,6 +706,7 @@ describe('migrations', () => {
       '057_aircraft_log',
       '058_notam_source_cache',
       '059_filing_backends',
+      '060_aircraft_revisions',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -803,6 +817,7 @@ describe('migrations', () => {
       '057_aircraft_log',
       '058_notam_source_cache',
       '059_filing_backends',
+      '060_aircraft_revisions',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -877,7 +892,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-22)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-23)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -900,6 +915,7 @@ describe('migrations', () => {
       '057_aircraft_log',
       '058_notam_source_cache',
       '059_filing_backends',
+      '060_aircraft_revisions',
     ]);
     await db.close();
   });
