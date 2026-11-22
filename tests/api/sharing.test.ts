@@ -94,12 +94,15 @@ describe('sharing an aircraft', () => {
     ).toBe(404);
   });
 
-  test('adding people: by e-mail, case-insensitive; unknown, self, owner and duplicates are refused', async () => {
+  test('adding people: by e-mail, case-insensitive; self, owner and duplicates are refused; others invited', async () => {
     const add = (c: Client, email: string, role = 'view') =>
       c.call('POST', `aircraft/${ac.id}/shares`, { email, role });
-    const unknown = await add(owner, 'nobody@example.com');
-    expect(unknown.status).toBe(404);
-    expect(unknown.body.error).toMatch(/No Pig’s Gotta Fly account uses nobody@example\.com/);
+    const unknown = await add(owner, 'Nobody@example.com');
+    expect(unknown.status).toBe(201);
+    expect(unknown.body.people.at(-1)).toMatchObject({ pilotId: 'nobody@example.com', role: 'view', pending: true });
+    expect((await add(owner, 'nobody@example.com', 'edit')).status).toBe(409);
+    expect((await owner.call('DELETE', `aircraft/${ac.id}/shares/nobody@example.com`)).status).toBe(204);
+    expect((await add(owner, 'not an address')).status).toBe(400);
     expect((await add(owner, 'owner@example.com')).status).toBe(400); // yourself
     expect((await add(owner, '')).status).toBe(400);
     expect((await add(owner, 'viewer@example.com', 'admin')).status).toBe(400);

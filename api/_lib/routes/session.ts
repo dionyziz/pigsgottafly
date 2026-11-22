@@ -3,8 +3,8 @@ import { randomBytes } from 'node:crypto';
 
 import type { LoginResponse, SessionResponse } from '../../../src/shared/api.js';
 import {
+  admitted,
   createSession,
-  emailAllowed,
   hashToken,
   isAppleRelay,
   localPilotRow,
@@ -25,6 +25,7 @@ import { rateLimit } from '../rateLimit.js';
 import { toPilot } from '../rows.js';
 import { sendLogged } from '../sendCaps.js';
 import { claimInvites } from './flightShares.js';
+import { acceptInvitations } from './invitations.js';
 
 /** Longest a sign-in waits for the signup notice (it is sent before the response, as a serverless
  * function may be stopped once it has answered). */
@@ -111,11 +112,13 @@ const newPilotId = () => `pl_${randomBytes(9).toString('base64url')}`;
 
 /**
  * After a sign-in: the flights shared with the verified address the pilot signed in with become theirs
- * to open (flightShares.ts claimInvites), the admins hear about a new pilot, and the answer carries a
- * new session cookie.
+ * to open (flightShares.ts claimInvites), the invitations to it are accepted and their aircraft shared
+ * (invitations.ts acceptInvitations), the admins hear about a new pilot, and the answer carries a new
+ * session cookie.
  */
 async function signedIn(db: Queryable, config: ApiConfig, row: Row, isNew: boolean, at: number, email: string) {
   await claimInvites(db, row.id, email);
+  await acceptInvitations(db, row.id, email);
   // a new account: tell the admins (never blocks or fails the sign-in)
   if (isNew)
     await notifySignup(db, config.adminEmails ?? [], { pilotId: row.id, name: row.name || '', email: row.email, at });
@@ -172,7 +175,7 @@ export const routes: Route[] = [
         throw new HttpError(401, 'sign-in failed');
       }
       const email = String(claims.email);
-      if (!emailAllowed(email, config.allowedEmails)) throw new HttpError(403, `${email} is not allowed`);
+      if (!(await admitted(db, email, config.allowedEmails))) throw new HttpError(403, `${email} is not allowed`);
       const sub = claims.sub ? String(claims.sub) : `email:${email.toLowerCase()}`;
       const now = Date.now();
       // New pilots start with an empty profile and hangar (seeded_at set: no one-time migration data).
@@ -204,7 +207,7 @@ export const routes: Route[] = [
         throw new HttpError(401, 'sign-in failed');
       }
       const email = String(claims.email).trim();
-      if (!emailAllowed(email, config.allowedEmails)) throw new HttpError(403, `${email} is not allowed`);
+      if (!(await admitted(db, email, config.allowedEmails))) throw new HttpError(403, `${email} is not allowed`);
       const now = Date.now();
       // known Apple ID: the e-mail follows Apple's unless Google's sign-in keeps it
       const [known] = await db.query(

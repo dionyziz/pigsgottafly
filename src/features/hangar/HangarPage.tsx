@@ -19,13 +19,14 @@ import { Chip, ConfirmDialog, Dialog, DialogFooter, EmptyState, KebabMenu, Loadi
 import { AircraftPhoto } from './AircraftFiles';
 import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
+import { InviteDialog } from './InviteDialog';
 import { missingEssentials, sameTypeCopy } from './model';
 import { SharedChip, ShareDialog } from './ShareDialog';
 import { buildFromTemplate, TYPE_TEMPLATES } from './templates';
 
 export function HangarPage() {
   const { data, error, loading, reload } = useEntity('aircraft');
-  const { pilot, setPilot } = useSession();
+  const { pilot, setPilot, session } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
   // opened from a flight (?back=): the new aircraft's page keeps the way back
@@ -34,6 +35,7 @@ export function HangarPage() {
   const [deleting, setDeleting] = useState<Aircraft | null>(null);
   const [sharing, setSharing] = useState<HangarAircraft | null>(null);
   const [leaving, setLeaving] = useState<HangarAircraft | null>(null);
+  const [inviting, setInviting] = useState(false);
   const dropDefault = (a: Aircraft) => {
     if (pilot.defaultAircraftId === a.id) setPilot({ ...pilot, defaultAircraftId: null });
   };
@@ -70,6 +72,11 @@ export function HangarPage() {
       <div className="page-head">
         <h1>Hangar</h1>
         <span className="spacer" />
+        {session.mode === 'google' && (
+          <button onClick={() => setInviting(true)} data-testid="invite-pilots">
+            Invite pilots
+          </button>
+        )}
         <button className="primary" onClick={() => setAdding({})} data-testid="add-aircraft">
           Add aircraft
         </button>
@@ -219,6 +226,7 @@ export function HangarPage() {
           }}
         />
       )}
+      {inviting && <InviteDialog onClose={() => setInviting(false)} />}
       {leaving && (
         <ConfirmDialog
           title={`Remove ${leaving.registration} from your hangar?`}

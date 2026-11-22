@@ -16,3 +16,9 @@
 .ac-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: contents; }
 .ac-viewonly { padding: 10px 14px; display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 .ac-card-share { padding: 4px 18px 0; display: flex; min-width: 0; }
+/* inviting pilots (InviteDialog.tsx) */
+.invite-form textarea { resize: vertical; }
+.invite-aircraft { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.invite-ac { display: flex; align-items: center; gap: var(--s2); min-height: 32px; }
+.invite-ac .check { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invite-ac select { padding: 4px 8px; font-size: var(--fs-sm); }

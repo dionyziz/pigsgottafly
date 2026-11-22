@@ -138,7 +138,7 @@ export async function createSession(q: Queryable, pilotId: string): Promise<stri
 
 /**
  * The pilot row of a valid session, or null. With an allow-list, a pilot whose email is no longer on
- * it is signed out everywhere (all their sessions are deleted), not just refused at the next login.
+ * it (nor invited) is signed out everywhere (all their sessions are deleted), not just refused at the next login.
  */
 export async function sessionPilotRow(
   q: Queryable,
@@ -154,7 +154,7 @@ export async function sessionPilotRow(
     [hashToken(t), now - SESSION_MS],
   );
   if (!row) return null;
-  if (!emailAllowed(row.email, allowedEmails)) {
+  if (!(await admitted(q, row.email, allowedEmails))) {
     await q.query('DELETE FROM sessions WHERE pilot_id = $1', [row.id]);
     return null;
   }
@@ -181,6 +181,20 @@ export function emailAllowed(email: unknown, allowedEmails: string[]): boolean {
         .toLowerCase(),
     )
   );
+}
+
+/**
+ * May this address sign in: it is on the allow-list (or there is none), or a pilot invited it to the
+ * app (routes/invitations.ts; open or accepted), so an invitation is all a new pilot needs.
+ */
+export async function admitted(q: Queryable, email: unknown, allowedEmails: string[]): Promise<boolean> {
+  if (emailAllowed(email, allowedEmails)) return true;
+  const addr = String(email || '')
+    .trim()
+    .toLowerCase();
+  if (!addr) return false;
+  const [r] = await q.query('SELECT 1 AS ok FROM pilot_invitations WHERE email = $1 LIMIT 1', [addr]);
+  return !!r;
 }
 
 /** Local mode: the single 'local' pilot, created on first use (empty profile, empty hangar). */

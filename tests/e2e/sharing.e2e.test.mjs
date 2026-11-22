@@ -70,7 +70,7 @@ test('share an aircraft, and fly one shared with you', { timeout: 120000 }, asyn
   await page.type('[data-testid=share-email]', 'nobody@example.com');
   await page.click('[data-testid=share-add]');
   await page.waitFor(() =>
-    /No Pig’s Gotta Fly account uses nobody@example\.com/.test(
+    /No Pig’s Gotta Fly account uses nobody@example\.com\./.test(
       document.querySelector('[data-testid=share-error]')?.textContent || '',
     ),
   );

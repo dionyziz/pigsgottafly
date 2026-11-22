@@ -1,6 +1,7 @@
 // Sharing like a Google Doc. An operator also lists the pilots who see it through one of its aircraft
-// (changed by sharing that aircraft). A flight can also be shared with an address no account uses yet:
-// the invite is listed as pending until someone signs in with it.
+// (changed by sharing that aircraft). A flight or an aircraft can also be shared with an address no
+// account uses yet (an aircraft through an invitation to the app): it is listed as pending until
+// someone signs in with it; removing a pending aircraft leaves the invitation to the app.
 import './share.css';
 
 import { useEffect, useState } from 'react';

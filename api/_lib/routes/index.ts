@@ -12,6 +12,7 @@ import { routes as filing } from './filing.js';
 import { routes as flights } from './flights.js';
 import { routes as flightShares } from './flightShares.js';
 import { routes as forms } from './forms.js';
+import { routes as invitations } from './invitations.js';
 import { routes as me } from './me.js';
 import { routes as monitoring } from './monitoring.js';
 import { routes as notams } from './notams.js';
@@ -33,6 +34,7 @@ export const ROUTES: Route[] = [
   ...attachments,
   ...files,
   ...shares,
+  ...invitations,
   ...passengers,
   ...waypoints,
   ...flights,

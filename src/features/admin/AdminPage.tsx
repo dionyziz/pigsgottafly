@@ -26,6 +26,8 @@ const KINDS: [string, string][] = [
   ['wbperf', 'W&B / performance'],
   ['share-aircraft', 'Aircraft shared'],
   ['share-operator', 'Operator shared'],
+  ['share-flight', 'Flight shared'],
+  ['invite', 'Invitation'],
   ['signup', 'Signup notice'],
   ['signup-more', 'More signups'],
 ];

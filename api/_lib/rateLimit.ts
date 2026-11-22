@@ -26,7 +26,7 @@ export const RATES = {
   notams: { burst: 30, windowMs: 10 * MIN },
   /** GET /ref/bundle (and /ref/:kind), per pilot or IP */
   ref: { burst: 60, windowMs: HOUR },
-  /** POST /aircraft/:id/shares, /operators/:id/shares and /flights/:id/shares, per pilot */
+  /** POST /aircraft/:id/shares, /operators/:id/shares, /flights/:id/shares and /invitations, per pilot */
   share: { burst: 30, windowMs: 24 * HOUR },
   /** POST /client-errors (unauthenticated error reports), per IP */
   clientErrors: { burst: 30, windowMs: 10 * MIN },
