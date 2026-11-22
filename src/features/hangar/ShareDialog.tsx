@@ -8,7 +8,14 @@ import { useEffect, useState } from 'react';
 import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
-import type { AircraftAccess, AircraftRole, SharePerson, ShareRole } from '../../shared/sharing';
+import {
+  type AircraftAccess,
+  type AircraftRole,
+  type ManifestContact,
+  passengerShareSuggestions,
+  type SharePerson,
+  type ShareRole,
+} from '../../shared/sharing';
 import { Chip, Dialog, Loading, RowRemove } from '../../ui';
 
 export const ROLE_LABEL = { owner: 'Owner', edit: 'Editor', view: 'Viewer' } as const;
@@ -44,11 +51,14 @@ export function ShareDialog({
   name,
   onClose,
   onLeft,
+  passengers,
 }: {
   kind?: 'aircraft' | 'operator' | 'flight';
   id: string;
   name: string;
   onClose: () => void;
+  /** A flight's manifest passengers with an e-mail: those without access are offered as viewers. */
+  passengers?: ManifestContact[];
   /** The pilot removed their own access (the aircraft left their hangar, the flight their list). */
   onLeft?: () => void;
 }) {
@@ -111,6 +121,7 @@ export function ShareDialog({
   };
 
   const canManage = !!sharing?.canManage;
+  const suggestions = sharing?.canManage && passengers ? passengerShareSuggestions(passengers, sharing.people) : [];
   return (
     <Dialog
       title={`Share ${name}`}
@@ -165,6 +176,34 @@ export function ShareDialog({
             <p className="form-error" role="alert" data-testid="share-error">
               {error}
             </p>
+          )}
+          {suggestions.length > 0 && (
+            <div>
+              <h3 className="share-h">Passengers on this flight</h3>
+              <ul className="share-people" data-testid="share-suggestions">
+                {suggestions.map((p) => (
+                  <li key={p.email} data-email={p.email}>
+                    <span className="share-avatar" aria-hidden="true">
+                      {p.name.trim().charAt(0).toUpperCase()}
+                    </span>
+                    <span className="share-who">
+                      <b>{p.name}</b>
+                      {p.name !== p.email && <span className="hint">{p.email}</span>}
+                    </span>
+                    <button
+                      type="button"
+                      className="sm share-role"
+                      disabled={busy}
+                      onClick={() => void run(() => shares.add(id, p.email, 'view'))}
+                      aria-label={`Share with ${p.name} as viewer`}
+                      data-testid="share-suggestion-add"
+                    >
+                      Share (view)
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <div>
             <h3 className="share-h">People with access</h3>

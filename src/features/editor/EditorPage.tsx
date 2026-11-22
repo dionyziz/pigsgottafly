@@ -17,6 +17,7 @@ import { useAsync } from '../../data/useAsync';
 import { autoTitle, type Flight, type FlightDoc } from '../../shared';
 import { FILING_STATUS_LABEL } from '../../shared/briefing';
 import { fmtClockMs } from '../../shared/format';
+import { manifestContacts } from '../../shared/sharing';
 import { Chip, Icon, Loading } from '../../ui';
 import { ShareDialog } from '../hangar/ShareDialog';
 import { focusSection, onEditorFocus } from './focus';
@@ -102,7 +103,7 @@ function SharedFlightChip() {
 }
 
 function ShareButton() {
-  const { flight } = useEditor();
+  const { flight, doc, passengers } = useEditor();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   return (
@@ -117,6 +118,7 @@ function ShareButton() {
           name={flight.title.trim() || autoTitle(flight)}
           onClose={() => setOpen(false)}
           onLeft={() => void navigate('/')}
+          passengers={manifestContacts(doc.crew, passengers)}
         />
       )}
     </>

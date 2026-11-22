@@ -208,3 +208,118 @@ test(
     assert.deepEqual(bob.errors, []);
   },
 );
+
+// Passengers and sharing: the share dialog offers the manifest's passengers that have an e-mail as
+// viewers; removing a passenger the flight is shared with asks whether to stop sharing it with them.
+test('share a flight with its passengers; removing one asks to stop sharing', { timeout: 120000 }, async () => {
+  await signIn(alice, 'sub-alice', 'alice@example.com', 'Alice Aviatrix');
+  const person = (fullName, email) => ({
+    fullName,
+    phone: '',
+    dateOfBirth: null,
+    weightKg: 70,
+    idNumber: '',
+    idType: '',
+    nationality: '',
+    relation: '',
+    email,
+  });
+  const carol = (await call(alice, 'POST', 'passengers', person('Carol Cabin', 'Carol@Example.com'))).body;
+  const dan = (await call(alice, 'POST', 'passengers', person('Dan Deck', 'dan@example.com'))).body;
+  const eve = (await call(alice, 'POST', 'passengers', person('Eve Noemail', ''))).body;
+  const seat = (p, s) => ({ role: 'PAX', passengerId: p.id, seat: s, snapshot: { ...person(p.fullName) } });
+  const f = (
+    await call(alice, 'POST', 'flights', {
+      title: 'Island hop',
+      crew: [
+        { role: 'PIC', passengerId: null, seat: 'front-left', snapshot: person('Alice Aviatrix') },
+        seat(carol, 'front-right'),
+        seat(dan, 'rear-left'),
+        seat(eve, 'rear-right'),
+      ],
+    })
+  ).body;
+  assert.equal(f.crew.length, 4);
+  const accessOf = async () =>
+    (await call(alice, 'GET', `flights/${f.id}/shares`)).body.people.map((p) => [p.email, p.role]);
+  const suggested = () =>
+    alice.eval(() =>
+      [...document.querySelectorAll('[data-testid=share-suggestions] li')].map((li) => li.dataset.email),
+    );
+
+  // ---- the dialog offers Carol and Dan (Eve has no e-mail); Share (view) adds Carol as a viewer
+  await alice.goto(`${url}/flights/${f.id}`);
+  await alice.waitFor(() => !!document.querySelector('[data-testid=share-flight]'));
+  await alice.click('[data-testid=share-flight]');
+  await alice.waitFor(() => !!document.querySelector('[data-testid=share-suggestions]'));
+  assert.deepEqual(await suggested(), ['Carol@Example.com', 'dan@example.com']);
+  await shot(alice, 'share-flight-suggestions');
+  await alice.click('[data-testid=share-suggestions] li[data-email="Carol@Example.com"] button');
+  await alice.waitFor(() => document.querySelectorAll('[data-testid=share-people] li').length === 2);
+  assert.deepEqual(await people(alice), [
+    ['owner', false],
+    ['view', true],
+  ]);
+  assert.deepEqual(await suggested(), ['dan@example.com']);
+  await alice.click('[data-testid=share-suggestions] li[data-email="dan@example.com"] button');
+  await alice.waitFor(() => document.querySelectorAll('[data-testid=share-people] li').length === 3);
+  assert.equal(await alice.eval(() => !!document.querySelector('[data-testid=share-suggestions]')), false);
+  assert.deepEqual(await accessOf(), [
+    ['alice@example.com', 'owner'],
+    ['carol@example.com', 'view'],
+    ['dan@example.com', 'view'],
+  ]);
+  await shot(alice, 'share-flight-passengers');
+  await alice.key('Escape');
+  await alice.waitFor(() => !document.querySelector('[data-testid=share-dialog]'));
+
+  // ---- removing Carol from the manifest asks; "Stop sharing" removes her invite
+  await alice.click('[data-testid=stage-plan]');
+  await alice.waitFor(() => document.querySelector('[data-testid=stage-body-plan]')?.hidden === false);
+  const names = () =>
+    alice.eval(() =>
+      [...document.querySelectorAll('[data-testid=crew-pax] .ep-crew-fullname')].map((x) => x.textContent),
+    );
+  await alice.click('button[aria-label="Remove Carol Cabin"]');
+  await alice.waitFor(() => !!document.querySelector('[data-testid=unshare-confirm]'));
+  assert.deepEqual(await names(), ['Dan Deck', 'Eve Noemail']);
+  assert.equal(
+    await alice.eval(() => document.querySelector('[data-testid=unshare-confirm] h2').textContent),
+    'Also stop sharing the flight with Carol Cabin?',
+  );
+  await alice.click('[data-testid=unshare-confirm] .dlg-foot button.primary');
+  await alice.waitFor(() => !document.querySelector('[data-testid=unshare-confirm]'));
+  assert.deepEqual(await accessOf(), [
+    ['alice@example.com', 'owner'],
+    ['dan@example.com', 'view'],
+  ]);
+
+  // ---- removing Dan asks too; "Keep sharing" keeps his access
+  await alice.click('button[aria-label="Remove Dan Deck"]');
+  await alice.waitFor(() => !!document.querySelector('[data-testid=unshare-confirm]'));
+  assert.equal(
+    await alice.eval(() => document.querySelector('[data-testid=unshare-confirm] .dlg-foot button.ghost').textContent),
+    'Keep sharing',
+  );
+  await alice.click('[data-testid=unshare-confirm] .dlg-foot button.ghost');
+  await alice.waitFor(() => !document.querySelector('[data-testid=unshare-confirm]'));
+  assert.deepEqual(await names(), ['Eve Noemail']);
+  assert.deepEqual(await accessOf(), [
+    ['alice@example.com', 'owner'],
+    ['dan@example.com', 'view'],
+  ]);
+
+  // ---- Eve has no e-mail: removed without a question
+  await alice.click('button[aria-label="Remove Eve Noemail"]');
+  await alice.waitFor(() => !document.querySelector('[data-testid=crew-pax]'));
+  await alice.idle(500);
+  assert.equal(await alice.eval(() => !!document.querySelector('[data-testid=unshare-confirm]')), false);
+  await alice.waitFor(() => document.querySelector('[data-testid=save-state]')?.textContent === 'Saved', {
+    timeout: 15000,
+  });
+  await alice.waitFor(async (id) => (await (await fetch(`/api/flights/${id}`)).json()).crew.length === 1, {
+    args: [f.id],
+    timeout: 15000,
+  });
+  assert.deepEqual(alice.errors, []);
+});

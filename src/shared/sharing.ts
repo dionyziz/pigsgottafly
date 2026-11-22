@@ -4,7 +4,17 @@
 //   edit   : change the aircraft and its files, and manage the sharing (add, change, remove people)
 //   view   : see the aircraft and use it on their own flights (navlog, W&B, performance, FPL)
 // Anyone with access can remove their own access ("remove from my hangar").
-import type { Aircraft, AircraftFile, EpochMs, Flight, Id, PersonDetails, Pilot } from './types.js';
+import type {
+  Aircraft,
+  AircraftFile,
+  EpochMs,
+  Flight,
+  FlightCrew,
+  Id,
+  Passenger,
+  PersonDetails,
+  Pilot,
+} from './types.js';
 
 export type ShareRole = 'view' | 'edit';
 export type AircraftRole = 'owner' | ShareRole;
@@ -118,4 +128,42 @@ export interface FlightSharing {
    * pilotId = the invited address, name empty).
    */
   people: (SharePerson & { added: EpochMs | null; pending?: boolean })[];
+}
+
+/** A passenger on a flight's manifest who can be reached by e-mail. */
+export interface ManifestContact {
+  name: string;
+  email: string;
+}
+
+/**
+ * The manifest's passengers with an e-mail on their passenger record (the snapshot carries none),
+ * in manifest order, each address once.
+ */
+export function manifestContacts(crew: FlightCrew[], passengers: Passenger[]): ManifestContact[] {
+  const out: ManifestContact[] = [];
+  const seen = new Set<string>();
+  for (const c of crew) {
+    if (c.role !== 'PAX' || !c.passengerId) continue;
+    const p = passengers.find((x) => x.id === c.passengerId);
+    const email = p?.email.trim() ?? '';
+    if (!p || !email || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
+    out.push({ name: c.snapshot.fullName || p.fullName || email, email });
+  }
+  return out;
+}
+
+/** Whoever holds the flight through `email` (a share or a pending invite), compared case-insensitively. */
+export function accessByEmail<P extends Pick<SharePerson, 'email'>>(people: P[], email: string): P | undefined {
+  const addr = email.trim().toLowerCase();
+  return addr ? people.find((p) => p.email.trim().toLowerCase() === addr) : undefined;
+}
+
+/** The manifest contacts the flight is not shared with yet, offered as viewers. */
+export function passengerShareSuggestions(
+  contacts: ManifestContact[],
+  people: Pick<SharePerson, 'email'>[],
+): ManifestContact[] {
+  return contacts.filter((c) => !accessByEmail(people, c.email));
 }
