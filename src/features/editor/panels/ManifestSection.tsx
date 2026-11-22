@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import { FlowLink } from '../../../app/FlowLinks';
+import { api } from '../../../data/api';
 import {
   FALLBACK_SEATS,
   type FlightCrew,
@@ -9,7 +10,8 @@ import {
   type Pilot,
   seatLayout,
 } from '../../../shared';
-import { Chip, Icon, NumberField, PersonPicker } from '../../../ui';
+import { accessByEmail } from '../../../shared/sharing';
+import { Chip, ConfirmDialog, Icon, NumberField, PersonPicker } from '../../../ui';
 import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
@@ -70,13 +72,14 @@ function useCrewSync() {
 }
 
 export function ManifestSection() {
-  const { doc, update, aircraft, passengers, pilot, reloadLists } = useEditor();
+  const { doc, update, aircraft, passengers, pilot, reloadLists, flight, readOnly } = useEditor();
   const { wb, wbOk, wbMissingWeights, crewErrors, fuel, stops } = useFlightCalc();
   const stopsOut = stops.some((x) => x.wbOk === false);
   const stopName = (x: (typeof stops)[number]) => x.aerodrome?.icao || x.point.name;
   const [creating, setCreating] = useState<string | null>(null);
   const [editingMe, setEditingMe] = useState(false);
   const [editingPax, setEditingPax] = useState<Passenger | null>(null);
+  const [unshare, setUnshare] = useState<{ name: string; key: string } | null>(null);
   useCrewSync();
 
   const seats = useMemo(() => {
@@ -101,6 +104,18 @@ export function ManifestSection() {
       if (!seat) return d;
       return { ...d, crew: [...d.crew, { role: 'PAX', passengerId: p.id, seat, snapshot: personOf(p) }] };
     });
+  };
+
+  const removePassenger = async (i: number) => {
+    const c = doc.crew[i];
+    update((d) => ({ ...d, crew: d.crew.filter((_, j) => j !== i) }));
+    const email = passengers.find((p) => p.id === c.passengerId)?.email ?? '';
+    // whoever may edit the manifest (owner or editor) may also manage the sharing
+    if (!email.trim() || readOnly) return;
+    const sharing = await api.flightShares.get(flight.id).catch(() => null);
+    const who = sharing && accessByEmail(sharing.people, email);
+    if (sharing?.canManage && who && who.role !== 'owner' && who.pilotId !== pilot.id)
+      setUnshare({ name: c.snapshot.fullName || who.name || who.email, key: who.pilotId });
   };
 
   const setCrew = (i: number, fn: (c: FlightCrew) => FlightCrew, coalesce?: string) =>
@@ -247,7 +262,7 @@ export function ManifestSection() {
                     title="Remove from the manifest"
                     aria-label={`Remove ${c.snapshot.fullName}`}
                     data-testid="crew-remove"
-                    onClick={() => update((d) => ({ ...d, crew: d.crew.filter((_, j) => j !== i) }))}
+                    onClick={() => void removePassenger(i)}
                   >
                     <Icon name="x" />
                   </button>
@@ -422,6 +437,16 @@ export function ManifestSection() {
         Manage passengers
       </FlowLink>
 
+      {unshare && (
+        <ConfirmDialog
+          title={`Also stop sharing the flight with ${unshare.name}?`}
+          confirmLabel="Stop sharing"
+          cancelLabel="Keep sharing"
+          onConfirm={() => api.flightShares.remove(flight.id, unshare.key).then(() => {})}
+          onClose={() => setUnshare(null)}
+          testId="unshare-confirm"
+        />
+      )}
       {editingMe && (
         <PilotDetailsDialog
           onClose={() => setEditingMe(false)}

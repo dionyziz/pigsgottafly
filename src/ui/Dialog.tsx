@@ -136,6 +136,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
+  cancelLabel,
   onConfirm,
   onClose,
   danger = true,
@@ -144,6 +145,7 @@ export function ConfirmDialog({
   title: string;
   children?: ReactNode;
   confirmLabel: string;
+  cancelLabel?: string;
   onConfirm: () => Promise<void> | void;
   onClose: () => void;
   /** The confirm button is red (default). */
@@ -171,6 +173,7 @@ export function ConfirmDialog({
       footer={
         <DialogFooter
           onCancel={onClose}
+          cancelLabel={cancelLabel}
           busy={busy}
           error={error}
           primary={{ label: confirmLabel, onClick: () => void go(), danger, autoFocus: true }}
