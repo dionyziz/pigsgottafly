@@ -38,7 +38,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
   - NOTAM briefing.
 - **Optional services** (enabled by environment variables):
   - e-mailing Form 731 and the GenDec to HCAA;
-  - NOTAMs through autorouter and Notamify (queried together, merged and de-duplicated), flight-plan filing through autorouter.
+  - NOTAMs through autorouter, the international NOTAM feed (NMS) and Notamify (queried together, merged and de-duplicated), flight-plan filing through autorouter.
   - NOTAMs and flight-plan filing through autorouter, or by fax to Athens Central AIS when autorouter is down or not set up.
 - **Operators.** The club or owner who operates an aircraft: name, contacts, operations manual (PDF), shared like an aircraft (anyone with one of its aircraft sees it). Its name is the operator on the GenDec, FPL OPR/ and the W&B sheet. An operator can ask for the W&B and performance sheets before each flight: the export then sends them to it as PDF.
 - **Hangar.** Identity, FPL equipment and item 19, speeds, fuel, mass and balance with envelopes, performance tables, and compass swing cards with attached reports. A new aircraft can start from a type template (Reims F172M).
@@ -81,7 +81,8 @@ vercel deploy --prod
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
   - `NOTAMIFY_API_KEY`: optional, a second NOTAM source for every pilot ([Notamify](https://notamify.com) API v2; needs Notamify Pro and API credits, 1 credit per page of 30 NOTAMs). Its answers are cached per location and day for 15 minutes in the database.
     - `NOTAMIFY_MAX_CREDITS`: optional, the most pages one briefing may fetch (default 40).
-  - `NOTAM_SOURCES`: optional, comma-separated, the NOTAM sources to use in order of preference (`autorouter`, `notamify`; default: every configured one, in that order). The briefing queries them together and merges their NOTAMs; a source that fails costs only its own.
+  - `NMS_BASE`, `NMS_CLIENT_ID`, `NMS_CLIENT_SECRET`: optional, a NOTAM source for every pilot: the FAA NOTAM Management Service API (NMS-API), shown to pilots as "International NOTAM feed" (its terms forbid presenting the data as FAA data). `NMS_BASE` is `https://api-staging.cgifederal-aim.com` (pre-production) or `https://api-nms.aim.faa.gov` (production; separate credentials). Free; answers are cached per location and day for 15 minutes. `npx tsx tools/nms_smoke.ts --env .env.local` checks the credentials.
+  - `NOTAM_SOURCES`: optional, comma-separated, the NOTAM sources to use in order of preference (`autorouter`, `nms`, `notamify`; default: every configured one, in that order). The briefing queries them together and merges their NOTAMs; a source that fails costs only its own.
   - Filing by fax (optional, see ARCHITECTURE.md "Filing backends"):
     - The plan goes as a cover page plus the filled ICAO form to Athens Central AIS (`FAX_AIS_NUMBER`, default `+302103532635`). The office's fax machine confirms delivery; no ACK or REJ comes back.
     - The provider is Sinch Fax API v3 (`FAX_PROVIDER=sinch`, the default). It needs:

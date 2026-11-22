@@ -16,6 +16,7 @@ import type { ApiConfig, Ctx, JsonBody, Req, Res, Route } from './http.js';
 import { appOrigin, compilePath, HttpError, isJsonContentType, readJsonObject, readRaw, Reply, send } from './http.js';
 import { recordError } from './monitor.js';
 import { sourceOrderFromEnv } from './notamSources/index.js';
+import { nmsFromEnv } from './notamSources/nms.js';
 import { notamifyFromEnv } from './notamSources/notamify.js';
 import { isConstraintViolation } from './pgErrors.js';
 import { ROUTES } from './routes/index.js';
@@ -73,6 +74,7 @@ export function configFromEnv(
     appleClientId: env.APPLE_CLIENT_ID || '',
     allowedEmails: emailList(env.ALLOWED_EMAILS),
     autorouter: autorouterFromEnv(env),
+    nms: nmsFromEnv(env),
     notamify: notamifyFromEnv(env),
     notamSources: sourceOrderFromEnv(env.NOTAM_SOURCES),
     adminEmails: emailList(env.ADMIN_EMAILS),
@@ -147,6 +149,7 @@ export function createApi(
     appleKeys: opts.appleKeys || appleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
+    nms: opts.nms ?? null,
     notamify: opts.notamify ?? null,
     notamSources: opts.notamSources,
     adminEmails: (opts.adminEmails || []).map((e) => e.trim().toLowerCase()).filter(Boolean),

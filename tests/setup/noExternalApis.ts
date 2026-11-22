@@ -1,11 +1,12 @@
 // Tests never call the real weather and NOTAM services: Open-Meteo (its free tier is a daily
-// request limit per IP, shared with the pilot's own planning), aviationweather.gov, autorouter, Notamify and
+// request limit per IP, shared with the pilot's own planning), aviationweather.gov, autorouter, the NOTAM
+// Management Service (NMS: pre-production and production hosts), Notamify and
 // the fax services (Telnyx, Sinch: a real fax costs money and reaches ATS).
 // This wraps the process's global fetch so that any such call fails loudly and is recorded; tests
 // inject mocks instead. Loaded by vitest (setupFiles) and by the e2e harness (the API server runs in
 // the test process there).
 export const FORBIDDEN_HOSTS =
-  /(^|\.)(open-meteo\.com|aviationweather\.gov|autorouter\.aero|notamify\.com|telnyx\.com|sinch\.com)$/i;
+  /(^|\.)(open-meteo\.com|aviationweather\.gov|autorouter\.aero|cgifederal-aim\.com|aim\.faa\.gov|notamify\.com|telnyx\.com|sinch\.com)$/i;
 
 const g = globalThis as typeof globalThis & { __pgfNoExternal?: boolean; __pgfExternalCalls?: string[] };
 /** Every refused call (a test can assert this stays empty). */

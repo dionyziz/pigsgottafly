@@ -7,6 +7,7 @@ import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { Db } from './db.js';
 import type { FaxProvider, FaxSettings } from './filers/faxProviders.js';
 import type { Filer } from './filers/types.js';
+import type { NmsSettings } from './notamSources/nms.js';
 import type { NotamifySettings } from './notamSources/notamify.js';
 import type { NotamSource } from './notamSources/types.js';
 import type { WeatherProxyOptions } from './routes/weather.js';
@@ -47,6 +48,8 @@ export interface ApiConfig {
    * list means NOBODY (never "anyone"). Default: allowedEmails. Local mode: the local pilot.
    */
   autorouterPilots?: string[];
+  /** The NOTAM Management Service (NMS_BASE, NMS_CLIENT_ID, NMS_CLIENT_SECRET): a source for every pilot. */
+  nms?: NmsSettings | null;
   /** Notamify (NOTAMIFY_API_KEY): a NOTAM source for every pilot; null/undefined = not configured. */
   notamify?: NotamifySettings | null;
   /** NOTAM_SOURCES: the NOTAM sources to use, in priority order; undefined = every configured one. */

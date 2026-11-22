@@ -191,7 +191,7 @@ export function visibleNotams(b: NotamBriefing | null, showAll: boolean): Notam[
 }
 
 /**
- * The briefing's sources for its meta line: 'autorouter, Notamify', and the ones that did not answer
+ * The briefing's sources for its meta line: 'autorouter, International NOTAM feed, Notamify', and the ones that did not answer
  * ('Notamify timed out'). Briefings stored before there were several sources: their one.
  */
 export function notamSourcesLine(b: Pick<NotamBriefing, 'source' | 'sources'>): { from: string; failed: string[] } {

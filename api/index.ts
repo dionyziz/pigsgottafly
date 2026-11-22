@@ -5,8 +5,9 @@
 // briefing) and AUTOROUTER_FILING=1 (flight-plan filing).
 // The autorouter account is used only for the pilots on AUTOROUTER_PILOTS ('*' = every pilot; default ALLOWED_EMAILS;
 // both empty = nobody).
-// Optional NOTAMIFY_API_KEY (NOTAMIFY_MAX_CREDITS): Notamify, a NOTAM source for every pilot; NOTAM_SOURCES
-// orders the sources (api/_lib/notamSources/).
+// Optional NMS_BASE / NMS_CLIENT_ID / NMS_CLIENT_SECRET (the international NOTAM feed) and NOTAMIFY_API_KEY
+// (NOTAMIFY_MAX_CREDITS, Notamify): NOTAM sources for every pilot; NOTAM_SOURCES orders the sources
+// (api/_lib/notamSources/).
 // Optional FAX_PROVIDER / FAX_API_KEY / … (or FAX_DRY_RUN=1): filing by fax, for the pilots on FAX_PILOTS;
 // FILERS orders the filing backends (ARCHITECTURE.md "Filing backends").
 // Optional RESEND_API_KEY / FORMS_FROM e-mail forms to HCAA for any signed-in pilot, who is cc'd.

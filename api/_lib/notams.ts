@@ -5,7 +5,10 @@
 //   - place:    item A is an aerodrome the flight uses (departure, destination, intermediate stop,
 //               alternate), or its area comes within the route corridor: the areas item E
 //               describes (src/shared/notamAreas.ts), else the Q-line circle (centre + radius;
-//               FIR_WIDE_NM or more = the whole FIR; no coordinates = cannot tell, kept);
+//               FIR_WIDE_NM or more = the whole FIR; no coordinates = cannot tell, kept). A NOTAM
+//               of another state's office (Q-line FIR not of the home FIR's state, e.g. LTBB/LTXX
+//               naming LGGG) is shown only for an aerodrome the flight uses or when its area is
+//               within the corridor: never as whole-FIR or position unknown;
 //   - vertical: its Q-line lower limit is not above the highest planned altitude, and its upper
 //               limit is not BELOW_LEG_FT or more under the nearest leg's planned altitude (unless
 //               it is within TERMINAL_NM of an aerodrome of the route: climb-out and approach). The
@@ -373,6 +376,8 @@ export interface RelevanceInput {
   fields?: LatLon[];
   /** Terrain grid (src/calc/terrain.ts), for limits given above the ground. */
   terrain?: Uint8Array | null;
+  /** The FIR briefed (LGGG): NOTAMs of another state's FIRs must show they are on the route. */
+  homeFir?: string;
 }
 
 const M_TO_FT = 1 / 0.3048;
@@ -474,6 +479,8 @@ export function assessNotams(list: Notam[], inp: RelevanceInput): Notam[] {
               ? `on the route${leg !== null ? ` (leg ${leg + 1})` : ''}`
               : `${Math.round(gap)} NM from the route${leg !== null ? ` (leg ${leg + 1})` : ''}`,
           );
+      } else if (inp.homeFir && n.fir && n.fir.slice(0, 2) !== inp.homeFir.slice(0, 2)) {
+        hide.push(`${n.fir} NOTAM, not shown to be on the route`);
       } else {
         show.push(n.center ? 'whole FIR' : 'no position given');
       }

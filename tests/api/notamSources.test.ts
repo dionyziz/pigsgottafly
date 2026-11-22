@@ -661,8 +661,24 @@ describe('briefing from autorouter and Notamify', () => {
     const b = (await me.call('GET', `flights/${mine}/notams`)).body;
     expect(b).toMatchObject({ status: 'ok', source: 'autorouter' });
     expect(b.sources).toEqual([
-      { id: 'autorouter', label: 'autorouter', status: 'ok', count: 3, message: null },
-      { id: 'notamify', label: 'Notamify', status: 'ok', count: 3, message: null },
+      {
+        id: 'autorouter',
+        label: 'autorouter',
+        status: 'ok',
+        count: 3,
+        message: null,
+        newestIssued: null,
+        newestNotam: 'A0003/26',
+      },
+      {
+        id: 'notamify',
+        label: 'Notamify',
+        status: 'ok',
+        count: 3,
+        message: null,
+        newestIssued: null,
+        newestNotam: 'A0005/26',
+      },
     ]);
     const by = Object.fromEntries(b.notams.map((n: any) => [n.key, n]));
     expect(Object.keys(by).sort()).toEqual(['A0001/26', 'A0002/26', 'A0004/26', 'A0005/26']);
