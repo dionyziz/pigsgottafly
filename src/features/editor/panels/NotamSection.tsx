@@ -5,6 +5,7 @@ import {
   groupNotams,
   type Notam,
   notamLimits,
+  notamSourcesLine,
   notamSubject,
   notamValidity,
   notamWhere,
@@ -90,6 +91,7 @@ export function NotamSection() {
     return [icaoOf(route[0]), icaoOf(route[route.length - 1])].filter((x): x is string => !!x);
   }, [route]);
   const ok = briefing?.status === 'ok';
+  const sourcesLine = briefing ? notamSourcesLine(briefing) : null;
   const badge =
     loading && !briefing ? (
       <span className="muted">Loading…</span>
@@ -135,8 +137,10 @@ export function NotamSection() {
         )}
         {briefing && ok && (
           <>
-            <p className="ep-note muted">
-              {briefing.notams.length} NOTAM{briefing.notams.length === 1 ? '' : 's'}, fetched{' '}
+            <p className="ep-note muted" data-testid="notams-meta">
+              {briefing.notams.length} NOTAM{briefing.notams.length === 1 ? '' : 's'}
+              {sourcesLine?.from ? ` from ${sourcesLine.from}` : ''}
+              {sourcesLine?.failed.length ? ` (${sourcesLine.failed.join(', ')})` : ''}, fetched{' '}
               {fmtFetched(briefing.fetched)} · below {Math.round(briefing.params.maxAltFt)} ft,{' '}
               {briefing.params.corridorNm} NM either side
             </p>

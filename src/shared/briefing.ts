@@ -10,7 +10,20 @@ import type { EpochMs, Id } from './types.js';
 //   corridorNm: half-width of the route corridor (default 10 NM). The last briefing is cached per
 //   flight (10 min) unless refresh=1 or the parameters changed.
 
-export type NotamSource = 'autorouter';
+/** The NOTAM sources (api/_lib/notamSources/): queried together, merged and de-duplicated. */
+export type NotamSource = 'autorouter' | 'notamify';
+
+/** How one source answered for this briefing. */
+export interface NotamSourceStatus {
+  id: NotamSource;
+  /** As shown: 'autorouter', 'Notamify'. */
+  label: string;
+  status: 'ok' | 'error' | 'timeout';
+  /** NOTAMs it returned (before merging). */
+  count: number;
+  /** What went wrong (error / timeout). */
+  message: string | null;
+}
 
 export interface Notam {
   /** 'A1234/26' (series, number, year). */
@@ -57,12 +70,17 @@ export interface Notam {
   reasons: string[];
   /** Index of the nearest leg (0-based) for highlighting, or null (aerodrome/FIR-wide NOTAMs). */
   legIndex: number | null;
+  /** The sources that returned it (merged into one). */
+  sources?: NotamSource[];
 }
 
 export interface NotamBriefing {
-  /** 'ok': fetched; 'not-configured': no NOTAM source available (see message); 'error': the source failed. */
+  /** 'ok': fetched (from one source at least); 'not-configured': no NOTAM source available (see message); 'error': every source failed. */
   status: 'ok' | 'not-configured' | 'error';
+  /** The first source that answered (in NOTAM_SOURCES order). */
   source: NotamSource | null;
+  /** Every source queried, in priority order (absent in briefings stored before there were several). */
+  sources?: NotamSourceStatus[];
   message: string | null;
   fetched: EpochMs | null;
   /** Block start − margin … block stop + margin, UTC. */

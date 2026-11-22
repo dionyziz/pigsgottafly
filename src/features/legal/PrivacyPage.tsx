@@ -217,6 +217,13 @@ const sections: LegalSection[] = [
               </td>
             </tr>
             <tr>
+              <td>Notamify</td>
+              <td>
+                NOTAM briefings, through this service's own Notamify account: our server sends the ICAO codes of the
+                aerodromes on and near the route and the FIR, and the flight's date. No personal data.
+              </td>
+            </tr>
+            <tr>
               <td>HASP eAIP</td>
               <td>
                 AIP references are links to the official AIP Greece documents; when you open one, your browser loads it

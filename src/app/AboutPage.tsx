@@ -55,7 +55,13 @@ export function AboutPage() {
                 'Contents',
                 'Aerodromes, runways, operational hours, airspace, ENR 5 areas, VFR points and routes, ATC units, sunset tables (GEN 2.7)',
               ],
-              ['NOTAMs', <>{ext('https://www.autorouter.aero', 'autorouter')} (EUROCONTROL EAD)</>],
+              [
+                'NOTAMs',
+                <>
+                  {ext('https://www.autorouter.aero', 'autorouter')} (EUROCONTROL EAD) and{' '}
+                  {ext('https://notamify.com', 'Notamify')}, merged
+                </>,
+              ],
               ['Flight plans', <>Filed through {ext('https://www.autorouter.aero', 'autorouter')}</>],
             ]}
           />

@@ -11,6 +11,7 @@ import {
   isAerodromeNotam,
   notamLimits,
   notamRings,
+  notamSourcesLine,
   notamsPath,
   notamSubject,
   notamValidity,
@@ -97,6 +98,29 @@ describe('NOTAM texts', () => {
     expect(visibleNotams(b, false).map((n) => n.key)).toEqual(['A1234/26']);
     expect(visibleNotams(b, true)).toHaveLength(2);
     expect(visibleNotams(null, true)).toEqual([]);
+  });
+  test('the sources line: those that answered, then those that did not', () => {
+    expect(
+      notamSourcesLine({
+        source: 'autorouter',
+        sources: [
+          { id: 'autorouter', label: 'autorouter', status: 'ok', count: 3, message: null },
+          { id: 'notamify', label: 'Notamify', status: 'ok', count: 2, message: null },
+        ],
+      }),
+    ).toEqual({ from: 'autorouter, Notamify', failed: [] });
+    expect(
+      notamSourcesLine({
+        source: 'autorouter',
+        sources: [
+          { id: 'autorouter', label: 'autorouter', status: 'ok', count: 3, message: null },
+          { id: 'notamify', label: 'Notamify', status: 'timeout', count: 0, message: 'no answer in 25 s' },
+        ],
+      }),
+    ).toEqual({ from: 'autorouter', failed: ['Notamify timed out'] });
+    // stored before there were several sources
+    expect(notamSourcesLine({ source: 'autorouter' })).toEqual({ from: 'autorouter', failed: [] });
+    expect(notamSourcesLine({ source: null })).toEqual({ from: '', failed: [] });
   });
 });
 
