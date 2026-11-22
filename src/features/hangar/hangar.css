@@ -278,11 +278,26 @@ input.doc-title:hover { border-color: var(--line); }
 .doc-add { gap: var(--s2); align-items: center; }
 .doc-add input { width: 240px; }
 .history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.history > li { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.history > li { border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
 .history > li:first-child { border-top: 1px solid var(--line); }
+/* each revision opens that version: the whole row is the button */
+.history-open { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; padding: 8px 8px; margin: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.history-open:hover { background: var(--hover); }
+.history > li.selected .history-open { background: var(--warn-soft); box-shadow: inset 3px 0 0 var(--warn-line); }
 .history-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--s3); }
 .history-what { font-weight: 600; color: var(--ink); }
 .history-changes { margin: 0; padding-left: 18px; color: var(--ink-2); overflow-wrap: anywhere; }
+.history-current { font-size: var(--fs-xs); color: var(--ok); font-weight: 600; }
+.history-skipped { overflow-wrap: anywhere; }
+/* an earlier version, shown in place of the form */
+.ac-version { position: sticky; top: calc(var(--topbar-h) + 8px); z-index: 15; display: flex; flex-direction: column; gap: var(--s2); padding: 12px 14px; border-color: var(--warn-line); box-shadow: var(--shadow); max-height: 45vh; overflow: auto; }
+.ac-version-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.ac-version-what { font-weight: 600; }
+.ac-version-sub, .ac-version-same { font-size: var(--fs-sm); margin: 0; }
+.ac-version-changes { margin: 0; padding-left: 18px; font-size: var(--fs-sm); color: var(--ink-2); overflow-wrap: anywhere; }
+.ac-version-docs { margin: 0; padding-left: 18px; }
+.ac-main-version .field.rev-changed, .ac-main-version .rev-changed:not(.field) { background: var(--warn-soft); box-shadow: 0 0 0 6px var(--warn-soft); border-radius: var(--r-sm); }
+.ac-main-version .field.rev-changed > span:first-child { color: var(--warn); font-weight: 600; }
 .ac-card-updated { margin-top: -6px; }
 .doc-upload { display: flex; flex-direction: column; gap: 4px; max-width: 420px; }
 @media (max-width: 640px) {

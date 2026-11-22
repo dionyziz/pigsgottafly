@@ -8,7 +8,10 @@ import type {
   AircraftFiles,
   AircraftFileStart,
   AircraftInput,
-  AircraftLogPage,
+  AircraftRestoreRequest,
+  AircraftRestoreResult,
+  AircraftRevisionDetail,
+  AircraftRevisionPage,
   AircraftSharing,
   AppleLoginRequest,
   Attachment,
@@ -226,9 +229,20 @@ export const api = {
     update: ['operators'],
     remove: ['pilot', 'operators'],
   }),
-  /** An aircraft's edit log, newest first; `before` = the previous page's `next`. */
-  aircraftLog: (id: string, before?: number | null) =>
-    request<AircraftLogPage>('GET', `aircraft/${encodeURIComponent(id)}/log${before ? `?before=${before}` : ''}`),
+  /** An aircraft's version history (src/shared/sharing.ts): revisions, one with its snapshot, restore. */
+  aircraftRevisions: {
+    list: (id: string, before?: number | null) =>
+      request<AircraftRevisionPage>(
+        'GET',
+        `aircraft/${encodeURIComponent(id)}/revisions${before ? `?before=${before}` : ''}`,
+      ),
+    get: (id: string, rev: number) =>
+      request<AircraftRevisionDetail>('GET', `aircraft/${encodeURIComponent(id)}/revisions/${rev}`),
+    /** Restores revision `rev` as a new one; `req.head`: 409 when the aircraft has a newer revision. */
+    restore: changes(['aircraft', 'operators'], (id: string, rev: number, req: AircraftRestoreRequest) =>
+      request<AircraftRestoreResult>('POST', `aircraft/${encodeURIComponent(id)}/revisions/${rev}/restore`, req),
+    ),
+  },
   /** Who has access to an aircraft (src/shared/sharing.ts). */
   shares: sharesOf<AircraftSharing>('aircraft', ['aircraft', 'operators'], ['pilot']),
   /** Invitations to the app, with aircraft shared once accepted (src/shared/sharing.ts). */
