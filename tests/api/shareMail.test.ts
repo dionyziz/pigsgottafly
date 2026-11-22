@@ -105,9 +105,7 @@ describe('sharing an aircraft e-mails the person', () => {
   test('no e-mail when the share is refused, or for a role change', async () => {
     mockMail();
     const id = await newAircraft('SX-SHR');
-    expect((await A.call('POST', `aircraft/${id}/shares`, { email: 'nobody@example.com', role: 'view' })).status).toBe(
-      404,
-    );
+    expect((await A.call('POST', `aircraft/${id}/shares`, { email: 'nobody', role: 'view' })).status).toBe(400);
     expect((await A.call('POST', `aircraft/${id}/shares`, { email: 'bob@example.com', role: 'view' })).status).toBe(
       201,
     );

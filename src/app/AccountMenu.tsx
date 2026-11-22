@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { InviteDialog } from '../features/hangar/InviteDialog';
 import { ConfirmDialog } from '../ui';
 import { useSession } from './session';
 
@@ -8,6 +9,7 @@ export function AccountMenu() {
   const { pilot, session, signOut, signOutEverywhere } = useSession();
   const [open, setOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -59,6 +61,11 @@ export function AccountMenu() {
           <Link to="/waypoints" role="menuitem">
             My waypoints
           </Link>
+          {session.mode === 'google' && (
+            <button role="menuitem" onClick={() => setInviting(true)} data-testid="menu-invite-pilots">
+              Invite pilots
+            </button>
+          )}
           {session.admin && (
             <>
               <hr />
@@ -95,6 +102,7 @@ export function AccountMenu() {
           )}
         </div>
       )}
+      {inviting && <InviteDialog onClose={() => setInviting(false)} />}
       {confirmAll && (
         <ConfirmDialog
           title="Sign out everywhere?"

@@ -44,11 +44,14 @@ export type HangarAircraft = Aircraft & { access: AircraftAccess; photo?: Aircra
 
 /**
  * GET /api/aircraft/:id/shares → AircraftSharing (anyone with access; the owner first, then by name).
- * POST /api/aircraft/:id/shares (ShareAddRequest) → 201 AircraftSharing. 404 when no pilot has that
- *   e-mail (case-insensitive), 400 for your own address or the owner's, 409 when they already have access.
- * PUT /api/aircraft/:id/shares/:pilotId (ShareUpdateRequest) → AircraftSharing.
- * DELETE /api/aircraft/:id/shares/:pilotId → 204. Editors and the owner can remove anyone but the
- *   owner; anyone can remove themselves. Viewers get 403 on every other change.
+ * POST /api/aircraft/:id/shares (ShareAddRequest) → 201 AircraftSharing: a share when an account uses
+ *   that e-mail (case-insensitive), else an invitation to the app with this aircraft (PilotInvitation);
+ *   400 for your own address or the owner's, 409 when they already have access or this aircraft is
+ *   already in an invitation to them.
+ * PUT /api/aircraft/:id/shares/:key (ShareUpdateRequest) → AircraftSharing.
+ * DELETE /api/aircraft/:id/shares/:key → 204. `key` is the person's pilot id, or the invited address
+ *   (that cancels this aircraft only: the invitation to the app stays). Editors and the owner can
+ *   remove anyone but the owner; anyone can remove themselves. Viewers get 403 on every other change.
  */
 export interface AircraftSharing {
   aircraftId: Id;
@@ -57,8 +60,11 @@ export interface AircraftSharing {
   role: AircraftRole;
   /** The session pilot may add, change and remove people (owner or editor). */
   canManage: boolean;
-  /** The owner first, then everyone the aircraft is shared with. */
-  people: (SharePerson & { added: EpochMs | null })[];
+  /**
+   * The owner first, then everyone the aircraft is shared with, then the pending invitations that
+   * share it (pending: true, pilotId = the invited address, name empty).
+   */
+  people: (SharePerson & { added: EpochMs | null; pending?: boolean })[];
 }
 export interface ShareAddRequest {
   email: string;
@@ -166,4 +172,41 @@ export function passengerShareSuggestions(
   people: Pick<SharePerson, 'email'>[],
 ): ManifestContact[] {
   return contacts.filter((c) => !accessByEmail(people, c.email));
+}
+
+// Inviting pilots to the app (migration 055). A pilot invites an address no account uses yet and may
+// share some of the aircraft they manage (owner or editor) with it; when someone signs in with that
+// address the invitation is accepted and the aircraft are shared with them.
+//   GET    /api/invitations                         → PilotInvitation[] (the pilot's open invitations, newest first)
+//   POST   /api/invitations (InviteRequest)          → 201 InviteResponse. An address an account already
+//          uses gets the aircraft shared at once (existing: true; 409 with no aircraft, or when it has
+//          them all already); another invitation to the same address adds the aircraft to it (409 when
+//          nothing is new). 400 for your own address, 403/404 for an aircraft you cannot share.
+//   DELETE /api/invitations/:id                     → 204: the invitation and its aircraft
+//   DELETE /api/invitations/:id/aircraft/:aircraftId → 204: that aircraft only; the invitation stays
+
+export interface InvitationAircraft {
+  aircraftId: Id;
+  registration: string;
+  role: ShareRole;
+}
+export interface PilotInvitation {
+  id: Id;
+  /** Lower-cased. */
+  email: string;
+  message: string;
+  created: EpochMs;
+  aircraft: InvitationAircraft[];
+}
+export interface InviteRequest {
+  email: string;
+  message?: string;
+  aircraft: { aircraftId: Id; role: ShareRole }[];
+}
+export interface InviteResponse {
+  /** The address already has an account: no invitation, the aircraft were shared with it. */
+  existing: boolean;
+  /** The registrations shared at once (existing accounts). */
+  shared: string[];
+  invitations: PilotInvitation[];
 }

@@ -45,8 +45,9 @@ export async function deletePilotData(q: Queryable, pilotId: string): Promise<vo
       `UPDATE mail_log SET recipient = 'deleted account' WHERE form = ANY($1::text[]) AND lower(recipient) = lower($2)`,
       [SHARE_FORMS, me.email],
     );
-    // flights shared with the address and not claimed yet
+    // flights shared with the address and not claimed yet, and the invitations to the app it got
     await q.query('DELETE FROM flight_invites WHERE email = lower($1)', [me.email]);
+    await q.query('DELETE FROM pilot_invitations WHERE email = lower($1)', [me.email]);
   }
   await q.query('DELETE FROM pilots WHERE id = $1', [pilotId]);
 }
@@ -109,6 +110,10 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
   const flightReceived = await q.query(
     `SELECT s.flight_id, s.role, s.created, f.title, f.summary->>'title' AS auto_title, o.email AS owner_email FROM flight_shares s
      JOIN flights f ON f.id = s.flight_id JOIN pilots o ON o.id = f.pilot_id WHERE s.pilot_id = $1 ORDER BY s.created`,
+    [pilotId],
+  );
+  const invited = await q.query(
+    'SELECT id, email, message, created, accepted_at FROM pilot_invitations WHERE pilot_id = $1 ORDER BY created',
     [pilotId],
   );
   const all = (sql: string) => q.query(sql, [pilotId]);
@@ -196,6 +201,12 @@ export async function exportPilotData(q: Queryable, pilotId: string) {
       owner: s.owner_email,
       role: s.role,
       created: num(s.created),
+    })),
+    invitationsSent: invited.map((i) => ({
+      email: i.email,
+      message: i.message,
+      created: num(i.created),
+      accepted: num(i.accepted_at),
     })),
     forms: {
       signingLinks: links.map((l) => ({

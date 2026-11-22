@@ -74,7 +74,7 @@ vercel deploy --prod
   - `DATABASE_URL`: required, set by the Neon integration.
   - `GOOGLE_CLIENT_ID`: required. The function refuses to serve without it.
   - `APPLE_CLIENT_ID`: optional. The Services ID for **Sign in with Apple** (e.g. `com.pigsgottafly.web`); unset, the Apple button is not shown and `POST /api/login/apple` answers 404. The App Store requires it next to Google's sign-in (guideline 4.8). See *Sign in with Apple* below.
-  - `ALLOWED_EMAILS`: optional, comma-separated. Limits who can sign in (Google and Apple).
+  - `ALLOWED_EMAILS`: optional, comma-separated. Limits who can sign in (Google and Apple); an address a pilot invited (Invite pilots) may sign in too.
   - `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD`: optional, for the NOTAM briefing. Add `AUTOROUTER_FILING=1` for flight-plan filing.
     - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it; `*` lets every signed-in pilot use it. With both lists empty, nobody can.
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.

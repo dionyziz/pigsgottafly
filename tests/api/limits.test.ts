@@ -243,13 +243,13 @@ describe('cross-site requests (CSRF)', () => {
 });
 
 describe('rate limits', () => {
-  test('sharing: 30 a day per pilot', async () => {
+  test('sharing (an unknown address: an invitation): 30 a day per pilot', async () => {
     const { c } = await pilot();
     const ac = (await c.call('POST', 'aircraft', { registration: 'SX-SHR' })).body;
     for (let i = 0; i < RATES.share.burst; i++) {
       expect(
         (await c.call('POST', `aircraft/${ac.id}/shares`, { email: `nobody${i}@example.com`, role: 'view' })).status,
-      ).toBe(404);
+      ).toBe(201);
     }
     const r = await c.call('POST', `aircraft/${ac.id}/shares`, { email: 'nobody@example.com', role: 'view' });
     expect(r.status).toBe(429);

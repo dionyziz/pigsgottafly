@@ -41,6 +41,7 @@ import appLoginCodes051 from './migrations/051_app_login_codes.js';
 import autorouterRefused052 from './migrations/052_autorouter_refused.js';
 import appleSignIn053 from './migrations/053_apple_sign_in.js';
 import flightShares054 from './migrations/054_flight_shares.js';
+import pilotInvitations055 from './migrations/055_pilot_invitations.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -88,6 +89,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '052_autorouter_refused', sql: autorouterRefused052 },
   { name: '053_apple_sign_in', sql: appleSignIn053 },
   { name: '054_flight_shares', sql: flightShares054 },
+  { name: '055_pilot_invitations', sql: pilotInvitations055 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

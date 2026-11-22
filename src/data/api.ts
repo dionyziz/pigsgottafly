@@ -22,6 +22,8 @@ import type {
   FlightSharing,
   FlightUpdateResponse,
   HangarAircraft,
+  InviteRequest,
+  InviteResponse,
   LoginResponse,
   MetarTafResponse,
   OperatorFiles,
@@ -32,6 +34,7 @@ import type {
   PassengerInput,
   Pilot,
   PilotFiles,
+  PilotInvitation,
   PilotUpdate,
   RefAirac,
   RefBundle,
@@ -222,6 +225,12 @@ export const api = {
   }),
   /** Who has access to an aircraft (src/shared/sharing.ts). */
   shares: sharesOf<AircraftSharing>('aircraft', ['aircraft', 'operators'], ['pilot']),
+  /** Invitations to the app, with aircraft shared once accepted (src/shared/sharing.ts). */
+  invitations: {
+    list: () => request<PilotInvitation[]>('GET', 'invitations'),
+    create: (input: InviteRequest) => request<InviteResponse>('POST', 'invitations', input),
+    cancel: (id: string) => request<null>('DELETE', `invitations/${encodeURIComponent(id)}`),
+  },
   /** Files stored with an aircraft (compass swing reports). */
   attachments: {
     upload: (aircraftId: string, input: AttachmentInput) =>

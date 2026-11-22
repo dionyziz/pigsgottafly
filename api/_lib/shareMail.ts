@@ -1,8 +1,9 @@
 // The e-mail to someone an aircraft, an operator or a flight was just shared with, as Google Docs
 // does: who shared what, the access they got and a link that opens it (the app's origin as the
 // sharer's browser reached it). Someone invited to a flight without an account is told to sign in
-// with Google or Apple using that address. Sent from the app, reply-to the sharer, logged in mail_log
-// as 'share-aircraft', 'share-operator' or 'share-flight' and capped (sendCaps.ts). A share never fails because of its e-mail: a capped,
+// with Google or Apple using that address; so is someone invited to the app (inviteMail: who invited
+// them, their note, the aircraft shared with them). Sent from the app, reply-to the sharer, logged in
+// mail_log as 'share-aircraft', 'share-operator', 'share-flight' or 'invite' and capped (sendCaps.ts). A share never fails because of its e-mail: a capped,
 // failed or unconfigured send is logged (or skipped) and the share stands.
 import type { ShareRole } from '../../src/shared/sharing.js';
 import type { Pilot } from '../../src/shared/types.js';
@@ -69,21 +70,81 @@ export async function notifyShare(
   n: ShareNotice,
 ): Promise<void> {
   if (!mailAvailability().enabled) return;
-  const m = shareMail(ctx.pilot, n, appOrigin(ctx.req, ctx.config.secureCookie));
+  await sendNotice(
+    db,
+    ctx,
+    `share-${n.kind}`,
+    n.to,
+    shareMail(ctx.pilot, n, appOrigin(ctx.req, ctx.config.secureCookie)),
+  );
+}
+
+export interface InviteNotice {
+  to: string;
+  /** The inviter's note (may be empty). */
+  message: string;
+  aircraft: { registration: string; detail?: string; role: ShareRole }[];
+  /** The address already has an account: the aircraft were shared at once, there is nothing to accept. */
+  existing?: boolean;
+}
+
+/** The subject and text of an invitation to the app, or of aircraft shared at once (pure, for tests). */
+export function inviteMail(by: Pick<Pilot, 'fullName' | 'name' | 'email'>, n: InviteNotice, origin: string) {
+  const who = oneLine(by.fullName || by.name || by.email || 'A pilot', 100);
+  const from = `${who}${by.email && by.email !== who ? ` (${by.email})` : ''}`;
+  const one = n.aircraft.length === 1 ? n.aircraft[0] : null;
+  const what = one ? `the aircraft ${oneLine(one.registration)}` : `${n.aircraft.length} aircraft`;
+  const list = n.aircraft.map(
+    (a) =>
+      `- ${oneLine(a.registration)}${a.detail ? ` (${oneLine(a.detail)})` : ''}: you can ${a.role === 'edit' ? 'view and edit' : 'view'} it`,
+  );
+  const note = oneLine(n.message, 500);
+  return {
+    subject: n.existing ? `${who} shared ${what} with you` : `${who} invited you to Pig's Gotta Fly`,
+    text: [
+      n.existing
+        ? `${from} shared ${what} with you on Pig's Gotta Fly.`
+        : `${from} invited you to Pig's Gotta Fly${n.aircraft.length ? ` and shared ${what} with you` : ''}.`,
+      ...(note ? ['', note] : []),
+      ...(list.length ? ['', ...list] : []),
+      ...(n.existing
+        ? []
+        : [
+            '',
+            `To accept, sign in with Google or Apple using this e-mail address (${oneLine(n.to, 320)}). Pig's Gotta Fly is free; signing in creates your account.`,
+          ]),
+      '',
+      `${origin}/${n.aircraft.length ? 'hangar' : ''}`,
+    ].join('\n'),
+  };
+}
+
+/** E-mails an invitation ('invite') or aircraft shared at once ('share-aircraft'); never throws. */
+export async function notifyInvite(
+  db: Queryable,
+  ctx: { req: Req; config: ApiConfig; pilot: Pilot },
+  n: InviteNotice,
+): Promise<void> {
+  if (!mailAvailability().enabled) return;
+  const m = inviteMail(ctx.pilot, n, appOrigin(ctx.req, ctx.config.secureCookie));
+  await sendNotice(db, ctx, n.existing ? 'share-aircraft' : 'invite', n.to, m);
+}
+
+async function sendNotice(
+  db: Queryable,
+  ctx: { pilot: Pilot },
+  form: string,
+  to: string,
+  m: { subject: string; text: string },
+): Promise<void> {
   let id: string | null = null;
   try {
-    id = await reserveMail(db, {
-      pilotId: ctx.pilot.id,
-      flightId: null,
-      form: `share-${n.kind}`,
-      recipient: n.to,
-      subject: m.subject,
-    });
-    const sent = await sendSystemMail({ to: [n.to], subject: m.subject, text: m.text, replyTo: ctx.pilot.email });
+    id = await reserveMail(db, { pilotId: ctx.pilot.id, flightId: null, form, recipient: to, subject: m.subject });
+    const sent = await sendSystemMail({ to: [to], subject: m.subject, text: m.text, replyTo: ctx.pilot.email });
     await mailSent(db, id, sent.id);
   } catch (e) {
     // capped: the row already says so
     if (id) await mailFailed(db, id, e).catch(() => undefined);
-    console.warn(`share notice (${n.kind}):`, String((e as Error)?.message || e));
+    console.warn(`${form} notice:`, String((e as Error)?.message || e));
   }
 }

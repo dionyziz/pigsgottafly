@@ -250,6 +250,7 @@ api/
                            UTC day, with expiry; weather_budget: Open-Meteo calls per UTC day),
                            045_passenger_email.ts (passengers.email, NULL for existing passengers),
                            054_flight_shares.ts (flight_shares, flight_invites: flights shared by e-mail)
+                           055_pilot_invitations.ts (pilot_invitations, pilot_invitation_aircraft: invitations to the app)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form (Form 731 to a
                            passenger, '731-pax': per flight and recipient; share notices, 'share-aircraft',
@@ -263,7 +264,7 @@ api/
   _lib/routes/             session.ts, me.ts, aircraft.ts, passengers.ts, waypoints.ts, flights.ts, ref.ts, weather.ts,
                            weatherGrid.ts (the Open-Meteo proxy and shared forecast cache),
                            attachments.ts, files.ts (fileRoutes: aircraft photo/documents and operator documents, chunked),
-                           shares.ts, flightShares.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts,
+                           shares.ts, flightShares.ts, invitations.ts, operators.ts, declarations.ts, admin.ts, notams.ts, filing.ts,
                            monitoring.ts (health, client-errors, admin/errors)
                            + index.ts (the registry)
 server/server.ts           local server: API + dist/ with SPA fallback (npm start / npm run serve)
@@ -339,8 +340,9 @@ tests/fixtures/            club-wbp-cases.json: answers of mesogeion-aeroclub.gr
 | GET | /me/export | Everything the pilot owns as a JSON download (GDPR portability; files listed without their bytes). |
 | GET, POST | /aircraft | List (by registration): own and shared aircraft, each with `access` (`HangarAircraft`: role, owner); create from `AircraftInput` (you own it). 409 on a duplicate registration. A pilot with no default aircraft gets the new one as default. |
 | GET, PUT, DELETE | /aircraft/:id | GET: any access; PUT: owner or editor (403 for viewers); DELETE: owner only. PUT merges the top-level fields. Flights referencing a deleted aircraft get `aircraftId: null`. A compass card's `report` must be a file of this aircraft (400 otherwise); on PUT, reports the stored cards referenced and these do not are deleted, and unreferenced uploads older than 30 min (a save may leave before an upload ends). POST drops `report` references. |
-| GET, POST | /aircraft/:id/shares | Sharing (`src/shared/sharing.ts`): GET anyone with access (owner first); POST `{email, role: 'view'\|'edit'}` by owner/editor → 201. 404 for an e-mail with no account (case-insensitive), 400 for yourself or the owner, 409 when they already have access. |
-| PUT, DELETE | /aircraft/:id/shares/:pilotId | Change the role / remove (owner or editor); anyone may remove themselves ("remove from my hangar"). The owner is not a share. Removing clears that pilot's default if it was this aircraft. |
+| GET, POST | /aircraft/:id/shares | Sharing (`src/shared/sharing.ts`): GET anyone with access (owner first); POST `{email, role: 'view'\|'edit'}` by owner/editor → 201. An e-mail no account uses (case-insensitive) is invited to the app with this aircraft (`pending`, key = the address; 404 in local mode); 400 for yourself or the owner, 409 when they already have access or the invitation has it. |
+| PUT, DELETE | /aircraft/:id/shares/:pilotId | Change the role / remove (owner or editor); anyone may remove themselves ("remove from my hangar"). The owner is not a share. Removing clears that pilot's default if it was this aircraft. With an invited address: that aircraft's pending share only (the invitation stays). |
+| GET, POST, DELETE | /invitations[/:id[/aircraft/:aircraftId]] | Inviting pilots to the app (migration 055, `routes/invitations.ts`): `PilotInvitation[]` (open ones); POST `InviteRequest` (e-mail, note, aircraft the pilot owns or edits) → `InviteResponse`; an address with an account gets the aircraft shared at once (`existing: true`). Every sign-in with the invited address accepts it and shares the aircraft (if the inviter may still share them). E-mailed ('invite'), capped and rate-limited like shares. An invitation admits its address past `ALLOWED_EMAILS`. DELETE cancels it, or one of its aircraft. |
 | POST | /aircraft/:id/attachments | (editor or owner) `AttachmentInput` (PDF/PNG/JPEG/WebP, base64, ≤ 3 MB) → 201 `AttachmentRef` (compass swing reports). |
 | GET, DELETE | /aircraft/:id/attachments/:fileId | GET returns `Attachment` (`AttachmentRef` + base64 `data`). |
 | GET | /aircraft/:id/files | `AircraftFiles` {photo, documents} (anyone with access). The aircraft list/get also carry `photo` and `placeholder` (1–3, the picture shown without a photo; set at creation, never changed). |
