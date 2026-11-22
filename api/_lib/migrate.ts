@@ -47,6 +47,7 @@ import aircraftLog057 from './migrations/057_aircraft_log.js';
 import notamSourceCache058 from './migrations/058_notam_source_cache.js';
 import filingBackends059 from './migrations/059_filing_backends.js';
 import aircraftRevisions060, { run as aircraftRevisionsRun060 } from './migrations/060_aircraft_revisions.js';
+import autorouterLinks061 from './migrations/061_autorouter_links.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -100,6 +101,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '058_notam_source_cache', sql: notamSourceCache058 },
   { name: '059_filing_backends', sql: filingBackends059 },
   { name: '060_aircraft_revisions', sql: aircraftRevisions060, run: aircraftRevisionsRun060 },
+  { name: '061_autorouter_links', sql: autorouterLinks061 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

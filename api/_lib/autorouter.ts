@@ -82,6 +82,16 @@ export interface TokenStore {
   refuse: (until: number) => Promise<void>;
 }
 
+/**
+ * A pilot's own account, linked by OAuth authorization code (autorouterLinks.ts): its token comes from
+ * the link, never from client credentials.
+ */
+export interface BearerSource {
+  get: () => Promise<string>;
+  /** autorouter refused `value`: renew it for the next get(), or throw (the link is broken). */
+  refused: (value: string) => Promise<void>;
+}
+
 /** After autorouter refuses a new token (too many live ones), no instance asks again for this long. */
 export const REFUSED_WAIT_MS = 15 * 60e3;
 
@@ -158,6 +168,7 @@ export class AutorouterClient {
   constructor(
     private readonly s: AutorouterSettings,
     private readonly store: TokenStore | null = null,
+    private readonly bearer: BearerSource | null = null,
   ) {
     this.base = (s.baseUrl || AUTOROUTER_BASE).replace(/\/+$/, '');
     this.doFetch = s.fetch || fetch;
@@ -172,6 +183,7 @@ export class AutorouterClient {
   private fresh = (t: AutorouterToken | null): t is AutorouterToken => !!t && t.expires > this.now() + TOKEN_MARGIN_MS;
 
   private async getToken(): Promise<string> {
+    if (this.bearer) return this.bearer.get();
     if (this.fresh(this.token)) return this.token.value;
     this.tokenP ||= (async () => {
       try {
@@ -236,6 +248,10 @@ export class AutorouterClient {
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       if ((res.status === 401 || res.status === 403) && attempt === 0) {
+        if (this.bearer) {
+          await this.bearer.refused(tok);
+          continue;
+        }
         this.token = null;
         await this.store?.drop(tok).catch(() => {});
         continue;

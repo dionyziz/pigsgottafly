@@ -186,6 +186,23 @@ final class API: Sendable {
         _ = try await request("DELETE", "me", body: try JSON.object(["confirm": .string(confirm)]).data())
     }
 
+    func autorouter() async throws -> AutorouterLink {
+        try decode(AutorouterLink.self, try await get("autorouter"))
+    }
+
+    /// POST /autorouter/app-connect → the page that starts linking, for the sign-in sheet (it has
+    /// Safari's cookies, not the app's session, so the URL carries a short-lived ticket).
+    func autorouterConnectURL() async throws -> URL {
+        let r = try decode(
+            [String: String].self, try await request("POST", "autorouter/app-connect", body: Data("{}".utf8)))
+        guard let s = r["url"], let url = URL(string: s) else { throw APIError.http(0, "No link to autorouter.") }
+        return url
+    }
+
+    func autorouterDisconnect() async throws -> AutorouterLink {
+        try decode(AutorouterLink.self, try await request("POST", "autorouter/disconnect", body: Data("{}".utf8)))
+    }
+
     private func escape(_ s: String) -> String {
         s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/")))
             ?? s

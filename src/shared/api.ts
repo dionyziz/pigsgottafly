@@ -67,6 +67,22 @@ export interface LoginResponse {
 
 // ---- profile --------------------------------------------------------------------------------
 
+/**
+ * GET /api/autorouter, POST /api/autorouter/disconnect: the pilot's own autorouter account. Connect
+ * with a top-level GET /api/autorouter/connect?return=<path> (back with ?autorouter=connected|denied|failed);
+ * the iOS app asks POST /api/autorouter/app-connect for the URL to open in its sign-in sheet.
+ */
+export interface AutorouterLinkStatus {
+  /** The server can link accounts (AUTOROUTER_CLIENT_ID); false: nothing to show. */
+  enabled: boolean;
+  connected: boolean;
+  /** autorouter refused the link: reconnect. */
+  broken: boolean;
+  /** The account, when autorouter named it. */
+  account: string | null;
+  linkedAt: EpochMs | null;
+}
+
 /** GET /api/me → Pilot; PUT /api/me with MeUpdateRequest → Pilot */
 export type MeResponse = Pilot;
 export type MeUpdateRequest = PilotUpdate;

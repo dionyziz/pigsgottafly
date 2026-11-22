@@ -431,7 +431,7 @@ Shared flights (migration 054, `access.ts` `flightFor`, `api/_lib/routes/flightS
 `GET /api/flights/:id/notams` (`api/_lib/routes/notams.ts`) briefs from every NOTAM source available to the pilot on that flight, together (`tests/api/notamSources.test.ts`, `tests/api/nmsSource.test.ts`, `tests/api/briefing.test.ts`).
 
 - **Driver** (`api/_lib/notamSources/types.ts`): `{ id, label, availableFor({ pilotId, ownerId }), fetch({ locations, window, signal }) → RawNotam[], timeoutMs?, cacheTtlMs? }`. `locations` are item A codes (the route's aerodromes, alternates, aerodromes near the route, the FIR LGGG); `window` is block off − 1 h … block on + 1 h. `RawNotam` is the common form: series/number/year, type N/R/C and the NOTAM it replaces or cancels, the Q line (FIR, code letters 2–3 and 4–5, traffic, purpose, scope, lower/upper FL, centre and radius), items A–G (B/C as epoch ms, C `null` = PERM, EST), the ICAO text when the source gives it, the issue time when it does, and the source id. A source that only gives the text is read with `icao.ts`.
-- **Licensing gate**: `availableFor` decides whether a source is queried at all for this pilot and flight, so nothing it returns can reach a pilot it is not for. autorouter (`autorouter.ts`): only the `AUTOROUTER_PILOTS`, only on their own flights (its licence is the account's). The international NOTAM feed (`nms.ts`): every pilot (its terms allow redistribution). Notamify (`notamify.ts`): every pilot (the app's own key). The stored briefing (`flight_notams`) records the sources it came from and is served (fresh or as the fallback) only to a pilot entitled to all of them.
+- **Licensing gate**: `availableFor` decides whether a source is queried at all for this pilot and flight, so nothing it returns can reach a pilot it is not for. autorouter (`autorouter.ts`): a pilot's own connected account on any flight they are on; the shared account only for the `AUTOROUTER_PILOTS`, only on their own flights (its licence is the account's). The international NOTAM feed (`nms.ts`): every pilot (its terms allow redistribution). Notamify (`notamify.ts`): every pilot (the app's own key). The stored briefing (`flight_notams`) records the sources it came from and is served (fresh or as the fallback) only to a pilot entitled to all of them.
 - **Multiplexing** (`multiplex.ts`): the available sources are queried at once, each with its own time limit (25 s; aborted after it). A failing or slow source costs only its own NOTAMs; every source's outcome (`ok` / `error` / `timeout`, count, message, and its freshness: `newestIssued`, the latest issue time among its NOTAMs, and `newestNotam`, its highest number of the busiest series of a queried FIR, to spot a source lagging behind) goes into `NotamBriefing.sources` and the panel's meta line ("157 NOTAMs from autorouter, International NOTAM feed, Notamify"). The briefing is `error` only when every source failed (then the stored briefing, if any, with "Could not refresh"). A briefing with a failed source is not served from the store again.
 - **Merging** (`merge.ts`): one record per NOTAM. Identity: series + number + year, of the same office: equal Q-line FIRs, or, when one lacks a FIR, overlapping locations (item A + FIR). The most complete record wins (start time, Q-line coordinates, FIR, Q code, item E, F/G, ICAO text; then NOTAM_SOURCES order) and its gaps are filled from the others; `Notam.sources` lists every source that had it. A NOTAMR removes the NOTAM it replaces and a NOTAMC the one it cancels (same office), along whole chains; the NOTAMC itself stays, hidden by the relevance rules. The merged list then goes through `assessNotams` as before. A NOTAM of another state's office naming the FIR (Q-line FIR not LG…, e.g. Turkish LTXX/LTBB NOTAMs with item A `LTBB LGGG`) is relevant only for an aerodrome the flight uses or when its area is within the corridor, never as "whole FIR" or "no position given" (`homeFir`).
 - **Caching** (`cache.ts`): a source with `cacheTtlMs` (NMS, Notamify: 15 min) is cached per source, location and UTC-day window in `notam_source_cache` (shared by every instance), and asked only for the locations it has no fresh rows for, with the window widened to whole UTC days, so the FIR is fetched once for every flight of the day. autorouter (free) is not cached there. On top, each flight's briefing is stored in `flight_notams` for 10 minutes. `refresh=1` skips both.
@@ -466,7 +466,9 @@ timed out or refused for its own reasons (5xx, 429, network). A refusal of the p
 parse errors, the caps) is not transient.
 
 - **autorouter** (`filers/autorouter.ts`): wraps `AutorouterClient` unchanged. It has every capability,
-  including ATC's ACK/REJ through the plan status. It is only for `AUTOROUTER_PILOTS` and needs `AUTOROUTER_FILING=1`.
+  including ATC's ACK/REJ through the plan status. It files with the pilot's own connected account
+  (`autorouterLinks.ts`, below), else the shared account for `AUTOROUTER_PILOTS` with `AUTOROUTER_FILING=1`;
+  without either, it reports `connect: 'connect' | 'reconnect'` and the filing panel offers to connect.
 - **fax** (`filers/fax.ts`): the plan is printed by the website's own print path. `sheetPdf.ts` `chromiumFaxPdf`
   renders `src/pdf/` kind `fplfax` (`FaxSheets.tsx`) as two pages:
   - a cover page: to the unit, from the pilot (name, phone, e-mail), flight id, EOBT, route, the FPL
@@ -537,6 +539,26 @@ report `{ faxId, state, error, pages }`), plus its settings in `faxFromEnv`.
 Tests never fax. `tests/setup/noExternalApis.ts` refuses telnyx.com and sinch.com, and the services are mocked
 (`tests/api/faxFiling.test.ts`). `FAX_DRY_RUN=1` prints the PDF and logs it (and writes it to `FAX_DRY_RUN_DIR`)
 instead of sending, then reports it delivered (`tests/e2e/faxFiling.e2e.test.mjs`).
+
+## Pilots' own autorouter accounts
+
+autorouter's licence is personal, so each pilot links their own account by OAuth 2.0 authorization code
+(`api/_lib/autorouterLinks.ts`, `routes/autorouter.ts`, table `autorouter_links`). Dormant until
+`AUTOROUTER_CLIENT_ID` and `AUTOROUTER_CLIENT_SECRET` are set.
+
+- **Flow**: `GET /api/autorouter/connect?return=<path>` (signed in) sets a nonce cookie and redirects to
+  `https://www.autorouter.aero/authorize` with a signed `state` (pilot, return path, nonce hash, 10 minutes).
+  `GET /api/autorouter/callback` checks the state against the cookie, exchanges the code and returns to the path
+  with `?autorouter=connected|denied|failed`. The iOS app gets a 2-minute ticket from `POST /api/autorouter/app-connect`
+  and opens `GET /api/autorouter/app-connect?ticket=…` in its sign-in sheet; it comes back as
+  `pigsgottafly://autorouter?result=…`.
+- **Tokens**: sealed with AES-256-GCM (`AUTOROUTER_TOKEN_KEY`), one per pilot, reused by every instance. An
+  expired or refused token is renewed with the refresh token when autorouter gave one; otherwise, or when the
+  renewal is refused, the link is marked broken and the pilot reconnects. Disconnecting deletes the row
+  (autorouter documents no revocation).
+- **Use**: `app.ts autorouterFor` gives a route marked `autorouter: true` the pilot's linked client, else the
+  shared account for `AUTOROUTER_PILOTS`, else none. Filing, NOTAMs (any flight the pilot is on) and the
+  METAR/TAF fill then run with that account.
 
 ## Database, migrations and seeds
 

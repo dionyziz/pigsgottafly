@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { FilerId } from '../../src/shared/briefing.js';
 import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
+import type { AutorouterOAuthSettings } from './autorouterLinks.js';
 import type { Db } from './db.js';
 import type { FaxProvider, FaxSettings } from './filers/faxProviders.js';
 import type { Filer } from './filers/types.js';
@@ -48,6 +49,11 @@ export interface ApiConfig {
    * list means NOBODY (never "anyone"). Default: allowedEmails. Local mode: the local pilot.
    */
   autorouterPilots?: string[];
+  /**
+   * autorouter's OAuth registration of this app (AUTOROUTER_CLIENT_ID / _SECRET): every pilot may link
+   * their own account and file and read NOTAMs with it. null/undefined: not offered.
+   */
+  autorouterOAuth?: AutorouterOAuthSettings | null;
   /** The NOTAM Management Service (NMS_BASE, NMS_CLIENT_ID, NMS_CLIENT_SECRET): a source for every pilot. */
   nms?: NmsSettings | null;
   /** Notamify (NOTAMIFY_API_KEY): a NOTAM source for every pilot; null/undefined = not configured. */
@@ -109,9 +115,14 @@ export interface Ctx {
   body: () => Promise<JsonBody>;
   /** Extra response headers (e.g. Set-Cookie). */
   headers: Record<string, string>;
-  /** The autorouter client of this API instance, or null when not configured or not for this pilot. */
+  /**
+   * The pilot's autorouter account: their own linked one, else the deployment's for the pilots on
+   * AUTOROUTER_PILOTS, else null. The linked one only on routes marked `autorouter` (one more query).
+   */
   autorouter: AutorouterClient | null;
-  /** True when autorouter is configured but this pilot is not on the autorouter allow-list. */
+  /** The client is the pilot's own linked account (its NOTAMs may be shown on any flight they are on). */
+  autorouterLinked: boolean;
+  /** True when autorouter is configured but there is no account for this pilot. */
   autorouterDenied: boolean;
   /** The filing backends for this pilot, in the order they are tried (filers/select.ts). */
   filers: Filer[];
@@ -145,6 +156,8 @@ export interface Route {
    * only, same origin) do not apply; the handler checks the service's signature on rawBody instead.
    */
   webhook?: boolean;
+  /** The handler uses ctx.autorouter or ctx.filers: the pilot's linked autorouter account is looked up first. */
+  autorouter?: boolean;
   handler: Handler;
 }
 

@@ -6,6 +6,7 @@ import path from 'node:path';
 import type { Pilot } from '../../src/shared/types.js';
 import { appleKeys, googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
 import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
+import { autorouterOAuthFromEnv, linkedClient, readLink } from './autorouterLinks.js';
 import type { Db } from './db.js';
 import { autorouterFiler } from './filers/autorouter.js';
 import { faxFiler } from './filers/fax.js';
@@ -84,6 +85,7 @@ export function configFromEnv(
     // AUTOROUTER_PILOTS limits the autorouter account to some of the pilots ('*': every signed-in
     // pilot); unset → ALLOWED_EMAILS.
     ...(env.AUTOROUTER_PILOTS !== undefined ? { autorouterPilots: emailList(env.AUTOROUTER_PILOTS) } : {}),
+    autorouterOAuth: autorouterOAuthFromEnv(env),
     // filing backends: FILERS orders them; the fax service (faxProviders.ts) only when configured,
     // for the pilots on FAX_PILOTS (default ALLOWED_EMAILS)
     filers: filerOrder(env.FILERS),
@@ -101,6 +103,12 @@ export function configFromEnv(
           faxPdf: chromiumFaxPdf({ distDir: sheetDist(env) }),
         }),
   };
+}
+
+interface ArAccount {
+  client: AutorouterClient | null;
+  linked: boolean;
+  link: 'connected' | 'broken' | 'none' | null;
 }
 
 /** The autorouter token in the database, shared by every server instance (one row). */
@@ -149,6 +157,7 @@ export function createApi(
     appleKeys: opts.appleKeys || appleKeys,
     secureCookie: !!opts.secureCookie,
     autorouter: opts.autorouter ?? null,
+    autorouterOAuth: opts.autorouterOAuth ?? null,
     nms: opts.nms ?? null,
     notamify: opts.notamify ?? null,
     notamSources: opts.notamSources,
@@ -178,14 +187,30 @@ export function createApi(
           .trim()
           .toLowerCase(),
       ));
-  /** The shared autorouter account is for the listed pilots ('*': all of them; local mode: the local pilot). */
-  const autorouterFor = (p: Pilot | null): boolean =>
+  /** The deployment's own autorouter account is for the listed pilots ('*': all of them; local mode: the local pilot). */
+  const personalFor = (p: Pilot | null): boolean =>
     config.autorouterPilots!.includes('*') ? !!p : listed(config.autorouterPilots!, p);
+  const oauth = config.autorouterOAuth ?? null;
+  /**
+   * The pilot's autorouter account: their own linked one (`lookup`: only where a route needs it, it
+   * costs a query), else the deployment's for the listed pilots, else none. `link` is the state of
+   * their own link (null: linking is not offered).
+   */
+  const autorouterFor = async (p: Pilot | null, lookup: boolean): Promise<ArAccount> => {
+    const personal = autorouter && personalFor(p) ? autorouter : null;
+    if (!oauth || !p || !lookup) return { client: personal, linked: false, link: null };
+    const row = await readLink(db, p.id);
+    if (row && !row.broken_at) return { client: linkedClient(db, oauth, row), linked: true, link: 'connected' };
+    return { client: personal, linked: false, link: row ? 'broken' : 'none' };
+  };
   const faxFor = (p: Pilot | null): boolean => (config.faxPilots!.includes('*') ? !!p : listed(config.faxPilots!, p));
   /** The filing backends for this pilot, in order (filers/select.ts). */
-  const filersFor = (req: Req, p: Pilot | null, arOk: boolean): Filer[] =>
+  const filersFor = (req: Req, p: Pilot | null, ar: ArAccount): Filer[] =>
     config.filers!.flatMap((id): Filer[] => {
-      if (id === 'autorouter') return [autorouterFiler(arOk ? autorouter : null, !!autorouter && !arOk)];
+      if (id === 'autorouter') {
+        const connect = !ar.client && ar.link ? (ar.link === 'broken' ? 'reconnect' : 'connect') : undefined;
+        return [autorouterFiler(ar.client, !!autorouter && !ar.client, connect)];
+      }
       if (!fax) return [];
       const origin = config.faxWebhookBase || appOrigin(req, config.secureCookie);
       // a callback to this machine would never arrive: such a fax is polled instead
@@ -249,7 +274,7 @@ export function createApi(
           pilot = toPilot(row);
         }
         let bodyP: Promise<JsonBody> | null = null;
-        const arOk = autorouterFor(pilot);
+        const ar = await autorouterFor(pilot, !!r.autorouter);
         const ctx: Ctx = {
           req,
           db,
@@ -258,9 +283,10 @@ export function createApi(
           query: url.searchParams,
           pilot: pilot!,
           headers: renewed ? { 'Set-Cookie': renewed } : {},
-          autorouter: arOk ? autorouter : null,
-          autorouterDenied: !!autorouter && !arOk,
-          filers: filersFor(req, pilot, arOk),
+          autorouter: ar.client,
+          autorouterLinked: ar.linked,
+          autorouterDenied: (!!autorouter || !!ar.link) && !ar.client,
+          filers: filersFor(req, pilot, ar),
           faxProvider: fax,
           rawBody: () => readRaw(req),
           formsMailDenied: !formsMailFor(pilot),

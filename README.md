@@ -79,6 +79,11 @@ vercel deploy --prod
   - `AUTOROUTER_EMAIL` / `AUTOROUTER_PASSWORD`: optional, for the NOTAM briefing. Add `AUTOROUTER_FILING=1` for flight-plan filing.
     - This is one shared account, so only the pilots on `AUTOROUTER_PILOTS` (default `ALLOWED_EMAILS`) may use it; `*` lets every signed-in pilot use it. With both lists empty, nobody can.
     - Filing only accepts a plan whose item 7 is the registration of the flight's aircraft.
+  - `AUTOROUTER_CLIENT_ID` / `AUTOROUTER_CLIENT_SECRET`: optional, the app's OAuth registration with autorouter. With both set, every pilot can connect their own autorouter account (profile, or the filing panel's *Connect autorouter to file*); filing, NOTAMs and METAR/TAF then use that pilot's own account. Unset, nothing about it is shown.
+    - The callback registered with autorouter is `https://pigsgottafly.com/api/autorouter/callback`; `AUTOROUTER_REDIRECT_URI` overrides it (default: the site's origin + `/api/autorouter/callback`).
+    - `AUTOROUTER_TOKEN_KEY`: recommended, any long random string (e.g. `openssl rand -base64 32`); the pilots' autorouter tokens are stored encrypted with it (AES-256-GCM). Unset, the key is derived from the client secret. Changing it means every pilot reconnects.
+    - `AUTOROUTER_FILING=0` turns off filing through connected accounts (on by default).
+    - A pilot with a connected account uses it everywhere; the shared `AUTOROUTER_EMAIL` account stays as before for the `AUTOROUTER_PILOTS` who have not connected one.
   - `NOTAMIFY_API_KEY`: optional, a second NOTAM source for every pilot ([Notamify](https://notamify.com) API v2; needs Notamify Pro and API credits, 1 credit per page of 30 NOTAMs). Its answers are cached per location and day for 15 minutes in the database.
     - `NOTAMIFY_MAX_CREDITS`: optional, the most pages one briefing may fetch (default 40).
   - `NMS_BASE`, `NMS_CLIENT_ID`, `NMS_CLIENT_SECRET`: optional, a NOTAM source for every pilot: the FAA NOTAM Management Service API (NMS-API), shown to pilots as "International NOTAM feed" (its terms forbid presenting the data as FAA data). `NMS_BASE` is `https://api-staging.cgifederal-aim.com` (pre-production) or `https://api-nms.aim.faa.gov` (production; separate credentials). Free; answers are cached per location and day for 15 minutes. `npx tsx tools/nms_smoke.ts --env .env.local` checks the credentials.

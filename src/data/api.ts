@@ -17,6 +17,7 @@ import type {
   Attachment,
   AttachmentInput,
   AttachmentRef,
+  AutorouterLinkStatus,
   DeclarationsState,
   Flight,
   FlightCopyRequest,
@@ -203,6 +204,10 @@ function filesOf<L>(base: string, key: EntityKey | EntityKey[]) {
 }
 export type FilesApi = ReturnType<typeof filesOf<unknown>>;
 
+/** Where the browser goes to link the pilot's autorouter account; it comes back to `returnTo` (a path here). */
+export const autorouterConnectUrl = (returnTo: string) =>
+  `/api/autorouter/connect?return=${encodeURIComponent(returnTo)}`;
+
 export const api = {
   session: () => request<SessionResponse>('GET', 'session'),
   login: (credential: string) => request<LoginResponse>('POST', 'login', { credential }),
@@ -353,6 +358,11 @@ export const api = {
     sign: (token: string) => request<SigningView>('POST', `sign/${encodeURIComponent(token)}`),
     details: (token: string, d: SignerDetails) =>
       request<SigningView>('PUT', `sign/${encodeURIComponent(token)}/details`, d),
+  },
+  /** The pilot's own autorouter account (api/_lib/routes/autorouter.ts). */
+  autorouter: {
+    status: () => request<AutorouterLinkStatus>('GET', 'autorouter'),
+    disconnect: () => request<AutorouterLinkStatus>('POST', 'autorouter/disconnect'),
   },
   /** Flight-plan filing through the filing backends (api/_lib/routes/filing.ts). 503 = filing not enabled. */
   filing: {

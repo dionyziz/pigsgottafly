@@ -70,6 +70,37 @@ final class APITests: XCTestCase {
         XCTAssertEqual(fake.requests[1].url?.path, "/api/flights/f1")
     }
 
+    func testAutorouterLinkStatusConnectAndDisconnect() async throws {
+        let fake = FakeTransport { req in
+            switch (req.httpMethod ?? "", req.url!.path) {
+            case ("GET", "/api/autorouter"):
+                return (
+                    200, Data(#"{"enabled":true,"connected":false,"broken":true,"account":null,"linkedAt":1}"#.utf8),
+                    [:]
+                )
+            case ("POST", "/api/autorouter/app-connect"):
+                return (
+                    200, Data(#"{"url":"https://pigsgottafly.com/api/autorouter/app-connect?ticket=t.s"}"#.utf8), [:]
+                )
+            default:
+                return (
+                    200,
+                    Data(#"{"enabled":true,"connected":false,"broken":false,"account":null,"linkedAt":null}"#.utf8),
+                    [:]
+                )
+            }
+        }
+        let api = API(transport: fake)
+        let s = try await api.autorouter()
+        XCTAssertEqual(s, AutorouterLink(enabled: true, connected: false, broken: true, account: nil))
+        let url = try await api.autorouterConnectURL()
+        XCTAssertEqual(url.absoluteString, "https://pigsgottafly.com/api/autorouter/app-connect?ticket=t.s")
+        XCTAssertEqual(fake.requests[1].value(forHTTPHeaderField: "Content-Type"), "application/json")
+        let d = try await api.autorouterDisconnect()
+        XCTAssertFalse(d.broken)
+        XCTAssertEqual(fake.requests[2].url?.path, "/api/autorouter/disconnect")
+    }
+
     func testStatusCodesBecomeErrors() async {
         let api = API(
             transport: FakeTransport { req in

@@ -117,8 +117,9 @@ export function metarTime(raw: string, now: number): number | null {
   return null;
 }
 
-// Reports from the pilot's own autorouter account (personal use: AUTOROUTER_PILOTS) fill the stations
-// aviationweather.gov lacks. Kept apart from the shared cache, so they are never served to anyone else.
+// Reports from an autorouter account the pilot may use (their own linked one, or the deployment's for
+// AUTOROUTER_PILOTS) fill the stations aviationweather.gov lacks. Kept apart from the shared cache, so
+// they are served only to pilots with an autorouter account.
 const autorouterMet = new Map<string, { at: number; metar: string | null; taf: string | null }>();
 
 async function fillFromAutorouter(
@@ -241,6 +242,7 @@ export function createWeatherProxy(opts: WeatherProxyOptions = {}) {
     {
       method: 'GET',
       path: '/weather/metar',
+      autorouter: true,
       async handler(ctx) {
         const ids = parseIds(ctx.query.get('ids'));
         if (!ids.length) throw new HttpError(400, 'ids: one or more ICAO codes');

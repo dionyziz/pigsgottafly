@@ -173,6 +173,8 @@ export interface FilerInfo {
   available: boolean;
   /** Why it is not available (null when it is). */
   reason: string | null;
+  /** autorouter: available once the pilot connects (or reconnects) their own account. */
+  connect?: 'connect' | 'reconnect';
 }
 
 /** One AFTN addressee proposed for the plan (AIP Greece ENR 1.11), for the pilot to review. */
