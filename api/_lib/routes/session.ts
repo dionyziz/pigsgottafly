@@ -175,12 +175,29 @@ export const routes: Route[] = [
       if (!emailAllowed(email, config.allowedEmails)) throw new HttpError(403, `${email} is not allowed`);
       const sub = claims.sub ? String(claims.sub) : `email:${email.toLowerCase()}`;
       const now = Date.now();
+      const name = claims.name || '';
+      const picture = claims.picture || '';
+      const [known] = await db.query(
+        `UPDATE pilots SET email = $2, name = $3, picture = $4, last_login = $5 WHERE google_sub = $1 RETURNING *`,
+        [sub, email, name, picture, now],
+      );
+      if (known) return signedIn(db, config, known, false, now, email);
+      // Google verified the address: a pilot who signed in with Apple under it is the same person, one account
+      const [linked] = await db.query(
+        `UPDATE pilots SET google_sub = $1, last_login = $2,
+           name = CASE WHEN name = '' THEN $3 ELSE name END, picture = CASE WHEN picture = '' THEN $4 ELSE picture END
+         WHERE id = (SELECT id FROM pilots WHERE google_sub IS NULL AND id <> 'local' AND email <> '' AND lower(email) = lower($5)
+                     ORDER BY created LIMIT 1)
+         RETURNING *`,
+        [sub, now, name, picture, email],
+      );
+      if (linked) return signedIn(db, config, linked, false, now, email);
       // New pilots start with an empty profile and hangar (seeded_at set: no one-time migration data).
       const [row] = await db.query(
         `INSERT INTO pilots (id, google_sub, email, name, picture, created, last_login, seeded_at) VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
          ON CONFLICT (google_sub) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, picture = EXCLUDED.picture, last_login = EXCLUDED.last_login
          RETURNING *, (xmax = 0) AS inserted`,
-        [newPilotId(), sub, email, claims.name || '', claims.picture || '', now],
+        [newPilotId(), sub, email, name, picture, now],
       );
       return signedIn(db, config, row, row.inserted === true, now, email);
     },

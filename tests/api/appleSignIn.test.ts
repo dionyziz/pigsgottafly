@@ -60,6 +60,24 @@ describe('Sign in with Apple', () => {
     expect((await c.call('GET', 'me')).body.email).toBe('Linked.Pilot@example.com');
   });
 
+  test('Apple first, then Google with the same verified e-mail: one pilot, the same data', async () => {
+    const a = client(api.base);
+    const ap = (await appleLogin(a, appleClaims('apple-first', 'Both.Ways@example.com'))).body.pilot;
+    expect((await a.call('POST', 'aircraft', { registration: 'SX-BTH' })).status).toBe(201);
+    const g = client(api.base);
+    const r = await g.login('google-second', 'both.ways@EXAMPLE.com');
+    expect(r.status).toBe(200);
+    expect(r.body.pilot.id).toBe(ap.id);
+    expect((await g.call('GET', 'aircraft')).body.map((x: { registration: string }) => x.registration)).toContain(
+      'SX-BTH',
+    );
+    // both keep working, onto the one pilot
+    expect(
+      (await appleLogin(client(api.base), appleClaims('apple-first', 'Both.Ways@example.com'))).body.pilot.id,
+    ).toBe(ap.id);
+    expect((await client(api.base).login('google-second', 'both.ways@example.com')).body.pilot.id).toBe(ap.id);
+  });
+
   test('a Hide My Email relay address never links another pilot', async () => {
     const relay = 'abc123@privaterelay.appleid.com';
     const g = client(api.base);
