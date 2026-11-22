@@ -871,7 +871,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-19)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-20)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
