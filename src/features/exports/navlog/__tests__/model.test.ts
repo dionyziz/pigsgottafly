@@ -8,16 +8,9 @@ import { aerodrome, REF, SUN_TABLES, vfrPoint } from '../../../../data/ref';
 import type { OpenMeteoLocation, RouteWeather } from '../../../../data/weather';
 import { type MetarTafResult, parseMetar } from '../../../../data/weatherMetar';
 import type { Aircraft, AtcEntry, CompassCard, FlightDoc, RoutePoint } from '../../../../shared';
-import { aircraftFromTypeJson, DEFAULT_SETTINGS, emptyFlightDoc, legKey } from '../../../../shared';
+import { aircraftFromTypeJson, DEFAULT_SETTINGS, emptyFlightDoc, legKey, LEGS_PER_SHEET } from '../../../../shared';
 import { fmtEte } from '../../../../shared/format';
-import {
-  buildNavlogDocument,
-  computeFlightNavlog,
-  fmtSurfaceWind,
-  LEGS_PER_SHEET,
-  runwayInUse,
-  terminalRows,
-} from '../model';
+import { buildNavlogDocument, computeFlightNavlog, fmtSurfaceWind, runwayInUse, terminalRows } from '../model';
 
 const ref = { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, sunTables: SUN_TABLES };
 let n = 0;

@@ -1,22 +1,25 @@
-// The W&B and performance sheets e-mailed to an operator, printed by headless Chromium exactly as the
-// website prints them (routes/declarations.ts). Chromium opens the PDF page of the built client
-// (pdf.html → src/pdf/main.tsx: the export page's own sheet components and CSS), drawn from the
-// WbPerfContent the pilot sent, and prints it to PDF with the print CSS (A4, vector text).
+// Sheets e-mailed as PDF, printed by headless Chromium exactly as the website prints them: the W&B
+// and performance sheets to an operator (routes/declarations.ts), the navlog to the pilot
+// (routes/navlogMail.ts). Chromium opens the PDF page of the built client (pdf.html →
+// src/pdf/main.tsx: the export pages' own sheet components and CSS), drawn from the content the
+// pilot sent, and prints it to PDF with the print CSS (A4, the sheets' @page, vector text).
 //
 // Security: the browser never sees a session or the API. It gets the content (already normalized by
-// wbPerfContentOf: bounded, no links) as data (window.__PGF_SHEETS__, passed through CDP, never
-// spliced into code) and loads nothing from the network: every request goes to a made-up origin
+// wbPerfContentOf / navlogContentOf: bounded, no links) as data (window.__PGF_SHEETS__, passed
+// through CDP, never spliced into code) and loads nothing from the network: every request goes to a made-up origin
 // and is answered from the built client on disk (GET only, known file types, paths inside distDir);
 // anything else is aborted. React escapes the text, so the content cannot become markup or script.
 //
 // Chromium: CHROME (or the executablePath option), else a local Chrome/Chromium, else on Vercel
 // (Linux) @sparticuz/chromium (vercel.json ships its bin/ and dist/ with the function). Launched per
-// print and closed after it; everything is bounded by timeoutMs. Any failure throws: the caller falls
-// back to the server's own PDF writer (declarationPdf.ts) and records the error.
+// print and closed after it; everything is bounded by timeoutMs. Any failure throws: for the operator's
+// sheets the caller falls back to the server's own PDF writer (declarationPdf.ts), for the navlog
+// (no other writer) the send fails; either way the error is recorded.
 import fs from 'node:fs';
 import path from 'node:path';
 
 import type { WbPerfContent } from '../../src/shared/declarations.js';
+import type { NavlogContent } from '../../src/shared/navlogSheets.js';
 
 /** The PIC's e-signature on the sheets (name, when it was signed: epoch ms). */
 export interface SheetSignature {
@@ -24,6 +27,11 @@ export interface SheetSignature {
   signedAt: number;
 }
 export type SheetPdfRenderer = (content: WbPerfContent, signature: SheetSignature | null) => Promise<Buffer>;
+export type NavlogPdfRenderer = (content: NavlogContent) => Promise<Buffer>;
+/** What the PDF page draws (src/pdf/main.tsx). */
+type Snapshot =
+  | { kind: 'wbperf'; content: WbPerfContent; signature: SheetSignature | null }
+  | { kind: 'navlog'; content: NavlogContent };
 
 export interface ChromiumSheetPdfOptions {
   /** The built client (vite build): holds pdf.html, assets/ and fonts/. */
@@ -95,8 +103,18 @@ function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
 }
 
 export function chromiumSheetPdf(opts: ChromiumSheetPdfOptions): SheetPdfRenderer {
+  const print = chromiumPrint(opts);
+  return (content, signature) => print({ kind: 'wbperf', content, signature });
+}
+
+export function chromiumNavlogPdf(opts: ChromiumSheetPdfOptions): NavlogPdfRenderer {
+  const print = chromiumPrint(opts);
+  return (content) => print({ kind: 'navlog', content });
+}
+
+function chromiumPrint(opts: ChromiumSheetPdfOptions): (snapshot: Snapshot) => Promise<Buffer> {
   const timeoutMs = opts.timeoutMs ?? 25_000;
-  return async (content, signature) => {
+  return async (snapshot) => {
     if (!fs.existsSync(path.join(opts.distDir, 'pdf.html')))
       throw new Error(`the PDF page is not built (${path.join(opts.distDir, 'pdf.html')})`);
     const started = Date.now();
@@ -132,12 +150,9 @@ export function chromiumSheetPdf(opts: ChromiumSheetPdfOptions): SheetPdfRendere
               })
               .catch(() => {});
           });
-          await page.evaluateOnNewDocument(
-            (snap) => {
-              (window as unknown as { __PGF_SHEETS__: unknown }).__PGF_SHEETS__ = snap;
-            },
-            { content, signature },
-          );
+          await page.evaluateOnNewDocument((snap) => {
+            (window as unknown as { __PGF_SHEETS__: unknown }).__PGF_SHEETS__ = snap;
+          }, snapshot);
           await page.goto(`${ORIGIN}/pdf.html`, { waitUntil: 'load', timeout: left() });
           try {
             await page.waitForSelector('html[data-pdf-ready="true"]', { timeout: left() });

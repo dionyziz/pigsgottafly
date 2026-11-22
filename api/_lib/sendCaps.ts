@@ -8,7 +8,8 @@
 //                   MAIL_DAILY_CAP, apart from the forms, and MAIL_RECIPIENT_CAP to any one person)
 //                   and a global cap on everything sent to HCAA by all pilots together (hcaaDailyCap():
 //                   HCAA_DAILY_CAP, default 200)
-//   re-sends        a flight's form goes out at most once every RESEND_MIN_MS (10 min)
+//   re-sends        a flight's form goes out at most once every RESEND_MIN_MS (10 min); a navlog the
+//                   pilot e-mails to themselves ('navlog'), once every SELF_RESEND_MIN_MS (1 min)
 //   signing links   LINK_DAILY_CAP per pilot, LINK_FLIGHT_CAP per flight (renewals included)
 // Every outbound e-mail is a mail_log row (migrations 030, 031), also the app's own (signup
 // notices): reserveMail()/logMail() write it as 'pending' before sending, mailSent()/mailFailed()
@@ -23,11 +24,15 @@ export const MAIL_DAILY_CAP = 20;
 export const MAIL_FLIGHT_FORM_CAP = 5;
 export const MAIL_RECIPIENT_CAP = 10;
 export const RESEND_MIN_MS = 10 * 60e3;
+/** The navlog goes only to the pilot asking for it, who may well fix a line and want it again. */
+export const SELF_RESEND_MIN_MS = 60e3;
 export const LINK_DAILY_CAP = 60;
 export const LINK_FLIGHT_CAP = 20;
 export const HCAA_FORMS = ['731', 'gendec'];
 /** Forms sent to each person on a flight separately: the per-flight cap and pause count per recipient. */
 const PER_RECIPIENT_FORMS = ['731-pax'];
+/** Sent to the signed-in pilot's own address only. */
+const SELF_FORMS = ['navlog'];
 /** The notice to someone an aircraft, an operator or a flight was shared with: counted apart from the forms. */
 export const SHARE_FORMS = ['share-aircraft', 'share-operator', 'share-flight'];
 
@@ -49,7 +54,7 @@ export interface MailEntry {
   /** The pilot it is sent for (null: the app's own message with no pilot). */
   pilotId: string | null;
   flightId: string | null;
-  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'share-aircraft', 'share-operator', 'share-flight', 'signup', 'signup-more' */
+  /** '731', '731-pax' (to a passenger), 'gendec', 'wbperf', 'navlog' (to the pilot), 'share-aircraft', 'share-operator', 'share-flight', 'signup', 'signup-more' */
   form: string;
   /** The To addresses, comma-separated. */
   recipient: string;
@@ -88,11 +93,12 @@ export async function reserveMail(db: Queryable, e: MailEntry & { pilotId: strin
     [e.pilotId, since, e.flightId, e.form, e.recipient, SHARE_FORMS, SHARE_FORMS.includes(e.form)],
   );
   const toWhom = perRecipient ? ` to ${e.recipient}` : '';
+  const pause = SELF_FORMS.includes(e.form) ? SELF_RESEND_MIN_MS : RESEND_MIN_MS;
   let err: HttpError | null = null;
-  if (e.flightId && c.last_sent != null && Number(c.last_sent) > now - RESEND_MIN_MS) {
+  if (e.flightId && c.last_sent != null && Number(c.last_sent) > now - pause) {
     err = tooMany(
-      `This form was e-mailed${toWhom} for this flight less than ${RESEND_MIN_MS / 60e3} minutes ago.`,
-      Number(c.last_sent) + RESEND_MIN_MS,
+      `This form was e-mailed${toWhom} for this flight less than ${pause > 60e3 ? `${pause / 60e3} minutes` : 'a minute'} ago.`,
+      Number(c.last_sent) + pause,
     );
   } else if (e.flightId && c.same > MAIL_FLIGHT_FORM_CAP) {
     err = tooMany(

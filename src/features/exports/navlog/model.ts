@@ -47,12 +47,20 @@ import {
   windProviderFromLegs,
 } from '../../../data/weather';
 import type { MetarTafResult, ParsedMetar } from '../../../data/weatherMetar';
-import type { Aircraft, AtcEntry, FlightDoc, PilotSettings, RoutePoint } from '../../../shared';
-import { navlogTiming, requestTiming, taxiAllowanceOf } from '../../../shared';
+import type {
+  Aircraft,
+  AtcEntry,
+  FlightDoc,
+  NavlogSheet,
+  PilotSettings,
+  RoutePoint,
+  SheetLeg,
+  TerminalRow,
+} from '../../../shared';
+import { LEGS_PER_SHEET, navlogTiming, requestTiming, taxiAllowanceOf } from '../../../shared';
 import { fmtEte } from '../../../shared/format';
 import type { RefAerodrome, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 
-export const LEGS_PER_SHEET = 9;
 /** Rows of the terminal information table (at least; more rows shrink to fit the same height). */
 export const MIN_TERMINAL_ROWS = 5;
 /** Ruled lines in the notes box (165 u / 33 u, as on the v2 sheet), left blank for the pilot. */
@@ -131,76 +139,6 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
         })
       : null;
   return { legs, altitudesFt, navlog, fuel };
-}
-
-export interface SheetLeg {
-  tc: string;
-  alt: string;
-  wd: string;
-  ws: string;
-  temp: string;
-  tas: string;
-  wca: string;
-  th: string;
-  var: string;
-  mh: string;
-  dev: string;
-  ch: string;
-  dist: string;
-  rem: string;
-  gs: string;
-  ete: string;
-  ate: string;
-  fuel: string;
-  /** Altitude unknown (shown highlighted on screen). */
-  altMissing: boolean;
-  /** No forecast and no typed wind: calm wind was used (wind cells highlighted on screen). */
-  windMissing: boolean;
-}
-
-export interface SheetHeader {
-  date: string;
-  aircraft: string;
-  blockStart: string;
-  sky: string;
-  temp: string;
-  wind: string;
-  qnh: string;
-  runway: string;
-  /** 'EST 30lt/h = 0.5lt/min' */
-  est: string;
-}
-
-/** One radio unit of a terminal row: 'TWR' and its frequencies, primary first. */
-export interface TerminalUnit {
-  unit: string;
-  freqs: string[];
-}
-export interface TerminalRow {
-  field: string;
-  elev: string;
-  rwy: string;
-  units: TerminalUnit[];
-}
-
-export interface NavlogSheet {
-  /** 0-based. */
-  index: number;
-  count: number;
-  header: SheetHeader;
-  /** Top checkpoint box: 'DEPARTURE' on the first sheet, '' on continuation sheets. */
-  topLabel: string;
-  topName: string;
-  /** LEGS_PER_SHEET rows; null = unused row. */
-  legs: (SheetLeg | null)[];
-  /** LEGS_PER_SHEET − 1 checkpoint names between the rows ('' = none). */
-  checkpoints: string[];
-  /** 'ARRIVAL' when the destination ends this sheet's last row. */
-  bottomLabel: string;
-  /** The checkpoint ending the sheet's last row ('' when that row is unused). */
-  bottomName: string;
-  terminal: TerminalRow[];
-  totals: { dist: string; ete: string; fuel: string; sunset: string };
 }
 
 export interface NavlogDocument {

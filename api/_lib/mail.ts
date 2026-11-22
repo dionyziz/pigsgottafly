@@ -76,20 +76,22 @@ export async function sendMail(m: Mail): Promise<{ id: string }> {
 
 /**
  * A message from the app itself, not a form sent on behalf of a pilot (the new-signup notice to the
- * admins, the notice of a share): no cc, a reply-to only when given, same sender and provider as the
- * forms.
+ * admins, the notice of a share, a navlog to the pilot who asked for it): no cc, a reply-to only when
+ * given, same sender and provider as the forms.
  */
 export async function sendSystemMail(m: {
   to: string[];
   subject: string;
   text: string;
   replyTo?: string;
+  attachments?: MailAttachment[];
 }): Promise<{ id: string }> {
   if (!m.to.length) throw new MailError('no recipient');
   return (override ?? resend)({
     to: m.to,
     subject: m.subject,
     text: m.text,
+    ...(m.attachments?.length ? { attachments: m.attachments } : {}),
     from: process.env.FORMS_FROM || DEFAULT_FROM,
     ...(m.replyTo?.trim() ? { replyTo: m.replyTo.trim() } : {}),
   });

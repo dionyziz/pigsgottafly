@@ -14,6 +14,7 @@ import { routes as flightShares } from './flightShares.js';
 import { routes as forms } from './forms.js';
 import { routes as me } from './me.js';
 import { routes as monitoring } from './monitoring.js';
+import { routes as navlogMail } from './navlogMail.js';
 import { routes as notams } from './notams.js';
 import { routes as operators } from './operators.js';
 import { routes as passengers } from './passengers.js';
@@ -45,6 +46,7 @@ export const ROUTES: Route[] = [
   ...forms,
   ...operators,
   ...declarations,
+  ...navlogMail,
   ...admin,
   ...monitoring,
 ];

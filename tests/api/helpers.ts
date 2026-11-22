@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 
-import type { SheetPdfRenderer } from '../../api/_lib/sheetPdf';
+import type { NavlogPdfRenderer, SheetPdfRenderer } from '../../api/_lib/sheetPdf';
 import { createServer } from '../../server/server';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -44,6 +44,7 @@ export async function startApi(
     adminEmails?: string[];
     db?: string;
     sheetPdf?: SheetPdfRenderer | null;
+    navlogPdf?: NavlogPdfRenderer | null;
   } = {},
 ) {
   const google = opts.google ?? true;
@@ -56,6 +57,7 @@ export async function startApi(
     allowedEmails: opts.allowedEmails,
     adminEmails: opts.adminEmails,
     sheetPdf: opts.sheetPdf,
+    navlogPdf: opts.navlogPdf,
     client: (_req, res) => {
       res.writeHead(404);
       res.end();
