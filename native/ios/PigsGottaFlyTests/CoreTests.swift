@@ -239,6 +239,47 @@ final class CoreTests: XCTestCase {
         XCTAssertNil(there.nextFreq)
     }
 
+    /// The fixture flight made local: LGTT → LGTT, nothing between, 1:30 airborne.
+    private func computeLocal() throws -> JSON {
+        var f = try JSON.parse(flight)
+        let lgtt = try XCTUnwrap(f["route"]?[0])
+        var back = lgtt
+        back["uid"] = .string("p9")
+        f["route"] = .array([lgtt, back])
+        var o = f["options"]?.object ?? [:]
+        o["localDurationMin"] = .number(90)
+        f["options"] = .object(o)
+        return try core.computeFlight(
+            flight: f.text, aircraft: aircraft, pilot: pilot, ref: ref, weather: try weather(), notams: notams,
+            notamsRead: false)
+    }
+
+    func testALocalFlightHasNoLegsAndTheDurationGivesItsTimes() throws {
+        let c = ComputedFlight(try computeLocal())
+        XCTAssertEqual(c.local, LocalFlight(aerodrome: "LGTT", durationMin: 90))
+        XCTAssertEqual(c.local?.title, "Local flight · LGTT · 1:30")
+        XCTAssertTrue(c.rows.isEmpty)
+        XCTAssertEqual(c.totalEteMin, 90)
+        XCTAssertEqual(c.takeoff, "08:45", "block off 08:30 and 15 min taxi out")
+        XCTAssertEqual(c.landing, "10:15")
+        XCTAssertGreaterThan(c.tripFuelL ?? 0, 0)
+    }
+
+    func testProgressOfALocalFlightIsBackToTheAerodrome() throws {
+        let computed = try computeLocal()
+        // 08:55Z, 10 min after take-off, 12 NM north of Tatoi
+        let fix = Position(
+            lat: 38.31, lon: 23.78, altFt: nil, trackDeg: 0, gsKt: 90, time: Date(timeIntervalSince1970: 1_795_337_700))
+        let p = try XCTUnwrap(Progress(try core.progress(computed: computed.text, position: fix, lastLegIndex: nil)))
+        XCTAssertNil(p.legIndex)
+        XCTAssertEqual(p.toWaypoint, "LGTT")
+        XCTAssertEqual(p.distNm ?? 0, 12.1, accuracy: 0.2)
+        XCTAssertEqual(p.bearingDeg ?? 0, 180, accuracy: 1)
+        XCTAssertNotNil(p.bearingMagDeg)
+        XCTAssertEqual(p.eteDestMin ?? 0, 80, accuracy: 0.01, "to the planned landing at 10:15Z")
+        XCTAssertFalse(p.offRoute)
+    }
+
     func testProgressWithoutAPosition() throws {
         let computed = try compute()
         let fix = Position(lat: .nan, lon: 24, altFt: nil, trackDeg: nil, gsKt: nil, time: Date())

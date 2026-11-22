@@ -7,7 +7,11 @@
 // aircraft is past COMPLETE_FRAC of it, so legs advance as the waypoints are passed. The aircraft's track tells the
 // two directions of an out-and-back leg apart; without one, the earlier leg wins, unless the app
 // passes the leg it showed last (lastLegIndex: legs before it are not gone back to).
-import { distanceNm, norm180, norm360, pointInPolygon, R_NM, rad, trueCourse } from '../calc';
+//
+// A local flight has no legs: the aerodrome is the waypoint (distance and bearing back to it), the
+// time to the destination counts down to the planned landing, and the frequency is the aerodrome's
+// (or whatever covers the aircraft once outside its zone).
+import { distanceNm, magneticVariation, norm180, norm360, pointInPolygon, R_NM, rad, trueCourse } from '../calc';
 import { fisSide } from '../data/atc';
 import type { AtcEntry, LatLon } from '../shared';
 
@@ -68,6 +72,8 @@ export interface ProgressInput {
   };
   /** The leg shown last: earlier legs are not gone back to (out-and-back routes without a track). */
   lastLegIndex?: number | null;
+  /** A local flight (computeFlight's `local`): its aerodrome and planned landing (epoch ms, null when not timed). */
+  local?: { aerodrome: ProgressPoint; landingMs: number | null } | null;
 }
 
 export interface ProgressFreq {
@@ -215,6 +221,45 @@ export function freqAt(atc: ProgressAtc | null, legIndex: number, p: LatLon, las
 const sameFreq = (a: AtcEntry | null, b: AtcEntry | null) =>
   !!a && !!b && a.primary === b.primary && a.callsign === b.callsign;
 
+function localProgress(
+  local: NonNullable<ProgressInput['local']>,
+  p: LatLon,
+  timeMs: number,
+  atc: ProgressAtc | null,
+  gpsKt: number | null,
+  none: Progress,
+): Progress {
+  const ad = local.aerodrome;
+  const distNm = distanceNm(p, ad);
+  const bearingDeg = distNm > 0 ? trueCourse(p, ad) : null;
+  // the ATC list relates its rows to legs, and a local flight has none: every row applies
+  const all = atc ? { ...atc, legs: atc.legs.map(() => null) } : null;
+  const freqEntry = freqAt(all, 0, p, 0);
+  const gsKt = fin(gpsKt) && gpsKt >= MIN_GPS_GS_KT ? gpsKt : null;
+  const eteMin = gsKt ? (distNm / gsKt) * 60 : null;
+  const landing = fin(local.landingMs) ? local.landingMs : null;
+  const left = landing != null && fin(timeMs) ? Math.max(0, (landing - timeMs) / 60000) : null;
+  return {
+    ...none,
+    toWaypoint: { index: 1, ...ad },
+    distNm,
+    bearingDeg,
+    // no leg carries a variation here: the aerodrome's, on the day of the fix
+    bearingMagDeg:
+      bearingDeg == null
+        ? null
+        : norm360(bearingDeg - magneticVariation(ad.lat, ad.lon, new Date(fin(timeMs) ? timeMs : Date.now()))),
+    gsKt,
+    gsSource: gsKt ? 'gps' : null,
+    eteMin,
+    eta: eteMin != null && fin(timeMs) ? timeMs + eteMin * 60000 : null,
+    remainingNm: distNm,
+    eteDestMin: left,
+    etaDest: landing,
+    freq: freqEntry ? freqOf(freqEntry) : null,
+  };
+}
+
 export function progress(i: ProgressInput): Progress {
   const { legs, navlog, atc, position } = i;
   const p = { lat: position.lat, lon: position.lon };
@@ -243,6 +288,7 @@ export function progress(i: ProgressInput): Progress {
     arrived: false,
   };
   if (!fin(p.lat) || !fin(p.lon)) return none;
+  if (i.local) return localProgress(i.local, p, timeMs, atc, position.gsKt ?? null, none);
   const act = activeLeg(legs, p, fin(position.trackDeg) ? position.trackDeg : null, i.lastLegIndex ?? null);
   if (!act) return none;
   const k = act.index;

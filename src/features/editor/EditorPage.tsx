@@ -14,7 +14,7 @@ import { api, ApiRequestError } from '../../data/api';
 import { useEntity } from '../../data/entities';
 import { flightStore } from '../../data/flightStore';
 import { useAsync } from '../../data/useAsync';
-import { autoTitle, type Flight, type FlightDoc } from '../../shared';
+import { autoTitle, type Flight, type FlightDoc, isLocalFlight } from '../../shared';
 import { FILING_STATUS_LABEL } from '../../shared/briefing';
 import { fmtClockMs } from '../../shared/format';
 import { manifestContacts } from '../../shared/sharing';
@@ -352,9 +352,7 @@ export function EditorPage() {
                       <MapView />
                     </ErrorBoundary>
                   </div>
-                  <ErrorBoundary label="The navlog failed">
-                    <NavlogStrip />
-                  </ErrorBoundary>
+                  <Navlog />
                 </div>
               </div>
             </div>
@@ -366,6 +364,17 @@ export function EditorPage() {
 }
 
 const NONE: never[] = [];
+
+/** A local flight has no legs: its time is the duration in the route section. */
+function Navlog() {
+  const { doc } = useEditor();
+  if (isLocalFlight(doc.route)) return null;
+  return (
+    <ErrorBoundary label="The navlog failed">
+      <NavlogStrip />
+    </ErrorBoundary>
+  );
+}
 
 const COLLAPSED_KEY = 'pgf.editor.panelCollapsed';
 const readCollapsed = () => {

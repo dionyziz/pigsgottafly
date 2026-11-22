@@ -10,7 +10,14 @@ import { flightTitle, usePageTitle } from '../../app/title';
 import { api } from '../../data/api';
 import { flightStore } from '../../data/flightStore';
 import { useAsync } from '../../data/useAsync';
-import { EXPORT_KINDS, EXPORT_LABEL, EXPORT_REDIRECTS, type ExportKind, type Flight } from '../../shared';
+import {
+  EXPORT_KINDS,
+  EXPORT_LABEL,
+  EXPORT_REDIRECTS,
+  type ExportKind,
+  type Flight,
+  isLocalFlight,
+} from '../../shared';
 import { EmptyState, Icon, Loading } from '../../ui';
 import { paperwork, PAPERWORK_KIND, type ReadyItem } from '../editor/panels/readiness';
 import { BriefingExport } from './briefing';
@@ -102,17 +109,23 @@ function printFileName(date: string | null | undefined, kind: string): string {
   return [date || '', kind].filter(Boolean).join('-');
 }
 
+/** The documents of a flight: a local flight has no legs, so no navlog. */
+const exportKinds = (flight: Pick<Flight, 'route'>): readonly ExportKind[] =>
+  isLocalFlight(flight.route) ? EXPORT_KINDS.filter((k) => k !== 'navlog') : EXPORT_KINDS;
+
 function FormStatus({
   flightId,
   kind,
+  kinds,
   states,
 }: {
   flightId: string;
   kind: ExportKind;
+  kinds: readonly ExportKind[];
   states: Partial<Record<ExportKind, ReadyItem>>;
 }) {
   const it = states[kind];
-  const next = EXPORT_KINDS.find((x) => x !== kind && states[x] && states[x].state !== 'ok');
+  const next = kinds.find((x) => x !== kind && states[x] && states[x].state !== 'ok');
   if (!it && !next) return null;
   return (
     <div className="no-print xp-status-row">
@@ -182,6 +195,8 @@ export function ExportPage() {
     );
   if (!flight) return <Loading variant="screen" />;
   const k = kind as ExportKind;
+  const kinds = exportKinds(flight);
+  if (!kinds.includes(k)) return <Navigate replace to={`/flights/${id}/export/fpl`} />;
   return (
     <div className="page export-page" data-testid="export-page" data-kind={kind}>
       <div className="no-print export-bar">
@@ -189,7 +204,7 @@ export function ExportPage() {
           ← {flight.summary.title || 'Flight'}
         </Link>
         <nav className="export-tabs" aria-label="Exports" role="tablist">
-          {EXPORT_KINDS.map((x) => (
+          {kinds.map((x) => (
             <Link
               key={x}
               to={`/flights/${flight.id}/export/${x}`}
@@ -215,7 +230,7 @@ export function ExportPage() {
           Print
         </button>
       </div>
-      <FormStatus flightId={flight.id} kind={k} states={formStates} />
+      <FormStatus flightId={flight.id} kind={k} kinds={kinds} states={formStates} />
       <Body flight={flight} kind={k} />
     </div>
   );

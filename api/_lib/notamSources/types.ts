@@ -54,6 +54,8 @@ export interface RawNotam {
   raw: string | null;
   /** The location it was returned for (a source answering per location). */
   location?: string | null;
+  /** When it was issued, epoch ms (sources that say). */
+  issued?: number | null;
 }
 
 export interface NotamQuery {

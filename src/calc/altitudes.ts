@@ -15,6 +15,7 @@
 //   5. Otherwise (v2): the first leg flies the departure's pattern altitude; other legs keep the
 //      previous leg's effective (possibly overridden) altitude.
 // Every default can be overridden per leg (LegOverride.altFt).
+import { isLocalFlight } from '../shared/local.js';
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../shared/ref.js';
 import type { LatLon, RoutePoint } from '../shared/types.js';
 import { distanceNm, midpoint, norm180, pointSegDistNm, trueCourse } from './nav.js';
@@ -169,7 +170,8 @@ export function defaultAltitudes(
   overrides: (number | undefined)[] = [],
   patternPoints: boolean[] = [],
 ): AltitudeDefault[] {
-  const n = Math.max(0, route.length - 1);
+  // one per leg of buildLegs: a local flight has none
+  const n = isLocalFlight(route) ? 0 : Math.max(0, route.length - 1);
   const out: AltitudeDefault[] = [];
   const effective: number[] = [];
   for (let i = 0; i < n; i++) {

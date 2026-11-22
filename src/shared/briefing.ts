@@ -11,16 +11,22 @@ import type { EpochMs, Id } from './types.js';
 //   flight (10 min) unless refresh=1 or the parameters changed.
 
 /** The NOTAM sources (api/_lib/notamSources/): queried together, merged and de-duplicated. */
-export type NotamSource = 'autorouter' | 'notamify';
+export type NotamSource = 'autorouter' | 'nms' | 'notamify';
 
 /** How one source answered for this briefing. */
 export interface NotamSourceStatus {
   id: NotamSource;
-  /** As shown: 'autorouter', 'Notamify'. */
+  /** As shown: 'autorouter', 'International NOTAM feed', 'Notamify'. */
   label: string;
   status: 'ok' | 'error' | 'timeout';
   /** NOTAMs it returned (before merging). */
   count: number;
+  /**
+   * How current it is, to spot a source lagging behind the others: the latest issue time among its
+   * NOTAMs (sources that give one), and its highest-numbered NOTAM of a queried FIR (e.g. 'A4332/26').
+   */
+  newestIssued?: EpochMs | null;
+  newestNotam?: string | null;
   /** What went wrong (error / timeout). */
   message: string | null;
 }

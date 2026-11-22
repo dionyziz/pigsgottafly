@@ -100,7 +100,11 @@ export function parseIcaoNotam(text: string | null | undefined): Parsed {
     if (f[7]) Object.assign(out, qPosition(f[7]));
   }
   const items = itemSpans(t.slice(q ? q.index + q[0].length : 0));
-  if (items.A) out.itemA = items.A.split(/\s+/).filter((x) => /^[A-Z]{4}$/.test(x));
+  // a multi-part NOTAM writes 'PART 1 OF 4' after the locations
+  if (items.A)
+    out.itemA = items.A.replace(/\bPART\s+\d+\s+OF\s+\d+\b/g, ' ')
+      .split(/\s+/)
+      .filter((x) => /^[A-Z]{4}$/.test(x));
   if (items.B) out.from = icaoTime(items.B.slice(0, 10));
   if (items.C) {
     const c = items.C.toUpperCase();

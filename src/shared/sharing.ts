@@ -7,6 +7,7 @@
 import type {
   Aircraft,
   AircraftFile,
+  AircraftInput,
   EpochMs,
   Flight,
   FlightCrew,
@@ -73,7 +74,9 @@ export type AircraftLogKind =
   | 'photo-remove'
   | 'share-add'
   | 'share-role'
-  | 'share-remove';
+  | 'share-remove'
+  | 'restore'
+  | 'baseline';
 
 export type AircraftLogValue = string | number | boolean | null;
 
@@ -102,12 +105,70 @@ export interface AircraftLogEntry {
   person?: string;
   personId?: Id | null;
   role?: ShareRole;
+  /** restore: the version it brought back (its time and author). */
+  restored?: { id: number; at: EpochMs; by: AircraftEditor };
+  /** restore: what the version had that could not be brought back ('document “POH”'). */
+  skipped?: string[];
 }
 
 export interface AircraftLogPage {
   entries: AircraftLogEntry[];
   /** The `before` of the next page; null at the end. */
   next: number | null;
+}
+
+// Version history (migration 060): every log entry that changes the aircraft or its files (all but
+// sharing) keeps the aircraft as it was after it, so any of them can be looked at and restored.
+//   GET  /api/aircraft/:id/revisions[?before=<id>&limit=<1–100, 50>] → AircraftRevisionPage, newest first
+//   GET  /api/aircraft/:id/revisions/:rev → AircraftRevisionDetail (anyone who can view the aircraft)
+//   POST /api/aircraft/:id/revisions/:rev/restore (AircraftRestoreRequest) → AircraftRestoreResult;
+//        editors and the owner (403 for viewers). The restore is a new revision, so it can be undone
+//        by restoring the one before it. 409 (with the current HangarAircraft) when `head` is given
+//        and the aircraft has a newer revision.
+
+/** The aircraft as one revision left it: the record and the files attached (by reference). */
+export interface AircraftSnapshot {
+  aircraft: AircraftInput;
+  photo: AircraftFile | null;
+  documents: AircraftFile[];
+}
+
+/** A log entry that is a revision, with its line in words (as the History shows it, by name). */
+export type AircraftRevision = AircraftLogEntry & { summary: string };
+
+export interface AircraftRevisionPage {
+  revisions: AircraftRevision[];
+  next: number | null;
+}
+
+/** The newest revision: what a restore is based on. */
+export interface AircraftRevisionHead {
+  id: number;
+  at: EpochMs;
+}
+
+export interface AircraftRevisionDetail {
+  revision: AircraftRevision;
+  snapshot: AircraftSnapshot;
+  /**
+   * From the current aircraft to this version (what restoring it changes): `from` is now, `to` is
+   * this version. Files of this version that are no longer stored say so in their summary.
+   */
+  changes: AircraftLogChange[];
+  head: AircraftRevisionHead;
+}
+
+export interface AircraftRestoreRequest {
+  /** The newest revision the client has seen; omitted: no check. */
+  head?: number;
+  headAt?: EpochMs;
+}
+
+export interface AircraftRestoreResult {
+  aircraft: HangarAircraft;
+  revision: AircraftRevision;
+  /** The newest revision before the restore: restoring it undoes this one. */
+  previous: AircraftRevisionHead;
 }
 
 /**

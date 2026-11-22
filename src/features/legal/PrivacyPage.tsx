@@ -217,6 +217,13 @@ const sections: LegalSection[] = [
               </td>
             </tr>
             <tr>
+              <td>International NOTAM feed</td>
+              <td>
+                NOTAM briefings, through this service's own account with a NOTAM distribution service: our server sends
+                the ICAO codes of the aerodromes on and near the route and the FIR. No personal data.
+              </td>
+            </tr>
+            <tr>
               <td>Notamify</td>
               <td>
                 NOTAM briefings, through this service's own Notamify account: our server sends the ICAO codes of the

@@ -11,11 +11,19 @@ export const ARTIFACTS = path.join(ROOT, 'tests', 'e2e', 'artifacts');
 fs.mkdirSync(ARTIFACTS, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// No e2e test reaches the real Open-Meteo, aviationweather.gov, autorouter or Notamify: the API server runs in
+// No e2e test reaches the real Open-Meteo, aviationweather.gov, autorouter, NMS or Notamify: the API server runs in
 // this process, whose fetch refuses those hosts (tests/setup/noExternalApis.ts), and every page
 // refuses them in the browser too (Page.init). startServer's close() fails the test if anything tried.
 const { externalCalls } = await import('../setup/noExternalApis.ts');
-export const EXTERNAL_HOSTS = ['*open-meteo.com*', '*aviationweather.gov*', '*autorouter.aero*', '*notamify.com*'];
+export const EXTERNAL_HOSTS = [
+  '*open-meteo.com*',
+  '*aviationweather.gov*',
+  '*autorouter.aero*',
+  '*api-staging.cgifederal-aim.com*',
+  '*cgifederal-aim.com*',
+  '*api-nms.aim.faa.gov*',
+  '*notamify.com*',
+];
 
 /** Open-Meteo for the API server unless a test brings its own: always down (the app degrades). */
 export const offlineOpenMeteo = async () =>

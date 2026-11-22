@@ -30,7 +30,7 @@ export interface FuelPlanInput {
   usableL: number;
   /** Trip time, minutes (informational; endurance figures come from the litres). */
   tripMin: number;
-  /** Take-off and landing at the same aerodrome (isLocalFlight): the legal floor is 10 min, not 30. */
+  /** Take-off and landing at the same aerodrome (returnsToStart): the legal floor is 10 min, not 30. */
   localFlight?: boolean;
   /**
    * Intermediate full stops (AerodromeRequest kind 'stop'): each adds one more taxi allowance.
@@ -174,8 +174,11 @@ export function planFuel(input: FuelPlanInput): FuelPlan {
   };
 }
 
-/** Route starts and ends at the same place (within 1 NM): a local flight for the fuel reserve. */
-export function isLocalFlight(route: { lat: number; lon: number }[]): boolean {
+/**
+ * Route starts and ends at the same place (within 1 NM): a local flight for the fuel reserve, with
+ * or without points between (unlike the planning sense of isLocalFlight in shared/local.ts).
+ */
+export function returnsToStart(route: { lat: number; lon: number }[]): boolean {
   if (route.length < 2) return false;
   return distanceNm(route[0], route[route.length - 1]) <= 1;
 }

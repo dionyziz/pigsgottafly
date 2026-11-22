@@ -265,6 +265,10 @@ struct NotamRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(notam.key).font(.subheadline.weight(.semibold).monospaced())
+                if notam.onlyFromAutorouter {
+                    Text("autorouter").font(.caption2.weight(.semibold)).foregroundStyle(.orange)
+                        .accessibilityIdentifier("notam-autorouter-only")
+                }
                 if let s = notam.subject {
                     Text([s, notam.condition].compactMap { $0 }.joined(separator: " · "))
                         .font(.subheadline).foregroundStyle(.secondary)

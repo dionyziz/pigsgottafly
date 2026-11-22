@@ -56,7 +56,7 @@ export const photoJsonSql = (
   alias: string,
 ) => `(SELECT json_build_object('id', f.id, 'kind', f.kind, 'title', f.title, 'name', f.name, 'mime', f.mime,
   'size', f.size, 'chunks', f.chunks, 'created', f.created) FROM aircraft_attachments f
-  WHERE f.aircraft_id = ${alias}.id AND f.kind = 'photo' AND f.complete ORDER BY f.created DESC LIMIT 1)`;
+  WHERE f.aircraft_id = ${alias}.id AND f.kind = 'photo' AND f.complete AND NOT f.detached ORDER BY f.created DESC LIMIT 1)`;
 
 const cleanText = (v: unknown, max: number) =>
   typeof v === 'string'
@@ -86,6 +86,8 @@ interface FileScope {
   /** Column of the files table holding the parent's id. */
   parent: string;
   kinds: readonly FileKind[];
+  /** SQL condition a file row must also meet to be seen at all (aircraft: not detached by a restore). */
+  visible?: string;
   /** Kinds kept one per parent (a new file replaces the old when it completes). */
   single?: readonly FileKind[];
   /** The listing (GET) of the complete files; by default { photo?, documents }. */
@@ -101,7 +103,7 @@ interface FileScope {
   /** After a file is completed, in its transaction. */
   completed?: (tx: Queryable, id: string) => Promise<void>;
   /** A file added (completed), renamed or removed by `pilotId` (the aircraft's edit log). */
-  changed?: (db: Queryable, pilotId: string, id: string, change: FileChange) => Promise<void>;
+  changed?: (db: Queryable, pilotId: string, id: string, change: FileChange) => Promise<unknown>;
 }
 
 type FileChange =
@@ -109,7 +111,7 @@ type FileChange =
 
 export function fileRoutes(scope: FileScope): Route[] {
   const { files, chunks, parent, path: P } = scope;
-  const kinds = `kind IN (${scope.kinds.map((k) => `'${k}'`).join(', ')})`;
+  const kinds = `kind IN (${scope.kinds.map((k) => `'${k}'`).join(', ')})${scope.visible ? ` AND ${scope.visible}` : ''}`;
   const fileRow = async (db: Queryable, parentId: string, fileId: string) => {
     const [r] = await db.query(`SELECT ${COLS}, complete FROM ${files} WHERE id = $1 AND ${parent} = $2 AND ${kinds}`, [
       fileId,
@@ -286,6 +288,7 @@ export const routes: Route[] = [
     chunks: 'aircraft_attachment_chunks',
     parent: 'aircraft_id',
     kinds: ['photo', 'document'],
+    visible: 'NOT detached',
     single: ['photo'],
     access: async (db, pilotId, id, need) => {
       const owner = (await aircraftFor(db, pilotId, id, need)).pilot_id as string;

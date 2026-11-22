@@ -16,6 +16,7 @@ import {
   notamSubject,
   notamValidity,
   notamWhere,
+  onlyFromAutorouter,
   visibleNotams,
 } from '../../../src/data/notams';
 import { mapNotams } from '../../../src/features/editor/map/notamLayer';
@@ -267,5 +268,15 @@ describe('briefing export model', () => {
     expect(m.message).toBe('NOTAMs are not available yet.');
     expect(m.relevant).toEqual([]);
     expect(briefingModel({ doc, title: 't', briefing: null }).status).toBe('loading');
+  });
+});
+
+describe('onlyFromAutorouter', () => {
+  test('marks NOTAMs no shared source returned', () => {
+    expect(onlyFromAutorouter({ sources: ['autorouter'] })).toBe(true);
+    expect(onlyFromAutorouter({ sources: ['autorouter', 'nms'] })).toBe(false);
+    expect(onlyFromAutorouter({ sources: ['nms'] })).toBe(false);
+    expect(onlyFromAutorouter({ sources: [] })).toBe(false);
+    expect(onlyFromAutorouter({})).toBe(false);
   });
 });

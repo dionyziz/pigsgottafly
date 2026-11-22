@@ -2,6 +2,8 @@
 // AFTN and reports ATC's status, so every capability is there. The client is the pilot's own linked
 // account (autorouterLinks.ts: the plan goes in their name), else the deployment's for the pilots on
 // AUTOROUTER_PILOTS with AUTOROUTER_FILING=1, else null (app.ts), and then the pilot is asked to connect.
+// A local flight goes like any other, as its plan's text (route LOCAL, destination = departure,
+// total EET = the pilot's duration): both the stored route and the filing take the fpl given.
 import { type AutorouterClient, AutorouterError } from '../autorouter.js';
 import { toStatus } from './status.js';
 import type { Filer } from './types.js';

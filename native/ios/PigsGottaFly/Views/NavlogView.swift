@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Navlog: the legs as a list and the totals; quick edits of the date, the block-off time and a leg's
-/// altitude (saved at once with the flight's version).
+/// altitude (saved at once with the flight's version). A local flight has no legs: its duration
+/// stands in their place.
 struct NavlogView: View {
     @ObservedObject var model: FlightModel
     @State private var editing: Edit?
@@ -9,11 +10,13 @@ struct NavlogView: View {
 
     enum Edit: Identifiable {
         case date, blockOff
+        case duration(Double)
         case altitude(NavRow)
         var id: String {
             switch self {
             case .date: "date"
             case .blockOff: "blockOff"
+            case .duration: "duration"
             case .altitude(let r): "alt-\(r.index)"
             }
         }
@@ -27,35 +30,29 @@ struct NavlogView: View {
                     editing = .blockOff
                 }
             }
-            Section {
-                if let rows = model.computed?.rows, !rows.isEmpty {
-                    ForEach(rows) { row in
-                        Button {
-                            editing = .altitude(row)
-                        } label: {
-                            LegRow(row: row).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(model.readOnly)
-                        .accessibilityIdentifier("leg-\(row.index)")
-                        .accessibilityHint(model.readOnly ? "" : "Changes the leg's altitude")
+            if let local = model.computed?.local {
+                Section {
+                    Text(local.title).font(.headline).accessibilityIdentifier("local-flight")
+                    editRow("Duration", Fmt.hoursMinutes(local.durationMin), id: "edit-duration") {
+                        editing = .duration(local.durationMin)
                     }
-                } else {
-                    Text(model.computed == nil ? "Preparing…" : "No legs: the route has one point.")
-                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Local flight")
+                } footer: {
+                    Text("Add a point to plan a route with legs instead.")
                 }
-            } header: {
-                Text("Legs")
-            } footer: {
-                if let c = model.computed, !c.hasNavlog, !c.rows.isEmpty {
-                    Text("Headings, times and fuel need the flight's aircraft: choose it on the website.")
-                }
+            } else {
+                legs
             }
             route
             if let c = model.computed {
                 Section("Totals") {
-                    ValueRow(label: "Distance", value: Fmt.distance(c.totalDistNm))
-                    ValueRow(label: "Time en route", value: Fmt.duration(c.totalEteMin))
+                    if c.local == nil {
+                        ValueRow(label: "Distance", value: Fmt.distance(c.totalDistNm))
+                        ValueRow(label: "Time en route", value: Fmt.duration(c.totalEteMin))
+                    } else {
+                        ValueRow(label: "Duration", value: Fmt.duration(c.totalEteMin))
+                    }
                     ValueRow(label: "Trip fuel", value: Fmt.litres(c.tripFuelL))
                     ValueRow(label: "Fuel with the allowance", value: Fmt.litres(c.totalFuelL))
                     ValueRow(label: "Fuel on board", value: Fmt.litres(c.fobL))
@@ -86,6 +83,33 @@ struct NavlogView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { addingPoint = false } }
                 }
+            }
+        }
+    }
+
+    private var legs: some View {
+        Section {
+            if let rows = model.computed?.rows, !rows.isEmpty {
+                ForEach(rows) { row in
+                    Button {
+                        editing = .altitude(row)
+                    } label: {
+                        LegRow(row: row).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.readOnly)
+                    .accessibilityIdentifier("leg-\(row.index)")
+                    .accessibilityHint(model.readOnly ? "" : "Changes the leg's altitude")
+                }
+            } else {
+                Text(model.computed == nil ? "Preparing…" : "No legs: the route has one point.")
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Legs")
+        } footer: {
+            if let c = model.computed, !c.hasNavlog, !c.rows.isEmpty {
+                Text("Headings, times and fuel need the flight's aircraft: choose it on the website.")
             }
         }
     }
@@ -193,6 +217,7 @@ struct EditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var date = Date()
     @State private var feet = 3500
+    @State private var minutes = 60
 
     private static let utc = TimeZone(identifier: "UTC")!
 
@@ -206,6 +231,13 @@ struct EditSheet: View {
                 case .blockOff:
                     DatePicker("Block off (UTC)", selection: $date, displayedComponents: .hourAndMinute)
                         .datePickerStyle(.wheel)
+                case .duration:
+                    Section("Take-off to landing") {
+                        Stepper(value: $minutes, in: 5...600, step: 5) {
+                            Text(Fmt.hoursMinutes(Double(minutes))).font(.title2.monospacedDigit().bold())
+                        }
+                        .accessibilityIdentifier("duration-stepper")
+                    }
                 case .altitude(let row):
                     Section("\(row.from) → \(row.to)") {
                         Stepper(value: $feet, in: 500...18000, step: 500) {
@@ -239,6 +271,7 @@ struct EditSheet: View {
         switch edit {
         case .date: "Date"
         case .blockOff: "Block off"
+        case .duration: "Duration"
         case .altitude: "Altitude"
         }
     }
@@ -247,6 +280,8 @@ struct EditSheet: View {
         switch edit {
         case .date, .blockOff:
             date = Fmt.date(day: model.date, clock: model.blockOff.isEmpty ? "12:00" : model.blockOff)
+        case .duration(let m):
+            minutes = Int(m.rounded())
         case .altitude(let row):
             feet = Int(row.altFt ?? 3500)
         }
@@ -260,6 +295,9 @@ struct EditSheet: View {
         case .blockOff:
             let clock = Fmt.clock(date)
             Task { await model.setBlockOff(clock) }
+        case .duration:
+            let m = minutes
+            Task { await model.setLocalDuration(m) }
         case .altitude(let row):
             let f = feet
             Task { await model.setAltitude(legKey: row.key, feet: f) }

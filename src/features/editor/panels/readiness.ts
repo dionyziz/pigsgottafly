@@ -54,6 +54,8 @@ export interface ReadinessInput {
   /** What the PIC's details lack for this flight's papers (picMissingOf); empty on a flight shared with the pilot. */
   picMissing: PersonField[];
   routePoints: number;
+  /** A local flight (isLocalFlight): no legs or altitudes to plan, its duration stands for the navlog. */
+  local?: boolean;
   hasAircraft: boolean;
   warnings: CalcWarning[];
   /** null: not loaded (or no route). */
@@ -145,7 +147,12 @@ export function readiness(i: ReadinessInput): ReadyItem[] {
   }
   items.push(
     i.routePoints >= 2
-      ? fromWarnings(w, ['navlog'], { id: 'route', stage: 'plan', label: 'Route and altitudes', section: 'route' })
+      ? fromWarnings(w, ['navlog'], {
+          id: 'route',
+          stage: 'plan',
+          label: i.local ? 'Route: local flight' : 'Route and altitudes',
+          section: 'route',
+        })
       : {
           id: 'route',
           stage: 'plan',

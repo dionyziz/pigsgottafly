@@ -1,6 +1,7 @@
 // The server fills in the profile defaults (home → home route, default aircraft, taxi times, wind model,
 // PIC on the manifest). A pilot's first flight asks for their home aerodrome (sign-up asks nothing), saved
-// to the profile; ?ask=1 asks for the origin and destination instead.
+// to the profile; ?ask=1 asks for the origin and destination instead, or for a local flight (back to
+// the origin with nothing between) and its duration.
 import './lists.css';
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
@@ -10,9 +11,9 @@ import { usePilot } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { api } from '../../data/api';
 import { resolveAerodrome } from '../../data/ref';
-import { aerodromeName, aerodromePoint, type FlightCreateRequest } from '../../shared';
+import { aerodromeName, aerodromePoint, DEFAULT_LOCAL_DURATION_MIN, type FlightCreateRequest } from '../../shared';
 import { errorMessage } from '../../shared/format';
-import { AerodromeTextInput, EmptyState, Field, Loading } from '../../ui';
+import { AerodromeTextInput, Check, DurationField, EmptyState, Field, Loading } from '../../ui';
 
 export function NewFlightPage() {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export function NewFlightPage() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [localChosen, setLocalChosen] = useState(false);
+  const [durationMin, setDurationMin] = useState(DEFAULT_LOCAL_DURATION_MIN);
   const [home, setHome] = useState('');
 
   const create = (req: FlightCreateRequest) => {
@@ -113,9 +116,10 @@ export function NewFlightPage() {
   }
 
   // An unknown aerodrome says so under its field ("Not an aerodrome in the current AIP"); an
-  // empty destination means back to the origin.
+  // empty destination means back to the origin, which is a local flight.
   const ad = resolveAerodrome(from);
-  const dest = to.trim() ? resolveAerodrome(to) : ad;
+  const dest = localChosen || !to.trim() ? ad : resolveAerodrome(to);
+  const local = !!ad && !!dest && ad.id === dest.id;
   const ok = !!ad && !!dest;
   return (
     <Shell>
@@ -129,7 +133,10 @@ export function NewFlightPage() {
         onSubmit={(e) => {
           e.preventDefault();
           if (!ad || !dest) return;
-          create({ route: [aerodromePoint(ad), aerodromePoint(dest)] });
+          create({
+            route: [aerodromePoint(ad), aerodromePoint(dest)],
+            ...(local ? { options: { localDurationMin: durationMin } } : {}),
+          });
         }}
       >
         <div className="grid2">
@@ -137,13 +144,34 @@ export function NewFlightPage() {
             <AerodromeTextInput name="from" value={from} onChange={(t) => setFrom(t)} autoFocus required />
           </Field>
           <Field label="Destination">
-            <AerodromeTextInput
-              name="to"
-              value={to}
-              onChange={(t) => setTo(t)}
-              placeholder={ad ? `${aerodromeName(ad)} (back to the origin)` : 'ICAO or name'}
-            />
+            {localChosen ? (
+              <input
+                name="to"
+                data-testid="new-flight-local-to"
+                disabled
+                value={ad ? `Back to ${ad.icao || aerodromeName(ad)}` : 'Back to the origin'}
+              />
+            ) : (
+              <AerodromeTextInput
+                name="to"
+                value={to}
+                onChange={(t) => setTo(t)}
+                placeholder={ad ? `${aerodromeName(ad)} (back to the origin)` : 'ICAO or name'}
+              />
+            )}
           </Field>
+        </div>
+        <div className="grid2">
+          <div>
+            <Check checked={localChosen} onChange={setLocalChosen} testId="new-flight-local">
+              Local flight
+            </Check>
+          </div>
+          {local && (
+            <Field label="Duration">
+              <DurationField value={durationMin} onChange={setDurationMin} testId="new-flight-duration" />
+            </Field>
+          )}
         </div>
         {error && (
           <p className="form-error" role="alert">

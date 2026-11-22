@@ -28,12 +28,13 @@ import {
   fmtHdg,
   fmtSigned,
   type FuelPlan,
-  isLocalFlight,
   type LegGeometry,
+  localNavlog,
   magneticVariation,
   navlogAircraft,
   type NavlogResult,
   planFuel,
+  returnsToStart,
 } from '../../../calc';
 import { atcEntryLegs, endpointAerodrome } from '../../../data/atc';
 import {
@@ -121,10 +122,11 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
     winds: weather && weather.status === 'ok' ? windProviderFromLegs(weather.legs) : null,
     sunTables: ref.sunTables,
     ...navlogTiming(timing),
+    ...localNavlog(doc.route, doc.options),
   });
   if (!aircraft) navlog.warnings.unshift('No aircraft selected: speeds, fuel and deviation are missing.');
   const fuel =
-    aircraft && legs.length
+    aircraft && (legs.length || navlog.local)
       ? planFuel({
           tripFuelL: navlog.totals.tripFuel,
           taxiAllowanceL: taxiAllowanceOf(aircraft.fuel, doc.options),
@@ -134,7 +136,7 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
           fobL: doc.fobL,
           usableL: aircraft.fuel.usableL,
           tripMin: navlog.flightMin,
-          localFlight: isLocalFlight(doc.route),
+          localFlight: returnsToStart(doc.route),
           stops: timing.stops,
         })
       : null;

@@ -70,6 +70,14 @@ export function notamSubject(n: Pick<Notam, 'subject' | 'condition' | 'qcode'>):
   return n.condition ? `${n.subject}: ${n.condition.charAt(0).toLowerCase()}${n.condition.slice(1)}` : n.subject;
 }
 
+/**
+ * Only autorouter returned it: the owner's personal autorouter access is merged in on his own
+ * flights, and these are the NOTAMs other pilots (who get only the shared feeds) would not see.
+ */
+export function onlyFromAutorouter(n: Pick<Notam, 'sources'>): boolean {
+  return !!n.sources?.length && n.sources.every((s) => s === 'autorouter');
+}
+
 /** Where it applies: item A locations, e.g. 'LGAV' or 'LGGG'. */
 export function notamWhere(n: Pick<Notam, 'itemA' | 'fir'>): string {
   return n.itemA.length ? n.itemA.join(' ') : n.fir;
@@ -191,7 +199,7 @@ export function visibleNotams(b: NotamBriefing | null, showAll: boolean): Notam[
 }
 
 /**
- * The briefing's sources for its meta line: 'autorouter, Notamify', and the ones that did not answer
+ * The briefing's sources for its meta line: 'autorouter, International NOTAM feed, Notamify', and the ones that did not answer
  * ('Notamify timed out'). Briefings stored before there were several sources: their one.
  */
 export function notamSourcesLine(b: Pick<NotamBriefing, 'source' | 'sources'>): { from: string; failed: string[] } {

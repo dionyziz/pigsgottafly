@@ -1,7 +1,7 @@
 // planFuel: hand-computed references.
 import { describe, expect, test } from 'vitest';
 
-import { type FuelPlanInput, isLocalFlight, litresFor, minutesFor, planFuel } from '../../../src/calc';
+import { type FuelPlanInput, litresFor, minutesFor, planFuel, returnsToStart } from '../../../src/calc';
 import { taxiAllowanceOf } from '../../../src/shared';
 
 const base: FuelPlanInput = {
@@ -173,11 +173,11 @@ describe('legal final reserve at landing (NCO.OP.125 day VFR: 30 min, 10 min loc
     expect(p.issues.some((i) => i.level === 'danger' && /legal final reserve/.test(i.text))).toBe(true);
   });
 
-  test('isLocalFlight', () => {
+  test('returnsToStart', () => {
     const a = { lat: 38.1089, lon: 23.7836 },
       b = { lat: 37.9364, lon: 23.9445 };
-    expect(isLocalFlight([a, b])).toBe(false);
-    expect(isLocalFlight([a, b, { lat: 38.11, lon: 23.784 }])).toBe(true);
-    expect(isLocalFlight([a])).toBe(false);
+    expect(returnsToStart([a, b])).toBe(false);
+    expect(returnsToStart([a, b, { lat: 38.11, lon: 23.784 }])).toBe(true);
+    expect(returnsToStart([a])).toBe(false);
   });
 });

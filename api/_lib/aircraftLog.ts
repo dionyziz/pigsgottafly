@@ -1,8 +1,10 @@
-// The edit log of an aircraft (migration 056): every saved change, file, photo and sharing change,
-// with who made it. Edits are stored as a compact diff computed here from the aircraft before and
+// The edit log of an aircraft (migration 057): every saved change, file, photo and sharing change,
+// with who made it. Since migration 060 it is also the version history: every entry but sharing keeps
+// a snapshot of the aircraft as it left it (snapshotOf), which can be previewed and restored. Edits are stored as a compact diff computed here from the aircraft before and
 // after the save, not as what the client sent: autosave sends the whole aircraft every time.
 // Lists and tables (stations, envelopes, performance tables, compass cards) are summarized
 // ('3 stations changed') rather than dumped, and long text only says that it changed.
+import { revisionSummary } from '../../src/shared/aircraftHistory.js';
 import {
   AIRCRAFT_LOG_COALESCE_MS,
   type AircraftEditor,
@@ -11,11 +13,16 @@ import {
   type AircraftLogKind,
   type AircraftLogPage,
   type AircraftLogValue,
+  type AircraftRevision,
+  type AircraftRevisionHead,
+  type AircraftRevisionPage,
+  type AircraftSnapshot,
   type ShareRole,
 } from '../../src/shared/sharing.js';
 import { blankAircraft } from '../../src/shared/templates.js';
-import type { AircraftInput } from '../../src/shared/types.js';
+import type { AircraftFile, AircraftInput } from '../../src/shared/types.js';
 import type { Queryable, Row } from './db.js';
+import { toAircraft } from './rows.js';
 
 type Json = unknown;
 const isObj = (v: Json): v is Record<string, Json> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -190,11 +197,13 @@ export async function logEdit(
   ) {
     const changes = diffAircraft(last.before_doc as AircraftInput, after);
     if (changes.length)
-      await q.query('UPDATE aircraft_log SET changes = $2::jsonb, at = $3 WHERE id = $1', [
+      await q.query('UPDATE aircraft_log SET changes = $2::jsonb, at = $3, snapshot = $4::jsonb WHERE id = $1', [
         last.id,
         JSON.stringify(changes),
         now,
+        JSON.stringify(await snapshotOf(q, aircraftId)),
       ]);
+    // the aircraft is as the revision before left it
     else await q.query('DELETE FROM aircraft_log WHERE id = $1', [last.id]);
     return;
   }
@@ -205,36 +214,50 @@ export async function logEdit(
     aircraftId,
   ]);
   await q.query(
-    `INSERT INTO aircraft_log (aircraft_id, author_id, kind, started, at, changes, before_doc)
-     VALUES ($1, $2, 'edit', $3, $3, $4::jsonb, $5::jsonb)`,
-    [aircraftId, authorId, now, JSON.stringify(changes), JSON.stringify(before)],
+    `INSERT INTO aircraft_log (aircraft_id, author_id, kind, started, at, changes, before_doc, snapshot)
+     VALUES ($1, $2, 'edit', $3, $3, $4::jsonb, $5::jsonb, $6::jsonb)`,
+    [
+      aircraftId,
+      authorId,
+      now,
+      JSON.stringify(changes),
+      JSON.stringify(before),
+      JSON.stringify(await snapshotOf(q, aircraftId)),
+    ],
   );
 }
 
 export interface LogEvent {
-  kind: Exclude<AircraftLogKind, 'edit'>;
+  kind: Exclude<AircraftLogKind, 'edit' | 'baseline'>;
   changes?: AircraftLogChange[];
   file?: string;
   role?: ShareRole;
   /** share-*: the person's account, else the invited address. */
   subjectId?: string | null;
   subjectEmail?: string | null;
+  /** restore: the revision brought back, and what of it could not be. */
+  from?: AircraftRevisionHead;
+  skipped?: string[];
 }
 
-/** Records anything but an edit: creation, a file, the photo, a sharing change. */
+/** Records anything but an edit: creation, a file, the photo, a sharing change, a restore. Returns its id. */
 export async function logEvent(
   q: Queryable,
   aircraftId: string,
   authorId: string,
   e: LogEvent,
   now = Date.now(),
-): Promise<void> {
-  const detail: Record<string, string> = {};
+): Promise<number> {
+  const detail: Record<string, unknown> = {};
   if (e.file !== undefined) detail.file = e.file;
   if (e.role) detail.role = e.role;
-  await q.query(
-    `INSERT INTO aircraft_log (aircraft_id, author_id, kind, started, at, changes, detail, subject_id, subject_email)
-     VALUES ($1, $2, $3, $4, $4, $5::jsonb, $6::jsonb, $7, $8)`,
+  if (e.from) detail.from = e.from;
+  if (e.skipped?.length) detail.skipped = e.skipped;
+  // sharing changes no version of the aircraft
+  const snapshot = e.kind.startsWith('share-') ? null : JSON.stringify(await snapshotOf(q, aircraftId));
+  const [r] = await q.query(
+    `INSERT INTO aircraft_log (aircraft_id, author_id, kind, started, at, changes, detail, subject_id, subject_email, snapshot)
+     VALUES ($1, $2, $3, $4, $4, $5::jsonb, $6::jsonb, $7, $8, $9::jsonb) RETURNING id`,
     [
       aircraftId,
       authorId,
@@ -244,15 +267,61 @@ export async function logEvent(
       JSON.stringify(detail),
       e.subjectId ?? null,
       e.subjectEmail?.toLowerCase() ?? null,
+      snapshot,
     ],
   );
+  return Number(r.id);
 }
+
+/** A 'baseline' revision ($1 aircraft, $2 time, $3 snapshot): no author, no changes. */
+export const BASELINE_SQL = `INSERT INTO aircraft_log (aircraft_id, author_id, kind, started, at, snapshot)
+  VALUES ($1, NULL, 'baseline', $2, $2, $3::jsonb)`;
 
 // (access.ts has the same rule; importing it would make the two modules import each other)
 const personName = (fullName: unknown, name: unknown) => String(fullName || '') || String(name || '');
 
 export const editorOf = (id: unknown, fullName: unknown, name: unknown, email: unknown): AircraftEditor =>
   id ? { pilotId: String(id), name: personName(fullName, name) || String(email || '') } : { pilotId: null, name: '' };
+
+const ENTRY_COLUMNS = `l.id, l.kind, l.at, l.changes, l.detail, l.author_id, l.subject_id, l.subject_email,
+  a.full_name AS a_full_name, a.name AS a_name, a.email AS a_email,
+  s.full_name AS s_full_name, s.name AS s_name, s.email AS s_email,
+  src.at AS src_at, src.author_id AS src_author, sp.full_name AS src_full_name, sp.name AS src_name, sp.email AS src_email`;
+// authors are looked up, never copied into an entry, so that a deleted account leaves no name behind
+const ENTRY_JOINS = `LEFT JOIN pilots a ON a.id = l.author_id LEFT JOIN pilots s ON s.id = l.subject_id
+  LEFT JOIN aircraft_log src ON src.id = (l.detail->'from'->>'id')::bigint AND src.aircraft_id = l.aircraft_id
+  LEFT JOIN pilots sp ON sp.id = src.author_id`;
+
+function toEntry(r: Row): AircraftLogEntry {
+  const e: AircraftLogEntry = {
+    id: Number(r.id),
+    at: Number(r.at),
+    kind: r.kind,
+    by: editorOf(r.author_id, r.a_full_name, r.a_name, r.a_email),
+    changes: r.changes ?? [],
+  };
+  const d = (r.detail ?? {}) as { file?: string; role?: ShareRole; from?: AircraftRevisionHead; skipped?: string[] };
+  if (d.file !== undefined) e.file = d.file;
+  if (d.role) e.role = d.role;
+  if (String(r.kind).startsWith('share-')) {
+    e.personId = r.subject_id ?? null;
+    e.person = r.subject_id ? editorOf(r.subject_id, r.s_full_name, r.s_name, r.s_email).name : (r.subject_email ?? '');
+  }
+  if (d.from)
+    e.restored = {
+      id: Number(d.from.id),
+      // the revision restored from may have been merged away since (see logEdit): its time stays
+      at: r.src_at == null ? Number(d.from.at) : Number(r.src_at),
+      by: editorOf(r.src_author, r.src_full_name, r.src_name, r.src_email),
+    };
+  if (d.skipped?.length) e.skipped = d.skipped;
+  return e;
+}
+
+const toRevision = (r: Row): AircraftRevision => {
+  const e = toEntry(r);
+  return { ...e, summary: revisionSummary(e) };
+};
 
 /** The aircraft's log, newest first: `limit` entries before entry `before` (from the start without). */
 export async function listLog(
@@ -262,34 +331,122 @@ export async function listLog(
   limit: number,
 ): Promise<AircraftLogPage> {
   const rows = await q.query(
-    `SELECT l.id, l.kind, l.at, l.changes, l.detail, l.author_id, l.subject_id, l.subject_email,
-       a.full_name AS a_full_name, a.name AS a_name, a.email AS a_email,
-       s.full_name AS s_full_name, s.name AS s_name, s.email AS s_email
-     FROM aircraft_log l LEFT JOIN pilots a ON a.id = l.author_id LEFT JOIN pilots s ON s.id = l.subject_id
+    `SELECT ${ENTRY_COLUMNS} FROM aircraft_log l ${ENTRY_JOINS}
      WHERE l.aircraft_id = $1 AND ($2::bigint IS NULL OR l.id < $2)
      ORDER BY l.id DESC LIMIT $3`,
     [aircraftId, before, limit + 1],
   );
-  const entries = rows.slice(0, limit).map((r: Row): AircraftLogEntry => {
-    const e: AircraftLogEntry = {
-      id: Number(r.id),
-      at: Number(r.at),
-      kind: r.kind,
-      by: editorOf(r.author_id, r.a_full_name, r.a_name, r.a_email),
-      changes: r.changes ?? [],
-    };
-    const d = (r.detail ?? {}) as { file?: string; role?: ShareRole };
-    if (d.file !== undefined) e.file = d.file;
-    if (d.role) e.role = d.role;
-    if (String(r.kind).startsWith('share-')) {
-      e.personId = r.subject_id ?? null;
-      e.person = r.subject_id
-        ? editorOf(r.subject_id, r.s_full_name, r.s_name, r.s_email).name
-        : (r.subject_email ?? '');
-    }
-    return e;
-  });
+  const entries = rows.slice(0, limit).map(toEntry);
   return { entries, next: rows.length > limit ? entries[entries.length - 1].id : null };
+}
+
+// ---------------------------------------------------------------- version history
+
+const FILE_COLUMNS = 'id, kind, title, name, mime, size, chunks, created';
+// (routes/files.ts has the same mapper; importing it would make the two modules import each other)
+const toFileRef = (r: Row): AircraftFile => ({
+  id: r.id,
+  kind: r.kind,
+  title: r.title ?? '',
+  name: r.name,
+  mime: r.mime,
+  size: Number(r.size),
+  chunks: Number(r.chunks),
+  uploaded: Number(r.created),
+});
+
+/** The aircraft as it is now, with the photo and documents attached (complete, not detached). */
+export async function snapshotOf(q: Queryable, aircraftId: string): Promise<AircraftSnapshot> {
+  const [row] = await q.query(
+    `SELECT a.*, op.name AS operator_name FROM aircraft a LEFT JOIN operators op ON op.id = a.operator_id
+     WHERE a.id = $1`,
+    [aircraftId],
+  );
+  const { id: _i, created: _c, updated: _u, ...aircraft } = toAircraft(row);
+  const files = (
+    await q.query(
+      `SELECT ${FILE_COLUMNS} FROM aircraft_attachments WHERE aircraft_id = $1 AND complete AND NOT detached
+       AND kind IN ('photo', 'document') ORDER BY created, id`,
+      [aircraftId],
+    )
+  ).map(toFileRef);
+  const photos = files.filter((f) => f.kind === 'photo');
+  return { aircraft, photo: photos[photos.length - 1] ?? null, documents: files.filter((f) => f.kind === 'document') };
+}
+
+/** The aircraft's revisions, newest first, paged as listLog. */
+export async function listRevisions(
+  q: Queryable,
+  aircraftId: string,
+  before: number | null,
+  limit: number,
+): Promise<AircraftRevisionPage> {
+  const rows = await q.query(
+    `SELECT ${ENTRY_COLUMNS} FROM aircraft_log l ${ENTRY_JOINS}
+     WHERE l.aircraft_id = $1 AND l.snapshot IS NOT NULL AND ($2::bigint IS NULL OR l.id < $2)
+     ORDER BY l.id DESC LIMIT $3`,
+    [aircraftId, before, limit + 1],
+  );
+  const revisions = rows.slice(0, limit).map(toRevision);
+  return { revisions, next: rows.length > limit ? revisions[revisions.length - 1].id : null };
+}
+
+/** One revision with its snapshot; null when the aircraft has no such revision. */
+export async function getRevision(
+  q: Queryable,
+  aircraftId: string,
+  id: number,
+): Promise<{ revision: AircraftRevision; snapshot: AircraftSnapshot } | null> {
+  const [r] = await q.query(
+    `SELECT ${ENTRY_COLUMNS}, l.snapshot FROM aircraft_log l ${ENTRY_JOINS}
+     WHERE l.aircraft_id = $1 AND l.id = $2 AND l.snapshot IS NOT NULL`,
+    [aircraftId, id],
+  );
+  return r ? { revision: toRevision(r), snapshot: r.snapshot as AircraftSnapshot } : null;
+}
+
+/** The newest revision (null only for an aircraft no revision was ever recorded for). */
+export async function headRevision(q: Queryable, aircraftId: string): Promise<AircraftRevisionHead | null> {
+  const [r] = await q.query(
+    'SELECT id, at FROM aircraft_log WHERE aircraft_id = $1 AND snapshot IS NOT NULL ORDER BY id DESC LIMIT 1',
+    [aircraftId],
+  );
+  return r ? { id: Number(r.id), at: Number(r.at) } : null;
+}
+
+/**
+ * The differences from one version to another: the record's (diffAircraft), then the files'.
+ * `stored`: the ids of the files that still exist; a file of `after` that does not is "no longer stored".
+ */
+export function diffSnapshots(
+  before: AircraftSnapshot,
+  after: AircraftSnapshot,
+  stored?: ReadonlySet<string>,
+): AircraftLogChange[] {
+  const out = diffAircraft(before.aircraft, after.aircraft);
+  const gone = (f: AircraftFile) => !!stored && !stored.has(f.id);
+  const quoted = (f: AircraftFile) => `“${f.title || f.name}”`;
+  const was = new Map(before.documents.map((f) => [f.id, f]));
+  const now = new Set(after.documents.map((f) => f.id));
+  for (const f of after.documents) {
+    const b = was.get(f.id);
+    const path = `documents.${f.id}`;
+    if (!b)
+      out.push({
+        path,
+        summary: gone(f) ? `document ${quoted(f)} is no longer stored` : `document ${quoted(f)} added`,
+      });
+    else if (b.title !== f.title) out.push({ path, summary: `document ${quoted(b)} renamed ${quoted(f)}` });
+  }
+  for (const f of before.documents)
+    if (!now.has(f.id)) out.push({ path: `documents.${f.id}`, summary: `document ${quoted(f)} removed` });
+  const [x, y] = [before.photo, after.photo];
+  if (x?.id !== y?.id)
+    out.push({
+      path: 'photo',
+      summary: !y ? 'photo removed' : gone(y) ? 'photo is no longer stored' : x ? 'photo changed' : 'photo added',
+    });
+  return out;
 }
 
 /**

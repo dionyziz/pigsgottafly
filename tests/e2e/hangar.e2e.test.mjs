@@ -4,7 +4,8 @@
 // item 18 field warns only about indicators the flight plan drops, the approved fuels, the placeholder
 // picture and the photo, and documents (chunked upload through the file inputs, the PDF opened in the
 // in-app viewer). The performance tables: units in the headers, speeds in knots, no unit over a value.
-// The edit log: a saved field in History and "Updated … by you" on the hangar card.
+// The edit log: a saved field in the Version history and "Updated … by you" on the hangar card; an
+// earlier version previewed (read-only, its differences highlighted), restored, and the restore undone.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -159,7 +160,7 @@ test('aircraft page: layout, autosave, item 18, fuels, photo and documents', asy
   await new Promise((r) => setTimeout(r, 1200));
   assert.equal(await activeNav(), 'Performance');
   await page.eval(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'History');
+  await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Version history');
   await page.eval(() => window.scrollTo(0, 0));
   await page.waitFor(() => document.querySelector('.ac-nav a.active > span')?.textContent === 'Identity');
 
@@ -608,4 +609,84 @@ test('edit log: History lists a saved change; the hangar card says who updated t
     'Updated just now by you',
   );
   await shot('hangar-updated');
+});
+
+test('version history: an earlier version previewed, restored, and the restore undone', async () => {
+  const [asv] = fleetSeed();
+  const ac = await api('POST', 'aircraft', { ...asv, registration: 'SX-VER', serial: '' });
+  await page.viewport(1400, 1000);
+  await page.goto(`${server.url}/hangar/${ac.id}`);
+  await page.waitFor(() => !!document.querySelector('[data-testid=history] li'));
+  const saveSerial = async (v) => {
+    await page.type('input[name=serial]', v);
+    await page.blur();
+    await page.waitFor(() => document.querySelector('[data-testid=save-status]')?.textContent === 'Saved');
+  };
+  const titles = () =>
+    page.eval(() => [...document.querySelectorAll('[data-testid=history] .history-what')].map((e) => e.textContent));
+  await saveSerial('111');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=history] > li').length === 2);
+  // the editing session ends (as ten minutes without a save would end it)
+  await server.db.query(
+    `UPDATE aircraft_log SET at = at - $2 WHERE id = (SELECT max(id) FROM aircraft_log WHERE aircraft_id = $1)`,
+    [ac.id, 11 * 60 * 1000],
+  );
+  await saveSerial('222');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=history] > li').length === 3);
+  assert.deepEqual(await titles(), ['You changed 1 field', 'You changed 1 field', 'You added the aircraft']);
+
+  // the first version: the form shows it, read-only, the field that differs highlighted
+  await page.click('[data-testid=history] > li:nth-child(2) [data-testid=history-open]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=version-preview]'));
+  await page.waitFor(() => document.querySelector('input[name=serial]').value === '111');
+  const shown = await page.eval(() => ({
+    disabled: document.querySelector('input[name=serial]').matches(':disabled'),
+    marked: document.querySelector('input[name=serial]').closest('label').classList.contains('rev-changed'),
+    others: document.querySelectorAll('.rev-changed').length,
+    changes: [...document.querySelectorAll('[data-testid=version-changes] li')].map((e) => e.textContent),
+    selected: document.querySelector('[data-testid=history] > li.selected .history-what')?.textContent,
+  }));
+  assert.deepEqual(shown, {
+    disabled: true,
+    marked: true,
+    others: 1,
+    changes: ['Serial number: 111 (now 222)'],
+    selected: 'You changed 1 field',
+  });
+  await shot('aircraft-version-preview');
+
+  // restore it, confirmed in the page
+  await page.click('[data-testid=version-restore]');
+  await page.waitFor(() => !!document.querySelector('[data-testid=version-confirm]'));
+  await page.eval(() =>
+    [...document.querySelectorAll('[data-testid=version-confirm] button')]
+      .find((b) => b.textContent === 'Restore')
+      .click(),
+  );
+  await page.waitFor(() => !document.querySelector('[data-testid=version-preview]'));
+  await page.waitFor(() => document.querySelector('input[name=serial]').value === '111');
+  assert.equal(await page.eval(() => document.querySelector('input[name=serial]').matches(':disabled')), false);
+  await page.waitFor(() =>
+    /^You restored the version of \d{4}-\d{2}-\d{2} \d{2}:\d{2} by you$/.test(
+      document.querySelector('[data-testid=history] > li .history-what')?.textContent ?? '',
+    ),
+  );
+  assert.equal(await page.eval(() => document.querySelectorAll('[data-testid=history] > li').length), 4);
+  assert.equal((await api('GET', `aircraft/${ac.id}`)).serial, '111');
+  await page.waitFor(() => /^Restored the version of /.test(document.querySelector('.toast span')?.textContent ?? ''));
+  await shot('aircraft-version-restored');
+
+  // Undo restores the version before
+  await page.eval(() => [...document.querySelectorAll('.toast button')].find((b) => b.textContent === 'Undo').click());
+  await page.waitFor(() => document.querySelector('input[name=serial]').value === '222');
+  await until(async () => (await api('GET', `aircraft/${ac.id}`)).serial === '222');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=history] > li').length === 5);
+  // nothing pending: the restored aircraft is not saved again
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.notEqual(await page.eval(() => document.querySelector('[data-testid=save-status]')?.textContent), 'Saving…');
+  assert.equal(
+    (await server.db.query(`SELECT count(*)::int AS n FROM aircraft_log WHERE aircraft_id = $1`, [ac.id]))[0].n,
+    5,
+  );
+  assert.deepEqual(page.errors, []);
 });

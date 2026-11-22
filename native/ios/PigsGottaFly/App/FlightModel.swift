@@ -402,7 +402,7 @@ final class FlightModel: ObservableObject {
             s["to"] = route.count > 1 ? route.last?["name"] ?? "" : ""
         }
         if let c = computed {
-            if let x = c.totalDistNm { s["distNm"] = .number(x) }
+            if c.local == nil, let x = c.totalDistNm { s["distNm"] = .number(x) }
             if let x = c.totalEteMin { s["eteMin"] = .number(x) }
             if let x = c.totalFuelL { s["fuelL"] = .number(x) }
         }
@@ -416,6 +416,15 @@ final class FlightModel: ObservableObject {
 
     func setBlockOff(_ clock: String) async {
         await edit { $0["blockOff"] = .string(clock) }
+    }
+
+    /// A local flight's airborne time (FlightOptions.localDurationMin), minutes.
+    func setLocalDuration(_ minutes: Int) async {
+        await edit { f in
+            var o = f["options"]?.object ?? [:]
+            o["localDurationMin"] = .number(Double(minutes))
+            f["options"] = .object(o)
+        }
     }
 
     /// The route's points (RoutePoint JSON).

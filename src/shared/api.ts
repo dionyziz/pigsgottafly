@@ -20,6 +20,7 @@ import type {
   EpochMs,
   Flight,
   FlightDoc,
+  FlightOptions,
   FlightSummary,
   Id,
   Passenger,
@@ -138,7 +139,11 @@ export interface FlightListItem {
  * profile's default aircraft, route home → home when `route` is omitted, PIC on the manifest.
  * `id` (6–24 chars [\w-]) is honoured if free (offline-created flights keep their id).
  */
-export type FlightCreateRequest = Partial<FlightDoc> & { id?: string };
+/** options: those given go on top of the profile's defaults. */
+export type FlightCreateRequest = Omit<Partial<FlightDoc>, 'options'> & {
+  options?: Partial<FlightOptions>;
+  id?: string;
+};
 
 /** GET /api/flights/:id → Flight */
 export type FlightResponse = Flight;

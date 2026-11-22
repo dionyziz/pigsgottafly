@@ -139,6 +139,7 @@ export function BriefingSheet({ m }: { m: BriefingModel }) {
                 <b className="brief-key">{r.key}</b>
                 <span>{r.where}</span>
                 <span className="brief-subject">{r.subject}</span>
+                {r.autorouterOnly && <span className="brief-src">autorouter</span>}
                 <span className="spacer" />
                 {r.leg && <span className="brief-leg">{r.leg}</span>}
               </header>

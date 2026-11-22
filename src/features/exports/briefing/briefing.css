@@ -8,6 +8,7 @@
 .brief-notam .spacer { flex: 1; }
 .brief-key { font-family: 'Courier New', monospace; font-weight: 700; }
 .brief-subject { font-weight: 700; }
+.brief-src { font-size: 8pt; font-weight: 700; border: 1px solid #000; border-radius: 3px; padding: 0 3px; }
 .brief-leg { font-size: 8pt; color: #555; }
 .brief-meta { display: flex; flex-wrap: wrap; column-gap: 4mm; font-size: 8pt; color: #333; }
 .brief-raw { margin: 0; font-family: 'Courier New', monospace; font-size: 8pt; white-space: pre-wrap; overflow-wrap: anywhere; color: #10265c; }

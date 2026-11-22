@@ -202,6 +202,7 @@ input.ep-num.invalid { border-color: var(--danger); background: var(--danger-sof
 .ep-notam-head:hover .ep-notam-key { text-decoration: underline; }
 .ep-notam-key { font-weight: 600; }
 .ep-notam-where { color: var(--ink-2); }
+.ep-notam-src { font-size: var(--fs-xs); font-weight: 600; color: var(--warn); border: 1px solid currentColor; border-radius: var(--r-sm); padding: 0 5px; }
 .ep-notam-leg { font-size: var(--fs-xs); color: var(--ink-2); background: var(--hover); border-radius: var(--r-sm); padding: 0 6px; }
 .ep-notam-subject { font-weight: 600; }
 .ep-notam-meta { display: flex; flex-wrap: wrap; column-gap: var(--s3); font-size: var(--fs-xs); color: var(--ink-2); }
@@ -285,3 +286,9 @@ fieldset.ep-readonly {
   padding: 0;
   min-width: 0;
 }
+
+/* ---- Route: a local flight */
+.ep-local-title { margin: 0 0 var(--s2); }
+.ep-local-dest { margin-top: var(--s2); }
+.ep-local-dest input { width: 100%; box-sizing: border-box; }
+.ep-make-local { margin-top: var(--s2); }

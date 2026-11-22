@@ -2,7 +2,7 @@
 import type { FuelPlan, NavlogResult } from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
 import { aerodrome, REF } from '../../../data/ref';
-import { type Aircraft, type Flight, type Pilot, requestRemarks } from '../../../shared';
+import { type Aircraft, type Flight, isLocalFlight, localDuration, type Pilot, requestRemarks } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import type { FplAerodrome, FplInput } from './fpl';
 
@@ -30,11 +30,11 @@ export function alternateOf(s: string): FplAerodrome | null {
 }
 
 /**
- * Total EET (item 16): the navlog's total ETE (Σ of the rounded leg times, as on the MD 4.2 sheet),
- * else the unrounded flight time rounded up.
+ * Total EET (item 16): the navlog's total ETE (Σ of the rounded leg times, as on the MD 4.2 sheet;
+ * a local flight's duration), else the unrounded flight time rounded up.
  */
 export function totalEetMin(navlog: NavlogResult | null): number | null {
-  if (!navlog || !navlog.legs.length) return null;
+  if (!navlog || (!navlog.legs.length && !navlog.local)) return null;
   if (isFinite(navlog.totals.ete) && navlog.totals.ete > 0) return navlog.totals.ete;
   return isFinite(navlog.flightMin) ? Math.ceil(navlog.flightMin - 1e-9) : null;
 }
@@ -76,8 +76,10 @@ export function fplInputFrom(o: {
       kind: p.kind,
       icao: p.kind === 'aerodrome' ? (endpointAerodrome(p, REF.aerodromes)?.icao ?? null) : null,
     })),
+    local: isLocalFlight(route),
     cruiseTasKt: ac?.cruiseTasKt ?? NaN,
-    totalEetMin: totalEetMin(navlog),
+    // a local flight's EET is the pilot's duration even before the aircraft (and so the navlog) is known
+    totalEetMin: totalEetMin(navlog) ?? localDuration(route, flight.options),
     enduranceMin: fuel && isFinite(fuel.enduranceMin) ? fuel.enduranceMin : null,
     personsOnBoard: flight.crew.length || null,
     // the profile is current; the manifest snapshot of the PIC fills what the profile lacks

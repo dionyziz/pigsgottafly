@@ -6,6 +6,7 @@ export * from './declarations.js';
 export * from './format.js';
 export * from './fuel.js';
 export * from './list.js';
+export * from './local.js';
 export * from './mapLayers.js';
 export * from './navlogSheets.js';
 export * from './number.js';
