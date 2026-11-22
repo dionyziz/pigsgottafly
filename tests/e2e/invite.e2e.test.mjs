@@ -108,7 +108,11 @@ test(
     await alice.type('[data-testid=invite-note]', 'Fly with us');
     for (const ac of [one, two]) {
       const box = `[data-testid=invite-aircraft] [data-aircraft-id="${ac.id}"] input[type=checkbox]`;
-      await alice.click(box);
+      // ticking one shows its role menu, which can move the next box between measuring it and the click
+      for (let i = 0; i < 5 && !(await alice.eval((s) => document.querySelector(s)?.checked, box)); i++) {
+        await alice.click(box);
+        await alice.idle(300);
+      }
       await alice.waitFor((s) => document.querySelector(s)?.checked, { args: [box] });
     }
     await alice.click('[data-testid=invite-send]');
