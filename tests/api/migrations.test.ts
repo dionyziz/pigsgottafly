@@ -647,6 +647,7 @@ describe('migrations', () => {
       '054_flight_shares',
       '055_pilot_invitations',
       '056_form_link_details_changed',
+      '057_aircraft_log',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -687,6 +688,7 @@ describe('migrations', () => {
       '054_flight_shares',
       '055_pilot_invitations',
       '056_form_link_details_changed',
+      '057_aircraft_log',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -794,6 +796,7 @@ describe('migrations', () => {
       '054_flight_shares',
       '055_pilot_invitations',
       '056_form_link_details_changed',
+      '057_aircraft_log',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -888,6 +891,7 @@ describe('migrations', () => {
       '054_flight_shares',
       '055_pilot_invitations',
       '056_form_link_details_changed',
+      '057_aircraft_log',
     ]);
     await db.close();
   });

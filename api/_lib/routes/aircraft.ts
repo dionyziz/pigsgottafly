@@ -1,11 +1,13 @@
 // Hangar CRUD: /aircraft, /aircraft/:id. The session pilot's own aircraft and those shared with them
 // (access.ts): viewers read, editors also write, only the owner deletes. Writes keep the owner's pilot_id.
+// Creation and every save go into the aircraft's edit log (../aircraftLog.ts): /aircraft/:id/log.
 import { blankAircraft } from '../../../src/shared/templates.js';
 import type { AircraftInput } from '../../../src/shared/types.js';
 import { aircraftFor, listAircraft, toHangarAircraft } from '../access.js';
+import { listLog, logEdit, logEvent } from '../aircraftLog.js';
 import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
-import { HttpError, newId, notFound, reply } from '../http.js';
+import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
 import { checkCount } from '../limits.js';
 import { operatorFor } from '../operators.js';
 import { isUniqueViolation } from '../pgErrors.js';
@@ -88,7 +90,12 @@ export const routes: Route[] = [
       a.compassCards = a.compassCards.map(({ report: _r, ...c }) => c);
       await checkOperator(db, pilot.id, a, null);
       await checkCount(db, pilot.id, 'aircraft');
-      const created = await write(db, pilot.id, await newId('ac'), a, true);
+      const id = await newId('ac');
+      const created = await db.transaction(async (tx) => {
+        const c = await write(tx, pilot.id, id, a, true);
+        await logEvent(tx, c.id, pilot.id, { kind: 'create' });
+        return c;
+      });
       // A pilot without a default aircraft (an empty hangar, or the default was deleted) gets this one,
       // so new flights open with an aircraft. An existing default is never replaced.
       await db.query('UPDATE pilots SET default_aircraft_id = $1 WHERE id = $2 AND default_aircraft_id IS NULL', [
@@ -114,10 +121,28 @@ export const routes: Route[] = [
       await checkOperator(db, pilot.id, a, cur.operatorId);
       const { cards, unused } = await checkReports(db, ownerId, params.id, a.compassCards, cur.compassCards);
       a.compassCards = cards;
-      await write(db, ownerId, params.id, a, false);
+      await db.transaction(async (tx) => {
+        const { id: _i2, created: _c2, updated: _u2, ...after } = await write(tx, ownerId, params.id, a, false);
+        // the operator's name as the next read shows it (write returns the stored free text)
+        await logEdit(tx, params.id, pilot.id, cur, { ...after, operator: a.operator });
+      });
       // swing reports no card refers to any more (replaced, removed, or uploaded and never saved)
       await deleteAttachments(db, ownerId, unused);
       return toHangarAircraft(await aircraftFor(db, pilot.id, params.id));
+    },
+  },
+  {
+    method: 'GET',
+    path: '/aircraft/:id/log',
+    async handler({ db, pilot, params, query }) {
+      await aircraftFor(db, pilot.id, params.id);
+      const before = query.get('before');
+      const limit = query.get('limit');
+      const b = before ? Number(before) : null;
+      const n = limit ? Number(limit) : 50;
+      if (b !== null && !(Number.isInteger(b) && b > 0)) throw badRequest('before must be an entry id');
+      if (!(Number.isInteger(n) && n >= 1 && n <= 100)) throw badRequest('limit must be 1–100');
+      return listLog(db, params.id, b, n);
     },
   },
   {

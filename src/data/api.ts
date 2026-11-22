@@ -8,6 +8,7 @@ import type {
   AircraftFiles,
   AircraftFileStart,
   AircraftInput,
+  AircraftLogPage,
   AircraftSharing,
   AppleLoginRequest,
   Attachment,
@@ -225,6 +226,9 @@ export const api = {
     update: ['operators'],
     remove: ['pilot', 'operators'],
   }),
+  /** An aircraft's edit log, newest first; `before` = the previous page's `next`. */
+  aircraftLog: (id: string, before?: number | null) =>
+    request<AircraftLogPage>('GET', `aircraft/${encodeURIComponent(id)}/log${before ? `?before=${before}` : ''}`),
   /** Who has access to an aircraft (src/shared/sharing.ts). */
   shares: sharesOf<AircraftSharing>('aircraft', ['aircraft', 'operators'], ['pilot']),
   /** Invitations to the app, with aircraft shared once accepted (src/shared/sharing.ts). */

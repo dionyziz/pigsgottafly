@@ -23,6 +23,7 @@ import type { Aircraft, AircraftInput } from '../../shared/types';
 import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading, SaveStatus, useAutosave } from '../../ui';
 import { DocumentsSection, PhotoControl } from './AircraftFiles';
 import { CompassSection } from './CompassSection';
+import { HistorySection } from './HistorySection';
 import { MassBalanceSection } from './MassBalanceSection';
 import { type Issue, type SectionId, validateAircraft } from './model';
 import { PerformanceSection } from './PerformanceSection';
@@ -39,12 +40,23 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'performance', label: 'Performance' },
   { id: 'compass', label: 'Compass swing' },
   { id: 'documents', label: 'Documents' },
+  { id: 'history', label: 'History' },
 ];
 const SECTION_IDS = SECTIONS.map((s) => s.id);
 
 /** The editable part of an aircraft (fuel densities at the standard values: saving migrates old ones). */
 export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
-  const { id: _i, created: _c, updated: _u, access: _a, photo: _p, placeholder: _ph, ...rest } = a as HangarAircraft;
+  const {
+    id: _i,
+    created: _c,
+    updated: _u,
+    access: _a,
+    photo: _p,
+    placeholder: _ph,
+    updatedAt: _ua,
+    updatedBy: _ub,
+    ...rest
+  } = a as HangarAircraft;
   return { ...rest, fuel: { ...rest.fuel, types: standardFuelTypes(rest.fuel.types) } };
 }
 
@@ -341,6 +353,7 @@ function AircraftEditor({ aircraft, onSaved }: { aircraft: HangarAircraft; onSav
             <CompassSection {...props} today={today} aircraftId={aircraft.id} />
           </fieldset>
           <DocumentsSection scope={aircraftScope(aircraft.id)} canEdit={!readOnly} />
+          <HistorySection aircraftId={aircraft.id} version={aircraft.updatedAt} myId={pilot.id} />
 
           {readOnly ? (
             <div className="ac-viewonly card" data-testid="aircraft-viewonly">

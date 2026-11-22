@@ -307,7 +307,17 @@ describe('aircraft documents are validated (they feed W&B, navlog and the manife
     for (const a of [...fleetSeed(), { ...template, registration: 'SX-TPL' }]) {
       const r = await post(a);
       expect(r.status).toBe(201);
-      const { id: _i, created: _c, updated: _u, access: _a, photo: _p, placeholder: _ph, ...stored } = r.body;
+      const {
+        id: _i,
+        created: _c,
+        updated: _u,
+        access: _a,
+        photo: _p,
+        placeholder: _ph,
+        updatedAt: _ua,
+        updatedBy: _ub,
+        ...stored
+      } = r.body;
       expect(stored).toEqual(a);
     }
   });

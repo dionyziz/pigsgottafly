@@ -31,6 +31,7 @@ import {
   type PilotFiles,
 } from '../../../src/shared/types.js';
 import { aircraftFor } from '../access.js';
+import { logEvent } from '../aircraftLog.js';
 import type { Queryable, Row } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, HttpError, newId, notFound, reply } from '../http.js';
@@ -99,7 +100,12 @@ interface FileScope {
   ) => Promise<{ owner: string; extra: Record<string, unknown> }>;
   /** After a file is completed, in its transaction. */
   completed?: (tx: Queryable, id: string) => Promise<void>;
+  /** A file added (completed), renamed or removed by `pilotId` (the aircraft's edit log). */
+  changed?: (db: Queryable, pilotId: string, id: string, change: FileChange) => Promise<void>;
 }
+
+type FileChange =
+  { action: 'add' | 'remove'; file: AircraftFile } | { action: 'rename'; file: AircraftFile; from: string };
 
 export function fileRoutes(scope: FileScope): Route[] {
   const { files, chunks, parent, path: P } = scope;
@@ -220,6 +226,7 @@ export function fileRoutes(scope: FileScope): Route[] {
               f.id,
             ]);
           await scope.completed?.(tx, params.id);
+          await scope.changed?.(tx, pilot.id, params.id, { action: 'add', file: toFile(f) });
           return toFile(f);
         });
       },
@@ -252,6 +259,8 @@ export function fileRoutes(scope: FileScope): Route[] {
         const title = cleanText(((await body()) as Record<string, unknown>).title, 120);
         if (!title && f.kind === 'document') throw badRequest('title is required');
         const [r] = await db.query(`UPDATE ${files} SET title = $2 WHERE id = $1 RETURNING ${COLS}`, [f.id, title]);
+        if (f.complete && title !== (f.title ?? ''))
+          await scope.changed?.(db, pilot.id, params.id, { action: 'rename', file: toFile(r), from: f.title ?? '' });
         return toFile(r);
       },
     },
@@ -262,6 +271,7 @@ export function fileRoutes(scope: FileScope): Route[] {
         await scope.access(db, pilot.id, params.id, 'edit');
         const f = await fileRow(db, params.id, params.fileId);
         await db.query(`DELETE FROM ${files} WHERE id = $1`, [f.id]);
+        if (f.complete) await scope.changed?.(db, pilot.id, params.id, { action: 'remove', file: toFile(f) });
         return undefined;
       },
     },
@@ -284,6 +294,16 @@ export const routes: Route[] = [
     completed: async (tx, id) => {
       await tx.query('UPDATE aircraft SET updated = $2 WHERE id = $1', [id, Date.now()]);
     },
+    changed: (db, pilotId, id, c) =>
+      c.file.kind === 'photo'
+        ? c.action === 'rename'
+          ? Promise.resolve()
+          : logEvent(db, id, pilotId, { kind: c.action === 'add' ? 'photo-set' : 'photo-remove' })
+        : logEvent(db, id, pilotId, {
+            kind: `document-${c.action}`,
+            file: c.file.title,
+            ...(c.action === 'rename' ? { changes: [{ path: 'title', from: c.from, to: c.file.title }] } : {}),
+          }),
   }),
   // an operator's documents (operations manual)
   ...fileRoutes({

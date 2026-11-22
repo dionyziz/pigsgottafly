@@ -156,7 +156,8 @@ src/
                            their inputs, issueTarget: inputs are named by their issue path) or a failed save (Retry);
                            useScrollSpy: the section nav follows the scroll); stations, envelope points, compass cards
                            and their points reorder by drag handle; AircraftFiles (photo, else the aircraft's placeholder
-                           picture public/aircraft/placeholder-N.webp; DocumentsSection for any FileScope), ShareDialog
+                           picture public/aircraft/placeholder-N.webp; DocumentsSection for any FileScope), ShareDialog,
+                           HistorySection + history.ts (the edit log in words; the cards' "Updated … by …")
     operators/             OperatorsPage (useEntity('operators')), OperatorPage (autosaves; header as the aircraft
                            page's; details, W&B/performance requirement, documents, aircraft, who has access), OperatorPicker (the aircraft page's operator dropdown
                            with "New operator…")
@@ -216,6 +217,9 @@ api/
   _lib/rows.ts             row ↔ entity mappers, input validation helpers
   _lib/pgErrors.ts         database errors by SQLSTATE (unique / FK / check → 400 or 409), never by message text
   _lib/access.ts           aircraft access (owner / shared edit / view): aircraftFor, listAircraft, accessibleSql, AIRCRAFT_FROM
+  _lib/aircraftLog.ts      the aircraft edit log: diffAircraft (short values old → new, lists and tables summarized),
+                           logEdit (one pilot's saves within AIRCRAFT_LOG_COALESCE_MS are one entry), logEvent
+                           (creation, files, photo, sharing), listLog (GET /aircraft/:id/log), updatedAt/updatedBy
   _lib/operators.ts        operator access (owner / shared edit / view / view through an aircraft): operatorFor, listOperators
   _lib/mail.ts             Resend: sendMail (for a pilot: always cc'd, reply-to), sendSystemMail (the app's own: signup notices, error alerts, share notices)
   _lib/shareMail.ts        the e-mail to a person an aircraft or an operator is shared with (who, what, access, link); logged, capped, never fails the share
@@ -251,7 +255,8 @@ api/
                            UTC day, with expiry; weather_budget: Open-Meteo calls per UTC day),
                            045_passenger_email.ts (passengers.email, NULL for existing passengers),
                            054_flight_shares.ts (flight_shares, flight_invites: flights shared by e-mail)
-                           055_pilot_invitations.ts (pilot_invitations, pilot_invitation_aircraft: invitations to the app)
+                           055_pilot_invitations.ts (pilot_invitations, pilot_invitation_aircraft: invitations to the app),
+                           056_aircraft_log.ts (aircraft_log: the edit log; author_id SET NULL when an account is deleted)
   _lib/sendCaps.ts         sending caps (429) and the e-mail action log: per pilot 20 e-mails/24 h, 5 per flight and form,
                            10 declarations/24 h to one address, 10 min between sends of a flight's form (Form 731 to a
                            passenger, '731-pax': per flight and recipient; share notices, 'share-aircraft',
