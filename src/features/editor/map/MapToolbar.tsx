@@ -16,10 +16,13 @@ export function MapToolbar({
   canRedo,
   onFit,
   readOnly,
+  drawLocked,
 }: {
   mode: DrawMode;
   /** Only "zoom to the route" (a flight shared as a viewer). */
   readOnly?: boolean;
+  /** A local flight: nothing to draw until Local flight is unticked. */
+  drawLocked?: boolean;
   hasRoute: boolean;
   onMode: (m: DrawMode) => void;
   onUndo?: () => void;
@@ -41,7 +44,8 @@ export function MapToolbar({
       <ToolButton
         active={mode === 'draw'}
         onClick={() => onMode(mode === 'draw' ? 'idle' : 'draw')}
-        title="Draw route (D)"
+        disabled={drawLocked}
+        title={drawLocked ? 'A local flight has no route to draw' : 'Draw route (D)'}
         testid="map-draw"
       >
         <IconPen /> <span>{hasRoute ? 'Extend' : 'Draw'}</span>
@@ -49,7 +53,12 @@ export function MapToolbar({
       <ToolButton
         active={mode === 'custom'}
         onClick={() => onMode(mode === 'custom' ? 'idle' : 'custom')}
-        title="Place a custom named point (W, or Shift-click while drawing)"
+        disabled={drawLocked}
+        title={
+          drawLocked
+            ? 'A local flight has no route to draw'
+            : 'Place a custom named point (W, or Shift-click while drawing)'
+        }
         testid="map-custom"
       >
         <IconPin /> <span>Custom point</span>

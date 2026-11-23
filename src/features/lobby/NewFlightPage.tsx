@@ -1,7 +1,7 @@
 // The server fills in the profile defaults (home → home route, default aircraft, taxi times, wind model,
 // PIC on the manifest). A pilot's first flight asks for their home aerodrome (sign-up asks nothing), saved
-// to the profile; ?ask=1 asks for the origin and destination instead, or for a local flight (back to
-// the origin with nothing between) and its duration.
+// to the profile; ?ask=1 asks for the origin and destination instead, or (Local flight ticked) for the
+// estimated total time of a flight back to the origin with nothing between.
 import './lists.css';
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
@@ -120,10 +120,9 @@ export function NewFlightPage() {
     );
   }
 
-  // An unknown aerodrome says so under its field ("Not an aerodrome in the current AIP"); an
-  // empty destination means back to the origin, which is a local flight.
+  // An unknown aerodrome says so under its field ("Not an aerodrome in the current AIP").
   const ad = resolveAerodrome(from);
-  const dest = localChosen || !to.trim() ? ad : resolveAerodrome(to);
+  const dest = localChosen ? ad : resolveAerodrome(to);
   const local = !!ad && !!dest && ad.id === dest.id;
   const ok = !!ad && !!dest;
   return (
@@ -154,15 +153,10 @@ export function NewFlightPage() {
                 name="to"
                 data-testid="new-flight-local-to"
                 disabled
-                value={ad ? `Back to ${ad.icao || aerodromeName(ad)}` : 'Back to the origin'}
+                value={ad ? ad.icao || aerodromeName(ad) : from}
               />
             ) : (
-              <AerodromeTextInput
-                name="to"
-                value={to}
-                onChange={(t) => setTo(t)}
-                placeholder={ad ? `${aerodromeName(ad)} (back to the origin)` : 'ICAO or name'}
-              />
+              <AerodromeTextInput name="to" value={to} onChange={(t) => setTo(t)} placeholder="ICAO or name" />
             )}
           </Field>
         </div>
@@ -172,8 +166,8 @@ export function NewFlightPage() {
               Local flight
             </Check>
           </div>
-          {local && (
-            <Field label="Duration">
+          {localChosen && (
+            <Field label="Estimated total time">
               <DurationField value={durationMin} onChange={setDurationMin} testId="new-flight-duration" />
             </Field>
           )}

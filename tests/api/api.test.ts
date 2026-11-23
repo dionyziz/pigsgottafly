@@ -2,7 +2,8 @@
 // and isolation between two pilots for every entity.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
-import { AREAS } from '../../src/data/ref';
+import { AREAS, resolveAerodrome } from '../../src/data/ref';
+import { aerodromePoint } from '../../src/shared';
 import { DEFAULT_MAP_LAYERS } from '../../src/shared/mapLayers';
 import { blankAircraft } from '../../src/shared/templates';
 import type { Flight } from '../../src/shared/types';
@@ -103,10 +104,9 @@ describe('profile', () => {
     expect((await c.call('POST', 'flights', { options: { alternates: ['LGMG'] } })).body.options.alternates).toEqual([
       'LGMG',
     ]);
-    await c.call('PUT', 'me', { homeAerodrome: 'LGAV' });
-    expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
+    const toLgav = [aerodromePoint(resolveAerodrome('LGTT')!), aerodromePoint(resolveAerodrome('LGAV')!)];
+    expect((await c.call('POST', 'flights', { route: toLgav })).body.options.alternates).toEqual([]);
     await c.call('PUT', 'me', { settings: { defaultAlternate: null } });
-    await c.call('PUT', 'me', { homeAerodrome: 'LGTT' });
     expect((await c.call('POST', 'flights', {})).body.options.alternates).toEqual([]);
   });
   test("map layers: the profile's choice goes to new flights; each flight keeps its own", async () => {
@@ -210,11 +210,11 @@ describe('hangar', () => {
 });
 
 describe('flights', () => {
-  test('new flights take the profile defaults: home → home, taxi times, PIC on the manifest', async () => {
+  test('new flights take the profile defaults: from home (no destination), taxi times, PIC on the manifest', async () => {
     const ac = (await a.call('POST', 'aircraft', aircraftBody('SX-DEF'))).body;
     await a.call('PUT', 'me', { defaultAircraftId: ac.id });
     const f = (await a.call('POST', 'flights', {})).body as Flight;
-    expect(f.route.map((p) => p.refId)).toEqual(['LGTT', 'LGTT']);
+    expect(f.route.map((p) => p.refId)).toEqual(['LGTT']);
     expect(f.taxiOutMin).toBe(15);
     expect(f.taxiInMin).toBe(10);
     expect(f.aircraftId).toBe(ac.id);
@@ -229,7 +229,7 @@ describe('flights', () => {
     ]);
     expect(f.version).toBe(1);
     const row = ((await a.call('GET', 'flights')).body as any[]).find((x) => x.id === f.id);
-    expect(row.points).toEqual(['LGTT', 'LGTT']);
+    expect(row.points).toEqual(['LGTT']);
   });
   test('versions, conflicts, manifest, trash, restore, copy', async () => {
     const pax = (await a.call('POST', 'passengers', { fullName: 'Bob Pax', weightKg: 90 })).body;

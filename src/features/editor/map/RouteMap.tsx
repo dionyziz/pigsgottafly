@@ -1,6 +1,7 @@
 // Controlled: reports edits through callbacks and never changes the flight itself; MapView binds it to the
 // editor state. On a round trip (A … A) drawing adds points before the closing A, so the flight keeps
-// returning home.
+// returning home. A local flight (A → A, nothing between) is not drawn on: its route is set by the
+// Route section's Local flight box, and the map only shows it.
 import './map.css';
 
 import type { ExpressionSpecification, GeoJSONSource, Map as MlMap, MapMouseEvent, MapTouchEvent } from 'maplibre-gl';
@@ -17,7 +18,7 @@ import {
   trueCourse,
 } from '../../../calc';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
-import { type AerodromeRequest, DEFAULT_STOP_MIN, requestAllowed, uid as newUid } from '../../../shared';
+import { type AerodromeRequest, DEFAULT_STOP_MIN, isLocalFlight, requestAllowed, uid as newUid } from '../../../shared';
 import type { Notam } from '../../../shared/briefing';
 import type { MapLayers } from '../../../shared/mapLayers';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
@@ -235,8 +236,9 @@ export function RouteMap(props: RouteMapProps) {
   const [prefs, setPrefs] = useState(loadPrefs);
   const layers = props.layers;
   const [layersOpen, setLayersOpen] = useState(false);
+  const local = isLocalFlight(route);
   const [mode, setMode] = useState<Mode>(() =>
-    !props.readOnly && (route.length < 2 || isBareRoundTrip(route)) ? 'draw' : 'idle',
+    !props.readOnly && !local && (route.length < 2 || isBareRoundTrip(route)) ? 'draw' : 'idle',
   );
   /** Drawing appends after the last point even on a round trip ("Continue drawing" on it). */
   const [toEnd, setToEnd] = useState(false);
@@ -307,6 +309,7 @@ export function RouteMap(props: RouteMapProps) {
   }, [allInfos]);
   const live = useRef({
     props,
+    local,
     mode,
     toEnd,
     route,
@@ -326,6 +329,7 @@ export function RouteMap(props: RouteMapProps) {
   });
   live.current = {
     props,
+    local,
     mode,
     toEnd,
     route,
@@ -655,8 +659,9 @@ export function RouteMap(props: RouteMapProps) {
   // The route may shrink below 2 points from elsewhere (undo, panel): offer drawing again.
   useEffect(() => {
     if (route.length === 0 && mode === 'idle' && !props.readOnly) setMode('draw');
+    if (local && mode !== 'idle') setMode('idle');
     if (selected && !route.some((p) => p.uid === selected)) setSelected(null);
-  }, [route, mode, selected, props.readOnly]);
+  }, [route, mode, selected, props.readOnly, local]);
 
   // None while a point is dragged: the hazards belong to the legs before the drag.
   const legHazards = useMemo(
@@ -1206,6 +1211,11 @@ export function RouteMap(props: RouteMapProps) {
       if (L.props.readOnly || L.mode !== 'idle' || e.originalEvent.button !== 0) return;
       const index = hitPoint(e.point);
       const mid = index === null ? hitMid(e.point) : null;
+      if (index !== null && L.local) {
+        e.preventDefault();
+        setSelected(L.route[index].uid);
+        return;
+      }
       if (index !== null) {
         const uid = L.route[index].uid;
         e.preventDefault();
@@ -1431,16 +1441,21 @@ export function RouteMap(props: RouteMapProps) {
       const me = asMouse(e);
       onDown(me); // a point or a middle dot under the finger: the drag starts and the map does not pan
       const d = drag.current;
-      if (d && !d.insert)
+      // a local flight's points do not drag, but still open their menu on a long press
+      const fixed = !d && live.current.local && hitPoint(me.point) !== null;
+      if ((d && !d.insert) || fixed)
         press = window.setTimeout(() => {
-          if (drag.current === d && !d.moved) {
+          if (fixed || (drag.current === d && !d?.moved)) {
             cancelDrag();
             onContext(me);
           }
         }, LONG_PRESS_MS);
     };
     const onTouchMove = (e: MapTouchEvent) => {
-      if (!drag.current) return;
+      if (!drag.current) {
+        window.clearTimeout(press);
+        return;
+      }
       e.preventDefault();
       onMove(asMouse(e));
     };
@@ -1520,6 +1535,8 @@ export function RouteMap(props: RouteMapProps) {
           e.preventDefault();
           L.props.onRouteChange(removeDrawnPoint(L.route, L.toEnd));
         }
+      } else if (L.local) {
+        return;
       } else if (e.key === 'd' || e.key === 'D') {
         setToEnd(false);
         setMode((m) => (m === 'draw' ? 'idle' : 'draw'));
@@ -1653,6 +1670,7 @@ export function RouteMap(props: RouteMapProps) {
         });
       }
     }
+    if (local) return items;
     if (route[route.length - 1]?.uid === p.uid) items.push({ label: 'Continue drawing', onSelect: continueFrom });
     items.push({ label: 'Remove point', onSelect: doRemove, danger: true });
     return items;
@@ -1661,25 +1679,27 @@ export function RouteMap(props: RouteMapProps) {
   const closing = mode !== 'idle' && drawIndex(route, toEnd) < route.length ? route[route.length - 1] : null;
   const hint = props.readOnly
     ? ''
-    : mode === 'custom'
-      ? closing
-        ? `Click to place a custom point before ${closing.name} and name it · Esc to stop`
-        : 'Click to place a custom point and name it · Esc to stop'
-      : mode === 'draw'
-        ? route.length === 0
-          ? `${touch ? 'Tap' : 'Click'} your departure aerodrome to start`
-          : touch
-            ? closing
-              ? `Tap to add points before the return to ${closing.name} · tap ${closing.name} to finish`
-              : 'Tap to add points · tap the last point to finish'
-            : closing
-              ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
-              : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
-        : route.length >= 2
-          ? touch
-            ? 'Drag points to move · drag a leg’s middle dot to insert · press and hold a point for options · tap an altitude to edit'
-            : 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
-          : '';
+    : local
+      ? 'Local flight · untick Local flight in Route to draw a route'
+      : mode === 'custom'
+        ? closing
+          ? `Click to place a custom point before ${closing.name} and name it · Esc to stop`
+          : 'Click to place a custom point and name it · Esc to stop'
+        : mode === 'draw'
+          ? route.length === 0
+            ? `${touch ? 'Tap' : 'Click'} your departure aerodrome to start`
+            : touch
+              ? closing
+                ? `Tap to add points before the return to ${closing.name} · tap ${closing.name} to finish`
+                : 'Tap to add points · tap the last point to finish'
+              : closing
+                ? `Click to add points before the return to ${closing.name} · Shift-click for a custom point · click ${closing.name}, Enter or Esc to finish`
+                : 'Click to add points · Shift-click for a custom point · click the last point, Enter or Esc to finish'
+          : route.length >= 2
+            ? touch
+              ? 'Drag points to move · drag a leg’s middle dot to insert · press and hold a point for options · tap an altitude to edit'
+              : 'Drag points to move · drag a leg’s middle dot to insert · right-click a point for options · click an altitude to edit'
+            : '';
 
   return (
     <div className="pgf-map" data-testid="map" data-ready={loaded ? '1' : undefined}>
@@ -1690,6 +1710,7 @@ export function RouteMap(props: RouteMapProps) {
         <MapToolbar
           mode={mode}
           readOnly={props.readOnly}
+          drawLocked={local}
           hasRoute={route.length > 0}
           onMode={(m) => {
             setToEnd(false);

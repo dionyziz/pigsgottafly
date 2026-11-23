@@ -2,9 +2,9 @@
 // first and last points (the map edits the same points; drawing on the map still works). Picking an
 // aerodrome replaces that end of the route (a new point, so only the leg touching it loses its
 // per-leg overrides); on a route with one point, picking the destination adds it.
-// A local flight (the same aerodrome at both ends, nothing between) has no legs: the section shows
-// the aerodrome and the pilot's airborne time instead; picking a destination makes it a
-// cross-country flight again.
+// A local flight (the same aerodrome at both ends, nothing between) has no legs: the Local flight box
+// locks the destination to the origin and asks for the estimated total time instead. Nothing else in
+// the section moves when it is ticked (the time takes the free cell beside the box).
 import { useEffect, useState } from 'react';
 
 import { fmtHmm } from '../../../calc';
@@ -16,7 +16,7 @@ import {
   type RefAerodrome,
   type RoutePoint,
 } from '../../../shared';
-import { AerodromeTextInput, DurationField } from '../../../ui';
+import { AerodromeTextInput, Check, DurationField } from '../../../ui';
 import { makeLocal, setRouteEnd } from '../map/routeEdit';
 import { useEditor } from '../state';
 import { Section } from './ui';
@@ -63,7 +63,7 @@ function EndField({
     >
       {label}
       {disabled ? (
-        <input disabled placeholder={hint} />
+        <input disabled readOnly value={shown} placeholder={hint} />
       ) : (
         <AerodromeTextInput
           name={testId}
@@ -95,19 +95,37 @@ export function RouteSection() {
       {!from ? 'No route' : local ? `${from.name} local · ${fmtHmm(duration)}` : `${from.name} → ${to ? to.name : '?'}`}
     </span>
   );
-  const canGoLocal = !local && !readOnly && from?.kind === 'aerodrome' && route.length <= 2;
+  const canBeLocal = !readOnly && from?.kind === 'aerodrome';
+  const toggleLocal = (on: boolean) =>
+    update((d) => ({ ...d, route: on ? (makeLocal(d.route) ?? d.route) : d.route.slice(0, 1) }));
   return (
     <Section id="route" title="Route" badge={badge}>
-      {local && (
-        <p className="ep-local-title" data-testid="route-local">
-          Local flight · <b>{from.name}</b>
-        </p>
-      )}
       <div className="ep-grid2" data-testid="route-ends" data-focus="route">
         <EndField label="Origin" point={from} testId="route-origin" onPick={set('from')} />
-        {local ? (
+        <EndField
+          label="Destination"
+          point={to}
+          testId="route-destination"
+          onPick={set('to')}
+          disabled={!from || local}
+          hint="Set the origin first"
+        />
+      </div>
+      <div className="ep-local">
+        <div>
+          <Check
+            checked={local}
+            onChange={toggleLocal}
+            disabled={!canBeLocal}
+            title={from && from.kind !== 'aerodrome' ? 'A local flight starts at an aerodrome' : undefined}
+            testId="route-local"
+          >
+            Local flight
+          </Check>
+        </div>
+        {local && (
           <label className="field" data-focus="localDuration">
-            Duration
+            Estimated total time
             <DurationField
               value={duration}
               max={MAX_LOCAL_DURATION_MIN}
@@ -120,38 +138,8 @@ export function RouteSection() {
               }
             />
           </label>
-        ) : (
-          <EndField
-            label="Destination"
-            point={to}
-            testId="route-destination"
-            onPick={set('to')}
-            disabled={!from}
-            hint="Set the origin first"
-          />
         )}
       </div>
-      {local && !readOnly && (
-        <div className="ep-local-dest">
-          <EndField
-            label="Fly somewhere instead"
-            point={undefined}
-            placeholder="Destination: ICAO or name"
-            testId="route-destination"
-            onPick={set('to')}
-          />
-        </div>
-      )}
-      {canGoLocal && (
-        <button
-          type="button"
-          className="ghost sm ep-make-local"
-          data-testid="route-make-local"
-          onClick={() => update((d) => ({ ...d, route: makeLocal(d.route) ?? d.route }))}
-        >
-          Local flight from {from.name}
-        </button>
-      )}
     </Section>
   );
 }

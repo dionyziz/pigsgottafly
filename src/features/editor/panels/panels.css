@@ -288,7 +288,5 @@ fieldset.ep-readonly {
 }
 
 /* ---- Route: a local flight */
-.ep-local-title { margin: 0 0 var(--s2); }
-.ep-local-dest { margin-top: var(--s2); }
-.ep-local-dest input { width: 100%; box-sizing: border-box; }
-.ep-make-local { margin-top: var(--s2); }
+.ep-local { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2) var(--s3); margin-top: var(--s2); align-items: end; }
+.ep-local .field input { width: 100%; min-width: 0; box-sizing: border-box; }
