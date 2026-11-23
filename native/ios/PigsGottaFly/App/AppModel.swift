@@ -138,6 +138,9 @@ final class AppModel: ObservableObject {
     /// Bumped when an operator is created, renamed, deleted or left from its page: the list (beside it
     /// on iPad) reads itself again.
     @Published var operatorsChanged = 0
+    /// The website's toast after an operator's page deleted or left it ("Deleted …", "You no longer
+    /// have …"): the page closes, so the list shows it.
+    @Published var operatorNotice: String?
 
     /// The hangar's "Make default aircraft".
     func setDefaultAircraft(_ id: String) async throws {

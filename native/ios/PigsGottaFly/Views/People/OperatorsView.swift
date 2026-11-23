@@ -12,6 +12,7 @@ struct OperatorsView: View {
     @State private var creating = false
     /// iPhone: the operator just created, pushed.
     @State private var opened: Opened?
+    @State private var toast: Toast?
 
     struct Opened: Identifiable, Hashable {
         var id: String
@@ -64,6 +65,12 @@ struct OperatorsView: View {
         .refreshable { await load() }
         .task { await load() }
         .onChange(of: app.operatorsChanged) { Task { await load() } }
+        .onChange(of: app.operatorNotice) { _, notice in
+            guard let notice else { return }
+            toast = Toast(message: notice)
+            app.operatorNotice = nil
+        }
+        .toast($toast)
         .accessibilityIdentifier("operator-list")
     }
 

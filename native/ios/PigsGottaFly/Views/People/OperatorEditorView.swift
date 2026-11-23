@@ -146,6 +146,7 @@ private struct OperatorForm: View {
         .toolbar { toolbar(f) }
         .sheet(item: $sharing, onDismiss: { Task { await model.loadPeople() } }) { t in
             ShareSheet(target: t) {
+                app.operatorNotice = f?.head.left
                 app.operatorsChanged += 1
                 close()
             }
@@ -277,7 +278,9 @@ private struct OperatorForm: View {
 
     private func delete() async {
         do {
+            let deleted = model.form(autosave.value)?.head.deleted
             try await app.deleteOperator(model.id)
+            app.operatorNotice = deleted
             close()
         } catch {
             if !isCancellation(error) { deleteError = error.localizedDescription }

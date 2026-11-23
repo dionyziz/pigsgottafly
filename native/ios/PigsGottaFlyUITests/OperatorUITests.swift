@@ -71,4 +71,20 @@ final class OperatorUITests: XCTestCase {
         XCTAssertEqual(app.textFields["operator-name"].value as? String, "Island Air")
         if app.isPad { XCUIDevice.shared.orientation = .portrait }
     }
+
+    func testDeletingAnOperatorSaysSo() throws {
+        let app = openOperators()
+        app.element("operator-op-mesogeion").tap()
+        XCTAssertTrue(app.buttons["operator-actions"].waitForExistence(timeout: 10))
+        app.buttons["operator-actions"].tap()
+        app.buttons["Delete operator"].tap()
+        let confirm = app.buttons["confirm-destructive"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        let toast = app.element("toast")
+        XCTAssertTrue(toast.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Deleted AEROCLUB MESOGEION"].exists, "the website's toast")
+        XCTAssertFalse(app.element("operator-op-mesogeion").waitForExistence(timeout: 2))
+        if app.isPad { XCUIDevice.shared.orientation = .portrait }
+    }
 }
