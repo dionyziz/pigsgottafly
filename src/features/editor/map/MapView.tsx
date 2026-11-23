@@ -8,7 +8,7 @@ import { visibleNotams } from '../../../data/notams';
 import { aerodrome } from '../../../data/ref';
 import { type AerodromeRequest, removeRequest, type RoutePoint, setRequest } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
-import { adDayInfo } from '../AerodromeHours';
+import { adDayInfo } from '../adDay';
 import { useHoveredLeg } from '../legHover';
 import { useNotams } from '../notams';
 import { AD_ROLE, useFlightCalc } from '../panels/calc';

@@ -59,6 +59,19 @@ export interface AirspaceInfo {
   bbox: [number, number, number, number];
 }
 
+/** What each type is, in words (the details box). */
+export const AIRSPACE_TYPE_LABEL: Record<AirspaceType, string> = {
+  TMA: 'TMA',
+  MTMA: 'Military TMA',
+  CTR: 'Control zone',
+  ATZ: 'Aerodrome traffic zone',
+  P: 'Prohibited area',
+  R: 'Restricted area',
+  D: 'Danger area',
+  MIL: 'Military exercise / training area',
+  ACT: 'Local flying area',
+};
+
 /** Class letter for a label: 'E (C above FL 195)' → 'E'. */
 export function shortClass(cls: string): string {
   return cls.trim().split(/[\s(]/)[0] ?? '';

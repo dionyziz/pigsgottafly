@@ -156,6 +156,13 @@ describe('core.js in a bare JavaScript context', () => {
     personIssues: () => expect(call('personIssues', { person: null, now: NOW }).issues.length).toBeGreaterThan(0),
     parseCoords: () => expect(call('parseCoords', { text: '375430N 0234334E' }).latLon.lat).toBeCloseTo(37.908, 3),
     parseTyped: () => expect(call('parseTyped', { kind: 'time', text: '930' }).value).toBe('09:30'),
+    mapInfo: () =>
+      expect(call('mapInfo', { ref: API_REF, lat: 38.10861, lon: 23.78333, zoom: 10 }).aerodrome.icao).toBe('LGTT'),
+    pointMenu: () => expect(call('pointMenu', { ref: API_REF, route, uid: route[0].uid }).end).toBe('departure'),
+    routeFeatures: () => expect(call('routeFeatures', { route })['route-points'].features).toHaveLength(route.length),
+    drawBand: () => expect(call('drawBand', { route, target: { lat: 38, lon: 24 } }).readout).toMatch(/NM$/),
+    waypointName: () => expect(call('waypointName', { name: 'wp 1' }).name).toBe('WP 1'),
+    mapLayers: () => expect(call('mapLayers', { ref: API_REF, pilot: { tma: false } }).layers.tma).toBe(false),
   };
   test.each(Object.keys(calls))('%s', (name) => calls[name]());
 

@@ -92,8 +92,9 @@ final class APIWrapperTests: XCTestCase {
 
     func testFixturesAnswerThePeopleLists() async throws {
         let api = API(transport: FixtureTransport.bundled()!)
+        // the manifest fixtures (FixtureRoutes+Manifest) give the passenger list its people
         let passengers = try await api.passengers(as: [JSON].self)
-        XCTAssertEqual(passengers, [])
+        XCTAssertFalse(passengers.isEmpty)
         let operators = try await api.operators()
         XCTAssertEqual(operators, [])
     }
