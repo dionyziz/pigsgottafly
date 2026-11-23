@@ -10,7 +10,7 @@ import { adDayInfo } from '../../adDay';
 import { AerodromeDetails } from '../AerodromePopover';
 import { airspaceInfos } from '../airspace';
 import { AirspaceDetails } from '../AirspacePopover';
-import { VFR_ARROW_AT, vfrRouteArrowFeatures } from '../features';
+import { VFR_ARROW_AT, VFR_ARROW_STEP, vfrRouteArrowFeatures } from '../features';
 import { labelAlong, legLabelSlots } from '../labels';
 import { NavaidDetails } from '../NavaidPopover';
 import { aerodromeVfrCharts, airspaceVfrCharts, vfrChartIndex, vfrChartsAt, vfrPointCharts } from '../vfrCharts';
@@ -99,6 +99,15 @@ describe('VFR route arrows', () => {
   it('the same direction published twice (two charts) is one arrow; two-way segments have none', () => {
     const fc = vfrRouteArrowFeatures([rt('LGAV', 'X', 'Y'), rt('LGMG', 'X', 'Y'), rt('LGAV', 'Y', 'X', false)], pts);
     expect(fc.features).toHaveLength(1);
+  });
+  it('an ordinary and a MIL / JET ONLY route on the same leg and direction: one arrow each, apart', () => {
+    const jet = { ...rt('LGAV', 'X', 'Y'), id: 'LGAV:X>Y#2', kind: 'jet' as const };
+    const mil = { ...rt('LGMG', 'X', 'Y'), kind: 'mil' as const };
+    const fc = vfrRouteArrowFeatures([jet, mil, rt('LGAV', 'X', 'Y')], pts);
+    expect(fc.features.map((f) => [f.properties.kind, f.geometry.coordinates[0]])).toEqual([
+      ['vfr', 23 + VFR_ARROW_AT],
+      ['jet', 23 + VFR_ARROW_AT - VFR_ARROW_STEP],
+    ]);
   });
   it('the published routes: no two arrows on the same spot', () => {
     const fc = vfrRouteArrowFeatures(VFR_ROUTES, VFR_POINTS);

@@ -231,16 +231,63 @@
    "b": "KALAMON",
    "min": 4500,
    "max": 4500,
-   "nm": 9,
-   "oneway": true
+   "nm": 9
   },
   {
-   "a": "KALAMON",
-   "b": "XERIS",
-   "min": 4000,
-   "max": 4000,
-   "nm": 9,
-   "oneway": true
+   "a": "ROUPOL",
+   "b": "LOUTRA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 13
+  },
+  {
+   "a": "SOSUS",
+   "b": "FANARI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 13
+  },
+  {
+   "a": "LOUTRA",
+   "b": "PEREN",
+   "min": null,
+   "max": null,
+   "nm": 10
+  },
+  {
+   "a": "PEREN",
+   "b": "ASKOS",
+   "min": null,
+   "max": null,
+   "nm": 14
+  },
+  {
+   "a": "SOSUS",
+   "b": "IDILO",
+   "min": null,
+   "max": null,
+   "nm": 17
+  },
+  {
+   "a": "FANARI",
+   "b": "IDILO",
+   "min": null,
+   "max": null,
+   "nm": 17
+  },
+  {
+   "a": "FANARI",
+   "b": "KOMOTINI",
+   "min": null,
+   "max": null,
+   "nm": 16
+  },
+  {
+   "a": "IASMOS",
+   "b": "KOMOTINI",
+   "min": null,
+   "max": null,
+   "nm": 10
   },
   {
    "a": "STRIMON",
@@ -249,5 +296,5 @@
    "max": null
   }
  ],
- "notes": "No altitude shown (transcribed with min/max null): STRIMON–LOUTRA. No altitude shown, not yet transcribed: LOUTRA–PEREN, PEREN–ASKOS, SOSUS–IDILO, FANARI–IDILO, FANARI–KOMOTINI, IASMOS–KOMOTINI. Ambiguous labels, not transcribed: ROUPOL–LOUTRA, SOSUS–FANARI. Holdings: LOUTRA 5000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
+ "notes": "Checked complete against the chart (AIRAC 0926). No altitude shown (min/max null): STRIMON–LOUTRA, LOUTRA–PEREN, PEREN–ASKOS, SOSUS–IDILO, FANARI–IDILO, FANARI–KOMOTINI, IASMOS–KOMOTINI. ROUPOL–LOUTRA (13) and SOSUS–FANARI (13) are 4500: the 4000 at ROUPOL and the 5000 at FANARI are holdings. XERIS–KALAMON is 4500 both ways (the 4000 beside it is the KALAMON holding). Off-chart legs (TO THESSALONIKI / ALEXANDROUPOLIS / LIMNOS) omitted. Holdings: LOUTRA 5000, FANARI 5000, KALAMON 4000, ROUPOL 4000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
 }

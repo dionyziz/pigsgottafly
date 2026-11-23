@@ -239,7 +239,45 @@
    "min": 2000,
    "max": 2000,
    "nm": 20
+  },
+  {
+   "a": "RAVDOUCHA",
+   "b": "MALEME",
+   "min": null,
+   "max": null,
+   "nm": 4
+  },
+  {
+   "a": "MALEME",
+   "b": "THODOROU",
+   "min": null,
+   "max": null,
+   "nm": 6
+  },
+  {
+   "a": "SPATHA",
+   "b": "THODOROU",
+   "min": 1500,
+   "max": 1500,
+   "nm": 13,
+   "kind": "jet"
+  },
+  {
+   "a": "DREPANO",
+   "b": "RETHIMNO",
+   "min": 1500,
+   "max": 1500,
+   "nm": 12,
+   "kind": "jet"
+  },
+  {
+   "a": "DREPANO",
+   "b": "PAPA",
+   "min": 1500,
+   "max": 1500,
+   "nm": 25,
+   "kind": "jet"
   }
  ],
- "notes": "Only BAVES prints coordinates; others from open flightmaps (checked against chart symbols). JET ONLY routes (SPATHA\u2013THODOROU, DREPANO\u2013RETHIMNO, DREPANO\u2013PAPA) omitted. No altitude shown: RAVDOUCHA\u2013MALEME (4), MALEME\u2013THODOROU (6). Holdings 2000 at SPATHA, OSCARA, MALEME, KALIVES; 1500 at RETHIMNO. The (20) label covers MALAXA\u2013KALIVES\u2013RETHIMNO."
+ "notes": "Checked complete against the chart (AIRAC 0926). Only BAVES prints coordinates; others from open flightmaps (checked against chart symbols). Dash-dot JET ONLY routes (SPATHA\u2013THODOROU, DREPANO\u2013RETHIMNO, DREPANO\u2013PAPA) are kind jet. No altitude shown: RAVDOUCHA\u2013MALEME (4), MALEME\u2013THODOROU (6); the 2000 next to MALEME is its holding. Holdings 2000 at SPATHA, OSCARA, MALEME, KALIVES; 1500 at RETHIMNO. The (20) label covers MALAXA\u2013KALIVES\u2013RETHIMNO."
 }

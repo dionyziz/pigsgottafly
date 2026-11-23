@@ -16,5 +16,5 @@
     {"a": "LARKI", "b": "BALLOS", "min": 1000, "max": 1000, "nm": 15, "oneway": true},
     {"a": "IRREON", "b": "LARKI", "min": 1000, "max": 1000, "nm": 15, "oneway": true}
   ],
-  "notes": "BALLOS and IRREON print no coordinates (open flightmaps BALOS / IREON, checked against the chart symbols). BALLOS holding max 2000. SAM = SAMOS VOR/DME."
+  "notes": "Checked complete against the chart (AIRAC 0926). BALLOS and IRREON print no coordinates (open flightmaps BALOS / IREON, checked against the chart symbols). BALLOS holding max 2000. SAM = SAMOS VOR/DME."
 }

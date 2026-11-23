@@ -48,7 +48,8 @@ import notamSourceCache058 from './migrations/058_notam_source_cache.js';
 import filingBackends059 from './migrations/059_filing_backends.js';
 import aircraftRevisions060, { run as aircraftRevisionsRun060 } from './migrations/060_aircraft_revisions.js';
 import autorouterLinks061 from './migrations/061_autorouter_links.js';
-import refVfrRoutes062 from './migrations/062_ref_vfr_routes_2609.js';
+import refVfrPoints062 from './migrations/062_ref_vfr_points_2609.js';
+import refVfrRoutes063 from './migrations/063_ref_vfr_routes_2609.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -103,7 +104,8 @@ export const MIGRATIONS: Migration[] = [
   { name: '059_filing_backends', sql: filingBackends059 },
   { name: '060_aircraft_revisions', sql: aircraftRevisions060, run: aircraftRevisionsRun060 },
   { name: '061_autorouter_links', sql: autorouterLinks061 },
-  { name: '062_ref_vfr_routes_2609', sql: refVfrRoutes062 },
+  { name: '062_ref_vfr_points_2609', sql: refVfrPoints062 },
+  { name: '063_ref_vfr_routes_2609', sql: refVfrRoutes063 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

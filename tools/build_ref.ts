@@ -32,11 +32,12 @@ const MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '002_ref_2609.ts'
 // 002 is applied and no longer regenerated (its VFR points were incomplete): set false with a new MIGRATION file.
 const MIGRATION_FROZEN = true;
 // The AIRAC's complete VFR reporting points (tools/parse_vfr.ts + tools/build_vfr.py), replacing the ref_waypoints
-// rows of 002. null when MIGRATION itself is regenerated (a new AIRAC).
-const VFR_MIGRATION: string | null = path.join(ROOT, 'api', '_lib', 'migrations', '048_ref_vfr_points_2609.ts');
+// rows of 002. 048 shipped them first and stays as applied; 062 carries the points the full chart transcriptions
+// added (route ends such as MIL, TGG, SKIATHOS). null when MIGRATION itself is regenerated (a new AIRAC).
+const VFR_MIGRATION: string | null = path.join(ROOT, 'api', '_lib', 'migrations', '062_ref_vfr_points_2609.ts');
 // The AIRAC's VFR route segments, replacing the ref_vfr_routes rows of 002, which lack the segments a chart draws
 // without an altitude (minFt = maxFt = null). null when MIGRATION itself is regenerated (a new AIRAC).
-const VFR_ROUTES_MIGRATION: string | null = path.join(ROOT, 'api', '_lib', 'migrations', '062_ref_vfr_routes_2609.ts');
+const VFR_ROUTES_MIGRATION: string | null = path.join(ROOT, 'api', '_lib', 'migrations', '063_ref_vfr_routes_2609.ts');
 // Runway physical data and declared distances (tools/runways.json from tools/parse_runways.py) for the same
 // AIRAC, loaded after 002 (which, as applied, has the runway directions with null distances).
 const RUNWAY_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '005_ref_runways_2609.ts');
@@ -335,7 +336,7 @@ export function refSql(r: ReturnType<typeof buildRef>): string {
   return L.join('\n') + '\n';
 }
 
-/** Replaces the AIRAC's VFR reporting points (migration 048). */
+/** Replaces the AIRAC's VFR reporting points (migration 062). */
 export function vfrPointsSql(r: ReturnType<typeof buildRef>): string {
   const A = q(r.airac.id);
   const L: string[] = [
@@ -351,7 +352,7 @@ export function vfrPointsSql(r: ReturnType<typeof buildRef>): string {
   return L.join('\n') + '\n';
 }
 
-/** Replaces the AIRAC's VFR route segments (migration 062). */
+/** Replaces the AIRAC's VFR route segments (migration 063). */
 export function vfrRoutesSql(r: ReturnType<typeof buildRef>): string {
   const A = q(r.airac.id);
   const L: string[] = [

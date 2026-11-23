@@ -188,7 +188,7 @@ The AIP archive in `aip/` did not match either published checksum.
 
 VFR reporting points and routes (all 21 eAIP VFR route charts, plus open flightmaps):
 - The 446 reporting points cover every chart, plus the rest of Greece via open flightmaps.
-- 330 route segments on 17 charts: LGAV, LGBL (partial), LGKL, LGKO, LGKP, LGKR, LGKV, LGMK, LGMT, LGPA, LGRP, LGSA, LGSK, LGSM, LGSR, LGSY, LGTS. A segment the chart draws without an altitude is drawn unlabelled and gives no default altitude. LGTG, LGIR, LGLR and LGAD have names only. Each chart file in `tools/vfr_charts/` lists in its notes which legs were left out and why.
+- 690 route segments on all 21 charts, every leg drawn between named points, checked against the AIRAC 09/26 charts. A segment the chart draws without an altitude is drawn unlabelled and gives no default altitude. Helicopter-only, military-only and jet-only legs (`kind`) are on the map behind their own layers, off by default, and give altitudes only while shown. Each chart file in `tools/vfr_charts/` lists in its notes the few legs left out (off-chart ends with no named point) and why.
 - How the data was produced:
   - Coordinates come from the AIP where printed; otherwise from open flightmaps.
   - Altitudes are read from the chart images, using OCR and then checking by eye.
