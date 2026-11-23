@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "vite build && node --import tsx --test --test-concurrency=1 --test-timeout=300000 \"tests/e2e/*.e2e.test.mjs\"",
-    "test:all": "npm run typecheck && npm run lint && npm run lint:swift && npm run format:check && npm test && npm run test:e2e",
+    "test:all": "npm run typecheck && npm run lint && npm run lint:swift && npm run format:check && npm run native:core -- --check && npm run native:pdf -- --check && npm test && npm run test:e2e",
     "ref": "tsx tools/build_ref.ts",
     "smoke": "tsx tools/smoke.ts",
     "native:open": "cd native/ios && xcodegen && open PigsGottaFly.xcodeproj",
@@ -27,7 +27,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "native:core": "tsx tools/build_native_core.ts",
-    "knip": "knip"
+    "knip": "knip",
+    "native:pdf": "tsx tools/build_native_pdf.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",

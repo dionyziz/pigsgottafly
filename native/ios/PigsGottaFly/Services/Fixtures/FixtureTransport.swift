@@ -78,8 +78,7 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
         let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
             accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, manifestRoutes, peopleRoutes,
-            fileRoutes,
-            formRoutes,
+            fileRoutes, formRoutes, exportRoutes,
         ] {
             if let answer = domain(r) { return answer }
         }
