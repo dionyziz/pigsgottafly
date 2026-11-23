@@ -12,7 +12,7 @@ The design is in [PLAN-v3.md](PLAN-v3.md). The code layout, contracts and API ro
   - aerodromes (hover or click one for its hours and handling on the flight's date), TMA/CTR/ATZ sectors with class and vertical limits, VFR reporting points, and VFR routes with their charted altitudes;
   - over OpenFreeMap, OpenTopoMap or OpenStreetMap, with an optional openflightmaps aero overlay.
 - **Route drawing.** Click to add points; points snap to aerodromes, VFR points and your saved waypoints. You can also place named custom points, drag points, drag a leg's midpoint to insert a point, delete points, and undo/redo. Leg labels show the magnetic course (WMM2025 variation), the distance, and the altitude, which you can click to edit.
-- **Default altitudes.** A leg along a charted VFR route gets the route's charted altitude, in its charted direction. Other legs follow the v2 rules, and custom points take the altitude of the closest charted leg.
+- **Default altitudes.** A leg along a charted VFR route gets the route's charted altitude, in its charted direction (none when the chart prints no altitude for it). Other legs follow the v2 rules, and custom points take the altitude of the closest charted leg.
 - **Left panel:**
   - when: date, block-off UTC with local time, taxi out/in, and the computed take-off, landing and block-on times;
   - aircraft;
@@ -188,7 +188,7 @@ The AIP archive in `aip/` did not match either published checksum.
 
 VFR reporting points and routes (all 21 eAIP VFR route charts, plus open flightmaps):
 - The 446 reporting points cover every chart, plus the rest of Greece via open flightmaps.
-- 329 route segments with altitudes on 17 charts: LGAV, LGBL (partial), LGKL, LGKO, LGKP, LGKR, LGKV, LGMK, LGMT, LGPA, LGRP, LGSA, LGSK, LGSM, LGSR, LGSY, LGTS. LGTG, LGIR, LGLR and LGAD have names only. Each chart file in `tools/vfr_charts/` lists in its notes which legs were left out and why.
+- 690 route segments on all 21 charts, every leg drawn between named points, checked against the AIRAC 09/26 charts. A segment the chart draws without an altitude is drawn unlabelled and gives no default altitude. Helicopter-only, military-only and jet-only legs (`kind`) are on the map behind their own layers, off by default, and give altitudes only while shown. Each chart file in `tools/vfr_charts/` lists in its notes the few legs left out (off-chart ends with no named point) and why.
 - How the data was produced:
   - Coordinates come from the AIP where printed; otherwise from open flightmaps.
   - Altitudes are read from the chart images, using OCR and then checking by eye.

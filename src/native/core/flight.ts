@@ -152,7 +152,13 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
   const timing = requestTiming(flight.route, flight.options, settings.circuitMin);
   const defaults = defaultAltitudes(
     flight.route,
-    { aerodromes: ref.bundle.aerodromes, vfrPoints: ref.bundle.vfrPoints, vfrRoutes: ref.bundle.vfrRoutes, terrain },
+    {
+      aerodromes: ref.bundle.aerodromes,
+      vfrPoints: ref.bundle.vfrPoints,
+      vfrRoutes: ref.bundle.vfrRoutes,
+      terrain,
+      layers: flight.options?.mapLayers,
+    },
     overrides,
     timing.patternPoints,
   );

@@ -168,16 +168,16 @@
   {
    "a": "AFANTOU",
    "b": "MARITSA",
-   "min": 2500,
-   "max": 2500,
+   "min": 2000,
+   "max": 2000,
    "nm": 5,
    "oneway": true
   },
   {
    "a": "MARITSA",
    "b": "AFANTOU",
-   "min": 2000,
-   "max": 2000,
+   "min": 2500,
+   "max": 2500,
    "nm": 5,
    "oneway": true
   },
@@ -200,16 +200,16 @@
   {
    "a": "AFANTOU",
    "b": "MPRAVO",
-   "min": 3000,
-   "max": 3000,
+   "min": 3500,
+   "max": 3500,
    "nm": 16,
    "oneway": true
   },
   {
    "a": "MPRAVO",
    "b": "AFANTOU",
-   "min": 3500,
-   "max": 3500,
+   "min": 3000,
+   "max": 3000,
    "nm": 16,
    "oneway": true
   },
@@ -244,7 +244,21 @@
    "max": 4500,
    "nm": 30,
    "oneway": true
+  },
+  {
+   "a": "NISYROS",
+   "b": "TILLOS",
+   "min": null,
+   "max": null,
+   "nm": 10
+  },
+  {
+   "a": "CHALKI",
+   "b": "ALIMIA",
+   "min": null,
+   "max": null,
+   "nm": 10
   }
  ],
- "notes": "Altitudes are direction-specific (arrowed labels), so every route is two one-way segments. NISYROS–TILLOS (10 NM) and CHALKI–ALIMIA (10 NM) show no altitude; ALFA–ABEAM MARATHOS/DELTAS are TO/FROM RODOS tracks without altitude."
+ "notes": "Checked complete against the chart (AIRAC 0926). Altitudes are direction-specific (arrowed labels: the green one, the higher, points away from Rodos), so every route with altitudes is two one-way segments. NISYROS–TILLOS (10 NM) and CHALKI–ALIMIA (10 NM) show no altitude. CHALKI 'TO IRAKLION' leaves the chart without an end point (left out). ALFA–ABEAM MARATHOS/DELTAS (TO/FROM RODOS, no altitude, no distance) are on the LGKP chart's spec."
 }

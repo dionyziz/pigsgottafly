@@ -370,12 +370,18 @@ export interface RefVfrRoute {
   /** Point names on that chart. */
   a: string;
   b: string;
-  /** Charted altitudes, ft (min = max for a single altitude). */
-  minFt: number;
-  maxFt: number;
+  /** Charted altitudes, ft (min = max for a single altitude); both null when the chart draws the
+   *  segment but prints no altitude for it. */
+  minFt: number | null;
+  maxFt: number | null;
   /** One-way routes are flown a → b only. */
   oneway: boolean;
+  /** Charted for helicopters only (HEL ONLY), military aircraft only (MIL ONLY) or jets only (JET ONLY);
+   *  absent for a route open to every VFR flight. */
+  kind?: VfrRouteKind;
 }
+
+export type VfrRouteKind = 'hel' | 'mil' | 'jet';
 
 /** An ATC unit for the generated ATC list. */
 export interface RefAtcUnit {

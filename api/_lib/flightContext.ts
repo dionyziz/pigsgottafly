@@ -97,7 +97,7 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
     route.length > 1
       ? defaultAltitudes(
           route,
-          { ...ref, terrain: serverTerrain() },
+          { ...ref, terrain: serverTerrain(), layers: f.options?.mapLayers },
           typed,
           requestTiming(route, f.options).patternPoints,
         ).map((d, i) => (Number.isFinite(typed[i]) ? (typed[i] as number) : d.altFt))

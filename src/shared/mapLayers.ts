@@ -1,6 +1,8 @@
 // The route map's layer selection: stored per flight (FlightOptions.mapLayers) and as the pilot's
 // choice for new flights (PilotSettings.mapLayers). The route of the flight is always drawn.
 
+import type { VfrRouteKind } from './ref.js';
+
 export type BaseMapId = 'light' | 'terrain' | 'street';
 export const BASE_MAP_IDS: readonly BaseMapId[] = ['light', 'terrain', 'street'];
 
@@ -17,7 +19,12 @@ export interface MapLayers {
   aerodromes: boolean;
   /** VFR reporting points. */
   vfrPoints: boolean;
+  /** VFR routes open to every VFR flight. */
   vfrRoutes: boolean;
+  /** VFR routes charted HEL ONLY. */
+  helRoutes: boolean;
+  /** VFR routes charted MIL ONLY or JET ONLY. */
+  milRoutes: boolean;
   /** Radio navigation aids: VOR, VOR/DME, NDB, locators (ENR 4.1, AD 2.19). */
   navaids: boolean;
   /** The pilot's saved waypoints. */
@@ -37,6 +44,8 @@ export const MAP_LAYER_TOGGLES: readonly MapLayerToggle[] = [
   'aerodromes',
   'vfrPoints',
   'vfrRoutes',
+  'helRoutes',
+  'milRoutes',
   'navaids',
   'waypoints',
   'prd',
@@ -55,6 +64,9 @@ export const DEFAULT_MAP_LAYERS: MapLayers = {
   aerodromes: true,
   vfrPoints: true,
   vfrRoutes: true,
+  // most pilots fly neither: a selection stored before these existed gets them off too (mapLayersOf)
+  helRoutes: false,
+  milRoutes: false,
   navaids: true,
   waypoints: true,
   prd: true,
@@ -72,3 +84,7 @@ export function mapLayersOf(v: unknown, base: MapLayers = DEFAULT_MAP_LAYERS): M
   for (const k of MAP_LAYER_TOGGLES) if (typeof i[k] === 'boolean') out[k] = i[k];
   return out;
 }
+
+/** The toggle that shows the VFR routes of a kind (src/shared/ref.ts RefVfrRoute.kind). */
+export const vfrRouteToggle = (kind: VfrRouteKind | undefined): 'vfrRoutes' | 'helRoutes' | 'milRoutes' =>
+  kind === 'hel' ? 'helRoutes' : kind ? 'milRoutes' : 'vfrRoutes';

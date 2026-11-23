@@ -11,14 +11,19 @@
     {"name": "PRASON", "from": "ofm", "ofm_name": "PRASO"},
     {"name": "LEFKON", "from": "ofm", "ofm_name": "LEFKO"},
     {"name": "DRYLOS", "from": "ofm", "ofm_name": "DRYLO"},
-    {"name": "SKP", "dms": "39 10 50.31 N 023 36 57.35 E", "no_symbol": true}
+    {"name": "SKP", "dms": "39 10 50.31 N 023 36 57.35 E", "no_symbol": true},
+    {"name": "SKOPELOS HELIPORT", "dms": "39 05 36.08 N 023 43 41.47 E", "ref": "AD 3.56", "no_symbol": true, "note": "drawn as the heliport symbol (H) labelled SKOPELOS; position is the AD 3.56 heliport reference point"}
   ],
   "routes": [
     {"a": "IBIDI", "b": "EVIKO", "min": 3500, "max": 3500, "nm": 14},
     {"a": "KOUKOUNARIES", "b": "PRASON", "min": 3500, "max": 3500, "nm": 7},
     {"a": "PRASON", "b": "LEFKON", "min": 4500, "max": 4500, "nm": 10},
     {"a": "SKP", "b": "PELAS", "min": 2000, "max": 2000, "nm": 19},
-    {"a": "SKP", "b": "ETEKA", "min": 2000, "max": 2000, "nm": 18}
+    {"a": "SKP", "b": "ETEKA", "min": 2000, "max": 2000, "nm": 18},
+    {"a": "EVIKO", "b": "KOUKOUNARIES", "min": null, "max": null, "nm": 3},
+    {"a": "DRYLOS", "b": "SKOPELOS HELIPORT", "min": 2500, "max": 2500, "nm": 10},
+    {"a": "CHRISTI", "b": "SKOPELOS HELIPORT", "min": 2500, "max": 2500, "nm": 21},
+    {"a": "PRASON", "b": "SKOPELOS HELIPORT", "min": 500, "max": 500, "nm": 18, "kind": "hel"}
   ],
-  "notes": "SKP = SKOPELOS VOR/DME (routes to PELAS and ETEKA start at the VOR; AG. IOANNIS is the holding point beside it, 2500). DRYLOS–SKOPELOS heliport (10 NM, 2500) and heliport–CHRISTI (21 NM, 2500) end at the heliport, not a reporting point; EVIKO–KOUKOUNARIES (3 NM) shows no altitude; helicopter route PRASON–SKOPELOS (500) omitted."
+  "notes": "SKP = SKOPELOS VOR/DME (routes to PELAS and ETEKA start at the VOR; AG. IOANNIS is the holding point beside it, 2500). DRYLOS and CHRISTI routes end at the Skopelos heliport (SKOPELOS HELIPORT, AD 3.56 position); PRASON–heliport is labelled helicopter (kind hel). EVIKO–KOUKOUNARIES (3 NM) shows no altitude. Holding KOUKOUNARIES 1500."
 }

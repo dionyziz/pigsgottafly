@@ -150,7 +150,15 @@
    "min": 2500,
    "max": 2500,
    "nm": 12
+  },
+  {
+   "a": "KAMENI",
+   "b": "GIVIS",
+   "min": 1000,
+   "max": 1000,
+   "nm": 17,
+   "kind": "hel"
   }
  ],
- "notes": "Helicopter route KAMENI\u2013GIVIS (HEL 17 NM, 1000) omitted. Holdings: KAMENI 2000, ANAFI WEST 2000."
+ "notes": "Checked complete against the chart (AIRAC 0926). KAMENI\u2013GIVIS is a dashed HEL route (kind hel). CHRISTIANA\u2013GIVIS prints no distance. Holdings: KAMENI 2000, ANAFI WEST 2000."
 }

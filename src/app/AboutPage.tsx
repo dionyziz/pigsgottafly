@@ -1,13 +1,16 @@
 // /about: where the data comes from. The weather model and the data sources are named here only;
-// the rest of the app shows the data without its provenance.
+// the rest of the app shows the data without its provenance. Also the way to the open-source
+// licenses (/about/licenses) and the contact address.
 /* eslint-disable @eslint-react/no-missing-key -- the rows are [label, value] tuples, not rendered lists */
 import './about.css';
 
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 
 import { AIP_EAIP_INDEX } from '../data/aipLinks';
 import { AIRAC } from '../data/ref';
 import { CardSection } from '../ui';
+import { CONTACT_EMAIL } from './contact';
 import { Shell } from './Shell';
 
 /** The forecast model behind winds aloft, surface forecasts and the weather hazards. */
@@ -114,6 +117,20 @@ export function AboutPage() {
               ['Aero overlay', ext('https://www.openflightmaps.org', 'open flightmaps')],
             ]}
           />
+        </CardSection>
+        <CardSection id="licenses" title="Open-source licenses" plain>
+          <p>
+            <Link to="/about/licenses" data-testid="about-licenses">
+              The software, fonts and data in Pig's Gotta Fly, with their licenses
+            </Link>
+          </p>
+        </CardSection>
+        <CardSection id="contact" title="Contact" plain>
+          <p>
+            <a href={`mailto:${CONTACT_EMAIL}`} data-testid="about-contact">
+              {CONTACT_EMAIL}
+            </a>
+          </p>
         </CardSection>
       </div>
     </Shell>

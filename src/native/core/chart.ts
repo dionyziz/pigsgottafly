@@ -34,11 +34,13 @@ import {
   AIR_SOURCES,
   type BaseMapId,
   buildStyle,
+  CHART_DEFAULT_VALUES,
   DATA_SOURCES,
   FAR_OPACITY,
   FAR_OPACITY_PROP,
   farScaled,
   LAYER_GROUPS,
+  LINE_STYLES,
 } from '../../features/editor/map/style';
 import { SYMBOL_INFO } from '../../features/editor/map/symbols';
 import { DEFAULT_MAP_LAYERS, type Flight, type MapLayers, mapLayersOf, type Waypoint } from '../../shared';
@@ -62,6 +64,29 @@ export function symbolNames(): {
     pattern: !!s.pattern,
     description: s.description,
   }));
+}
+
+/** How the style draws each line and area (the legend beside the layer toggles draws its samples with
+ *  these): colour as #rrggbb, width in points at zoom 10, dashes in line widths, the area's tint or
+ *  hatching opacity, the hatching symbol, the route's white casing width. */
+export function lineStyles(): Record<
+  string,
+  { color: string; width: number; dash: number[]; opacity: number; fill: number; hatch: string | null; casing: number }
+> {
+  return Object.fromEntries(
+    Object.entries(LINE_STYLES).map(([k, st]) => [
+      k,
+      {
+        color: CHART_DEFAULT_VALUES[st.color],
+        width: st.width,
+        dash: 'dash' in st ? [...st.dash] : [],
+        opacity: st.opacity,
+        fill: 'fill' in st ? st.fill : 0,
+        hatch: 'hatch' in st ? st.hatch : null,
+        casing: 'casing' in st ? st.casing : 0,
+      },
+    ]),
+  );
 }
 
 /** The style's layers by the layer toggle (MapLayers key) that shows them. */

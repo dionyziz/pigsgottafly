@@ -41,10 +41,12 @@ const lerp = (a: LatLon, b: LatLon, t: number): LatLon => ({
   lon: a.lon + (b.lon - a.lon) * t,
 });
 
-/** Brute force: distance from p to a charted leg by sampling 2000 points along it (haversine). */
+/** Brute force: distance from p to a charted leg with an altitude, open to every flight (ctx shows no
+ *  HEL / MIL layer), by sampling 2000 points along it (haversine). */
 function bruteClosest(p: LatLon) {
   let best = { id: '', d: Infinity };
   for (const s of chartedSegments(ctx)) {
+    if (s.route.maxFt === null || s.route.kind) continue;
     for (let i = 0; i <= 2000; i++) {
       const d = haversineNm(p, lerp(s.a, s.b, i / 2000));
       if (d < best.d) best = { id: s.route.id, d };
@@ -92,9 +94,11 @@ test('direction-specific charted altitudes and one-way routes', () => {
     dap = vfrPoint('LGAV/DAPORI')!;
   expect(vfrRouteBetween(egn, dap, ctx)).toMatchObject({ id: 'LGAV:EGN>DAPORI', maxFt: 2500 });
   expect(vfrRouteBetween(dap, egn, ctx)).toMatchObject({ id: 'LGAV:DAPORI>EGN', maxFt: 2000 });
-  // every one-way route without a reverse partner never matches backwards
-  const ids = new Set(REF.vfrRoutes.map((r) => `${r.chart}:${r.a}>${r.b}`));
-  const lone = REF.vfrRoutes.filter((r) => r.oneway && !ids.has(`${r.chart}:${r.b}>${r.a}`));
+  // every one-way route without a reverse partner never matches backwards (among the routes a leg can
+  // take on a flight showing no HEL / MIL layer: printed altitude, no kind)
+  const open = REF.vfrRoutes.filter((r) => r.maxFt !== null && !r.kind);
+  const ids = new Set(open.map((r) => `${r.chart}:${r.a}>${r.b}`));
+  const lone = open.filter((r) => r.oneway && !ids.has(`${r.chart}:${r.b}>${r.a}`));
   for (const r of lone.slice(0, 10)) {
     const s = chartedSegments(ctx).find((x) => x.route.id === r.id)!;
     expect(vfrRouteBetween(s.a, s.b, ctx)?.id).toBe(r.id);

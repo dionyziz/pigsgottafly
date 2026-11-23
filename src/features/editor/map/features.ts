@@ -1,6 +1,7 @@
 import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson';
 
 import { isLocalFlight, LOCAL_AREA_NM, type RoutePoint, type Waypoint } from '../../../shared';
+import { vfrRouteToggle } from '../../../shared/mapLayers';
 import type { NavaidType, RefAerodrome, RefFir, RefNavaid, RefVfrPoint, RefVfrRoute } from '../../../shared/ref';
 import { type AirspaceInfo, airspaceLabel, type AirspaceType, circleRing, fmtVertical, isArea } from './airspace';
 import { mercatorMid } from './routeEdit';
@@ -210,9 +211,10 @@ export function navaidFeatures(navaids: RefNavaid[]): FC<Point> {
   );
 }
 
-/** Charted altitude of a VFR route segment: '3000' or '2000–3000'. */
+/** Charted altitude of a VFR route segment: '3000' or '2000–3000'; '' when the chart prints none. */
 export function fmtRouteAltitude(r: Pick<RefVfrRoute, 'minFt' | 'maxFt'>): string {
-  return r.minFt === r.maxFt || !isFinite(r.minFt) ? `${r.maxFt}` : `${r.minFt}–${r.maxFt}`;
+  if (r.maxFt === null) return '';
+  return r.minFt === null || r.minFt === r.maxFt ? `${r.maxFt}` : `${r.minFt}–${r.maxFt}`;
 }
 
 /** The VFR points by chart and name ('<chart>/<NAME>'), the charted/table point preferred over an
@@ -225,6 +227,9 @@ function vfrPointsByChart(points: RefVfrPoint[]): Map<string, RefVfrPoint> {
   }
   return byChart;
 }
+
+/** A VFR route's `kind` feature property, which picks its style layers (style.ts VFR_ROUTE_KINDS). */
+const kindOf = (r: RefVfrRoute): string => r.kind ?? 'vfr';
 
 /**
  * VFR route segments as lines between their two reporting points (resolved by chart + name; segments
@@ -240,8 +245,8 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
     if (!a || !b) continue;
     // two-way segments listed in both directions are drawn once
     const key = r.oneway
-      ? `${r.chart}:${r.a}>${r.b}`
-      : `${r.chart}:${[r.a, r.b].sort().join('|')}:${r.minFt}-${r.maxFt}`;
+      ? `${r.chart}:${r.a}>${r.b}:${kindOf(r)}`
+      : `${r.chart}:${[r.a, r.b].sort().join('|')}:${r.minFt}-${r.maxFt}:${kindOf(r)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
@@ -253,7 +258,7 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
           [b.lon, b.lat],
         ],
       },
-      properties: { id: r.id, alt: fmtRouteAltitude(r), oneway: r.oneway },
+      properties: { id: r.id, alt: fmtRouteAltitude(r), oneway: r.oneway, kind: kindOf(r) },
     });
   }
   return fc(out);
@@ -263,28 +268,44 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
  *  end, so a segment published one way in each direction shows its two arrows apart. */
 export const VFR_ARROW_AT = 0.75;
 
+/** How much further back each other layer's arrow sits when routes of several layers (an ordinary
+ *  route and a MIL / JET / HEL ONLY one, e.g. LGAD OXIA>RION) share a leg and direction: each layer
+ *  can be shown alone, so none is dropped, and they must not cover each other when shown together. */
+export const VFR_ARROW_STEP = 0.15;
+
+const ARROW_LAYER_ORDER = ['vfrRoutes', 'helRoutes', 'milRoutes'] as const;
+
 /**
- * Arrowheads of the one-way VFR route segments: one per direction per segment (the same direction
- * published again, e.g. on another chart, is merged), each at VFR_ARROW_AT of its own direction;
+ * Arrowheads of the one-way VFR route segments: one per direction per segment and map layer (the same
+ * direction published again on that layer, e.g. on another chart, is merged), the first layer's at
+ * VFR_ARROW_AT of its own direction and the others VFR_ARROW_STEP apart behind it;
  * `rot` = the direction in degrees clockwise from north.
  */
 export function vfrRouteArrowFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): FC<Point> {
   const byChart = vfrPointsByChart(points);
-  const out: Feature<Point, Record<string, unknown>>[] = [];
   const pos = (p: RefVfrPoint) => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
-  const seen = new Set<string>();
+  const dirs = new Map<string, { a: RefVfrPoint; b: RefVfrPoint; byLayer: Map<string, RefVfrRoute> }>();
   for (const r of routes) {
     if (!r.oneway) continue;
     const a = byChart.get(`${r.chart}/${r.a}`),
       b = byChart.get(`${r.chart}/${r.b}`);
     if (!a || !b || pos(a) === pos(b)) continue;
     const key = `${pos(a)}>${pos(b)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: mercatorAt(a, b, VFR_ARROW_AT) },
-      properties: { id: r.id, rot: mercatorBearing(a, b) },
+    let d = dirs.get(key);
+    if (!d) dirs.set(key, (d = { a, b, byLayer: new Map() }));
+    const layer = vfrRouteToggle(r.kind);
+    if (!d.byLayer.has(layer)) d.byLayer.set(layer, r);
+  }
+  const out: Feature<Point, Record<string, unknown>>[] = [];
+  for (const { a, b, byLayer } of dirs.values()) {
+    const shown = ARROW_LAYER_ORDER.filter((l) => byLayer.has(l));
+    shown.forEach((l, i) => {
+      const r = byLayer.get(l)!;
+      out.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: mercatorAt(a, b, VFR_ARROW_AT - i * VFR_ARROW_STEP) },
+        properties: { id: r.id, rot: mercatorBearing(a, b), kind: kindOf(r) },
+      });
     });
   }
   return fc(out);

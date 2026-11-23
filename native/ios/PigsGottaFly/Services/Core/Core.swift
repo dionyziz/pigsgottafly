@@ -277,6 +277,12 @@ final class Core: @unchecked Sendable {
             ])
     }
 
+    /// How the style draws each line and area, for the legend beside the layer toggles (PGF.lineStyles()).
+    func lineStyles() throws -> [String: LineStyle] {
+        let j = try JSON.parse(try call("lineStyles", json: nil))
+        return (j.object ?? [:]).compactMapValues(LineStyle.init)
+    }
+
     static func ms(_ d: Date) -> String {
         String(Int64((d.timeIntervalSince1970 * 1000).rounded()))
     }
@@ -307,6 +313,45 @@ struct SymbolInfo: Equatable, Sendable {
         colors = (j["colors"]?.array ?? []).compactMap(\.string)
         rotates = j["rotates"]?.bool ?? false
         pattern = j["pattern"]?.bool ?? false
+    }
+}
+
+/// How the chart draws a line or an area (PGF.lineStyles()): its colour (#rrggbb), width (points, at
+/// zoom 10), dashes (in line widths, as MapLibre counts them), outline opacity, the opacity of the area's
+/// tint or hatching, the hatching symbol, and the white casing under the route.
+struct LineStyle: Equatable, Sendable {
+    var color: UInt32
+    var width: Double
+    var dash: [Double] = []
+    var opacity: Double = 1
+    var fill: Double = 0
+    var hatch: String?
+    var casing: Double = 0
+
+    init(
+        color: UInt32, width: Double, dash: [Double] = [], opacity: Double = 1, fill: Double = 0,
+        hatch: String? = nil, casing: Double = 0
+    ) {
+        self.color = color
+        self.width = width
+        self.dash = dash
+        self.opacity = opacity
+        self.fill = fill
+        self.hatch = hatch
+        self.casing = casing
+    }
+
+    init?(_ j: JSON) {
+        guard let hex = j["color"]?.string, hex.hasPrefix("#"), let c = UInt32(hex.dropFirst(), radix: 16),
+            let width = j["width"]?.double
+        else { return nil }
+        color = c
+        self.width = width
+        dash = (j["dash"]?.array ?? []).compactMap(\.double)
+        opacity = j["opacity"]?.double ?? 1
+        fill = j["fill"]?.double ?? 0
+        hatch = j["hatch"]?.string
+        casing = j["casing"]?.double ?? 0
     }
 }
 

@@ -51,5 +51,5 @@
     {"a": "LEFKIMI", "b": "PARGAA", "min": 1500, "max": 1500, "nm": 14},
     {"a": "LEFKIMI", "b": "PAXI", "min": 1500, "max": 1500, "nm": 12}
   ],
-  "notes": "Airway points (L53, L995, T75, L612, M600, A14/M127, N732, R19/L995, G12/M600) included for naming only; airway segments are not VFR routes."
+  "notes": "Checked complete against the chart (AIRAC 0926). Airway points (L53, L995, T75, L612, M600, A14/M127, N732, R19/L995, G12/M600) included for naming only; airway segments are not VFR routes."
 }

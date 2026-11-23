@@ -1,5 +1,5 @@
 {
- "chart": "AD 2-LGIR-VFR, VFR routes IRAKLION TMA (page 1, and page 3 the enlarged western part). The reporting points of the text table (page 2) come from tools/vfr_points.json; these are the other points of the chart. Routes not transcribed yet.",
+ "chart": "AD 2-LGIR-VFR, VFR routes IRAKLION TMA (14 MAY 26, AIRAC AMDT 04/26; page 1, and page 3 the enlarged western part). The reporting points of the text table (page 2) come from tools/vfr_points.json; these are the other points of the chart.",
  "points": [
   {
    "name": "EPALO",
@@ -97,7 +97,205 @@
   {
    "name": "MOKIS",
    "same_as": "LGKP"
+  },
+  {
+   "name": "PLH",
+   "dms": "35 13 39.49 N 023 40 51.04 E",
+   "no_symbol": true
+  },
+  {
+   "name": "SIT",
+   "dms": "35 04 06.32 N 026 11 20.63 E",
+   "no_symbol": true
   }
  ],
- "routes": []
+ "routes": [
+  {
+   "a": "EPALO",
+   "b": "DIA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 17
+  },
+  {
+   "a": "NAVUS",
+   "b": "DIA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 15
+  },
+  {
+   "a": "NAVUS",
+   "b": "PAXIMADI",
+   "min": 1000,
+   "max": 1000,
+   "nm": 16
+  },
+  {
+   "a": "XAVIS",
+   "b": "AVGO",
+   "min": 2000,
+   "max": 2000,
+   "nm": 6
+  },
+  {
+   "a": "BAVES",
+   "b": "DIA",
+   "min": 1000,
+   "max": 1000,
+   "nm": 23
+  },
+  {
+   "a": "DIA",
+   "b": "AVGO",
+   "min": 1000,
+   "max": 1000,
+   "nm": 21
+  },
+  {
+   "a": "PAXIMADI",
+   "b": "AVGO",
+   "min": 1000,
+   "max": 1000,
+   "nm": 18
+  },
+  {
+   "a": "AVGO",
+   "b": "LABUX",
+   "min": 1500,
+   "max": 1500,
+   "nm": 14
+  },
+  {
+   "a": "AVGO",
+   "b": "ABEAM AGIOS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 18
+  },
+  {
+   "a": "PAXIMADI",
+   "b": "ABEAM AGIOS",
+   "min": 1000,
+   "max": 1000,
+   "nm": 26
+  },
+  {
+   "a": "ABEAM MALLIA",
+   "b": "ABEAM AGIOS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 16
+  },
+  {
+   "a": "ABEAM AGIOS",
+   "b": "PSIRA ISLAND",
+   "min": 1500,
+   "max": 1500,
+   "nm": 11
+  },
+  {
+   "a": "ABEAM AGIOS",
+   "b": "IERAPETRA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 21
+  },
+  {
+   "a": "LABUX",
+   "b": "DELAV",
+   "min": 1500,
+   "max": 1500,
+   "nm": 40
+  },
+  {
+   "a": "ABEAM AGIOS",
+   "b": "DELAV",
+   "min": 1500,
+   "max": 1500,
+   "nm": 50
+  },
+  {
+   "a": "DELAV",
+   "b": "MOKIS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 34
+  },
+  {
+   "a": "GRANDES ISLAND",
+   "b": "MOKIS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 23
+  },
+  {
+   "a": "IERAPETRA",
+   "b": "SIT",
+   "min": 6500,
+   "max": 6500,
+   "nm": 22
+  },
+  {
+   "a": "SIT",
+   "b": "MOKIS",
+   "min": 6500,
+   "max": 6500,
+   "nm": 32
+  },
+  {
+   "a": "HOSPITAL",
+   "b": "SKALANI",
+   "min": 3000,
+   "max": 3000,
+   "nm": 5
+  },
+  {
+   "a": "SKALANI",
+   "b": "KASTELI",
+   "min": 3000,
+   "max": 3000
+  },
+  {
+   "a": "HOSPITAL",
+   "b": "AGIOS MYRON",
+   "min": 5500,
+   "max": 5500,
+   "nm": 6
+  },
+  {
+   "a": "AGIOS MYRON",
+   "b": "TIMBAKI",
+   "min": 5500,
+   "max": 5500,
+   "nm": 16
+  },
+  {
+   "a": "OTREX",
+   "b": "AGIOS MYRON",
+   "min": 9500,
+   "max": 9500
+  },
+  {
+   "a": "OTREX",
+   "b": "KASTELI",
+   "min": 9500,
+   "max": 9500,
+   "nm": 19
+  },
+  {
+   "a": "TIMBAKI",
+   "b": "KASTELI",
+   "min": 6500,
+   "max": 6500,
+   "nm": 28
+  },
+  {
+   "a": "PLH",
+   "b": "OTREX",
+   "min": null,
+   "max": null
+  }
+ ],
+ "notes": "Routes transcribed from page 1 and its enlargement on page 3: every segment of the Iraklion TMA west of the Karpathos area. Labels carry one altitude, not arrowed, so each segment is two-way. PLH–OTREX is the R78 radial of PALEOCHORA VOR/DME (PLH, drawn not to scale) and prints no altitude or distance: min/max null. OTREX–AGIOS MYRON (chart: AGIOS MIRON) prints no distance. SKALANI–KASTELI prints (7) but the table positions are 8.9 NM apart (KASTELI is the airport, 0.1 NM from the LGTL ARP), so its nm is left out. The map spells ABEAM MALIA; the table's ABEAM MALLIA is used. SIT = SITIA VOR/DME, where IERAPETRA–SIT–MOKIS bends; PLH and SIT are the printed VOR positions. The Karpathos-area routes (MOKIS, TRAPEZA, INATOS, EIRINI, KASSONISIA, ... ) are drawn on this chart too but are transcribed once, on AD 2-LGKP-VFR (tools/vfr_charts/LGKP.json). Visual holdings (DIA 1000, PAXIMADI 1000, SKALANI 3000, ABEAM MALIA 1500, PSIRA ISLAND 1500, GRANDES ISLAND 1500) are not segments."
 }

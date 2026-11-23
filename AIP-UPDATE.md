@@ -28,9 +28,10 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 
 Then it stops before the reference data: a new cycle's data goes into NEW migrations (never edit an applied
 one such as 002, 005 or 012). Point `MIGRATION` / `RUNWAY_MIGRATION` / `HOURS_MIGRATION` / `AREAS_MIGRATION` in `tools/build_ref.ts` at new files
-(set `MIGRATION_FROZEN = false` and `VFR_MIGRATION = null`: the new MIGRATION carries the VFR points), register
-them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test:e2e`. A correction to an applied AIRAC's
-data goes into its own migration (as 048 replaced 002's VFR points).
+(set `MIGRATION_FROZEN = false`, `VFR_MIGRATION = null` and `VFR_ROUTES_MIGRATION = null`: the new MIGRATION carries
+the VFR points and routes), register them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test:e2e`.
+A correction to an applied AIRAC's data goes into its own migration (as 048 replaced 002's VFR points and 062 its VFR
+routes).
 
 ## 2. Check by hand what the script flags
 
@@ -42,7 +43,9 @@ data goes into its own migration (as 048 replaced 002's VFR points).
        as `dms` with `"ref": "ENR 4.4"`; otherwise `"from": "ofm"` (`ofm_name` when open flightmaps spells it
        differently), or `"from": "map"` with `near`. Points of the chart's text table (tools/vfr_points.json) are
        taken from the table, a spec entry for them only adds the open flightmaps check;
-     - `routes`: a, b, altitude (`min`/`max`), the printed distance as `nm`, and `oneway` for arrowed per-direction altitudes;
+     - `routes`: a, b, altitude (`min`/`max`; both `null` for a segment drawn without an altitude: the map draws
+       it unlabelled and no leg altitude is taken from it), the printed distance as `nm`, and `oneway` for arrowed
+       per-direction altitudes;
      - `chart`: the edition date and AMDT.
    - Rerun `build_vfr.py` (last command of step 5). It refuses to build if a route's printed distance disagrees with its coordinates, if a printed position doesn't land on the chart's symbol / the open flightmaps point, or if a point lies outside the FIR or more than 120 NM from its chart's aerodrome. That is how misreadings are caught.
    - **Completeness.** `parse_vfr.ts` (step 5) prints the points read per chart and heliport and warns when a table

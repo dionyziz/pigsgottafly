@@ -1,195 +1,43 @@
 {
- "chart": "AD 2-LGSY-VFR, VFR routes SKIROS MTMA (11 JUN 26, AIRAC AMDT 05/26). No coordinates printed except VORs: positions from open flightmaps / the LGTG table, checked against chart symbols.",
- "points": [
-  {
-   "name": "SKOPELOS",
-   "from": "ofm"
-  },
-  {
-   "name": "SKANTZOURA",
-   "from": "ofm"
-  },
-  {
-   "name": "KYRA PANAGIA",
-   "from": "ofm"
-  },
-  {
-   "name": "KOROS",
-   "from": "ofm"
-  },
-  {
-   "name": "BALTADOROS",
-   "from": "ofm"
-  },
-  {
-   "name": "SKYROPOULA",
-   "from": "map",
-   "near": [
-    38.83008,
-    24.3571
-   ],
-   "why": "open flightmaps position is ~1-1.5 NM off the chart symbol; chart symbol position used"
-  },
-  {
-   "name": "SARAKINA",
-   "from": "map",
-   "near": [
-    38.74836,
-    24.61554
-   ],
-   "why": "open flightmaps position is ~1-1.5 NM off the chart symbol; chart symbol position used"
-  },
-  {
-   "name": "OCHTHONIA",
-   "from": "ofm"
-  },
-  {
-   "name": "SIALMAS",
-   "from": "ofm"
-  },
-  {
-   "name": "KIMI",
-   "dms": "38 38 44 N 024 09 17 E"
-  },
-  {
-   "name": "SARAKINI",
-   "dms": "38 45 00 N 023 40 19 E"
-  },
-  {
-   "name": "SKS",
-   "dms": "38 58 38.56 N 024 29 24.43 E",
-   "no_symbol": true
-  }
- ],
- "routes": [
-  {
-   "a": "SKANTZOURA",
-   "b": "SKOPELOS",
-   "min": 4500,
-   "max": 4500,
-   "nm": 18,
-   "oneway": true
-  },
-  {
-   "a": "SKOPELOS",
-   "b": "SKANTZOURA",
-   "min": 3500,
-   "max": 3500,
-   "nm": 18,
-   "oneway": true
-  },
-  {
-   "a": "SKANTZOURA",
-   "b": "KOROS",
-   "min": 4500,
-   "max": 4500,
-   "nm": 37,
-   "oneway": true
-  },
-  {
-   "a": "KOROS",
-   "b": "SKANTZOURA",
-   "min": 3500,
-   "max": 3500,
-   "nm": 37,
-   "oneway": true
-  },
-  {
-   "a": "SKANTZOURA",
-   "b": "KYRA PANAGIA",
-   "min": 4500,
-   "max": 4500,
-   "nm": 14,
-   "oneway": true
-  },
-  {
-   "a": "KYRA PANAGIA",
-   "b": "SKANTZOURA",
-   "min": 3500,
-   "max": 3500,
-   "nm": 14,
-   "oneway": true
-  },
-  {
-   "a": "SKYROPOULA",
-   "b": "SKANTZOURA",
-   "min": 4500,
-   "max": 4500,
-   "nm": 18,
-   "oneway": true
-  },
-  {
-   "a": "SKANTZOURA",
-   "b": "SKYROPOULA",
-   "min": 3500,
-   "max": 3500,
-   "nm": 18,
-   "oneway": true
-  },
-  {
-   "a": "SKYROPOULA",
-   "b": "SARAKINI",
-   "min": 4500,
-   "max": 4500,
-   "nm": 33,
-   "oneway": true
-  },
-  {
-   "a": "SARAKINI",
-   "b": "SKYROPOULA",
-   "min": 3500,
-   "max": 3500,
-   "nm": 33,
-   "oneway": true
-  },
-  {
-   "a": "SKYROPOULA",
-   "b": "KIMI",
-   "min": 4500,
-   "max": 4500,
-   "nm": 14.5,
-   "oneway": true
-  },
-  {
-   "a": "KIMI",
-   "b": "SKYROPOULA",
-   "min": 3500,
-   "max": 3500,
-   "nm": 14.5,
-   "oneway": true
-  },
-  {
-   "a": "BALTADOROS",
-   "b": "SKS",
-   "min": 4500,
-   "max": 4500,
-   "nm": 10,
-   "oneway": true
-  },
-  {
-   "a": "SKS",
-   "b": "BALTADOROS",
-   "min": 3500,
-   "max": 3500,
-   "nm": 10,
-   "oneway": true
-  },
-  {
-   "a": "SARAKINA",
-   "b": "KIMI",
-   "min": 4500,
-   "max": 4500,
-   "nm": 22,
-   "oneway": true
-  },
-  {
-   "a": "KIMI",
-   "b": "SARAKINA",
-   "min": 5500,
-   "max": 5500,
-   "nm": 22,
-   "oneway": true
-  }
- ],
- "notes": "Altitudes are per direction (arrowed). Not transcribed (arrow direction not legible): OCHTHONIA\u2013SKYROPOULA (19), SARAKINA\u2013BALTADOROS (14), SARAKINA\u2013KARISTOS. No altitude: SKS\u2013SKYROPOULA (10), BALTADOROS\u2013KOROS (13), KOROS\u2013SIALMAS (22). Off-chart legs (TO THESSALONIKI/MITILINI/MESTA/KARISTOS) omitted. SKS = SKIROS VOR/DME."
+  "chart": "AD 2-LGSY-VFR, VFR routes SKIROS MTMA (11 JUN 26, AIRAC AMDT 05/26). No coordinates printed except VORs: positions from open flightmaps / the LGTG table, checked against chart symbols.",
+  "points": [
+    {"name": "SKOPELOS", "from": "ofm"},
+    {"name": "SKANTZOURA", "from": "ofm"},
+    {"name": "KYRA PANAGIA", "from": "ofm"},
+    {"name": "KOROS", "from": "ofm"},
+    {"name": "BALTADOROS", "from": "ofm"},
+    {"name": "SKYROPOULA", "from": "map", "near": [38.83008, 24.3571], "why": "open flightmaps position is ~1-1.5 NM off the chart symbol; chart symbol position used"},
+    {"name": "SARAKINA", "from": "map", "near": [38.74836, 24.61554], "why": "open flightmaps position is ~1-1.5 NM off the chart symbol; chart symbol position used"},
+    {"name": "OCHTHONIA", "from": "ofm"},
+    {"name": "SIALMAS", "from": "ofm"},
+    {"name": "KIMI", "dms": "38 38 44 N 024 09 17 E"},
+    {"name": "SARAKINI", "dms": "38 45 00 N 023 40 19 E"},
+    {"name": "SKS", "dms": "38 58 38.56 N 024 29 24.43 E", "no_symbol": true}
+  ],
+  "routes": [
+    {"a": "SKANTZOURA", "b": "SKOPELOS", "min": 4500, "max": 4500, "nm": 18, "oneway": true},
+    {"a": "SKOPELOS", "b": "SKANTZOURA", "min": 3500, "max": 3500, "nm": 18, "oneway": true},
+    {"a": "SKANTZOURA", "b": "KOROS", "min": 4500, "max": 4500, "nm": 37, "oneway": true},
+    {"a": "KOROS", "b": "SKANTZOURA", "min": 3500, "max": 3500, "nm": 37, "oneway": true},
+    {"a": "SKANTZOURA", "b": "KYRA PANAGIA", "min": 4500, "max": 4500, "nm": 14, "oneway": true},
+    {"a": "KYRA PANAGIA", "b": "SKANTZOURA", "min": 3500, "max": 3500, "nm": 14, "oneway": true},
+    {"a": "SKYROPOULA", "b": "SKANTZOURA", "min": 4500, "max": 4500, "nm": 18, "oneway": true},
+    {"a": "SKANTZOURA", "b": "SKYROPOULA", "min": 3500, "max": 3500, "nm": 18, "oneway": true},
+    {"a": "SKYROPOULA", "b": "SARAKINI", "min": 4500, "max": 4500, "nm": 33, "oneway": true},
+    {"a": "SARAKINI", "b": "SKYROPOULA", "min": 3500, "max": 3500, "nm": 33, "oneway": true},
+    {"a": "SKYROPOULA", "b": "KIMI", "min": 4500, "max": 4500, "nm": 14.5, "oneway": true},
+    {"a": "KIMI", "b": "SKYROPOULA", "min": 3500, "max": 3500, "nm": 14.5, "oneway": true},
+    {"a": "BALTADOROS", "b": "SKS", "min": 4500, "max": 4500, "nm": 10, "oneway": true},
+    {"a": "SKS", "b": "BALTADOROS", "min": 3500, "max": 3500, "nm": 10, "oneway": true},
+    {"a": "SARAKINA", "b": "KIMI", "min": 4500, "max": 4500, "nm": 22, "oneway": true},
+    {"a": "KIMI", "b": "SARAKINA", "min": 5500, "max": 5500, "nm": 22, "oneway": true},
+    {"a": "OCHTHONIA", "b": "SKYROPOULA", "min": 3500, "max": 3500, "nm": 19, "oneway": true},
+    {"a": "SKYROPOULA", "b": "OCHTHONIA", "min": 4500, "max": 4500, "nm": 19, "oneway": true},
+    {"a": "SARAKINA", "b": "BALTADOROS", "min": 5500, "max": 5500, "nm": 14, "oneway": true},
+    {"a": "BALTADOROS", "b": "SARAKINA", "min": 4500, "max": 4500, "nm": 14, "oneway": true},
+    {"a": "SKS", "b": "SKYROPOULA", "min": null, "max": null, "nm": 10},
+    {"a": "BALTADOROS", "b": "KOROS", "min": null, "max": null, "nm": 13},
+    {"a": "KOROS", "b": "SIALMAS", "min": null, "max": null, "nm": 22}
+  ],
+  "notes": "Altitudes are per direction (arrowed). No altitude printed: SKS–SKYROPOULA (10), BALTADOROS–KOROS (13), KOROS–SIALMAS (22). Off-chart legs to points no chart or open flightmaps names (TO THESSALONIKI 85, TO MITILINI 75, TO MESTA 69, TO KARISTOS 45) omitted. SKS = SKIROS VOR/DME."
 }

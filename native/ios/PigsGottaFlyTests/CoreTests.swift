@@ -36,6 +36,25 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(core.version.contains("+"), core.version)
     }
 
+    func testLineStylesDrawTheLayerLegend() throws {
+        let styles = try core.lineStyles()
+        for name in [
+            "fir", "tma", "mtma", "ctr", "atz", "zoneG", "prohibited", "restricted", "danger", "mil", "act",
+            "vfrRoute", "helRoute", "milRoute", "notam", "route",
+        ] {
+            XCTAssertNotNil(styles[name], name)
+        }
+        XCTAssertEqual(styles["mtma"], LineStyle(color: 0x8a3b9c, width: 2, dash: [4, 2], opacity: 0.75, fill: 0.025))
+        XCTAssertEqual(styles["restricted"]?.hatch, "pgf-hatch-r")
+        XCTAssertEqual(styles["route"]?.casing, 7.5)
+        XCTAssertEqual(Symbols.legendImage(.line("tma", "TMA"), styles: styles)?.size, CGSize(width: 28, height: 20))
+        XCTAssertEqual(
+            Symbols.legendImage(.area("danger", "Danger"), styles: styles)?.size, CGSize(width: 20, height: 20))
+        XCTAssertEqual(
+            Symbols.legendImage(.symbol("pgf-ad-minor", "Aerodrome"), styles: [:])?.size, CGSize(width: 20, height: 20))
+        XCTAssertNil(Symbols.legendImage(.line("nothing", "?"), styles: styles))
+    }
+
     func testSymbolNamesAreDrawnAtTheirSize() throws {
         let symbols = try core.symbolNames()
         XCTAssertEqual(Set(symbols.map(\.name)), Set(Symbols.known.map(\.name)), "the app draws each of them")

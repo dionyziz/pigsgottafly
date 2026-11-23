@@ -160,16 +160,23 @@ describe('shipped VFR points', () => {
   });
 
   test('a point published in several places is one point with all its sources', () => {
+    // ABLONAS ends routes on both charts, so each chart keeps its copy (routes look their ends up by
+    // chart); both copies are the same merged point
     const ablonas = find('ABLONAS');
-    expect(ablonas).toHaveLength(1);
-    expect(ablonas[0].charts).toEqual(['LGAV', 'LGTG']);
-    expect(ablonas[0].sources).toEqual(['AD 2-LGAV-VFR', 'AD 1.6.29-LGTG-VFR']);
+    expect(ablonas.map((p) => p.chart).sort()).toEqual(['LGAV', 'LGTG']);
+    for (const p of ablonas) {
+      expect([p.lat, p.lon]).toEqual([ablonas[0].lat, ablonas[0].lon]);
+      expect(p.charts).toEqual(['LGAV', 'LGTG']);
+      expect(p.sources).toEqual(['AD 2-LGAV-VFR', 'AD 1.6.29-LGTG-VFR']);
+    }
     const kea = find('KEA');
     expect(kea).toHaveLength(1);
     expect(kea[0].sources).toEqual(['AD 2-LGAV-VFR', 'AD 3.19', 'AD 3.70']);
     // the same name far apart: two points (Chalki island off Rodos, Chalki in Thessaly)
-    expect(find('CHALKI').length).toBe(2);
-    expect(distanceNm(find('CHALKI')[0], find('CHALKI')[1])).toBeGreaterThan(100);
+    // (the Thessaly one ends routes on LGBL and LGLR, so it has a copy on each)
+    const chalki = [...new Map(find('CHALKI').map((p) => [`${p.lat},${p.lon}`, p])).values()];
+    expect(chalki.length).toBe(2);
+    expect(distanceNm(chalki[0], chalki[1])).toBeGreaterThan(100);
     // no open-flightmaps copy of a published point in another spelling (OSCAR for OSCARA, GONNI for GONNOI)
     for (const n of ['OSCAR', 'GONNI', 'TIMPAKI', 'STRYMON', 'A/F FLABOURO']) expect(find(n), n).toEqual([]);
   });

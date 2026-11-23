@@ -16,6 +16,7 @@ import {
 import { iasKt, performanceKt } from '../../api/_lib/migrations/046_performance_speeds_kt';
 import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
 import VFR_POINTS_JSON from '../../src/data/ref/vfr-points.json';
+import VFR_ROUTES_JSON from '../../src/data/ref/vfr-routes.json';
 import type { AtcEntry } from '../../src/shared/types';
 import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
 import { CID, JWK } from './helpers';
@@ -652,6 +653,8 @@ describe('migrations', () => {
       '059_filing_backends',
       '060_aircraft_revisions',
       '061_autorouter_links',
+      '062_ref_vfr_points_2609',
+      '063_ref_vfr_routes_2609',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -709,6 +712,8 @@ describe('migrations', () => {
       '059_filing_backends',
       '060_aircraft_revisions',
       '061_autorouter_links',
+      '062_ref_vfr_points_2609',
+      '063_ref_vfr_routes_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -821,6 +826,8 @@ describe('migrations', () => {
       '059_filing_backends',
       '060_aircraft_revisions',
       '061_autorouter_links',
+      '062_ref_vfr_points_2609',
+      '063_ref_vfr_routes_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -863,11 +870,16 @@ describe('migrations', () => {
     );
     for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
     expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
-    // 048: the AIRAC's complete VFR reporting points (002's list replaced), exactly as shipped to the client
+    // 048, then 062: the AIRAC's complete VFR reporting points (002's list replaced), exactly as shipped to the client
     const waypoints = await db.query<{ doc: any }>(`SELECT doc FROM ref_waypoints WHERE airac = '2609'`);
     const byId = (a: any, b: any) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     expect(waypoints.map((r) => r.doc).sort(byId)).toEqual([...(VFR_POINTS_JSON as any[])].sort(byId));
     expect(waypoints.some((r) => r.doc.id === 'LGTG/KALAMO')).toBe(true);
+    // 063: the AIRAC's VFR route segments (002's list replaced), including those charted without an altitude
+    const vfrRoutes = await db.query<{ doc: any }>(`SELECT doc FROM ref_vfr_routes WHERE airac = '2609'`);
+    expect(vfrRoutes.map((r) => r.doc).sort(byId)).toEqual([...(VFR_ROUTES_JSON as any[])].sort(byId));
+    expect(vfrRoutes.find((r) => r.doc.id === 'LGKV:STRIMON>LOUTRA')!.doc).toMatchObject({ minFt: null, maxFt: null });
+    expect(vfrRoutes.some((r) => r.doc.id === 'LGAV:ILIOUP>HOLARGOS')).toBe(true);
     expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(
       MIGRATIONS.map((m) => m.name).sort(),
     );
@@ -895,7 +907,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-24)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-26)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -920,6 +932,8 @@ describe('migrations', () => {
       '059_filing_backends',
       '060_aircraft_revisions',
       '061_autorouter_links',
+      '062_ref_vfr_points_2609',
+      '063_ref_vfr_routes_2609',
     ]);
     await db.close();
   });

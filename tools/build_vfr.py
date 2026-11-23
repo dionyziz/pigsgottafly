@@ -19,7 +19,9 @@ Checks (any failure aborts the build):
   - every point lies inside the FIR (src/data/ref/fir.json; up to 3 NM outside its drawn border is a warning)
     and within 120 NM of its chart's aerodrome
   - a route's printed distance must match its endpoints' coordinates (within max(1.5 NM, 8 %))
-  - route endpoints must exist, altitude bands must be sane
+  - route endpoints must exist, altitude bands must be sane (min = max = null: the chart draws the segment
+    but prints no altitude for it), `kind` absent or hel / mil / jet (a segment marked HEL ONLY, MIL ONLY or
+    JET ONLY on the chart)
 Points published in several places (same name within 1 NM: e.g. ABLONAS on the LGAV and LGTG charts, KEA on
 the LGAV chart and the AD 3.19 / AD 3.70 heliport tables) become one point listing every chart and AIP source.
 Its `chart` is the chart whose VFR routes use it; a point that is a route end on two charts is kept once per
@@ -189,9 +191,14 @@ for ch in P:
             errors.append(f"{ch}: unknown point in {r['a']}–{r['b']}"); continue
         if r.get('nm') is not None and abs(nm(A, B) - r['nm']) > max(1.5, 0.08 * r['nm']):
             errors.append(f"{ch}: {r['a']}–{r['b']} chart says {r['nm']} NM, coordinates give {nm(A, B):.1f} NM")
-        if not (300 <= r['min'] <= r['max'] <= 12500):
+        if (r['min'] is None) != (r['max'] is None):
+            errors.append(f"{ch}: {r['a']}–{r['b']} has only one of min/max (both null when the chart prints no altitude)")
+        elif r['min'] is not None and not (300 <= r['min'] <= r['max'] <= 12500):
             errors.append(f"{ch}: bad altitude band {r['a']}–{r['b']}")
-        routes.append({'chart': ch, 'a': r['a'], 'b': r['b'], 'min': r['min'], 'max': r['max'], 'oneway': bool(r.get('oneway'))})
+        if r.get('kind') not in (None, 'hel', 'mil', 'jet'):
+            errors.append(f"{ch}: {r['a']}–{r['b']} kind {r['kind']!r} is not hel, mil or jet")
+        routes.append({'chart': ch, 'a': r['a'], 'b': r['b'], 'min': r['min'], 'max': r['max'], 'oneway': bool(r.get('oneway')),
+                       **({'kind': r['kind']} if r.get('kind') else {})})
 
 # one point per place: the same name within MERGE_NM on several charts / AIP pages
 RANK = {'table': 0, 'chart': 1, 'map': 2, 'ofm': 3}

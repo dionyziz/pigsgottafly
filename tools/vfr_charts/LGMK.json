@@ -31,7 +31,18 @@
     {"a": "NITSA", "b": "PIDAX", "min": 2000, "max": 2000, "nm": 7},
     {"a": "PIDAX", "b": "LETSO", "min": 2000, "max": 2000, "nm": 15},
     {"a": "LETSO", "b": "DRAGON", "min": 1500, "max": 1500, "nm": 8},
-    {"a": "NISSOS TINOS", "b": "RINNIA", "min": 1500, "max": 1500, "nm": 8}
+    {"a": "NISSOS TINOS", "b": "RINNIA", "min": 1500, "max": 1500, "nm": 8},
+    {"a": "NISSOS TINOS", "b": "LAOUTI", "min": 1000, "max": 1000, "nm": 5, "kind": "hel"},
+    {"a": "LAOUTI", "b": "FTELIA", "min": 500, "max": 500, "nm": 8, "kind": "hel"},
+    {"a": "FTELIA", "b": "LETSO", "min": 1000, "max": 1000, "nm": 14, "kind": "hel"},
+    {"a": "RINNIA", "b": "KOUNOUPAS", "min": 1500, "max": 1500, "nm": 9, "kind": "hel"},
+    {"a": "KOUNOUPAS", "b": "LIVADI", "min": 1500, "max": 1500, "nm": 2, "kind": "hel"},
+    {"a": "FTELIA", "b": "LIVADI", "min": 1500, "max": 1500, "nm": 5, "kind": "hel"},
+    {"a": "LIVADI", "b": "OSSCAR", "min": 500, "max": 500, "nm": 6, "kind": "hel"},
+    {"a": "OSSCAR", "b": "PIDAX", "min": 1000, "max": 1000, "nm": 7, "kind": "hel"},
+    {"a": "ORNO", "b": "KIMA", "min": 500, "max": 500, "nm": 7, "kind": "hel"},
+    {"a": "KIMA", "b": "DIDIS", "min": 1000, "max": 1000, "nm": 7, "kind": "hel"},
+    {"a": "NITSA", "b": "OSSCAR", "min": 1000, "max": 1000, "nm": 10, "kind": "hel"}
   ],
-  "notes": "Dashed HEL routes (helicopters only) omitted."
+  "notes": "Checked complete against the chart (AIRAC 0926). Dashed HEL routes (helicopters only) are kind hel."
 }
