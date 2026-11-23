@@ -3,7 +3,7 @@
 // own print (sheetPdf.ts → src/pdf/: a cover page and the filled ICAO form, FaxSheets.tsx), sent
 // through the deployment's fax service (faxProviders.ts). A fax is delivered or not: the office
 // re-keys the plan by hand and no ACK or REJ comes back (capabilities.ackRej = false); its DLA and
-// CNL are faxed too, as ICAO messages (icaoMessages.ts), to the number the plan went to.
+// CNL are faxed too, as ICAO messages (src/shared/icaoMessages.ts), to the number the plan went to.
 //
 // Every fax is a fax_log row (migration 057), written before anything is printed and counted against
 // the caps (429 beyond): FAX_PILOT_CAP per pilot and FAX_FLIGHT_CAP per flight per rolling 24 hours,
@@ -11,6 +11,7 @@
 // webhook, routes/filing.ts, or a poll on "Refresh status") settles the row and the filing.
 import type { FilingStatus } from '../../../src/shared/briefing.js';
 import type { FaxDestination, FaxKind, FplFaxContent } from '../../../src/shared/fax.js';
+import { cnlMessage, dlaMessage } from '../../../src/shared/icaoMessages.js';
 import type { Pilot } from '../../../src/shared/types.js';
 import type { Queryable } from '../db.js';
 import { newId } from '../http.js';
@@ -18,7 +19,6 @@ import { CAP_WINDOW_MS } from '../sendCaps.js';
 import type { FaxPdfRenderer } from '../sheetPdf.js';
 import { type FaxProvider, FaxProviderError, type FaxReport, type FaxState } from './faxProviders.js';
 import { faxDestination } from './faxRoutes.js';
-import { cnlMessage, dlaMessage } from './icaoMessages.js';
 import type { FiledRef, Filer } from './types.js';
 import { FilerError } from './types.js';
 

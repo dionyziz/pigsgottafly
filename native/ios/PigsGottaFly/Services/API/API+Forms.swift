@@ -27,25 +27,27 @@ extension API {
         var via: Filer?
     }
 
-    func fileFlightPlan(_ id: String, _ req: FileRequest) async throws -> FilingState {
-        try await call("POST", "flights/\(seg(id))/filing", body: req, as: FilingState.self)
+    /// Each answers the new FilingState (as JSON unless `type` says otherwise).
+    func fileFlightPlan<T: Decodable>(_ id: String, _ req: FileRequest, as type: T.Type = JSON.self) async throws -> T {
+        try await call("POST", "flights/\(seg(id))/filing", body: req, as: type)
     }
 
     /// `eobt`: epoch ms.
-    func delayFlightPlan(_ id: String, eobt: Double) async throws -> FilingState {
-        try await call(
-            "POST", "flights/\(seg(id))/filing/delay", body: ["eobt": JSON.number(eobt)] as JSON, as: FilingState.self)
+    func delayFlightPlan<T: Decodable>(_ id: String, eobt: Double, as type: T.Type = JSON.self) async throws -> T {
+        try await call("POST", "flights/\(seg(id))/filing/delay", body: ["eobt": JSON.number(eobt)] as JSON, as: type)
     }
 
-    func cancelFlightPlan(_ id: String, reason: String? = nil, copyTo: [String]? = nil) async throws -> FilingState {
+    func cancelFlightPlan<T: Decodable>(
+        _ id: String, reason: String? = nil, copyTo: [String]? = nil, as type: T.Type = JSON.self
+    ) async throws -> T {
         var body: [String: JSON] = [:]
         if let reason { body["reason"] = .string(reason) }
         if let copyTo { body["copyTo"] = .array(copyTo.map(JSON.string)) }
-        return try await call("POST", "flights/\(seg(id))/filing/cancel", body: JSON.object(body), as: FilingState.self)
+        return try await call("POST", "flights/\(seg(id))/filing/cancel", body: JSON.object(body), as: type)
     }
 
-    func refreshFlightPlan(_ id: String) async throws -> FilingState {
-        try await call("POST", "flights/\(seg(id))/filing/refresh", as: FilingState.self)
+    func refreshFlightPlan<T: Decodable>(_ id: String, as type: T.Type = JSON.self) async throws -> T {
+        try await call("POST", "flights/\(seg(id))/filing/refresh", as: type)
     }
 
     // MARK: Form 731 and GenDec (FormsState)
