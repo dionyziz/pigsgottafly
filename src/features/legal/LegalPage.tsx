@@ -5,10 +5,10 @@ import './legal.css';
 import { type ReactNode, useEffect } from 'react';
 import { Link } from 'react-router';
 
+import { CONTACT_EMAIL } from '../../app/contact';
 import { usePageTitle } from '../../app/title';
 
 export const LEGAL_UPDATED = '21 November 2026';
-export const CONTACT_EMAIL = 'dionyziz@gmail.com';
 
 export interface LegalSection {
   id: string;

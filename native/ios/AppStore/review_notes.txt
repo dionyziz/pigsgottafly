@@ -17,4 +17,4 @@ Flight plan filing (the "File" button on the File & forms page) sends real messa
 LOCATION
 The position is used on the device only, to draw the aircraft and its progress along the route. It is not sent to our server and is not stored.
 
-Contact: Dionysis Zindros, dionyziz@gmail.com
+Contact: Dionysis Zindros, dionyziz@commonprefix.com

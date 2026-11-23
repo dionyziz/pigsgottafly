@@ -321,6 +321,30 @@ test('new flight asks for the ends: an unknown aerodrome says so and blocks Crea
   await page.waitFor(
     () => document.querySelector('[data-testid=about-weather-model]')?.textContent === 'ECMWF IFS 0.25°',
   );
+  assert.equal(
+    await page.eval(() => document.querySelector('[data-testid=about-contact]').getAttribute('href')),
+    'mailto:dionyziz@commonprefix.com',
+  );
+  await page.click('[data-testid=about-licenses]');
+  await page.waitFor(() => document.querySelectorAll('[data-testid=license]').length > 50);
+  const licenses = await page.eval(() => {
+    const rows = [...document.querySelectorAll('[data-testid=license]')];
+    const react = rows.find((r) => r.querySelector('summary b').textContent === 'react');
+    react.querySelector('summary').click();
+    return {
+      path: location.pathname,
+      names: rows.map((r) => r.querySelector('summary b').textContent),
+      reactLicense: react.querySelector('.license-id').textContent,
+      reactText: react.querySelector('.license-text').textContent,
+      reactOpen: react.querySelector('details').open,
+    };
+  });
+  assert.equal(licenses.path, '/about/licenses');
+  for (const name of ['maplibre-gl', 'MapLibre Native (iOS)', 'Inter', 'Homemade Apple', 'OpenStreetMap'])
+    assert.ok(licenses.names.includes(name), name);
+  assert.equal(licenses.reactLicense, 'MIT');
+  assert.match(licenses.reactText, /Meta Platforms/);
+  assert.ok(licenses.reactOpen);
 });
 
 test('flight plan requests: a touch-and-go and a stop at one aerodrome, stops at both ends, their remarks; ticking moves no row', async () => {

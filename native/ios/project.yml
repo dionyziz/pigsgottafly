@@ -36,6 +36,9 @@ targets:
       # the terrain grid as the website serves it (AppModel.ensureTerrain: before the first fetch)
       - path: ../../public/terrain/greece.bin
         buildPhase: resources
+      # the open-source licenses as the website lists them (npm run licenses; LicensesView)
+      - path: ../../src/data/licenses.json
+        buildPhase: resources
     dependencies:
       - package: MapLibre
     settings:

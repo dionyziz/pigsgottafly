@@ -5,6 +5,8 @@ import SwiftUI
 struct MeView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var session: Session
+    /// The website's CONTACT_EMAIL (src/app/contact.ts).
+    static let contactEmail = "dionyziz@commonprefix.com"
 
     var body: some View {
         Form {
@@ -42,6 +44,13 @@ struct MeView: View {
             }
             Section("About") {
                 link("Legal", "doc.plaintext", id: "legal") { LegalView() }
+                link("Open-source licenses", "doc.text", id: "licenses-link") { LicensesView() }
+                if let mail = URL(string: "mailto:\(Self.contactEmail)") {
+                    Link(destination: mail) {
+                        Label(Self.contactEmail, systemImage: "envelope")
+                    }
+                    .accessibilityIdentifier("contact")
+                }
                 ValueRow(label: "App", value: appVersion)
                 ValueRow(label: "Core", value: coreVersion)
             }

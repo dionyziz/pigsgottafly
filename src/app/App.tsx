@@ -38,6 +38,7 @@ const TermsPage = lazy(() => import('../features/legal').then((m) => ({ default:
 const SupportPage = lazy(() => import('../features/legal').then((m) => ({ default: m.SupportPage })));
 const MailPage = lazy(() => import('../features/admin/AdminPage').then((m) => ({ default: m.MailPage })));
 const ErrorsPage = lazy(() => import('../features/admin/ErrorsPage').then((m) => ({ default: m.ErrorsPage })));
+const LicensesPage = lazy(() => import('./LicensesPage').then((m) => ({ default: m.LicensesPage })));
 const WaypointsPage = lazy(() => import('../features/waypoints').then((m) => ({ default: m.WaypointsPage })));
 
 function LegacyHashRedirect() {
@@ -111,6 +112,7 @@ export function App() {
                       <Route path="/passengers" element={<PassengersPage />} />
                       <Route path="/waypoints" element={<WaypointsPage />} />
                       <Route path="/about" element={<AboutPage />} />
+                      <Route path="/about/licenses" element={<LicensesPage />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
