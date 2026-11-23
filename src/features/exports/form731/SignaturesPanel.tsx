@@ -1,19 +1,26 @@
 // Form 731 signatures and "Send to HCAA" (PLAN-v3 "Form 731: signatures and submission to HCAA"),
-// screen only. The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms.
+// screen only. The state (and the signatures shown on the sheet) come from GET /api/flights/:id/forms;
+// what each person's line says and offers is ./signatures.ts (shared with the iPhone app).
 import { useCallback, useState } from 'react';
 
 import { FlowLink } from '../../../app/FlowLinks';
 import { api, ApiRequestError } from '../../../data/api';
 import { useAsync } from '../../../data/useAsync';
-import { fmtLocalClock, fmtLocalDayTime } from '../../../shared/format';
+import { fmtLocalDayTime } from '../../../shared/format';
 import type { FormsState } from '../../../shared/forms';
 import { Chip, Loading, Panel } from '../../../ui';
-import type { ShownSignature } from './Form731';
+import {
+  addEmailPath,
+  form731Actions,
+  personActions,
+  signatureStatus,
+  signatureSummary,
+  signingShare,
+} from './signatures';
 
-// times shown to the pilot are local (Greek) time
-const hm = (ms: number) => fmtLocalClock(ms);
+export { shownSignatures, signatureSummary } from './signatures';
+
 const dayHm = (ms: number) => fmtLocalDayTime(ms);
-const firstName = (s: string) => s.trim().split(/\s+/)[0] || s;
 const errText = (e: unknown) =>
   e instanceof ApiRequestError ? (e.offline ? 'Offline: try again when connected.' : e.message) : 'The request failed.';
 
@@ -30,29 +37,6 @@ export function useFormsState(flightId: string) {
   const { reload } = q;
   const load = useCallback(() => void reload(), [reload]);
   return { st: q.data ?? null, setSt: q.setData as (s: FormsState) => void, err, setErr, load };
-}
-
-export function shownSignatures(st: FormsState | null): Record<string, ShownSignature> {
-  const out: Record<string, ShownSignature> = {};
-  for (const s of st?.form731.signatures ?? [])
-    if (s.signed && s.signedAt) out[s.key] = { name: s.name, signedAt: s.signedAt };
-  return out;
-}
-
-/** "2 of 3 signed · Maria opened 10:42, not signed" */
-export function signatureSummary(st: FormsState): string {
-  const sigs = st.form731.signatures;
-  const n = sigs.filter((s) => s.signed).length;
-  const parts = [`${n} of ${sigs.length} signed`];
-  for (const s of sigs) {
-    if (s.signed) continue;
-    const who = firstName(s.name || 'Passenger');
-    if (s.needsResign) parts.push(`${who} must sign again`);
-    else if (s.link?.lastOpened) parts.push(`${who} opened ${hm(s.link.lastOpened)}, not signed`);
-    else if (s.link && !s.link.revoked) parts.push(`${who} has not opened the link`);
-    else if (s.role === 'PAX') parts.push(`${who}: no link yet`);
-  }
-  return parts.join(' · ');
 }
 
 export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: ReturnType<typeof useFormsState> }) {
@@ -89,10 +73,8 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
     );
   }
 
-  const url = (token: string) => `${window.location.origin}/sign/${token}`;
   const share = async (name: string, token: string) => {
-    const u = url(token);
-    const text = `Please sign Form 731 (persons boarding) for our flight${st.form731.content.date ? ` on ${st.form731.content.date}` : ''}, ${name}:`;
+    const { url: u, text } = signingShare(st, name, token, window.location.origin);
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Form 731', text, url: u });
@@ -110,10 +92,7 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
     }
   };
   const f = st.form731;
-  const sub = f.submission;
-  const pax = f.signatures.filter((s) => s.role === 'PAX');
-  const needLinks = pax.some((s) => !s.signed && (!s.link || s.link.revoked || s.link.expires < Date.now()));
-  const toEmail = pax.filter((s) => s.email && !s.signed);
+  const act = form731Actions(st);
   const email = (key: string) => () => api.forms.email731(flightId, key);
 
   return (
@@ -127,20 +106,20 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
       }
       actions={
         <>
-          {pax.length > 0 && (
+          {act.request.shown && (
             <button
               onClick={() => run('links', () => api.forms.requestLinks(flightId))}
-              disabled={!!busy || !needLinks}
+              disabled={!!busy || !act.request.enabled}
               data-testid="f731-request"
             >
               {busy === 'links' ? 'Creating links…' : 'Request signatures'}
             </button>
           )}
-          {pax.some((s) => s.email) && (
+          {act.emailAll.shown && (
             <button
-              onClick={() => run('email-all', ...toEmail.map((s) => email(s.key)))}
-              disabled={!!busy || !toEmail.length || !st.emailEnabled}
-              title={!st.emailEnabled ? (st.emailReason ?? '') : undefined}
+              onClick={() => run('email-all', ...act.emailAll.keys.map(email))}
+              disabled={!!busy || !act.emailAll.enabled}
+              title={act.emailAll.hint ?? undefined}
               data-testid="f731-email-all"
             >
               {busy === 'email-all' ? 'E-mailing…' : 'E-mail all'}
@@ -149,22 +128,21 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
           <button
             className="primary"
             data-testid="f731-send"
-            disabled={!!busy || !f.allSigned || !st.emailEnabled || (!!sub && !sub.changed)}
-            title={!st.emailEnabled ? (st.emailReason ?? '') : !f.allSigned ? 'Everyone has to sign first' : undefined}
+            disabled={!!busy || !act.send.enabled}
+            title={act.send.hint ?? undefined}
             onClick={() => run('send', () => api.forms.send731(flightId))}
           >
-            {busy === 'send' ? 'Sending…' : sub ? 'Re-send to HCAA' : 'Send to HCAA'}
+            {busy === 'send' ? 'Sending…' : act.send.label}
           </button>
         </>
       }
     >
-      {sub && (
+      {act.sent && (
         <div className="pgf-note" data-testid="f731-sent">
-          Sent to {sub.to} on {dayHm(sub.sentAt)}
-          {sub.changed ? ' · changed since' : ''}
+          {act.sent}
         </div>
       )}
-      {!st.emailEnabled && <div className="pgf-note">{st.emailReason}</div>}
+      {act.note != null && <div className="pgf-note">{act.note}</div>}
       {err && (
         <div className="form-error" role="alert">
           {err}
@@ -173,44 +151,15 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
       <ul className="pgf-people">
         {f.signatures.map((s) => {
           const token = links[s.key];
-          const l = s.link;
-          const status = s.signed
-            ? `signed ${dayHm(s.signedAt!)}`
-            : s.needsResign
-              ? 'the form changed after signing: must sign again'
-              : l && !l.revoked
-                ? l.lastOpened
-                  ? `link opened ${dayHm(l.lastOpened)}, not signed`
-                  : `link created ${dayHm(l.created)}, not opened`
-                : s.role === 'PAX'
-                  ? 'no link'
-                  : 'not signed (set your full name in the profile)';
+          const can = personActions(s, !!token);
           return (
             <li key={s.key} className="pgf-person" data-testid={`f731-person-${s.role}`}>
               <span className="pgf-person-name">{s.name || '(no name)'}</span>
               <span className={`pgf-person-status${s.signed ? '' : ' muted'}`}>
-                {status}
+                {signatureStatus(s)}
                 {s.emailedAt != null && <span data-testid="f731-emailed"> · e-mailed {dayHm(s.emailedAt)}</span>}
               </span>
-              {s.role === 'PAX' && l && !l.revoked && (
-                <>
-                  <button
-                    className="ghost"
-                    disabled={!!busy}
-                    onClick={() => run(`renew-${s.key}`, () => api.forms.renewLink(flightId, s.key))}
-                  >
-                    New link
-                  </button>
-                  <button
-                    className="ghost danger"
-                    disabled={!!busy}
-                    onClick={() => run(`revoke-${s.key}`, () => api.forms.revokeLink(flightId, s.key))}
-                  >
-                    Revoke
-                  </button>
-                </>
-              )}
-              {s.role === 'PAX' && l?.revoked && !token && (
+              {can.renew && (
                 <button
                   className="ghost"
                   disabled={!!busy}
@@ -219,7 +168,16 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
                   New link
                 </button>
               )}
-              {s.role === 'PAX' && s.email && (
+              {can.revoke && (
+                <button
+                  className="ghost danger"
+                  disabled={!!busy}
+                  onClick={() => run(`revoke-${s.key}`, () => api.forms.revokeLink(flightId, s.key))}
+                >
+                  Revoke
+                </button>
+              )}
+              {can.email && (
                 <button
                   className="ghost"
                   disabled={!!busy || !st.emailEnabled}
@@ -230,12 +188,8 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
                   {busy === `email-${s.key}` ? 'E-mailing…' : 'E-mail'}
                 </button>
               )}
-              {s.role === 'PAX' && !s.email && !s.key.startsWith('seat:') && (
-                <FlowLink
-                  className="btn ghost"
-                  to={`/passengers?edit=${encodeURIComponent(s.key)}&fields=email`}
-                  data-testid="f731-add-email"
-                >
+              {can.addEmail && (
+                <FlowLink className="btn ghost" to={addEmailPath(s.key)} data-testid="f731-add-email">
                   Add e-mail
                 </FlowLink>
               )}
@@ -243,7 +197,7 @@ export function SignaturesPanel({ flightId, forms }: { flightId: string; forms: 
                 <span className="pgf-link">
                   <input
                     readOnly
-                    value={url(token)}
+                    value={signingShare(st, s.name, token, window.location.origin).url}
                     onFocus={(e) => e.currentTarget.select()}
                     aria-label={`Signing link for ${s.name}`}
                     data-testid="f731-link"

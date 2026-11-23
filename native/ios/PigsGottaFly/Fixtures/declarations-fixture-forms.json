@@ -1,0 +1,11 @@
+{
+  "operator": {
+    "id": "op-fixture",
+    "name": "Aeroclub Mesogeion",
+    "requiresWbPerf": true,
+    "declarationsEmail": "ops@example.com"
+  },
+  "submission": null,
+  "emailEnabled": true,
+  "emailReason": null
+}

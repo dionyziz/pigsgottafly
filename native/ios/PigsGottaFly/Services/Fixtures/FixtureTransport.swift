@@ -18,6 +18,7 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     let emptyAccount: Bool
     var lobby = LobbyFixtures()
     var filing = FilingFixtures()
+    var paperwork = PaperworkFixtures()
 
     init(directory: URL, emptyAccount: Bool = false) {
         dir = directory
@@ -79,7 +80,7 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
         let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
             accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, manifestRoutes, peopleRoutes,
-            fileRoutes, filingRoutes, formRoutes, exportRoutes,
+            fileRoutes, filingRoutes, paperworkRoutes, formRoutes, exportRoutes,
         ] {
             if let answer = domain(r) { return answer }
         }

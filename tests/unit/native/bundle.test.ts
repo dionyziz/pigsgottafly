@@ -13,6 +13,46 @@ import { AC, API_REF, briefing, flight, notam, NOW, PILOT, ROUTE } from './fixtu
 
 const code = fs.readFileSync(CORE_OUT, 'utf8');
 
+/** GET /api/flights/:id/forms with the fields the panels read: the PIC signed, a passenger with no link. */
+const FORMS = {
+  form731: {
+    content: { date: '2026-11-15' },
+    signatures: [
+      {
+        key: 'PIC',
+        role: 'PIC',
+        name: 'PILOT',
+        signed: true,
+        signedAt: NOW,
+        needsResign: false,
+        email: '',
+        link: null,
+      },
+      {
+        key: 'pax-1',
+        role: 'PAX',
+        name: 'ANNA',
+        signed: false,
+        signedAt: null,
+        needsResign: false,
+        email: '',
+        link: null,
+      },
+    ],
+    allSigned: false,
+    submission: null,
+  },
+  gendec: {
+    content: { placeCount: 2 },
+    submission: null,
+    pilotSends: true,
+    handling: { ends: [], autoPilotSends: true, override: null, pilotSends: true },
+    picSignature: null,
+  },
+  emailEnabled: true,
+  emailReason: null,
+};
+
 describe('core.js in a bare JavaScript context', () => {
   const ctx = vm.createContext({});
   beforeAll(() => {
@@ -157,6 +197,16 @@ describe('core.js in a bare JavaScript context', () => {
       expect(call('formModel', { kind: '731', flight: f, aircraft: AC, pilot: PILOT }).registration).toBe('SX-ASV'),
     briefingModel: () =>
       expect(call('briefingModel', { flight: f, briefing: briefing([notam()]) }).relevant).toHaveLength(1),
+    form731Panel: () => {
+      const p = call('form731Panel', { forms: FORMS, links: { 'pax-1': 'tok' }, now: NOW });
+      expect(p.summary).toBe('1 of 2 signed · ANNA: no link yet');
+      expect(p.people[1].link.url).toBe('https://pigsgottafly.com/sign/tok');
+      expect(p.people[0].status).toMatch(/^signed \d{4}-\d\d-\d\d \d\d:\d\d$/);
+    },
+    genDecPanel: () => expect(call('genDecPanel', { forms: FORMS, handled: true }).override).toBe(true),
+    operatorPanel: () => expect(call('operatorPanel', { declarations: null })).toBeNull(),
+    declarationText: () =>
+      expect(JSON.parse(call('declarationText', { content: { wb: { rows: [] } } }).text)).toHaveProperty('wb'),
     validateAircraft: () => expect(call('validateAircraft', { aircraft: AC, now: NOW }).errors).toBe(0),
     aircraftHelpers: () =>
       expect(call('aircraftHelpers', { op: 'split10b', text: 'SB2' })).toEqual({ ssr: 'S', ads: ['B2'] }),

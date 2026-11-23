@@ -42,7 +42,9 @@ struct CoreWbPerfContent: Codable, Equatable, Sendable {
     var text: String
 
     /// The hash the server keeps of the sent sheets (SHA-256, base64url, as sha256Url on the website).
-    var hash: String {
+    var hash: String { Self.hash(text) }
+
+    static func hash(_ text: String) -> String {
         Data(SHA256.hash(data: Data(text.utf8))).base64EncodedString()
             .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")

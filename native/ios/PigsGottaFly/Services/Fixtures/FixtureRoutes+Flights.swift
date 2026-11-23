@@ -14,7 +14,7 @@ extension FixtureTransport {
     }
 
     /// The flight under the id asked for, at its current version.
-    fileprivate func flight(id: String) -> JSON? {
+    func flight(id: String) -> JSON? {
         if let f = flights[id] { return f }
         guard let data = fixture("flight-\(id).json") ?? fixture("flight.json"), var j = try? JSON.parse(data) else {
             return nil

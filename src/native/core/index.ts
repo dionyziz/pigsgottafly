@@ -24,6 +24,7 @@ export { chartData, chartStyle, layerGroups, lineStyles, symbolNames } from './c
 export { briefingModel, formModel, fplMessage, navlogContent, wbPerfContent } from './exports';
 export { filingDelay, filingError, filingView } from './filing';
 export { computeFlight, type ComputeFlightInput, fromBase64, paperwork, setTerrain, weatherRequests } from './flight';
+export { declarationText, form731Panel, genDecPanel, operatorPanel } from './forms';
 export { aircraftFromTemplate, aircraftHelpers, aircraftTemplates, historyText, validateAircraft } from './hangar';
 export { cgToMoment, manifest, shareSuggestions, wbChart } from './manifest';
 export { drawBand, mapInfo, mapLayers, pointMenu, routeFeatures, waypointName } from './map';

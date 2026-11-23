@@ -268,7 +268,8 @@ final class FlightModel: ObservableObject {
         await computePaperwork()
     }
 
-    private func computePaperwork() async {
+    /// The File & forms rows and the stages from the cached filing, forms and declarations.
+    func computePaperwork() async {
         guard let core else { return }
         let filing = store.text(.filing(id))
         let forms = store.text(.forms(id))

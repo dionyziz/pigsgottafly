@@ -10,11 +10,12 @@ import WebKit
 enum SheetRenderer {
     /// The page's snapshot kinds (src/pdf/main.tsx SheetsSnapshot).
     enum Kind: String, Sendable {
-        case navlog, briefing, fplform, wbperf, fplfax
+        case navlog, briefing, fplform, wbperf, fplfax, form731, gendec
 
         /// UIPrintPageRenderer has one paper size per job, so each kind takes its sheets' @page: the
-        /// navlog's md42 (A4 landscape, 5 mm), the others' xp / fpl (A4 portrait, no margin).
-        var landscape: Bool { self == .navlog }
+        /// navlog's md42 (A4 landscape, 5 mm), Form 731's f731 (A4 landscape, no margin), the others'
+        /// xp / fpl / gendec (A4 portrait, no margin).
+        var landscape: Bool { self == .navlog || self == .form731 }
         var marginMM: CGFloat { self == .navlog ? 5 : 0 }
     }
 
@@ -255,9 +256,10 @@ final class SheetExport: ObservableObject {
     private var signature: String?
     private var task: Task<Void, Never>?
 
-    /// `key`: what the content is drawn from; the same key makes no new PDF.
+    /// `key`: what the content is drawn from; the same key makes no new PDF. `extra`: the kind's other
+    /// fields (the signatures).
     func update(
-        key: String, name: String, _ kind: SheetRenderer.Kind,
+        key: String, name: String, _ kind: SheetRenderer.Kind, extra: [String: JSON] = [:],
         content: @escaping @MainActor () async throws -> JSON
     ) {
         guard key != signature else { return }
@@ -267,7 +269,7 @@ final class SheetExport: ObservableObject {
         task = Task {
             do {
                 let c = try await content()
-                let data = try await SheetRenderer.pdf(kind, content: c)
+                let data = try await SheetRenderer.pdf(kind, content: c, extra: extra)
                 try Task.checkCancellation()
                 file = try PDFFile.write(data, name: name)
                 error = nil

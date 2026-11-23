@@ -1,7 +1,8 @@
 import Foundation
 
-/// The passenger list the manifest adds from (Fixtures/manifest/passengers.json, then what POST and PUT
-/// change) and the fixture flight's sharing (Fixtures/manifest/shares.json; DELETE takes a person off).
+/// The passenger list the manifest and the passenger editor use (Fixtures/manifest/passengers.json,
+/// then what POST, PUT and DELETE change) and the fixture flight's sharing (Fixtures/manifest/
+/// shares.json; DELETE takes a person off).
 extension FixtureTransport {
     func manifestRoutes(_ r: FixtureRequest) -> (Int, String?, Data?)? {
         switch (r.method, r.first, r.count) {
@@ -17,6 +18,16 @@ extension FixtureTransport {
             p["updated"] = 1_763_000_000_000
             ManifestFixtures.shared.change(self) { $0.passengers.append(.object(p)) }
             return (201, nil, Self.encoded(.object(p)))
+        case ("GET", "passengers", 2):
+            guard let p = passengerList().first(where: { $0["id"]?.string == r.parts[1] }) else {
+                return (404, nil, nil)
+            }
+            return (200, nil, Self.encoded(p))
+        case ("DELETE", "passengers", 2):
+            let id = r.parts[1]
+            guard passengerList().contains(where: { $0["id"]?.string == id }) else { return (404, nil, nil) }
+            ManifestFixtures.shared.change(self) { s in s.passengers.removeAll { $0["id"]?.string == id } }
+            return (204, nil, Data())
         case ("PUT", "passengers", 2):
             let id = r.parts[1]
             guard let patch = r.body.flatMap({ try? JSON.parse($0) })?.object,
@@ -39,7 +50,7 @@ extension FixtureTransport {
         }
     }
 
-    private func passengerList() -> [JSON] {
+    func passengerList() -> [JSON] {
         ManifestFixtures.shared.state(self).passengers
     }
 
