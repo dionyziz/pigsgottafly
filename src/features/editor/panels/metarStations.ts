@@ -6,7 +6,7 @@
 //   - Shown from METAR_LEAD_MS before take-off until METAR_TAIL_MS after landing; without a block
 //     start time, when the flight's day is near (metarRelevant).
 import { distanceNm, pointSegDistNm } from '../../../calc/nav';
-import { metarRelevant } from '../../../data/useFlightWeather';
+import { metarRelevant } from '../../../data/flightWeatherPlan';
 import type { RefAerodrome } from '../../../shared/ref';
 import type { LatLon } from '../../../shared/types';
 

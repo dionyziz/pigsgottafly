@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { perfVerdict } from '../../../src/calc/perfVerdict';
 import { aerodrome, REF, runwaysOf, SUN_TABLES } from '../../../src/data/ref';
 import type { EndpointCalc } from '../../../src/features/editor/panels/calc';
-import { endpointVerdict } from '../../../src/features/editor/panels/PerformanceSection';
+import { endpointVerdict } from '../../../src/features/editor/panels/performance';
 import { perfSheetModel } from '../../../src/features/exports/performance/model';
 import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
 import {

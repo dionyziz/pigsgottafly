@@ -17,9 +17,14 @@ export interface AdDayInfo {
 
 const DAY_MS = 86400e3;
 
-/** `day` '' = today (UTC). */
-export function adDayInfo(a: RefAerodrome, day: string, effects: readonly AdNotamEffect[]): AdDayInfo {
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : new Date().toISOString().slice(0, 10);
+/** `day` '' = the day of `nowMs` (UTC). */
+export function adDayInfo(
+  a: RefAerodrome,
+  day: string,
+  effects: readonly AdNotamEffect[],
+  nowMs: number = Date.now(),
+): AdDayInfo {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : new Date(nowMs).toISOString().slice(0, 10);
   const start = Date.parse(d + 'T00:00:00Z');
   const opts = { effects, sunTables: SUN_TABLES };
   const notams = effects.filter((e) => e.icao === a.icao && e.from < start + DAY_MS && (e.to === null || e.to > start));

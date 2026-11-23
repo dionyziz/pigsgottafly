@@ -117,7 +117,7 @@ final class FlightModel: ObservableObject {
         readMetar()
     }
 
-    private func setNotams(_ b: NotamBriefing?) {
+    func setNotams(_ b: NotamBriefing?) {
         notams = b
         notamsRead = b.map { store.text(.notamsRead(id)) == Self.relevantSignature($0) } ?? false
     }
@@ -243,11 +243,12 @@ final class FlightModel: ObservableObject {
         let weather = store.text(.weather(id)) ?? "{}"
         let notams = store.text(.notams(id))
         let read = notamsRead
+        let now = Self.clock
         do {
             let result = try await core.run {
                 try $0.computeFlight(
                     flight: flightText, aircraft: aircraft, pilot: pilot, ref: ref, weather: weather, notams: notams,
-                    notamsRead: read)
+                    notamsRead: read, now: now)
             }
             computedText = result.text
             computed = ComputedFlight(result)
@@ -283,7 +284,9 @@ final class FlightModel: ObservableObject {
     func focusTarget(text: String) async -> CoreFocusTarget? {
         guard let core else { return nil }
         let id = self.id
-        return try? await core.run { try $0.focusTarget(text: text, flightId: id) }
+        // the aircraft's warnings lead to its page in the hangar
+        let aircraftId = flight?["aircraftId"]?.string
+        return try? await core.run { try $0.focusTarget(text: text, flightId: id, aircraftId: aircraftId) }
     }
 
     /// Where the aircraft is along the route (nil while the core is busy with the last fix).
