@@ -82,7 +82,10 @@ final class BriefUITests: XCTestCase {
         let club = atcRow(app, "CLUB")
         app.reveal(club, swipes: 8)
         XCTAssertTrue(club.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Edited"].waitForExistence(timeout: 10))
+        let edited = app.element("atc-edited")
+        XCTAssertTrue(edited.waitForExistence(timeout: 10))
+        // the fixture's list predates the generator's for this route (no en-route units), so it is outdated
+        XCTAssertEqual(edited.label, "Outdated")
         backTo(app, "ATC")
 
         // a NOTAM shown on the map
@@ -90,8 +93,10 @@ final class BriefUITests: XCTestCase {
         let notam = app.buttons.matching(NSPredicate(format: "label CONTAINS 'RWY 14/32 CLSD'")).firstMatch
         app.reveal(notam)
         XCTAssertTrue(notam.waitForExistence(timeout: 10))
-        notam.swipeRight()
-        app.buttons["notam-show-on-map"].firstMatch.tap()
+        notam.press(forDuration: 1.2)
+        let showOnMap = app.buttons["Show on map"].firstMatch
+        XCTAssertTrue(showOnMap.waitForExistence(timeout: 5), "the NOTAM's menu")
+        showOnMap.tap()
         XCTAssertTrue(app.element("map-tab").waitForExistence(timeout: 10))
         if app.isPad { XCTAssertFalse(app.element("stage-body-brief").exists, "the inspector closed on the map") }
     }

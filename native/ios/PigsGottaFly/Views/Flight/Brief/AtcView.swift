@@ -40,6 +40,8 @@ struct AtcView: View {
             }
         }
         .listStyle(.insetGrouped)
+        // before the badge: an identifier on the container would replace the chip's own (atc-edited)
+        .accessibilityIdentifier(FlightSection.atc.screenID)
         .safeAreaInset(edge: .top) { badge }
         .toolbar {
             if !model.readOnly {
@@ -75,7 +77,6 @@ struct AtcView: View {
             }
         }
         .task(id: Key(computed: model.computed, atc: model.flight?["atc"])) { state = await model.atcState() }
-        .accessibilityIdentifier(FlightSection.atc.screenID)
     }
 
     private struct Key: Equatable {

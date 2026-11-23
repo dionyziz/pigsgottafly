@@ -38,6 +38,7 @@ import {
   FORM731_TO,
   type Form731Content,
   form731Content,
+  form731Needed,
   type Form731Person,
   form731SigningText,
   type FormsState,
@@ -337,6 +338,7 @@ async function state(db: Queryable, L: Loaded, links?: Record<string, string>): 
       content: L.c731,
       signatures,
       allSigned: signatures.every((s) => s.signed),
+      needed: form731Needed(L.flight.crew),
       submission: await submission(db, L.pilot.id, L.flight.id, '731', L.hash731),
     },
     gendec: {

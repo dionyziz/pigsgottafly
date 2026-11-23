@@ -109,7 +109,6 @@ struct EndpointSection: View {
             }
             .textCase(nil)
         }
-        .accessibilityIdentifier("perf-\(e.tid)")
     }
 
     private var tone: BriefTone {

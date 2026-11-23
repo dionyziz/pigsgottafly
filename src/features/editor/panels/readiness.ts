@@ -266,7 +266,7 @@ export function paperwork(i: Pick<ReadinessInput, 'filing' | 'forms' | 'declarat
               : { state: 'todo', text: 'Not filed yet.' }),
   });
   const f731 = i.forms?.form731;
-  if (f731) {
+  if (f731 && f731.needed !== false) {
     const missing = f731.signatures.filter((s) => !s.signed).length;
     const sent = f731.submission && !f731.submission.changed;
     out.push({

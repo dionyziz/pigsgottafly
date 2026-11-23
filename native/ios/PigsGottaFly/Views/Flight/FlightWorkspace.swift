@@ -102,6 +102,14 @@ struct FlightWorkspace: View {
             resolve: { [model] text in await model.focusTarget(text: text) })
     }
 
+    /// A pushed section. The workspace's environment does not reach navigationDestination content (a
+    /// NOTAM's "Show on map" and every Fix in a section did nothing), so it is handed on here.
+    private func section(_ s: FlightSection) -> some View {
+        FlightSectionView(section: s, model: model)
+            .environment(\.focusRouter, router)
+            .environment(\.flightFocus, focusField)
+    }
+
     // MARK: iPhone
 
     private var phoneLayout: some View {
@@ -117,7 +125,9 @@ struct FlightWorkspace: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(tab == .fly ? .hidden : .visible, for: .navigationBar)
             .toolbar { flightToolbar }
-            .navigationDestination(for: FlightSection.self) { FlightSectionView(section: $0, model: model) }
+            .navigationDestination(for: FlightSection.self) {
+                section($0)
+            }
         }
     }
 
@@ -204,7 +214,9 @@ struct FlightWorkspace: View {
         NavigationStack(path: $path) {
             StageView(tab: tab?.stage == nil ? .plan : current.wrappedValue, model: model)
                 .safeAreaInset(edge: .top) { stagePicker }
-                .navigationDestination(for: FlightSection.self) { FlightSectionView(section: $0, model: model) }
+                .navigationDestination(for: FlightSection.self) {
+                    section($0)
+                }
         }
     }
 
@@ -269,13 +281,18 @@ struct StageView: View {
     var tab: FlightTab
     @ObservedObject var model: FlightModel
 
+    /// The website's exportKinds: Form 731 declares passengers, so a PIC alone has none to file.
+    private func shown(_ s: FlightSection) -> Bool {
+        s != .form731 || model.crew.contains { $0["role"]?.string != "PIC" }
+    }
+
     var body: some View {
         List {
             if let stage = tab.stage {
                 ReadinessHeader(stage: stage, model: model)
             }
             Section {
-                ForEach(FlightSection.of(tab)) { s in
+                ForEach(FlightSection.of(tab).filter(shown)) { s in
                     NavigationLink(value: s) {
                         Label(s.title, systemImage: s.systemImage).frame(minHeight: 36)
                     }

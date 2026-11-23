@@ -6,7 +6,7 @@ import { picMissingOf, readiness, stageSummary } from '../../../src/features/edi
 import type { PersonField } from '../../../src/features/exports/fix';
 import { EMPTY_PERSON } from '../../../src/shared';
 import type { FilingState, NotamBriefing } from '../../../src/shared/briefing';
-import type { FormsState } from '../../../src/shared/forms';
+import { form731Needed, type FormsState } from '../../../src/shared/forms';
 
 const base = {
   picMissing: [] as PersonField[],
@@ -105,6 +105,12 @@ describe('readiness', () => {
     );
     expect(r2.form731.state).toBe('warn');
     expect(r2.gendec.state).toBe('todo');
+    // a PIC alone files no Form 731
+    const solo = forms({ signed: [true] });
+    solo.form731.needed = false;
+    expect(byId(readiness({ ...base, forms: solo })).form731).toBeUndefined();
+    expect(form731Needed([{ role: 'PIC' }])).toBe(false);
+    expect(form731Needed([{ role: 'PIC' }, { role: 'PAX' }])).toBe(true);
     const decl = { operator: { name: 'Club', requiresWbPerf: true }, submission: null } as never;
     expect(byId(readiness({ ...base, declarations: decl })).operator).toMatchObject({ stage: 'file', state: 'todo' });
   });

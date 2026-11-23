@@ -18,6 +18,7 @@ import {
   type Flight,
   isLocalFlight,
 } from '../../shared';
+import { form731Needed } from '../../shared/forms';
 import { EmptyState, Icon, Loading } from '../../ui';
 import { paperwork, PAPERWORK_KIND, type ReadyItem } from '../editor/panels/readiness';
 import { BriefingExport } from './briefing';
@@ -109,9 +110,11 @@ function printFileName(date: string | null | undefined, kind: string): string {
   return [date || '', kind].filter(Boolean).join('-');
 }
 
-/** The documents of a flight: a local flight has no legs, so no navlog. */
-const exportKinds = (flight: Pick<Flight, 'route'>): readonly ExportKind[] =>
-  isLocalFlight(flight.route) ? EXPORT_KINDS.filter((k) => k !== 'navlog') : EXPORT_KINDS;
+/** The documents of a flight: a local flight has no legs, so no navlog; a PIC alone, no Form 731. */
+const exportKinds = (flight: Pick<Flight, 'route' | 'crew'>): readonly ExportKind[] =>
+  EXPORT_KINDS.filter(
+    (k) => !(k === 'navlog' && isLocalFlight(flight.route)) && !(k === 'form731' && !form731Needed(flight.crew)),
+  );
 
 function FormStatus({
   flightId,

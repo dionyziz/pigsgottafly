@@ -123,6 +123,11 @@ export function pilotDetails(p: Pilot): PersonDetails {
  * layout; manifest order when there is no aircraft). A flight without a PIC row still lists the
  * pilot as PIC, since the pilot is always on board.
  */
+/** Form 731 lists the passengers for HCAA: a PIC flying alone has no one to declare. */
+export function form731Needed(crew: readonly Pick<FlightCrew, 'role'>[]): boolean {
+  return crew.some((c) => c.role !== 'PIC');
+}
+
 export function formPeopleOf(
   crewIn: FlightCrew[],
   stations: Station[] | null,
@@ -408,6 +413,8 @@ export interface FormsState {
     signatures: SignatureState[];
     allSigned: boolean;
     submission: SubmissionState | null;
+    /** Someone besides the PIC is on board (form731Needed). */
+    needed: boolean;
   };
   gendec: {
     content: GenDecContent;
