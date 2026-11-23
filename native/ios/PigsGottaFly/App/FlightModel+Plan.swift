@@ -86,6 +86,12 @@ extension FlightModel {
         await routeEdit(.makeLocal)
     }
 
+    /// Local flight unticked: the closing point goes, leaving the origin for a destination or drawing.
+    func endLocal() async {
+        guard route.count == 2, let uid = route.last?["uid"]?.string else { return }
+        await routeEdit(.remove(uid: uid))
+    }
+
     /// Adds a point where it lengthens the route least.
     func addPoint(_ place: Place) async {
         await insert(place.routePoint(), at: RouteEdit.bestIndex(for: place, in: route))

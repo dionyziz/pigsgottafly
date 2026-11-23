@@ -361,6 +361,13 @@ final class RouteEditor: ObservableObject {
 
     private var core: Core? { app.core }
     private var readOnly: Bool { model.readOnly }
+    /// A local flight (A → A, nothing between) is not drawn on: the Route section's Local flight toggle
+    /// sets it, and the map only shows it.
+    var local: Bool {
+        let r = model.route
+        guard r.count == 2, r.allSatisfy({ $0["kind"]?.string == "aerodrome" }) else { return false }
+        return r[0]["refId"]?.string != nil && r[0]["refId"]?.string == r[1]["refId"]?.string
+    }
     private var ref: String? {
         if refText == nil { refText = app.store.text(.ref) }
         return refText
@@ -376,6 +383,7 @@ final class RouteEditor: ObservableObject {
     func flightChanged() {
         if selected.map({ uid in !model.route.contains { $0["uid"]?.string == uid } }) == true { selected = nil }
         if model.route.isEmpty && mode == .idle && !readOnly && model.flight != nil { mode = .draw }
+        if local && mode != .idle { stopDrawing() }
         refreshLayers()
         refreshRouteData()
     }
@@ -390,7 +398,7 @@ final class RouteEditor: ObservableObject {
         }
         if !readOnly, model.flight != nil {
             let info = await currentRouteInfo()
-            if model.route.count < 2 || info?.bareRoundTrip == true { mode = .draw }
+            if !local && (model.route.count < 2 || info?.bareRoundTrip == true) { mode = .draw }
         }
         flightChanged()
     }
@@ -422,7 +430,7 @@ final class RouteEditor: ObservableObject {
                 routeDataDirty = false
                 let text = JSON.array(route).text
                 let sel = selected
-                let handles = mode == .idle && drag == nil && !readOnly
+                let handles = mode == .idle && drag == nil && !readOnly && !local
                 if let d = try? await core?.run({ try $0.routeFeatures(route: text, selected: sel, handles: handles) })
                 {
                     routeData = d
@@ -436,6 +444,7 @@ final class RouteEditor: ObservableObject {
     // MARK: modes
 
     func setMode(_ m: Mode) {
+        if local && m != .idle { return }
         toEnd = false
         mode = m
         if m == .idle { stopDrawing() } else { refreshRouteData() }
@@ -454,6 +463,7 @@ final class RouteEditor: ObservableObject {
     /// The hint over the map (RouteMap's, in its touch wording).
     var hint: String {
         if readOnly { return "" }
+        if local { return "Local flight · turn off Local flight in Route to draw a route" }
         let closing = mode != .idle && !toEnd && routeInfo?.roundTrip == true ? route.last?["name"]?.string : nil
         switch mode {
         case .custom:
@@ -754,7 +764,7 @@ final class RouteEditor: ObservableObject {
 
     /// A press on a route point or a leg's middle dot starts a drag; elsewhere it is the map's.
     func canPress(at p: CGPoint) -> Bool {
-        !readOnly && mode == .idle && (hitPoint(p) != nil || hitMid(p) != nil)
+        !readOnly && !local && mode == .idle && (hitPoint(p) != nil || hitMid(p) != nil)
     }
 
     @discardableResult

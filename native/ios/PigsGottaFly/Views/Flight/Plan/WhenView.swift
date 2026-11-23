@@ -247,7 +247,7 @@ struct LocalDurationRow: View {
 
     var body: some View {
         Stepper(value: $draft, in: 5...Swift.max(5, Int(max)), step: 5) {
-            LabeledContent("Duration", value: Fmt.hoursMinutes(Double(draft)))
+            LabeledContent("Estimated total time", value: Fmt.hoursMinutes(Double(draft)))
                 .monospacedDigit()
         }
         .disabled(model.readOnly)

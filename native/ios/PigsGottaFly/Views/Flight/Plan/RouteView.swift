@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Route (the website's RouteSection and the map's point edits): the origin and destination picked as
-/// aerodromes, a local flight and its airborne time, and the points in order, reordered, inserted (a
+/// aerodromes, the Local flight toggle (destination locked to the origin, the estimated total time),
+/// and the points in order, reordered, inserted (a
 /// place or a typed position), renamed and removed. Every change is one core route edit.
 struct RouteView: View {
     @ObservedObject var model: FlightModel
@@ -35,40 +36,27 @@ struct RouteView: View {
         let local = model.localFlight()
         let isLocal = local?.local ?? false
         List {
-            if isLocal, let from {
-                Section {
-                    Text("Local flight · \(from["name"]?.string ?? "")")
-                        .font(.headline)
-                        .accessibilityIdentifier("route-local")
-                    endRow("Origin", from, pick: .origin, id: "route-origin")
-                    if let local { LocalDurationRow(model: model, minutes: local.durationOf, max: local.maxMin) }
-                }
-                if !model.readOnly {
-                    Section {
-                        Button {
-                            picking = .destination
-                        } label: {
-                            Label("Fly somewhere instead", systemImage: "arrow.triangle.turn.up.right.diamond")
-                                .frame(minHeight: 44)
-                        }
+            Section {
+                endRow("Origin", from, pick: .origin, id: "route-origin")
+                if from == nil {
+                    LabeledContent("Destination", value: "Set the origin first")
+                        .foregroundStyle(.secondary)
                         .accessibilityIdentifier("route-destination")
-                    }
+                } else {
+                    endRow("Destination", to, pick: .destination, id: "route-destination")
+                        .disabled(isLocal)
                 }
-            } else {
-                Section {
-                    endRow("Origin", from, pick: .origin, id: "route-origin")
-                    if from == nil {
-                        LabeledContent("Destination", value: "Set the origin first")
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("route-destination")
-                    } else {
-                        endRow("Destination", to, pick: .destination, id: "route-destination")
-                    }
-                    if canGoLocal, let name = from?["name"]?.string {
-                        Button("Local flight from \(name)") { Task { await model.makeLocal() } }
-                            .frame(minHeight: 44)
-                            .accessibilityIdentifier("route-make-local")
-                    }
+                Toggle(
+                    "Local flight",
+                    isOn: Binding(
+                        get: { isLocal },
+                        set: { on in Task { if on { await model.makeLocal() } else { await model.endLocal() } } })
+                )
+                .disabled(!canBeLocal)
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("route-local")
+                if isLocal, let local {
+                    LocalDurationRow(model: model, minutes: local.durationOf, max: local.maxMin)
                 }
             }
             points
@@ -107,9 +95,9 @@ struct RouteView: View {
         }
     }
 
-    /// The website shows "Local flight from …" for a one- or two-point route from an aerodrome.
-    private var canGoLocal: Bool {
-        !model.readOnly && from?["kind"]?.string == "aerodrome" && route.count <= 2
+    /// A local flight starts at an aerodrome; ticking it drops any points between.
+    private var canBeLocal: Bool {
+        !model.readOnly && from?["kind"]?.string == "aerodrome"
     }
 
     private func endRow(_ label: String, _ point: JSON?, pick: EndPick, id: String) -> some View {

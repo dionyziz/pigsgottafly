@@ -125,4 +125,22 @@ final class PlanUITests: XCTestCase {
         run(app)
         XCUIDevice.shared.orientation = .portrait
     }
+
+    /// Local flight ticked: the points between go, the destination is the origin and locked, the
+    /// estimated total time appears and the map has nothing to draw; unticked: only the origin stays.
+    func testLocalFlightToggle() throws {
+        let app = openPlan()
+        open(app, "route", screen: "route-section")
+        XCTAssertTrue(app.element("route-point-3").waitForExistence(timeout: 10))
+        toggle(app, "route-local")
+        XCTAssertTrue(app.element("local-duration").waitForExistence(timeout: 10), "the estimated total time")
+        XCTAssertFalse(app.element("route-point-2").exists, "the points between are gone")
+        XCTAssertFalse(app.element("route-destination").isEnabled, "the destination is locked")
+        toggle(app, "route-local")
+        let gone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [expectation(for: gone, evaluatedWith: app.element("local-duration"))], timeout: 10),
+            .completed)
+        XCTAssertFalse(app.element("route-point-1").exists, "only the origin stays")
+    }
 }
