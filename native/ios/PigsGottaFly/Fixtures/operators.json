@@ -1,0 +1,44 @@
+[
+  {
+    "id": "op-mesogeion",
+    "name": "AEROCLUB MESOGEION",
+    "phone": "+30 210 000 0000",
+    "email": "ops@mesogeion.example",
+    "address": "Tatoi aerodrome, Dekeleia",
+    "aftn": "",
+    "notes": "",
+    "requiresWbPerf": true,
+    "declarationsEmail": "ops@mesogeion.example",
+    "requiresFplCopy": false,
+    "fplCopyEmail": "",
+    "created": 1763000000000,
+    "updated": 1763000000000,
+    "access": {
+      "role": "owner",
+      "owner": { "pilotId": "fixture-pilot", "name": "FIXTURE PILOT", "email": "pilot@example.com" },
+      "viaAircraft": []
+    },
+    "aircraft": [{ "id": "fixture-sx-asv", "registration": "SX-ASV" }]
+  },
+  {
+    "id": "op-aegean-flyers",
+    "name": "AEGEAN FLYERS",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "aftn": "",
+    "notes": "",
+    "requiresWbPerf": false,
+    "declarationsEmail": "",
+    "requiresFplCopy": true,
+    "fplCopyEmail": "fpl@aegean.example",
+    "created": 1763000000000,
+    "updated": 1763000000000,
+    "access": {
+      "role": "view",
+      "owner": { "pilotId": "p-other", "name": "Another Pilot", "email": "other@example.com" },
+      "viaAircraft": []
+    },
+    "aircraft": []
+  }
+]

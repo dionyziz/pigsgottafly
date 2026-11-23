@@ -135,6 +135,12 @@ final class AppModel: ObservableObject {
     /// Bumped when an aircraft leaves the hangar from outside the list (the share sheet's "Remove my
     /// access" on the aircraft's page): the list reads itself again.
     @Published var hangarChanged = 0
+    /// Bumped when an operator is created, renamed, deleted or left from its page: the list (beside it
+    /// on iPad) reads itself again.
+    @Published var operatorsChanged = 0
+    /// The website's toast after an operator's page deleted or left it ("Deleted …", "You no longer
+    /// have …"): the page closes, so the list shows it.
+    @Published var operatorNotice: String?
 
     /// The hangar's "Make default aircraft".
     func setDefaultAircraft(_ id: String) async throws {

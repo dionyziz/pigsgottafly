@@ -8,6 +8,7 @@ import { Shell } from '../../app/Shell';
 import { useEntity } from '../../data/entities';
 import { AsyncView, Chip, EmptyState, rowClick } from '../../ui';
 import { SharedChip } from '../hangar/ShareDialog';
+import { operatorRow } from './model';
 import { NewOperatorDialog } from './OperatorPicker';
 
 const none = <span className="muted">—</span>;
@@ -55,38 +56,33 @@ export function OperatorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {list.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="clickable"
-                    data-operator-id={o.id}
-                    onClick={rowClick(() => void navigate(`/operators/${o.id}`))}
-                  >
-                    <td>
-                      <div className="nm">
-                        <Link to={`/operators/${o.id}`}>{o.name}</Link> <SharedChip access={o.access} />
-                      </div>
-                      {o.access.role === 'view' && o.access.viaAircraft.length > 0 && (
-                        <div className="hint">Through {o.access.viaAircraft.join(', ')}</div>
-                      )}
-                    </td>
-                    <td className="hide-sm mono">{o.aircraft.map((a) => a.registration).join(', ') || none}</td>
-                    <td className="hide-sm">{[o.phone, o.email].filter(Boolean).join(' · ') || none}</td>
-                    <td>
-                      {o.requiresWbPerf && (
-                        <Chip tone="warn" title={`W&B and performance to ${o.declarationsEmail} before each flight`}>
-                          W&amp;B + performance
-                        </Chip>
-                      )}{' '}
-                      {o.requiresFplCopy && (
-                        <Chip tone="warn" title={`A copy of each filed flight plan to ${o.fplCopyEmail}`}>
-                          Flight plan copy
-                        </Chip>
-                      )}
-                      {!o.requiresWbPerf && !o.requiresFplCopy && none}
-                    </td>
-                  </tr>
-                ))}
+                {list
+                  .map((o) => ({ o, r: operatorRow(o) }))
+                  .map(({ o, r }) => (
+                    <tr
+                      key={o.id}
+                      className="clickable"
+                      data-operator-id={o.id}
+                      onClick={rowClick(() => void navigate(`/operators/${o.id}`))}
+                    >
+                      <td>
+                        <div className="nm">
+                          <Link to={`/operators/${o.id}`}>{o.name}</Link> <SharedChip access={o.access} />
+                        </div>
+                        {r.through && <div className="hint">{r.through}</div>}
+                      </td>
+                      <td className="hide-sm mono">{r.aircraft || none}</td>
+                      <td className="hide-sm">{r.contact || none}</td>
+                      <td>
+                        {r.flags.map((f) => (
+                          <Chip key={f.label} tone="warn" title={f.title}>
+                            {f.label}
+                          </Chip>
+                        ))}
+                        {r.flags.length === 0 && none}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

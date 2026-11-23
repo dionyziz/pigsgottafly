@@ -57,7 +57,7 @@ final class ShellUITests: XCTestCase {
         for (kind, list, add, editor) in [
             ("people-passengers", "passenger-list", "add-passenger", "passenger-editor"),
             ("people-waypoints", "waypoint-list", "add-waypoint", "waypoint-map"),
-            ("people-operators", "operator-list", "add-operator", "operator-page"),
+            ("people-operators", "operator-list", "operator-op-mesogeion", "operator-page"),
         ] {
             app.tapRow(kind)
             XCTAssertTrue(app.element(list).waitForExistence(timeout: 10), list)
@@ -121,11 +121,11 @@ final class ShellUITests: XCTestCase {
         for (area, list, add, editor) in [
             ("sidebar-passengers", "passenger-list", "add-passenger", "passenger-editor"),
             ("sidebar-waypoints", "waypoint-list", "add-waypoint", "waypoint-map"),
-            ("sidebar-operators", "operator-list", "add-operator", "operator-page"),
+            ("sidebar-operators", "operator-list", "operator-op-mesogeion", "operator-page"),
         ] {
             app.element(area).tap()
             XCTAssertTrue(app.element(list).waitForExistence(timeout: 10), list)
-            app.buttons[add].tap()
+            app.element(add).tap()
             XCTAssertTrue(app.element(editor).waitForExistence(timeout: 10), editor)
         }
 

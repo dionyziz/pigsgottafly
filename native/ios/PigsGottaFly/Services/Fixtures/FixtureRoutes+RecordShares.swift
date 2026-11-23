@@ -28,9 +28,27 @@ extension FixtureTransport {
         owner["role"] = "owner"
         owner["added"] = .null
         if kind == .operators {
+            // an operator of operators.json shared with the pilot: its owner, then the pilot
+            let op = operators.first { $0["id"]?.string == id }
+            let role = op?["access"]?["role"]?.string ?? "owner"
+            if role != "owner", let by = op?["access"]?["owner"] { owner = by }
+            owner["role"] = "owner"
+            owner["added"] = .null
             owner["via"] = []
             owner["direct"] = true
-            return ["operatorId": .string(id), "name": "", "role": "owner", "canManage": true, "people": [owner]]
+            var people = [owner]
+            if role != "owner" {
+                var mine = me
+                mine["role"] = .string(role)
+                mine["added"] = .null
+                mine["via"] = []
+                mine["direct"] = true
+                people.append(mine)
+            }
+            return [
+                "operatorId": .string(id), "name": op?["name"] ?? "", "role": .string(role),
+                "canManage": .bool(role != "view"), "people": .array(people),
+            ]
         }
         if let seeded = fixture("manifest/shares.json").flatMap({ try? JSON.parse($0) }),
             seeded["flightId"]?.string == id

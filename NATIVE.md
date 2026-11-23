@@ -156,10 +156,17 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   under their fields from `PGF.personIssues`; a saved passenger saves by itself (Autosave) while it
   has no problems, a new one with "Add passenger"; Delete asks first and Undo adds the details back
   as a new record, as the website's toast; the lists read again after each change), Waypoints
-  (list; map, typed coordinates and notes 1G), Operators and their editor (1G; documents 2C). An
-  operator's Share (its editor's toolbar) is the share sheet: people with access, also those who see
-  it through one of its aircraft ("Viewer (aircraft)"), added by e-mail (accounts only), roles,
-  removing, leaving.
+  (list; map, typed coordinates and notes 1G), **Operators** (`OperatorsView`, the website's
+  OperatorsPage: each row's name, "Shared by …", "Through …", aircraft, contact and the W&B +
+  performance and flight plan copy flags; New operator asks for the name, POST /api/operators, and
+  opens it) and the **operator editor** (`OperatorEditorView`, the website's OperatorPage): its head
+  (the aircraft it operates, "Shared by …", "View only"), Details (name, phone, e-mail, AFTN or ATS
+  contact, address, notes), Before each flight (the W&B and performance sheets and where they go, a
+  copy of each filed flight plan and where it goes), Documents (`Views/Common/DocumentsSection.swift`:
+  open in the viewer, share; add a PDF with its title, rename, remove; chunked as on the website),
+  Aircraft (each opens its page), People with access (role, "through …"), Share (the share sheet) and
+  Delete for its owner. Edits save by themselves (`Autosave`, PUT /api/operators/:id); an issue under
+  a field holds the save back, as on the website. A viewer sees it all read-only.
 - **Me** (`Views/Me/`; Profile in the iPad sidebar): the signed-in account; **Profile** (name, phone,
   home aerodrome, PUT /api/me; the pilot's own autorouter account, linked in Apple's sign-in sheet);
   planning defaults, map layers for new flights, licence and medical, data export and "Sign out
@@ -184,7 +191,8 @@ revoked, a passenger given a link has signed by the next GET, and the sends to t
 operator answer as the server does (409 until everyone signed, or for a version already sent).
 `-openFlight fixture-forms` is a flight with a passenger, a GenDec the PIC sends and an operator who
 asks for the W&B and performance sheets. Sharing and invitations are
-kept in memory; the fixture server knows one other account (copilot@example.com, shared with at once)
+kept in memory, as are the operators (Fixtures/operators.json: one the pilot owns, one shared with
+them to view) and the documents uploaded; the fixture server knows one other account (copilot@example.com, shared with at once)
 and sends no e-mail; a flight's address with no account becomes a pending invite, an operator's is
 refused as the server refuses it.
 
@@ -282,7 +290,7 @@ extra fields below were added while building the core.
   below that, the navlog's GS. `offRoute` is more than 2 NM off the leg.
 
 The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest, forms,
-exports, filing, hangar, share, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
+exports, filing, hangar, share, operators, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
 wraps the website's own module (named in brackets); where the website kept a rule inside a React
 component, it moved to that module and the component imports it. tests/unit/native/<domain>.test.ts
 checks each answer equals the website module's for the same input.
@@ -467,6 +475,23 @@ PIC's `signature`) with the website's sheet components. The images the component
   `invitations` GET /api/invitations as rows `{ id, email, initial, aircraft }` ("SX-ASV (Viewer)");
   `body` POST /api/invitations for `email`, `note` and `picked` ([aircraftId, role] pairs); `done` the
   line after it, from its `response`.
+
+**Operators** (src/native/core/operators.ts)
+
+- `PGF.operatorForm({ operator, draft?, people?, myId? })` → `{ input, issues, body, head, people }`:
+  the operator editor [operators/model.ts]. `input` the editable fields of `draft` (default: the
+  operator's); `issues` `[{ field, message }]` hold the save back; `body` PUT /api/operators/:id
+  (trimmed; null with issues); `head` `{ subtitle, chip, readOnly, canDelete, viewOnly, deleteTitle,
+  deleteMessage, deleted, left }`; `people` (from GET …/shares' people) `[{ key, name, email, self,
+  role, direct, label }]`.
+- `PGF.operatorList({ operators })` → `{ rows: [{ id, name, chip, through, aircraft, contact, flags }]
+  }` [operators/model.ts operatorRow].
+- `PGF.newOperator({ name })` → `{ body, error }`: POST /api/operators.
+- `PGF.documents({ documents?, pick?, title?, rename? })` → `{ rows, hint, maxBytes, chunkBytes,
+  pickError, start, renamed }`: an aircraft's or operator's documents [hangar/documents.ts]: the rows
+  `{ id, title, detail }`; a picked file `{ type, size, name }` is refused (`pickError`) or gives
+  `start`, the body of POST …/files (its title the one typed, else the file's name); `renamed` the
+  title to save after an edit, or null.
 
 **People** (src/native/core/people.ts)
 

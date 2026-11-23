@@ -1,7 +1,7 @@
 // The operator page's checks (what holds its autosave back).
 import { describe, expect, it } from 'vitest';
 
-import { validateOperator } from '../../../src/features/operators/OperatorPage';
+import { validateOperator } from '../../../src/features/operators/model';
 import { EMPTY_OPERATOR } from '../../../src/shared/operators';
 
 describe('operator form', () => {
