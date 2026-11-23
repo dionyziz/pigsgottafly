@@ -71,11 +71,12 @@ struct DelaySheet: View {
 
     private static let utc = TimeZone(identifier: "UTC")!
 
+    @State private var started = false
+
     init(filing: FilingModel) {
         self.filing = filing
-        // from the plan's EOBT (or now, past it): the pilot adds the delay to it
-        let now = FlightModel.clock ?? Date()
-        _eobt = State(initialValue: max(filing.eobt ?? now, now))
+        // until the core says where the delay starts (PGF.filingDelay start)
+        _eobt = State(initialValue: filing.eobt ?? FlightModel.clock ?? Date())
     }
 
     var body: some View {
@@ -104,15 +105,13 @@ struct DelaySheet: View {
                     }
                 }
                 Section("Sent") {
+                    if let c = check {
+                        Text(c.via).font(c.message == nil ? .callout : .footnote)
+                            .foregroundStyle(c.message == nil ? .primary : .secondary)
+                    }
                     if let m = check?.message {
-                        Text("Faxed to the office the plan went to:").font(.footnote).foregroundStyle(.secondary)
                         Text(m).font(.callout.monospaced()).textSelection(.enabled)
                             .accessibilityIdentifier("delay-message")
-                    } else {
-                        Text(
-                            "Through \(filing.view?.filing?.providerLabel ?? "autorouter"), which delays the plan with ATC."
-                        )
-                        .font(.callout)
                     }
                 }
                 if let e = filing.error {
@@ -121,6 +120,11 @@ struct DelaySheet: View {
             }
             .navigationTitle("Delay")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                guard !started else { return }
+                started = true
+                if let s = await filing.delayCheck(nil)?.start { eobt = Date(timeIntervalSince1970: s / 1000) }
+            }
             .task(id: eobt) { check = await filing.delayCheck(eobt) }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -2,7 +2,7 @@
 // A filed plan drawn again from its message (parseFpl.ts: the faxed ICAO form is exactly what was
 // filed), the fax's pages (FaxSheets.tsx), and the filing panel's honest account of the backend that
 // filed the plan (FilingPanel.tsx: autorouter acknowledges, a fax is only delivered).
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
@@ -15,12 +15,17 @@ import type { FilingRecord, FilingState } from '../../../src/shared/briefing';
 import type { FplFaxContent } from '../../../src/shared/fax';
 
 const state: { s: FilingState | null } = { s: null };
+// the delay as the server answers it: the record with the new EOBT
+const delayed = vi.fn(async (_id: string, eobt: number) => {
+  state.s = { ...state.s!, filing: { ...state.s!.filing!, eobt, message: 'Delay delivered by fax.' } };
+  return state.s;
+});
 vi.mock('../../../src/data/api', async (orig) => {
   const real = await orig<Record<string, unknown>>();
   return {
     ...real,
     peekGet: () => undefined,
-    api: { filing: { get: async () => state.s } },
+    api: { filing: { get: async () => state.s, delay: delayed } },
   };
 });
 const { FilingPanel, filedVia } = await import('../../../src/features/exports/fpl/FilingPanel');
@@ -220,5 +225,45 @@ describe('the filing panel: which service filed it, and what it can tell', () =>
     cleanup();
     await show({ filing: rec({ status: 'filed' }), filers: infos(false) });
     expect(screen.getByTestId('fpl-filing-via').textContent).toBe('Filed via autorouter');
+  });
+
+  test('Delay: a new EOBT in UTC, checked as the server checks it, with the DLA a fax carries', async () => {
+    const eobt = Math.floor((Date.now() + 3 * 3600e3) / 60e3) * 60e3;
+    const filed = {
+      ...fax('delivered'),
+      eobt,
+      fpl: '(FPL-SXASV-VG -C172/L-S/C -LGTT0805 -N0100VFR DCT -LGMG0040 -DOF/261120)',
+    };
+    await show({ filing: filed });
+    fireEvent.click(screen.getByTestId('fpl-delay'));
+    // it starts at the EOBT filed, which is not a delay
+    expect(screen.getByTestId<HTMLInputElement>('fpl-delay-eobt').value).toBe(
+      new Date(eobt).toISOString().slice(0, 16),
+    );
+    expect(screen.getByTestId('fpl-delay-problem').textContent).toBe('That is the EOBT already filed.');
+    expect(screen.getByTestId<HTMLButtonElement>('fpl-delay-send').disabled).toBe(true);
+    fireEvent.click(screen.getByTestId('fpl-delay-plus-30'));
+    expect(screen.queryByTestId('fpl-delay-problem')).toBeNull();
+    const later = new Date(eobt + 30 * 60e3);
+    const hhmm = later.toISOString().slice(11, 16).replace(':', '');
+    expect(screen.getByTestId('fpl-delay-message').textContent).toMatch(
+      new RegExp(`^\\(DLA-SXASV-LGTT${hhmm}-LGMG-DOF/`),
+    );
+    // beyond 5 days: the server's limit, in the panel's words
+    fireEvent.change(screen.getByTestId('fpl-delay-eobt'), {
+      target: { value: new Date(Date.now() + 6 * 86400e3).toISOString().slice(0, 16) },
+    });
+    expect(screen.getByTestId('fpl-delay-problem').textContent).toBe(
+      'The new EOBT must be between now and 5 days ahead.',
+    );
+    fireEvent.change(screen.getByTestId('fpl-delay-eobt'), { target: { value: later.toISOString().slice(0, 16) } });
+    fireEvent.click(screen.getByTestId('fpl-delay-send'));
+    await waitFor(() => expect(screen.queryByTestId('fpl-delay-form')).toBeNull());
+    expect(delayed).toHaveBeenCalledWith('f1', later.getTime());
+    expect(screen.getByTestId('fpl-filing-eobt').textContent).toContain(later.toISOString().slice(11, 16));
+  });
+  test('no Delay before filing', async () => {
+    await show({});
+    expect(screen.queryByTestId('fpl-delay')).toBeNull();
   });
 });

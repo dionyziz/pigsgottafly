@@ -110,6 +110,10 @@ struct CoreFilingDelay: Codable, Equatable, Sendable {
     var problem: String?
     /// The DLA a faxed plan's delay carries.
     var message: String?
+    /// Who sends it ("Faxed to the office the plan went to:", "Through autorouter, …").
+    var via: String
+    /// Where the delay form starts (epoch ms): the filed EOBT, or now once that is past.
+    var start: Double
 }
 
 extension Core {
@@ -127,9 +131,9 @@ extension Core {
             ])
     }
 
-    /// A delay of the filed plan to `eobt`.
-    func filingDelay(state: String?, eobt: Date, now: Date? = nil) throws -> CoreFilingDelay {
-        var fields = ["state": state ?? "null", "eobt": Core.ms(eobt)]
+    /// A delay of the filed plan to `eobt` (nil: the check of where the form starts).
+    func filingDelay(state: String?, eobt: Date?, now: Date? = nil) throws -> CoreFilingDelay {
+        var fields = ["state": state ?? "null", "eobt": eobt.map(Core.ms) ?? "null"]
         if let now { fields["now"] = Core.ms(now) }
         return try callDecoding("filingDelay", fields: fields)
     }

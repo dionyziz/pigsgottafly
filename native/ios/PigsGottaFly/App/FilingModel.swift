@@ -126,8 +126,9 @@ final class FilingModel: ObservableObject {
         return await run(.file) { [api = app.api, id = flight.id] in try await api.fileFlightPlan(id, req) }
     }
 
-    /// Why a delay to `eobt` cannot be sent, and the DLA a fax would carry.
-    func delayCheck(_ eobt: Date) async -> CoreFilingDelay? {
+    /// Why a delay to `eobt` cannot be sent, and the DLA a fax would carry (nil `eobt`: where the delay
+    /// form starts, in `start`).
+    func delayCheck(_ eobt: Date?) async -> CoreFilingDelay? {
         guard let core = app.core else { return nil }
         let state = stateText
         let now = FlightModel.clock ?? Date()

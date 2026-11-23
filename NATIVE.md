@@ -332,9 +332,10 @@ aircraft, pilot, ref, weather, now? }`.
   log }`, with `message` (fplMessage's) also `request` (the body of POST /filing) and `head` (`{ ident,
   adep, eobt, ades, dof, route }`), `cancelMessage` (the CNL a faxed plan's cancellation carries) and
   `typedAddress` (the typed AFTN address, null when it is not one) [exports/fpl/filing.ts, which
-  FilingPanel.tsx renders]. `PGF.filingDelay({ state, eobt, now? })` → `{ problem, message }`: why a
-  delay to `eobt` cannot be sent (the server's limits, src/shared/briefing.ts FILING_EOBT_*), and the DLA
-  a fax carries [shared/icaoMessages.ts]. `PGF.filingError({ offline?, message?, load? })` → `{ text }`:
+  FilingPanel.tsx renders]. `PGF.filingDelay({ state, eobt?, now? })` → `{ problem, message, via, start }`:
+  why a delay to `eobt` cannot be sent (the server's limits, src/shared/briefing.ts FILING_EOBT_*), and the DLA
+  a fax carries [shared/icaoMessages.ts], who sends it, and `start`, where the delay form starts (the
+  filed EOBT, or now once past, to the minute); the website's Delay form uses the same model. `PGF.filingError({ offline?, message?, load? })` → `{ text }`:
   a refusal (or a failed load) as the panel words it.
 - `PGF.navlogContent(…)` → `{ document, content }`: the navlog page's `{ sheets, terminal, warnings,
   sources }` and the body of POST /api/flights/:id/exports/navlog/email [exports/navlog/model.ts

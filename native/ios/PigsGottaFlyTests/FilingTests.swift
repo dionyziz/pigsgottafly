@@ -62,6 +62,9 @@ final class FilingTests: XCTestCase {
         XCTAssertEqual(
             try core.filingDelay(state: state, eobt: now.addingTimeInterval(6 * 86400), now: now).problem,
             "The new EOBT must be between now and 5 days ahead.")
+        let start = try core.filingDelay(state: state, eobt: nil, now: now)
+        XCTAssertEqual(start.start, 1_795_336_200_000, "the delay starts from the filed EOBT")
+        XCTAssertEqual(start.via, "Through autorouter, which delays the plan with ATC.")
         XCTAssertEqual(try core.filingError(offline: true, message: nil), "Offline: nothing was sent.")
         XCTAssertEqual(try core.filingError(offline: false, message: nil), "The request failed.")
     }

@@ -14,7 +14,18 @@ import type { FilerId, FilingState } from '../../../shared/briefing';
 import { fmtDateTimeMs } from '../../../shared/format';
 import { Chip, Loading, Panel } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
-import { actionError, aftnAddress, fileRequest, filingView, loadError } from './filing';
+import {
+  actionError,
+  aftnAddress,
+  DELAY_STEPS_MIN,
+  delayCheck,
+  delayStart,
+  fileRequest,
+  filingView,
+  fromUtcInput,
+  loadError,
+  utcInput,
+} from './filing';
 
 export { filedVia } from './filing';
 
@@ -34,7 +45,15 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   // the last state this session shows at once (filing.get updates it)
   const [st, setSt] = useState<FilingState | null>(() => peekGet<FilingState>(`flights/${flight.id}/filing`) ?? null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'' | 'file' | 'cancel' | 'refresh'>('');
+  const [busy, setBusy] = useState<'' | 'file' | 'delay' | 'cancel' | 'refresh'>('');
+  // the new EOBT while the delay form is open (null: closed)
+  const [delayAt, setDelayAt] = useState<number | null>(null);
+  // the clock the delay is checked against, read whenever the pilot changes it
+  const [delayNow, setDelayNow] = useState(0);
+  const setDelay = (ms: number | null) => {
+    setDelayAt(ms);
+    setDelayNow(Date.now());
+  };
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [extra, setExtra] = useState<string[]>([]);
@@ -63,20 +82,24 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
     [st, excluded, extra, noCopy, via, complete, busy],
   );
   const { addresses, copyTo, connect, connectOnly } = v;
+  // the delay form's check, as the server checks it (and the DLA a fax carries)
+  const delay = delayAt != null && v.delay.shown ? delayCheck(v.filing, delayAt, delayNow) : null;
   const addrKey = addresses.join(' ');
   const reportAddresses = useEffectEvent(() => onAddresses?.(addresses));
   useEffect(() => reportAddresses(), [addrKey]);
 
-  const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<FilingState>) => {
+  const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<FilingState>): Promise<boolean> => {
     setBusy(kind);
     setActionErr(null);
     try {
       setSt(await fn());
       // the flight's filing status shows elsewhere too (the editor's checklist and top bar, the lobby)
       invalidate('flights');
+      return true;
     } catch (e) {
       setActionErr(actionError(e instanceof ApiRequestError ? e : null));
       if (e instanceof ApiRequestError && e.status === 503) load();
+      return false;
     } finally {
       setBusy('');
     }
@@ -130,6 +153,18 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
               {busy === 'file' ? 'Filing…' : v.file.label}
             </button>
           )}
+          {v.delay.shown && (
+            <button
+              data-testid="fpl-delay"
+              disabled={!v.delay.enabled || delayAt != null}
+              onClick={() => {
+                setActionErr(null);
+                setDelay(delayStart(v.filing, Date.now()));
+              }}
+            >
+              {busy === 'delay' ? 'Delaying…' : 'Delay'}
+            </button>
+          )}
           {v.cancel.shown && (
             <button
               data-testid="fpl-cancel"
@@ -163,6 +198,62 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
           {actionErr}
         </div>
       )}
+      {delay && delayAt != null && (
+        <div className="fpl-delay-form" data-testid="fpl-delay-form">
+          <div className="fpl-filing-sub">Delay</div>
+          <div className="fpl-delay-row">
+            <label className="fpl-filing-delay">
+              New EOBT (UTC){' '}
+              <input
+                type="datetime-local"
+                data-testid="fpl-delay-eobt"
+                value={Number.isFinite(delayAt) ? utcInput(delayAt) : ''}
+                onChange={(e) => setDelay(fromUtcInput(e.target.value))}
+              />
+            </label>
+            {DELAY_STEPS_MIN.map((m) => (
+              <button
+                key={m}
+                className="ghost"
+                data-testid={`fpl-delay-plus-${m}`}
+                disabled={!Number.isFinite(delayAt)}
+                onClick={() => setDelay(delayAt + m * 60e3)}
+              >
+                +{m} min
+              </button>
+            ))}
+          </div>
+          <div className="muted" data-testid="fpl-delay-new">
+            Filed EOBT {dateTimeZ(v.filing?.eobt ?? NaN) || '–'} → {dateTimeZ(delayAt) || '–'}
+          </div>
+          {delay.problem && (
+            <div className="form-error" data-testid="fpl-delay-problem">
+              {delay.problem}
+            </div>
+          )}
+          <div className="muted">{delay.via}</div>
+          {delay.message && (
+            <pre className="fpl-delay-message" data-testid="fpl-delay-message">
+              {delay.message}
+            </pre>
+          )}
+          <div className="fpl-delay-row">
+            <button
+              className="primary"
+              data-testid="fpl-delay-send"
+              disabled={!!delay.problem || !!busy}
+              onClick={async () => {
+                if (await run('delay', () => api.filing.delay(flight.id, delayAt))) setDelayAt(null);
+              }}
+            >
+              {busy === 'delay' ? 'Sending…' : 'Send delay'}
+            </button>
+            <button className="ghost" disabled={!!busy} onClick={() => setDelayAt(null)}>
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
       {v.viaChoice && (
         <label className="fpl-filing-via" data-testid="fpl-filing-via-choice">
           Send via{' '}
@@ -184,6 +275,7 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
         <div className="fpl-filing-record">
           <span data-testid="fpl-filing-via">{v.record.via}</span>
           {v.record.filed != null && <span>Filed {dateTimeZ(v.record.filed)}</span>}
+          {v.filing?.eobt != null && <span data-testid="fpl-filing-eobt">EOBT {dateTimeZ(v.filing.eobt)}</span>}
           {v.record.polled != null && <span className="muted">checked {dateTimeZ(v.record.polled)}</span>}
           {v.record.message && <span>{v.record.message}</span>}
         </div>

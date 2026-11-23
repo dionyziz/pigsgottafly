@@ -184,8 +184,32 @@ export function delayCheck(filing: FilingRecord | null, eobt: number, now: numbe
       : filing.eobt === eobt
         ? 'That is the EOBT already filed.'
         : null;
-  return { problem, message: filing?.provider === 'fax' && filing.fpl ? dlaMessage(filing.fpl, eobt) : null };
+  const fax = filing?.provider === 'fax' && !!filing.fpl;
+  return {
+    problem,
+    message: fax && Number.isFinite(eobt) ? dlaMessage(filing.fpl, eobt) : null,
+    /** Who sends it: the fax (the DLA follows), else the service that filed the plan. */
+    via: fax
+      ? 'Faxed to the office the plan went to:'
+      : `Through ${filing?.providerLabel ?? 'autorouter'}, which delays the plan with ATC.`,
+  };
 }
+
+/** The delay buttons: minutes added to the new EOBT. */
+export const DELAY_STEPS_MIN = [15, 30, 60];
+
+/**
+ * Where a delay starts: the filed EOBT, or now once that is past (the pilot adds the delay to it),
+ * to the minute.
+ */
+export const delayStart = (filing: FilingRecord | null, now: number): number =>
+  Math.floor(Math.max(filing?.eobt ?? now, now) / 60e3) * 60e3;
+
+/** A time as a datetime-local input shows it, in UTC: 'YYYY-MM-DDTHH:MM'. */
+export const utcInput = (ms: number): string => new Date(ms).toISOString().slice(0, 16);
+/** A datetime-local input's value read as UTC (NaN when incomplete). */
+export const fromUtcInput = (s: string): number =>
+  /^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(s) ? Date.parse(`${s}:00Z`) : NaN;
 
 /** The CNL a faxed plan's cancellation carries (autorouter sends its own). */
 export const cancelMessage = (filing: FilingRecord | null): string | null =>

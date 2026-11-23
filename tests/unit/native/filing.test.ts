@@ -2,7 +2,13 @@
 // (src/features/exports/fpl/filing.ts, which FilingPanel.tsx renders).
 import { describe, expect, test } from 'vitest';
 
-import { delayCheck, filingView as webView } from '../../../src/features/exports/fpl/filing';
+import {
+  DELAY_STEPS_MIN,
+  delayCheck,
+  filingView as webView,
+  fromUtcInput,
+  utcInput,
+} from '../../../src/features/exports/fpl/filing';
 import { filingDelay, filingError, filingView } from '../../../src/native/core';
 import type { FilerInfo, FilingRecord, FilingState } from '../../../src/shared/briefing';
 
@@ -160,7 +166,14 @@ describe('filingView', () => {
 describe('filingDelay', () => {
   const filed = state({ filing: record() });
   test('from 30 minutes ago to 5 days ahead, and not the EOBT filed', () => {
-    expect(filingDelay({ state: filed, eobt: EOBT + 30 * 60e3, now: NOW })).toEqual({ problem: null, message: null });
+    expect(filingDelay({ state: filed, eobt: EOBT + 30 * 60e3, now: NOW })).toEqual({
+      problem: null,
+      message: null,
+      via: 'Through autorouter, which delays the plan with ATC.',
+      start: EOBT,
+    });
+    // past its EOBT the delay starts from now, to the minute
+    expect(filingDelay({ state: filed, now: EOBT + 90e3 }).start).toBe(EOBT + 60e3);
     expect(filingDelay({ state: filed, eobt: NOW - 31 * 60e3, now: NOW }).problem).toBe(
       'The new EOBT must be between now and 5 days ahead.',
     );
@@ -177,8 +190,10 @@ describe('filingDelay', () => {
     expect(filingDelay({ state: faxed, eobt: later, now: NOW })).toEqual({
       problem: null,
       message: '(DLA-SXASV-LGTT0915-LGSK-DOF/261128)',
+      via: 'Faxed to the office the plan went to:',
+      start: EOBT,
     });
-    expect(filingDelay({ state: faxed, eobt: later, now: NOW })).toEqual(delayCheck(faxed.filing, later, NOW));
+    expect(filingDelay({ state: faxed, eobt: later, now: NOW })).toMatchObject(delayCheck(faxed.filing, later, NOW));
   });
 });
 
@@ -195,4 +210,14 @@ test('filingError: a failed load', () => {
     'Offline: addressees and filing status are not available.',
   );
   expect(filingError({ load: true }).text).toBe('Could not load the filing state.');
+});
+
+test('the delay form reads and writes UTC', () => {
+  expect(utcInput(EOBT)).toBe('2026-11-28T07:45');
+  expect(fromUtcInput('2026-11-28T09:15')).toBe(Date.UTC(2026, 10, 28, 9, 15));
+  expect(fromUtcInput('2026-11-28T')).toBeNaN();
+  expect(delayCheck(record(), NaN, NOW)).toMatchObject({
+    problem: 'The new EOBT must be between now and 5 days ahead.',
+  });
+  expect(DELAY_STEPS_MIN).toEqual([15, 30, 60]);
 });

@@ -5,6 +5,7 @@ import {
   aftnAddress,
   cancelMessage,
   delayCheck,
+  delayStart,
   fileRequest,
   type FilingChoices,
   filingView as viewOf,
@@ -43,10 +44,16 @@ export function filingView(
   });
 }
 
-/** A delay of the filed plan to `eobt` (epoch ms): `{ problem, message }` (the DLA a fax carries). */
-export function filingDelay(input: Json<{ state: FilingState | null; eobt: number; now?: number | null }>) {
+/**
+ * A delay of the filed plan to `eobt` (epoch ms): `{ problem, message, via }` (the DLA a fax carries,
+ * who sends it) and `start`, where the delay form starts. Without `eobt`, the check of `start`.
+ */
+export function filingDelay(input: Json<{ state: FilingState | null; eobt?: number | null; now?: number | null }>) {
   const i = arg(input);
-  return plain(delayCheck(i.state?.filing ?? null, i.eobt, nowOf(i.now)));
+  const filing = i.state?.filing ?? null;
+  const now = nowOf(i.now);
+  const start = delayStart(filing, now);
+  return plain({ ...delayCheck(filing, i.eobt ?? start, now), start });
 }
 
 /**

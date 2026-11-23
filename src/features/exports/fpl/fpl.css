@@ -83,7 +83,10 @@
 
 /* ---- filing (screen only) */
 .fpl-filing-delay { display: inline-flex; gap: 4px; align-items: center; }
-.fpl-filing-delay input { width: 5.5em; font-variant-numeric: tabular-nums; }
+.fpl-filing-delay input { font-variant-numeric: tabular-nums; }
+.fpl-delay-form { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.fpl-delay-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fpl-delay-message { margin: 0; font-family: var(--mono); font-size: 12.5px; white-space: pre-wrap; }
 .fpl-filing-record { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; }
 .fpl-filing-via { font-size: 13px; }
 .fpl-filing-via select { font: inherit; margin-left: 4px; }
