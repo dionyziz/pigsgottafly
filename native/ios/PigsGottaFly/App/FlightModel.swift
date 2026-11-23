@@ -7,7 +7,7 @@ import Foundation
 @MainActor
 final class FlightModel: ObservableObject {
     let id: String
-    private let app: AppModel
+    let app: AppModel
     private var api: API { app.api }
     private var store: Store { app.store }
     private var core: Core? { app.core }

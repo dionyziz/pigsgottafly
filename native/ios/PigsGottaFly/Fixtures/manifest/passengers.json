@@ -1,0 +1,47 @@
+[
+  {
+    "id": "pax-anna",
+    "fullName": "ANNA PAPADOPOULOU",
+    "phone": "+30 690 0000001",
+    "dateOfBirth": "1990-02-03",
+    "weightKg": 62,
+    "idNumber": "AK100200",
+    "idType": "ID",
+    "nationality": "GREEK",
+    "relation": "FRIEND",
+    "email": "anna@example.com",
+    "notes": "",
+    "created": 1763000000000,
+    "updated": 1763000000000
+  },
+  {
+    "id": "pax-nikos",
+    "fullName": "NIKOS GEORGIOU",
+    "phone": "",
+    "dateOfBirth": null,
+    "weightKg": null,
+    "idNumber": "",
+    "idType": "",
+    "nationality": "GREEK",
+    "relation": "FAMILY",
+    "email": "nikos@example.com",
+    "notes": "",
+    "created": 1763000000000,
+    "updated": 1763000000000
+  },
+  {
+    "id": "pax-maria",
+    "fullName": "MARIA KOSTA",
+    "phone": "",
+    "dateOfBirth": "1979-07-21",
+    "weightKg": 70,
+    "idNumber": "P1234567",
+    "idType": "PASSPORT",
+    "nationality": "CYPRIOT",
+    "relation": "",
+    "email": "maria@example.com",
+    "notes": "",
+    "created": 1763000000000,
+    "updated": 1763000000000
+  }
+]

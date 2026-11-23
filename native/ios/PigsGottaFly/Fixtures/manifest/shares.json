@@ -1,0 +1,10 @@
+{
+  "flightId": "fixture-lgtt-lgsy",
+  "title": "LGTT → LGSY",
+  "role": "owner",
+  "canManage": true,
+  "people": [
+    { "pilotId": "fixture-pilot", "name": "FIXTURE PILOT", "email": "pilot@example.com", "role": "owner", "added": null },
+    { "pilotId": "pilot-anna", "name": "Anna", "email": "anna@example.com", "role": "view", "added": 1763000000000 }
+  ]
+}

@@ -5,10 +5,13 @@
 //   kind 'navlog'  the navigation log to the pilot (../features/exports/navlog/NavlogSheet.tsx)
 //   kind 'fplfax'  a flight plan (or its DLA / CNL) faxed to an ATS reporting office: a cover page and
 //                  the ICAO form (../features/exports/fpl/FaxSheets.tsx)
-// Opened only by the server's headless Chromium (api/_lib/sheetPdf.ts), which puts the snapshot in
-// window.__PGF_SHEETS__ before the page loads, serves this build from disk (no network) and prints
-// the page to PDF with the print CSS (A4, the sheets' @page) once the html element says
-// data-pdf-ready="true" (fonts and images loaded, the navlog's text fitted).
+//   kind 'briefing' the NOTAM briefing (../features/exports/briefing/BriefingExport.tsx BriefingSheet)
+//   kind 'fplform' the ICAO flight plan form as the FPL page shows it (../features/exports/fpl/FplForm.tsx)
+// Opened by the server's headless Chromium (api/_lib/sheetPdf.ts) and by the iPhone app's off-screen
+// WKWebView (native/ios/.../Services/SheetRenderer.swift, this page inlined into one file by
+// tools/build_native_pdf.ts). Both put the snapshot in window.__PGF_SHEETS__ before the page loads,
+// load nothing from the network and print the page with the print CSS (A4, the sheets' @page) once
+// the html element says data-pdf-ready="true" (fonts and images loaded, the navlog's text fitted).
 import '../app/styles.css';
 import '../ui/ui.css';
 import '../features/exports/export.css';
@@ -17,8 +20,13 @@ import './pdf.css';
 
 import { createRoot } from 'react-dom/client';
 
+import { BriefingSheet } from '../features/exports/briefing/BriefingExport';
+import type { BriefingModel } from '../features/exports/briefing/model';
 import type { ShownSignature } from '../features/exports/form731/Form731';
 import { FaxSheets } from '../features/exports/fpl/FaxSheets';
+import type { FplResult } from '../features/exports/fpl/fpl';
+import { FplForm } from '../features/exports/fpl/FplForm';
+import { parseFplMessage } from '../features/exports/fpl/parseFpl';
 import { fitSheets } from '../features/exports/navlog/fit';
 import { NavlogStage } from '../features/exports/navlog/NavlogSheet';
 import { PerfSheet } from '../features/exports/performance/PerformanceExport';
@@ -31,7 +39,18 @@ import { type NavlogContent, navlogContentOf } from '../shared/navlogSheets';
 type SheetsSnapshot =
   | { kind?: 'wbperf'; content: WbPerfContent; signature: ShownSignature | null }
   | { kind: 'navlog'; content: NavlogContent }
-  | { kind: 'fplfax'; content: FplFaxContent };
+  | { kind: 'fplfax'; content: FplFaxContent }
+  // the app's own models (PGF.briefingModel, PGF.fplMessage), never content from someone else
+  | { kind: 'briefing'; content: BriefingModel }
+  | { kind: 'fplform'; content: FplFormContent };
+
+/** The FPL page's form: `fpl` as PGF.fplMessage builds it (its fields keep the missing '?'), or the
+ *  message alone (its fields read back from the text, as a faxed plan's). */
+interface FplFormContent {
+  fpl: FplResult | string;
+  addresses?: string[];
+  signature?: ShownSignature | null;
+}
 
 declare global {
   interface Window {
@@ -68,6 +87,40 @@ function Navlog({ content }: { content: NavlogContent }) {
   );
 }
 
+function Briefing({ m }: { m: BriefingModel }) {
+  return (
+    <div className="page export-page">
+      <div className="xp-doc print-sheet-page" data-testid="briefing-export">
+        <div className="xp-stage">
+          <BriefingSheet m={m} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function fplResultOf(fpl: FplResult | string): FplResult {
+  if (typeof fpl !== 'string') return fpl;
+  return {
+    fields: parseFplMessage(fpl),
+    message: fpl,
+    lines: fpl.split('\n'),
+    complete: true,
+    warnings: [],
+    fixes: {},
+  };
+}
+
+function FplFormPage({ c }: { c: FplFormContent }) {
+  return (
+    <div className="page export-page">
+      <div className="fpl-export print-sheet-page" data-testid="fpl-export">
+        <FplForm fpl={fplResultOf(c.fpl)} addressees={c.addresses ?? []} signature={c.signature ?? null} />
+      </div>
+    </div>
+  );
+}
+
 const snap = window.__PGF_SHEETS__;
 const root = document.documentElement;
 const frame = () => new Promise((r) => requestAnimationFrame(r));
@@ -92,6 +145,15 @@ else if (snap.kind === 'navlog') {
   const content = fplFaxContentOf(snap.content);
   document.title = 'Flight plan fax';
   createRoot(document.getElementById('root')!).render(<FaxSheets c={content} />);
+  whenDrawn();
+} else if (snap.kind === 'briefing') {
+  const m = { ...snap.content, relevant: snap.content.relevant ?? [] };
+  document.title = ['NOTAM briefing', m.date].filter(Boolean).join(' ');
+  createRoot(document.getElementById('root')!).render(<Briefing m={m} />);
+  whenDrawn();
+} else if (snap.kind === 'fplform') {
+  document.title = 'Flight plan';
+  createRoot(document.getElementById('root')!).render(<FplFormPage c={snap.content} />);
   whenDrawn();
 } else {
   const content = wbPerfContentOf(snap.content);
