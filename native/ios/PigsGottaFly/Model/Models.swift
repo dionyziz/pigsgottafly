@@ -64,6 +64,8 @@ struct FlightListItem: Codable, Equatable, Identifiable {
     var id: String
     var summary: FlightSummary
     var points: [String]
+    /// The passengers' names, in manifest order.
+    var passengers: [String]?
     var date: String
     var aircraftId: String?
     var version: Int

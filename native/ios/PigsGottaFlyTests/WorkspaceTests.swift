@@ -30,8 +30,7 @@ final class WorkspaceTests: XCTestCase {
         let places = Places.aerodromes(ref: ref)
         let from = try XCTUnwrap(places.first { $0.code == "LGTT" })
         let to = try XCTUnwrap(places.first { $0.code == "LGSY" })
-        let id = try await app.createFlight(
-            from: from, to: to, date: "2026-11-22", blockOff: "08:00", aircraft: .existing("fixture-sx-asv"))
+        let id = try await app.createFlight(NewFlight.route(from: from, to: to, localDurationMin: 60))
         XCTAssertTrue(app.isNew(id))
         XCTAssertFalse(app.isNew("fixture-lgtt-lgsy"))
         XCTAssertNil(app.rememberedTab(for: id))

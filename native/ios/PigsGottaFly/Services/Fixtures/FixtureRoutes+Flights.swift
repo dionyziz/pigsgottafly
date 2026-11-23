@@ -5,13 +5,10 @@ import Foundation
 extension FixtureTransport {
     func flightRoutes(_ r: FixtureRequest) -> (Int, String?, Data?)? {
         switch (r.method, r.first, r.count) {
-        case ("GET", "flights", 1): return (200, nil, flightList())
         case ("POST", "flights", 1): return createFlight(r.body)
         case ("GET", "flights", 2): return (200, nil, flight(id: r.parts[1]).flatMap(Self.encoded))
         case ("PUT", "flights", 2): return put(id: r.parts[1], body: r.body)
         case ("POST", "flights", 3) where r.parts[2] == "opened": return (204, nil, Data())
-        case ("POST", "flights", 3) where r.parts[2] == "copy":
-            return (201, nil, flight(id: "fixture-copy").flatMap(Self.encoded))
         default: return nil
         }
     }
@@ -25,23 +22,6 @@ extension FixtureTransport {
         j["id"] = .string(id)
         if let v = versions[id] { j["version"] = .number(Double(v)) }
         return j
-    }
-
-    fileprivate func flightList() -> Data? {
-        let base = emptyAccount ? [] : (fixture("flights.json").flatMap { try? JSON.parse($0) }?.array ?? [])
-        let mine = created.compactMap { id in flights[id].map(listItem) }
-        return Self.encoded(.array(mine + base))
-    }
-
-    /// GET /flights's row of a flight (FlightListItem).
-    fileprivate func listItem(_ f: JSON) -> JSON {
-        [
-            "id": f["id"] ?? "", "summary": f["summary"] ?? [:],
-            "points": .array((f["route"]?.array ?? []).map { $0["name"] ?? "" }),
-            "passengers": [], "date": f["date"] ?? "", "aircraftId": f["aircraftId"] ?? nil,
-            "version": f["version"] ?? 1, "created": f["created"] ?? 0, "updated": f["updated"] ?? 0,
-            "opened": f["updated"] ?? 0, "deleted": false, "filingStatus": nil,
-        ]
     }
 
     /// POST /flights: a new flight from the request, the rest as the server fills it in.
@@ -63,6 +43,8 @@ extension FixtureTransport {
         f["atc"] = .null
         f["baggageKg"] = [:]
         f["options"]?["alternates"] = []
+        // options given at creation (a local flight's duration) go on top of the profile's
+        for (k, v) in req["options"]?.object ?? [:] { f["options"]?[k] = v }
         let points = route.array ?? []
         let registration = aircraft.first { $0["id"] == f["aircraftId"] }?["registration"] ?? ""
         f["summary"] = [

@@ -1,76 +1,61 @@
 import SwiftUI
 
-/// New flight: departure and destination, date and block-off time (UTC), and the aircraft; POST
-/// /api/flights, then the flight opens. Only the route is required. A pilot with no aircraft may name
-/// one, and it is made from the hangar's type template, as the website's Add aircraft does. A pilot's
-/// first flight asks for their home aerodrome (sign-up asks nothing), saved to the profile; it departs there.
+/// New flight (src/features/lobby/NewFlightPage.tsx). The list's New flight creates the flight at once
+/// with the profile's defaults; this sheet is for the two cases that ask first. `.home`: a pilot's first
+/// flight asks for their home aerodrome (sign-up asks nothing), saved to the profile before the server
+/// builds the home route. `.ask`: origin and destination, where an empty destination means back to the
+/// origin, which is a local flight with its duration; or an empty map. With an empty hangar the pilot
+/// may type a registration, and the aircraft is made from the hangar's type template.
 struct NewFlightView: View {
+    enum Mode: String, Identifiable {
+        case home, ask
+        var id: String { rawValue }
+    }
+
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
+    var mode: Mode
     /// An aerodrome code to start the destination with.
     var destination: String?
     var onCreated: (String) -> Void
 
+    @State private var home: Place?
     @State private var from: Place?
     @State private var to: Place?
     @State private var localChosen = false
-    @State private var localMinutes = 60
-    @State private var date = NewFlightView.defaultDate()
+    @State private var durationMin = NewFlight.defaultLocalDurationMin
     @State private var aircraft: [AircraftItem]?
-    @State private var aircraftId: String?
     @State private var registration = ""
+    /// Made once: a failed flight retried does not add a second aircraft.
+    @State private var madeAircraftId: String?
     @State private var busy = false
     @State private var error: String?
-
-    private static let utc = TimeZone(identifier: "UTC")!
-
-    /// The next full hour (UTC), at least half an hour away.
-    static func defaultDate(now: Date = Date()) -> Date {
-        let hour = 3600.0
-        return Date(timeIntervalSince1970: ((now.timeIntervalSince1970 + 1800) / hour).rounded(.up) * hour)
-    }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Route") {
-                    placeRow(noHome ? "Your home aerodrome" : "From", place: $from, id: "new-from")
-                    if localChosen {
-                        HStack {
-                            Text("To")
-                            Spacer()
-                            Text(from.map { "Back to \($0.code)" } ?? "Back to the origin").foregroundStyle(.secondary)
-                        }
-                        .accessibilityIdentifier("new-to-local")
-                    } else {
-                        placeRow("To", place: $to, id: "new-to")
+                if mode == .home {
+                    Section {
+                        placeRow("Your home aerodrome", place: $home, id: "new-home")
                     }
-                    Toggle("Local flight", isOn: $localChosen).accessibilityIdentifier("new-local")
-                    if isLocal {
-                        Stepper(value: $localMinutes, in: 5...600, step: 5) {
-                            HStack {
-                                Text("Duration")
-                                Spacer()
-                                Text(Fmt.hoursMinutes(Double(localMinutes))).monospacedDigit()
-                            }
-                        }
-                        .accessibilityIdentifier("new-duration")
-                    }
+                } else {
+                    routeSection
                 }
-                Section {
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                        .accessibilityIdentifier("new-date")
-                    DatePicker("Block off (UTC)", selection: $date, displayedComponents: .hourAndMinute)
-                        .accessibilityIdentifier("new-blockoff")
-                } header: {
-                    Text("When")
-                }
-                .environment(\.timeZone, Self.utc)
-                aircraftSection
+                registrationSection
                 if let error {
                     Section { Text(error).foregroundStyle(.red) }
                 }
+                if mode == .ask {
+                    Section {
+                        Button("Start with an empty map") {
+                            Task { await create { NewFlight.emptyMap(aircraftId: $0) } }
+                        }
+                        .disabled(busy)
+                        .accessibilityIdentifier("new-flight-empty-map")
+                    }
+                }
             }
+            .accessibilityIdentifier(mode == .home ? "home-form" : "new-flight-form")
             .navigationTitle("New flight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -79,7 +64,7 @@ struct NewFlightView: View {
                     if busy {
                         ProgressView()
                     } else {
-                        Button("Create") { Task { await create() } }
+                        Button("Create flight") { Task { await submit() } }
                             .disabled(!ready)
                             .accessibilityIdentifier("create-flight")
                     }
@@ -91,101 +76,112 @@ struct NewFlightView: View {
     }
 
     @ViewBuilder
-    private var aircraftSection: some View {
-        if let list = aircraft {
-            if list.isEmpty, let t = app.aircraftTemplates.first {
-                Section {
-                    TextField("Registration (optional), e.g., SX-ABC", text: $registration)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                        .accessibilityIdentifier("new-registration")
-                } header: {
-                    Text("Aircraft")
-                } footer: {
-                    Text(
-                        "Your hangar is empty: a new \(t.label) (\(t.description)) is added with this registration. "
-                            + "Its empty mass and the rest are in the hangar on pigsgottafly.com.")
-                }
+    private var routeSection: some View {
+        Section {
+            placeRow("Origin", place: $from, id: "new-from")
+            if localChosen {
+                LabeledContent("Destination", value: from.map { "Back to \($0.code)" } ?? "Back to the origin")
+                    .accessibilityIdentifier("new-flight-local-to")
             } else {
-                Section("Aircraft") {
-                    Picker("Aircraft", selection: $aircraftId) {
-                        if list.isEmpty { Text("None").tag(String?.none) }
-                        ForEach(list) { Text($0.label).tag(String?.some($0.id)) }
+                HStack {
+                    placeRow("Destination", place: $to, id: "new-to", placeholder: toPlaceholder)
+                    if to != nil {
+                        Button {
+                            to = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Back to the origin")
+                        .accessibilityIdentifier("new-to-clear")
                     }
-                    .accessibilityIdentifier("new-aircraft")
                 }
             }
-        } else {
-            Section("Aircraft") { ProgressView() }
+            Toggle("Local flight", isOn: $localChosen).accessibilityIdentifier("new-flight-local")
+            if isLocal {
+                Stepper(value: $durationMin, in: 5...NewFlight.maxLocalDurationMin, step: 5) {
+                    LabeledContent("Duration", value: Fmt.hoursMinutes(Double(durationMin)))
+                        .monospacedDigit()
+                }
+                .accessibilityIdentifier("new-flight-duration")
+            }
         }
     }
 
-    private func placeRow(_ label: String, place: Binding<Place?>, id: String) -> some View {
+    @ViewBuilder
+    private var registrationSection: some View {
+        if aircraft?.isEmpty == true, let t = app.aircraftTemplates.first {
+            Section {
+                TextField("Registration (optional), e.g., SX-ABC", text: $registration)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .accessibilityIdentifier("new-registration")
+            } header: {
+                Text("Aircraft")
+            } footer: {
+                Text(
+                    "Your hangar is empty: a new \(t.label) (\(t.description)) is added with this registration. "
+                        + "Its empty mass and the rest are in the Hangar.")
+            }
+        }
+    }
+
+    private func placeRow(_ label: String, place: Binding<Place?>, id: String, placeholder: String = "Choose")
+        -> some View
+    {
         NavigationLink {
             PlaceSearchView(title: label, aerodromesOnly: true) { place.wrappedValue = $0 }
         } label: {
-            HStack {
-                Text(label)
-                Spacer()
-                Text(place.wrappedValue.map { "\($0.name) · \($0.detail)" } ?? "Choose")
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            LabeledContent(label) {
+                Text(place.wrappedValue.map { "\($0.name) · \($0.detail)" } ?? placeholder).lineLimit(1)
             }
         }
         .accessibilityIdentifier(id)
     }
 
-    private var target: Place? { localChosen ? from : to }
-    private var ready: Bool { from != nil && target != nil && !busy }
-    /// Back where it left with nothing between, whether chosen or typed as the destination.
-    private var isLocal: Bool {
-        guard let from, let dest = target else { return localChosen }
-        return from.refId == dest.refId && from.code == dest.code
-    }
+    private var toPlaceholder: String { from.map { "\($0.name) (back to the origin)" } ?? "ICAO or name" }
 
-    /// Offered only once the pilot has loaded without one.
-    private var noHome: Bool { app.pilot.map { ($0.homeAerodrome ?? "").isEmpty } ?? false }
+    /// An empty destination means back to the origin.
+    private var dest: Place? { localChosen || to == nil ? from : to }
+    /// Back where it left with nothing between, whether chosen, left empty or typed as the destination.
+    private var isLocal: Bool {
+        guard let from, let dest else { return localChosen }
+        return NewFlight.isLocal(from: from, to: dest)
+    }
+    private var ready: Bool { !busy && (mode == .home ? home != nil : from != nil) }
 
     private func load() async {
-        if from == nil, let home = app.pilot?.homeAerodrome {
-            from = await app.places(aerodromesOnly: true).first { $0.code == home || $0.refId == home }
-        }
-        if to == nil, let code = destination?.uppercased() {
+        if to == nil, mode == .ask, let code = destination?.uppercased() {
             to = await app.places(aerodromesOnly: true).first { $0.code == code || $0.refId == code }
         }
         guard aircraft == nil else { return }
-        do {
-            let list = try await app.aircraftList()
-            aircraft = list
-            let preferred = app.pilot?.defaultAircraftId
-            aircraftId = list.first { $0.id == preferred }?.id ?? list.first?.id
-        } catch {
-            aircraft = []
-            if !isCancellation(error) { self.error = error.localizedDescription }
+        aircraft = (try? await app.aircraftList()) ?? []
+    }
+
+    private func submit() async {
+        if mode == .home {
+            guard let home else { return }
+            await create(saveHome: home) { NewFlight.defaults(aircraftId: $0) }
+        } else {
+            guard let from, let dest else { return }
+            let minutes = durationMin
+            await create { NewFlight.route(from: from, to: dest, localDurationMin: minutes, aircraftId: $0) }
         }
     }
 
-    private func create() async {
-        guard let from, let to = target else { return }
+    /// The aircraft first (when a registration was typed), then the home aerodrome (the home route needs
+    /// it saved before the server builds the flight), then the flight.
+    private func create(saveHome: Place? = nil, _ request: (String?) -> JSON) async {
         busy = true
         error = nil
         defer { busy = false }
-        let choice: AppModel.AircraftChoice?
-        if let id = aircraftId {
-            choice = .existing(id)
-        } else if aircraft?.isEmpty == true, let t = app.aircraftTemplates.first,
-            case let reg = registration.trimmingCharacters(in: .whitespaces), !reg.isEmpty
-        {
-            choice = .template(id: t.id, registration: reg)
-        } else {
-            choice = nil
-        }
-        // a failed save does not stop the flight: the home aerodrome can be set in Account
-        if noHome { try? await app.saveHome(from) }
         do {
-            let id = try await app.createFlight(
-                from: from, to: to, date: Fmt.isoDay(from: date), blockOff: Fmt.clock(date), aircraft: choice,
-                localDurationMin: isLocal ? localMinutes : nil)
+            let reg = registration.trimmingCharacters(in: .whitespaces)
+            if madeAircraftId == nil, aircraft?.isEmpty == true, !reg.isEmpty {
+                madeAircraftId = try await app.makeAircraft(registration: reg)
+            }
+            if let saveHome { try await app.saveHome(saveHome) }
+            let id = try await app.createFlight(request(madeAircraftId))
             dismiss()
             onCreated(id)
         } catch {

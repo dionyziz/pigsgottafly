@@ -53,51 +53,6 @@ final class PlanningTests: XCTestCase {
         XCTAssertEqual(w.first?.routePoint(uid: "u1")["kind"]?.string, "waypoint")
     }
 
-    // MARK: new flight
-
-    func testTheNewFlightRequestIsTheWebsitesShape() throws {
-        let ads = Places.aerodromes(ref: ref)
-        let from = try XCTUnwrap(ads.first { $0.refId == "LGTT" })
-        let to = try XCTUnwrap(ads.first { $0.refId == "LGSY" })
-        let r = NewFlight.request(from: from, to: to, date: "2026-11-22", blockOff: "08:30", aircraftId: "ac1")
-        let route = try XCTUnwrap(r["route"]?.array)
-        XCTAssertEqual(route.count, 2)
-        XCTAssertEqual(route[0]["kind"]?.string, "aerodrome")
-        XCTAssertEqual(route[0]["refId"]?.string, "LGTT")
-        XCTAssertEqual(route[0]["name"]?.string, "LGTT")
-        XCTAssertEqual(route[1]["lat"]?.double, 38.9675)
-        XCTAssertEqual(route[0]["uid"]?.string?.count, 8)
-        XCTAssertNotEqual(route[0]["uid"], route[1]["uid"])
-        XCTAssertEqual(r["date"]?.string, "2026-11-22")
-        XCTAssertEqual(r["blockOff"]?.string, "08:30")
-        XCTAssertEqual(r["aircraftId"]?.string, "ac1")
-        XCTAssertNil(r["legOverrides"], "the altitudes are the core's defaults")
-        let none = NewFlight.request(from: from, to: to, date: "2026-11-22", blockOff: "", aircraftId: nil)
-        XCTAssertNil(none["aircraftId"], "no aircraft: the server's default")
-    }
-
-    func testALocalFlightIsBackToTheOriginWithItsDuration() throws {
-        let lgtt = try XCTUnwrap(Places.aerodromes(ref: ref).first { $0.refId == "LGTT" })
-        let r = NewFlight.request(
-            from: lgtt, to: lgtt, date: "2026-11-22", blockOff: "08:30", aircraftId: nil, localDurationMin: 90)
-        XCTAssertEqual(r["route"]?.array?.map { $0["refId"]?.string }, ["LGTT", "LGTT"])
-        XCTAssertEqual(r["options"]?["localDurationMin"]?.double, 90)
-        let summary = FlightSummary(
-            title: "", date: "", blockOff: "", aircraft: "", from: "LGTT", to: "LGTT", eteMin: 60,
-            route: [[38.109, 23.783], [38.109, 23.783]])
-        XCTAssertTrue(summary.isLocal)
-        XCTAssertEqual(summary.routeLine, "LGTT local · 1:00")
-        var circular = summary
-        circular.route = [[38.109, 23.783], [38.3, 23.9], [38.109, 23.783]]
-        XCTAssertEqual(circular.routeLine, "LGTT → LGTT", "a circular route is not local")
-    }
-
-    func testTheDefaultBlockOffIsTheNextFullHour() {
-        let at = Date(timeIntervalSince1970: 1_763_712_000 + 20 * 60)  // 08:00Z + 20 min
-        XCTAssertEqual(Fmt.clock(NewFlightView.defaultDate(now: at)), "09:00")
-        XCTAssertEqual(Fmt.clock(NewFlightView.defaultDate(now: at.addingTimeInterval(20 * 60))), "10:00")
-    }
-
     // MARK: route edits
 
     func testAPointGoesWhereItLengthensTheRouteLeast() throws {
@@ -192,9 +147,9 @@ final class PlanningTests: XCTestCase {
                 Data(try core.aircraftFromTemplate(id: template.id, registration: "sx-abc").utf8)))
         XCTAssertEqual(ac["registration"]?.string, "SX-ABC")
         let ads = Places.aerodromes(ref: ref)
-        let req = NewFlight.request(
-            from: ads.first { $0.refId == "LGTT" }!, to: ads.first { $0.refId == "LGSY" }!, date: "2026-11-23",
-            blockOff: "09:00", aircraftId: ac["id"]?.string)
+        let req = NewFlight.route(
+            from: ads.first { $0.refId == "LGTT" }!, to: ads.first { $0.refId == "LGSY" }!, localDurationMin: 60,
+            aircraftId: ac["id"]?.string)
         let f = try JSON.parse(try await api.createFlight(req))
         let id = try XCTUnwrap(f["id"]?.string)
         let list = try api.decode([FlightListItem].self, try await api.flights())

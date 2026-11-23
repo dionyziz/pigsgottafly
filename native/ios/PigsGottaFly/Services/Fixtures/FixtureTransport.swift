@@ -16,6 +16,7 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     var aircraft: [JSON]
     var pilot: JSON
     let emptyAccount: Bool
+    var lobby = LobbyFixtures()
 
     init(directory: URL, emptyAccount: Bool = false) {
         dir = directory
@@ -52,7 +53,9 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
             let ok = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: nil)!
             return (answer, ok)
         }
-        let (status, name, body) = lock.withLock { route(method: method, parts: parts, body: request.httpBody) }
+        let (status, name, body) = lock.withLock {
+            route(method: method, parts: parts, query: url.query ?? "", body: request.httpBody)
+        }
         let data = body ?? name.flatMap(fixture) ?? Data(#"{"error":"Not found"}"#.utf8)
         let response = HTTPURLResponse(
             url: url, statusCode: body == nil && name.flatMap(fixture) == nil ? 404 : status, httpVersion: "HTTP/1.1",
@@ -71,10 +74,11 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     }
 
     /// Each domain answers its own paths (FixtureRoutes+<Domain>.swift); nil there means "not mine".
-    private func route(method: String, parts: [String], body: Data?) -> (Int, String?, Data?) {
-        let r = FixtureRequest(method: method, parts: parts, body: body)
+    private func route(method: String, parts: [String], query: String, body: Data?) -> (Int, String?, Data?) {
+        let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
-            accountRoutes, flightRoutes, briefingRoutes, aircraftRoutes, manifestRoutes, peopleRoutes, fileRoutes,
+            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, manifestRoutes, peopleRoutes,
+            fileRoutes,
             formRoutes,
         ] {
             if let answer = domain(r) { return answer }
@@ -91,6 +95,7 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
 struct FixtureRequest {
     var method: String
     var parts: [String]
+    var query = ""
     var body: Data?
 
     var first: String? { parts.first }
