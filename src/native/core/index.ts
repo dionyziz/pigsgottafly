@@ -19,7 +19,7 @@ if (typeof g.crypto?.getRandomValues !== 'function')
     },
   };
 
-export { chartData, chartStyle, layerGroups, symbolNames } from './chart';
+export { chartData, chartStyle, layerGroups, lineStyles, symbolNames } from './chart';
 export { briefingModel, formModel, fplMessage, navlogContent, wbPerfContent } from './exports';
 export { computeFlight, type ComputeFlightInput, fromBase64, paperwork, setTerrain, weatherRequests } from './flight';
 export { aircraftFromTemplate, aircraftHelpers, aircraftTemplates, historyText, validateAircraft } from './hangar';

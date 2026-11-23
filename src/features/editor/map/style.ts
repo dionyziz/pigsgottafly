@@ -83,6 +83,45 @@ export function loadChartTokens(
 
 export type { BaseMapId };
 
+/** How the chart draws an airspace, area or line: its colour, width (px, at zoom 10 and up), dashes (in
+ *  line widths, as MapLibre counts them), outline opacity, and the opacity of the area's tint (or of
+ *  its hatching, a symbol image). The layers below draw with these and so does the legend beside each
+ *  layer toggle (and the iPhone app's, PGF.lineStyles()), so a legend sample cannot drift from the map. */
+export interface LineStyle {
+  color: ChartColor;
+  width: number;
+  dash?: readonly number[];
+  opacity: number;
+  fill?: number;
+  hatch?: 'pgf-hatch-r';
+  /** A white edge under the line (px). */
+  casing?: number;
+}
+
+const ATZ = { color: 'zone', width: 1.2, dash: [2, 1.5], opacity: 0.85, fill: 0.04 } as const;
+
+export const LINE_STYLES = {
+  fir: { color: 'fis', width: 2.4, dash: [7, 2, 1.5, 2], opacity: 0.85 },
+  tma: { color: 'tma', width: 2, opacity: 0.75, fill: 0.025 },
+  mtma: { color: 'mtma', width: 2, dash: [4, 2], opacity: 0.75, fill: 0.025 },
+  ctr: { color: 'zone', width: 1.5, dash: [5, 2], opacity: 0.85, fill: 0.025 },
+  atz: ATZ,
+  /** A Class G zone (AFIS / uncontrolled ATZ): its CTR / ATZ lines in this colour. */
+  zoneG: { ...ATZ, color: 'zoneG' },
+  prohibited: { color: 'prohibited', width: 2, opacity: 0.9, fill: 0.16 },
+  restricted: { color: 'restricted', width: 2, opacity: 0.9, fill: 0.8, hatch: 'pgf-hatch-r' },
+  danger: { color: 'danger', width: 1.8, dash: [3, 1.6], opacity: 0.9, fill: 0.07 },
+  mil: { color: 'mil', width: 1.4, dash: [5, 2, 1, 2], opacity: 0.75, fill: 0.04 },
+  act: { color: 'act', width: 1.6, dash: [1, 1.6], opacity: 0.85, fill: 0.04 },
+  vfrRoute: { color: 'vfr', width: 1.8, opacity: 0.7 },
+  notam: { color: 'notam', width: 1, dash: [3, 2], opacity: 0.55, fill: 0.04 },
+  route: { color: 'route', width: 3.5, opacity: 1, casing: 7.5 },
+} as const satisfies Record<string, LineStyle>;
+export type LineStyleId = keyof typeof LINE_STYLES;
+
+const L = LINE_STYLES;
+const dashes = (d: readonly number[]): number[] => [...d];
+
 interface RasterBase {
   id: BaseMapId;
   label: string;
@@ -365,7 +404,11 @@ function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
       filter: ['!', kind('R')],
       paint: {
         'fill-color': color,
-        'fill-opacity': ['+', ['case', hov, 0.08, 0], ['match', ['get', 'kind'], 'P', 0.16, 'D', 0.07, 0.04]],
+        'fill-opacity': [
+          '+',
+          ['case', hov, 0.08, 0],
+          ['match', ['get', 'kind'], 'P', L.prohibited.fill, 'D', L.danger.fill, 'MIL', L.mil.fill, L.act.fill],
+        ],
       },
     },
     {
@@ -373,35 +416,50 @@ function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
       type: 'fill',
       source: 'areas',
       filter: kind('R'),
-      paint: { 'fill-pattern': 'pgf-hatch-r', 'fill-opacity': ['case', hov, 1, 0.8] },
+      paint: { 'fill-pattern': L.restricted.hatch, 'fill-opacity': ['case', hov, 1, L.restricted.fill] },
     },
     {
       id: 'area-line',
       type: 'line',
       source: 'areas',
       filter: kind('P', 'R'),
-      paint: { 'line-color': color, 'line-width': width(2), 'line-opacity': 0.9 },
+      paint: { 'line-color': color, 'line-width': width(L.prohibited.width), 'line-opacity': L.prohibited.opacity },
     },
     {
       id: 'area-line-d',
       type: 'line',
       source: 'areas',
       filter: kind('D'),
-      paint: { 'line-color': color, 'line-width': width(1.8), 'line-dasharray': [3, 1.6], 'line-opacity': 0.9 },
+      paint: {
+        'line-color': color,
+        'line-width': width(L.danger.width),
+        'line-dasharray': dashes(L.danger.dash),
+        'line-opacity': L.danger.opacity,
+      },
     },
     {
       id: 'area-line-mil',
       type: 'line',
       source: 'areas',
       filter: kind('MIL'),
-      paint: { 'line-color': color, 'line-width': width(1.4), 'line-dasharray': [5, 2, 1, 2], 'line-opacity': 0.75 },
+      paint: {
+        'line-color': color,
+        'line-width': width(L.mil.width),
+        'line-dasharray': dashes(L.mil.dash),
+        'line-opacity': L.mil.opacity,
+      },
     },
     {
       id: 'area-line-act',
       type: 'line',
       source: 'areas',
       filter: kind('ACT'),
-      paint: { 'line-color': color, 'line-width': width(1.6), 'line-dasharray': [1, 1.6], 'line-opacity': 0.85 },
+      paint: {
+        'line-color': color,
+        'line-width': width(L.act.width),
+        'line-dasharray': dashes(L.act.dash),
+        'line-opacity': L.act.opacity,
+      },
     },
     {
       id: 'area-label',
@@ -428,7 +486,12 @@ function chartLayers(): LayerSpecification[] {
   const isM: ExpressionSpecification = ['==', ['get', 'kind'], 'MTMA'];
   const hov: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false];
   const isCtr: ExpressionSpecification = ['==', ['get', 'kind'], 'CTR'];
-  const zoneColor: ExpressionSpecification = ['case', ['==', ['get', 'cls'], 'G'], CHART.zoneG, CHART.zone];
+  const zoneColor: ExpressionSpecification = [
+    'case',
+    ['==', ['get', 'cls'], 'G'],
+    CHART[L.zoneG.color],
+    CHART[L.ctr.color],
+  ];
   return [
     {
       id: 'airspace-fill',
@@ -443,7 +506,7 @@ function chartLayers(): LayerSpecification[] {
           6,
           ['case', hov, 0.12, 0.05],
           10,
-          ['case', hov, 0.1, 0.025],
+          ['case', hov, 0.1, L.tma.fill],
         ],
       },
     },
@@ -454,8 +517,16 @@ function chartLayers(): LayerSpecification[] {
       filter: ['!', isM],
       paint: {
         'line-color': CHART.tma,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]],
-        'line-opacity': 0.75,
+        'line-width': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          6,
+          ['case', hov, 2.6, 1],
+          10,
+          ['case', hov, 3.4, L.tma.width],
+        ],
+        'line-opacity': L.tma.opacity,
       },
     },
     {
@@ -465,9 +536,17 @@ function chartLayers(): LayerSpecification[] {
       filter: isM,
       paint: {
         'line-color': CHART.mtma,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 6, ['case', hov, 2.6, 1], 10, ['case', hov, 3.4, 2]],
-        'line-opacity': 0.75,
-        'line-dasharray': [4, 2],
+        'line-width': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          6,
+          ['case', hov, 2.6, 1],
+          10,
+          ['case', hov, 3.4, L.mtma.width],
+        ],
+        'line-opacity': L.mtma.opacity,
+        'line-dasharray': dashes(L.mtma.dash),
       },
     },
     {
@@ -497,7 +576,7 @@ function chartLayers(): LayerSpecification[] {
       type: 'fill',
       source: 'zones',
       minzoom: 6.5,
-      paint: { 'fill-color': zoneColor, 'fill-opacity': ['case', hov, 0.1, isCtr, 0.025, 0.04] },
+      paint: { 'fill-color': zoneColor, 'fill-opacity': ['case', hov, 0.1, isCtr, L.ctr.fill, L.atz.fill] },
     },
     {
       // CTR: long dashes
@@ -508,9 +587,9 @@ function chartLayers(): LayerSpecification[] {
       filter: isCtr,
       paint: {
         'line-color': zoneColor,
-        'line-width': ['case', hov, 2.6, 1.5],
-        'line-dasharray': [5, 2],
-        'line-opacity': 0.85,
+        'line-width': ['case', hov, 2.6, L.ctr.width],
+        'line-dasharray': dashes(L.ctr.dash),
+        'line-opacity': L.ctr.opacity,
       },
     },
     {
@@ -522,9 +601,9 @@ function chartLayers(): LayerSpecification[] {
       filter: ['!', isCtr],
       paint: {
         'line-color': zoneColor,
-        'line-width': ['case', hov, 2.4, 1.2],
-        'line-dasharray': [2, 1.5],
-        'line-opacity': 0.85,
+        'line-width': ['case', hov, 2.4, L.atz.width],
+        'line-dasharray': dashes(L.atz.dash),
+        'line-opacity': L.atz.opacity,
       },
     },
     {
@@ -554,10 +633,10 @@ function chartLayers(): LayerSpecification[] {
       source: 'fir',
       filter: ['==', ['get', 'kind'], 'fir'],
       paint: {
-        'line-color': CHART.fis,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.4, 9, 2.4],
-        'line-dasharray': [7, 2, 1.5, 2],
-        'line-opacity': 0.85,
+        'line-color': CHART[L.fir.color],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1.4, 9, L.fir.width],
+        'line-dasharray': dashes(L.fir.dash),
+        'line-opacity': L.fir.opacity,
       },
     },
     {
@@ -609,9 +688,9 @@ function chartLayers(): LayerSpecification[] {
       source: 'vfr-routes',
       minzoom: 7.5,
       paint: {
-        'line-color': CHART.vfr,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 7.5, 0.8, 11, 1.8],
-        'line-opacity': 0.7,
+        'line-color': CHART[L.vfrRoute.color],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 7.5, 0.8, 11, L.vfrRoute.width],
+        'line-opacity': L.vfrRoute.opacity,
       },
     },
     {
@@ -840,14 +919,14 @@ function routeLayers(): LayerSpecification[] {
       type: 'line',
       source: 'route-line',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': CHART.paper, 'line-width': 7.5, 'line-opacity': 0.9 },
+      paint: { 'line-color': CHART.paper, 'line-width': L.route.casing, 'line-opacity': 0.9 },
     },
     {
       id: 'route-line',
       type: 'line',
       source: 'route-line',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': CHART.route, 'line-width': 3.5 },
+      paint: { 'line-color': CHART[L.route.color], 'line-width': L.route.width },
     },
     // the leg hovered in the navlog: drawn wider, with marching dashes along it
     {

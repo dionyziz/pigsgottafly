@@ -132,6 +132,12 @@ extra fields below were added while building the core.
   `PGF.symbolNames()` as `[{ name, size, colors, rotates, pattern, description }]` (size in points,
   drawn at pixel ratio 2; colours are CHART keys of src/features/editor/map/style.ts; `rotates`: the
   layer rotates the icon; `pattern`: a fill-pattern tile).
+- `PGF.lineStyles()`: `{ [id]: { color, width, dash, opacity, fill, hatch, casing } }`, how the style
+  draws each line and area (`fir`, `tma`, `mtma`, `ctr`, `atz`, `zoneG`, `prohibited`, `restricted`,
+  `danger`, `mil`, `act`, `vfrRoute`, `notam`, `route`): colour as `#rrggbb`, width in points at zoom
+  10, dashes in line widths (MapLibre's), the area's tint (or hatching) opacity, the hatching symbol or
+  null, the route's white casing width (0 for none). The legend beside each layer toggle draws its
+  samples with these, as the website's does.
 - `PGF.chartData({ ref, flight, notams, layers, waypoints?, now? })`: `{ [sourceId]: FeatureCollection }`
   for every data source of the style: the collections the website's map sets. `ref` is GET
   /api/ref/bundle; `flight` is GET /api/flights/:id; `notams` is the briefing or null (its relevant

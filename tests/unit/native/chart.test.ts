@@ -25,9 +25,9 @@ import {
 } from '../../../src/features/editor/map/features';
 import { airspaceShown } from '../../../src/features/editor/map/mapPrefs';
 import { mapNotams, notamFeatures } from '../../../src/features/editor/map/notamLayer';
-import { buildStyle, DATA_SOURCES, LAYER_GROUPS } from '../../../src/features/editor/map/style';
+import { buildStyle, DATA_SOURCES, LAYER_GROUPS, LINE_STYLES } from '../../../src/features/editor/map/style';
 import { SYMBOLS } from '../../../src/features/editor/map/symbols';
-import { chartData, chartStyle, layerGroups, symbolNames } from '../../../src/native/core';
+import { chartData, chartStyle, layerGroups, lineStyles, symbolNames } from '../../../src/native/core';
 import { DEFAULT_MAP_LAYERS, type MapLayers, type Waypoint } from '../../../src/shared';
 import { API_REF, briefing, flight, notam, NOW, ROUTE } from './fixtures';
 
@@ -88,6 +88,25 @@ describe('chartStyle', () => {
     const style = JSON.stringify(chartStyle({ base: 'light', vector: null }));
     for (const n of ['pgf-arrow', 'pgf-wpt', 'pgf-route-arrow', 'pgf-hatch-r']) expect(style).toContain(`"${n}"`);
     for (const s of symbolNames()) expect(s.description.length).toBeGreaterThan(20);
+  });
+
+  test('lineStyles: the legend samples’ line styles, as the style draws them, colours resolved', () => {
+    const st = lineStyles();
+    expect(Object.keys(st).sort()).toEqual(Object.keys(LINE_STYLES).sort());
+    for (const v of Object.values(st)) expect(v.color).toMatch(/^#[0-9a-f]{6}$/);
+    expect(st.mtma).toEqual({
+      color: '#8a3b9c',
+      width: 2,
+      dash: [4, 2],
+      opacity: 0.75,
+      fill: 0.025,
+      hatch: null,
+      casing: 0,
+    });
+    expect(st.restricted.hatch).toBe('pgf-hatch-r');
+    expect(st.route.casing).toBe(7.5);
+    const line = chartStyle({ base: 'light', vector: null }).layers.find((l) => l.id === 'airspace-line-m')!;
+    expect((line.paint as Record<string, unknown>)['line-dasharray']).toEqual(st.mtma.dash);
   });
 });
 

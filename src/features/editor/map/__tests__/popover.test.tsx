@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { NAVAIDS } from '../../../../data/ref';
 import { DEFAULT_MAP_LAYERS, type MapLayers } from '../../../../shared/mapLayers';
@@ -11,6 +11,10 @@ import { LayersControl, MapHint } from '../MapToolbar';
 import { NavaidDetails, NavaidTipRows } from '../NavaidPopover';
 import { PointMenu } from '../PointMenu';
 
+// jsdom has no canvas (the layer toggles' legend samples): no drawing, and no "not implemented" log
+beforeAll(() => {
+  HTMLCanvasElement.prototype.getContext = (() => null) as never;
+});
 afterEach(cleanup);
 
 function List({ onClose }: { onClose: () => void }) {

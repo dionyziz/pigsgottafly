@@ -153,7 +153,7 @@ private struct RouteMapScreen: View {
                 LayersMenu(
                     layers: editor.layers, counts: editor.counts, airac: editor.airac,
                     onChange: { l in Task { await editor.setLayers(l) } }, tips: $editor.tips,
-                    editable: !model.readOnly
+                    editable: !model.readOnly, lineStyles: app.lineStyles
                 )
                 .presentationDetents([.medium, .large])
                 .presentationCompactAdaptation(.sheet)
