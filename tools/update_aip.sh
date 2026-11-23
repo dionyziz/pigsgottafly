@@ -26,6 +26,11 @@ done
 for f in $(cd "$PDF" && find . -iname '*VFR*.pdf' | tr ' ' '#'); do
   f="$PDF/$(echo "$f" | tr '#' ' ')"; pdftotext -layout "$f" "$WORK/vfr/$(basename "$f" .pdf).txt"
 done
+# the AIP SUPs in force (their folder's case varies: esup/sups, esup/SUPS); parse_enr5.ts reads their areas
+find "$WORK/iso" -iname 'LG_SUP_A_*_en.pdf' -print0 | while IFS= read -r -d '' f; do
+  pdftotext -layout "$f" "$WORK/txt/$(basename "$f" .pdf).txt"
+done
+echo "   AIP SUPs: $(find "$WORK/txt" -name 'LG_SUP_A_*_en.txt' | wc -l | tr -d ' ')"
 
 echo "== 3. what changed since the last update (review these by hand, see AIP-UPDATE.md)"
 python3 -I "$ROOT/tools/vfr_manifest.py" check "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
@@ -41,8 +46,9 @@ read -r WD WM WY <<< "$(echo "$LABEL" | sed -E 's/.*wef ([0-9]+) ([A-Z]{3}) ([0-
 WEF=$(printf '%02d%s%s' "$((10#$WD))" "$(echo "$WM" | tr 'A-Z' 'a-z')" "$WY")
 sed -i '' "s|^export const AIP_EAIP_BASE = .*|export const AIP_EAIP_BASE = 'https://aisgr.hasp.gov.gr/aipgr_incl_amdt_${AMDT}_wef_${WEF}/cd/ais/';|" "$ROOT/src/data/aipLinks.ts"
 grep -n "^export const AIP_EAIP_BASE" "$ROOT/src/data/aipLinks.ts"
-(cd "$ROOT" && npx tsx tools/aip_files.ts "$WORK/iso/ais/side.htm" src/data/ref/aip-files.json)
-(cd "$ROOT" && npx tsx tools/parse_enr5.ts "$WORK/txt" tools/enr5_areas.json)   # ENR 5.1/5.2/5.3 areas: check what it flags
+SUPS_MENU=$(find "$WORK/iso/ais" -ipath '*esup/sups-menu.htm' | head -1)
+(cd "$ROOT" && npx tsx tools/aip_files.ts "$WORK/iso/ais/side.htm" src/data/ref/aip-files.json "$SUPS_MENU")
+(cd "$ROOT" && npx tsx tools/parse_enr5.ts "$WORK/txt" tools/enr5_areas.json)   # ENR 5.1/5.2/5.3 and AIP SUP areas: check what it flags
 (cd "$ROOT" && npx tsx tools/parse_navaids.ts "$WORK/txt" src/data/ref/navaids.json)   # ENR 4.1 + AD 2.19 / AD 1.6.N.19 radio navaids: check what it flags
 python3 -I "$ROOT/tools/parse_ad.py" "$WORK/txt" "$WORK/ad_raw.json"
 python3 -I "$ROOT/tools/build_aip.py" "$WORK/ad_raw.json" "$ROOT/data/aip.js"

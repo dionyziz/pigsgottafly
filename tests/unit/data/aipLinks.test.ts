@@ -21,6 +21,7 @@ describe('AIP links', () => {
     expect(aipSection('ENR 2.1.3, ENR 2.1.4')).toBe('ENR 2.1');
     expect(aipSection('ENR 5.1')).toBe('ENR 5.1');
     expect(aipSection('GEN 2.7')).toBe('GEN 2.7');
+    expect(aipSection('AIP SUP 09/24')).toBe('AIP SUP 09/24');
     expect(aipSection('somewhere')).toBeNull();
   });
   test('URLs of the PDFs (spaces encoded), the start page when there is no PDF', () => {
@@ -54,6 +55,14 @@ describe('AIP links', () => {
       'AD 2 LGAV': 'eaip/pdf/AD 2/AD2-LGAV/LG_AD_2_LGAV_en.pdf',
       'AD 3.13': 'eaip/pdf/ad 3/HELIPORTS/LG_AD_3_13_ATTIKI-ANOIXI_en.pdf',
       'ENR 5.1': 'eaip/pdf/enr 5/LG_ENR_5_1_en.pdf',
+    });
+  });
+  test('supplements menu → AIP SUPs (hrefs relative to esup/)', () => {
+    const menu = `<li><span class="file"><A HREF="./SUPS/LG_SUP_A_2023_01_en.pdf" target="eAISNavigation">AIP SUP 01/23</A>
+      <li><span class="file"><A HREF="sups/LG_SUP_A_2024_09_en.pdf" target="eAISNavigation">AIP SUP 09/24</A>`;
+    expect(aipFiles('', menu)).toEqual({
+      'AIP SUP 01/23': 'esup/SUPS/LG_SUP_A_2023_01_en.pdf',
+      'AIP SUP 09/24': 'esup/sups/LG_SUP_A_2024_09_en.pdf',
     });
   });
 });

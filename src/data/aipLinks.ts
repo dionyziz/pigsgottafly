@@ -15,10 +15,14 @@ const FILES = aipFilesJson as Record<string, string>;
 /** The eAIP start page (all sections, amendments, supplements). */
 export const AIP_EAIP_INDEX = AIP_EAIP_BASE + 'index.html';
 
-/** The section key of an AIP reference: 'LGAV AD 2.17' → 'AD 2 LGAV', 'AD 1.6.12.3' → 'AD 1.6.12', 'ENR 2.1.3' → 'ENR 2.1'. */
+/**
+ * The section key of an AIP reference: 'LGAV AD 2.17' → 'AD 2 LGAV', 'AD 1.6.12.3' → 'AD 1.6.12', 'ENR 2.1.3' →
+ * 'ENR 2.1', 'AIP SUP 09/24' → 'AIP SUP 09/24'.
+ */
 export function aipSection(ref: string): string | null {
   const s = ref.toUpperCase();
   let m: RegExpMatchArray | null;
+  if ((m = s.match(/\bAIP SUP (\d{2}\/\d{2})\b/))) return `AIP SUP ${m[1]}`;
   if ((m = s.match(/\bAD ?2[ .-]+(LG[A-Z]{2})\b/)) || (m = s.match(/\b(LG[A-Z]{2}) AD ?2\b/))) return `AD 2 ${m[1]}`;
   if ((m = s.match(/\bAD ?1\.6\.(\d+)/))) return `AD 1.6.${m[1]}`;
   if ((m = s.match(/\bAD ?3\.(\d+)/))) return `AD 3.${m[1]}`;

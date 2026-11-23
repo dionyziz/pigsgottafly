@@ -1,11 +1,12 @@
 // AIP Greece ENR 5 navigation-warning areas → RefArea[] (tools/enr5_areas.json).
 //
-//   npx tsx tools/parse_enr5.ts <dir with LG_ENR_5_*_en.txt> tools/enr5_areas.json
+//   npx tsx tools/parse_enr5.ts <dir with LG_ENR_5_*_en.txt and LG_SUP_A_*_en.txt> tools/enr5_areas.json
 //
 // Input is `pdftotext -layout` output of the eAIP PDFs:
 //   ENR 5.1  prohibited (LGPn), restricted (LGRn), danger (LGDn) and controlled firing (LGC101) areas,
 //   ENR 5.2  military training areas (TSAs),
-//   ENR 5.3.1 local flying areas (named, no designators).
+//   ENR 5.3.1 local flying areas (named, no designators),
+//   AIP SUPs in force that establish areas until further notice (see SUP_AREAS).
 // (ENR 5.5 only says "See ENR 5.3.1"; ENR 5.3.2 lists radiosonde launch sites, which are points, not areas.)
 //
 // The tables are read column by column. Column positions differ per page, so each page's header lines
@@ -520,17 +521,158 @@ export function parseEnr53(text: string, warn: (m: string) => void = () => {}): 
   return out;
 }
 
+// ---------------------------------------------------------------- AIP SUP
+
+// A SUP lays its areas out freely (a numbered list in SUP 09/24, a table in SUP 01/23), so the designators,
+// limits and remarks are transcribed here; the lateral limits are still read from the SUP text, and `printed`
+// must appear in it, so a reissued SUP that changes them is flagged instead of drawn from a stale entry.
+// Only SUPs valid UFN are drawn: areas carry no validity dates, so a time-limited SUP is reported instead.
+interface SupArea {
+  /** Where the coordinates start in the SUP text: the first occurrence of this word. */
+  label: string;
+  /** Text the SUP prints for this area (whitespace normalised), checked against the SUP text. */
+  printed: string[];
+  area: Omit<RefArea, 'lateral' | 'circle' | 'polygon' | 'geometryNote' | 'source'>;
+}
+
+const SUP_AREAS: Record<string, SupArea[]> = {
+  // AIP SUP 01/23 HELLENIC AIR FORCE UAV TRAINING FLIGHTS, effective 13 JUL 23, UFN.
+  '01/23': (
+    [
+      ['AREA1', '10000 FT AMSL', '10000 FT AMSL/4000FT AMSL'],
+      ['AREA2', '7000 FT AMSL', '7000FT AMSL/4000FT AMSL'],
+    ] as const
+  ).map(([label, upper, printed]) => ({
+    label,
+    printed: [printed, 'Dates and times: 24/7', 'SKIROS MTMA/MCTR affected'],
+    area: {
+      id: `UAV-${label}`,
+      kind: 'MIL',
+      name: 'HELLENIC AIR FORCE UAV TRAINING FLIGHTS',
+      lower: '4000 FT AMSL',
+      upper,
+      activity: 'Dates and times: 24/7',
+      remarks: [
+        'Unmanned Aerial Vehicle flight operations.',
+        'SKIROS MTMA/MCTR affected.',
+        'Participating aircraft shall be in contact with SKIROS APP.',
+        'Non participating aircraft are strongly advised not to fly within AREA1 and AREA2.',
+        'Aircraft unable to avoid the aforementioned areas will be authorized to enter these areas after special permission by SKIROS APP.',
+      ].join('\n'),
+    },
+  })),
+  // AIP SUP 09/24 TEMPORARY RESERVED AREAS, effective 08 AUG 24, UFN: 'Vertical Limits: SFC – FL100',
+  // 'Activation Dates and Times: H24'.
+  '09/24': (['LGTRA1A', 'LGTRA1B', 'LGTRA1C'] as const).map((id) => ({
+    label: `${id}:`,
+    printed: ['Vertical Limits: SFC – FL100', 'Activation Dates and Times: H24', 'Army Aviation / UAS Flights'],
+    area: {
+      id,
+      kind: 'MIL',
+      name: 'TEMPORARY RESERVED AREA',
+      group: 'LGTRA1',
+      lower: 'SFC',
+      upper: 'FL 100',
+      activity: 'H24',
+      remarks: [
+        'Army Aviation / UAS Flights.',
+        'When activated, other flights may cross the area after prior permission from the appropriate ATS Unit.',
+        'Non-exercise aircraft are strongly advised not to fly within the areas.',
+        'Aircraft unable to avoid the exercise areas will be authorized to enter these areas after special permission by appropriate ATC Unit.',
+      ].join('\n'),
+    },
+  })),
+};
+
+/** UFN SUPs that print coordinates of something other than an area. */
+const SUP_NOT_AREAS: Record<string, string> = {
+  '10/25': 'APPROVED SEAPLANE LANDING AREAS (points)',
+};
+
+/** 'LG_SUP_A_2024_09_en.txt' → '09/24'. */
+export function supNumber(file: string): string | null {
+  const m = /^LG_SUP_A_\d{2}(\d{2})_(\d{2})_en\.txt$/.exec(file);
+  return m ? `${m[2]}/${m[1]}` : null;
+}
+
+/** End of validity as printed in the SUP header: 'UFN', a date such as '09 JUN 27', or null if not found. */
+export function supValidTo(text: string): string | null {
+  const m = /\b(?:to|End Date):\s*(UFN|\d{1,2} [A-Z]{3} \d{2,4})/.exec(text);
+  return m ? m[1] : null;
+}
+
+/** The closed ring printed after `label`: coordinates in order until the first one comes round again. */
+function ringAfter(text: string, label: string): { lateral: string; polygon: LatLon[] } | null {
+  const at = text.indexOf(label);
+  if (at < 0) return null;
+  const rest = text.slice(at + label.length);
+  const coords = findCoords(rest).map((c) => ({ ...c, raw: rest.slice(c.at, c.end) }));
+  if (!coords.length) return null;
+  const ring = [coords[0]];
+  for (const c of coords.slice(1)) {
+    ring.push(c);
+    if (c.p[0] === ring[0].p[0] && c.p[1] === ring[0].p[1]) {
+      return ring.length >= 4
+        ? { lateral: ring.map((r) => norm(r.raw)).join(' - '), polygon: ring.map((r) => r.p) }
+        : null;
+    }
+  }
+  return null;
+}
+
+/** The areas of the AIP SUPs in force (UFN) that SUP_AREAS transcribes; `sups` maps 'NN/YY' to the SUP text. */
+export function parseSups(sups: Map<string, string>, warn: (m: string) => void = () => {}): RefArea[] {
+  const out: RefArea[] = [];
+  for (const [nr, text] of sups) {
+    const to = supValidTo(text);
+    const entries = SUP_AREAS[nr];
+    if (to !== 'UFN') {
+      if (entries || findCoords(text).length)
+        warn(`AIP SUP ${nr} (to ${to ?? '?'}) prints coordinates but is time-limited: not drawn, check it by hand`);
+      continue;
+    }
+    if (!entries) {
+      if (findCoords(text).length && !SUP_NOT_AREAS[nr])
+        warn(`AIP SUP ${nr} (UFN) prints coordinates but has no SUP_AREAS entry`);
+      continue;
+    }
+    const flat = norm(text);
+    for (const e of entries) {
+      const missing = e.printed.filter((p) => !flat.includes(p));
+      const geo = ringAfter(text, e.label);
+      if (missing.length || !geo) {
+        warn(`AIP SUP ${nr} ${e.area.id}: text changed (${geo ? missing.join(' | ') : 'no closed ring'}): not drawn`);
+        continue;
+      }
+      out.push({ ...e.area, lateral: geo.lateral, polygon: geo.polygon, source: `AIP SUP ${nr}` });
+    }
+  }
+  for (const nr of Object.keys(SUP_AREAS))
+    if (!sups.has(nr)) warn(`AIP SUP ${nr} is no longer in the AIP: drop it from SUP_AREAS`);
+  return out;
+}
+
 // ---------------------------------------------------------------- CLI
 
 export function parseAll(dir: string, warn: (m: string) => void): RefArea[] {
   const read = (n: string) => fs.readFileSync(path.join(dir, `LG_ENR_5_${n}_en.txt`), 'utf8');
-  return [...parseEnr51(read('1'), warn), ...parseEnr52(read('2'), warn), ...parseEnr53(read('3'), warn)];
+  const sups = new Map<string, string>();
+  for (const f of fs.readdirSync(dir).sort()) {
+    const nr = supNumber(f);
+    if (nr) sups.set(nr, fs.readFileSync(path.join(dir, f), 'utf8'));
+  }
+  return [
+    ...parseEnr51(read('1'), warn),
+    ...parseEnr52(read('2'), warn),
+    ...parseEnr53(read('3'), warn),
+    ...parseSups(sups, warn),
+  ];
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const [dir, outFile] = process.argv.slice(2);
   if (!dir || !outFile) {
-    console.error('usage: tsx tools/parse_enr5.ts <dir with LG_ENR_5_*_en.txt> <out.json>');
+    console.error('usage: tsx tools/parse_enr5.ts <dir with LG_ENR_5_*_en.txt and LG_SUP_A_*_en.txt> <out.json>');
     process.exit(2);
   }
   const warn = (m: string) => console.error('warning:', m);

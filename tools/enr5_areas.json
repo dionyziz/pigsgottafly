@@ -4654,5 +4654,269 @@
   "activity": "Daily SR-SS except SAT, SUN and HOL.",
   "remarks": "MIL training flights.\nAuthority: HAF\nUnder the authorization of ATHINAI ACC.\nAWYs affected:\nA14 (ARA-EKTOS)\nA145 (RESPA-TRL)\nJ61 (TRL-KAM and TRL-DDM)\nY115 (KAM-DDM)\nJ65 (TRL-SOKRI)\nL604 (YNN-TRL-DILMO)\nM601 (KFN-EKTOS)\nL612 (ARA-TRL-IXIMA)",
   "source": "ENR 5.3"
+ },
+ {
+  "id": "UAV-AREA1",
+  "kind": "MIL",
+  "name": "HELLENIC AIR FORCE UAV TRAINING FLIGHTS",
+  "upper": "10000 FT AMSL",
+  "lower": "4000 FT AMSL",
+  "activity": "Dates and times: 24/7",
+  "remarks": "Unmanned Aerial Vehicle flight operations.\nSKIROS MTMA/MCTR affected.\nParticipating aircraft shall be in contact with SKIROS APP.\nNon participating aircraft are strongly advised not to fly within AREA1 and AREA2.\nAircraft unable to avoid the aforementioned areas will be authorized to enter these areas after special permission by SKIROS APP.",
+  "lateral": "385000N 0242000E - 385000N 0243100E - 384400N 0243300E - 383900N 0243000E - 383900N 0242300E - 385000N 0242000E",
+  "polygon": [
+   [
+    38.833333,
+    24.333333
+   ],
+   [
+    38.833333,
+    24.516667
+   ],
+   [
+    38.733333,
+    24.55
+   ],
+   [
+    38.65,
+    24.5
+   ],
+   [
+    38.65,
+    24.383333
+   ],
+   [
+    38.833333,
+    24.333333
+   ]
+  ],
+  "source": "AIP SUP 01/23"
+ },
+ {
+  "id": "UAV-AREA2",
+  "kind": "MIL",
+  "name": "HELLENIC AIR FORCE UAV TRAINING FLIGHTS",
+  "upper": "7000 FT AMSL",
+  "lower": "4000 FT AMSL",
+  "activity": "Dates and times: 24/7",
+  "remarks": "Unmanned Aerial Vehicle flight operations.\nSKIROS MTMA/MCTR affected.\nParticipating aircraft shall be in contact with SKIROS APP.\nNon participating aircraft are strongly advised not to fly within AREA1 and AREA2.\nAircraft unable to avoid the aforementioned areas will be authorized to enter these areas after special permission by SKIROS APP.",
+  "lateral": "385400N 0243900E - 385800N 0244100E - 385800N 0244600E - 385400N 0244800E - 384900N 0244600E - 385400N 0243900E",
+  "polygon": [
+   [
+    38.9,
+    24.65
+   ],
+   [
+    38.966667,
+    24.683333
+   ],
+   [
+    38.966667,
+    24.766667
+   ],
+   [
+    38.9,
+    24.8
+   ],
+   [
+    38.816667,
+    24.766667
+   ],
+   [
+    38.9,
+    24.65
+   ]
+  ],
+  "source": "AIP SUP 01/23"
+ },
+ {
+  "id": "LGTRA1A",
+  "kind": "MIL",
+  "name": "TEMPORARY RESERVED AREA",
+  "group": "LGTRA1",
+  "upper": "FL 100",
+  "lower": "SFC",
+  "activity": "H24",
+  "remarks": "Army Aviation / UAS Flights.\nWhen activated, other flights may cross the area after prior permission from the appropriate ATS Unit.\nNon-exercise aircraft are strongly advised not to fly within the areas.\nAircraft unable to avoid the exercise areas will be authorized to enter these areas after special permission by appropriate ATC Unit.",
+  "lateral": "405500N 0253100E - 405400N 0252000E - 405400N 0251000E - 411000N 0245500E - 411200N 0250700E - 411400N 0254100E - 410700N 0254100E - 410000N 0253300E - 405500N 0253100E",
+  "polygon": [
+   [
+    40.916667,
+    25.516667
+   ],
+   [
+    40.9,
+    25.333333
+   ],
+   [
+    40.9,
+    25.166667
+   ],
+   [
+    41.166667,
+    24.916667
+   ],
+   [
+    41.2,
+    25.116667
+   ],
+   [
+    41.233333,
+    25.683333
+   ],
+   [
+    41.116667,
+    25.683333
+   ],
+   [
+    41,
+    25.55
+   ],
+   [
+    40.916667,
+    25.516667
+   ]
+  ],
+  "source": "AIP SUP 09/24"
+ },
+ {
+  "id": "LGTRA1B",
+  "kind": "MIL",
+  "name": "TEMPORARY RESERVED AREA",
+  "group": "LGTRA1",
+  "upper": "FL 100",
+  "lower": "SFC",
+  "activity": "H24",
+  "remarks": "Army Aviation / UAS Flights.\nWhen activated, other flights may cross the area after prior permission from the appropriate ATS Unit.\nNon-exercise aircraft are strongly advised not to fly within the areas.\nAircraft unable to avoid the exercise areas will be authorized to enter these areas after special permission by appropriate ATC Unit.",
+  "lateral": "405000N 0254300E - 405200N 0253700E - 405100N 0252800E - 405400N 0252000E - 405500N 0253100E - 410000N 0253300E - 410700N 0254100E - 405600N 0254700E - 405400N 0254600E - 405200N 0254600E - 405000N 0254300E",
+  "polygon": [
+   [
+    40.833333,
+    25.716667
+   ],
+   [
+    40.866667,
+    25.616667
+   ],
+   [
+    40.85,
+    25.466667
+   ],
+   [
+    40.9,
+    25.333333
+   ],
+   [
+    40.916667,
+    25.516667
+   ],
+   [
+    41,
+    25.55
+   ],
+   [
+    41.116667,
+    25.683333
+   ],
+   [
+    40.933333,
+    25.783333
+   ],
+   [
+    40.9,
+    25.766667
+   ],
+   [
+    40.866667,
+    25.766667
+   ],
+   [
+    40.833333,
+    25.716667
+   ]
+  ],
+  "source": "AIP SUP 09/24"
+ },
+ {
+  "id": "LGTRA1C",
+  "kind": "MIL",
+  "name": "TEMPORARY RESERVED AREA",
+  "group": "LGTRA1",
+  "upper": "FL 100",
+  "lower": "SFC",
+  "activity": "H24",
+  "remarks": "Army Aviation / UAS Flights.\nWhen activated, other flights may cross the area after prior permission from the appropriate ATS Unit.\nNon-exercise aircraft are strongly advised not to fly within the areas.\nAircraft unable to avoid the exercise areas will be authorized to enter these areas after special permission by appropriate ATC Unit.",
+  "lateral": "405000N 0254300E - 405200N 0254600E - 405200N 0254900E - 405500N 0255000E - 405600N 0254700E - 410700N 0254100E - 411400N 0254100E - 411700N 0260900E - 412500N 0261400E - 414000N 0261200E - 413400N 0262700E - 412700N 0263000E - 412000N 0262700E - 412000N 0261800E - 410100N 0261200E - 404500N 0255400E - 405000N 0254300E",
+  "polygon": [
+   [
+    40.833333,
+    25.716667
+   ],
+   [
+    40.866667,
+    25.766667
+   ],
+   [
+    40.866667,
+    25.816667
+   ],
+   [
+    40.916667,
+    25.833333
+   ],
+   [
+    40.933333,
+    25.783333
+   ],
+   [
+    41.116667,
+    25.683333
+   ],
+   [
+    41.233333,
+    25.683333
+   ],
+   [
+    41.283333,
+    26.15
+   ],
+   [
+    41.416667,
+    26.233333
+   ],
+   [
+    41.666667,
+    26.2
+   ],
+   [
+    41.566667,
+    26.45
+   ],
+   [
+    41.45,
+    26.5
+   ],
+   [
+    41.333333,
+    26.45
+   ],
+   [
+    41.333333,
+    26.3
+   ],
+   [
+    41.016667,
+    26.2
+   ],
+   [
+    40.75,
+    25.9
+   ],
+   [
+    40.833333,
+    25.716667
+   ]
+  ],
+  "source": "AIP SUP 09/24"
  }
 ]

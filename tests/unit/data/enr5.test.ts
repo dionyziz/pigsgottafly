@@ -12,7 +12,10 @@ import {
   parseEnr52,
   parseEnr53,
   parseLateral,
+  parseSups,
   splitActivity,
+  supNumber,
+  supValidTo,
 } from '../../../tools/parse_enr5';
 
 // ---- Verbatim excerpts (pdftotext -layout) of AIP Greece ENR 5, AIRAC 09/26:
@@ -537,6 +540,111 @@ HELLENIC AVIATION SERVICE PROVIDER                                              
 
 // ---- Tests
 
+// ---- Verbatim excerpts (pdftotext -layout) of the AIP SUPs in force at AIRAC 09/26: SUP 09/24 and 01/23 (UFN)
+// and the start of SUP 07/26 (time-limited).
+
+const SUP_0924 = String.raw`                                                     AIP GREECE
+
+Tel:        +30 2109972480
+Email:      hellas.ais@hasp.gov.gr
+AFS:        LGGGYNYP                        MINISTRY OF INFRASTRUCTURE AND TRANSPORT                                AIP SUP       09/24
+URL:        https://aisgr.hasp.gov.gr           HELLENIC AVIATION SERVICE PROVIDER                           Effective from:      08 AUG 24
+Address:    P.O. BOX 70360               Directorate General of Air Navigation Service Provider                           to:     UFN
+            16610 GLYFADA                      Aeronautical Information Service Division                   Publication date:      27 JUN 24
+
+                                                   TEMPORARY RESERVED AREAS
+
+ 1. Temporary Reserved Areas are established within ATHINAI FIR as described below:
+    1.1. LGTRA1A:          405500N 0253100E – 405400N 0252000E – 405400N 0251000E – 411000N 0245500E –
+    411200N 0250700E – 411400N 0254100E – 410700N 0254100E – 410000N 0253300E – 405500N 0253100E.
+
+    1.2. LGTRA1B:          405000N 0254300E – 405200N 0253700E – 405100N 0252800E – 405400N 0252000E –
+    405500N 0253100E – 410000N 0253300E – 410700N 0254100E – 405600N 0254700E – 405400N 0254600E –
+    405200N 0254600E – 405000N 0254300E.
+
+    1.3. LGTRA1C:          405000N 0254300E – 405200N 0254600E – 405200N 0254900E – 405500N 0255000E –
+    405600N 0254700E – 410700N 0254100E – 411400N 0254100E – 411700N 0260900E – 412500N 0261400E –
+    414000N 0261200E – 413400N 0262700E – 412700N 0263000E – 412000N 0262700E – 412000N 0261800E –
+    410100N 0261200E – 404500N 0255400E – 405000N 0254300E.
+ 2. Remarks:
+    2.1. Army Aviation / UAS Flights.
+    2.2. Activation Dates and Times: H24.
+    2.3. Vertical Limits: SFC – FL100.
+    2.4. When activated, other flights may cross the area after prior permission from the appropriate ATS Unit.
+ 3. Procedures for unit conducting the activities:
+    3.1. Communication with Kavala Approach / Alexandroupolis Tower is required prior to and during the activities.
+    3.2. Out of operating hours of Kavala or Alexandroupolis airport, communication with Athinai Control is required prior to and during
+    the activities.
+ 4. Procedures for non-exercise aircraft:
+    4.1. In the interest of safety during the exercise, non-exercise aircraft are strongly advised not to fly within the areas designated in
+    para 1 above.
+`;
+
+const SUP_0123 = String.raw`                                                   AIP GREECE
+
+Tel:       +30 2109972480
+Email:     hellas.ais@hasp.gov.gr
+AFS:       LGGGYNYP                      MINISTRY OF INFRASTRUCTURE AND TRANSPORT                        AIP SUP     01/23
+URL:       https://aisgr.hasp.gov.gr         HELLENIC AVIATION SERVICE PROVIDER                   Effective from:    13 JUL 23
+Address:   P.O. BOX 70360              Directorate General of Air Navigation Service Provider                  to:   UFN
+           16610 GLYFADA                     Aeronautical Information Service Division          Publication date:    01 JUN 23
+
+                                       HELLENIC AIR FORCE UAV TRAINING FLIGHTS
+
+   1. From 13 JUL 23 UAV training flights will take place within ATHINAI FIR as described below (see also Appendix 1):
+
+           Name and lateral limits                    Upper limit / Lower limit        Remarks (time of activity, type
+                                                                                       of restriction, nature of hazard,
+                                                                                             risk of interception)
+                         1                                          2                                     3
+ AREA1                                              10000 FT AMSL/4000FT AMSL          Unmanned Aerial Vehicle flight
+                                                                                       operations
+ 385000N 0242000E - 385000N 0243100E -
+ 384400N 0243300E - 383900N 0243000E -
+                                                                                       Dates and times: 24/7
+ 383900N 0242300E - 385000N 0242000E
+
+ AREA2                                               7000FT AMSL/4000FT AMSL           SKIROS MTMA/MCTR affected
+
+ 385400N 0243900E - 385800N 0244100E -
+ 385800N 0244600E - 385400N 0244800E -
+ 384900N 0244600E - 385400N 0243900E
+
+   2. Procedures for participating aircraft:
+   -   Participating aircraft shall be in contact with SKIROS APP
+
+   3. Procedures for non participating aircraft:
+   -   In the interest of safety during flying activities, non participating aircraft are strongly advised not to fly within
+       AREA1 and AREA2
+   -   Aircraft unable to avoid the aforementioned areas will be authorized to enter these areas after special permission
+       by SKIROS APP
+`;
+
+const SUP_0726 = String.raw`                                                 AIP GREECE
+
+Tel:       +30 2109972480
+Email:     hellas.ais@hasp.gov.gr
+AFS:       LGGGYNYP                      MINISTRY OF INFRASTRUCTURE AND TRANSPORT                         AIP SUP 07/26
+URL:       https://aisgr.hasp.gov.gr         HELLENIC AVIATION SERVICE PROVIDER                    Effective from: 11 JUN 26
+Address:   P.O. BOX 70360              Directorate General of Air Navigation Service Provider                   to: 09 JUN 27
+           16610 GLYFADA                     Aeronautical Information Service Division           Publication date: 30 APR 26
+
+                   TEMPORARY DANGER AREAS (REPLACES AIRAC AIP SUP 05/25)
+
+1.   Temporary Danger Areas, with attached FBZs, are established within ATHINAI FIR/HELLAS UIR as described
+     below:
+
+                    Identification                                                                Remarks
+                                                            Upper limit
+                       Name                                                   (time of activity, type of restriction, nature of
+                                                            Lower limit
+                    Lateral limits                                                     hazard, risk of interception)
+                           1                                     2                                    3
+ LGD102A                                                                      AMC manageable area.
+                                                                              Activated by EAUP/EUUP.
+ 353600N 0240700E - 361800N 0240700E -                                        Crossing area is possible under ATC
+`;
+
 const byId = (areas: RefArea[]) => new Map(areas.map((a) => [a.id, a]));
 const nm = (a: [number, number], b: [number, number]) =>
   Math.hypot((a[0] - b[0]) * 60, (a[1] - b[1]) * 60 * Math.cos((a[0] * Math.PI) / 180));
@@ -853,6 +961,66 @@ describe('ENR 5.3', () => {
   });
 });
 
+describe('AIP SUP', () => {
+  const run = (sups: [string, string][]) => {
+    const warnings: string[] = [];
+    const areas = parseSups(new Map(sups), (m) => warnings.push(m));
+    return { areas, warnings };
+  };
+  test('file names and validity', () => {
+    expect(supNumber('LG_SUP_A_2024_09_en.txt')).toBe('09/24');
+    expect(supNumber('LG_ENR_5_1_en.txt')).toBeNull();
+    expect(supValidTo(SUP_0924)).toBe('UFN');
+    expect(supValidTo(SUP_0123)).toBe('UFN');
+    expect(supValidTo(SUP_0726)).toBe('09 JUN 27');
+    expect(supValidTo('Effective date: 10 SEP 2020\n   End Date: UFN')).toBe('UFN');
+  });
+  test('SUP 09/24 LGTRA1A–C: rings read from the numbered list, limits from the remarks', () => {
+    const { areas, warnings } = run([
+      ['01/23', SUP_0123],
+      ['09/24', SUP_0924],
+    ]);
+    expect(warnings).toEqual([]);
+    const p = byId(areas);
+    expect([...p.keys()]).toEqual(['UAV-AREA1', 'UAV-AREA2', 'LGTRA1A', 'LGTRA1B', 'LGTRA1C']);
+    const a = p.get('LGTRA1A')!;
+    expect(a).toMatchObject({ kind: 'MIL', group: 'LGTRA1', lower: 'SFC', upper: 'FL 100', activity: 'H24' });
+    expect(a.source).toBe('AIP SUP 09/24');
+    // 9 points printed, the first repeated at the end; the ring stops there, before '1.2. LGTRA1B:'.
+    expect(a.polygon).toHaveLength(9);
+    expect(a.polygon![0]).toEqual([40.916667, 25.516667]);
+    expect(a.polygon![3]).toEqual([41.166667, 24.916667]);
+    expect(a.lateral).toMatch(/^405500N 0253100E - 405400N 0252000E - .* - 405500N 0253100E$/);
+    expect(p.get('LGTRA1B')!.polygon).toHaveLength(11);
+    expect(p.get('LGTRA1C')!.polygon).toHaveLength(17);
+    expect(p.get('LGTRA1C')!.polygon![9]).toEqual([41.666667, 26.2]);
+  });
+  test('SUP 01/23 UAV areas: rings read across the table, limits as printed', () => {
+    const p = byId(run([['01/23', SUP_0123]]).areas);
+    expect(p.get('UAV-AREA1')!).toMatchObject({ kind: 'MIL', lower: '4000 FT AMSL', upper: '10000 FT AMSL' });
+    expect(p.get('UAV-AREA2')!).toMatchObject({ lower: '4000 FT AMSL', upper: '7000 FT AMSL' });
+    expect(p.get('UAV-AREA1')!.lateral).toBe(
+      '385000N 0242000E - 385000N 0243100E - 384400N 0243300E - 383900N 0243000E - 383900N 0242300E - 385000N 0242000E',
+    );
+    expect(p.get('UAV-AREA2')!.polygon![2]).toEqual([38.966667, 24.766667]);
+  });
+  test('a time-limited SUP is reported, not drawn', () => {
+    const { areas, warnings } = run([['07/26', SUP_0726]]);
+    expect(areas).toEqual([]);
+    expect(warnings.some((w) => /07\/26 \(to 09 JUN 27\).*time-limited/.test(w))).toBe(true);
+  });
+  test('a reissued SUP with other limits, and a SUP gone from the AIP, are flagged', () => {
+    const { areas, warnings } = run([['09/24', SUP_0924.replace('SFC – FL100', 'SFC – FL120')]]);
+    expect(areas).toEqual([]);
+    expect(warnings.filter((w) => /09\/24 LGTRA1.: text changed/.test(w))).toHaveLength(3);
+    expect(warnings).toContain('AIP SUP 01/23 is no longer in the AIP: drop it from SUP_AREAS');
+  });
+  test('a UFN SUP with coordinates and no entry is flagged', () => {
+    const { warnings } = run([['99/26', SUP_0924.replace('AIP SUP       09/24', 'AIP SUP       99/26')]]);
+    expect(warnings).toContain('AIP SUP 99/26 (UFN) prints coordinates but has no SUP_AREAS entry');
+  });
+});
+
 describe('tools/enr5_areas.json', () => {
   const areas: RefArea[] = JSON.parse(
     fs.readFileSync(new URL('../../../tools/enr5_areas.json', import.meta.url), 'utf8'),
@@ -863,7 +1031,7 @@ describe('tools/enr5_areas.json', () => {
       expect(a.upper, a.id).toBeTruthy();
       expect(a.lower, a.id).toBeTruthy();
       expect(a.lateral, a.id).toBeTruthy();
-      expect(['ENR 5.1', 'ENR 5.2', 'ENR 5.3']).toContain(a.source);
+      expect(a.source, a.id).toMatch(/^(ENR 5\.[123]|AIP SUP \d{2}\/\d{2})$/);
       expect(!!a.circle || !!a.polygon || !!a.geometryNote, a.id).toBe(true);
     }
   });
@@ -901,9 +1069,19 @@ describe('tools/enr5_areas.json', () => {
     // ENR 5.3.1: 10 entries, LACONIA as LACONIA 1 and 2.
     expect(n((a) => a.kind === 'ACT')).toBeGreaterThanOrEqual(11);
   });
-  test('AIP order: 5.1 P, R, D, then 5.2, then 5.3', () => {
-    const rank = (a: RefArea) => ({ P: 0, R: 1, D: 2, MIL: 3, ACT: 4 })[a.kind];
+  test('AIP order: 5.1 P, R, D, then 5.2, then 5.3, then the SUPs', () => {
+    const rank = (a: RefArea) => (a.source.startsWith('AIP SUP') ? 5 : { P: 0, R: 1, D: 2, MIL: 3, ACT: 4 }[a.kind]);
     for (let i = 1; i < areas.length; i++) expect(rank(areas[i]) >= rank(areas[i - 1]), areas[i].id).toBe(true);
+  });
+  test('the areas of the UFN SUPs in force (SUP 01/23, 09/24) are drawn', () => {
+    const sup = areas.filter((a) => a.source.startsWith('AIP SUP')).map((a) => `${a.source} ${a.id}`);
+    expect(sup).toEqual([
+      'AIP SUP 01/23 UAV-AREA1',
+      'AIP SUP 01/23 UAV-AREA2',
+      'AIP SUP 09/24 LGTRA1A',
+      'AIP SUP 09/24 LGTRA1B',
+      'AIP SUP 09/24 LGTRA1C',
+    ]);
   });
   test('spot checks on the full text', () => {
     const p = byId(areas);
@@ -920,5 +1098,9 @@ describe('tools/enr5_areas.json', () => {
       activity: 'Daily SR-SS except SAT, SUN and HOL.',
     });
     expect(p.get('LGTSA6')!).toMatchObject({ upper: 'FL 400', lower: 'FL 305' });
+    // ENR 5.1 (unchanged through AIRAC 07/26–09/26) puts PETROKARAVO by the islet off Hydra, as AD 2-LGAV-VFR
+    // draws it; AD 2-LGPA-VFR (AMDT 02/25) draws a box of the same size west of Sifnos, a chart error.
+    expect(p.get('LGD85')!).toMatchObject({ name: 'PETROKARAVO', lower: 'MSL', upper: '1000 FT ALT' });
+    expect(p.get('LGD85')!.polygon![0]).toEqual([37.366667, 23.583333]);
   });
 });

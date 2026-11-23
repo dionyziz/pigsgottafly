@@ -50,6 +50,7 @@ import aircraftRevisions060, { run as aircraftRevisionsRun060 } from './migratio
 import autorouterLinks061 from './migrations/061_autorouter_links.js';
 import refVfrPoints062 from './migrations/062_ref_vfr_points_2609.js';
 import refVfrRoutes063 from './migrations/063_ref_vfr_routes_2609.js';
+import refAreas064 from './migrations/064_ref_areas_2609.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -106,6 +107,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '061_autorouter_links', sql: autorouterLinks061 },
   { name: '062_ref_vfr_points_2609', sql: refVfrPoints062 },
   { name: '063_ref_vfr_routes_2609', sql: refVfrRoutes063 },
+  { name: '064_ref_areas_2609', sql: refAreas064 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant
