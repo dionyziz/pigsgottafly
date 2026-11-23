@@ -256,7 +256,8 @@ export interface RefAdAirspace {
 /**
  * A navigation-warning area from AIP ENR 5 (tools/parse_enr5.ts → tools/enr5_areas.json → build_ref.ts):
  * prohibited, restricted and danger areas (ENR 5.1), military exercise and training areas (ENR 5.2),
- * other activities (ENR 5.3; ENR 5.5 aerial sporting refers to ENR 5.3.1). At most one of circle /
+ * other activities (ENR 5.3; ENR 5.5 aerial sporting refers to ENR 5.3.1), and the areas of AIP SUPs valid
+ * until further notice (time-limited SUPs are left out: an area carries no validity dates). At most one of circle /
  * polygon; neither when the lateral limits cannot be drawn (see geometryNote).
  */
 export interface RefArea {
@@ -285,7 +286,7 @@ export interface RefArea {
   activity: string;
   /** Remarks as printed (restriction, nature of hazard, authority, …), lines joined with '\n'. */
   remarks: string;
-  /** e.g. 'ENR 5.1', 'ENR 5.2', 'ENR 5.3'. */
+  /** e.g. 'ENR 5.1', 'ENR 5.2', 'ENR 5.3', 'AIP SUP 09/24'. */
   source: string;
 }
 

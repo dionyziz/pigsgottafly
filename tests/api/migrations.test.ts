@@ -15,6 +15,7 @@ import {
 } from '../../api/_lib/migrations/011_fleet_fpl_equipment';
 import { iasKt, performanceKt } from '../../api/_lib/migrations/046_performance_speeds_kt';
 import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
+import AREAS_JSON from '../../src/data/ref/areas.json';
 import VFR_POINTS_JSON from '../../src/data/ref/vfr-points.json';
 import VFR_ROUTES_JSON from '../../src/data/ref/vfr-routes.json';
 import type { AtcEntry } from '../../src/shared/types';
@@ -655,6 +656,7 @@ describe('migrations', () => {
       '061_autorouter_links',
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
+      '064_ref_areas_2609',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -714,6 +716,7 @@ describe('migrations', () => {
       '061_autorouter_links',
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
+      '064_ref_areas_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -828,6 +831,7 @@ describe('migrations', () => {
       '061_autorouter_links',
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
+      '064_ref_areas_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -880,6 +884,10 @@ describe('migrations', () => {
     expect(vfrRoutes.map((r) => r.doc).sort(byId)).toEqual([...(VFR_ROUTES_JSON as any[])].sort(byId));
     expect(vfrRoutes.find((r) => r.doc.id === 'LGKV:STRIMON>LOUTRA')!.doc).toMatchObject({ minFt: null, maxFt: null });
     expect(vfrRoutes.some((r) => r.doc.id === 'LGAV:ILIOUP>HOLARGOS')).toBe(true);
+    // 064: the AIRAC's areas again (017's ENR 5 list replaced), with those of the AIP SUPs valid UFN
+    const areas = await db.query<{ doc: any }>(`SELECT doc FROM ref_areas WHERE airac = '2609'`);
+    expect(areas.map((r) => r.doc).sort(byId)).toEqual([...(AREAS_JSON as any[])].sort(byId));
+    expect(areas.find((r) => r.doc.id === 'LGTRA1A')!.doc).toMatchObject({ source: 'AIP SUP 09/24', upper: 'FL 100' });
     expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(
       MIGRATIONS.map((m) => m.name).sort(),
     );
@@ -907,7 +915,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-26)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-27)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -934,6 +942,7 @@ describe('migrations', () => {
       '061_autorouter_links',
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
+      '064_ref_areas_2609',
     ]);
     await db.close();
   });
