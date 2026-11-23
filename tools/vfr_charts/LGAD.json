@@ -1,55 +1,66 @@
 {
- "chart": "AD 2-LGAD-VFR, VFR routes ANDRAVIDA MTMA (page 1 chart, page 3 table \"COORDINATES (IN WGS-84) OF REPORTING POINTS ON ANDRAVIDA VFR ROUTES\", printed as an image). Routes not transcribed yet.",
- "points": [
-  {
-   "name": "RION",
-   "dms": "38 16 18 N 021 48 18 E",
-   "note": "RIO in the table, RION on the chart"
-  },
-  {
-   "name": "OXIA",
-   "dms": "38 15 16 N 021 07 36 E"
-  },
-  {
-   "name": "MOUNDA",
-   "dms": "38 02 03 N 020 48 10 E"
-  },
-  {
-   "name": "YERAKI",
-   "dms": "37 43 20 N 020 58 41 E"
-  },
-  {
-   "name": "KILLINI",
-   "dms": "37 56 14 N 021 08 27 E"
-  },
-  {
-   "name": "KALOGRIA",
-   "dms": "38 08 16 N 021 17 36 E"
-  },
-  {
-   "name": "VARDA",
-   "dms": "37 57 55 N 021 23 07 E"
-  },
-  {
-   "name": "ACHAIA",
-   "dms": "38 06 47 N 021 35 13 E"
-  },
-  {
-   "name": "PAPPAS",
-   "dms": "38 09 47 N 021 26 43 E"
-  },
-  {
-   "name": "KALAVRITA",
-   "dms": "38 02 00 N 022 06 37 E"
-  },
-  {
-   "name": "ELLINIKO",
-   "dms": "38 03 12 N 021 48 21 E"
-  },
-  {
-   "name": "CHAVARI",
-   "dms": "37 50 51 N 021 23 00 E"
-  }
- ],
- "routes": []
+  "chart": "AD 2-LGAD-VFR, VFR routes ANDRAVIDA MTMA (page 1 chart, page 3 table \"COORDINATES (IN WGS-84) OF REPORTING POINTS ON ANDRAVIDA VFR ROUTES\", printed as an image).",
+  "points": [
+    {"name": "RION", "dms": "38 16 18 N 021 48 18 E", "note": "RIO in the table, RION on the chart"},
+    {"name": "OXIA", "dms": "38 15 16 N 021 07 36 E"},
+    {"name": "MOUNDA", "dms": "38 02 03 N 020 48 10 E"},
+    {"name": "YERAKI", "dms": "37 43 20 N 020 58 41 E"},
+    {"name": "KILLINI", "dms": "37 56 14 N 021 08 27 E"},
+    {"name": "KALOGRIA", "dms": "38 08 16 N 021 17 36 E"},
+    {"name": "VARDA", "dms": "37 57 55 N 021 23 07 E"},
+    {"name": "ACHAIA", "dms": "38 06 47 N 021 35 13 E"},
+    {"name": "PAPPAS", "dms": "38 09 47 N 021 26 43 E"},
+    {"name": "KALAVRITA", "dms": "38 02 00 N 022 06 37 E"},
+    {"name": "ELLINIKO", "dms": "38 03 12 N 021 48 21 E"},
+    {"name": "CHAVARI", "dms": "37 50 51 N 021 23 00 E"}
+  ],
+  "routes": [
+    {"a": "OXIA", "b": "RION", "min": 1500, "max": 1500, "nm": 32, "oneway": true},
+    {"a": "RION", "b": "OXIA", "min": 2000, "max": 2000, "nm": 32, "oneway": true},
+    {"a": "OXIA", "b": "RION", "min": 5000, "max": 5000, "nm": 32, "oneway": true, "kind": "jet"},
+    {"a": "RION", "b": "OXIA", "min": 3000, "max": 3000, "nm": 32, "oneway": true, "kind": "jet"},
+    {"a": "PAPPAS", "b": "OXIA", "min": 2000, "max": 2000, "nm": 16, "oneway": true},
+    {"a": "PAPPAS", "b": "OXIA", "min": 4000, "max": 4000, "nm": 16, "oneway": true, "kind": "jet"},
+    {"a": "OXIA", "b": "KALOGRIA", "min": 1000, "max": 1000, "nm": 11, "oneway": true},
+    {"a": "OXIA", "b": "KALOGRIA", "min": 3000, "max": 3000, "nm": 11, "oneway": true, "kind": "jet"},
+    {"a": "KALOGRIA", "b": "KILLINI", "min": 1500, "max": 1500, "nm": 14, "oneway": true},
+    {"a": "KILLINI", "b": "KALOGRIA", "min": 1000, "max": 1000, "nm": 14, "oneway": true},
+    {"a": "KALOGRIA", "b": "KILLINI", "min": 5000, "max": 5000, "nm": 14, "oneway": true, "kind": "jet"},
+    {"a": "KILLINI", "b": "KALOGRIA", "min": 4000, "max": 4000, "nm": 14, "oneway": true, "kind": "jet"},
+    {"a": "OXIA", "b": "KILLINI", "min": 1500, "max": 1500, "nm": 19, "oneway": true},
+    {"a": "KILLINI", "b": "OXIA", "min": 2000, "max": 2000, "nm": 19, "oneway": true},
+    {"a": "OXIA", "b": "KILLINI", "min": 3000, "max": 3000, "nm": 19, "oneway": true, "kind": "jet"},
+    {"a": "KILLINI", "b": "OXIA", "min": 4000, "max": 4000, "nm": 19, "oneway": true, "kind": "jet"},
+    {"a": "MOUNDA", "b": "OXIA", "min": 1500, "max": 1500, "nm": 20, "oneway": true},
+    {"a": "OXIA", "b": "MOUNDA", "min": 2000, "max": 2000, "nm": 20, "oneway": true},
+    {"a": "MOUNDA", "b": "OXIA", "min": 5000, "max": 5000, "nm": 20, "oneway": true, "kind": "jet"},
+    {"a": "OXIA", "b": "MOUNDA", "min": 3000, "max": 3000, "nm": 20, "oneway": true, "kind": "jet"},
+    {"a": "MOUNDA", "b": "KILLINI", "min": 1000, "max": 1000, "nm": 17, "oneway": true},
+    {"a": "KILLINI", "b": "MOUNDA", "min": 1500, "max": 1500, "nm": 17, "oneway": true},
+    {"a": "MOUNDA", "b": "KILLINI", "min": 3000, "max": 3000, "nm": 17, "oneway": true, "kind": "jet"},
+    {"a": "KILLINI", "b": "MOUNDA", "min": 5000, "max": 5000, "nm": 17, "oneway": true, "kind": "jet"},
+    {"a": "MOUNDA", "b": "YERAKI", "min": 2000, "max": 2000, "nm": 21, "oneway": true},
+    {"a": "YERAKI", "b": "MOUNDA", "min": 1500, "max": 1500, "nm": 21, "oneway": true},
+    {"a": "MOUNDA", "b": "YERAKI", "min": 3000, "max": 3000, "nm": 21, "oneway": true, "kind": "jet"},
+    {"a": "YERAKI", "b": "MOUNDA", "min": 5000, "max": 5000, "nm": 21, "oneway": true, "kind": "jet"},
+    {"a": "KILLINI", "b": "YERAKI", "min": 1500, "max": 1500, "nm": 15, "oneway": true},
+    {"a": "YERAKI", "b": "KILLINI", "min": 1000, "max": 1000, "nm": 15, "oneway": true},
+    {"a": "KILLINI", "b": "YERAKI", "min": 5000, "max": 5000, "nm": 15, "oneway": true, "kind": "jet"},
+    {"a": "YERAKI", "b": "KILLINI", "min": 4000, "max": 4000, "nm": 15, "oneway": true, "kind": "jet"},
+    {"a": "PAPPAS", "b": "RION", "min": 2000, "max": 2000, "nm": 18, "oneway": true},
+    {"a": "PAPPAS", "b": "RION", "min": 4000, "max": 4000, "nm": 18, "oneway": true, "kind": "jet"},
+    {"a": "ACHAIA", "b": "RION", "min": 2000, "max": 2000, "nm": 14, "oneway": true},
+    {"a": "RION", "b": "ACHAIA", "min": 1500, "max": 1500, "nm": 14, "oneway": true},
+    {"a": "ACHAIA", "b": "RION", "min": 4000, "max": 4000, "nm": 14, "oneway": true, "kind": "jet"},
+    {"a": "RION", "b": "ACHAIA", "min": 3000, "max": 3000, "nm": 14, "oneway": true, "kind": "jet"},
+    {"a": "VARDA", "b": "ACHAIA", "min": 2000, "max": 2000, "nm": 13, "oneway": true},
+    {"a": "ACHAIA", "b": "VARDA", "min": 1500, "max": 1500, "nm": 13, "oneway": true},
+    {"a": "VARDA", "b": "ACHAIA", "min": 4000, "max": 4000, "nm": 13, "oneway": true, "kind": "jet"},
+    {"a": "ACHAIA", "b": "VARDA", "min": 3000, "max": 3000, "nm": 13, "oneway": true, "kind": "jet"},
+    {"a": "ELLINIKO", "b": "KALAVRITA", "min": 7500, "max": 7500, "nm": 14, "oneway": true},
+    {"a": "KALAVRITA", "b": "ELLINIKO", "min": 6500, "max": 6500, "nm": 14, "oneway": true},
+    {"a": "CHAVARI", "b": "ELLINIKO", "min": 7500, "max": 7500, "nm": 24, "oneway": true},
+    {"a": "ELLINIKO", "b": "CHAVARI", "min": 6500, "max": 6500, "nm": 24, "oneway": true}
+  ],
+  "notes": "Every route except the two ELLINIKO ones prints JET (black) and CONV (red) altitudes per direction (arrowed): the CONV ones are the ordinary segments, the JET ones are recorded again as kind jet. PAPPAS–OXIA, OXIA–KALOGRIA and PAPPAS–RION are drawn one way only. ELLINIKO–KALAVRITA and CHAVARI–ELLINIKO print one altitude per direction, not split by JET/CONV."
 }
