@@ -17,6 +17,12 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     var pilot: JSON
     /// The people each aircraft is shared with (accounts), by aircraft id.
     var aircraftShares: [String: [JSON]] = [:]
+    /// The pilot's operators (operators.json, then what POST, PUT and DELETE change).
+    lazy var operators: [JSON] =
+        emptyAccount ? [] : (fixture("operators.json").flatMap { try? JSON.parse($0) }?.array ?? [])
+    /// Documents uploaded here, by files path ("operators/<id>/files"), and their chunks by file id.
+    var documents: [String: [JSON]] = [:]
+    var chunks: [String: [Int: String]] = [:]
     /// FlightSharing and OperatorSharing by id, once read or changed (FixtureRoutes+Sharing.swift).
     var flightShares: [String: JSON] = [:]
     var operatorShares: [String: JSON] = [:]
@@ -87,8 +93,7 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
         let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
             accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, sharingRoutes, recordShareRoutes,
-            manifestRoutes,
-            peopleRoutes,
+            operatorRoutes, manifestRoutes, peopleRoutes,
             fileRoutes, formRoutes, exportRoutes,
         ] {
             if let answer = domain(r) { return answer }

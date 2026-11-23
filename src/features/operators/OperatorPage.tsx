@@ -15,7 +15,7 @@ import { useToast } from '../../app/toast';
 import { operatorScope } from '../../data/aircraftFiles';
 import { api, ApiRequestError, keepalivePut } from '../../data/api';
 import { useAsync } from '../../data/useAsync';
-import { isEmail, type OperatorInput, type OperatorItem } from '../../shared';
+import type { OperatorInput, OperatorItem } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import {
   Check,
@@ -32,62 +32,20 @@ import {
 import { DocumentsSection } from '../hangar/AircraftFiles';
 import { Section } from '../hangar/fields';
 import { SharedChip, ShareDialog } from '../hangar/ShareDialog';
-import { ROLE_LABEL } from '../hangar/shareModel';
-import type { FormIssue } from '../passengers/formIssues';
+import {
+  normalizedOperator,
+  type OperatorField,
+  operatorHead,
+  operatorInputOf,
+  operatorPeople,
+  validateOperator,
+} from './model';
 
 const DOCS_TEXT = {
   title: 'Documents',
   empty: 'No documents.',
   placeholder: 'Title, e.g., Operations manual',
 };
-
-const inputOf = ({
-  name,
-  phone,
-  email,
-  address,
-  aftn,
-  notes,
-  requiresWbPerf,
-  declarationsEmail,
-  requiresFplCopy,
-  fplCopyEmail,
-}: OperatorItem): OperatorInput => ({
-  name,
-  phone,
-  email,
-  address,
-  aftn,
-  notes,
-  requiresWbPerf,
-  declarationsEmail,
-  requiresFplCopy,
-  fplCopyEmail,
-});
-
-type OperatorField = 'name' | 'email' | 'declarationsEmail' | 'fplCopyEmail';
-
-/** What holds the save back, field by field (empty: it can be saved). */
-export function validateOperator(d: OperatorInput): FormIssue<OperatorField>[] {
-  const out: FormIssue<OperatorField>[] = [];
-  if (!d.name.trim()) out.push({ field: 'name', message: 'Enter the operator’s name' });
-  if (d.email.trim() && !isEmail(d.email)) out.push({ field: 'email', message: 'Not an e-mail address' });
-  if (d.requiresWbPerf)
-    if (!d.declarationsEmail.trim()) out.push({ field: 'declarationsEmail', message: 'Enter the e-mail address' });
-    else if (!isEmail(d.declarationsEmail)) out.push({ field: 'declarationsEmail', message: 'Not an e-mail address' });
-  if (d.requiresFplCopy)
-    if (!d.fplCopyEmail.trim()) out.push({ field: 'fplCopyEmail', message: 'Enter the e-mail address' });
-    else if (!isEmail(d.fplCopyEmail)) out.push({ field: 'fplCopyEmail', message: 'Not an e-mail address' });
-  return out;
-}
-
-const normalized = (d: OperatorInput): OperatorInput => ({
-  ...d,
-  name: d.name.trim(),
-  email: d.email.trim(),
-  declarationsEmail: d.declarationsEmail.trim(),
-  fplCopyEmail: d.fplCopyEmail.trim(),
-});
 
 export function OperatorPage() {
   const { id = '' } = useParams();
@@ -123,11 +81,11 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
   const { pilot } = useSession();
   const toast = useToast();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState<OperatorInput>(() => inputOf(op));
+  const [draft, setDraft] = useState<OperatorInput>(() => operatorInputOf(op));
   const [sharing, setSharing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const role = op.access.role;
-  const readOnly = role === 'view';
+  const head = operatorHead(op);
+  const readOnly = head.readOnly;
   useFocusParam(() => document.querySelector('[data-testid=operator-page]'));
   // who has access: refetched when a share of the operator or of one of its aircraft changes
   const people = useAsync(() => api.operatorShares.get(op.id), [op.id], {
@@ -140,14 +98,14 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
   const issuesOf = (k: OperatorField) => issues.filter((i) => i.field === k).map((i) => i.message);
 
   const save = useCallback(
-    async (input: OperatorInput) => onSaved(await api.operators.update(op.id, normalized(input))),
+    async (input: OperatorInput) => onSaved(await api.operators.update(op.id, normalizedOperator(input))),
     [op.id, onSaved],
   );
   const autosave = useAutosave({
     value: draft,
     enabled: !readOnly && issues.length === 0,
     save,
-    keepalive: (v) => keepalivePut(`operators/${encodeURIComponent(op.id)}`, normalized(v)),
+    keepalive: (v) => keepalivePut(`operators/${encodeURIComponent(op.id)}`, normalizedOperator(v)),
   });
   const blocked = autosave.dirty && issues.length > 0;
   const saveError = autosave.status === 'failed' ? autosave.error : null;
@@ -199,9 +157,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
         <div className="ac-head-main">
           <div className="ac-title">
             <h1>{draft.name || 'Operator'}</h1>
-            <span className="ac-sub">
-              {op.aircraft.length ? op.aircraft.map((a) => a.registration).join(', ') : 'No aircraft'}
-            </span>
+            <span className="ac-sub">{head.subtitle}</span>
             <SharedChip access={op.access} />
             {!readOnly && <SaveStatus status={autosave.status} blocked={blocked} />}
           </div>
@@ -209,7 +165,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
           <button type="button" onClick={() => setSharing(true)} data-testid="share-operator">
             Share
           </button>
-          {role === 'owner' && (
+          {head.canDelete && (
             <KebabMenu
               label="Operator actions"
               items={[{ label: 'Delete operator', onSelect: () => setDeleting(true), danger: true }]}
@@ -323,19 +279,16 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
             )
           ) : (
             <ul className="share-people" data-testid="operator-people">
-              {people.data.people.map((p) => (
-                <li key={p.pilotId} data-role={p.role} data-direct={p.direct ? '1' : '0'}>
+              {operatorPeople(people.data.people, pilot.id).map((p) => (
+                <li key={p.key} data-role={p.role} data-direct={p.direct ? '1' : '0'}>
                   <span className="share-who">
                     <b>
-                      {p.name || p.email}
-                      {p.pilotId === pilot.id && <span className="muted"> (you)</span>}
+                      {p.name}
+                      {p.self && <span className="muted"> (you)</span>}
                     </b>
-                    {p.name && <span className="hint">{p.email}</span>}
+                    {p.email && <span className="hint">{p.email}</span>}
                   </span>
-                  <span className="muted share-role">
-                    {ROLE_LABEL[p.role]}
-                    {!p.direct && p.via.length ? ` · through ${p.via.join(', ')}` : ''}
-                  </span>
+                  <span className="muted share-role">{p.label}</span>
                 </li>
               ))}
             </ul>
@@ -345,7 +298,7 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
         {readOnly ? (
           <div className="ac-viewonly card">
             <Chip>View only</Chip>
-            <span className="muted">Shared by {op.access.owner.name || op.access.owner.email}</span>
+            <span className="muted">{head.viewOnly}</span>
           </div>
         ) : saveError ? (
           <div className="ac-problem card" role="alert" data-testid="problem-bar">
@@ -369,23 +322,23 @@ function OperatorEditor({ op, onSaved }: { op: OperatorItem; onSaved: (o: Operat
           name={op.name}
           onClose={() => setSharing(false)}
           onLeft={() => {
-            toast(`You no longer have ${op.name}`);
+            toast(head.left);
             void navigate('/operators');
           }}
         />
       )}
       {deleting && (
         <ConfirmDialog
-          title={`Delete ${op.name}?`}
+          title={head.deleteTitle}
           confirmLabel="Delete"
           onClose={() => setDeleting(false)}
           onConfirm={async () => {
             await api.operators.remove(op.id);
-            toast(`Deleted ${op.name}`);
+            toast(head.deleted);
             void navigate('/operators');
           }}
         >
-          Its details and documents are deleted.
+          {head.deleteMessage}
         </ConfirmDialog>
       )}
     </div>

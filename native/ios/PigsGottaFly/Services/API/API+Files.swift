@@ -16,7 +16,7 @@ extension API {
         case photo, document, licence, medical
     }
 
-    struct FileStart: Encodable, Sendable {
+    struct FileStart: Codable, Equatable, Sendable {
         var kind: FileKind
         var name: String
         var title: String

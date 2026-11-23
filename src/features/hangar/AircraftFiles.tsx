@@ -3,10 +3,10 @@
 import { useEffect, useEffectEvent, useState } from 'react';
 
 import { aircraftScope, fileBlob, type FileScope, resizePhoto, saveBlob, uploadFile } from '../../data/aircraftFiles';
-import { isoDay as fmtDate } from '../../shared/date';
 import { errorMessage, fmtSize } from '../../shared/format';
-import { type AircraftFile, DOCUMENT_MAX_BYTES, PHOTO_TYPES } from '../../shared/types';
+import { type AircraftFile, PHOTO_TYPES } from '../../shared/types';
 import { FilePicker, Icon, Loading, PdfViewer, RowRemove } from '../../ui';
+import { DOCUMENT_LIMIT_HINT, documentDetail, documentPickError, documentRename, documentTitle } from './documents';
 import { Section } from './fields';
 
 /** A file's content while mounted (null while loading or on error). */
@@ -269,12 +269,9 @@ export function DocumentsSection({
 
   const pick = async (file: File) => {
     setError(null);
-    if (file.type !== 'application/pdf') {
-      setError('Choose a PDF file.');
-      return;
-    }
-    if (file.size > DOCUMENT_MAX_BYTES) {
-      setError(`The file is ${fmtSize(file.size)}; the limit is ${fmtSize(DOCUMENT_MAX_BYTES)}.`);
+    const invalid = documentPickError(file);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setUpload({ name: file.name, progress: 0 });
@@ -282,7 +279,7 @@ export function DocumentsSection({
       const f = await uploadFile(
         scope,
         file,
-        { kind: 'document', name: file.name, title: title.trim() || file.name.replace(/\.pdf$/i, '') },
+        { kind: 'document', name: file.name, title: documentTitle(title, file.name) },
         (p) => setUpload({ name: file.name, progress: p }),
       );
       setDocs((d) => [...(d ?? []), f]);
@@ -294,8 +291,8 @@ export function DocumentsSection({
     }
   };
   const rename = async (f: AircraftFile, t: string) => {
-    const v = t.trim();
-    if (!v || v === f.title) return;
+    const v = documentRename(f, t);
+    if (v === null) return;
     try {
       const n = await scope.files.rename(scope.id, f.id, v);
       setDocs((d) => (d ?? []).map((x) => (x.id === n.id ? n : x)));
@@ -339,9 +336,7 @@ export function DocumentsSection({
                 ) : (
                   <b className="doc-title">{f.title}</b>
                 )}
-                <span className="muted">
-                  {f.name} · {fmtSize(f.size)} · {fmtDate(f.uploaded)}
-                </span>
+                <span className="muted">{documentDetail(f)}</span>
               </div>
               <button type="button" className="sm" onClick={() => setOpen(f)} data-testid="doc-open">
                 Open
@@ -383,7 +378,7 @@ export function DocumentsSection({
           >
             Add PDF
           </FilePicker>
-          <span className="hint">Up to {fmtSize(DOCUMENT_MAX_BYTES)}</span>
+          <span className="hint">{DOCUMENT_LIMIT_HINT}</span>
         </div>
       )}
       {upload && (

@@ -154,6 +154,13 @@ describe('core.js in a bare JavaScript context', () => {
     aircraftHelpers: () =>
       expect(call('aircraftHelpers', { op: 'split10b', text: 'SB2' })).toEqual({ ssr: 'S', ads: ['B2'] }),
     historyText: () => expect(call('historyText', {}).entries).toEqual([]),
+    operatorForm: () =>
+      expect(
+        call('operatorForm', { operator: { name: '', access: { role: 'owner', owner: {} }, aircraft: [] } }).body,
+      ).toBeNull(),
+    operatorList: () => expect(call('operatorList', {}).rows).toEqual([]),
+    newOperator: () => expect(call('newOperator', { name: 'A' }).body.name).toBe('A'),
+    documents: () => expect(call('documents', {}).rows).toEqual([]),
     sharing: () =>
       expect(call('sharing', { sharing: { role: 'owner', canManage: true, people: [] }, myId: 'p' }).error).toBe(
         'Enter an e-mail address.',

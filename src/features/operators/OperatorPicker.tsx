@@ -6,9 +6,10 @@ import { Link } from 'react-router';
 
 import { api } from '../../data/api';
 import { useEntity } from '../../data/entities';
-import { type AircraftInput, EMPTY_OPERATOR, type OperatorItem } from '../../shared';
+import type { AircraftInput, OperatorItem } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { Dialog, DialogFooter, Field } from '../../ui';
+import { newOperatorInput } from './model';
 
 const NEW = '__new__';
 
@@ -95,13 +96,14 @@ export function NewOperatorDialog({
   const [error, setError] = useState<string | null>(null);
   const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!name.trim()) {
-      setError('Enter the operator’s name.');
+    const made = newOperatorInput(name);
+    if (made.error !== null) {
+      setError(made.error);
       return;
     }
     setBusy(true);
     try {
-      onCreated(await api.operators.create({ ...EMPTY_OPERATOR, name: name.trim() }));
+      onCreated(await api.operators.create(made.input));
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
