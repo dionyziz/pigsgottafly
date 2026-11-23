@@ -21,6 +21,7 @@ struct FlightWorkspace: View {
     @State private var link: WebPage?
     /// iPad: where leaving Fly goes back to.
     @State private var beforeFly: FlightTab = .plan
+    @State private var sharing: ShareTarget?
 
     init(id: String, app: AppModel, close: (() -> Void)? = nil) {
         _model = StateObject(wrappedValue: FlightModel(id: id, app: app))
@@ -36,6 +37,10 @@ struct FlightWorkspace: View {
         .environment(\.focusRouter, router)
         .environment(\.flightFocus, focusField)
         .sheet(item: $link) { FixLinkView(url: $0.url) }
+        .sheet(item: $sharing) { t in
+            // leaving the flight: the website goes back to the flights
+            ShareSheet(target: t) { close?() }
+        }
         .onAppear { model.undoManager = undoManager }
         .onChange(of: undoManager) { _, u in model.undoManager = u }
         .task {
@@ -242,9 +247,29 @@ struct FlightWorkspace: View {
 
     // MARK: toolbar
 
+    /// The flight's share sheet, with the manifest's passengers that have an e-mail (the website's
+    /// manifestContacts) offered as viewers.
+    private func share() async {
+        let passengers: JSON? = try? await app.api.passengers()
+        let contacts = try? app.core?.shareSuggestions(
+            crew: JSON.array(model.crew).text, passengers: (passengers ?? []).text, people: nil
+        ).contacts
+        sharing = ShareTarget(
+            kind: .flight, id: model.id, name: model.title, passengers: contacts.map { Core.text($0) })
+    }
+
     @ToolbarContentBuilder
     private var flightToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
+            if model.flight != nil {
+                Button {
+                    Task { await share() }
+                } label: {
+                    Image(systemName: "person.2")
+                }
+                .accessibilityLabel("Share")
+                .accessibilityIdentifier("share-flight")
+            }
             if !model.readOnly {
                 Button {
                     if undoManager?.canUndo == true { undoManager?.undo() }
@@ -286,8 +311,20 @@ struct StageView: View {
         s != .form731 || model.crew.contains { $0["role"]?.string != "PIC" }
     }
 
+    /// "View only · shared by Alice" on a flight shared with the pilot (the website's SharedFlightChip).
+    private var sharedChip: String? {
+        guard let access = model.flight?["access"], !access.isNull else { return nil }
+        return try? model.app.core?.sharedChip(access: access.text, kind: "flight")
+    }
+
     var body: some View {
         List {
+            if let chip = sharedChip {
+                Label(chip, systemImage: "person.2.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityIdentifier("view-only-chip")
+            }
             if let stage = tab.stage {
                 ReadinessHeader(stage: stage, model: model)
             }

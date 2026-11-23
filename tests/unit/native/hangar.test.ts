@@ -2,6 +2,7 @@
 // helpers and the version history in words.
 import { describe, expect, test } from 'vitest';
 
+import { addOptions, newAircraftInput } from '../../../src/features/hangar/add';
 import {
   addCompassCard,
   addStation,
@@ -17,12 +18,13 @@ import {
   sameTypeCopy,
   split10a,
   split10b,
+  toInput,
   validateAircraft as webValidate,
 } from '../../../src/features/hangar/model';
-import { aircraftHelpers, historyText, validateAircraft } from '../../../src/native/core';
+import { aircraftHelpers, historyText, newAircraft, validateAircraft } from '../../../src/native/core';
 import type { AircraftInput } from '../../../src/shared';
 import { changeText, entryTitle, revisionSummary, versionChangeText } from '../../../src/shared/aircraftHistory';
-import type { AircraftLogEntry } from '../../../src/shared/sharing';
+import type { AircraftLogEntry, HangarAircraft } from '../../../src/shared/sharing';
 import { AC } from './fixtures';
 
 const json = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
@@ -126,5 +128,60 @@ describe('historyText', () => {
     );
     expect(out.entries[0].title).toBe('You changed 2 fields');
     expect(out.versionChanges).toEqual(entries[0].changes.map(versionChangeText));
+  });
+});
+
+describe('newAircraft: the hangar’s Add aircraft', () => {
+  const owner = { pilotId: 'p1', name: 'Pilot', email: 'p@example.com' };
+  const mine: HangarAircraft = json({ ...AC, id: 'a1', operatorId: 'op1', access: { role: 'owner', owner } });
+  const shared: HangarAircraft = json({
+    ...AC,
+    id: 'a2',
+    registration: 'SX-SHR',
+    access: { role: 'view', owner: { ...owner, pilotId: 'p2' } },
+  });
+  const hangar = [mine, shared];
+
+  test('the choices and the template body, as the website’s dialog', () => {
+    const out = newAircraft({ hangar, registration: ' sx-new ' });
+    expect(out.options).toEqual(json(addOptions(hangar)));
+    expect(out.options.map((o) => o.title)).toEqual([
+      'Reims/Cessna F172M type template',
+      `Same type as ${AC.registration}`,
+      'Same type as SX-SHR',
+      'Blank',
+    ]);
+    expect(out.source).toEqual({ kind: 'template', id: 'reims-f172m' });
+    expect(out.registration).toBe('SX-NEW');
+    expect(out.input).toEqual(json(newAircraftInput(hangar, out.source, 'SX-NEW').input));
+    expect(out.error).toBeNull();
+    expect(out.added).toBe('Added SX-NEW');
+    expect(out.addedDefault).toBe('Added SX-NEW as your default aircraft');
+  });
+
+  test('a copy of the same type drops the airframe’s own data; blank is blank', () => {
+    const copy = newAircraft({ hangar, copyOf: 'a1', registration: 'SX-CPY' });
+    expect(copy.source).toEqual({ kind: 'copy', id: 'a1' });
+    expect(copy.input).toEqual(json(sameTypeCopy(toInput(mine), 'SX-CPY')));
+    expect(copy.input?.compassCards).toEqual([]);
+    expect(copy.input?.operatorId).toBe('op1');
+    const blank = newAircraft({ hangar, source: { kind: 'blank' }, registration: 'SX-BLK' });
+    expect(blank.input?.icaoType).toBe('');
+  });
+
+  test('the operator stays only when the pilot may assign it', () => {
+    const at = (operator: { access: { role: string } } | null) =>
+      newAircraft({ hangar, copyOf: 'a1', registration: 'SX-CPY', operator }).input?.operatorId;
+    expect(at({ access: { role: 'edit' } })).toBe('op1');
+    expect(at({ access: { role: 'view' } })).toBeNull();
+    expect(at(null)).toBeNull();
+  });
+
+  test('a registration is needed and unique among the pilot’s own aircraft', () => {
+    expect(newAircraft({ hangar, registration: ' ' })).toMatchObject({ input: null, error: 'Enter the registration.' });
+    const taken = newAircraft({ hangar, registration: AC.registration.toLowerCase() });
+    expect(taken).toMatchObject({ taken: true, input: null, error: `${AC.registration} is already in your hangar.` });
+    expect(newAircraft({ hangar, registration: 'sx-shr' })).toMatchObject({ taken: false, error: null });
+    expect(newAircraft({ hangar, registration: 'SX-X', copyOf: 'gone' }).input).toBeNull();
   });
 });

@@ -343,19 +343,16 @@ final class ManifestModel: ObservableObject {
         guard crew.indices.contains(index), crew[index]["role"]?.string == "PAX" else { return }
         let row = crew[index]
         await flight.changeManifest(.remove(index: index), aircraft: aircraft)
-        let email = (passenger(row["passengerId"]?.string)?["email"]?.string ?? "")
-            .trimmingCharacters(in: .whitespaces).lowercased()
-        guard !email.isEmpty, !flight.readOnly,
-            let sharing: JSON = try? await app.api.flightShares(flight.id),
-            sharing["canManage"]?.bool == true,
-            let who = (sharing["people"]?.array ?? []).first(where: {
-                ($0["email"]?.string ?? "").trimmingCharacters(in: .whitespaces).lowercased() == email
-            }),
-            who["role"]?.string != "owner", let key = who["pilotId"]?.string, key != pilot?["id"]?.string
+        let email = passenger(row["passengerId"]?.string)?["email"]?.string ?? ""
+        // whoever may edit the manifest (owner or editor) may also manage the sharing
+        guard !email.trimmingCharacters(in: .whitespaces).isEmpty, !flight.readOnly else { return }
+        let sharing: JSON? = try? await app.api.flightShares(flight.id)
+        guard
+            let offer = try? app.core?.unshareOffer(
+                sharing: sharing?.text, email: email, myId: pilot?["id"]?.string ?? "",
+                name: row["snapshot"]?["fullName"]?.string ?? "")
         else { return }
-        let snapName = row["snapshot"]?["fullName"]?.string ?? ""
-        let name = [snapName, who["name"]?.string ?? "", who["email"]?.string ?? ""].first { !$0.isEmpty } ?? ""
-        unshare = Unshare(name: name, key: key)
+        unshare = Unshare(name: offer.name, key: offer.key)
     }
 
     func stopSharing(_ u: Unshare) async {

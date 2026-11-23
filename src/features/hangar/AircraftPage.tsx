@@ -19,7 +19,6 @@ import { useAsync } from '../../data/useAsync';
 import { CARD_EXPIRY_WARN_DAYS } from '../../shared/constants';
 import { localToday } from '../../shared/date';
 import { errorMessage, fmtLocalDayTime } from '../../shared/format';
-import { standardFuelTypes } from '../../shared/fuel';
 import type {
   AircraftRestoreResult,
   AircraftRevision,
@@ -27,13 +26,13 @@ import type {
   AircraftRevisionHead,
   HangarAircraft,
 } from '../../shared/sharing';
-import type { Aircraft, AircraftInput } from '../../shared/types';
+import type { AircraftInput } from '../../shared/types';
 import { Chip, ConfirmDialog, EmptyState, Icon, KebabMenu, Loading, SaveStatus, useAutosave } from '../../ui';
 import { DocumentsSection, PhotoControl } from './AircraftFiles';
 import { CompassSection } from './CompassSection';
 import { HistorySection } from './HistorySection';
 import { MassBalanceSection } from './MassBalanceSection';
-import { type Issue, type SectionId, validateAircraft } from './model';
+import { type Issue, type SectionId, toInput, validateAircraft } from './model';
 import { PerformanceSection } from './PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from './sections';
 import { SharedChip, ShareDialog } from './ShareDialog';
@@ -53,22 +52,6 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'history', label: 'Version history' },
 ];
 const SECTION_IDS = SECTIONS.map((s) => s.id);
-
-/** The editable part of an aircraft (fuel densities at the standard values: saving migrates old ones). */
-export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
-  const {
-    id: _i,
-    created: _c,
-    updated: _u,
-    access: _a,
-    photo: _p,
-    placeholder: _ph,
-    updatedAt: _ua,
-    updatedBy: _ub,
-    ...rest
-  } = a as HangarAircraft;
-  return { ...rest, fuel: { ...rest.fuel, types: standardFuelTypes(rest.fuel.types) } };
-}
 
 /** The input an issue is about (see pathTarget), at last its section. */
 export function issueTarget(root: ParentNode, issue: Pick<Issue, 'path' | 'section'>): HTMLElement | null {

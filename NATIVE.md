@@ -36,7 +36,8 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   ("LGTT local · 1:00") and aircraft, the date with the relative day, block-off in UTC and Greek local
   time, the passengers, the filing and shared-by chips; at regular width also distance, time and fuel. Swipe and
   context menu: Fly again (a copy for today), Rename (PUT with the automatic title kept automatic),
-  Make a copy, Move to trash (with Undo), Leave (shared). The Trash (GET /flights?trash=1) with Restore.
+  Make a copy, Move to trash (with Undo), Leave (shared), and Share… (the share sheet below). The
+  Trash (GET /flights?trash=1) with Restore.
   Pull to refresh.
 - **New flight** (the website's NewFlightPage). The list's + creates the flight at once with the
   profile's defaults (POST /api/flights `{}`: the server starts it at the home aerodrome, with no
@@ -54,7 +55,12 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   in Fly, and any other flight, or one just made in New flight whatever its date, on Plan
   (`FlightTab.initial`, as the website's stage default). The toolbar has Undo and Redo (every edit
   goes through `FlightModel.edit`, which registers the flight as it was with the UndoManager; a 409
-  clears the stack) and the saving or offline state.
+  clears the stack), the saving or offline state, and **Share** (`Views/Common/ShareSheet.swift`, the
+  website's flight ShareDialog): pilots by e-mail as viewer or editor, also before they have an
+  account (a pending invite), the manifest's passengers with an e-mail offered as viewers ("Share
+  (view)"), roles, removing, and leaving a flight shared with the pilot. A flight shared with the
+  pilot shows "View only · shared by …" (or "Shared by …") atop Plan, Brief and File. Removing a
+  passenger the flight is shared with asks "Also stop sharing the flight with …?" (`PGF.unshareOffer`).
   - **Fly** (`Views/Flight/FlyView.swift`): a full-screen moving map, with no tab bar and no navigation
     bar. It shows the chart (the same style and layers as the website), the route with the active leg,
     the own aircraft from GPS with its track line, and a top strip with the next waypoint, bearing,
@@ -125,7 +131,21 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
       since sent" by the sheets' hash and the operator's address). Each with its missing details (Fix)
       and the sheets with their signatures as a PDF (`FormParts.swift`). What each panel says and
       offers is the core's (`PGF.form731Panel`, `genDecPanel`, `operatorPanel`).
-- **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones; each opens its sections:
+- **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones, the default one marked. The
+  list's + is the website's Add aircraft (`AddAircraftView`): the registration and Start from, the
+  type templates, the same type as each aircraft in the hangar, or blank (`PGF.newAircraft`); POST
+  /api/aircraft, then the new aircraft opens (iPhone: pushed; iPad: selected into the detail). Context
+  menu and swipes: Make default aircraft (PUT /api/me), Add another of this type (Add aircraft from
+  that aircraft), Delete (the owner, DELETE /api/aircraft/:id) or Remove from my hangar (a shared
+  one: its own share), each asked once. A shared aircraft shows "Shared by … · Viewer". **Share…**
+  (the row's context menu, and the aircraft page's toolbar; `ShareAircraftView`, the website's
+  ShareDialog): the people with access, the owner first, then the pending invitations; the owner and
+  editors add people by e-mail as viewer or editor (an address no account uses gets an invitation to
+  the app), change a role, remove someone; anyone removes their own access (asked once; the aircraft
+  leaves the hangar). **Invite pilots** (the hangar's toolbar; `InvitePilotsView`, the website's
+  InviteDialog): an e-mail, a note and the aircraft the pilot owns or edits with a role each (an
+  existing account gets them at once), and the open invitations with Cancel. Each aircraft opens its
+  sections:
   Identity, Flight plan items, Speeds, Fuel, Mass & balance (1F); Performance, Compass cards,
   Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
   the pilot pauses, with the version; on 409 the unsaved changes are applied again to the server's
@@ -136,8 +156,10 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   under their fields from `PGF.personIssues`; a saved passenger saves by itself (Autosave) while it
   has no problems, a new one with "Add passenger"; Delete asks first and Undo adds the details back
   as a new record, as the website's toast; the lists read again after each change), Waypoints
-  (list; map, typed coordinates and notes 1G), Operators and their editor (1G; people 2B, documents
-  2C).
+  (list; map, typed coordinates and notes 1G), Operators and their editor (1G; documents 2C). An
+  operator's Share (its editor's toolbar) is the share sheet: people with access, also those who see
+  it through one of its aircraft ("Viewer (aircraft)"), added by e-mail (accounts only), roles,
+  removing, leaving.
 - **Me** (`Views/Me/`; Profile in the iPad sidebar): the signed-in account; **Profile** (name, phone,
   home aerodrome, PUT /api/me; the pilot's own autorouter account, linked in Apple's sign-in sheet);
   planning defaults, map layers for new flights, licence and medical, data export and "Sign out
@@ -161,7 +183,10 @@ in memory and nothing is e-mailed (`FixtureRoutes+Paperwork.swift`, from `forms-
 revoked, a passenger given a link has signed by the next GET, and the sends to the HCAA and the
 operator answer as the server does (409 until everyone signed, or for a version already sent).
 `-openFlight fixture-forms` is a flight with a passenger, a GenDec the PIC sends and an operator who
-asks for the W&B and performance sheets.
+asks for the W&B and performance sheets. Sharing and invitations are
+kept in memory; the fixture server knows one other account (copilot@example.com, shared with at once)
+and sends no e-mail; a flight's address with no account becomes a pending invite, an operator's is
+refused as the server refuses it.
 
 **Launch arguments** (tests, screenshots): `-fixtures`, `-emptyAccount`, `-noNetwork`,
 `-fixturePosition lat,lon,track,gs`, `-today YYYY-MM-DD`, `-openFlight <id>`, `-tab
@@ -257,7 +282,7 @@ extra fields below were added while building the core.
   below that, the navlog's GS. `offRoute` is more than 2 NM off the leg.
 
 The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest, forms,
-exports, filing, hangar, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
+exports, filing, hangar, share, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
 wraps the website's own module (named in brackets); where the website kept a rule inside a React
 component, it moved to that module and the component imports it. tests/unit/native/<domain>.test.ts
 checks each answer equals the website module's for the same input.
@@ -410,8 +435,38 @@ PIC's `signature`) with the website's sheet components. The images the component
   `makePrimaryFuel` (`{ fuel, type }`, with `others`), `addRunwayCondition`, `setRunwayConditions`
   (`factors`), `addStallSpeeds { performance }`, `takeoffTable { table, edit, index?, row? }`,
   `landingTable { table, edit, index? }`.
+- `PGF.newAircraft({ hangar, registration?, source?, copyOf?, operator? })` → `{ options, source,
+  registration, taken, input, error, conflict, added, addedDefault }`: the Add aircraft dialog
+  [hangar/add.ts]. `hangar` is GET /api/aircraft; `source` `{ kind: 'template' | 'copy' | 'blank', id? }`
+  (default: `copyOf`'s type, else the first template); `options` the Start from choices `[{ source,
+  title, description }]`; `input` the body of POST /api/aircraft, null while `error` (no registration,
+  or one of the pilot's own aircraft has it: `taken`) holds it back. A copy with an operatorId: pass
+  `operator` (GET /api/operators/:id, null when it could not be read) and the copy keeps it only when
+  the pilot may assign it. `conflict` is the server's 409 in words; `added` and `addedDefault` the
+  toasts (the server makes the new aircraft the default when the pilot has none).
 - `PGF.historyText({ entries, myId, versionChanges? })` → `{ entries: [{ title, changes, summary }],
   versionChanges }`: the version history in words [shared/aircraftHistory.ts].
+
+**Sharing** (src/native/core/share.ts)
+
+- `PGF.sharing({ kind?, sharing, myId, email?, role?, passengers? })` → `{ canManage, role, rows,
+  roles, suggestions, error, body }`: the share dialog of an aircraft (default), operator or flight
+  [hangar/shareModel.ts]. `passengers`: a flight's manifest contacts (`PGF.shareSuggestions`'
+  `contacts`); `suggestions` those it is not shared with yet, for whoever manages the sharing.
+  `sharing` is GET …/:id/shares; `rows` `[{ key, role, name, email, initial, self, pending, note, via,
+  control, roleLabel, removeLabel, canRemove }]` (`key` the pilot id or the invited address, the
+  `:key` of PUT/DELETE …/shares/:key; `control` 'owner' | 'aircraft' | 'manage' | 'readOnly');
+  `error` or `body` (POST …/shares) for the add form's `email` and `role`.
+- `PGF.sharedChip({ access, kind? })` → `{ chip: { text, title } | null }`: "Shared by Alice ·
+  Viewer"; with `kind: 'flight'` a flight's "View only · shared by Alice" [editor/EditorPage.tsx].
+- `PGF.unshareOffer({ sharing, email, myId, name })` → `{ offer, title, confirm, cancel }`: after a
+  passenger leaves the manifest, whom to offer to stop sharing the flight with (`{ name, key }` or
+  null) and the question's words [editor/panels/ManifestSection.tsx].
+- `PGF.invite({ hangar?, invitations?, email?, note?, picked?, response? })` → `{ shareable,
+  invitations, error, body, done }`: Invite pilots. `shareable` the aircraft the pilot owns or edits;
+  `invitations` GET /api/invitations as rows `{ id, email, initial, aircraft }` ("SX-ASV (Viewer)");
+  `body` POST /api/invitations for `email`, `note` and `picked` ([aircraftId, role] pairs); `done` the
+  line after it, from its `response`.
 
 **People** (src/native/core/people.ts)
 

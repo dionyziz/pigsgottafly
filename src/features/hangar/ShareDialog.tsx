@@ -9,40 +9,22 @@ import { useEffect, useState } from 'react';
 import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
-import {
-  type AircraftAccess,
-  type AircraftRole,
-  type ManifestContact,
-  passengerShareSuggestions,
-  type SharePerson,
-  type ShareRole,
-} from '../../shared/sharing';
+import type { AircraftAccess, ManifestContact, ShareRole } from '../../shared/sharing';
 import { Chip, Dialog, Loading, RowRemove } from '../../ui';
-
-export const ROLE_LABEL = { owner: 'Owner', edit: 'Editor', view: 'Viewer' } as const;
+import { emailError, sharedBy, shareRows, shareSuggestionsFor, type SharingState } from './shareModel';
 
 /** "Shared by Alice · Viewer" for an aircraft the pilot does not own; nothing for their own. */
 export function SharedChip({ access }: { access: Pick<AircraftAccess, 'role' | 'owner'> | undefined }) {
-  if (!access || access.role === 'owner') return null;
-  const by = access.owner.name || access.owner.email;
+  const chip = sharedBy(access);
+  if (!chip) return null;
   return (
-    <Chip
-      className="share-chip"
-      title={`Shared with you by ${by}${access.owner.email && access.owner.name ? ` (${access.owner.email})` : ''}`}
-      testId="shared-chip"
-    >
-      Shared by {by} · {ROLE_LABEL[access.role]}
+    <Chip className="share-chip" title={chip.title} testId="shared-chip">
+      {chip.text}
     </Chip>
   );
 }
 
 const message = errorMessage;
-
-interface SharingState {
-  role: AircraftRole;
-  canManage: boolean;
-  people: (SharePerson & { via?: string[]; direct?: boolean; pending?: boolean })[];
-}
 
 const API = { aircraft: api.shares, operator: api.operatorShares, flight: api.flightShares } as const;
 
@@ -105,8 +87,9 @@ export function ShareDialog({
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = email.trim();
-    if (!addr) {
-      setError('Enter an e-mail address.');
+    const invalid = emailError(addr);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     if (await run(() => shares.add(id, addr, role))) setEmail('');
@@ -122,7 +105,7 @@ export function ShareDialog({
   };
 
   const canManage = !!sharing?.canManage;
-  const suggestions = sharing?.canManage && passengers ? passengerShareSuggestions(passengers, sharing.people) : [];
+  const suggestions = sharing ? shareSuggestionsFor(sharing, passengers) : [];
   return (
     <Dialog
       title={`Share ${name}`}
@@ -209,75 +192,55 @@ export function ShareDialog({
           <div>
             <h3 className="share-h">People with access</h3>
             <ul className="share-people" data-testid="share-people">
-              {sharing.people.map((p) => {
-                const self = p.pilotId === pilot.id;
-                const via = p.via?.length ? `through ${p.via.join(', ')}` : '';
-                return (
-                  <li
-                    key={p.pilotId}
-                    data-pilot-id={p.pilotId}
-                    data-role={p.role}
-                    data-pending={p.pending || undefined}
-                  >
-                    <span className="share-avatar" aria-hidden="true">
-                      {(p.name || p.email || '?').trim().charAt(0).toUpperCase()}
-                    </span>
-                    <span className="share-who">
-                      <b>
-                        {p.name || p.email}
-                        {self && <span className="muted"> (you)</span>}
-                      </b>
-                      {p.name && <span className="hint">{p.email}</span>}
-                      {p.pending && (
-                        <span className="hint" data-testid="share-pending">
-                          Invited · has access once they sign in with this address
-                        </span>
-                      )}
-                      {kind === 'operator' && via && (
-                        <span className="hint" data-testid="share-via">
-                          Aircraft: {p.via!.join(', ')}
-                        </span>
-                      )}
-                    </span>
-                    {p.role === 'owner' ? (
-                      <span className="muted share-role">Owner</span>
-                    ) : p.direct === false ? (
-                      <span className="muted share-role">Viewer (aircraft)</span>
-                    ) : canManage ? (
-                      <span className="row share-role">
-                        <select
-                          value={p.role}
-                          disabled={busy}
-                          aria-label={`Role of ${p.name || p.email}`}
-                          onChange={(e) => void run(() => shares.setRole(id, p.pilotId, e.target.value as ShareRole))}
-                        >
-                          <option value="view">Viewer</option>
-                          <option value="edit">Editor</option>
-                        </select>
-                        <RowRemove
-                          disabled={busy}
-                          onClick={() => void remove(p.pilotId)}
-                          label={self ? 'Remove my access' : `Remove ${p.name || p.email}`}
-                        />
-                      </span>
-                    ) : (
-                      <span className="row share-role">
-                        <span className="muted">{ROLE_LABEL[p.role]}</span>
-                        {self && (
-                          <button
-                            type="button"
-                            className="ghost sm"
-                            disabled={busy}
-                            onClick={() => void remove(p.pilotId)}
-                          >
-                            Remove my access
-                          </button>
-                        )}
+              {shareRows(sharing, pilot.id, kind).map((p) => (
+                <li key={p.key} data-pilot-id={p.key} data-role={p.role} data-pending={p.pending || undefined}>
+                  <span className="share-avatar" aria-hidden="true">
+                    {p.initial}
+                  </span>
+                  <span className="share-who">
+                    <b>
+                      {p.name}
+                      {p.self && <span className="muted"> (you)</span>}
+                    </b>
+                    {p.email && <span className="hint">{p.email}</span>}
+                    {p.note && (
+                      <span className="hint" data-testid="share-pending">
+                        {p.note}
                       </span>
                     )}
-                  </li>
-                );
-              })}
+                    {p.via && (
+                      <span className="hint" data-testid="share-via">
+                        {p.via}
+                      </span>
+                    )}
+                  </span>
+                  {p.control === 'owner' || p.control === 'aircraft' ? (
+                    <span className="muted share-role">{p.roleLabel}</span>
+                  ) : p.control === 'manage' ? (
+                    <span className="row share-role">
+                      <select
+                        value={p.role}
+                        disabled={busy}
+                        aria-label={`Role of ${p.name}`}
+                        onChange={(e) => void run(() => shares.setRole(id, p.key, e.target.value as ShareRole))}
+                      >
+                        <option value="view">Viewer</option>
+                        <option value="edit">Editor</option>
+                      </select>
+                      <RowRemove disabled={busy} onClick={() => void remove(p.key)} label={p.removeLabel} />
+                    </span>
+                  ) : (
+                    <span className="row share-role">
+                      <span className="muted">{p.roleLabel}</span>
+                      {p.canRemove && (
+                        <button type="button" className="ghost sm" disabled={busy} onClick={() => void remove(p.key)}>
+                          {p.removeLabel}
+                        </button>
+                      )}
+                    </span>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         </div>

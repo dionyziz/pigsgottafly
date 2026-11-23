@@ -112,7 +112,7 @@ enum ShareRole: String, Codable, Sendable, CaseIterable {
     case view, edit
 }
 
-struct ShareInput: Encodable, Sendable {
+struct ShareInput: Codable, Equatable, Sendable {
     var email: String
     var role: ShareRole
 }

@@ -3,8 +3,8 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { FlowLink } from '../../../app/FlowLinks';
 import { api } from '../../../data/api';
 import type { FlightCrew, Passenger, PersonDetails } from '../../../shared';
-import { accessByEmail } from '../../../shared/sharing';
 import { Chip, ConfirmDialog, Icon, NumberField, PersonPicker } from '../../../ui';
+import { unshareOffer } from '../../hangar/shareModel';
 import { PassengerDialog, PilotDetailsDialog } from '../../passengers/PassengerDialog';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
@@ -84,9 +84,8 @@ export function ManifestSection() {
     // whoever may edit the manifest (owner or editor) may also manage the sharing
     if (!email.trim() || readOnly) return;
     const sharing = await api.flightShares.get(flight.id).catch(() => null);
-    const who = sharing && accessByEmail(sharing.people, email);
-    if (sharing?.canManage && who && who.role !== 'owner' && who.pilotId !== pilot.id)
-      setUnshare({ name: c.snapshot.fullName || who.name || who.email, key: who.pilotId });
+    const offer = unshareOffer(sharing, email, pilot.id, c.snapshot.fullName);
+    if (offer) setUnshare(offer);
   };
 
   const setCrew = (i: number, fn: (c: FlightCrew) => FlightCrew, coalesce?: string) =>

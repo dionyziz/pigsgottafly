@@ -16,14 +16,24 @@ import { errorMessage } from '../../shared/format';
 import type { HangarAircraft } from '../../shared/sharing';
 import type { Aircraft } from '../../shared/types';
 import { Chip, ConfirmDialog, Dialog, DialogFooter, EmptyState, KebabMenu, Loading } from '../../ui';
+import {
+  addedText,
+  addOptions,
+  type AddSource,
+  alreadyInHangar,
+  defaultSource,
+  keepsOperator,
+  newAircraftInput,
+  normalRegistration,
+  registrationTaken,
+  sameSource,
+} from './add';
 import { AircraftPhoto } from './AircraftFiles';
-import { toInput } from './AircraftPage';
 import { StatusChip } from './CompassSection';
 import { updatedText } from './history';
 import { InviteDialog } from './InviteDialog';
-import { missingEssentials, sameTypeCopy } from './model';
+import { missingEssentials } from './model';
 import { SharedChip, ShareDialog } from './ShareDialog';
-import { buildFromTemplate, TYPE_TEMPLATES } from './templates';
 
 export function HangarPage() {
   const { data, error, loading, reload } = useEntity('aircraft');
@@ -64,7 +74,7 @@ export function HangarPage() {
         /* the profile refreshes on the next load */
       }
     }
-    toast(becameDefault ? `Added ${a.registration} as your default aircraft` : `Added ${a.registration}`);
+    toast(addedText(a.registration, becameDefault));
     void navigate(withBack(`/hangar/${a.id}`, back));
   };
 
@@ -263,8 +273,6 @@ export function HangarPage() {
   );
 }
 
-type Source = { kind: 'template'; id: string } | { kind: 'copy'; id: string } | { kind: 'blank' };
-
 function AddAircraftDialog({
   hangar,
   copyOf,
@@ -277,54 +285,34 @@ function AddAircraftDialog({
   onCreated: (a: Aircraft) => void;
 }) {
   const [reg, setReg] = useState('');
-  const [src, setSrc] = useState<Source>(
-    copyOf
-      ? { kind: 'copy', id: copyOf.id }
-      : TYPE_TEMPLATES.length
-        ? { kind: 'template', id: TYPE_TEMPLATES[0].id }
-        : { kind: 'blank' },
-  );
+  const [src, setSrc] = useState<AddSource>(() => defaultSource(copyOf));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const regNorm = reg.trim().toUpperCase();
-  // registrations are unique among the pilot's own aircraft (a shared one may have the same)
-  const dup = hangar.some(
-    (a) => a.registration === regNorm && ((a as HangarAircraft).access?.role ?? 'owner') === 'owner',
-  );
+  const regNorm = normalRegistration(reg);
+  const dup = registrationTaken(hangar, regNorm);
 
   const create = async () => {
     if (busy) return;
-    if (!regNorm) {
-      setError('Enter the registration.');
+    const made = newAircraftInput(hangar, src, regNorm);
+    if (made.error !== null) {
+      setError(made.error);
       return;
     }
-    if (dup) {
-      setError(`${regNorm} is already in your hangar.`);
-      return;
-    }
-    const base =
-      src.kind === 'copy'
-        ? sameTypeCopy(toInput(hangar.find((a) => a.id === src.id)!), regNorm)
-        : { ...buildFromTemplate(src.kind === 'template' ? src.id : null), registration: regNorm };
+    const base = made.input;
     setBusy(true);
     try {
-      // a copy keeps the operator only when the pilot may assign it (owner or editor); else its name as text
       if (base.operatorId) {
         const op = await api.operators.get(base.operatorId).catch(() => null);
-        if (!op || op.access.role === 'view') base.operatorId = null;
+        if (!keepsOperator(op)) base.operatorId = null;
       }
       onCreated(await api.aircraft.create(base));
     } catch (err) {
-      setError(
-        err instanceof ApiRequestError && err.status === 409
-          ? `${regNorm} is already in your hangar.`
-          : errorMessage(err),
-      );
+      setError(err instanceof ApiRequestError && err.status === 409 ? alreadyInHangar(regNorm) : errorMessage(err));
       setBusy(false);
     }
   };
-  const radio = (s: Source, title: string, desc: string) => {
-    const on = src.kind === s.kind && (s.kind === 'blank' || (src as { id: string }).id === (s as { id: string }).id);
+  const radio = (s: AddSource, title: string, desc: string) => {
+    const on = sameSource(src, s);
     return (
       <label className={'src-opt' + (on ? ' on' : '')} key={s.kind + ('id' in s ? s.id : '')}>
         <input type="radio" name="src" checked={on} onChange={() => setSrc(s)} />
@@ -386,13 +374,7 @@ function AddAircraftDialog({
         </label>
         <div className="field">
           <span>Start from</span>
-          <div className="src-opts">
-            {TYPE_TEMPLATES.map((t) =>
-              radio({ kind: 'template', id: t.id }, `${t.label} type template`, t.description),
-            )}
-            {hangar.map((a) => radio({ kind: 'copy', id: a.id }, `Same type as ${a.registration}`, a.makeModel))}
-            {radio({ kind: 'blank' }, 'Blank', '')}
-          </div>
+          <div className="src-opts">{addOptions(hangar).map((o) => radio(o.source, o.title, o.description))}</div>
         </div>
       </form>
     </Dialog>

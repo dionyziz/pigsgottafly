@@ -1,12 +1,33 @@
 import SwiftUI
 
-/// The pilot's aircraft and those shared with them (GET /api/aircraft). On iPad the list selects into
-/// the detail column (`selection`); on iPhone a row pushes the aircraft.
+/// The pilot's aircraft and those shared with them (GET /api/aircraft), with the website's hangar
+/// actions: Add aircraft (+), Invite pilots, and per aircraft Share…, Make default aircraft, Add
+/// another of this type, and Delete (the owner) or Remove from my hangar (a shared one). On iPad the list selects into the
+/// detail column (`selection`); on iPhone a row pushes the aircraft.
 struct HangarListView: View {
     @EnvironmentObject private var app: AppModel
     var selection: Binding<String?>?
     @State private var aircraft: [AircraftItem]?
+    /// The same list as JSON text: the core builds the new aircraft from it.
+    @State private var hangarJSON = "[]"
     @State private var error: String?
+    @State private var adding: Adding?
+    @State private var removing: AircraftItem?
+    /// iPhone: the aircraft just added, pushed.
+    @State private var opened: Opened?
+    @State private var toast: Toast?
+    @State private var sharing: AircraftItem?
+    @State private var inviting = false
+
+    struct Adding: Identifiable {
+        let id = UUID()
+        var copyOf: String?
+    }
+
+    struct Opened: Identifiable, Hashable {
+        var id: String
+        var registration: String
+    }
 
     var body: some View {
         Group {
@@ -23,10 +44,65 @@ struct HangarListView: View {
             } else if let error, aircraft?.isEmpty ?? true {
                 ContentUnavailableView("No aircraft", systemImage: "wifi.slash", description: Text(error))
             } else if aircraft?.isEmpty == true {
-                ContentUnavailableView("No aircraft yet", systemImage: "airplane")
+                ContentUnavailableView {
+                    Label("No aircraft yet", systemImage: "airplane")
+                } actions: {
+                    Button("Add aircraft") { adding = Adding() }.buttonStyle(.borderedProminent)
+                }
             }
         }
         .navigationTitle("Hangar")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    inviting = true
+                } label: {
+                    Image(systemName: "person.badge.plus")
+                }
+                .accessibilityLabel("Invite pilots")
+                .accessibilityIdentifier("invite-pilots")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    adding = Adding()
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add aircraft")
+                .accessibilityIdentifier("add-aircraft")
+            }
+        }
+        .sheet(item: $adding) { a in
+            AddAircraftView(hangar: hangarJSON, copyOf: a.copyOf) { id, message in
+                adding = nil
+                toast = Toast(message: message)
+                Task {
+                    await load()
+                    open(id)
+                }
+            }
+        }
+        .sheet(item: $sharing) { a in
+            ShareSheet(target: .aircraft(a.id, a.registration)) {
+                toast = Toast(message: "Removed \(a.registration) from your hangar")
+            }
+        }
+        .sheet(isPresented: $inviting) {
+            InvitePilotsView(hangar: hangarJSON)
+        }
+        .onChange(of: app.hangarChanged) { Task { await load() } }
+        .navigationDestination(item: $opened) { o in
+            AircraftEditorView(aircraftId: o.id, title: o.registration)
+        }
+        .confirmDestructive(
+            removing.map { $0.isOwner ? "Delete \($0.registration)?" : "Remove \($0.registration) from your hangar?" }
+                ?? "",
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+            action: removing?.isOwner == false ? "Remove" : "Delete"
+        ) { [removing] in
+            if let removing { Task { await remove(removing) } }
+        }
+        .toast($toast)
         .refreshable { await load() }
         .task { await load() }
         .accessibilityIdentifier("hangar-list")
@@ -46,24 +122,136 @@ struct HangarListView: View {
                     row(a).tag(a.id)
                 }
             }
+            .contextMenu { actions(a) }
+            .swipeActions(edge: .trailing) {
+                Button {
+                    removing = a
+                } label: {
+                    if a.isOwner {
+                        Label("Delete", systemImage: "trash")
+                    } else {
+                        Label("Remove", systemImage: "minus.circle")
+                    }
+                }
+                .tint(.red)
+                .accessibilityIdentifier("aircraft-remove-\(a.id)")
+            }
+            .swipeActions(edge: .leading) {
+                Button {
+                    adding = Adding(copyOf: a.id)
+                } label: {
+                    Label("Add another of this type", systemImage: "plus.square.on.square")
+                }
+                .tint(.accentColor)
+            }
             .accessibilityIdentifier("aircraft-\(a.id)")
+        }
+    }
+
+    @ViewBuilder
+    private func actions(_ a: AircraftItem) -> some View {
+        Button {
+            sharing = a
+        } label: {
+            Label("Share…", systemImage: "person.2")
+        }
+        .accessibilityIdentifier("aircraft-share-\(a.id)")
+        if app.pilot?.defaultAircraftId != a.id {
+            Button {
+                Task { await makeDefault(a) }
+            } label: {
+                Label("Make default aircraft", systemImage: "star")
+            }
+        }
+        Button {
+            adding = Adding(copyOf: a.id)
+        } label: {
+            Label("Add another of this type", systemImage: "plus.square.on.square")
+        }
+        .accessibilityIdentifier("aircraft-copy-\(a.id)")
+        Divider()
+        Button(role: .destructive) {
+            removing = a
+        } label: {
+            if a.isOwner {
+                Label("Delete", systemImage: "trash")
+            } else {
+                Label("Remove from my hangar", systemImage: "minus.circle")
+            }
         }
     }
 
     private func row(_ a: AircraftItem) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(a.registration).font(.headline)
+            HStack(spacing: 6) {
+                Text(a.registration).font(.headline)
+                if app.pilot?.defaultAircraftId == a.id {
+                    Text("Default")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .foregroundStyle(.green)
+                        .background(.green.opacity(0.15), in: Capsule())
+                        .accessibilityIdentifier("aircraft-default")
+                }
+            }
             if let m = a.makeModel, !m.isEmpty { Text(m).font(.subheadline).foregroundStyle(.secondary) }
+            if !a.isOwner, let chip = sharedChip(a) {
+                Text(chip).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("shared-chip")
+            }
         }
         .padding(.vertical, 4)
     }
 
     private func load() async {
         do {
-            aircraft = try await app.aircraftList()
+            let h = try await app.hangar()
+            aircraft = h.items
+            hangarJSON = h.json
             error = nil
+            if let id = selection?.wrappedValue, !h.items.contains(where: { $0.id == id }) {
+                selection?.wrappedValue = nil
+            }
         } catch {
             if !isCancellation(error) { self.error = error.localizedDescription }
+        }
+    }
+
+    private func sharedChip(_ a: AircraftItem) -> String? {
+        guard let access = a.access else { return nil }
+        return try? app.core?.sharedChip(access: Core.text(access))
+    }
+
+    private func open(_ id: String) {
+        if let selection {
+            selection.wrappedValue = id
+        } else {
+            opened = Opened(id: id, registration: aircraft?.first { $0.id == id }?.registration ?? "Aircraft")
+        }
+    }
+
+    private func makeDefault(_ a: AircraftItem) async {
+        do {
+            try await app.setDefaultAircraft(a.id)
+            toast = Toast(message: "\(a.registration) is now your default aircraft")
+        } catch {
+            if !isCancellation(error) { toast = Toast(message: error.localizedDescription) }
+        }
+    }
+
+    private func remove(_ a: AircraftItem) async {
+        do {
+            if a.isOwner {
+                try await app.deleteAircraft(a)
+            } else {
+                try await app.leaveAircraft(a)
+            }
+            if selection?.wrappedValue == a.id { selection?.wrappedValue = nil }
+            await load()
+            toast = Toast(
+                message: a.isOwner ? "Deleted \(a.registration)" : "Removed \(a.registration) from your hangar")
+        } catch {
+            if !isCancellation(error) { toast = Toast(message: error.localizedDescription) }
         }
     }
 }

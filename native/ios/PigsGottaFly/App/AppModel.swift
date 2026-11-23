@@ -132,6 +132,17 @@ final class AppModel: ObservableObject {
         try? store.write(data, .pilot)
     }
 
+    /// Bumped when an aircraft leaves the hangar from outside the list (the share sheet's "Remove my
+    /// access" on the aircraft's page): the list reads itself again.
+    @Published var hangarChanged = 0
+
+    /// The hangar's "Make default aircraft".
+    func setDefaultAircraft(_ id: String) async throws {
+        let data = try await api.updateMe(["defaultAircraftId": .string(id)])
+        pilot = try api.decode(PilotProfile.self, data)
+        try? store.write(data, .pilot)
+    }
+
     func deleteAccount(confirm: String) async throws {
         try await session.deleteAccount(confirm: confirm)
         pilot = nil

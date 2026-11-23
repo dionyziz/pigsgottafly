@@ -2,8 +2,8 @@ import Foundation
 
 /// Fixture mode (launch argument `-fixtures`): the API answers from the JSON files bundled in
 /// Fixtures/, with no network and no sign-in. It keeps what is changed in memory like the server: a
-/// PUT bumps the version and keeps the flight, POST /flights and POST /aircraft add one, PUT /me
-/// changes the profile. `-emptyAccount` starts as a brand-new pilot: no profile, no aircraft, no
+/// PUT bumps the version and keeps the flight, POST /flights and POST /aircraft add one, DELETE
+/// /aircraft removes one, PUT /me changes the profile. `-emptyAccount` starts as a brand-new pilot: no profile, no aircraft, no
 /// flights. A flight's own file is `flight-<id>.json`; any other id answers `flight.json`.
 final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     let dir: URL
@@ -15,6 +15,13 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     var created: [String] = []
     var aircraft: [JSON]
     var pilot: JSON
+    /// The people each aircraft is shared with (accounts), by aircraft id.
+    var aircraftShares: [String: [JSON]] = [:]
+    /// FlightSharing and OperatorSharing by id, once read or changed (FixtureRoutes+Sharing.swift).
+    var flightShares: [String: JSON] = [:]
+    var operatorShares: [String: JSON] = [:]
+    /// The pilot's open invitations to the app, newest first (nothing is ever sent).
+    var invitations: [JSON] = []
     let emptyAccount: Bool
     var lobby = LobbyFixtures()
     var filing = FilingFixtures()
@@ -24,7 +31,9 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
         dir = directory
         self.emptyAccount = emptyAccount
         let read = { (name: String) in (try? Data(contentsOf: directory.appendingPathComponent(name))) }
-        let ac = read("aircraft.json").flatMap { try? JSON.parse($0) }
+        var ac = read("aircraft.json").flatMap { try? JSON.parse($0) }
+        // GET /api/aircraft answers each aircraft with the pilot's access; aircraft.json is the bare record
+        if ac?["access"] == nil { ac?["access"] = ["role": "owner"] }
         aircraft = emptyAccount ? [] : [ac].compactMap { $0 }
         var p = read("pilot.json").flatMap { try? JSON.parse($0) } ?? [:]
         if emptyAccount {
@@ -79,7 +88,8 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     private func route(method: String, parts: [String], query: String, body: Data?) -> (Int, String?, Data?) {
         let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
-            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, manifestRoutes, peopleRoutes,
+            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, sharingRoutes, recordShareRoutes,
+            manifestRoutes, peopleRoutes,
             fileRoutes, filingRoutes, paperworkRoutes, formRoutes, exportRoutes,
         ] {
             if let answer = domain(r) { return answer }

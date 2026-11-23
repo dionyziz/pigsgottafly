@@ -9,11 +9,11 @@ import { useEntity } from '../../data/entities';
 import { errorMessage } from '../../shared/format';
 import type { PilotInvitation, ShareRole } from '../../shared/sharing';
 import { Dialog, Loading } from '../../ui';
-import { ROLE_LABEL } from './ShareDialog';
+import { emailError, invitationAircraft, inviteDone, inviteRequest, shareableAircraft } from './shareModel';
 
 export function InviteDialog({ onClose }: { onClose: () => void }) {
   const { data: hangar } = useEntity('aircraft');
-  const shareable = (hangar ?? []).filter((a) => a.access.role !== 'view');
+  const shareable = shareableAircraft(hangar ?? []);
   const [invitations, setInvitations] = useState<PilotInvitation[] | null>(null);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
@@ -48,25 +48,18 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
   const invite = async (e: React.FormEvent) => {
     e.preventDefault();
     const addr = email.trim();
-    if (!addr) {
-      setError('Enter an e-mail address.');
+    const invalid = emailError(addr);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setBusy(true);
     setError(null);
     setDone(null);
     try {
-      const r = await api.invitations.create({
-        email: addr,
-        message: note.trim(),
-        aircraft: [...picked].map(([aircraftId, role]) => ({ aircraftId, role })),
-      });
+      const r = await api.invitations.create(inviteRequest(addr, note, [...picked]));
       setInvitations(r.invitations);
-      setDone(
-        r.existing
-          ? `${addr} already uses Pig’s Gotta Fly: shared ${r.shared.join(', ')} with them.`
-          : `Invited ${addr}.`,
-      );
+      setDone(inviteDone(addr, r));
       setEmail('');
       setNote('');
       setPicked(new Map());
@@ -191,7 +184,7 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
                       <b>{inv.email}</b>
                       {inv.aircraft.length > 0 && (
                         <span className="hint" data-testid="invitation-aircraft">
-                          {inv.aircraft.map((a) => `${a.registration} (${ROLE_LABEL[a.role]})`).join(', ')}
+                          {invitationAircraft(inv)}
                         </span>
                       )}
                     </span>

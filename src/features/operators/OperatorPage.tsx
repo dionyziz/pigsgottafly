@@ -31,7 +31,8 @@ import {
 } from '../../ui';
 import { DocumentsSection } from '../hangar/AircraftFiles';
 import { Section } from '../hangar/fields';
-import { ROLE_LABEL, SharedChip, ShareDialog } from '../hangar/ShareDialog';
+import { SharedChip, ShareDialog } from '../hangar/ShareDialog';
+import { ROLE_LABEL } from '../hangar/shareModel';
 import type { FormIssue } from '../passengers/formIssues';
 
 const DOCS_TEXT = {
