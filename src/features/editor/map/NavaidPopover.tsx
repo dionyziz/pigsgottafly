@@ -2,28 +2,9 @@ import { Fragment } from 'react';
 
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefNavaid } from '../../../shared/ref';
-import { navaidFreq } from './features';
+import { fmtHemi, NAVAID_TYPE_NAME, navaidFreqText } from './features';
 import { PopItem } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
-
-const TYPE_NAME: Record<RefNavaid['type'], string> = {
-  VOR: 'VOR',
-  'VOR/DME': 'VOR/DME',
-  VORTAC: 'VORTAC',
-  TACAN: 'TACAN',
-  DME: 'DME',
-  NDB: 'NDB',
-  'NDB/DME': 'NDB/DME',
-  L: 'Locator (L)',
-};
-
-/** '114.40 MHz', '382 kHz', 'CH 91X'. */
-export function navaidFreqText(n: RefNavaid): string {
-  const f = navaidFreq(n);
-  return n.freq === null ? f : `${f} ${n.unit}`;
-}
-
-const hemi = (deg: number) => `${Math.abs(deg)}°${deg < 0 ? 'W' : 'E'}`;
 
 function Head({ n, tip }: { n: RefNavaid; tip?: boolean }) {
   return (
@@ -53,7 +34,7 @@ export function NavaidDetails({ n, airac, charts = [] }: { n: RefNavaid; airac: 
       <PopItem open head={<Head n={n} />}>
         <dl className="pgf-air-body" data-testid="navaid-detail">
           <dt>Type</dt>
-          <dd>{TYPE_NAME[n.type]}</dd>
+          <dd>{NAVAID_TYPE_NAME[n.type]}</dd>
           <dt>Frequency</dt>
           <dd>
             {n.freq !== null && `${navaidFreqText(n)}`}
@@ -78,8 +59,8 @@ export function NavaidDetails({ n, airac, charts = [] }: { n: RefNavaid; airac: 
             <>
               <dt>Variation</dt>
               <dd>
-                {n.variation !== null && `${hemi(n.variation)} (${n.variationYear})`}
-                {n.declination !== null && `${n.variation !== null ? ' · ' : ''}declination ${hemi(n.declination)}`}
+                {n.variation !== null && `${fmtHemi(n.variation)} (${n.variationYear})`}
+                {n.declination !== null && `${n.variation !== null ? ' · ' : ''}declination ${fmtHemi(n.declination)}`}
               </dd>
             </>
           )}

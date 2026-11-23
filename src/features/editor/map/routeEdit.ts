@@ -139,3 +139,11 @@ export function mercatorMid(a: { lat: number; lon: number }, b: { lat: number; l
   const lat = (Math.atan(Math.sinh(ym)) * 180) / Math.PI;
   return [(a.lon + b.lon) / 2, lat];
 }
+
+/** A route point's kind in words (its menu's heading). */
+export const POINT_KIND_LABEL: Record<RoutePoint['kind'], string> = {
+  aerodrome: 'aerodrome',
+  vfr: 'VFR reporting point',
+  waypoint: 'my waypoint',
+  custom: 'custom point',
+};
