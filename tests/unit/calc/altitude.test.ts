@@ -41,10 +41,11 @@ const lerp = (a: LatLon, b: LatLon, t: number): LatLon => ({
   lon: a.lon + (b.lon - a.lon) * t,
 });
 
-/** Brute force: distance from p to a charted leg by sampling 2000 points along it (haversine). */
+/** Brute force: distance from p to a charted leg with an altitude by sampling 2000 points along it (haversine). */
 function bruteClosest(p: LatLon) {
   let best = { id: '', d: Infinity };
   for (const s of chartedSegments(ctx)) {
+    if (s.route.maxFt === null) continue;
     for (let i = 0; i <= 2000; i++) {
       const d = haversineNm(p, lerp(s.a, s.b, i / 2000));
       if (d < best.d) best = { id: s.route.id, d };

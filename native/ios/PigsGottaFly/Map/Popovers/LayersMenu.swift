@@ -32,6 +32,8 @@ struct LayersMenu: View {
                 Item(key: \.aerodromes, label: "Aerodromes", id: "map-aerodromes"),
                 Item(key: \.vfrPoints, label: "VFR reporting points", id: "map-vfr-points"),
                 Item(key: \.vfrRoutes, label: "VFR routes", id: "map-vfr-routes"),
+                Item(key: \.helRoutes, label: "Helicopter routes", id: "map-hel-routes"),
+                Item(key: \.milRoutes, label: "Military routes", id: "map-mil-routes"),
                 Item(key: \.navaids, label: "Radio navaids", id: "map-navaids"),
                 Item(key: \.waypoints, label: "My waypoints", id: "map-waypoints"),
             ]

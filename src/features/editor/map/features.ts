@@ -210,9 +210,10 @@ export function navaidFeatures(navaids: RefNavaid[]): FC<Point> {
   );
 }
 
-/** Charted altitude of a VFR route segment: '3000' or '2000–3000'. */
+/** Charted altitude of a VFR route segment: '3000' or '2000–3000'; '' when the chart prints none. */
 export function fmtRouteAltitude(r: Pick<RefVfrRoute, 'minFt' | 'maxFt'>): string {
-  return r.minFt === r.maxFt || !isFinite(r.minFt) ? `${r.maxFt}` : `${r.minFt}–${r.maxFt}`;
+  if (r.maxFt === null) return '';
+  return r.minFt === null || r.minFt === r.maxFt ? `${r.maxFt}` : `${r.minFt}–${r.maxFt}`;
 }
 
 /** The VFR points by chart and name ('<chart>/<NAME>'), the charted/table point preferred over an
@@ -225,6 +226,9 @@ function vfrPointsByChart(points: RefVfrPoint[]): Map<string, RefVfrPoint> {
   }
   return byChart;
 }
+
+/** A VFR route's `kind` feature property, which picks its style layers (style.ts VFR_ROUTE_KINDS). */
+const kindOf = (r: RefVfrRoute): string => r.kind ?? 'vfr';
 
 /**
  * VFR route segments as lines between their two reporting points (resolved by chart + name; segments
@@ -240,8 +244,8 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
     if (!a || !b) continue;
     // two-way segments listed in both directions are drawn once
     const key = r.oneway
-      ? `${r.chart}:${r.a}>${r.b}`
-      : `${r.chart}:${[r.a, r.b].sort().join('|')}:${r.minFt}-${r.maxFt}`;
+      ? `${r.chart}:${r.a}>${r.b}:${kindOf(r)}`
+      : `${r.chart}:${[r.a, r.b].sort().join('|')}:${r.minFt}-${r.maxFt}:${kindOf(r)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
@@ -253,7 +257,7 @@ export function vfrRouteFeatures(routes: RefVfrRoute[], points: RefVfrPoint[]): 
           [b.lon, b.lat],
         ],
       },
-      properties: { id: r.id, alt: fmtRouteAltitude(r), oneway: r.oneway },
+      properties: { id: r.id, alt: fmtRouteAltitude(r), oneway: r.oneway, kind: kindOf(r) },
     });
   }
   return fc(out);
@@ -278,13 +282,13 @@ export function vfrRouteArrowFeatures(routes: RefVfrRoute[], points: RefVfrPoint
     const a = byChart.get(`${r.chart}/${r.a}`),
       b = byChart.get(`${r.chart}/${r.b}`);
     if (!a || !b || pos(a) === pos(b)) continue;
-    const key = `${pos(a)}>${pos(b)}`;
+    const key = `${pos(a)}>${pos(b)}:${kindOf(r)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: mercatorAt(a, b, VFR_ARROW_AT) },
-      properties: { id: r.id, rot: mercatorBearing(a, b) },
+      properties: { id: r.id, rot: mercatorBearing(a, b), kind: kindOf(r) },
     });
   }
   return fc(out);

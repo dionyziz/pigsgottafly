@@ -241,7 +241,13 @@
    "max": 4000,
    "nm": 9,
    "oneway": true
+  },
+  {
+   "a": "STRIMON",
+   "b": "LOUTRA",
+   "min": null,
+   "max": null
   }
  ],
- "notes": "No altitude shown: STRIMON–LOUTRA, LOUTRA–PEREN, PEREN–ASKOS, SOSUS–IDILO, FANARI–IDILO, FANARI–KOMOTINI, IASMOS–KOMOTINI. Ambiguous labels, not transcribed: ROUPOL–LOUTRA, SOSUS–FANARI. Holdings: LOUTRA 5000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
+ "notes": "No altitude shown (transcribed with min/max null): STRIMON–LOUTRA. No altitude shown, not yet transcribed: LOUTRA–PEREN, PEREN–ASKOS, SOSUS–IDILO, FANARI–IDILO, FANARI–KOMOTINI, IASMOS–KOMOTINI. Ambiguous labels, not transcribed: ROUPOL–LOUTRA, SOSUS–FANARI. Holdings: LOUTRA 5000, KINIRA 3000, KAVALA 2000, KERAMOTI 1500."
 }

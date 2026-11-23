@@ -47,7 +47,13 @@ export function fplPlanning(i: FplPlanningInput): { navlog: NavlogResult | null;
   const ov = overrides.map((o) => o?.altFt);
   const altitudesFt = defaultAltitudes(
     flight.route,
-    { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes, terrain: ref.terrain },
+    {
+      aerodromes: ref.aerodromes,
+      vfrPoints: ref.vfrPoints,
+      vfrRoutes: ref.vfrRoutes,
+      terrain: ref.terrain,
+      layers: flight.options.mapLayers,
+    },
     ov,
     timing.patternPoints,
   ).map((x, k) => ov[k] ?? x.altFt);

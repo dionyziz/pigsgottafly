@@ -220,6 +220,12 @@ export function LayersControl({
               <i className="lg-vfr" /> VFR route
             </span>
             <span>
+              <i className="lg-hel" /> Helicopter route
+            </span>
+            <span>
+              <i className="lg-milroute" /> Military route
+            </span>
+            <span>
               <i className="lg-route" /> Your route
             </span>
           </div>

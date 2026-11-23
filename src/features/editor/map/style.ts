@@ -296,6 +296,8 @@ export const LAYER_GROUPS = {
   aerodromes: ['aerodrome-icon', 'aerodrome-label'],
   vfrPoints: ['vfr-point-icon', 'vfr-point-label'],
   vfrRoutes: ['vfr-route-line', 'vfr-route-arrow', 'vfr-route-alt'],
+  helRoutes: ['hel-route-line', 'hel-route-arrow', 'hel-route-alt'],
+  milRoutes: ['mil-route-line', 'mil-route-arrow', 'mil-route-alt'],
   navaids: ['navaid-icon', 'navaid-label'],
   waypoints: ['waypoint-icon', 'waypoint-label'],
 } as const satisfies Record<string, readonly string[]>;
@@ -422,6 +424,72 @@ function areaLayers(hov: ExpressionSpecification): LayerSpecification[] {
       paint: { 'text-color': color, 'text-halo-color': CHART.halo, 'text-halo-width': 1.4 },
     },
   ];
+}
+
+/** The VFR route layers of each kind (features.ts vfrRouteFeatures `kind`), by layer-id prefix: the
+ *  helicopter and military / jet routes are drawn apart from the ordinary ones (dashed, dash-dot) so a
+ *  pilot who shows them does not take one for a route open to every flight. */
+const VFR_ROUTE_KINDS: {
+  prefix: 'vfr-route' | 'hel-route' | 'mil-route';
+  kinds: string[];
+  color: ChartColor;
+  dash?: number[];
+}[] = [
+  { prefix: 'vfr-route', kinds: ['vfr'], color: 'vfr' },
+  { prefix: 'hel-route', kinds: ['hel'], color: 'vfr', dash: [3, 2] },
+  { prefix: 'mil-route', kinds: ['mil', 'jet'], color: 'mil', dash: [5, 2, 1, 2] },
+];
+
+function vfrRouteLayers(): LayerSpecification[] {
+  return VFR_ROUTE_KINDS.flatMap(({ prefix, kinds, color, dash }): LayerSpecification[] => {
+    const filter: ExpressionSpecification = ['in', ['get', 'kind'], ['literal', kinds]];
+    return [
+      {
+        id: `${prefix}-line`,
+        type: 'line',
+        source: 'vfr-routes',
+        minzoom: 7.5,
+        filter,
+        paint: {
+          'line-color': CHART[color],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 7.5, 0.8, 11, 1.8],
+          'line-opacity': 0.7,
+          ...(dash ? { 'line-dasharray': dash } : {}),
+        },
+      },
+      {
+        // one arrow per direction of a one-way segment (features.ts vfrRouteArrowFeatures); the icon
+        // points east, `rot` is clockwise from north
+        id: `${prefix}-arrow`,
+        type: 'symbol',
+        source: 'vfr-route-arrows',
+        minzoom: 9,
+        filter,
+        layout: {
+          'icon-image': 'pgf-arrow',
+          'icon-rotate': ['-', ['get', 'rot'], 90],
+          'icon-allow-overlap': true,
+          'icon-rotation-alignment': 'map',
+        },
+      },
+      {
+        id: `${prefix}-alt`,
+        type: 'symbol',
+        source: 'vfr-routes',
+        minzoom: 8.5,
+        filter,
+        layout: {
+          'symbol-placement': 'line-center',
+          'text-field': ['get', 'alt'],
+          'text-font': BOLD,
+          'text-size': 10,
+          'text-offset': [0, -0.75],
+          'text-keep-upright': true,
+        },
+        paint: { 'text-color': CHART[color], 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
+      },
+    ];
+  });
 }
 
 function chartLayers(): LayerSpecification[] {
@@ -603,46 +671,7 @@ function chartLayers(): LayerSpecification[] {
       },
       paint: { 'text-color': CHART.fis, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
     },
-    {
-      id: 'vfr-route-line',
-      type: 'line',
-      source: 'vfr-routes',
-      minzoom: 7.5,
-      paint: {
-        'line-color': CHART.vfr,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 7.5, 0.8, 11, 1.8],
-        'line-opacity': 0.7,
-      },
-    },
-    {
-      // one arrow per direction of a one-way segment (features.ts vfrRouteArrowFeatures); the icon
-      // points east, `rot` is clockwise from north
-      id: 'vfr-route-arrow',
-      type: 'symbol',
-      source: 'vfr-route-arrows',
-      minzoom: 9,
-      layout: {
-        'icon-image': 'pgf-arrow',
-        'icon-rotate': ['-', ['get', 'rot'], 90],
-        'icon-allow-overlap': true,
-        'icon-rotation-alignment': 'map',
-      },
-    },
-    {
-      id: 'vfr-route-alt',
-      type: 'symbol',
-      source: 'vfr-routes',
-      minzoom: 8.5,
-      layout: {
-        'symbol-placement': 'line-center',
-        'text-field': ['get', 'alt'],
-        'text-font': BOLD,
-        'text-size': 10,
-        'text-offset': [0, -0.75],
-        'text-keep-upright': true,
-      },
-      paint: { 'text-color': CHART.vfr, 'text-halo-color': CHART.halo, 'text-halo-width': 1.6 },
-    },
+    ...vfrRouteLayers(),
     // radio navaids: VORs and en-route NDBs from the FIR view, aerodrome locators once zoomed in
     {
       id: 'navaid-icon',
