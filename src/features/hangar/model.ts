@@ -2,8 +2,10 @@
 // created, changed and removed from the page (tests/unit/screens/hangarScratch.test.ts builds the owner's
 // SX-ASV and SX-ASG from a blank aircraft with them).
 import { isIsoDate, parseIsoDate } from '../../shared/date';
-import { FUEL_DENSITY, FUEL_TYPES } from '../../shared/fuel';
+import { FUEL_DENSITY, FUEL_TYPES, standardFuelTypes } from '../../shared/fuel';
+import type { HangarAircraft } from '../../shared/sharing';
 import type {
+  Aircraft,
   AircraftInput,
   CompassCard,
   Envelope,
@@ -536,6 +538,22 @@ export function removeLandingAltitude(l: LandingTable, i: number): LandingTable 
 
 // ---------------------------------------------------------------------------------------------
 // Copy / summary
+
+/** The editable part of an aircraft (fuel densities at the standard values: saving migrates old ones). */
+export function toInput(a: Aircraft | HangarAircraft): AircraftInput {
+  const {
+    id: _i,
+    created: _c,
+    updated: _u,
+    access: _a,
+    photo: _p,
+    placeholder: _ph,
+    updatedAt: _ua,
+    updatedBy: _ub,
+    ...rest
+  } = a as HangarAircraft;
+  return { ...rest, fuel: { ...rest.fuel, types: standardFuelTypes(rest.fuel.types) } };
+}
 
 /** Same-type copy of an aircraft: drops what belongs to the airframe (registration, serial,
  * weighing, colours, compass cards). */

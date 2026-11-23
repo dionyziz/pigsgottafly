@@ -132,6 +132,13 @@ final class AppModel: ObservableObject {
         try? store.write(data, .pilot)
     }
 
+    /// The hangar's "Make default aircraft".
+    func setDefaultAircraft(_ id: String) async throws {
+        let data = try await api.updateMe(["defaultAircraftId": .string(id)])
+        pilot = try api.decode(PilotProfile.self, data)
+        try? store.write(data, .pilot)
+    }
+
     func deleteAccount(confirm: String) async throws {
         try await session.deleteAccount(confirm: confirm)
         pilot = nil

@@ -2,8 +2,8 @@ import Foundation
 
 /// Fixture mode (launch argument `-fixtures`): the API answers from the JSON files bundled in
 /// Fixtures/, with no network and no sign-in. It keeps what is changed in memory like the server: a
-/// PUT bumps the version and keeps the flight, POST /flights and POST /aircraft add one, PUT /me
-/// changes the profile. `-emptyAccount` starts as a brand-new pilot: no profile, no aircraft, no
+/// PUT bumps the version and keeps the flight, POST /flights and POST /aircraft add one, DELETE
+/// /aircraft removes one, PUT /me changes the profile. `-emptyAccount` starts as a brand-new pilot: no profile, no aircraft, no
 /// flights. A flight's own file is `flight-<id>.json`; any other id answers `flight.json`.
 final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     let dir: URL
@@ -22,7 +22,9 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
         dir = directory
         self.emptyAccount = emptyAccount
         let read = { (name: String) in (try? Data(contentsOf: directory.appendingPathComponent(name))) }
-        let ac = read("aircraft.json").flatMap { try? JSON.parse($0) }
+        var ac = read("aircraft.json").flatMap { try? JSON.parse($0) }
+        // GET /api/aircraft answers each aircraft with the pilot's access; aircraft.json is the bare record
+        if ac?["access"] == nil { ac?["access"] = ["role": "owner"] }
         aircraft = emptyAccount ? [] : [ac].compactMap { $0 }
         var p = read("pilot.json").flatMap { try? JSON.parse($0) } ?? [:]
         if emptyAccount {

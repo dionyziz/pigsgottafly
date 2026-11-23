@@ -35,6 +35,15 @@ struct AircraftItem: Codable, Equatable, Identifiable {
     var id: String
     var registration: String
     var makeModel: String?
+    var access: Access?
+
+    /// src/shared/sharing.ts AircraftAccess: owner, edit or view.
+    struct Access: Codable, Equatable {
+        var role: String
+    }
+
+    /// Only the owner deletes an aircraft; anyone else removes it from their own hangar.
+    var isOwner: Bool { (access?.role ?? "owner") == "owner" }
 
     var label: String {
         guard let m = makeModel, !m.isEmpty else { return registration }

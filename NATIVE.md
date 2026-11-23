@@ -98,7 +98,13 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
     - File (`Views/Flight/File/`): **Flight plan**, the filing status and EOBT (filing, delay, cancel:
       2A); Form 731, General Declaration, W&B & performance (2A); Navigation log and NOTAM briefing as
       PDFs to preview, share, print and e-mail (1H, with `Views/Common/PDFPreview.swift`).
-- **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones; each opens its sections:
+- **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones, the default one marked. The
+  list's + is the website's Add aircraft (`AddAircraftView`): the registration and Start from, the
+  type templates, the same type as each aircraft in the hangar, or blank (`PGF.newAircraft`); POST
+  /api/aircraft, then the new aircraft opens (iPhone: pushed; iPad: selected into the detail). Context
+  menu and swipes: Make default aircraft (PUT /api/me), Add another of this type (Add aircraft from
+  that aircraft), Delete (the owner, DELETE /api/aircraft/:id) or Remove from my hangar (a shared
+  one: its own share), each asked once. Each aircraft opens its sections:
   Identity, Flight plan items, Speeds, Fuel, Mass & balance (1F); Performance, Compass cards,
   Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
   the pilot pauses, with the version; on 409 the unsaved changes are applied again to the server's
@@ -334,6 +340,15 @@ aircraft, pilot, ref, weather, now? }`.
   `makePrimaryFuel` (`{ fuel, type }`, with `others`), `addRunwayCondition`, `setRunwayConditions`
   (`factors`), `addStallSpeeds { performance }`, `takeoffTable { table, edit, index?, row? }`,
   `landingTable { table, edit, index? }`.
+- `PGF.newAircraft({ hangar, registration?, source?, copyOf?, operator? })` → `{ options, source,
+  registration, taken, input, error, conflict, added, addedDefault }`: the Add aircraft dialog
+  [hangar/add.ts]. `hangar` is GET /api/aircraft; `source` `{ kind: 'template' | 'copy' | 'blank', id? }`
+  (default: `copyOf`'s type, else the first template); `options` the Start from choices `[{ source,
+  title, description }]`; `input` the body of POST /api/aircraft, null while `error` (no registration,
+  or one of the pilot's own aircraft has it: `taken`) holds it back. A copy with an operatorId: pass
+  `operator` (GET /api/operators/:id, null when it could not be read) and the copy keeps it only when
+  the pilot may assign it. `conflict` is the server's 409 in words; `added` and `addedDefault` the
+  toasts (the server makes the new aircraft the default when the pilot has none).
 - `PGF.historyText({ entries, myId, versionChanges? })` → `{ entries: [{ title, changes, summary }],
   versionChanges }`: the version history in words [shared/aircraftHistory.ts].
 

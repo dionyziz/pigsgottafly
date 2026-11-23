@@ -50,4 +50,52 @@ final class CoreHangarTests: XCTestCase {
         XCTAssertEqual(h.entries.first?.title, "You changed 1 field")
         XCTAssertEqual(h.entries.first?.changes.count, 1)
     }
+
+    func testNewAircraftOffersTheWebsitesChoices() throws {
+        var mine = aircraft!
+        mine["access"] = ["role": "owner"]
+        let hangar = JSON.array([mine]).text
+        let reg = mine["registration"]?.string ?? ""
+
+        let first = try core.newAircraft(hangar: hangar, registration: " sx-new ")
+        XCTAssertEqual(
+            first.options.map(\.title), ["Reims/Cessna F172M type template", "Same type as \(reg)", "Blank"])
+        XCTAssertEqual(first.source, .init(kind: "template", id: "reims-f172m"))
+        XCTAssertEqual(first.registration, "SX-NEW")
+        XCTAssertNil(first.error)
+        XCTAssertEqual(first.input?["registration"]?.string, "SX-NEW")
+        XCTAssertEqual(first.input?["icaoType"]?.string, "C172")
+        XCTAssertEqual([first.added, first.addedDefault], ["Added SX-NEW", "Added SX-NEW as your default aircraft"])
+
+        let copy = try core.newAircraft(hangar: hangar, registration: "SX-CPY", copyOf: mine["id"]?.string)
+        XCTAssertEqual(copy.source, .init(kind: "copy", id: mine["id"]?.string))
+        XCTAssertEqual(copy.input?["makeModel"], mine["makeModel"])
+        XCTAssertEqual(copy.input?["compassCards"], [], "the airframe's own cards stay behind")
+        XCTAssertEqual(copy.input?["serial"]?.string, "")
+        XCTAssertNil(copy.input?["id"], "the body is an AircraftInput")
+
+        let blank = try core.newAircraft(hangar: hangar, registration: "SX-BLK", source: .init(kind: "blank"))
+        XCTAssertEqual(blank.input?["icaoType"]?.string, "")
+
+        let taken = try core.newAircraft(hangar: hangar, registration: reg.lowercased())
+        XCTAssertTrue(taken.taken)
+        XCTAssertNil(taken.input)
+        XCTAssertEqual(taken.error, "\(reg) is already in your hangar.")
+        XCTAssertEqual(try core.newAircraft(hangar: hangar, registration: "").error, "Enter the registration.")
+    }
+
+    func testACopyKeepsTheOperatorOnlyWhenThePilotMayAssignIt() throws {
+        var mine = aircraft!
+        mine["access"] = ["role": "owner"]
+        mine["operatorId"] = "op1"
+        let hangar = JSON.array([mine]).text
+        let id = mine["id"]?.string
+        func operatorId(_ op: JSON?) throws -> JSON? {
+            try core.newAircraft(hangar: hangar, registration: "SX-CPY", copyOf: id, operator: op).input?["operatorId"]
+        }
+        XCTAssertEqual(try operatorId(nil), "op1", "not settled yet")
+        XCTAssertEqual(try operatorId(["access": ["role": "edit"]]), "op1")
+        XCTAssertEqual(try operatorId(["access": ["role": "view"]]), .null)
+        XCTAssertEqual(try operatorId(.null), .null, "an operator that could not be read")
+    }
 }

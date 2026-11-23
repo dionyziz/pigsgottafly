@@ -2,6 +2,17 @@
 // the editors' helpers (FPL item 10, compass cards, stations and seats, fuel types, performance
 // tables) and the version history in words.
 import {
+  addedText,
+  addOptions,
+  type AddSource,
+  alreadyInHangar,
+  defaultSource,
+  keepsOperator,
+  newAircraftInput,
+  normalRegistration,
+  registrationTaken,
+} from '../../features/hangar/add';
+import {
   addCombinedLimit,
   addCompassCard,
   addFuelType,
@@ -63,7 +74,7 @@ import {
   type StationKind,
 } from '../../shared';
 import { changeText, entryTitle, revisionSummary, versionChangeText } from '../../shared/aircraftHistory';
-import type { AircraftLogChange, AircraftLogEntry } from '../../shared/sharing';
+import type { AircraftLogChange, AircraftLogEntry, HangarAircraft } from '../../shared/sharing';
 import { arg, type Json, nowOf, plain } from './shared';
 
 // ---------------------------------------------------------------- a new pilot's first aircraft
@@ -82,6 +93,42 @@ export function aircraftFromTemplate(input: Json<{ id: string | null; registrati
     registration: String(i.registration ?? '')
       .trim()
       .toUpperCase(),
+  });
+}
+
+/**
+ * The hangar's Add aircraft dialog [hangar/add.ts]. `hangar` is GET /api/aircraft; `source` the
+ * chosen start (default: `copyOf`'s type, else the first template); `operator`, when the copy has an
+ * operatorId, is GET /api/operators/:id (null when it could not be read): the copy keeps the operator
+ * only when the pilot may assign it. Returns the choices, the body of POST /api/aircraft (or the
+ * error that holds it back), the 409 message and the toast texts.
+ */
+export function newAircraft(
+  input: Json<{
+    hangar: HangarAircraft[];
+    registration?: string;
+    source?: AddSource | null;
+    copyOf?: string | null;
+    operator?: { access: { role: string } } | null;
+  }>,
+) {
+  const i = arg(input);
+  const hangar = i.hangar ?? [];
+  const registration = normalRegistration(i.registration ?? '');
+  const source = i.source ?? defaultSource(i.copyOf ? { id: i.copyOf } : null);
+  const made = newAircraftInput(hangar, source, registration);
+  const body = made.input;
+  if (body?.operatorId && i.operator !== undefined && !keepsOperator(i.operator)) body.operatorId = null;
+  return plain({
+    options: addOptions(hangar),
+    source,
+    registration,
+    taken: registrationTaken(hangar, registration),
+    input: body,
+    error: made.error,
+    conflict: alreadyInHangar(registration),
+    added: addedText(registration, false),
+    addedDefault: addedText(registration, true),
   });
 }
 

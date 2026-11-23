@@ -40,7 +40,52 @@ struct CoreHistoryText: Codable, Equatable, Sendable {
     var versionChanges: [String]
 }
 
+/// PGF.newAircraft: the hangar's Add aircraft (src/features/hangar/add.ts).
+struct CoreNewAircraft: Decodable, Equatable, Sendable {
+    /// Where the new aircraft starts: kind template, copy (of the aircraft `id`) or blank.
+    struct Source: Codable, Equatable, Hashable, Sendable {
+        var kind: String
+        var id: String?
+    }
+    struct Option: Decodable, Equatable, Identifiable, Sendable {
+        var source: Source
+        var title: String
+        var description: String
+        var id: Source { source }
+    }
+    var options: [Option]
+    var source: Source
+    /// Trimmed, upper case.
+    var registration: String
+    /// One of the pilot's own aircraft has the registration.
+    var taken: Bool
+    /// The body of POST /api/aircraft; nil while `error` holds it back.
+    var input: JSON?
+    var error: String?
+    /// The message of the server's 409.
+    var conflict: String
+    /// The toasts after adding, without and with becoming the default aircraft.
+    var added: String
+    var addedDefault: String
+}
+
 extension Core {
+    /// `hangar`: GET /api/aircraft (JSON text). `source` nil: `copyOf`'s type, else the first template.
+    /// `operator`: GET /api/operators/:id for a copy's operatorId (`.null` when it could not be read);
+    /// nil leaves the operatorId as copied.
+    func newAircraft(
+        hangar: String, registration: String, source: CoreNewAircraft.Source? = nil, copyOf: String? = nil,
+        operator op: JSON? = nil
+    ) throws -> CoreNewAircraft {
+        var f = [
+            "hangar": hangar, "registration": JSON.string(registration).text,
+            "source": source.map { Core.text($0) } ?? "null",
+            "copyOf": copyOf.map { JSON.string($0).text } ?? "null",
+        ]
+        if let op { f["operator"] = op.text }
+        return try callDecoding("newAircraft", fields: f)
+    }
+
     /// `today`: YYYY-MM-DD (nil: today in Greece); `path`: also that field's issues.
     func validateAircraft(_ aircraft: String, today: String? = nil, path: String? = nil) throws
         -> CoreAircraftValidation

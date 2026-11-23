@@ -154,6 +154,8 @@ describe('core.js in a bare JavaScript context', () => {
     aircraftHelpers: () =>
       expect(call('aircraftHelpers', { op: 'split10b', text: 'SB2' })).toEqual({ ssr: 'S', ads: ['B2'] }),
     historyText: () => expect(call('historyText', {}).entries).toEqual([]),
+    newAircraft: () =>
+      expect(call('newAircraft', { hangar: [], registration: ' sx-abc ' }).input.registration).toBe('SX-ABC'),
     personIssues: () => expect(call('personIssues', { person: null, now: NOW }).issues.length).toBeGreaterThan(0),
     parseCoords: () => expect(call('parseCoords', { text: '375430N 0234334E' }).latLon.lat).toBeCloseTo(37.908, 3),
     parseTyped: () => expect(call('parseTyped', { kind: 'time', text: '930' }).value).toBe('09:30'),

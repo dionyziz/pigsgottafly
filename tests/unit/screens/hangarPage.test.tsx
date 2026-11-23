@@ -5,10 +5,10 @@ import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { issueTarget, toInput } from '../../../src/features/hangar/AircraftPage';
+import { issueTarget } from '../../../src/features/hangar/AircraftPage';
 import { CompassSection } from '../../../src/features/hangar/CompassSection';
 import { MassBalanceSection } from '../../../src/features/hangar/MassBalanceSection';
-import { validateAircraft } from '../../../src/features/hangar/model';
+import { toInput, validateAircraft } from '../../../src/features/hangar/model';
 import { PerformanceSection } from '../../../src/features/hangar/PerformanceSection';
 import { FplSection, FuelSection, IdentitySection, SpeedsSection } from '../../../src/features/hangar/sections';
 import type { AircraftInput } from '../../../src/shared/types';

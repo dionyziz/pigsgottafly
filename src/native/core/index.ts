@@ -23,7 +23,14 @@ export { brief } from './brief';
 export { chartData, chartStyle, layerGroups, lineStyles, symbolNames } from './chart';
 export { briefingModel, formModel, fplMessage, navlogContent, wbPerfContent } from './exports';
 export { computeFlight, type ComputeFlightInput, fromBase64, paperwork, setTerrain, weatherRequests } from './flight';
-export { aircraftFromTemplate, aircraftHelpers, aircraftTemplates, historyText, validateAircraft } from './hangar';
+export {
+  aircraftFromTemplate,
+  aircraftHelpers,
+  aircraftTemplates,
+  historyText,
+  newAircraft,
+  validateAircraft,
+} from './hangar';
 export { cgToMoment, manifest, shareSuggestions, wbChart } from './manifest';
 export { drawBand, mapInfo, mapLayers, pointMenu, routeFeatures, waypointName } from './map';
 export { parseCoords, parseTyped, personIssues } from './people';
