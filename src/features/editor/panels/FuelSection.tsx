@@ -1,11 +1,12 @@
 // An aircraft with more than one approved fuel gets one input per type (mixed tanks allowed): FOB is
 // their sum, the W&B weighs each type.
 import { FlowLink } from '../../../app/FlowLinks';
-import { type FlightDoc, fuelByType, fuelLoad, type FuelType, primaryFuel } from '../../../shared';
+import { fuelByType, fuelLoad, type FuelType, primaryFuel } from '../../../shared';
 import { fmtDuration } from '../../../shared/format';
 import { Chip, NumberField } from '../../../ui';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
+import { withFuel, withTypedFuel } from './fuelEdit';
 import { KV, Section } from './ui';
 
 const fmtDur = (min: number | null | undefined) => fmtDuration(min, { fallback: '–' });
@@ -47,20 +48,7 @@ export function FuelSection() {
   /** Litres typed per type: the split, else all of a typed FOB in the first fuel. */
   const typed = (t: FuelType): number | null => (split ? (split[t] ?? null) : t === primary ? doc.fobL : null);
   const setType = (t: FuelType, v: number | null) =>
-    update(
-      (d) => {
-        const cur = fuelByType(d.options.fuelL) ?? (d.fobL != null ? { [primary]: d.fobL } : {});
-        const next: Partial<Record<FuelType, number>> = { ...cur };
-        if (v == null) delete next[t];
-        else next[t] = v;
-        const keys = Object.keys(next) as FuelType[];
-        if (!keys.length) return withFuel(d, null, null); // nothing typed: back to the default
-        const total = keys.reduce((a, k) => a + (next[k] ?? 0), 0);
-        // only the first fuel: a plain total, as for a single-fuel aircraft
-        return withFuel(d, total, keys.every((k) => k === primary) ? null : next);
-      },
-      { coalesce: 'fob-' + t },
-    );
+    update((d) => withTypedFuel(d, aircraft.fuel, t, v), { coalesce: 'fob-' + t });
   const load = fuelLoad(aircraft.fuel, fuel.fobL, doc.options.fuelL);
   const allowanceSet = doc.options.taxiAllowanceL ?? null;
 
@@ -252,9 +240,4 @@ export function FuelSection() {
         ))}
     </Section>
   );
-}
-
-/** The flight with fuel on board `fobL` (null = default) and the split by type (null = all the first fuel). */
-function withFuel(d: FlightDoc, fobL: number | null, byType: Partial<Record<FuelType, number>> | null): FlightDoc {
-  return { ...d, fobL, options: { ...d.options, fuelL: byType } };
 }

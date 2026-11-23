@@ -66,12 +66,23 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
     rows, each row with its Fix), then its sections. A Fix asks `PGF.focusTarget` where it leads and
     the workspace switches tab and opens the section with that field focused
     (`Views/Common/FocusRouter.swift`), or opens the website's page (the profile).
-    - Plan (`Views/Flight/Plan/`): Route (1B), When (the times in UTC and the sunset; taxi times 1B),
-      Aircraft (1B), Manifest & loading (1C), Fuel (1B), Flight plan options (1B), **Navlog**: the
-      legs (altitude, heading, distance, ETE, ETA, fuel) and the totals; quick edits of the date, the
-      block-off time, a local flight's duration and a leg's altitude; a point added (an aerodrome, a
-      VFR reporting point or a saved waypoint, where it lengthens the route least) or removed (swipe;
-      two stay). PUT the flight with the version; the summary follows (title, route, totals) and the
+    - Plan (`Views/Flight/Plan/`, edits in `App/FlightModel+Plan.swift`): **Route**, the origin and
+      destination picked as aerodromes (a local flight moves as a whole), "Local flight from …", a
+      local flight's duration and "Fly somewhere instead", and the points reordered (drag, Edit),
+      inserted before or after a point or where they lengthen the route least (an aerodrome, a VFR
+      point, a saved waypoint, or a typed position named WP1, WP2, … as the map names it), renamed and
+      removed (context menu, swipe), each one `PGF.routeEdit`; **When**, the date, block start (UTC,
+      with the local time), taxi out and in, a local flight's duration, and the times with the local
+      time under each; **Aircraft**, the aircraft from the hangar (`PGF.setAircraft`: seats, baggage,
+      compass card and category follow; on a shared flight the owner's choice, shown only), its
+      figures, the compass card and the winds' model; Manifest & loading (1C); **Fuel**, the taxi
+      allowance per take-off, trip, reserves, required, the fuel on board (one field per approved
+      fuel, `PGF.fuelEdit`), "Use required + reserve", "Full tanks", the gauge, endurance, fuel at
+      landing and the check; **Flight plan options**, two alternates (`PGF.fplOptions`), touch-and-go
+      and stop requests with the stop's minutes (`PGF.setRequest`, `PGF.requests`) and the remarks;
+      **Navlog**: the legs (altitude, heading, distance, ETE, ETA, fuel) and the totals; quick edits of
+      the date, the block-off time, a local flight's duration and a leg's altitude. Every edit is one
+      undo step: PUT the flight with the version; the summary follows (title, route, totals) and the
       overrides of legs that are gone are dropped, as the website's editor does. Per-leg TAS, wind and
       temperature come with 1H.
     - Brief (`Views/Flight/Brief/`): **METAR and TAF** for the route's aerodromes and alternates;
@@ -229,6 +240,12 @@ checks each answer equals the website module's for the same input.
 - `PGF.fuelLoad({ fuel, totalL, byType?, options? })` → `{ load, byType, byTypeTotal, taxiAllowanceL,
   types, density }`: the fuel on board by type (`load` is FuelLoad: parts, kg, density, mixed,
   unapproved) and the taxi allowance per take-off [shared/fuel.ts].
+- `PGF.setAircraft({ doc, aircraft })` → `{ aircraftId, crew, baggageKg, options }`: the flight
+  after choosing an aircraft (null: none); people keep their seat where it exists, baggage of gone
+  stations is dropped, the compass card and the W&B category follow [editor/panels/aircraftChoice.ts].
+- `PGF.fuelEdit({ doc, op, … })` → `{ fobL, options }`: `type { fuel, type, litres }` (one fuel's
+  litres typed, null clears it; the FOB is the sum, only the first fuel typed is a plain total),
+  `total { litres }`, `default` (required + reserve) [editor/panels/fuelEdit.ts].
 - `PGF.readinessStages({ items })` → `[{ stage, label, state, open }]` for plan, brief and file, from
   `computeFlight`'s `readiness` and `paperwork`'s rows [editor/panels/readiness.ts stageSummary].
 - `PGF.focusTarget({ text?, fix?, flightId?, aircraftId? })` → `{ fix, focus, section, stage, link }`:
