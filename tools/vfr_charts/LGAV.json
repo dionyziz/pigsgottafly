@@ -450,7 +450,119 @@
    "min": 2500,
    "max": 5000,
    "nm": 18
+  },
+  {
+   "a": "HELLINIKON",
+   "b": "ILIOUP",
+   "min": 2500,
+   "max": 2500,
+   "nm": 4
+  },
+  {
+   "a": "ILIOUP",
+   "b": "HOLARGOS",
+   "min": 2500,
+   "max": 4000,
+   "nm": 4
+  },
+  {
+   "a": "HOLARGOS",
+   "b": "STAVROS",
+   "min": null,
+   "max": null
+  },
+  {
+   "a": "STAVROS",
+   "b": "AGIOS THOMAS",
+   "min": 2000,
+   "max": 2500
+  },
+  {
+   "a": "LOFISKOS",
+   "b": "PERATI",
+   "min": null,
+   "max": null
+  },
+  {
+   "a": "STAVROS",
+   "b": "PALLINI",
+   "min": 2000,
+   "max": 2000,
+   "nm": 2,
+   "kind": "hel"
+  },
+  {
+   "a": "PALLINI",
+   "b": "NTAOU PENTELIS",
+   "min": 2000,
+   "max": 2000,
+   "nm": 3.5,
+   "kind": "hel"
+  },
+  {
+   "a": "NTAOU PENTELIS",
+   "b": "ZOUMBERI",
+   "min": 1500,
+   "max": 1500,
+   "nm": 2,
+   "kind": "hel"
+  },
+  {
+   "a": "ZOUMBERI",
+   "b": "MEGALO",
+   "min": 500,
+   "max": 500,
+   "nm": 12,
+   "kind": "hel"
+  },
+  {
+   "a": "MEGALO",
+   "b": "YIAROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 32,
+   "kind": "hel"
+  },
+  {
+   "a": "HELLINIKON",
+   "b": "PARALIA ASTERIA",
+   "min": null,
+   "max": null,
+   "kind": "hel"
+  },
+  {
+   "a": "PARALIA ASTERIA",
+   "b": "FLEVES",
+   "min": 500,
+   "max": 500,
+   "nm": 5.7,
+   "kind": "hel"
+  },
+  {
+   "a": "FLEVES",
+   "b": "PATROKLOS",
+   "min": 500,
+   "max": 500,
+   "nm": 11.5,
+   "kind": "hel"
+  },
+  {
+   "a": "PATROKLOS",
+   "b": "FLEVES",
+   "min": 1000,
+   "max": 1000,
+   "nm": 11.5,
+   "oneway": true,
+   "kind": "hel"
+  },
+  {
+   "a": "PATROKLOS",
+   "b": "MAKROS",
+   "min": 1500,
+   "max": 1500,
+   "nm": 7.5,
+   "kind": "hel"
   }
  ],
- "notes": "Points from the chart's text coordinate table (tools/vfr_points.json). Omitted (ambiguous labels): STAVROS–AGIOS THOMAS, HELLINIKON–ILIOUP–HOLARGOS. Helicopter routes omitted."
+ "notes": "Points from the chart's text coordinate table (tools/vfr_points.json). Every route segment drawn on page 1 is transcribed (page 3's inset of the airport area agrees with it). HOLARGOS–STAVROS and LOFISKOS–PERATI (the links to the airport's visual holdings) print no altitude: min/max null. STAVROS–AGIOS THOMAS prints no distance. Helicopter routes (kind hel, navy dash-dot; remarks 1.14 and 1.15 on page 2): STAVROS–PALLINI–NTAOU PENTELIS (one 'hel 2000'' label for both legs), NTAOU PENTELIS–ZOUMBERI 1500, ZOUMBERI–MEGALO 500, MEGALO–YIAROS 1500, HELLINIKON–PARALIA ASTERIA (no altitude printed on that leg), PARALIA ASTERIA–FLEVES 500, FLEVES–PATROKLOS 500 (dash-dot, no arrow) and PATROKLOS→FLEVES 1000 (arrowed: the one-way route of remark 1.15), PATROKLOS–MAKROS 1500. Still omitted: the Kolpos Alepochoriou training area–Megara MIL heliport leg (292°/112°, 9 NM, 4000') and heliport–MEGARA (305°, 4 NM), because neither end is a reporting point (the line ends on the training-area circle and at the unnamed heliport by DOUNIS AIRFIELD's holding). Visual holdings (KIATON, SERIFOS, STAVROS, AVLAKI, AGIOS THOMAS, LOFISKOS, WEST SALAMIS, KINETA, DOUNIS) are not segments."
 }

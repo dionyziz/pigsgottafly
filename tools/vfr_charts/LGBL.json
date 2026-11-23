@@ -85,6 +85,21 @@
   {
    "name": "SARAKINI",
    "same_as": "LGTG"
+  },
+  {
+   "name": "SKIATHOS",
+   "dms": "39 10 39 N 023 30 13 E",
+   "reviewed": "SKIATHOS ARP as printed in the chart's coordinate table (page 2); the routes end on the LGSK aerodrome symbol, not a reporting-point triangle"
+  },
+  {
+   "name": "SKYROS",
+   "dms": "38 58 03 N 024 29 15 E",
+   "reviewed": "SKYROS ARP as printed in the chart's coordinate table (page 2); off the chart (the route is drawn not to scale)"
+  },
+  {
+   "name": "ARAXOS",
+   "dms": "38 09 04 N 021 25 32 E",
+   "reviewed": "ARAXOS ARP as printed in the chart's coordinate table (page 2); off the chart ('TO ARAXOS')"
   }
  ],
  "routes": [
@@ -142,7 +157,8 @@
    "min": 6500,
    "max": 6500,
    "nm": 14,
-   "oneway": true
+   "oneway": true,
+   "kind": "mil"
   },
   {
    "a": "ZAGORA",
@@ -150,7 +166,8 @@
    "min": 5500,
    "max": 5500,
    "nm": 14,
-   "oneway": true
+   "oneway": true,
+   "kind": "mil"
   },
   {
    "a": "EVOIAS",
@@ -158,7 +175,8 @@
    "min": 4500,
    "max": 4500,
    "nm": 11,
-   "oneway": true
+   "oneway": true,
+   "kind": "mil"
   },
   {
    "a": "OREI",
@@ -166,8 +184,413 @@
    "min": 3500,
    "max": 3500,
    "nm": 11,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "CHALKI",
+   "b": "STEFANO",
+   "min": 3500,
+   "max": 3500,
+   "nm": 11,
    "oneway": true
+  },
+  {
+   "a": "STEFANO",
+   "b": "CHALKI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "AGIA",
+   "b": "STEFANO",
+   "min": 6500,
+   "max": 6500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "STEFANO",
+   "b": "AGIA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 15,
+   "oneway": true
+  },
+  {
+   "a": "STEFANO",
+   "b": "VOLLOS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "VOLLOS",
+   "b": "STEFANO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 11,
+   "oneway": true
+  },
+  {
+   "a": "VOLLOS",
+   "b": "ANL",
+   "min": null,
+   "max": null,
+   "nm": 10
+  },
+  {
+   "a": "AGIA",
+   "b": "ZAGORA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 23,
+   "oneway": true
+  },
+  {
+   "a": "ZAGORA",
+   "b": "AGIA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 23,
+   "oneway": true
+  },
+  {
+   "a": "ZAGORA",
+   "b": "SKIATHOS",
+   "min": 5500,
+   "max": 5500,
+   "nm": 24,
+   "oneway": true
+  },
+  {
+   "a": "ARGA",
+   "b": "SKIATHOS",
+   "min": 5500,
+   "max": 5500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "SKIATHOS",
+   "b": "ARGA",
+   "min": 6500,
+   "max": 6500,
+   "nm": 14,
+   "oneway": true
+  },
+  {
+   "a": "ARGA",
+   "b": "OREI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 18,
+   "oneway": true
+  },
+  {
+   "a": "OREI",
+   "b": "ARGA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 18,
+   "oneway": true
+  },
+  {
+   "a": "FARSALA",
+   "b": "PETROTO",
+   "min": 3500,
+   "max": 3500,
+   "nm": 6,
+   "oneway": true
+  },
+  {
+   "a": "PETROTO",
+   "b": "FARSALA",
+   "min": 4500,
+   "max": 4500,
+   "nm": 6,
+   "oneway": true
+  },
+  {
+   "a": "PETROTO",
+   "b": "LAMIAS",
+   "min": 5500,
+   "max": 5500,
+   "nm": 18,
+   "oneway": true
+  },
+  {
+   "a": "LAMIAS",
+   "b": "PETROTO",
+   "min": 6500,
+   "max": 6500,
+   "nm": 18,
+   "oneway": true
+  },
+  {
+   "a": "KARPENISI",
+   "b": "PETROTO",
+   "min": 9500,
+   "max": 9500,
+   "nm": 32,
+   "oneway": true
+  },
+  {
+   "a": "PETROTO",
+   "b": "ARAXOS",
+   "min": null,
+   "max": null,
+   "oneway": true
+  },
+  {
+   "a": "PETROTO",
+   "b": "PTELEOS",
+   "min": 5500,
+   "max": 5500,
+   "nm": 27.5,
+   "oneway": true
+  },
+  {
+   "a": "PTELEOS",
+   "b": "PETROTO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 27.5,
+   "oneway": true
+  },
+  {
+   "a": "PTELEOS",
+   "b": "ANL",
+   "min": 4500,
+   "max": 4500,
+   "nm": 12,
+   "oneway": true
+  },
+  {
+   "a": "PTELEOS",
+   "b": "OREI",
+   "min": 5500,
+   "max": 5500,
+   "nm": 9,
+   "oneway": true
+  },
+  {
+   "a": "OREI",
+   "b": "PTELEOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 9,
+   "oneway": true
+  },
+  {
+   "a": "PTELEOS",
+   "b": "SKYROS",
+   "min": 5500,
+   "max": 5500,
+   "nm": 72,
+   "oneway": true
+  },
+  {
+   "a": "SKYROS",
+   "b": "PTELEOS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 72,
+   "oneway": true
+  },
+  {
+   "a": "OREI",
+   "b": "SARAKINI",
+   "min": 5500,
+   "max": 5500,
+   "nm": 30,
+   "oneway": true
+  },
+  {
+   "a": "SARAKINI",
+   "b": "OREI",
+   "min": 6500,
+   "max": 6500,
+   "nm": 30,
+   "oneway": true
+  },
+  {
+   "a": "OREI",
+   "b": "ORCHOMENOS",
+   "min": 8500,
+   "max": 8500,
+   "nm": 28,
+   "oneway": true
+  },
+  {
+   "a": "ORCHOMENOS",
+   "b": "OREI",
+   "min": 7500,
+   "max": 7500,
+   "nm": 28,
+   "oneway": true
+  },
+  {
+   "a": "OREI",
+   "b": "MALESINA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "MALESINA",
+   "b": "OREI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 21,
+   "oneway": true
+  },
+  {
+   "a": "LAMIAS",
+   "b": "MALESINA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 41,
+   "oneway": true
+  },
+  {
+   "a": "MALESINA",
+   "b": "LAMIAS",
+   "min": 6500,
+   "max": 6500,
+   "nm": 41,
+   "oneway": true
+  },
+  {
+   "a": "PETROTO",
+   "b": "ANL",
+   "min": 5500,
+   "max": 5500,
+   "nm": 19,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "ANL",
+   "b": "PETROTO",
+   "min": 4500,
+   "max": 4500,
+   "nm": 19,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "ANL",
+   "b": "ARGA",
+   "min": 5500,
+   "max": 5500,
+   "nm": 20,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "ARGA",
+   "b": "ANL",
+   "min": 4500,
+   "max": 4500,
+   "nm": 20,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "ANL",
+   "b": "TRIKERI",
+   "min": 5500,
+   "max": 5500,
+   "nm": 15,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "TRIKERI",
+   "b": "ANL",
+   "min": 4500,
+   "max": 4500,
+   "nm": 15,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "TRIKERI",
+   "b": "EVOIAS",
+   "min": 5500,
+   "max": 5500,
+   "nm": 12,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "EVOIAS",
+   "b": "TRIKERI",
+   "min": 4500,
+   "max": 4500,
+   "nm": 12,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "EVOIAS",
+   "b": "SKIATHOS",
+   "min": 3500,
+   "max": 3500,
+   "nm": 13,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "SKIATHOS",
+   "b": "EVOIAS",
+   "min": 4500,
+   "max": 4500,
+   "nm": 13,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "ANL",
+   "b": "PELASGIA",
+   "min": 3500,
+   "max": 3500,
+   "nm": 16,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "PELASGIA",
+   "b": "ANL",
+   "min": 4500,
+   "max": 4500,
+   "nm": 16,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "LAMIAS",
+   "b": "PELASGIA",
+   "min": 7500,
+   "max": 7500,
+   "nm": 19,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "PELASGIA",
+   "b": "LAMIAS",
+   "min": 8500,
+   "max": 8500,
+   "nm": 19,
+   "oneway": true,
+   "kind": "mil"
   }
  ],
- "notes": "Dense chart with per-direction altitudes; only segments whose arrowed labels were read unambiguously are included. Not transcribed: CHALKI–STEFANO, STEFANO–VOLLOS, AGIA–STEFANO, AGIA–ZAGORA, ZAGORA/ARGA–SKIATHOS, FARSALA–PETROTO, PETROTO–LAMIAS/PTELEOS/KARPENISI, VOLLOS–ANL, ANL–PTELEOS, PTELEOS–OREI, OREI–ARGA, OREI–SARAKINI/ORCHOMENOS/MALESINA, LAMIAS–MALESINA. Dashed routes (MIL only) omitted. ANL = ANCHIALOS VOR/DME."
+ "notes": "Every route segment on the chart is transcribed, with its per-direction altitudes (each arrowed label is one oneway entry). Dashed grey routes are 'routes for MIL acft only' (chart legend): kind mil (PETROTO–ANL, ANL–ARGA, ANL–TRIKERI, TRIKERI–EVOIAS, EVOIAS–SKIATHOS, ANL–PELASGIA, LAMIAS–PELASGIA, ARGA–ZAGORA, OREI–EVOIAS). VOLLOS–ANL prints no altitude (min/max null). Lines with one arrowed altitude are one-way as drawn: KARPENISI→PETROTO 9500, ZAGORA→SKIATHOS 5500, PTELEOS→ANL 4500; PETROTO→ARAXOS ('TO ARAXOS', off chart) prints neither altitude nor distance. SKIATHOS, SKYROS and ARAXOS are the ARPs printed in the coordinate table on page 2; AGIA, SKYROS, MALESINA, ORCHOMENOS and SARAKINI legs are drawn not to scale but their printed distances agree with the coordinates. The MIN ALT racetracks (IP-08, IP-26, PETROTO, VOLLOS, ARGA, TRIKERI, EVOIAS, PELASGIA) are MIL orbit areas, not segments. ANL = ANCHIALOS VOR/DME."
 }
