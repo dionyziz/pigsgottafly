@@ -15,6 +15,8 @@ enum Symbols {
         static let restricted = UIColor(hex: 0xc62828)
         static let paper = UIColor.white
         static let halo = UIColor(white: 1, alpha: 0.92)
+        /// src/app/styles.css --map-bg: the map under the chart, behind each legend sample.
+        static let mapBackground = UIColor(hex: 0xe9edf1)
 
         /// The CHART keys PGF.symbolNames() names a symbol's colours by.
         static let byKey: [String: UIColor] = [
@@ -224,6 +226,72 @@ enum Symbols {
         }
     }
 
+    // MARK: legend samples (legend.ts)
+
+    static let legendHeight = 20.0
+
+    /// A legend sample as the map draws it, on a tile of the map's background (so the chart's colours
+    /// read the same in dark mode): a line or area in its PGF.lineStyles() style, or a symbol image
+    /// shrunk to the tile. Nil for a line style the core did not list.
+    static func legendImage(_ s: LegendSample, styles: [String: LineStyle]) -> UIImage? {
+        let w = s.kind == .line ? 28.0 : 20.0
+        let h = legendHeight
+        let style = s.kind == .symbol ? nil : styles[s.name]
+        if s.kind != .symbol && style == nil { return nil }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: CGSize(width: w, height: h), format: format).image { ctx in
+            let g = ctx.cgContext
+            UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: w, height: h), cornerRadius: 3).addClip()
+            g.setFillColor(Chart.mapBackground.cgColor)
+            g.fill(CGRect(x: 0, y: 0, width: w, height: h))
+            guard let st = style else {
+                let img = image(s.name)
+                let side = img.size.width * min(1, h / img.size.width)
+                img.draw(in: CGRect(x: (w - side) / 2, y: (h - side) / 2, width: side, height: side))
+                return
+            }
+            let ink = UIColor(hex: st.color)
+            let lw = st.width
+            // MapLibre counts dashes in line widths
+            let dash = st.dash.map { CGFloat($0 * lw) }
+            if s.kind == .line {
+                let inset = st.casing > 0 ? st.casing / 2 : 1
+                let y = h / 2
+                if st.casing > 0 {
+                    g.setLineCap(.round)
+                    g.setStrokeColor(Chart.paper.cgColor)
+                    g.setLineWidth(st.casing)
+                    g.strokeLineSegments(between: [CGPoint(x: inset, y: y), CGPoint(x: w - inset, y: y)])
+                }
+                // the route has round caps; the chart lines MapLibre's default butt caps
+                g.setLineCap(st.casing > 0 ? .round : .butt)
+                g.setLineDash(phase: 0, lengths: dash)
+                g.setStrokeColor(ink.withAlphaComponent(st.opacity).cgColor)
+                g.setLineWidth(lw)
+                g.strokeLineSegments(between: [CGPoint(x: inset, y: y), CGPoint(x: w - inset, y: y)])
+            } else {
+                let rect = CGRect(x: 2 + lw / 2, y: 4 + lw / 2, width: w - 4 - lw, height: h - 8 - lw)
+                if let hatch = st.hatch {
+                    g.saveGState()
+                    g.clip(to: rect)
+                    g.setAlpha(st.fill)
+                    image(hatch).drawAsPattern(in: rect)
+                    g.restoreGState()
+                } else if st.fill > 0 {
+                    g.setFillColor(ink.withAlphaComponent(st.fill).cgColor)
+                    g.fill(rect)
+                }
+                g.setLineCap(.butt)
+                g.setLineDash(phase: 0, lengths: dash)
+                g.setStrokeColor(ink.withAlphaComponent(st.opacity).cgColor)
+                g.setLineWidth(lw)
+                g.stroke(rect)
+            }
+        }
+    }
+
     // MARK: drawing helpers (symbols.ts)
 
     private static func make(_ size: Double, _ draw: (CGContext, Double) -> Void) -> UIImage {
@@ -327,6 +395,22 @@ enum Symbols {
             }
         }
     }
+}
+
+/// What a layer toggle's legend shows (MapLayerToggles.tsx `legend`): a line or an area in one of
+/// PGF.lineStyles(), or a symbol image, named by `title`.
+struct LegendSample: Hashable {
+    enum Kind: String, Hashable { case line, area, symbol }
+    var kind: Kind
+    var name: String
+    var title: String
+
+    static func line(_ name: String, _ title: String) -> Self { Self(kind: .line, name: name, title: title) }
+    static func area(_ name: String, _ title: String) -> Self { Self(kind: .area, name: name, title: title) }
+    static func symbol(_ name: String, _ title: String) -> Self { Self(kind: .symbol, name: name, title: title) }
+
+    /// `line:tma`, as the website's data-legend.
+    var id: String { "\(kind.rawValue):\(name)" }
 }
 
 extension UIColor {

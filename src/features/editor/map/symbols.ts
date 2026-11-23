@@ -127,27 +127,35 @@ function ndb(g: CanvasRenderingContext2D, s: number, rings: number[]) {
   }
 }
 
-export const SYMBOLS: Record<string, () => ImageData | null> = {
-  'pgf-ad-major': () =>
-    make(30, (g, s) => {
+/** Each symbol's size (points) and drawing, on a context whose origin is the symbol's top-left corner. */
+const DRAW: Record<string, [number, (g: CanvasRenderingContext2D, s: number) => void]> = {
+  'pgf-ad-major': [
+    30,
+    (g, s) => {
       ring(g, s, 8, 2.2, CHART.aerodrome);
       runwayBar(g, s, 24, 3.6, CHART.aerodrome);
-    }),
-  'pgf-ad-minor': () =>
-    make(26, (g, s) => {
+    },
+  ],
+  'pgf-ad-minor': [
+    26,
+    (g, s) => {
       ring(g, s, 6.5, 1.8, CHART.aerodrome);
       runwayBar(g, s, 19, 2.8, CHART.aerodrome);
-    }),
-  'pgf-ad-plain': () =>
-    make(22, (g, s) => {
+    },
+  ],
+  'pgf-ad-plain': [
+    22,
+    (g, s) => {
       ring(g, s, 6, 1.8, CHART.aerodrome);
       g.beginPath();
       g.arc(s / 2, s / 2, 2.2, 0, Math.PI * 2);
       g.fillStyle = CHART.aerodrome;
       g.fill();
-    }),
-  'pgf-ad-water': () =>
-    make(24, (g, s) => {
+    },
+  ],
+  'pgf-ad-water': [
+    24,
+    (g, s) => {
       ring(g, s, 7, 1.8, CHART.aerodrome);
       g.strokeStyle = CHART.aerodrome;
       g.lineWidth = 1.6;
@@ -158,27 +166,33 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
         else g.lineTo(s / 2 + x, s / 2 + y);
       }
       g.stroke();
-    }),
-  'pgf-vfr': () =>
-    make(18, (g, s) => {
+    },
+  ],
+  'pgf-vfr': [
+    18,
+    (g, s) => {
       triangle(g, s, 6.4);
       g.fillStyle = CHART.vfr;
       g.fill();
       g.lineWidth = 1.4;
       g.strokeStyle = CHART.paper;
       g.stroke();
-    }),
-  'pgf-vfr-ofm': () =>
-    make(18, (g, s) => {
+    },
+  ],
+  'pgf-vfr-ofm': [
+    18,
+    (g, s) => {
       triangle(g, s, 5.6);
       g.fillStyle = CHART.halo;
       g.fill();
       g.lineWidth = 1.6;
       g.strokeStyle = CHART.vfr;
       g.stroke();
-    }),
-  'pgf-wpt': () =>
-    make(20, (g, s) => {
+    },
+  ],
+  'pgf-wpt': [
+    20,
+    (g, s) => {
       const c = s / 2,
         r = 7,
         k = 2.2;
@@ -197,10 +211,12 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
       g.lineWidth = 1.2;
       g.strokeStyle = CHART.paper;
       g.stroke();
-    }),
-  'pgf-nav-vor': () => make(20, (g, s) => vor(g, s, 6.5)),
-  'pgf-nav-vordme': () =>
-    make(24, (g, s) => {
+    },
+  ],
+  'pgf-nav-vor': [20, (g, s) => vor(g, s, 6.5)],
+  'pgf-nav-vordme': [
+    24,
+    (g, s) => {
       const c = s / 2,
         w = 9.2,
         h = 7.6;
@@ -210,19 +226,25 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
       g.strokeStyle = CHART.navaid;
       g.strokeRect(c - w, c - h, 2 * w, 2 * h);
       vor(g, s, 6.5);
-    }),
-  'pgf-nav-vortac': () =>
-    make(28, (g, s) => {
+    },
+  ],
+  'pgf-nav-vortac': [
+    28,
+    (g, s) => {
       lobes(g, s, 6.5, true);
       vor(g, s, 6.5);
-    }),
-  'pgf-nav-tacan': () =>
-    make(28, (g, s) => {
+    },
+  ],
+  'pgf-nav-tacan': [
+    28,
+    (g, s) => {
       lobes(g, s, 6.5, false);
       vor(g, s, 6.5);
-    }),
-  'pgf-nav-dme': () =>
-    make(18, (g, s) => {
+    },
+  ],
+  'pgf-nav-dme': [
+    18,
+    (g, s) => {
       const c = s / 2,
         h = 6;
       g.fillStyle = CHART.halo;
@@ -231,12 +253,14 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
       g.strokeStyle = CHART.navaid;
       g.strokeRect(c - h, c - h, 2 * h, 2 * h);
       dot(g, c, c, 1.5, CHART.navaid);
-    }),
-  'pgf-nav-ndb': () => make(26, (g, s) => ndb(g, s, [4.2, 7, 9.8])),
-  'pgf-nav-l': () => make(20, (g, s) => ndb(g, s, [3.8, 6.6])),
+    },
+  ],
+  'pgf-nav-ndb': [26, (g, s) => ndb(g, s, [4.2, 7, 9.8])],
+  'pgf-nav-l': [20, (g, s) => ndb(g, s, [3.8, 6.6])],
   // one-way arrow along a VFR route (points along the line direction = image +x)
-  'pgf-arrow': () =>
-    make(14, (g, s) => {
+  'pgf-arrow': [
+    14,
+    (g, s) => {
       g.beginPath();
       g.moveTo(s / 2 - 3, s / 2 - 4);
       g.lineTo(s / 2 + 3, s / 2);
@@ -244,11 +268,13 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
       g.lineWidth = 2;
       g.strokeStyle = CHART.vfr;
       g.stroke();
-    }),
+    },
+  ],
   // direction of flight on a route leg (points north; the layer rotates it to the leg): an arrowhead
   // a little wider than the route line, with a white edge
-  'pgf-route-arrow': () =>
-    make(22, (g, s) => {
+  'pgf-route-arrow': [
+    22,
+    (g, s) => {
       const c = s / 2;
       g.beginPath();
       g.moveTo(c, c - 7);
@@ -261,10 +287,12 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
       g.stroke();
       g.fillStyle = CHART.route;
       g.fill();
-    }),
+    },
+  ],
   // restricted-area hatching (a fill-pattern tile: diagonal lines that join across tiles)
-  'pgf-hatch-r': () =>
-    make(8, (g, s) => {
+  'pgf-hatch-r': [
+    8,
+    (g, s) => {
       g.strokeStyle = CHART.restricted;
       g.globalAlpha = 0.45;
       g.lineWidth = 1;
@@ -275,8 +303,29 @@ export const SYMBOLS: Record<string, () => ImageData | null> = {
         g.lineTo(o + s, 0);
       }
       g.stroke();
-    }),
+    },
+  ],
 };
+
+export const SYMBOLS: Record<string, () => ImageData | null> = Object.fromEntries(
+  Object.entries(DRAW).map(([name, [size, draw]]) => [name, () => make(size, draw)]),
+);
+
+/** Draws a symbol centred in a box×box square at (x, y), shrunk to fit: the map's own drawing, for
+ *  the legend. */
+export function drawSymbol(g: CanvasRenderingContext2D, name: string, x: number, y: number, box: number): void {
+  const d = DRAW[name];
+  if (!d) return;
+  const [size, draw] = d;
+  const k = Math.min(1, box / size);
+  g.save();
+  g.translate(x + (box - size * k) / 2, y + (box - size * k) / 2);
+  g.scale(k, k);
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  draw(g, size);
+  g.restore();
+}
 
 /**
  * What each symbol of SYMBOLS looks like, for apps that draw them natively (the iPhone app: the

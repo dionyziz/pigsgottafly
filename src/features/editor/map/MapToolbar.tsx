@@ -2,7 +2,8 @@ import { type ReactNode, type Ref, useEffect, useLayoutEffect, useRef } from 're
 
 import type { MapLayers } from '../../../shared/mapLayers';
 import { Check, CloseButton, Icon } from '../../../ui';
-import { MapLayerToggles } from './MapLayerToggles';
+import type { LegendSample } from './legend';
+import { LegendSamples, MapLayerToggles } from './MapLayerToggles';
 
 export type DrawMode = 'idle' | 'draw' | 'custom';
 
@@ -109,6 +110,12 @@ function ToolButton({
   );
 }
 
+/** What the map draws that has no toggle of its own (the rest is beside its toggle). */
+const OTHER_LEGEND: LegendSample[] = [
+  { line: 'zoneG', title: 'Class G zone' },
+  { line: 'route', title: 'Your route' },
+];
+
 export function LayersControl({
   open,
   onOpen,
@@ -181,54 +188,15 @@ export function LayersControl({
               </div>
             }
           />
-          <div className="pgf-map-airac muted">AIRAC {airac}</div>
-          <div className="pgf-legend">
-            <span>
-              <i className="lg-fir" /> FIR
-            </span>
-            <span>
-              <i className="lg-tma" /> TMA
-            </span>
-            <span>
-              <i className="lg-mtma" /> MTMA
-            </span>
-            <span>
-              <i className="lg-zone" /> CTR
-            </span>
-            <span>
-              <i className="lg-atz" /> ATZ
-            </span>
-            <span>
-              <i className="lg-zone-g" /> Class G zone
-            </span>
-            <span>
-              <i className="lg-p" /> Prohibited
-            </span>
-            <span>
-              <i className="lg-r" /> Restricted
-            </span>
-            <span>
-              <i className="lg-d" /> Danger
-            </span>
-            <span>
-              <i className="lg-mil" /> Military
-            </span>
-            <span>
-              <i className="lg-act" /> Local flying
-            </span>
-            <span>
-              <i className="lg-vfr" /> VFR route
-            </span>
-            <span>
-              <i className="lg-hel" /> Helicopter route
-            </span>
-            <span>
-              <i className="lg-milroute" /> Military route
-            </span>
-            <span>
-              <i className="lg-route" /> Your route
-            </span>
+          <div className="pgf-legend" data-testid="map-legend">
+            {OTHER_LEGEND.map((s) => (
+              <span key={s.title}>
+                <LegendSamples samples={[s]} />
+                {s.title}
+              </span>
+            ))}
           </div>
+          <div className="pgf-map-airac muted">AIRAC {airac}</div>
         </div>
       )}
     </div>

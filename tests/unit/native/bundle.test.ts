@@ -48,12 +48,13 @@ describe('core.js in a bare JavaScript context', () => {
     expect(vm.runInContext('PGF.version', ctx)).toMatch(/^\d+\.\d+\.\d+\+[0-9a-f]{12}$/);
   });
 
-  test('chartStyle, symbolNames, layerGroups', () => {
+  test('chartStyle, symbolNames, layerGroups, lineStyles', () => {
     const style = call('chartStyle', { base: 'light', vector: null });
     expect(style.version).toBe(8);
     expect(style.layers.length).toBeGreaterThan(40);
     expect(call('symbolNames').map((s: { name: string }) => s.name)).toContain('pgf-ad-major');
     expect(call('layerGroups').notams).toEqual(['notam-fill', 'notam-line']);
+    expect(call('lineStyles').mtma).toMatchObject({ color: '#8a3b9c', dash: [4, 2] });
   });
 
   test('chartData', () => {
@@ -185,6 +186,7 @@ describe('core.js in a bare JavaScript context', () => {
       'chartData',
       'symbolNames',
       'layerGroups',
+      'lineStyles',
       'weatherRequests',
       'computeFlight',
       'setTerrain',

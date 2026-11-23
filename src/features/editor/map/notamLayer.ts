@@ -4,7 +4,7 @@ import type { GeoJSONSource, LayerSpecification, Map as MlMap } from 'maplibre-g
 
 import { isAerodromeNotam, notamRings, ringsSizeNm } from '../../../data/notams';
 import type { Notam } from '../../../shared/briefing';
-import { CHART } from './style';
+import { CHART, LINE_STYLES } from './style';
 
 export interface MapNotam {
   key: string;
@@ -48,7 +48,7 @@ export function notamLayers(): LayerSpecification[] {
     ['==', ['get', 'selected'], 1],
     CHART.notamSelected,
     ['==', ['get', 'relevant'], 1],
-    CHART.notam,
+    CHART[LINE_STYLES.notam.color],
     CHART.notamOff,
   ] as never;
   return [
@@ -56,7 +56,10 @@ export function notamLayers(): LayerSpecification[] {
       id: 'notam-fill',
       type: 'fill',
       source: NOTAM_SOURCE,
-      paint: { 'fill-color': color, 'fill-opacity': ['case', ['==', ['get', 'selected'], 1], 0.18, 0.04] as never },
+      paint: {
+        'fill-color': color,
+        'fill-opacity': ['case', ['==', ['get', 'selected'], 1], 0.18, LINE_STYLES.notam.fill] as never,
+      },
     },
     {
       id: 'notam-line',
@@ -64,9 +67,9 @@ export function notamLayers(): LayerSpecification[] {
       source: NOTAM_SOURCE,
       paint: {
         'line-color': color,
-        'line-width': ['case', ['==', ['get', 'selected'], 1], 2.4, 1] as never,
-        'line-dasharray': [3, 2],
-        'line-opacity': ['case', ['==', ['get', 'selected'], 1], 0.9, 0.55] as never,
+        'line-width': ['case', ['==', ['get', 'selected'], 1], 2.4, LINE_STYLES.notam.width] as never,
+        'line-dasharray': [...LINE_STYLES.notam.dash],
+        'line-opacity': ['case', ['==', ['get', 'selected'], 1], 0.9, LINE_STYLES.notam.opacity] as never,
       },
     },
   ];

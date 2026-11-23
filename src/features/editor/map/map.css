@@ -22,7 +22,7 @@
 .pgf-map-layers { position: absolute; top: 88px; right: 10px; z-index: 3; }
 .pgf-map-layers > .pgf-map-btn { width: 29px; min-width: 29px; height: 29px; padding: 0; background: var(--surface); border-radius: 4px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 10%, transparent); }
 .pgf-map-pop {
-  position: absolute; top: 0; right: 38px; width: 248px; padding: var(--s3);
+  position: absolute; top: 0; right: 38px; width: 272px; max-width: calc(100vw - 72px); padding: var(--s3);
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column; gap: 12px; font-size: var(--fs-sm); color: var(--ink);
   overflow: auto; overscroll-behavior: contain;
@@ -34,27 +34,15 @@
 .pgf-layers-group { display: flex; flex-direction: column; gap: 6px; }
 .pgf-layers-sep { padding-top: 10px; border-top: 1px solid var(--line); }
 .pgf-layers label.check { display: flex; font-size: inherit; }
-.pgf-layers label.check > span { flex: 1; display: flex; align-items: baseline; gap: 6px; }
-.pgf-layers label.check .muted { margin-left: auto; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
-.pgf-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: var(--fs-xs); }
-.pgf-legend span { display: inline-flex; align-items: center; gap: 5px; }
-.pgf-legend i { display: inline-block; width: 16px; height: 0; border-top: 2px solid; }
-.pgf-legend .lg-fir { border-color: var(--map-fis); border-top-style: dashed; }
-.pgf-legend .lg-tma { border-color: var(--map-tma); }
-.pgf-legend .lg-mtma { border-color: var(--map-mtma); border-top-style: dashed; }
-.pgf-legend .lg-zone { border-color: var(--map-zone); border-top-style: dashed; }
-.pgf-legend .lg-atz { border-color: var(--map-zone); border-top-style: dotted; }
-.pgf-legend .lg-zone-g { border-color: var(--map-zone-g); border-top-style: dotted; }
-.pgf-legend .lg-vfr { border-color: var(--map-vfr); }
-.pgf-legend .lg-hel { border-color: var(--map-vfr); border-top-style: dashed; }
-.pgf-legend .lg-milroute { border: 0; height: 2px; background: repeating-linear-gradient(90deg, var(--map-mil) 0 5px, transparent 5px 7px, var(--map-mil) 7px 8px, transparent 8px 10px); }
-.pgf-legend .lg-route { border-color: var(--map-route); border-top-width: 3px; }
-.pgf-legend .lg-p, .pgf-legend .lg-r { height: 8px; border: 2px solid var(--map-restricted); border-radius: 1px; }
-.pgf-legend .lg-p { border-color: var(--map-prohibited); background: color-mix(in srgb, var(--map-prohibited) 20%, transparent); }
-.pgf-legend .lg-r { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--map-restricted) 50%, transparent) 0 1px, transparent 1px 4px); }
-.pgf-legend .lg-d { border-color: var(--map-danger-area); border-top-style: dashed; }
-.pgf-legend .lg-mil { border-color: var(--map-mil); border-top-style: dashed; }
-.pgf-legend .lg-act { border-color: var(--map-activity); border-top-style: dotted; }
+.pgf-layers label.check > span { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.pgf-layers-label { flex: 1; min-width: 0; line-height: 1.3; }
+/* one column for the counts (empty where there are none) keeps the samples beside them aligned */
+.pgf-layers label.check .muted { flex: none; min-width: 3ch; text-align: right; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.pgf-legend-samples { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+/* the samples sit on the map's own background, as the map draws them */
+.pgf-legend-sample { display: block; border-radius: 3px; background: var(--map-bg); }
+.pgf-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: var(--fs-xs); }
+.pgf-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 /* under the toolbar, out of the way of the route and the snap tooltip, which follow the cursor below it */
 .pgf-map-hint {
   position: absolute; top: calc(var(--s3) + 48px); left: var(--s3); z-index: 2;

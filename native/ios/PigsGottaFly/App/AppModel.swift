@@ -34,6 +34,8 @@ final class AppModel: ObservableObject {
 
     /// The symbol images the chart style uses (PGF.symbolNames()).
     private(set) lazy var symbols: [SymbolInfo] = (try? core?.symbolNames()) ?? Symbols.known
+    /// How the chart draws its lines and areas (PGF.lineStyles()), for the layer toggles' legend.
+    private(set) lazy var lineStyles: [String: LineStyle] = (try? core?.lineStyles()) ?? [:]
 
     /// The terrain grid was handed to the core (once per JSContext: NATIVE.md "setTerrain").
     private var terrainSet = false
