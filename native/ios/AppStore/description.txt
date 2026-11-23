@@ -2,7 +2,7 @@ Pig's Gotta Fly plans, briefs and flies VFR flights in Greece (the Athinai FIR),
 
 PLAN
 - Draw the route on the VFR chart or pick the origin, destination and points; local flights with their estimated total time.
-- Your hangar: aircraft from templates, speeds, fuel, mass and balance, performance tables.
+- Your hangar: aircraft from templates, speeds, fuel, mass and balance, performance tables; share an aircraft with the pilots who fly it.
 - Passengers and seats with the weight-and-balance chart, fuel with reserves and endurance, alternates and stop requests.
 
 FLY
@@ -25,7 +25,8 @@ NAVLOG
 - Change the date, the block-off time or a leg's altitude, add a VFR reporting point, an aerodrome or one of your waypoints to the route, or take a point out. The navlog follows at once.
 
 DOCUMENTS
-- The ICAO flight plan, the navigation log and the NOTAM briefing as PDFs to share, print or e-mail.
-- Filing the flight plan, Form 731 and the General Declaration are on pigsgottafly.com, a tap away from every flight.
+- File the ICAO flight plan, delay it or cancel it, and follow its status.
+- Form 731 and the General Declaration sent to the authority, and the weight-and-balance and performance sheets to your operator.
+- The navigation log and the NOTAM briefing as PDFs to share, print or e-mail.
 
 Sign in with Apple or Google. Your flights, aircraft and passengers are the same on the website, the iPhone and the iPad.

@@ -1,4 +1,4 @@
-Pig's Gotta Fly is a native app (SwiftUI and MapLibre) for VFR pilots in Greece (the Athinai FIR): planning a flight (route on the chart, aircraft, passengers and loading, fuel, navlog), the brief on the morning of the flight (weather, NOTAMs, aerodrome hours, performance), the flight's documents as PDFs, and a moving map for flying the route with GPS. Filing the flight plan and sending the forms to the authority are on the website, pigsgottafly.com, with the same account.
+Pig's Gotta Fly is a native app (SwiftUI and MapLibre) for VFR pilots in Greece (the Athinai FIR): planning a flight (route on the chart, aircraft, passengers and loading, fuel, navlog), the brief on the morning of the flight (weather, NOTAMs, aerodrome hours, performance), filing the flight plan, the forms for the authority and the flight's documents as PDFs, and a moving map for flying the route with GPS. The website, pigsgottafly.com, does the same with the same account.
 
 SIGNING IN
 No demo account is needed. Tap "Sign in": a sign-in sheet opens on pigsgottafly.com. Choose "Sign in with Apple" (Google also works). A new account starts empty and nothing is asked at sign-up.
@@ -8,12 +8,13 @@ TRYING IT WITH THE EMPTY ACCOUNT
 2. Plan → Route: "Add a point" adds a VFR reporting point such as "KALAMO"; or open the Map tab and tap points on the chart. "Local flight" is a switch under the destination.
 3. Plan → Aircraft, Fuel, Manifest & loading (passengers, seats, the weight-and-balance chart) and Navlog (each leg's heading, time and fuel; tap a leg to change its altitude).
 4. Brief: the "Ready to fly" checklist, METAR and TAF, NOTAMs, aerodrome hours, take-off and landing performance, ATC frequencies and the warnings, each with a Fix that leads to the field to change.
-5. File: the flight plan text and its status, and the navigation log and NOTAM briefing as PDFs to preview, share or print.
+5. File: the flight plan text and its status (File, Delay, Cancel), the forms (Form 731 when someone flies with the pilot, the General Declaration, the weight-and-balance and performance sheets for the operator), and the navigation log and NOTAM briefing as PDFs to preview, share or print.
 6. Fly: the moving map with the route. Allow location when asked. On a device or in the Simulator (Features → Location), the app works anywhere: the map shows where you are relative to the route, and the strips show the next waypoint, its distance and bearing, the ETA and the frequencies.
-7. Me: the profile, map layers, About (sources, contact, open-source licenses), sign out, and Delete account (type the account's e-mail to confirm).
+7. Hangar: "New aircraft" from a type template; share an aircraft with other pilots.
+8. Me: the profile, operators, map layers, About (sources, contact, open-source licenses), sign out, and Delete account (type the account's e-mail to confirm).
 
-PLEASE DO NOT PRESS "FILE", "SEND" OR "SEND TO HCAA" ON THE WEBSITE'S PAGES
-Flight plan filing (the "File" button on the File & forms page) sends real messages to air traffic control, and the form e-mails (Form 731, General Declaration) go to the Hellenic Civil Aviation Authority. Please look at these pages without pressing "File", "Send" or "Send to HCAA".
+PLEASE DO NOT PRESS "FILE", "DELAY", "CANCEL", "SEND" OR "SEND TO HCAA"
+Filing the flight plan (File, Delay and Cancel on the File tab, in the app and on the website) sends real messages to air traffic control, and the form e-mails (Form 731, General Declaration, the operator's sheets) go to the Hellenic Civil Aviation Authority and the operator. Please look at these screens without pressing those buttons.
 
 LOCATION
 The position is used on the device only, to draw the aircraft and its progress along the route. It is not sent to our server and is not stored.
