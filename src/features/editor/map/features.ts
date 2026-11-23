@@ -166,6 +166,27 @@ export function navaidFreq(n: Pick<RefNavaid, 'freq' | 'unit' | 'channel'>): str
   return n.unit === 'kHz' ? String(Math.round(n.freq)) : n.freq.toFixed(2);
 }
 
+/** '114.40 MHz', '382 kHz', 'CH 91X'. */
+export function navaidFreqText(n: Pick<RefNavaid, 'freq' | 'unit' | 'channel'>): string {
+  const f = navaidFreq(n);
+  return n.freq === null ? f : `${f} ${n.unit}`;
+}
+
+/** A variation or declination, degrees east (+) / west (−): '5°E'. */
+export const fmtHemi = (deg: number) => `${Math.abs(deg)}°${deg < 0 ? 'W' : 'E'}`;
+
+/** The type in words (the details box). */
+export const NAVAID_TYPE_NAME: Record<RefNavaid['type'], string> = {
+  VOR: 'VOR',
+  'VOR/DME': 'VOR/DME',
+  VORTAC: 'VORTAC',
+  TACAN: 'TACAN',
+  DME: 'DME',
+  NDB: 'NDB',
+  'NDB/DME': 'NDB/DME',
+  L: 'Locator (L)',
+};
+
 /**
  * rank 1: VORs, DMEs and the NDBs listed en-route in ENR 4.1; rank 2: the other NDBs and locators,
  * shown zoomed in.

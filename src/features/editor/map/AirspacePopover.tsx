@@ -1,21 +1,9 @@
 import { Fragment, useEffect, useEffectEvent, useState } from 'react';
 
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
-import { type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
+import { AIRSPACE_TYPE_LABEL, type AirspaceInfo, fmtVertical, isArea, shortClass } from './airspace';
 import { PopItem, useAccordion } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
-
-const TYPE_LABEL: Record<AirspaceInfo['type'], string> = {
-  TMA: 'TMA',
-  MTMA: 'Military TMA',
-  CTR: 'Control zone',
-  ATZ: 'Aerodrome traffic zone',
-  P: 'Prohibited area',
-  R: 'Restricted area',
-  D: 'Danger area',
-  MIL: 'Military exercise / training area',
-  ACT: 'Local flying area',
-};
 
 function title(a: AirspaceInfo): string {
   return a.sector ? `${a.name} · ${a.sector}` : a.name;
@@ -93,7 +81,7 @@ export function AirspaceDetails({
             <dl className="pgf-air-body">
               <dt>Type</dt>
               <dd>
-                {TYPE_LABEL[a.type]}
+                {AIRSPACE_TYPE_LABEL[a.type]}
                 {a.cls ? ` · class ${a.cls}` : ''}
               </dd>
               <dt>Vertical</dt>
