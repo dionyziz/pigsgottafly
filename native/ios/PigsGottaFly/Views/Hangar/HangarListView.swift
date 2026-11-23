@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The pilot's aircraft and those shared with them (GET /api/aircraft), with the website's hangar
-/// actions: Add aircraft (+), and per aircraft Make default aircraft, Add another of this type, and
-/// Delete (the owner) or Remove from my hangar (a shared one). On iPad the list selects into the
+/// actions: Add aircraft (+), Invite pilots, and per aircraft Share…, Make default aircraft, Add
+/// another of this type, and Delete (the owner) or Remove from my hangar (a shared one). On iPad the list selects into the
 /// detail column (`selection`); on iPhone a row pushes the aircraft.
 struct HangarListView: View {
     @EnvironmentObject private var app: AppModel
@@ -16,6 +16,8 @@ struct HangarListView: View {
     /// iPhone: the aircraft just added, pushed.
     @State private var opened: Opened?
     @State private var toast: Toast?
+    @State private var sharing: AircraftItem?
+    @State private var inviting = false
 
     struct Adding: Identifiable {
         let id = UUID()
@@ -53,6 +55,15 @@ struct HangarListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    inviting = true
+                } label: {
+                    Image(systemName: "person.badge.plus")
+                }
+                .accessibilityLabel("Invite pilots")
+                .accessibilityIdentifier("invite-pilots")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     adding = Adding()
                 } label: {
                     Image(systemName: "plus")
@@ -71,6 +82,15 @@ struct HangarListView: View {
                 }
             }
         }
+        .sheet(item: $sharing) { a in
+            ShareAircraftView(aircraftId: a.id, registration: a.registration) {
+                toast = Toast(message: "Removed \(a.registration) from your hangar")
+            }
+        }
+        .sheet(isPresented: $inviting) {
+            InvitePilotsView(hangar: hangarJSON)
+        }
+        .onChange(of: app.hangarChanged) { Task { await load() } }
         .navigationDestination(item: $opened) { o in
             AircraftEditorView(aircraftId: o.id, title: o.registration)
         }
@@ -130,6 +150,12 @@ struct HangarListView: View {
 
     @ViewBuilder
     private func actions(_ a: AircraftItem) -> some View {
+        Button {
+            sharing = a
+        } label: {
+            Label("Share…", systemImage: "person.2")
+        }
+        .accessibilityIdentifier("aircraft-share-\(a.id)")
         if app.pilot?.defaultAircraftId != a.id {
             Button {
                 Task { await makeDefault(a) }
@@ -170,6 +196,9 @@ struct HangarListView: View {
                 }
             }
             if let m = a.makeModel, !m.isEmpty { Text(m).font(.subheadline).foregroundStyle(.secondary) }
+            if !a.isOwner, let chip = sharedChip(a) {
+                Text(chip).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("shared-chip")
+            }
         }
         .padding(.vertical, 4)
     }
@@ -180,9 +209,17 @@ struct HangarListView: View {
             aircraft = h.items
             hangarJSON = h.json
             error = nil
+            if let id = selection?.wrappedValue, !h.items.contains(where: { $0.id == id }) {
+                selection?.wrappedValue = nil
+            }
         } catch {
             if !isCancellation(error) { self.error = error.localizedDescription }
         }
+    }
+
+    private func sharedChip(_ a: AircraftItem) -> String? {
+        guard let access = a.access else { return nil }
+        return try? app.core?.sharedChip(access: Core.text(access))
     }
 
     private func open(_ id: String) {

@@ -104,7 +104,15 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   /api/aircraft, then the new aircraft opens (iPhone: pushed; iPad: selected into the detail). Context
   menu and swipes: Make default aircraft (PUT /api/me), Add another of this type (Add aircraft from
   that aircraft), Delete (the owner, DELETE /api/aircraft/:id) or Remove from my hangar (a shared
-  one: its own share), each asked once. Each aircraft opens its sections:
+  one: its own share), each asked once. A shared aircraft shows "Shared by … · Viewer". **Share…**
+  (the row's context menu, and the aircraft page's toolbar; `ShareAircraftView`, the website's
+  ShareDialog): the people with access, the owner first, then the pending invitations; the owner and
+  editors add people by e-mail as viewer or editor (an address no account uses gets an invitation to
+  the app), change a role, remove someone; anyone removes their own access (asked once; the aircraft
+  leaves the hangar). **Invite pilots** (the hangar's toolbar; `InvitePilotsView`, the website's
+  InviteDialog): an e-mail, a note and the aircraft the pilot owns or edits with a role each (an
+  existing account gets them at once), and the open invitations with Cancel. Each aircraft opens its
+  sections:
   Identity, Flight plan items, Speeds, Fuel, Mass & balance (1F); Performance, Compass cards,
   Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
   the pilot pauses, with the version; on 409 the unsaved changes are applied again to the server's
@@ -125,7 +133,9 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
 with the current record, offline); `API+Flights`, `+Aircraft`, `+People`, `+Files`, `+Forms` and
 `+Account` wrap every endpoint the website calls (src/data/api.ts), with typed request bodies and the
 answer decoded as the caller's Codable type or as JSON. In fixture mode (`-fixtures`) the answers come
-from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files.
+from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files. Sharing and invitations are
+kept in memory; the fixture server knows one other account (copilot@example.com, shared with at once)
+and sends no e-mail.
 
 **Launch arguments** (tests, screenshots): `-fixtures`, `-emptyAccount`, `-noNetwork`,
 `-fixturePosition lat,lon,track,gs`, `-today YYYY-MM-DD`, `-openFlight <id>`, `-tab
@@ -221,7 +231,7 @@ extra fields below were added while building the core.
   below that, the navlog's GS. `offRoute` is more than 2 NM off the leg.
 
 The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest,
-exports, hangar, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
+exports, hangar, share, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
 wraps the website's own module (named in brackets); where the website kept a rule inside a React
 component, it moved to that module and the component imports it. tests/unit/native/<domain>.test.ts
 checks each answer equals the website module's for the same input.
@@ -351,6 +361,21 @@ aircraft, pilot, ref, weather, now? }`.
   toasts (the server makes the new aircraft the default when the pilot has none).
 - `PGF.historyText({ entries, myId, versionChanges? })` → `{ entries: [{ title, changes, summary }],
   versionChanges }`: the version history in words [shared/aircraftHistory.ts].
+
+**Sharing** (src/native/core/share.ts)
+
+- `PGF.sharing({ kind?, sharing, myId, email?, role? })` → `{ canManage, role, rows, roles, error,
+  body }`: the share dialog of an aircraft (default), operator or flight [hangar/shareModel.ts].
+  `sharing` is GET …/:id/shares; `rows` `[{ key, role, name, email, initial, self, pending, note, via,
+  control, roleLabel, removeLabel, canRemove }]` (`key` the pilot id or the invited address, the
+  `:key` of PUT/DELETE …/shares/:key; `control` 'owner' | 'aircraft' | 'manage' | 'readOnly');
+  `error` or `body` (POST …/shares) for the add form's `email` and `role`.
+- `PGF.sharedChip({ access })` → `{ chip: { text, title } | null }`: "Shared by Alice · Viewer".
+- `PGF.invite({ hangar?, invitations?, email?, note?, picked?, response? })` → `{ shareable,
+  invitations, error, body, done }`: Invite pilots. `shareable` the aircraft the pilot owns or edits;
+  `invitations` GET /api/invitations as rows `{ id, email, initial, aircraft }` ("SX-ASV (Viewer)");
+  `body` POST /api/invitations for `email`, `note` and `picked` ([aircraftId, role] pairs); `done` the
+  line after it, from its `response`.
 
 **People** (src/native/core/people.ts)
 

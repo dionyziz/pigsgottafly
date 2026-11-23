@@ -1,7 +1,7 @@
 import Foundation
 
-/// The hangar: the fixture aircraft, the ones POST /aircraft adds, and DELETE (the owner's delete, or
-/// the pilot's own share) as the server answers them.
+/// The hangar: the fixture aircraft, the ones POST /aircraft adds, and the owner's DELETE, as the
+/// server answers them (sharing: FixtureRoutes+Sharing.swift).
 extension FixtureTransport {
     func aircraftRoutes(_ r: FixtureRequest) -> (Int, String?, Data?)? {
         switch (r.method, r.first, r.count) {
@@ -11,8 +11,6 @@ extension FixtureTransport {
             if let a = aircraft.first(where: { $0["id"]?.string == r.parts[1] }) { return (200, nil, Self.encoded(a)) }
             return (200, "aircraft.json", nil)
         case ("DELETE", "aircraft", 2): return removeAircraft(r.parts[1], owner: true)
-        case ("DELETE", "aircraft", 4) where r.parts[2] == "shares" && r.parts[3] == pilot["id"]?.string:
-            return removeAircraft(r.parts[1], owner: false)
         default: return nil
         }
     }
@@ -33,7 +31,7 @@ extension FixtureTransport {
     }
 
     /// The server clears the pilot's default aircraft when it leaves their hangar.
-    fileprivate func removeAircraft(_ id: String, owner: Bool) -> (Int, String?, Data?) {
+    func removeAircraft(_ id: String, owner: Bool) -> (Int, String?, Data?) {
         guard let i = aircraft.firstIndex(where: { $0["id"]?.string == id }) else { return (404, nil, nil) }
         if owner && !Self.owned(aircraft[i]) {
             return (403, nil, try? JSON.object(["error": "Only the owner can delete the aircraft"]).data())

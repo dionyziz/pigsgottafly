@@ -122,8 +122,8 @@ extension API {
 
     // MARK: invitations
 
-    struct InviteRequest: Encodable, Sendable {
-        struct AircraftShare: Encodable, Sendable {
+    struct InviteRequest: Codable, Equatable, Sendable {
+        struct AircraftShare: Codable, Equatable, Sendable {
             var aircraftId: String
             var role: ShareRole
         }

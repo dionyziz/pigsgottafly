@@ -15,6 +15,10 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     var created: [String] = []
     var aircraft: [JSON]
     var pilot: JSON
+    /// The people each aircraft is shared with (accounts), by aircraft id.
+    var aircraftShares: [String: [JSON]] = [:]
+    /// The pilot's open invitations to the app, newest first (nothing is ever sent).
+    var invitations: [JSON] = []
     let emptyAccount: Bool
     var lobby = LobbyFixtures()
 
@@ -79,7 +83,8 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     private func route(method: String, parts: [String], query: String, body: Data?) -> (Int, String?, Data?) {
         let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
-            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, manifestRoutes, peopleRoutes,
+            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, sharingRoutes, manifestRoutes,
+            peopleRoutes,
             fileRoutes, formRoutes, exportRoutes,
         ] {
             if let answer = domain(r) { return answer }

@@ -154,6 +154,12 @@ describe('core.js in a bare JavaScript context', () => {
     aircraftHelpers: () =>
       expect(call('aircraftHelpers', { op: 'split10b', text: 'SB2' })).toEqual({ ssr: 'S', ads: ['B2'] }),
     historyText: () => expect(call('historyText', {}).entries).toEqual([]),
+    sharing: () =>
+      expect(call('sharing', { sharing: { role: 'owner', canManage: true, people: [] }, myId: 'p' }).error).toBe(
+        'Enter an e-mail address.',
+      ),
+    sharedChip: () => expect(call('sharedChip', {}).chip).toBeNull(),
+    invite: () => expect(call('invite', { email: 'a@b.c' }).body.email).toBe('a@b.c'),
     newAircraft: () =>
       expect(call('newAircraft', { hangar: [], registration: ' sx-abc ' }).input.registration).toBe('SX-ABC'),
     personIssues: () => expect(call('personIssues', { person: null, now: NOW }).issues.length).toBeGreaterThan(0),

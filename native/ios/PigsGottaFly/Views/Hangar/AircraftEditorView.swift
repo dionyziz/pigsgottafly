@@ -2,8 +2,10 @@ import SwiftUI
 
 /// One aircraft's sections, as the website's aircraft page groups them.
 struct AircraftEditorView: View {
+    @Environment(\.dismiss) private var dismiss
     var aircraftId: String
     var title: String
+    @State private var sharing = false
 
     enum Section: String, CaseIterable, Identifiable {
         case identity, fplItems, speeds, fuel, massBalance, performance, compass, documents, photo, history
@@ -54,6 +56,21 @@ struct AircraftEditorView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    sharing = true
+                } label: {
+                    Image(systemName: "person.2")
+                }
+                .accessibilityLabel("Share")
+                .accessibilityIdentifier("share-aircraft")
+            }
+        }
+        .sheet(isPresented: $sharing) {
+            // leaving: the hangar list reads itself again (AppModel.hangarChanged) and this page goes
+            ShareAircraftView(aircraftId: aircraftId, registration: title) { dismiss() }
+        }
         .accessibilityIdentifier("aircraft-page")
     }
 

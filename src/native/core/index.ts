@@ -50,4 +50,5 @@ export {
 } from './plan';
 export { fuelEdit, setAircraft } from './planEdits';
 export { progress } from './progress';
+export { invite, sharedChip, sharing } from './share';
 export { type CoreRef, version } from './shared';
