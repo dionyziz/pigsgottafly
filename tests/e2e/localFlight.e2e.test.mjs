@@ -1,6 +1,6 @@
 // End-to-end test of a local flight (LGTT → LGTT, nothing between): the new-flight page's Local flight
-// choice and duration, the editor's route section without a navlog, the flight plan with route LOCAL
-// and the duration as total EET, and no navlog among the documents.
+// box and estimated total time, the editor's Local flight box (destination locked to the origin, the
+// map not drawable), the flight plan with route LOCAL and the time as total EET, and no navlog.
 import assert from 'node:assert/strict';
 import test, { after, before } from 'node:test';
 
@@ -35,7 +35,7 @@ test('a local flight: chosen on the new-flight page, 1:30 in the editor, LOCAL -
   await page.waitFor(() => !!document.querySelector('[data-testid=new-flight-form]'));
   await page.type('input[name=from]', 'LGTT');
   await page.click('[data-testid=new-flight-local]');
-  await page.waitFor(() => document.querySelector('[data-testid=new-flight-local-to]')?.value === 'Back to LGTT');
+  await page.waitFor(() => document.querySelector('[data-testid=new-flight-local-to]')?.value === 'LGTT');
   assert.equal(await page.eval(() => document.querySelector('[data-testid=new-flight-duration]').value), '1:00');
   await page.click('[data-testid=create-flight]');
   await page.waitFor(
@@ -45,10 +45,28 @@ test('a local flight: chosen on the new-flight page, 1:30 in the editor, LOCAL -
 
   // a new flight opens on Plan even though it is for today: the route section, the duration, no navlog strip
   await page.waitFor(() => document.querySelector('[data-testid=stage-body-plan]')?.hidden === false);
-  await page.waitFor(() => !!document.querySelector('[data-testid=route-local]'));
-  assert.equal(await text('[data-testid=route-local]'), 'Local flight · LGTT');
+  await page.waitFor(() => document.querySelector('[data-testid=route-local]')?.checked === true);
+  const dest = () =>
+    page.eval(() => {
+      const i = document.querySelector('[data-testid=route-destination] input');
+      return { value: i.value, disabled: i.disabled };
+    });
+  assert.deepEqual(await dest(), { value: 'LGTT', disabled: true });
   assert.equal(await page.eval(() => document.querySelector('[data-testid=local-duration]').value), '1:00');
   assert.equal(await page.eval(() => !!document.querySelector('[data-testid=navlog-strip]')), false);
+  // nothing to draw on the map
+  await page.waitFor(() => document.querySelector('[data-testid=map-draw]')?.disabled === true);
+  assert.equal(await page.eval(() => document.querySelector('.pgf-map').classList.contains('is-drawing')), false);
+
+  // unticked: the destination opens (empty), the time goes, the map draws; ticked again: local as before
+  await page.click('[data-testid=route-local]');
+  await page.waitFor(() => !document.querySelector('[data-testid=route-destination] input').disabled);
+  assert.deepEqual(await dest(), { value: '', disabled: false });
+  assert.equal(await page.eval(() => !!document.querySelector('[data-testid=local-duration]')), false);
+  assert.equal(await page.eval(() => document.querySelector('[data-testid=map-draw]').disabled), false);
+  await page.click('[data-testid=route-local]');
+  await page.waitFor(() => document.querySelector('[data-testid=route-destination] input').disabled);
+  assert.deepEqual(await dest(), { value: 'LGTT', disabled: true });
 
   await page.type('[data-testid=local-duration]', '1:30');
   await page.key('Enter');

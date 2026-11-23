@@ -120,11 +120,11 @@ test('a new account lands in the lobby; its first flight asks for the home aerod
   const f = await (await fetch(`${server.url}/api/flights/${id}`)).json();
   assert.equal(f.blockOff, '09:30');
 
-  // the lobby lists it; the export route renders (home → home is a local flight: no navlog, its flight plan)
+  // the lobby lists it; the export route renders (from home with no destination: no legs, no navlog)
   await page.goto(server.url + '/');
   await page.waitFor((id) => !!document.querySelector(`[data-flight-id="${id}"]`), { args: [id] });
   await page.goto(`${server.url}/flights/${id}/export/navlog`);
-  await page.waitFor(() => document.querySelector('[data-testid=export-page]')?.dataset.kind === 'fpl');
+  await page.waitFor(() => document.querySelector('[data-testid=export-page]')?.dataset.kind === 'navlog');
   assert.deepEqual(page.errors, []);
 });
 

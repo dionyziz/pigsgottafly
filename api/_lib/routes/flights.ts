@@ -315,9 +315,8 @@ export const routes: Route[] = [
         { role: 'PIC', passengerId: null, seat: picSeat(seats ?? FALLBACK_SEATS), snapshot: picSnapshot(pilot) },
       ];
       const home = pilot.homeAerodrome ? await findAerodrome(db, pilot.homeAerodrome) : null;
-      if (home) {
-        base.route = [aerodromePoint(home), aerodromePoint(home)];
-      }
+      // home with no destination: home → home would be a local flight, which the pilot ticks explicitly
+      if (home) base.route = [aerodromePoint(home)];
       // options given at creation (a local flight's duration) go on top of the profile's, not instead
       const { options, ...rest } = input;
       const given: Partial<FlightDoc> =
