@@ -149,6 +149,8 @@ struct MapLayers: Codable, Equatable, Sendable {
     var aerodromes = true
     var vfrPoints = true
     var vfrRoutes = true
+    var helRoutes = false
+    var milRoutes = false
     var navaids = true
     var waypoints = true
     var prd = true
@@ -159,7 +161,8 @@ struct MapLayers: Codable, Equatable, Sendable {
     /// The toggles by their MapLayers key.
     static let toggles: [WritableKeyPath<MapLayers, Bool>: String] = [
         \.ofm: "ofm", \.fir: "fir", \.tma: "tma", \.zones: "zones", \.aerodromes: "aerodromes",
-        \.vfrPoints: "vfrPoints", \.vfrRoutes: "vfrRoutes", \.navaids: "navaids", \.waypoints: "waypoints",
+        \.vfrPoints: "vfrPoints", \.vfrRoutes: "vfrRoutes", \.helRoutes: "helRoutes", \.milRoutes: "milRoutes",
+        \.navaids: "navaids", \.waypoints: "waypoints",
         \.prd: "prd", \.mil: "mil", \.act: "act", \.notams: "notams",
     ]
 

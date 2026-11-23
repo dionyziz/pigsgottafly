@@ -75,13 +75,16 @@ test('VFR routes join reporting points of their own chart', () => {
     const a = pt(r.chart, r.a),
       b = pt(r.chart, r.b);
     expect(a && b, `${r.chart} ${r.a}–${r.b}`).toBeTruthy();
-    expect(r.minFt >= 500 && r.minFt <= r.maxFt && r.maxFt <= 12000).toBe(true);
+    // both null: drawn on the chart without an altitude
+    if (r.minFt === null || r.maxFt === null) expect([r.minFt, r.maxFt]).toEqual([null, null]);
+    else expect(r.minFt >= 500 && r.minFt <= r.maxFt && r.maxFt <= 12000).toBe(true);
     const d = distanceNm(a!, b!);
     expect(d > 0.5 && d < 80).toBe(true);
   }
   const r = (c: string, a: string, b: string) => VFR_ROUTES.find((x) => x.chart === c && x.a === a && x.b === b)!;
   expect(r('LGAV', 'KORINTHOS', 'MEGARA').maxFt).toBe(3500);
   expect(r('LGRP', 'NOVEMBER', 'LINDOS')).toMatchObject({ maxFt: 4500, oneway: true });
+  expect(r('LGKV', 'STRIMON', 'LOUTRA')).toMatchObject({ minFt: null, maxFt: null, oneway: false });
   expect(new Set(VFR_POINTS.map((p) => p.id)).size).toBe(VFR_POINTS.length);
 });
 

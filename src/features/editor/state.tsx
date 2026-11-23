@@ -136,11 +136,17 @@ export function EditorProvider({
     () =>
       defaultAltitudes(
         doc.route,
-        { aerodromes: REF.aerodromes, vfrPoints: REF.vfrPoints, vfrRoutes: REF.vfrRoutes, terrain },
+        {
+          aerodromes: REF.aerodromes,
+          vfrPoints: REF.vfrPoints,
+          vfrRoutes: REF.vfrRoutes,
+          terrain,
+          layers: doc.options.mapLayers,
+        },
         overrides,
         requestTimes.patternPoints,
       ),
-    [doc.route, overrides, requestTimes, terrain],
+    [doc.route, overrides, requestTimes, terrain, doc.options.mapLayers],
   );
   const altitudesFt = useMemo(
     () => altitudeDefaults.map((d, i) => overrides[i] ?? d.altFt),

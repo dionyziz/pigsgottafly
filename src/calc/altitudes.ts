@@ -1,6 +1,8 @@
 // Default leg altitudes (ported from the v2 app, js/app.js calc(), plus the PLAN-v3 custom-point rule).
 //   1. A leg joining two VFR reporting points along a charted VFR route: the charted altitude (the
-//      highest permitted, `maxFt`). One-way routes match only in their direction; direction-specific
+//      highest permitted, `maxFt`); a segment charted without an altitude gives none (rules 2–5 apply,
+//      and rule 3 ignores it), nor does a HEL / MIL / JET ONLY route unless the flight's map shows its
+//      kind. One-way routes match only in their direction; direction-specific
 //      altitudes are charted as two one-way routes (e.g. LGBL ANL>STEFANO 4500, STEFANO>ANL 3500).
 //   2. The last leg flies the destination's pattern altitude (elevation + 1000 ft, rounded to 100 ft)
 //      when the destination is an aerodrome (within 2 NM).
@@ -16,6 +18,7 @@
 //      previous leg's effective (possibly overridden) altitude.
 // Every default can be overridden per leg (LegOverride.altFt).
 import { isLocalFlight } from '../shared/local.js';
+import { type MapLayers, vfrRouteToggle } from '../shared/mapLayers.js';
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../shared/ref.js';
 import type { LatLon, RoutePoint } from '../shared/types.js';
 import { distanceNm, midpoint, norm180, pointSegDistNm, trueCourse } from './nav.js';
@@ -27,6 +30,9 @@ export interface AltitudeContext {
   vfrRoutes: RefVfrRoute[];
   /** Terrain grid (src/calc/terrain.ts); without it, rule 4 does not apply. */
   terrain?: Uint8Array | null;
+  /** The flight's map layers (FlightOptions.mapLayers): helicopter and military VFR routes give
+   *  altitudes only while their layer is shown; without it, never. */
+  layers?: Partial<MapLayers> | null;
 }
 
 /** Terrain-based defaults are rounded up to this. */
@@ -57,15 +63,26 @@ export function nearestAerodrome(p: LatLon, aerodromes: RefAerodrome[], maxNm: n
   return bd <= maxNm ? best : null;
 }
 
+/** A charted VFR route the chart prints an altitude for. */
+export type AltitudeRoute = RefVfrRoute & { minFt: number; maxFt: number };
+
+/** A segment the chart draws without an altitude has none to suggest; a number would be invented. */
+export const hasAltitude = (r: RefVfrRoute): r is AltitudeRoute => r.minFt !== null && r.maxFt !== null;
+
+/** A route whose altitude a leg may take: printed, and open to every VFR flight unless the pilot shows
+ *  its kind (a HEL ONLY or MIL ONLY route is not flown by an aeroplane on an ordinary flight). */
+const suggests = (r: RefVfrRoute, ctx: AltitudeContext): r is AltitudeRoute =>
+  hasAltitude(r) && (!r.kind || ctx.layers?.[vfrRouteToggle(r.kind)] === true);
+
 /**
- * Charted VFR route between two points (each within 1.5 NM of a reporting point printed on the same
- * chart), respecting one-way routes; null if none.
+ * Charted VFR route with a printed altitude between two points (each within 1.5 NM of a reporting
+ * point printed on the same chart), respecting one-way routes; null if none.
  * Points with src 'ofm' DO match: tools/build_vfr.py gives src 'ofm' to charted reporting points
  * whose position was taken from open flightmaps (152 route end points, e.g. LGBL STEFANO), so the v2
  * filter `src !== 'ofm'` made those charted routes unreachable. An extra open-flightmaps point only
  * matches when it carries the name of a route end point on that chart.
  */
-export function vfrRouteBetween(a: LatLon, b: LatLon, ctx: AltitudeContext): RefVfrRoute | null {
+export function vfrRouteBetween(a: LatLon, b: LatLon, ctx: AltitudeContext): AltitudeRoute | null {
   const near = (p: LatLon) => ctx.vfrPoints.filter((v) => distanceNm(p, v) <= 1.5);
   const A = near(a),
     B = near(b);
@@ -73,7 +90,8 @@ export function vfrRouteBetween(a: LatLon, b: LatLon, ctx: AltitudeContext): Ref
     for (const vb of B) {
       if (va.name === vb.name) continue;
       const r = ctx.vfrRoutes.find(
-        (r) =>
+        (r): r is AltitudeRoute =>
+          suggests(r, ctx) &&
           r.chart === va.chart &&
           r.chart === vb.chart &&
           ((r.a === va.name && r.b === vb.name) || (!r.oneway && r.a === vb.name && r.b === va.name)),
@@ -135,8 +153,9 @@ export function chartedSegments(ctx: AltitudeContext): ChartedSegment[] {
 }
 
 /**
- * The charted VFR route leg closest to p (within maxNm), or null. When several charted legs are
- * equally close (within 0.05 NM, e.g. a direction-specific pair drawn on the same line), the one
+ * The charted VFR route leg with a printed altitude closest to p (within maxNm), or null. When
+ * several charted legs are equally close (within 0.05 NM, e.g. a direction-specific pair drawn on
+ * the same line), the one
  * whose direction is allowed for a flight on courseDeg wins: non-one-way legs always, one-way legs
  * when their a → b course is within 90° of courseDeg.
  */
@@ -145,8 +164,10 @@ export function closestVfrRoute(
   ctx: AltitudeContext,
   courseDeg: number = NaN,
   maxNm: number = CLOSEST_ROUTE_MAX_NM,
-): { route: RefVfrRoute; distNm: number } | null {
-  const scored = chartedSegments(ctx).map((s) => ({ s, d: pointSegDistNm(p, s.a, s.b).dist }));
+): { route: AltitudeRoute; distNm: number } | null {
+  const scored = chartedSegments(ctx)
+    .filter((s): s is ChartedSegment & { route: AltitudeRoute } => suggests(s.route, ctx))
+    .map((s) => ({ s, d: pointSegDistNm(p, s.a, s.b).dist }));
   let best = Infinity;
   for (const x of scored) if (x.d < best) best = x.d;
   if (!(best <= maxNm)) return null;

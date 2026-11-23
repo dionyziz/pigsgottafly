@@ -46,6 +46,8 @@
 .pgf-legend .lg-atz { border-color: var(--map-zone); border-top-style: dotted; }
 .pgf-legend .lg-zone-g { border-color: var(--map-zone-g); border-top-style: dotted; }
 .pgf-legend .lg-vfr { border-color: var(--map-vfr); }
+.pgf-legend .lg-hel { border-color: var(--map-vfr); border-top-style: dashed; }
+.pgf-legend .lg-milroute { border: 0; height: 2px; background: repeating-linear-gradient(90deg, var(--map-mil) 0 5px, transparent 5px 7px, var(--map-mil) 7px 8px, transparent 8px 10px); }
 .pgf-legend .lg-route { border-color: var(--map-route); border-top-width: 3px; }
 .pgf-legend .lg-p, .pgf-legend .lg-r { height: 8px; border: 2px solid var(--map-restricted); border-radius: 1px; }
 .pgf-legend .lg-p { border-color: var(--map-prohibited); background: color-mix(in srgb, var(--map-prohibited) 20%, transparent); }

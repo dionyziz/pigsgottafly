@@ -100,7 +100,13 @@ export function computeFlightNavlog(input: NavlogComputeInput): NavlogComputed {
   const timing = requestTiming(doc.route, doc.options, settings?.circuitMin);
   const defaults = defaultAltitudes(
     doc.route,
-    { aerodromes: ref.aerodromes, vfrPoints: ref.vfrPoints, vfrRoutes: ref.vfrRoutes, terrain: ref.terrain },
+    {
+      aerodromes: ref.aerodromes,
+      vfrPoints: ref.vfrPoints,
+      vfrRoutes: ref.vfrRoutes,
+      terrain: ref.terrain,
+      layers: doc.options.mapLayers,
+    },
     altOverrides,
     timing.patternPoints,
   );
