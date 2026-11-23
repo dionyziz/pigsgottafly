@@ -27,7 +27,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "native:core": "tsx tools/build_native_core.ts",
-    "knip": "knip"
+    "knip": "knip",
+    "native:pdf": "tsx tools/build_native_pdf.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
