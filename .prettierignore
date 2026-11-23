@@ -6,6 +6,7 @@ package-lock.json
 /trn-docs/
 /data/
 src/data/ref/
+src/data/licenses.json
 tools/**/*.json
 tests/e2e/artifacts/
 tests/fixtures/

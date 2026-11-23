@@ -117,7 +117,7 @@ test('the privacy policy and terms render with their sections and date', async (
       toc: document.querySelectorAll('.legal-toc li').length,
       h2: document.querySelectorAll('.legal-doc h2').length,
       title: document.title,
-      contact: !!document.querySelector('a[href="mailto:dionyziz@gmail.com"]'),
+      contact: !!document.querySelector('a[href="mailto:dionyziz@commonprefix.com"]'),
     }));
     assert.equal(doc.h1, title);
     assert.equal(doc.date, 'Last updated 21 November 2026');

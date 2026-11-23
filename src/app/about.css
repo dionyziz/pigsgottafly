@@ -3,6 +3,14 @@
 .about-list > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--s3); }
 .about-list dt { color: var(--muted); font-size: var(--fs-sm); padding-top: 1px; }
 .about-list dd { margin: 0; overflow-wrap: anywhere; }
+.license-list { list-style: none; margin: 0; padding: 0; }
+.license-list > li { border-top: 1px solid var(--line); }
+.license-list > li:first-child { border-top: 0; }
+.license-list summary { display: flex; align-items: baseline; gap: var(--s2); padding: var(--s2) 0; cursor: pointer; overflow-wrap: anywhere; }
+.license-version { color: var(--muted); font-size: var(--fs-sm); }
+.license-id { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); text-align: right; }
+.license-list details > p { margin: 0 0 var(--s2); font-size: var(--fs-sm); white-space: pre-line; overflow-wrap: anywhere; }
+.license-text { margin: 0 0 var(--s3); padding: var(--s3); max-height: 360px; overflow: auto; font-family: var(--mono); font-size: var(--fs-xs); white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: var(--r); }
 @media (max-width: 600px) {
   .about-list > div { grid-template-columns: 1fr; gap: 0; }
 }

@@ -21,6 +21,7 @@ const ROUTES: [RegExp, string][] = [
   [/^\/admin\/errors(\/|$)/, 'Errors'],
   [/^\/admin\/mail(\/|$)/, 'Mail'],
   [/^\/admin(\/|$)/, 'Admin'],
+  [/^\/about\/licenses\/?$/, 'Open-source licenses'],
   [/^\/about(\/|$)/, 'About'],
   [/^\/privacy(\/|$)/, 'Privacy Policy'],
   [/^\/terms(\/|$)/, 'Terms'],
