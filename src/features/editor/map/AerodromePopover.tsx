@@ -1,6 +1,7 @@
 import { AipLink, VfrChartLinks } from '../../../app/AipLink';
 import type { RefAerodrome } from '../../../shared/ref';
-import { type AdDayInfo, adHandlingLine, AdHoursDetail, adHoursLine } from '../AerodromeHours';
+import { type AdDayInfo, adHandlingLine, adHoursLine } from '../adDay';
+import { AdHoursDetail } from '../AerodromeHours';
 import { PopItem } from './MapPopover';
 import type { VfrChart } from './vfrCharts';
 

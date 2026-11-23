@@ -155,7 +155,7 @@ export function routeInfo(input: Json<{ route: RoutePoint[] }>) {
 
 /** MapLibre's world size at zoom 0, px: its tiles are 512 px (on the website and in MapLibre Native). */
 const TILE = 512;
-const mercator = (zoom: number) => {
+export const mercator = (zoom: number) => {
   const world = TILE * 2 ** zoom;
   return {
     project: (lon: number, lat: number): ScreenPoint => {

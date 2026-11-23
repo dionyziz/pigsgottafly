@@ -12,6 +12,8 @@ struct ChartMapView: UIViewRepresentable {
     var fix: Position?
     var trackUp: Bool
     @Binding var following: Bool
+    /// Opt-in: a single tap on the chart, with the map's zoom (the Map tab's feature details).
+    var onTap: ((CLLocationCoordinate2D, Double) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -24,6 +26,10 @@ struct ChartMapView: UIViewRepresentable {
         v.accessibilityIdentifier = "fly-map"
         v.accessibilityLabel = "Chart"
         if let first = route.first { v.setCenter(first, zoomLevel: 8, animated: false) }
+        if onTap != nil {
+            v.addGestureRecognizer(
+                UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tapped(_:))))
+        }
         context.coordinator.update(self, v)
         return v
     }
@@ -91,6 +97,11 @@ struct ChartMapView: UIViewRepresentable {
             MainActor.assumeIsolated {
                 if parent.following { parent.following = false }
             }
+        }
+
+        @objc func tapped(_ g: UITapGestureRecognizer) {
+            guard g.state == .ended, let v = g.view as? MLNMapView else { return }
+            parent.onTap?(v.convert(g.location(in: v), toCoordinateFrom: v), v.zoomLevel)
         }
 
         // MARK: layers

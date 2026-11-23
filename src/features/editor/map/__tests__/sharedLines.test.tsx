@@ -6,7 +6,7 @@ import { aipFiles } from '../../../../../tools/aip_files';
 import { AIP_EAIP_BASE, vfrChartUrl } from '../../../../data/aipLinks';
 import { AD_AIRSPACES, AERODROMES, AIRSPACES, AREAS, NAVAIDS, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../../../../shared/ref';
-import { adDayInfo } from '../../AerodromeHours';
+import { adDayInfo } from '../../adDay';
 import { AerodromeDetails } from '../AerodromePopover';
 import { airspaceInfos } from '../airspace';
 import { AirspaceDetails } from '../AirspacePopover';

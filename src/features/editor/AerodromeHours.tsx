@@ -1,53 +1,9 @@
-// AIP AD 2.3 / AD 1.6 overlaid with the flight's NOTAMs (src/calc/aerodromeStatus.ts). Shared by the
-// editor's "Aerodrome hours" section and the map's aerodrome tooltip / details.
+// An aerodrome's hours of the day (adDay.ts) in detail. Shared by the editor's "Aerodrome hours" section
+// and the map's aerodrome details.
 import { AipLink } from '../../app/AipLink';
-import { type AdDay, type AdNotamEffect, aerodromeDay } from '../../calc';
-import { SUN_TABLES } from '../../data/ref';
+import type { AdDay, AdNotamEffect } from '../../calc';
 import type { RefAerodrome } from '../../shared/ref';
-
-export interface AdDayInfo {
-  day: string;
-  ad: AdDay | null;
-  ats: AdDay | null;
-  handling: AdDay | null;
-  notams: AdNotamEffect[];
-}
-
-const DAY_MS = 86400e3;
-
-/** `day` '' = today (UTC). */
-export function adDayInfo(a: RefAerodrome, day: string, effects: readonly AdNotamEffect[]): AdDayInfo {
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : new Date().toISOString().slice(0, 10);
-  const start = Date.parse(d + 'T00:00:00Z');
-  const opts = { effects, sunTables: SUN_TABLES };
-  const notams = effects.filter((e) => e.icao === a.icao && e.from < start + DAY_MS && (e.to === null || e.to > start));
-  if (!a.hours) return { day: d, ad: null, ats: null, handling: null, notams };
-  return {
-    day: d,
-    ad: aerodromeDay(a, 'ad', d, opts),
-    ats: a.hours.ats ? aerodromeDay(a, 'ats', d, opts) : null,
-    handling: aerodromeDay(a, 'handling', d, opts),
-    notams,
-  };
-}
-
-const fmtDay = (d: string) =>
-  new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  });
-
-/** 'Hours Sat 15 Nov: Open 04:52–15:01Z (HJ) · NOTAM A1234/26' — one line for tooltips. */
-export function adHoursLine(info: AdDayInfo): string {
-  if (!info.ad) return 'Hours not published';
-  return `${fmtDay(info.day)}: ${info.ad.text}${info.ad.notams.length ? ` (NOTAM ${info.ad.notams.join(', ')})` : ''}`;
-}
-export function adHandlingLine(info: AdDayInfo): string {
-  if (!info.handling) return '';
-  return `Handling: ${info.handling.text}${info.handling.notams.length ? ` (NOTAM ${info.handling.notams.join(', ')})` : ''}`;
-}
+import { type AdDayInfo, fmtAdDay } from './adDay';
 
 function DayText({ d, testId }: { d: AdDay; testId?: string }) {
   return (
@@ -69,7 +25,7 @@ export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdD
   const partial = [h.ad, h.ats, h.handling].some((f) => f?.parsed.partial);
   return (
     <dl className="pgf-air-body pgf-ad-body" data-testid="ad-hours">
-      <dt>{compact ? 'Hours' : fmtDay(info.day)}</dt>
+      <dt>{compact ? 'Hours' : fmtAdDay(info.day)}</dt>
       <dd>
         <DayText d={info.ad} testId="ad-hours-day" />
       </dd>
