@@ -13,6 +13,7 @@ import { decodeMetarTafResponse } from '../../../src/data/weatherMetar';
 import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
 import { computeFlight, weatherRequests } from '../../../src/native/core';
 import { legKey } from '../../../src/shared';
+import type { RefArea } from '../../../src/shared/ref';
 import { fakeOpenMeteo, gridApi } from '../../helpers/openMeteoGrid';
 import { AC, ad, API_REF, flight, METAR_ANSWER, NOW, PILOT, ROUTE, vfr } from './fixtures';
 
@@ -216,5 +217,72 @@ describe('computeFlight', () => {
     const c = computeFlight({ flight: f, pilot: { ...PILOT, fullName: '' }, ref: API_REF, weather: {}, now: NOW });
     expect(c.navlog!.legs).toHaveLength(3);
     expect(c.readiness.find((r) => r.id === 'profile')).toBeUndefined();
+  });
+
+  test('area warnings: a leg entering an area, a time-limited one only when flown in one of its windows', () => {
+    const f = flight(ROUTE());
+    const run = (extra: RefArea[], flightOver = f) =>
+      computeFlight({
+        flight: flightOver,
+        aircraft: AC,
+        pilot: PILOT,
+        ref: { ...API_REF, areas: [...(API_REF.areas ?? []), ...extra] },
+        weather: {},
+        now: NOW,
+      }).warnings.filter((w) => /LGDTEST/.test(w.text));
+    const base = computeFlight({ flight: f, aircraft: AC, pilot: PILOT, ref: API_REF, weather: {}, now: NOW });
+    // a small square on KORINTHOS → LGMG, the third leg
+    const { mid } = buildLegs(f.route, f.date)[2];
+    const leg = base.navlog!.legs[2];
+    const at = (min: number) =>
+      new Date(Date.parse(`${f.date}T00:00:00Z`) + min * 60000).toISOString().slice(0, 16) + 'Z';
+    const d = 0.02;
+    const exercise: RefArea = {
+      id: 'LGDTEST',
+      kind: 'D',
+      name: 'TEST',
+      lower: 'SFC',
+      upper: 'FL 100',
+      lateral: '',
+      polygon: [
+        [mid.lat - d, mid.lon - d],
+        [mid.lat + d, mid.lon - d],
+        [mid.lat + d, mid.lon + d],
+        [mid.lat - d, mid.lon + d],
+        [mid.lat - d, mid.lon - d],
+      ],
+      activity: 'AMC Manageable areas (AMA)',
+      remarks: '',
+      source: 'AIP SUP 39/26',
+      validFrom: f.date,
+      validUntil: f.date,
+      windows: [{ from: at(leg.startMin + 1), to: at(leg.endMin + 60) }],
+    };
+    const [w] = run([exercise]);
+    const window = `${f.date.slice(8, 10)} NOV ${at(leg.startMin + 1)
+      .slice(11, 16)
+      .replace(':', '')}–`;
+    expect(w).toMatchObject({ level: 'warn', area: 'navlog', leg: { index: 2 } });
+    expect(w.leg!.detail).toMatch(
+      new RegExp(
+        `^Enters danger area LGDTEST TEST \\(SFC – FL100\\), active ${window}\\d{4}Z \\(AIP SUP 39/26, valid until 15 NOV 2026\\)\\.$`,
+      ),
+    );
+    expect(w.text).toBe(`${f.route[2].name} → ${f.route[3].name}: ${w.leg!.detail}`);
+    // the window ends as the leg starts, or opens after it: no warning
+    expect(run([{ ...exercise, windows: [{ from: at(leg.startMin - 60), to: at(leg.startMin) }] }])).toEqual([]);
+    expect(run([{ ...exercise, windows: [{ from: at(leg.endMin + 1), to: at(leg.endMin + 60) }] }])).toEqual([]);
+    // expired, or not yet in force, on the flight's day
+    expect(run([{ ...exercise, validUntil: '2026-11-14', windows: undefined }])).toEqual([]);
+    // without windows (activated by EAUP/EUUP, NOTAM): whenever in force
+    expect(run([{ ...exercise, windows: undefined }])[0].leg!.detail).toMatch(/\(AIP SUP 39\/26, valid until/);
+    // a flight-plan buffer zone is no warning; a prohibited area is a danger
+    expect(run([{ ...exercise, remarks: 'For IFR flight planning purposes only.' }])).toEqual([]);
+    expect(run([{ ...exercise, kind: 'P', validUntil: undefined, windows: undefined }])[0]).toMatchObject({
+      level: 'danger',
+      leg: { detail: 'Enters prohibited area LGDTEST TEST (SFC – FL100).' },
+    });
+    // no block times: the flight's whole day stands for the leg's time
+    expect(run([exercise], { ...f, blockOff: '' })).toHaveLength(1);
   });
 });

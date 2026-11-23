@@ -60,6 +60,7 @@ import {
   type RefNavaid,
   requestAllowed,
   type RoutePoint,
+  todayUtc,
 } from '../../shared';
 import type { Notam, NotamBriefing } from '../../shared/briefing';
 import { mercator } from './plan';
@@ -67,15 +68,20 @@ import { arg, type CoreRef, type Json, plain, type Ref, refOf } from './shared';
 
 // ---------------------------------------------------------------- caches of the reference data
 
-let cache: { bundle: unknown; infos: AirspaceInfo[]; charts: VfrChartIndex } | null = null;
-/** The airspaces and the VFR chart index of the reference data (built once per bundle: a hover asks often). */
-function refIndex(r: Ref) {
+let cache: { bundle: unknown; day: string; infos: AirspaceInfo[]; charts: VfrChartIndex } | null = null;
+/**
+ * The airspaces (the areas in force on `day`, the flight's, else today) and the VFR chart index of the
+ * reference data (built once per bundle and day: a hover asks often).
+ */
+function refIndex(r: Ref, date?: string | null) {
   const b = r.bundle;
-  if (cache?.bundle !== b)
+  const day = date || todayUtc();
+  if (cache?.bundle !== b || cache.day !== day)
     cache = {
       bundle: b,
-      infos: airspaceInfos(b.airspaces, b.adAirspaces ?? [], b.areas ?? [], b.fir),
-      charts: vfrChartIndex(b.aerodromes, b.vfrPoints),
+      day,
+      infos: airspaceInfos(b.airspaces, b.adAirspaces ?? [], b.areas ?? [], b.fir, day),
+      charts: cache?.bundle === b ? cache.charts : vfrChartIndex(b.aerodromes, b.vfrPoints),
     };
   return cache;
 }
@@ -178,6 +184,7 @@ function airspaceCard(a: AirspaceInfo, r: Ref) {
     { label: 'Lateral', text: a.lateral },
   ];
   if (a.activity) rows.push({ label: 'Active', text: a.activity });
+  rows.push(...(a.timeRows ?? []));
   a.notes.forEach((n, i) => rows.push({ label: i === 0 ? 'Notes' : '', text: n }));
   return {
     id: a.id,
@@ -299,7 +306,7 @@ export function mapInfo(
         .map((n) => shown.find((x) => x.key === n.key))
         .filter((n): n is Notam => !!n)
     : [];
-  const infos = refIndex(r).infos.filter((a) => airspaceShown(layers, a.type));
+  const infos = refIndex(r, date).infos.filter((a) => airspaceShown(layers, a.type));
   return plain({
     aerodrome: ad ? aerodromeCard(ad, date, briefing, r) : null,
     navaid: nav ? navaidCard(nav, r) : null,
@@ -426,13 +433,15 @@ export function mapLayers(
     flight?: unknown;
     pilot?: unknown;
     notams?: NotamBriefing | null;
+    /** The flight's date: the areas counted are those in force then (today without one). */
+    date?: string | null;
   }>,
 ) {
   const i = arg(input);
   const r = refOf(i.ref);
   const layers = mapLayersOf(i.flight) ?? mapLayersOf(i.pilot) ?? { ...DEFAULT_MAP_LAYERS };
   const counts = { prd: 0, mil: 0, act: 0, notams: 0 };
-  for (const a of refIndex(r).infos) if (isArea(a.type)) counts[areaToggle(a.type)]++;
+  for (const a of refIndex(r, i.date).infos) if (isArea(a.type)) counts[areaToggle(a.type)]++;
   counts.notams = mapNotams(visibleNotams(i.notams ?? null, false)).length;
   return plain({ layers, counts, airac: r.bundle.airac.id });
 }

@@ -8,6 +8,8 @@ extension FlightModel {
 
     func setDate(_ day: String) async {
         await edit { $0["date"] = .string(day) }
+        // the chart draws the areas in force on the flight's day
+        await prepareChart()
     }
 
     func setBlockOff(_ clock: String) async {

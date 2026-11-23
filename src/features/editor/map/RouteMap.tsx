@@ -18,7 +18,14 @@ import {
   trueCourse,
 } from '../../../calc';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
-import { type AerodromeRequest, DEFAULT_STOP_MIN, isLocalFlight, requestAllowed, uid as newUid } from '../../../shared';
+import {
+  type AerodromeRequest,
+  DEFAULT_STOP_MIN,
+  isLocalFlight,
+  requestAllowed,
+  todayUtc,
+  uid as newUid,
+} from '../../../shared';
 import type { Notam } from '../../../shared/briefing';
 import type { MapLayers } from '../../../shared/mapLayers';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
@@ -297,9 +304,11 @@ export function RouteMap(props: RouteMapProps) {
   );
 
   // Everything the (once-bound) map handlers read.
+  // the areas in force on the flight's day (today for a flight without a date)
   const allInfos = useMemo(
-    () => airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? [], refData.fir),
-    [refData],
+    () =>
+      airspaceInfos(refData.airspaces, refData.adAirspaces ?? [], refData.areas ?? [], refData.fir, date || todayUtc()),
+    [refData, date],
   );
   const airInfos = useMemo(() => allInfos.filter((a) => airspaceShown(layers, a.type)), [allInfos, layers]);
   const areaCount = useMemo(() => {

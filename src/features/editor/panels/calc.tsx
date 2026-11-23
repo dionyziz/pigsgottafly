@@ -338,6 +338,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         aerodromeChecks,
         terrain,
         altitudesFt,
+        areas: REF.areas,
         nowMs: Date.now(),
       }),
     [

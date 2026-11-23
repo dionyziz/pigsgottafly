@@ -242,11 +242,17 @@ extension Core {
         try callJSON("waypointName", fields: ["name": JSON.string(name).text])["name"]?.string ?? ""
     }
 
-    /// `flight`: options.mapLayers; `pilot`: settings.mapLayers (JSON texts).
-    func mapLayers(ref: String?, flight: String?, pilot: String?, notams: String?) throws -> MapLayersInfo {
+    /// `flight`: options.mapLayers; `pilot`: settings.mapLayers (JSON texts); `date`: the flight's, whose
+    /// areas in force are counted (today without one).
+    func mapLayers(
+        ref: String?, flight: String?, pilot: String?, notams: String?, date: String? = nil
+    ) throws -> MapLayersInfo {
         try callDecoding(
             "mapLayers", ref: ref,
-            fields: ["flight": flight ?? "null", "pilot": pilot ?? "null", "notams": notams ?? "null"])
+            fields: [
+                "flight": flight ?? "null", "pilot": pilot ?? "null", "notams": notams ?? "null",
+                "date": date.map { JSON.string($0).text } ?? "null",
+            ])
     }
 }
 
@@ -411,7 +417,9 @@ final class RouteEditor: ObservableObject {
         let flight = model.flight?["options"]?["mapLayers"]?.text
         let pilot = app.store.read(.pilot).flatMap { try? JSON.parse($0) }?["settings"]?["mapLayers"]?.text
         let notams = app.store.text(.notams(model.id))
-        guard let ref, let info = try? core.mapLayers(ref: ref, flight: flight, pilot: pilot, notams: notams) else {
+        guard let ref,
+            let info = try? core.mapLayers(ref: ref, flight: flight, pilot: pilot, notams: notams, date: model.date)
+        else {
             return
         }
         // a viewer's choice is not saved: it holds while the map is open

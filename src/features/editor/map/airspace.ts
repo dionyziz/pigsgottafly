@@ -2,6 +2,7 @@
 import polygonClipping from 'polygon-clipping';
 
 import { deg, R_NM, rad } from '../../../calc';
+import { areasInForce, areaTimeRows } from '../../../shared/areaTime';
 import { areasToRoute } from '../../../shared/notamAreas';
 import type { RefAdAirspace, RefAirspace, RefArea, RefAtcUnitRef, RefFir } from '../../../shared/ref';
 import type { LatLon } from '../../../shared/types';
@@ -48,6 +49,8 @@ export interface AirspaceInfo {
   activity?: string;
   /** ENR 5 areas: the short chart label ('LGD45', or the name of an ENR 5.3 area). */
   code?: string;
+  /** Areas a SUP limits in time: until when in force and the windows from the map's day on (details rows). */
+  timeRows?: { label: string; text: string }[];
   /** Notes on the limits (FIR boundary clipping, a quadrant with another upper limit, AFIS). */
   notes: string[];
   units: RefAtcUnitRef[];
@@ -213,8 +216,8 @@ export function fromAd(z: RefAdAirspace, fir: [number, number][] | null = null):
 
 const fmtNm = (nm: number) => (nm >= 1 ? String(+nm.toFixed(1)) : nm.toFixed(2).replace(/0$/, ''));
 
-/** An ENR 5 area; null when its lateral limits could not be drawn. */
-export function fromArea(a: RefArea): AirspaceInfo | null {
+/** An ENR 5 area; null when its lateral limits could not be drawn. `day`: the map's (its windows from then on). */
+export function fromArea(a: RefArea, day = ''): AirspaceInfo | null {
   let ring: [number, number][];
   let lateral: string;
   if (a.circle) {
@@ -224,9 +227,11 @@ export function fromArea(a: RefArea): AirspaceInfo | null {
     ring = closed(a.polygon.map(([lat, lon]) => [lon, lat] as [number, number]));
     lateral = `Polygon, ${ring.length - 1} points`;
   } else return null;
+  const code = a.designator ?? a.id;
+  const timeRows = areaTimeRows(a, day);
   return {
     id: a.id,
-    name: a.kind === 'ACT' ? a.name || a.id : a.name ? `${a.id} ${a.name}` : a.id,
+    name: a.kind === 'ACT' ? a.name || code : a.name ? `${code} ${a.name}` : code,
     sector: '',
     type: a.kind,
     cls: '',
@@ -234,7 +239,8 @@ export function fromArea(a: RefArea): AirspaceInfo | null {
     upper: a.upper,
     lateral,
     activity: a.activity,
-    code: a.kind === 'ACT' ? a.name || a.id : a.id,
+    code: a.kind === 'ACT' ? a.name || code : code,
+    ...(timeRows.length ? { timeRows } : {}),
     notes: a.geometryNote ? [a.geometryNote] : [],
     units: [],
     remarks: a.remarks,
@@ -244,12 +250,16 @@ export function fromArea(a: RefArea): AirspaceInfo | null {
   };
 }
 
-/** All airspace shown on the map: TMAs/MTMAs, then CTRs and ATZs, then the ENR 5 areas. */
+/**
+ * All airspace shown on the map: TMAs/MTMAs, then CTRs and ATZs, then the ENR 5 areas. With `day` (UTC,
+ * 'YYYY-MM-DD': the flight's, else today), only the areas in force that day; an expired SUP's drop out.
+ */
 export function airspaceInfos(
   tmas: RefAirspace[],
   ad: RefAdAirspace[] = [],
   areas: RefArea[] = [],
   fir?: RefFir,
+  day?: string,
 ): AirspaceInfo[] {
   const firR = firRing(fir);
   const out = tmas.filter((s) => s.polygon.length >= 3).map((s) => fromTma(s, firR));
@@ -257,8 +267,8 @@ export function airspaceInfos(
     const i = fromAd(z, firR);
     if (i) out.push(i);
   }
-  for (const a of areas) {
-    const i = fromArea(a);
+  for (const a of day ? areasInForce(areas, day) : areas) {
+    const i = fromArea(a, day);
     if (i) out.push(i);
   }
   return out;

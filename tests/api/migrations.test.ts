@@ -657,6 +657,7 @@ describe('migrations', () => {
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
+      '065_ref_areas_sup_2609',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -717,6 +718,7 @@ describe('migrations', () => {
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
+      '065_ref_areas_sup_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -832,6 +834,7 @@ describe('migrations', () => {
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
+      '065_ref_areas_sup_2609',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -884,10 +887,16 @@ describe('migrations', () => {
     expect(vfrRoutes.map((r) => r.doc).sort(byId)).toEqual([...(VFR_ROUTES_JSON as any[])].sort(byId));
     expect(vfrRoutes.find((r) => r.doc.id === 'LGKV:STRIMON>LOUTRA')!.doc).toMatchObject({ minFt: null, maxFt: null });
     expect(vfrRoutes.some((r) => r.doc.id === 'LGAV:ILIOUP>HOLARGOS')).toBe(true);
-    // 064: the AIRAC's areas again (017's ENR 5 list replaced), with those of the AIP SUPs valid UFN
+    // 065: the AIRAC's areas again (064's list replaced), with those of the time-limited AIP SUPs, their dates
+    // and windows
     const areas = await db.query<{ doc: any }>(`SELECT doc FROM ref_areas WHERE airac = '2609'`);
     expect(areas.map((r) => r.doc).sort(byId)).toEqual([...(AREAS_JSON as any[])].sort(byId));
     expect(areas.find((r) => r.doc.id === 'LGTRA1A')!.doc).toMatchObject({ source: 'AIP SUP 09/24', upper: 'FL 100' });
+    expect(areas.find((r) => r.doc.id === 'LGD102A')!.doc).toMatchObject({ validUntil: '2027-06-09' });
+    expect(areas.find((r) => r.doc.id === 'LGD4SW')!.doc.windows).toContainEqual({
+      from: '2026-11-23T11:30Z',
+      to: '2026-11-23T13:30Z',
+    });
     expect((await db.query(`SELECT name FROM schema_migrations ORDER BY name`)).map((r) => r.name)).toEqual(
       MIGRATIONS.map((m) => m.name).sort(),
     );
@@ -915,7 +924,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-27)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-28)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -943,6 +952,7 @@ describe('migrations', () => {
       '062_ref_vfr_points_2609',
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
+      '065_ref_areas_sup_2609',
     ]);
     await db.close();
   });

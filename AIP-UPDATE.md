@@ -63,12 +63,15 @@ routes).
 6. **Runways.** `tools/build_ref.ts` prints a warning for each slope it cannot sign (same unsigned value both ways and no threshold elevations). Spot-check a few aerodromes' declared distances against the PDFs; `tests/unit/data/runways.test.ts` checks bearings, reciprocals, thresholds and distances for consistency.
 7. **Operational hours.** `tests/unit/calc/adHours.test.ts` lists what every aerodrome's AD 2.3 / AD 1.6 text parses to (AD hours, ATS, handling, customs). A changed text shows up there: check the new parse against the AIP and update the table. Text the parser cannot represent exactly is marked partial (shown as the AIP text, evaluated as unknown); keep that list short and deliberate.
 8. **ENR 5 areas.** `parse_enr5.ts` prints each area it draws approximately (e.g. "excluding … ATZ" not cut out) or cannot draw; `tests/unit/data/enr5.test.ts` holds verbatim pages and the expected parse, and minimum counts per kind. A new layout or a new kind of lateral limit shows up there.
-   **AIP SUPs:** areas established by a SUP valid UFN (SUP 01/23 UAV AREA1/2, SUP 09/24 LGTRA1A–C) are drawn from
-   the `SUP_AREAS` table, which names each area and its limits; the coordinates are read from the SUP text. The
-   parser warns about a UFN SUP that prints coordinates but is not in the table (add it, or to `SUP_NOT_AREAS` when
-   the coordinates are not an area), a table SUP whose text changed or which is no longer in the AIP, and each
-   time-limited SUP that prints coordinates: areas carry no validity dates, so those are not drawn; read them
-   (exercises, temporary danger areas) and decide by hand.
+   **AIP SUPs:** areas established by a SUP, valid UFN (SUP 01/23 UAV AREA1/2, SUP 09/24 LGTRA1A–C) or for some
+   dates (SUP 07/26 LGD102A–C, SUP 39/26's exercise areas), are drawn from the `SUP_AREAS` table, which names each
+   area, its limits and the dated windows the SUP prints for it (as printed, checked against the area's page:
+   every window printed on a page must be transcribed); the coordinates are read from the SUP text. Each area
+   carries the SUP's dates (`validFrom` / `validUntil`, narrowed to its windows' days) and its windows (UTC): the
+   maps draw it only on the days in force, the flight's warnings count it only when a leg is flown in a window,
+   and an expired SUP's areas drop out by themselves. The parser warns about a SUP that prints coordinates but is
+   not in the table (add it, or to `SUP_NOT_AREAS` when the coordinates are not an area), a table SUP whose text
+   changed or which is no longer in the AIP (drop it once expired).
 9. **Radio navaids.** `parse_navaids.ts` prints a warning for each table where it read fewer stations than there are frequencies, and for a station printed with a different frequency in ENR 4.1 and an AD 2.19. `tests/unit/data/navaids.test.ts` holds verbatim station rows and the expected parse, and checks the shipped list (known stations, positions inside the FIR).
 10. **AIP links.** The script points `AIP_EAIP_BASE` at `https://aisgr.hasp.gov.gr/aipgr_incl_amdt_<NNYY>_wef_<ddmonyyyy>/cd/ais/`; open one link to check HASP kept that pattern (`tests/unit/data/aipLinks.test.ts` checks it matches the AIRAC).
 11. **Compass cards** are not AIP data: each pilot keeps them in the hangar (aircraft page → Compass swing) after each swing.
