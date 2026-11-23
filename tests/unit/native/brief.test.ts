@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 import { groupNotams, onlyFromAutorouter, visibleNotams } from '../../../src/data/notams';
 import { REF } from '../../../src/data/ref';
-import { adDayInfo } from '../../../src/features/editor/AerodromeHours';
+import { adDayInfo } from '../../../src/features/editor/adDay';
 import { calcAdEffects } from '../../../src/features/editor/panels/flightCalc';
 import { metarStations } from '../../../src/features/editor/panels/metarStations';
 import { endpointVerdict, reasonText, weatherText } from '../../../src/features/editor/panels/performance';

@@ -22,7 +22,7 @@ import type { Notam } from '../../../shared/briefing';
 import type { MapLayers } from '../../../shared/mapLayers';
 import type { RefAerodrome, RefBundle, RefNavaid } from '../../../shared/ref';
 import type { MenuItem } from '../../../ui';
-import type { AdDayInfo } from '../AerodromeHours';
+import type { AdDayInfo } from '../adDay';
 import { AerodromeDetails, AerodromeTipRows } from './AerodromePopover';
 import { type AirspaceInfo, airspaceInfos, airspacesAt, farFromRoute, isArea } from './airspace';
 import { AirspaceDetails, AirspaceTipRows } from './AirspacePopover';
@@ -70,6 +70,7 @@ import {
   isBareRoundTrip,
   mercatorMid,
   movePoint,
+  POINT_KIND_LABEL,
   removeDrawnPoint,
   removePoint,
   renamePoint,
@@ -1808,7 +1809,7 @@ export function RouteMap(props: RouteMapProps) {
           x={menu.x}
           y={menu.y}
           title={menuPoint.name}
-          detail={KIND_LABEL[menuPoint.kind]}
+          detail={POINT_KIND_LABEL[menuPoint.kind]}
           items={menuItems(menuPoint)}
           error={saveErr}
         />
@@ -1816,10 +1817,3 @@ export function RouteMap(props: RouteMapProps) {
     </div>
   );
 }
-
-const KIND_LABEL: Record<RoutePoint['kind'], string> = {
-  aerodrome: 'aerodrome',
-  vfr: 'VFR reporting point',
-  waypoint: 'my waypoint',
-  custom: 'custom point',
-};

@@ -15,7 +15,7 @@ import {
   visibleNotams,
 } from '../../data/notams';
 import type { StationReports } from '../../data/weatherMetar';
-import { adDayInfoWith, fmtDay } from '../../features/editor/adHours';
+import { adDayInfo, fmtAdDay } from '../../features/editor/adDay';
 import { AD_ROLE, type AdCheck } from '../../features/editor/panels/aerodromeChecks';
 import { calcAdEffects, type EndpointCalc, type StopCalc } from '../../features/editor/panels/flightCalc';
 import { metarBoxShown, metarStations, metarWhere } from '../../features/editor/panels/metarStations';
@@ -106,13 +106,12 @@ function aerodromeHours(
   c: Computed,
   flight: BriefInput['flight'],
   notams: NotamBriefing | null,
-  ref: ReturnType<typeof refOf>,
   now: number,
 ) {
   const effects = calcAdEffects(notams);
   const items = (c.aerodromeChecks ?? []).map((ck) => {
     const a = ck.aerodrome;
-    const info = adDayInfoWith(a, flight.date, effects, ref.sunTables, now);
+    const info = adDayInfo(a, flight.date, effects, now);
     const h = a.hours;
     const timed = fin(ck.fromMs);
     const partial = !!h && [h.ad, h.ats, h.handling].some((f) => f?.parsed.partial);
@@ -130,7 +129,7 @@ function aerodromeHours(
       hours:
         h && info.ad
           ? {
-              day: fmtDay(info.day),
+              day: fmtAdDay(info.day),
               ad: day(info.ad),
               ats: day(info.ats),
               handling: day(info.handling),
@@ -354,7 +353,7 @@ export function brief(input: Json<BriefInput>) {
   const c = i.computed;
   return plain({
     metar: metarBox(c, i.flight, ref.bundle.aerodromes, now),
-    aerodromes: aerodromeHours(c, i.flight, i.notams ?? null, ref, now),
+    aerodromes: aerodromeHours(c, i.flight, i.notams ?? null, now),
     performance: performance(c, i, ref),
     notams: notamList(i.notams ?? null, i.flight, ref, !!i.showAll),
   });

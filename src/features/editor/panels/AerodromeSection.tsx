@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 
 import { clockZ } from '../../../calc';
 import { Chip, Collapsible } from '../../../ui';
-import { adDayInfo, AdHoursDetail } from '../AerodromeHours';
+import { adDayInfo } from '../adDay';
+import { AdHoursDetail } from '../AerodromeHours';
 import { useEditor } from '../state';
 import { AD_ROLE, type AdCheck, useFlightCalc } from './calc';
 import { Section, SECTIONS_STORE } from './ui';

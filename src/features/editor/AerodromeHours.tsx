@@ -1,16 +1,9 @@
-// AIP AD 2.3 / AD 1.6 overlaid with the flight's NOTAMs (src/calc/aerodromeStatus.ts). Shared by the
-// editor's "Aerodrome hours" section and the map's aerodrome tooltip / details.
+// An aerodrome's hours of the day (adDay.ts) in detail. Shared by the editor's "Aerodrome hours" section
+// and the map's aerodrome details.
 import { AipLink } from '../../app/AipLink';
 import type { AdDay, AdNotamEffect } from '../../calc';
-import { SUN_TABLES } from '../../data/ref';
 import type { RefAerodrome } from '../../shared/ref';
-import { type AdDayInfo, adDayInfoWith, fmtDay } from './adHours';
-
-export { type AdDayInfo, adHandlingLine, adHoursLine } from './adHours';
-
-/** `day` '' = today (UTC). */
-export const adDayInfo = (a: RefAerodrome, day: string, effects: readonly AdNotamEffect[]): AdDayInfo =>
-  adDayInfoWith(a, day, effects, SUN_TABLES);
+import { type AdDayInfo, fmtAdDay } from './adDay';
 
 function DayText({ d, testId }: { d: AdDay; testId?: string }) {
   return (
@@ -32,7 +25,7 @@ export function AdHoursDetail({ a, info, compact }: { a: RefAerodrome; info: AdD
   const partial = [h.ad, h.ats, h.handling].some((f) => f?.parsed.partial);
   return (
     <dl className="pgf-air-body pgf-ad-body" data-testid="ad-hours">
-      <dt>{compact ? 'Hours' : fmtDay(info.day)}</dt>
+      <dt>{compact ? 'Hours' : fmtAdDay(info.day)}</dt>
       <dd>
         <DayText d={info.ad} testId="ad-hours-day" />
       </dd>

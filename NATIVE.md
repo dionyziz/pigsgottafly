@@ -246,7 +246,7 @@ checks each answer equals the website module's for the same input.
   performance, notams }`: the Brief's sections from `computeFlight`'s answer (not computed again).
   `metar`: `{ shown, rows }`, the METAR box's stations with a report, from 6 h before take-off
   [editor/panels/metarStations.ts]. `aerodromes`: `{ closed, items }`, each aerodrome's status at the
-  planned time and its hours that day [editor/adHours.ts]. `performance`: `{ has, noGo, endpoints }`,
+  planned time and its hours that day [editor/adDay.ts]. `performance`: `{ has, noGo, endpoints }`,
   each take-off and landing with its verdict, reason, figures and runway/surface choices
   [editor/panels/performance.ts]. `notams`: the briefing by group, with the autorouter-only tag, the
   meta line and Show all [data/notams.ts].
