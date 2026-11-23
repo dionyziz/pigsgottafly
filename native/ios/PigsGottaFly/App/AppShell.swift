@@ -61,6 +61,7 @@ struct AppShell: View {
             if horizontalSize == .regular { split } else { tabs }
         }
         .environmentObject(navigator)
+        .toast($app.toast)
         .task { await app.loadPilot() }
     }
 

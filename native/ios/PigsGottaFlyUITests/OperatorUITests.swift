@@ -31,7 +31,8 @@ final class OperatorUITests: XCTestCase {
         XCTAssertTrue(app.textFields["operator-name"].exists)
 
         // a flight plan copy needs an address: the issue shows under the field until it is typed
-        app.switches["operator-requires-fpl"].tap()
+        // the row's own control: a tap on the row's middle (its label) does not toggle it
+        app.switches["operator-requires-fpl"].switches.firstMatch.tap()
         XCTAssertTrue(app.element("operator-fpl-copy-email-issue").waitForExistence(timeout: 5))
         let email = app.textFields["operator-fpl-copy-email"]
         email.tap()

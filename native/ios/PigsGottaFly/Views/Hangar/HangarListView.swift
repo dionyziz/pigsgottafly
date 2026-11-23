@@ -15,7 +15,6 @@ struct HangarListView: View {
     @State private var removing: AircraftItem?
     /// iPhone: the aircraft just added, pushed.
     @State private var opened: Opened?
-    @State private var toast: Toast?
     @State private var sharing: AircraftItem?
     @State private var inviting = false
 
@@ -75,7 +74,7 @@ struct HangarListView: View {
         .sheet(item: $adding) { a in
             AddAircraftView(hangar: hangarJSON, copyOf: a.copyOf) { id, message in
                 adding = nil
-                toast = Toast(message: message)
+                app.toast = Toast(message: message)
                 Task {
                     await load()
                     open(id)
@@ -84,7 +83,7 @@ struct HangarListView: View {
         }
         .sheet(item: $sharing) { a in
             ShareSheet(target: .aircraft(a.id, a.registration)) {
-                toast = Toast(message: "Removed \(a.registration) from your hangar")
+                app.toast = Toast(message: "Removed \(a.registration) from your hangar")
             }
         }
         .sheet(isPresented: $inviting) {
@@ -102,7 +101,6 @@ struct HangarListView: View {
         ) { [removing] in
             if let removing { Task { await remove(removing) } }
         }
-        .toast($toast)
         .refreshable { await load() }
         .task { await load() }
         .accessibilityIdentifier("hangar-list")
@@ -233,9 +231,9 @@ struct HangarListView: View {
     private func makeDefault(_ a: AircraftItem) async {
         do {
             try await app.setDefaultAircraft(a.id)
-            toast = Toast(message: "\(a.registration) is now your default aircraft")
+            app.toast = Toast(message: "\(a.registration) is now your default aircraft")
         } catch {
-            if !isCancellation(error) { toast = Toast(message: error.localizedDescription) }
+            if !isCancellation(error) { app.toast = Toast(message: error.localizedDescription) }
         }
     }
 
@@ -248,10 +246,10 @@ struct HangarListView: View {
             }
             if selection?.wrappedValue == a.id { selection?.wrappedValue = nil }
             await load()
-            toast = Toast(
+            app.toast = Toast(
                 message: a.isOwner ? "Deleted \(a.registration)" : "Removed \(a.registration) from your hangar")
         } catch {
-            if !isCancellation(error) { toast = Toast(message: error.localizedDescription) }
+            if !isCancellation(error) { app.toast = Toast(message: error.localizedDescription) }
         }
     }
 }

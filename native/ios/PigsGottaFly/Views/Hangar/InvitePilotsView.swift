@@ -47,7 +47,6 @@ struct InvitePilotsView: View {
                     Section("Share aircraft") {
                         ForEach(v.shareable) { aircraftRow($0) }
                     }
-                    .accessibilityIdentifier("invite-aircraft")
                 }
                 Section {
                     Button("Invite") { Task { await send() } }
@@ -66,7 +65,6 @@ struct InvitePilotsView: View {
                     Section("Invited") {
                         ForEach(v.invitations) { invitationRow($0) }
                     }
-                    .accessibilityIdentifier("invitations")
                 }
             }
             .disabled(busy)

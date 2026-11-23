@@ -20,7 +20,10 @@ final class FlightSharingUITests: XCTestCase {
     func testShareAFlightFromTheListAndFromTheFlight() throws {
         let app = launch()
         app.element("flight-fixture-lgtt-lgsk").press(forDuration: 1.2)
-        app.buttons["flight-share-fixture-lgtt-lgsk"].tap()
+        // the list's selection menu (contextMenu(forSelectionType:)) drops its items' identifiers
+        let item = app.buttons["Share…"]
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.tap()
         XCTAssertTrue(app.element("share-dialog").waitForExistence(timeout: 10))
         let email = app.textFields["share-email"]
         XCTAssertTrue(email.waitForExistence(timeout: 10))

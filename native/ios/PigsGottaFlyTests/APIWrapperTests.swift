@@ -95,7 +95,8 @@ final class APIWrapperTests: XCTestCase {
         // the manifest fixtures (FixtureRoutes+Manifest) give the passenger list its people
         let passengers = try await api.passengers(as: [JSON].self)
         XCTAssertFalse(passengers.isEmpty)
+        // the operator fixtures (FixtureRoutes+Operators): one the pilot owns, one shared with them
         let operators = try await api.operators()
-        XCTAssertEqual(operators, [])
+        XCTAssertEqual(operators.array?.compactMap { $0["id"]?.string }, ["op-mesogeion", "op-aegean-flyers"])
     }
 }

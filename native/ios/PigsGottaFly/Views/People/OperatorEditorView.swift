@@ -146,7 +146,7 @@ private struct OperatorForm: View {
         .toolbar { toolbar(f) }
         .sheet(item: $sharing, onDismiss: { Task { await model.loadPeople() } }) { t in
             ShareSheet(target: t) {
-                app.operatorNotice = f?.head.left
+                if let left = f?.head.left { app.toast = Toast(message: left) }
                 app.operatorsChanged += 1
                 close()
             }
@@ -234,7 +234,6 @@ private struct OperatorForm: View {
         } header: {
             Text("People with access")
         }
-        .accessibilityIdentifier("operator-people")
     }
 
     @ToolbarContentBuilder
@@ -280,7 +279,7 @@ private struct OperatorForm: View {
         do {
             let deleted = model.form(autosave.value)?.head.deleted
             try await app.deleteOperator(model.id)
-            app.operatorNotice = deleted
+            if let deleted { app.toast = Toast(message: deleted) }
             close()
         } catch {
             if !isCancellation(error) { deleteError = error.localizedDescription }

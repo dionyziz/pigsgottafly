@@ -119,6 +119,9 @@ struct PassengerEditorView: View {
             Label(message, systemImage: "xmark.octagon.fill")
                 .font(.footnote)
                 .foregroundStyle(.red)
+                // one element that reads the message: the symbol would otherwise be its own, "Error"
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(message)
                 .accessibilityIdentifier("passenger-\(key)-issue")
         }
     }

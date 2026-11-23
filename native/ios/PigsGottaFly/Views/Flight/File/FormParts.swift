@@ -62,7 +62,6 @@ struct FormWarningsSection: View {
                     }
                 }
             }
-            .accessibilityIdentifier("form-warnings")
             .task(id: warnings) { await resolve() }
         }
     }
@@ -128,4 +127,16 @@ struct FormNote: View {
 extension BriefTone {
     /// The panels' 'ok' | 'warn' | 'danger'.
     init(panel: String) { self = BriefTone(rawValue: panel) ?? .warn }
+}
+
+extension SheetInputs {
+    /// When the stored inputs of a form's sheet besides the flight were last written: the pilot's
+    /// profile, the aircraft and the reference data (a form cannot be drawn without them).
+    @MainActor
+    static func key(_ app: AppModel, _ model: FlightModel) -> String {
+        let aircraft = model.flight?["aircraftId"]?.string.map { Store.Key.aircraft($0) }
+        return ([.pilot, .ref] + [aircraft].compactMap { $0 })
+            .map { app.store.modified($0).map { "\($0.timeIntervalSince1970)" } ?? "-" }
+            .joined(separator: ",")
+    }
 }

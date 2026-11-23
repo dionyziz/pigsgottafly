@@ -112,7 +112,6 @@ struct WbPerfView: View {
             } header: {
                 Text(p.title)
             }
-            .accessibilityIdentifier("operator-send")
         }
     }
 

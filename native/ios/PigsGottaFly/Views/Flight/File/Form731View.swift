@@ -134,9 +134,14 @@ struct Form731View: View {
         panel = try? await core.run { try $0.form731Panel(forms: st, links: links) }
     }
 
+    /// The stored profile, aircraft and reference data are in it: on a flight opened at launch they
+    /// reach the store after the first try, which then has nothing to draw.
     private var sheetKey: String {
-        [model.flight?.text ?? "", forms.passengers ?? "", panel.map { Core.text($0.signatures) } ?? ""].joined(
-            separator: "|")
+        [
+            model.flight?.text ?? "", forms.passengers ?? "", panel.map { Core.text($0.signatures) } ?? "",
+            SheetInputs.key(app, model),
+        ]
+        .joined(separator: "|")
     }
 
     private func makeSheet() async {

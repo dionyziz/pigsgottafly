@@ -113,7 +113,8 @@ extension Core {
     /// The body of POST /api/operators for the typed name, or why not.
     func newOperator(name: String) throws -> (body: JSON?, error: String?) {
         let j = try callJSON("newOperator", fields: ["name": JSON.string(name).text])
-        return (j["body"].flatMap { $0.isNull ? nil : $0 }, j["error"]?.string)
+        // JSON is nil-literal expressible: a bare nil here would be JSON null, not no value
+        return (j["body"].flatMap { $0.isNull ? JSON?.none : $0 }, j["error"]?.string)
     }
 
     /// `documents`: GET …/files' documents (JSON text); `pick` a chosen file and `title` the title

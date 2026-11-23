@@ -120,12 +120,10 @@ struct ShareSheet: View {
                 Section("Passengers on this flight") {
                     ForEach(v.suggestions, id: \.email) { suggestion($0) }
                 }
-                .accessibilityIdentifier("share-suggestions")
             }
             Section("People with access") {
                 ForEach(v.rows) { row($0, roles: v.roles) }
             }
-            .accessibilityIdentifier("share-people")
         }
         .disabled(busy)
     }

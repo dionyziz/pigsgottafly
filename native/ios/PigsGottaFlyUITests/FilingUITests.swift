@@ -32,12 +32,16 @@ final class FilingUITests: XCTestCase {
         app.tapRow("section-flightPlan")
         XCTAssertTrue(app.element("fpl-export").waitForExistence(timeout: 10))
         status(app, contains: "Not filed")
-        XCTAssertTrue(app.element("fpl-message").waitForExistence(timeout: 10))
-        XCTAssertTrue(app.element("fpl-message").label.contains("(FPL-SXASV"))
         XCTAssertTrue(app.switches["addressee-LGGGZFZX"].exists)
+        // the message is below the screen: the form builds its rows only once scrolled to
+        let message = app.element("fpl-message")
+        app.reveal(message, swipes: 8)
+        XCTAssertTrue(message.waitForExistence(timeout: 10))
+        XCTAssertTrue(message.label.contains("(FPL-SXASV"), message.label)
 
         // File: the confirmation shows the backends, the addressees and the message as sent
         let file = app.buttons["fpl-file"]
+        for _ in 0..<8 where !(file.exists && file.isHittable) { app.swipeDown() }
         expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: file)
         waitForExpectations(timeout: 15)
         file.tap()
@@ -46,7 +50,9 @@ final class FilingUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["confirm-via"].label.contains("autorouter, then Fax to Athens Central AIS"))
         XCTAssertTrue(app.staticTexts["LGSKZTZX"].exists)
         XCTAssertTrue(app.staticTexts["ops@example.com"].exists)
-        XCTAssertTrue(app.element("confirm-message").label.contains("-LGTT0745"))
+        let sentMessage = app.element("confirm-message")
+        app.reveal(sentMessage, swipes: 8)
+        XCTAssertTrue(sentMessage.label.contains("-LGTT0745"), sentMessage.label)
         confirm.tap()
         status(app, contains: "Filed")
         XCTAssertTrue(app.element("fpl-filing-via").label.contains("Filed via autorouter"))
@@ -69,7 +75,7 @@ final class FilingUITests: XCTestCase {
         // Cancel, confirmed: the plan is cancelled and may be filed again
         app.reveal(app.buttons["fpl-cancel"])
         app.buttons["fpl-cancel"].tap()
-        let cancel = app.buttons["confirm-cancel-fpl"]
+        let cancel = app.buttons["confirm-cancel-fpl"].firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout: 5))
         cancel.tap()
         status(app, contains: "Cancelled")

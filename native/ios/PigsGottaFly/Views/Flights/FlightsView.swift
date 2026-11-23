@@ -151,7 +151,6 @@ struct FlightsView: View {
     private func menuItems(_ r: FlightListItem) -> some View {
         Button("Fly again", systemImage: "arrow.clockwise") { afterMenu { flyAgain(r) } }
         Button("Share…", systemImage: "person.2") { afterMenu { share(r) } }
-            .accessibilityIdentifier("flight-share-\(r.id)")
         if r.sharedBy == nil {
             Divider()
             Button("Rename", systemImage: "pencil") { startRename(r) }
@@ -318,6 +317,7 @@ struct FlightsView: View {
 
     private func moveToTrash(_ r: FlightListItem) {
         if selection == r.id { selection = nil }
+        dropRow(r)
         Task {
             do {
                 try await app.trashFlight(r)
@@ -345,6 +345,13 @@ struct FlightsView: View {
         }
     }
 
+    /// A destructive swipe action deletes its row at once, so the list must lose it in the same update:
+    /// removed a run-loop turn later (in the Task), the removal lands mid-animation and UICollectionView
+    /// throws (invalid number of items in section).
+    private func dropRow(_ r: FlightListItem) {
+        app.flights.removeAll { $0.id == r.id }
+    }
+
     /// The flight's share sheet. From the list the manifest is not at hand, so its passengers are not
     /// suggested here (the flight's own Share offers them).
     private func share(_ r: FlightListItem) {
@@ -353,6 +360,7 @@ struct FlightsView: View {
 
     private func leave(_ r: FlightListItem) {
         if selection == r.id { selection = nil }
+        dropRow(r)
         Task {
             do {
                 try await app.leaveFlight(r)

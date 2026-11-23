@@ -53,6 +53,8 @@ struct GenDecView: View {
                             .foregroundStyle(e.handled ? .green : .orange)
                     }
                     .font(.subheadline)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(e.label) \(e.reason)")
                     .accessibilityIdentifier("gendec-handling-\(e.role)")
                 }
                 Toggle(
@@ -101,9 +103,14 @@ struct GenDecView: View {
         panel = try? await core.run { try $0.genDecPanel(forms: st) }
     }
 
+    /// The stored profile, aircraft and reference data are in it: on a flight opened at launch they
+    /// reach the store after the first try, which then has nothing to draw.
     private var sheetKey: String {
-        [model.flight?.text ?? "", forms.passengers ?? "", panel?.signature.map { Core.text($0) } ?? ""]
-            .joined(separator: "|")
+        [
+            model.flight?.text ?? "", forms.passengers ?? "", panel?.signature.map { Core.text($0) } ?? "",
+            SheetInputs.key(app, model),
+        ]
+        .joined(separator: "|")
     }
 
     private func makeSheet() async {

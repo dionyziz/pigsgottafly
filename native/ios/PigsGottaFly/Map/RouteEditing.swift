@@ -233,7 +233,8 @@ extension Core {
                 "target": JSON.object(["lat": .number(lat), "lon": .number(lon)]).text,
                 "date": date.map { JSON.string($0).text } ?? "null",
             ])
-        let band = j["band"].flatMap { $0.isNull ? nil : $0 }
+        // JSON is nil-literal expressible: a bare nil here would be JSON null, not no value
+        let band = j["band"].flatMap { $0.isNull ? JSON?.none : $0 }
         return (band, j["readout"]?.string)
     }
 

@@ -67,7 +67,8 @@ final class SharingUITests: XCTestCase {
         XCTAssertTrue(email.waitForExistence(timeout: 10))
         email.tap()
         email.typeText("bob@example.com")
-        app.switches["invite-aircraft-fixture-sx-asv"].tap()
+        // the row's own control: a tap on the row's middle (its label) does not toggle it
+        app.switches["invite-aircraft-fixture-sx-asv"].switches.firstMatch.tap()
         app.buttons["invite-send"].tap()
         XCTAssertTrue(app.element("invite-done").waitForExistence(timeout: 10))
         XCTAssertTrue(app.element("invitation-aircraft").waitForExistence(timeout: 5))

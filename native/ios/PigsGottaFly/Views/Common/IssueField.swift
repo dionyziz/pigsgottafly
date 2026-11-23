@@ -33,6 +33,9 @@ struct IssueField: View {
                 )
                 .font(.footnote)
                 .foregroundStyle(issue.level == .error ? .red : .orange)
+                // one element that reads the message: the symbol would otherwise be its own, "Error"
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(issue.message)
                 .accessibilityIdentifier("\(id)-issue")
             }
         }

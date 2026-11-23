@@ -24,11 +24,24 @@ final class PassengersUITests: XCTestCase {
         return app
     }
 
-    /// Replaces a text field's text.
+    /// Replaces a text field's text. The fields are right-aligned and a tap leaves the cursor before
+    /// the text, so deleting does nothing: a second tap on the focused field offers Select All, and
+    /// the typing replaces the selection. The keys go to the app (the field's own typeText would tap
+    /// it again first).
     private func retype(_ field: XCUIElement, _ text: String) {
+        let app = XCUIApplication()
         field.tap()
-        let old = field.value as? String ?? ""
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count + 2) + text)
+        expectation(for: NSPredicate(format: "hasKeyboardFocus == true"), evaluatedWith: field)
+        waitForExpectations(timeout: 5)
+        let all = app.menuItems["Select All"]
+        // two taps close together are a double tap, which selects a word instead
+        for _ in 0..<3 where !all.exists {
+            field.tap()
+            _ = all.waitForExistence(timeout: 2)
+        }
+        XCTAssertTrue(all.exists, "the edit menu")
+        all.tap()
+        app.typeText(text)
     }
 
     private func waitFor(_ e: XCUIElement, _ format: String, timeout: TimeInterval = 10) {
@@ -62,7 +75,7 @@ final class PassengersUITests: XCTestCase {
         let delete = app.buttons["passenger-delete"]
         app.reveal(delete)
         delete.tap()
-        app.buttons["confirm-destructive"].tap()
+        app.buttons["confirm-destructive"].firstMatch.tap()
         XCTAssertTrue(app.element("passenger-deleted").waitForExistence(timeout: 10))
         app.buttons["passenger-restore"].tap()
         XCTAssertTrue(name.waitForExistence(timeout: 10))
