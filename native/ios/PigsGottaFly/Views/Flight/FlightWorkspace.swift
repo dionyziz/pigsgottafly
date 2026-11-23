@@ -35,7 +35,7 @@ struct FlightWorkspace: View {
         }
         .environment(\.focusRouter, router)
         .environment(\.flightFocus, focusField)
-        .sheet(item: $link) { SafariView(url: $0.url).ignoresSafeArea() }
+        .sheet(item: $link) { FixLinkView(url: $0.url) }
         .onAppear { model.undoManager = undoManager }
         .onChange(of: undoManager) { _, u in model.undoManager = u }
         .task {
@@ -94,7 +94,10 @@ struct FlightWorkspace: View {
     private var router: FocusRouter {
         FocusRouter(
             openSection: { s, f in open(s, focus: f) },
-            openTab: { tab = $0 },
+            openTab: { t in
+                tab = t
+                path = []
+            },
             openLink: { link = WebPage(url: $0) },
             resolve: { [model] text in await model.focusTarget(text: text) })
     }
@@ -269,9 +272,7 @@ struct StageView: View {
     var body: some View {
         List {
             if let stage = tab.stage {
-                ReadinessHeader(
-                    stage: stage, summary: model.stages.first { $0.stage == stage },
-                    items: model.readiness(stage: stage))
+                ReadinessHeader(stage: stage, model: model)
             }
             Section {
                 ForEach(FlightSection.of(tab)) { s in

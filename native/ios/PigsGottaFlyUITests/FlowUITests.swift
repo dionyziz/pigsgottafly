@@ -13,6 +13,7 @@ final class FlowUITests: XCTestCase {
         // the fixture flight's date as today: a planned flight of today opens in Fly
         app.launchArguments = [
             "-fixtures", "-noNetwork", "-fixturePosition", "38.45,24.0,32,105", "-today", "2026-11-22",
+            "-now", "2026-11-22T07:30:00Z",
         ]
         app.launch()
 
@@ -25,6 +26,11 @@ final class FlowUITests: XCTestCase {
         // Fly: the strips from the simulated position (between KALAMO and KIMI)
         let top = app.descendants(matching: .any)["fly-top-strip"].firstMatch
         XCTAssertTrue(top.waitForExistence(timeout: 20))
+        // the strip shows first from the flight as computed before the winds are fetched (MH 028 on a
+        // fresh install, with nothing cached): the wind-corrected heading follows once they are in
+        let corrected = NSPredicate(format: "label CONTAINS 'planned heading 017 degrees'")
+        expectation(for: corrected, evaluatedWith: top)
+        waitForExpectations(timeout: 20)
         XCTAssertTrue(top.label.contains("Next waypoint KIMI"), top.label)
         XCTAssertTrue(top.label.contains("distance 14 nautical miles"), top.label)
         XCTAssertTrue(top.label.contains("magnetic bearing 026 degrees"), top.label)

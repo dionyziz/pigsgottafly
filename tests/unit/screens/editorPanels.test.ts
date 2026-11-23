@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { editorWarningFix, onEditorFocus, sectionOf } from '../../../src/features/editor/focus';
 import { applyPerson, editCrewField, followPerson, resetCrew } from '../../../src/features/editor/panels/manifest';
 import { splitWarnings, windsStatusText } from '../../../src/features/editor/panels/NavlogStrip';
-import { weatherText } from '../../../src/features/editor/panels/PerformanceSection';
+import { weatherText } from '../../../src/features/editor/panels/performance';
 import type { FlightCrew, PersonDetails } from '../../../src/shared';
 
 const person = (o: Partial<PersonDetails> = {}): PersonDetails => ({

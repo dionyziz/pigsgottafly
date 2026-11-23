@@ -1,0 +1,160 @@
+{
+  "id": "fixture-brief",
+  "version": 7,
+  "created": 1763700000000,
+  "updated": 1763720000000,
+  "opened": 1763720000000,
+  "deleted": false,
+  "title": "Brief checks",
+  "date": "2026-11-22",
+  "blockOff": "08:30",
+  "aircraftId": "fixture-sx-asv",
+  "taxiOutMin": 15,
+  "taxiInMin": 10,
+  "fobL": null,
+  "route": [
+    {
+      "uid": "p1",
+      "kind": "aerodrome",
+      "refId": "LGTT",
+      "name": "LGTT",
+      "lat": 38.10861,
+      "lon": 23.78333
+    },
+    {
+      "uid": "p2",
+      "kind": "vfr",
+      "refId": "LGTG/KALAMO",
+      "name": "KALAMO",
+      "lat": 38.29194,
+      "lon": 23.86361
+    },
+    {
+      "uid": "p3",
+      "kind": "vfr",
+      "refId": "LGSY/KIMI",
+      "name": "KIMI",
+      "lat": 38.64556,
+      "lon": 24.15472
+    },
+    {
+      "uid": "p4",
+      "kind": "aerodrome",
+      "refId": "LGSY",
+      "name": "LGSY",
+      "lat": 38.9675,
+      "lon": 24.4875
+    }
+  ],
+  "legOverrides": {
+    "p2>p3": {
+      "altFt": 5500
+    }
+  },
+  "atc": [
+    {
+      "id": "a1",
+      "role": "departure",
+      "group": "LGTT DEKELIA / TATOI",
+      "callsign": "TATOI TOWER",
+      "service": "TWR",
+      "primary": "122.650",
+      "backups": [
+        "118.500"
+      ],
+      "remark": "",
+      "sourceKey": "ad:LGTT:TATOI TOWER"
+    },
+    {
+      "id": "a2",
+      "role": "fis",
+      "group": "FIS",
+      "callsign": "ATHINAI INFORMATION",
+      "service": "INFO",
+      "primary": "130.925",
+      "backups": [
+        "130.700"
+      ],
+      "remark": "",
+      "sourceKey": "fis:south"
+    },
+    {
+      "id": "a3",
+      "role": "destination",
+      "group": "LGSY SKIROS",
+      "callsign": "SKIROS TOWER",
+      "service": "TWR",
+      "primary": "123.200",
+      "backups": [
+        "122.100"
+      ],
+      "remark": "",
+      "sourceKey": "ad:LGSY:SKIROS TOWER"
+    }
+  ],
+  "crew": [
+    {
+      "role": "PIC",
+      "passengerId": null,
+      "seat": "front-left",
+      "snapshot": {
+        "fullName": "FIXTURE PILOT",
+        "phone": "+30 210 0000000",
+        "dateOfBirth": "1985-04-12",
+        "weightKg": 80,
+        "idNumber": "AB123456",
+        "idType": "ID",
+        "nationality": "GREEK",
+        "relation": ""
+      }
+    }
+  ],
+  "baggageKg": {
+    "bag1": 5
+  },
+  "options": {
+    "windModel": "best_match",
+    "compassCard": null,
+    "category": "normal",
+    "alternates": [
+      "LGTG"
+    ],
+    "remarks": "",
+    "departureRunway": null,
+    "arrivalRunway": "17",
+    "departureSurface": null,
+    "arrivalSurface": null,
+    "aerodromeRequests": [],
+    "fuelL": null,
+    "mapLayers": null
+  },
+  "summary": {
+    "title": "LGTT \u2192 LGSY",
+    "date": "2026-11-22",
+    "blockOff": "08:30",
+    "aircraft": "SX-ASV",
+    "route": [
+      [
+        38.109,
+        23.783
+      ],
+      [
+        38.292,
+        23.864
+      ],
+      [
+        38.646,
+        24.155
+      ],
+      [
+        38.968,
+        24.488
+      ]
+    ],
+    "from": "LGTT",
+    "to": "LGSY",
+    "distNm": 62,
+    "eteMin": 44,
+    "fuelL": 28
+  }
+}

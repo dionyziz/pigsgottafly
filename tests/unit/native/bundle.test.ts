@@ -154,6 +154,13 @@ describe('core.js in a bare JavaScript context', () => {
     personIssues: () => expect(call('personIssues', { person: null, now: NOW }).issues.length).toBeGreaterThan(0),
     parseCoords: () => expect(call('parseCoords', { text: '375430N 0234334E' }).latLon.lat).toBeCloseTo(37.908, 3),
     parseTyped: () => expect(call('parseTyped', { kind: 'time', text: '930' }).value).toBe('09:30'),
+    brief: () => {
+      const c = call('computeFlight', { flight: f, aircraft: AC, pilot: PILOT, ref: API_REF, weather: {}, now: NOW });
+      const b = call('brief', { computed: c, flight: f, aircraft: AC, notams: briefing([notam()]), now: NOW });
+      expect(b.performance.endpoints).toHaveLength(2);
+      expect(b.aerodromes.items[0].hours.day).toBe('Sun 15 Nov');
+      expect(b.notams.groups.length).toBeGreaterThan(0);
+    },
   };
   test.each(Object.keys(calls))('%s', (name) => calls[name]());
 

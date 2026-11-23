@@ -1,43 +1,17 @@
 // Conditions are the METAR when current, else the forecast. At the departure, at each intermediate full
 // stop and touch-and-go (the landing there and the take-off from there, with the sector masses) and at
 // the destination.
-import { perfVerdict, type PerfVerdictResult } from '../../../calc/perfVerdict';
+import type { PerfVerdictResult } from '../../../calc/perfVerdict';
 import { runwaysOf } from '../../../data/ref';
-import type { Aircraft } from '../../../shared';
 import { type FlightOptions, requestOf, setStopChoice } from '../../../shared';
 import { fmtClock } from '../../../shared/format';
 import { Chip, Collapsible } from '../../../ui';
 import { useEditor } from '../state';
 import { type EndpointCalc, useFlightCalc } from './calc';
+import { endpointTid, endpointTitle, endpointVerdict, reasonText, weatherText } from './performance';
 import { KV, Section, SECTIONS_STORE } from './ui';
 
 const m = (x: number | null | undefined) => (x == null || !isFinite(x) ? '–' : `${Math.round(x)} m`);
-
-/** The conditions in one line: '240°/12 kt · 18°C · Q1013' (wind direction true). */
-export function weatherText(e: Pick<EndpointCalc, 'surface'>): string {
-  const s = e.surface;
-  if (!s) return 'ISA, calm';
-  const w = s.wind;
-  const wind = !w
-    ? 'wind –'
-    : !(w.speedKt > 0.5)
-      ? 'calm'
-      : `${w.dirTrueDeg == null ? 'VRB' : `${String(Math.round(w.dirTrueDeg) % 360 || 360).padStart(3, '0')}°`}/${Math.round(w.speedKt)}${w.gustKt ? `G${Math.round(w.gustKt)}` : ''} kt`;
-  const temp = s.tempC != null ? `${Math.round(s.tempC)}°C` : '–°C';
-  const qnh = s.qnhHpa != null ? `Q${Math.round(s.qnhHpa)}` : 'Q–';
-  return `${wind} · ${temp} · ${qnh}`;
-}
-
-/** The same verdict as the MD 4.4 export (mass limit, distances, crosswind, AFM table range). */
-export function endpointVerdict(e: EndpointCalc, aircraft: Aircraft | null): PerfVerdictResult {
-  return perfVerdict({
-    phase: e.phase,
-    massKg: e.massKg,
-    perf: e.perf,
-    massBalance: aircraft?.massBalance ?? null,
-    hasAerodrome: !!e.aerodrome,
-  });
-}
 
 function VerdictChip({ v }: { v: PerfVerdictResult }) {
   if (v.verdict === 'pass')
@@ -57,12 +31,6 @@ function VerdictChip({ v }: { v: PerfVerdictResult }) {
       ?
     </Chip>
   );
-}
-
-function reasonText(v: PerfVerdictResult): string {
-  if (!v.overMass && v.text === 'Outside the AFM table') return 'Outside the AFM table: distances extrapolated.';
-  const head = v.overMass ? v.overMass.text : `${v.text}.`;
-  return v.extrapolated ? `${head} Distances extrapolated beyond the AFM table.` : head;
 }
 
 function Endpoint({ e }: { e: EndpointCalc }) {
@@ -103,24 +71,13 @@ function Endpoint({ e }: { e: EndpointCalc }) {
           }
         : { ...d.options, [sfKey]: v },
     }));
-  const tid = e.stopUid ? `${stopKind === 'touch-and-go' ? 'tng' : 'stop'}-${e.phase}` : e.phase;
+  const tid = endpointTid(e);
   const runways = ad ? runwaysOf(ad.id) : [];
   const conditions = Object.keys(aircraft?.performance.factors.runwayCondition ?? {});
   const p = e.perf;
   const v = endpointVerdict(e, aircraft);
   const extrap = v.extrapolated ? 'extrapolated beyond the AFM table' : undefined;
-  const title =
-    e.stopKind === 'touch-and-go'
-      ? to
-        ? 'Touch-and-go take-off'
-        : 'Touch-and-go landing'
-      : e.stopUid
-        ? to
-          ? 'Take-off from stop'
-          : 'Landing at stop'
-        : to
-          ? 'Departure'
-          : 'Destination';
+  const title = endpointTitle(e);
   const timeMin = isFinite(e.timeMs) && isFinite(dayMs) ? (e.timeMs - dayMs) / 60000 : NaN;
 
   if (!ad)
