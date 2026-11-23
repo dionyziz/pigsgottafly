@@ -1,4 +1,9 @@
-Pig's Gotta Fly is the companion in the cockpit for VFR flights in Greece (the Athinai FIR). Plan the flight at your desk on pigsgottafly.com; on the iPhone and the iPad, fly it, brief it on the morning of the flight and make the last changes. The same account works on both.
+Pig's Gotta Fly plans, briefs and flies VFR flights in Greece (the Athinai FIR), on the iPhone, the iPad and pigsgottafly.com with the same account.
+
+PLAN
+- Draw the route on the VFR chart or pick the origin, destination and points; local flights with their estimated total time.
+- Your hangar: aircraft from templates, speeds, fuel, mass and balance, performance tables.
+- Passengers and seats with the weight-and-balance chart, fuel with reserves and endurance, alternates and stop requests.
 
 FLY
 - A full-screen moving map with the VFR chart: aerodromes, VFR reporting points and routes with their altitudes, controlled airspace, restricted and danger areas, and the NOTAM areas of the day.
@@ -19,10 +24,8 @@ NAVLOG
 - Totals: distance, time en route, trip fuel, take-off and landing times.
 - Change the date, the block-off time or a leg's altitude, add a VFR reporting point, an aerodrome or one of your waypoints to the route, or take a point out. The navlog follows at once.
 
-NEW FLIGHTS
-- Start a flight on the phone: departure, destination, date, block-off time and aircraft. Altitudes are proposed from the charted VFR routes and the terrain.
-
-ON THE WEBSITE
-Full planning, filing and the forms are on pigsgottafly.com, a tap away from every flight: drawing the route on the map, passengers and seats, the hangar with weighing reports and performance tables, the ICAO flight plan, Form 731 and the General Declaration, and every document ready to print.
+DOCUMENTS
+- The ICAO flight plan, the navigation log and the NOTAM briefing as PDFs to share, print or e-mail.
+- Filing the flight plan, Form 731 and the General Declaration are on pigsgottafly.com, a tap away from every flight.
 
 Sign in with Apple or Google. Your flights, aircraft and passengers are the same on the website, the iPhone and the iPad.
