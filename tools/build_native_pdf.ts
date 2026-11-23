@@ -31,6 +31,22 @@ function inlineFonts(css: string): string {
   });
 }
 
+const IMAGE_TYPES: Record<string, string> = { '.svg': 'image/svg+xml', '.png': 'image/png' };
+
+/**
+ * '/icon.svg' in the sheet components' code → a data: URL of public/icon.svg. The website and the
+ * server's Chromium load it from the site; the app's web view loads nothing, so the signatures'
+ * watermark would be missing from the sheets printed on the device.
+ */
+export function inlinePublicImages(js: string): string {
+  return js.replace(/(["'`])\/([\w.-]+\.(?:svg|png))\1/g, (all, q: string, name: string) => {
+    const type = IMAGE_TYPES[path.extname(name).toLowerCase()];
+    const file = path.join(ROOT, 'public', name);
+    if (!type || !fs.existsSync(file)) return all;
+    return `${q}data:${type};base64,${fs.readFileSync(file).toString('base64')}${q}`;
+  });
+}
+
 /** A script's text that cannot end the inline <script> element early. */
 const scriptSafe = (js: string) => js.replace(/<\/(script)/gi, '<\\/$1');
 
@@ -64,7 +80,7 @@ export async function buildPdfPage(): Promise<string> {
     const f = byName.get(name);
     if (!f || f.type !== 'chunk') throw new Error(`pdf.html loads ${name}, which Vite did not build`);
     used.add(name);
-    return `<script type="module">${scriptSafe(f.code)}</script>`;
+    return `<script type="module">${scriptSafe(inlinePublicImages(f.code))}</script>`;
   });
   page = page.replace(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="\/([^"]+)"[^>]*>/g, (_all, name: string) => {
     const f = byName.get(name);
@@ -77,6 +93,8 @@ export async function buildPdfPage(): Promise<string> {
   if (left.length)
     throw new Error(`the PDF page needs more files than it inlines: ${left.map((f) => f.fileName).join(', ')}`);
   if (/\b(src|href)="\/(?!\/)/.test(page)) throw new Error('the PDF page still links a file by path');
+  const img = /\bsrc:\s*["'`](\/[^/"'`][^"'`]*)/.exec(page);
+  if (img) throw new Error(`the PDF page's code still loads ${img[1]} by path (put it in public/ to inline it)`);
   return `${BANNER}\n${page.trim()}\n`;
 }
 

@@ -22,6 +22,7 @@ extension FixtureTransport {
         let rest = Array(r.parts[3...])
         switch (r.method, r.parts[2], rest) {
         case ("GET", "forms", []):
+            syncEmails(id)
             signPending(id)
             return answer(formsState(id))
         case ("POST", "forms", ["731", "links"]):
@@ -147,6 +148,17 @@ extension FixtureTransport {
     private func hasPassenger(_ id: String, _ key: String) -> Bool {
         (formsState(id)["form731"]?["signatures"]?.array ?? []).contains {
             $0["key"]?.string == key && $0["role"]?.string == "PAX"
+        }
+    }
+
+    /// A saved passenger's address is read from their record, as the server does: one added in the
+    /// passenger editor shows here.
+    private func syncEmails(_ id: String) {
+        let emails = Dictionary(
+            passengerList().compactMap { p in p["id"]?.string.map { ($0, p["email"]?.string ?? "") } },
+            uniquingKeysWith: { a, _ in a })
+        for key in emails.keys where hasPassenger(id, key) {
+            _ = updatePerson(id, key: key) { p in p["email"] = .string(emails[key] ?? "") }
         }
     }
 

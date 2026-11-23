@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { cleanWaypointName } from '../../../src/features/editor/map/snap';
-import { personForm, personInput, validatePerson } from '../../../src/features/passengers/person';
+import { personForm, personInput, personMissing, validatePerson } from '../../../src/features/passengers/person';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../../src/features/waypoints/coords';
 import { parseCoords, parseTyped, personIssues } from '../../../src/native/core';
 import {
@@ -45,6 +45,20 @@ describe('personIssues: the passenger and profile forms', () => {
     expect(personIssues({ person: { ...person, phone: '' }, pilot: true, today: TODAY }).issues).toEqual(
       validatePerson(personForm(person), { pilot: true, today: TODAY }),
     );
+  });
+
+  test('missing: what the passenger list asks for, the pilot’s own row its own', () => {
+    const form = { ...personForm(null, 'Robin'), weightKg: 70, phone: '+30 690' };
+    expect(personIssues({ form, today: TODAY }).missing).toEqual(
+      personMissing(form).map(([field, label]) => ({ field, label })),
+    );
+    expect(personIssues({ form, today: TODAY }).missing.map((m) => m.label)).toEqual(['ID', 'date of birth', 'e-mail']);
+    expect(personIssues({ form, pilot: true, today: TODAY }).missing.map((m) => m.label)).toEqual([
+      'ID',
+      'date of birth',
+      'nationality',
+      'licence number',
+    ]);
   });
 });
 

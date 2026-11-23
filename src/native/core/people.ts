@@ -1,7 +1,13 @@
 // People and places as the website's forms take them: the passenger and profile forms' checks, typed
 // positions and waypoint names, typed times, durations and dates.
 import { cleanWaypointName } from '../../features/editor/map/snap';
-import { type PersonForm, personForm, personInput, validatePerson } from '../../features/passengers/person';
+import {
+  type PersonForm,
+  personForm,
+  personInput,
+  personMissing,
+  validatePerson,
+} from '../../features/passengers/person';
 import { formatDms, formatIcao, normaliseWaypointName, parseLatLon } from '../../features/waypoints/coords';
 import { localToday, type PersonDetails } from '../../shared';
 import {
@@ -20,7 +26,8 @@ import { arg, type Json, nowOf, plain } from './shared';
  * The passenger form's (or with `pilot`, the profile's) problems, field by field ({ field, message };
  * [] when it can be saved), and `input`, the body of POST/PUT /api/passengers it saves (null while
  * there are problems). `form` is the form as typed (PersonForm); or `person`, a saved record, which
- * becomes the form the dialog opens with.
+ * becomes the form the dialog opens with. `missing`: what the forms and W&B still lack ({ field, label },
+ * the passenger list's "Missing …").
  */
 export function personIssues(
   input: Json<{
@@ -34,7 +41,13 @@ export function personIssues(
   const i = arg(input);
   const form = i.form ?? personForm(i.person ?? null);
   const issues = validatePerson(form, { pilot: !!i.pilot, today: i.today || localToday(nowOf(i.now)) });
-  return plain({ form, issues, input: issues.length ? null : personInput(form) });
+  const missing = personMissing(form, i.pilot ? { licenceNo: form.licenceNo ?? '' } : null);
+  return plain({
+    form,
+    issues,
+    input: issues.length ? null : personInput(form),
+    missing: missing.map(([field, label]) => ({ field, label })),
+  });
 }
 
 /**

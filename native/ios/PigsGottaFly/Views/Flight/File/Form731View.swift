@@ -12,7 +12,8 @@ struct Form731View: View {
     @StateObject private var pdf = SheetExport()
     @State private var panel: CoreForm731Panel?
     @State private var sheet: JSON?
-    @Environment(\.focusRouter) private var focus
+    /// The passenger whose e-mail address is being added (their key is their passenger id).
+    @State private var addingEmail: EditedPassenger?
 
     init(model: FlightModel) {
         self.model = model
@@ -35,6 +36,16 @@ struct Form731View: View {
         .task { await forms.load() }
         .task(id: panelKey) { await makePanel() }
         .task(id: sheetKey) { await makeSheet() }
+        .sheet(item: $addingEmail, onDismiss: { Task { await forms.load() } }) { p in
+            NavigationStack {
+                PassengerEditorView(passengerId: p.id, focus: "email")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { addingEmail = nil }.accessibilityIdentifier("passenger-done")
+                        }
+                    }
+            }
+        }
         .accessibilityIdentifier(FlightSection.form731.screenID)
     }
 
@@ -69,7 +80,7 @@ struct Form731View: View {
             Section {
                 ForEach(p.people) { person in
                     PersonRow(person: person, busy: forms.busy, emailEnabled: p.emailEnabled, forms: forms) {
-                        focus.open(link: CoreFocusTarget.Link(to: person.addEmailPath, label: "Add e-mail"))
+                        addingEmail = EditedPassenger(id: person.key)
                     }
                 }
             } footer: {
@@ -246,4 +257,8 @@ private struct PersonRow: View {
     private var color: Color {
         person.signed ? .green : person.needsResign ? .orange : .secondary
     }
+}
+
+private struct EditedPassenger: Identifiable {
+    var id: String
 }

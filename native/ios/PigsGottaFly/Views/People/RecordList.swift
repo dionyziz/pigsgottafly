@@ -1,5 +1,13 @@
 import SwiftUI
 
+/// An editor added, saved or deleted a record: the lists read theirs again (on iPad the list stays on
+/// screen beside the editor; on iPhone it is under it).
+enum RecordListChanged {
+    static let name = Notification.Name("PGFRecordListChanged")
+
+    static func post() { NotificationCenter.default.post(name: name, object: nil) }
+}
+
 /// A list of the pilot's records (passengers, waypoints, operators) as the API answers them. On iPad
 /// it selects into the detail column (`selection`); on iPhone a row pushes `destination`.
 struct RecordList<Destination: View>: View {
@@ -38,6 +46,9 @@ struct RecordList<Destination: View>: View {
         .navigationTitle(title)
         .refreshable { await reload() }
         .task { await reload() }
+        .onReceive(NotificationCenter.default.publisher(for: RecordListChanged.name)) { _ in
+            Task { await reload() }
+        }
         .accessibilityIdentifier(id)
     }
 

@@ -10,8 +10,14 @@ struct CorePersonIssues: Codable, Equatable, Sendable {
     /// The form as checked (a saved record becomes the form the dialog opens with).
     var form: JSON
     var issues: [Issue]
+    /// What the forms and W&B still lack, with the field that takes it (the passenger list's "Missing …").
+    struct Missing: Codable, Equatable, Sendable {
+        var field: String
+        var label: String
+    }
     /// The body of POST/PUT /api/passengers; nil while there are issues.
     var input: JSON?
+    var missing: [Missing]
 }
 
 struct CoreCoords: Codable, Equatable, Sendable {

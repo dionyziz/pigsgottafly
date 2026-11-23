@@ -83,6 +83,30 @@ export function personInput(f: PersonForm): PassengerInput {
   };
 }
 
+/**
+ * What a person still lacks for the forms or W&B, with the field that takes it (the passenger list's
+ * "Missing …"). `pilot`: the pilot's own row, which needs a nationality and a licence number, not an
+ * e-mail.
+ */
+export function personMissing(
+  p: Pick<PersonDetails, 'weightKg' | 'idNumber' | 'phone' | 'nationality'> & {
+    dateOfBirth: string | null;
+    email?: string;
+  },
+  pilot?: { licenceNo?: string | null } | null,
+): [PersonField, string][] {
+  const out: [PersonField, string | false][] = [
+    ['weightKg', p.weightKg == null && 'weight'],
+    ['idNumber', !p.idNumber && 'ID'],
+    ['dateOfBirth', !p.dateOfBirth && 'date of birth'],
+    ['phone', !p.phone && 'phone'],
+    ['email', !pilot && !p.email && 'e-mail'],
+    ['nationality', !!pilot && !p.nationality && 'nationality'],
+    ['licenceNo', !!pilot && !pilot.licenceNo && 'licence number'],
+  ];
+  return out.filter((x): x is [PersonField, string] => !!x[1]);
+}
+
 /** Form → API input; throws the first problem's message. */
 export function passengerInputOf(f: PersonForm, opts?: { pilot?: boolean }): PassengerInput {
   const [first] = validatePerson(f, opts);

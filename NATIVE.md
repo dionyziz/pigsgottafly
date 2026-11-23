@@ -102,8 +102,8 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
       rows follow): **Form 731** (only with someone besides the PIC on board), each person's signature
       (the PIC signs when the form is made, as on the website), "Request signatures", per passenger
       the signing link shared from the device's share sheet (shown once), New link, Revoke, "E-mail
-      the form" (the server mails the form and a new link) or "Add an e-mail address" (the website's
-      passenger page), "E-mail all", "Send to HCAA" once everyone has signed and "Re-send" when the form
+      the form" (the server mails the form and a new link) or "Add an e-mail address" (the passenger
+      editor in a sheet, at the e-mail field), "E-mail all", "Send to HCAA" once everyone has signed and "Re-send" when the form
       changed since; **General Declaration**: each end's handling with its reason, "Submitted by a
       handler" (the flight's override; back to automatic when it agrees, or "Use automatic"), "Send to
       HCAA" when the PIC sends it; **W&B & performance**: the verdicts, the weather they were made with,
@@ -116,7 +116,12 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
   the pilot pauses, with the version; on 409 the unsaved changes are applied again to the server's
   copy).
-- **People** (`Views/People/`; on iPad three sidebar areas): Passengers and their editor, Waypoints
+- **People** (`Views/People/`; on iPad three sidebar areas): Passengers and their editor
+  (`PassengerEditorView.swift`, the website's passenger dialog: name, phone, e-mail, date of birth,
+  weight, nationality, ID / passport number, notes; "Missing …" leading to the field; the problems
+  under their fields from `PGF.personIssues`; a saved passenger saves by itself (Autosave) while it
+  has no problems, a new one with "Add passenger"; Delete asks first and Undo adds the details back
+  as a new record, as the website's toast; the lists read again after each change), Waypoints
   (list; map, typed coordinates and notes 1G), Operators and their editor (1G; people 2B, documents
   2C).
 - **Me** (`Views/Me/`; Profile in the iPad sidebar): the signed-in account; **Profile** (name, phone,
@@ -355,7 +360,8 @@ aircraft, pilot, ref, weather, now? }`.
 
 The PDF page (`Resources/pdf/sheets.html`, `npm run native:pdf`, src/pdf/main.tsx) draws Form 731
 (kind `form731`: `formModel`'s with `signatures`) and the General Declaration (kind `gendec`, with the
-PIC's `signature`) with the website's sheet components.
+PIC's `signature`) with the website's sheet components. The images the components name by path
+(the signatures' watermark, public/icon.svg) are inlined as data: URLs: the web view loads nothing.
 
 **Hangar** (src/native/core/hangar.ts)
 
@@ -378,9 +384,10 @@ PIC's `signature`) with the website's sheet components.
 
 **People** (src/native/core/people.ts)
 
-- `PGF.personIssues({ form? | person?, pilot?, today?, now? })` → `{ form, issues, input }`: the
-  passenger (or profile) form's `[{ field, message }]` and the body it saves (null while there are
-  issues) [passengers/person.ts].
+- `PGF.personIssues({ form? | person?, pilot?, today?, now? })` → `{ form, issues, input, missing }`:
+  the passenger (or profile) form's `[{ field, message }]`, the body it saves (null while there are
+  issues) and what the forms and W&B still lack, `[{ field, label }]` (the passenger list's
+  "Missing …") [passengers/person.ts].
 - `PGF.parseCoords({ text?, name? })` → `{ latLon, dms, icao, name }` [waypoints/coords.ts].
 - `PGF.parseTyped({ kind, text, min?, max?, step? })`: `time` → `{ value }` (HH:MM or null),
   `duration` → `{ value, field }`, `date` → `{ value, problem, masked }`, `slot` → `{ value }`,
