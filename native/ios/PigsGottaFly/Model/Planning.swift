@@ -177,25 +177,6 @@ enum Places {
     }
 }
 
-/// POST /api/flights as the website's New flight sends it (src/features/lobby/NewFlightPage.tsx): the
-/// route as two aerodrome points; the date, the block-off time and the aircraft. The altitudes are left
-/// to the core's defaults (charted VFR routes, terrain), as on the website.
-enum NewFlight {
-    /// `localDurationMin`: a local flight's airborne time (the server puts it over the profile's options).
-    static func request(
-        from: Place, to: Place, date: String, blockOff: String, aircraftId: String?, localDurationMin: Int? = nil
-    ) -> JSON {
-        var o: [String: JSON] = [
-            "route": [from.routePoint(), to.routePoint()],
-            "date": .string(date),
-            "blockOff": .string(blockOff),
-        ]
-        if let aircraftId { o["aircraftId"] = .string(aircraftId) }
-        if let localDurationMin { o["options"] = .object(["localDurationMin": .number(Double(localDurationMin))]) }
-        return .object(o)
-    }
-}
-
 /// Route edits on a flight (src/features/editor/map/routeEdit.ts).
 enum RouteEdit {
     /// Where a new point adds the least distance: the index it is inserted at (between the ends).

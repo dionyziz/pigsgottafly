@@ -20,7 +20,8 @@ final class FlowUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Flights"].waitForExistence(timeout: 15))
         let row = app.descendants(matching: .any)["flight-fixture-lgtt-lgsy"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Shared by Another Pilot"].exists)
+        let shared = app.element("flight-fixture-shared")
+        XCTAssertTrue(shared.label.contains("Shared with you by Another Pilot"), shared.label)
         row.tap()
 
         // Fly: the strips from the simulated position (between KALAMO and KIMI)
@@ -92,8 +93,8 @@ final class FlowUITests: XCTestCase {
         waitForExpectations(timeout: 10)
     }
 
-    /// What App Review does with a brand-new account: straight to the (empty) flights, a new flight
-    /// from the fixture aerodromes that makes its departure the home aerodrome, with a first aircraft
+    /// What App Review does with a brand-new account: straight to the (empty) flights, a first flight
+    /// that asks for the home aerodrome and starts there, with a first aircraft
     /// from the template, a point added and removed, the profile filled in Me, then the account
     /// deleted.
     func testNewAccountNewFlightAndDeleteAccount() throws {
@@ -106,51 +107,46 @@ final class FlowUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["No flights yet"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.textFields["profile-name"].exists)
 
-        // New flight asks for the route only; with no home aerodrome, the departure can become it
+        // the first flight asks for the home aerodrome only, and starts there; an empty hangar may name
+        // its first aircraft
         app.buttons["new-flight"].tap()
-        let from = app.buttons["new-from"]
-        XCTAssertTrue(from.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Choose"].exists, "no departure assumed")
-        from.tap()
+        let home = app.buttons["new-home"]
+        XCTAssertTrue(home.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["create-flight"].isEnabled, "the home aerodrome is required")
+        home.tap()
         pick(app, search: "LGTT", place: "place-aerodrome:LGTT")
-        XCTAssertTrue(app.staticTexts["LGTT · Dekelia / Tatoi"].waitForExistence(timeout: 10))
-        app.buttons["new-to"].tap()
-        pick(app, search: "skiros", place: "place-aerodrome:LGSY")
+        let chosen = NSPredicate(format: "label CONTAINS 'LGTT · Dekelia / Tatoi'")
+        wait(for: [expectation(for: chosen, evaluatedWith: home)], timeout: 10)
         let reg = app.textFields["new-registration"]
         XCTAssertTrue(reg.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["create-flight"].isEnabled, "an aircraft is not needed")
-        // the first flight asks for the home aerodrome (the departure row)
-        XCTAssertTrue(app.staticTexts["Your home aerodrome"].exists)
         reg.tap()
         reg.typeText("SX-ABC")
         app.buttons["create-flight"].tap()
 
-        // a new flight opens on Plan, even for today; the Navlog has the leg, then a point is added and removed
+        // a new flight opens on Plan, even for today: at the home aerodrome with no destination; the
+        // destination is added in the Navlog
         XCTAssertTrue(app.element("stage-body-plan").waitForExistence(timeout: 15))
         XCTAssertFalse(app.element("fly-top-strip").exists)
-        XCTAssertTrue(app.navigationBars["LGTT → LGSY"].exists)
+        XCTAssertTrue(app.navigationBars["LGTT"].exists)
         app.tapRow("section-navlog")
-        let leg = app.buttons["leg-0"]
-        XCTAssertTrue(leg.waitForExistence(timeout: 15))
-        XCTAssertTrue(leg.label.contains("LGTT → LGSY"), leg.label)
+        XCTAssertTrue(app.element("route-point-0").waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["leg-0"].exists, "one point is no leg")
         let add = app.buttons["add-point"]
         for _ in 0..<4 where !add.isHittable { app.swipeUp() }
         add.tap()
         pick(app, search: "kalamo", place: "place-vfr:LGTG/KALAMO")
-        XCTAssertTrue(app.buttons["leg-1"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["leg-0"].label.contains("LGTT → KALAMO"), app.buttons["leg-0"].label)
-        let point = app.descendants(matching: .any)["route-point-1"].firstMatch
-        for _ in 0..<4 where !point.isHittable { app.swipeUp() }
-        point.swipeLeft()
-        app.buttons["Delete"].tap()
-        let gone = NSPredicate(format: "exists == false")
-        expectation(for: gone, evaluatedWith: app.buttons["leg-1"])
-        waitForExpectations(timeout: 15)
+        let leg = app.buttons["leg-0"]
+        XCTAssertTrue(leg.waitForExistence(timeout: 15))
+        XCTAssertTrue(leg.label.contains("LGTT → KALAMO"), leg.label)
 
-        // the flight is in the list
+        // the flight is in the list with its route and aircraft
         app.back(from: "Navlog")
-        app.back(from: "LGTT → LGSY")
-        XCTAssertTrue(app.staticTexts["LGTT → LGSY"].waitForExistence(timeout: 10))
+        app.back(from: "LGTT → KALAMO")
+        let row = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'LGTT → KALAMO'"))
+            .firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.label.contains("SX-ABC"), row.label)
 
         // Me → Profile: the home aerodrome from New flight; name and phone added there
         app.tapTab("tab-me", label: "Me")
@@ -178,7 +174,7 @@ final class FlowUITests: XCTestCase {
 
     /// In a place search: types `search` and taps the result `place`.
     private func pick(_ app: XCUIApplication, search: String, place: String) {
-        let field = app.searchFields.firstMatch
+        let field = app.searchField
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText(search)

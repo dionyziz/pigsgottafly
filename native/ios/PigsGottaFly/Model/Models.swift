@@ -64,6 +64,8 @@ struct FlightListItem: Codable, Equatable, Identifiable {
     var id: String
     var summary: FlightSummary
     var points: [String]
+    /// The passengers' names, in manifest order.
+    var passengers: [String]?
     var date: String
     var aircraftId: String?
     var version: Int
@@ -77,7 +79,8 @@ struct FlightListItem: Codable, Equatable, Identifiable {
     var title: String {
         if !summary.title.isEmpty, summary.title != summary.date, summary.title != date { return summary.title }
         if let line = summary.routeLine { return line }
-        if !summary.from.isEmpty || !summary.to.isEmpty { return "\(summary.from) → \(summary.to)" }
+        let ends = [summary.from, summary.to].filter { !$0.isEmpty }
+        if !ends.isEmpty { return ends.joined(separator: " → ") }
         return "Untitled flight"
     }
 }

@@ -29,18 +29,24 @@ section files are listed below with the phase that builds each one.
 Me**. iPad (regular width): a three-column split view, sidebar **Flights, Hangar, Passengers,
 Waypoints, Operators, Profile**, the area's list in the middle column, the open record in the detail.
 
-- **Flights** (`Views/FlightsView.swift`): the pilot's flights and the ones shared with them (GET
-  /api/flights), with date, route, aircraft and the filing status. Pull to refresh. "Fly again" (POST
-  /flights/:id/copy with today's date). To come (1A): search, the trash and restore, rename, copy, leave
-  a shared flight, the route thumbnail and the passengers.
-- **New flight** (`Views/NewFlightView.swift`): departure and destination (the reference data's
-  aerodromes, searched by ICAO code or name; the departure starts as the home aerodrome), date,
-  block-off time (UTC), aircraft (GET /api/aircraft) or, for a local flight, its duration. POST
-  /api/flights with the website's shape (the route as aerodrome points: `uid`, `kind`, `refId`, `name`,
-  `lat`, `lon`); the server fills in the profile's defaults and the altitudes are the core's defaults.
-  With an empty hangar the pilot types a registration and the aircraft is made from the hangar's type
-  template (`PGF.aircraftFromTemplate`, POST /api/aircraft). The first flight offers to make the
-  departure the home aerodrome. The new flight opens on Plan.
+- **Flights** (`Views/Flights/`, the website's LobbyPage): the pilot's flights and the ones shared with
+  them (GET /api/flights), searchable by the website's match text (title, route points, passengers,
+  aircraft, date). Upcoming, Past and Shared with me, newest first. Each row: the route thumbnail
+  (Canvas from `summary.route`; a local flight is a dot in a dashed ring), the title, the route line
+  ("LGTT local · 1:00") and aircraft, the date with the relative day, block-off in UTC and Greek local
+  time, the passengers, the filing and shared-by chips; at regular width also distance, time and fuel. Swipe and
+  context menu: Fly again (a copy for today), Rename (PUT with the automatic title kept automatic),
+  Make a copy, Move to trash (with Undo), Leave (shared). The Trash (GET /flights?trash=1) with Restore.
+  Pull to refresh.
+- **New flight** (the website's NewFlightPage). The list's + creates the flight at once with the
+  profile's defaults (POST /api/flights `{}`: the server starts it at the home aerodrome, with no
+  destination); a long press
+  offers "Choose origin and destination". `Views/NewFlightView.swift` is the sheet for the cases that
+  ask first: the first flight asks for the home aerodrome (saved with PUT /api/me before the flight is
+  made); the route form takes origin and destination, or Local flight (back to the origin) and its
+  estimated total time, or Start with an empty map. With an empty hangar the pilot may type a
+  registration and the aircraft is made from the hangar's type template (`PGF.aircraftFromTemplate`,
+  POST /api/aircraft). The new flight opens on Plan.
 - **A flight** (`Views/Flight/FlightWorkspace.swift`). iPhone: its own tab bar, **Fly · Map · Plan ·
   Brief · File**; the shell's tab bar gives way to it. iPad: the map fills the detail, Plan / Brief /
   File sit in an inspector beside it, and Fly is the toolbar's prominent button. A flight opens on the

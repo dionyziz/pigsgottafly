@@ -16,7 +16,7 @@ final class AppModel: ObservableObject {
     /// `-noNetwork` (tests): not even the base map's style is fetched.
     let noNetwork: Bool
     /// `-today YYYY-MM-DD` (tests, screenshots): the fixture flights' date counts as today.
-    private let todayOverride: String?
+    let todayOverride: String?
 
     /// Today in UTC, the flight dates' time zone.
     var today: String { todayOverride ?? Fmt.isoDay(from: Date()) }
@@ -29,7 +29,7 @@ final class AppModel: ObservableObject {
     func rememberedTab(for id: String) -> FlightTab? { tabs[id] }
 
     /// The flights made in New flight in this session.
-    private var createdHere: Set<String> = []
+    var createdHere: Set<String> = []
     func isNew(_ id: String) -> Bool { createdHere.contains(id) }
 
     /// The symbol images the chart style uses (PGF.symbolNames()).
@@ -98,26 +98,6 @@ final class AppModel: ObservableObject {
 
     static func sorted(_ list: [FlightListItem]) -> [FlightListItem] {
         list.filter { !$0.deleted }
-    }
-
-    var mine: [FlightListItem] { flights.filter { $0.sharedBy == nil } }
-    var shared: [FlightListItem] { flights.filter { $0.sharedBy != nil } }
-
-    func loadFlights() async {
-        loadingFlights = true
-        defer { loadingFlights = false }
-        do {
-            let data = try await api.flights()
-            flights = Self.sorted(try api.decode([FlightListItem].self, data))
-            try? store.write(data, .flights)
-            flightsError = nil
-        } catch APIError.unauthorized {
-            session.lost()
-        } catch APIError.offline {
-            flightsError = flights.isEmpty ? "No connection." : nil
-        } catch {
-            if !isCancellation(error) { flightsError = error.localizedDescription }
-        }
     }
 
     // MARK: the pilot
@@ -190,48 +170,4 @@ final class AppModel: ObservableObject {
     }
 
     var aircraftTemplates: [AircraftTemplate] { (try? core?.aircraftTemplates()) ?? [] }
-
-    /// What a new flight flies: an aircraft of the hangar, or a new one from a type template.
-    enum AircraftChoice: Equatable {
-        case existing(String)
-        case template(id: String, registration: String)
-    }
-
-    /// POST /api/flights (after POST /api/aircraft for a template); returns the new flight's id.
-    func createFlight(
-        from: Place, to: Place, date: String, blockOff: String, aircraft: AircraftChoice?, localDurationMin: Int? = nil
-    ) async throws -> String {
-        var aircraftId: String?
-        switch aircraft {
-        case .existing(let id): aircraftId = id
-        case .template(let tid, let registration):
-            guard let core else { throw APIError.http(0, coreError ?? "The core did not load.") }
-            let body = try core.aircraftFromTemplate(id: tid, registration: registration)
-            let created = try JSON.parse(try await api.createAircraft(Data(body.utf8)))
-            aircraftId = created["id"]?.string
-        case nil: aircraftId = nil
-        }
-        let request = NewFlight.request(
-            from: from, to: to, date: date, blockOff: blockOff, aircraftId: aircraftId,
-            localDurationMin: localDurationMin)
-        let data = try await api.createFlight(request)
-        guard let id = try JSON.parse(data)["id"]?.string else { throw APIError.http(0, "The server sent no flight.") }
-        try? store.write(data, .flight(id))
-        createdHere.insert(id)
-        await loadFlights()
-        return id
-    }
-
-    /// "Fly again": a copy of the flight for today; returns its id.
-    func flyAgain(_ item: FlightListItem) async -> String? {
-        do {
-            let data = try await api.copyFlight(item.id, date: Fmt.isoDay(from: Date()))
-            let id = (try JSON.parse(data))["id"]?.string
-            await loadFlights()
-            return id
-        } catch {
-            if !isCancellation(error) { flightsError = error.localizedDescription }
-            return nil
-        }
-    }
 }
