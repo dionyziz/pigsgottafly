@@ -95,9 +95,24 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
       **NOTAMs**, relevant ones by departure, destination and airspace, marked read as on the website;
       **Aerodromes**, each at the time the flight uses it (aerodrome, ATS and handling hours);
       Take-off & landing (1D); ATC (1D); **Warnings**, the core's, each with its Fix.
-    - File (`Views/Flight/File/`): **Flight plan**, the filing status and EOBT (filing, delay, cancel:
-      2A); Form 731, General Declaration, W&B & performance (2A); Navigation log and NOTAM briefing as
-      PDFs to preview, share, print and e-mail (1H, with `Views/Common/PDFPreview.swift`).
+    - File (`Views/Flight/File/`): **Flight plan** (`FlightPlanView.swift`, `FlightPlanSheets.swift`,
+      `App/FilingModel.swift`; the website's FPL page and Filing panel): the status as the backend
+      reports it (autorouter: filed, acknowledged or rejected; fax: sending, delivered or failed, with
+      the office and number), when it was filed and checked, the EOBT; **File** opens a confirmation
+      of exactly what POST /api/flights/:id/filing carries (the backend or the backends tried in turn,
+      the flight's identification, EOBT and DOF, the AFTN addressees, the e-mail copies, the AFTN
+      message); **Delay…** takes a new EOBT (UTC, +15/+30/+60 min), checked as the server checks it,
+      with the DLA a fax carries; **Cancel…** asks first, with the CNL a fax carries; **Refresh
+      status**; while a fax is sending its delivery is asked every 5 s until it settles. "Send via"
+      (with two backends), the proposed AFTN addressees to untick and typed ones to add, the e-mail
+      copies; the FPL message (copy, copy as one line) with the page's warnings and their Fix; the
+      ICAO form as a PDF (SheetRenderer `fplform`, signed by the pilot); the filing log; "Connect
+      autorouter" when the pilot's account is not linked. Refusals read as on the website (the
+      server's text; offline: "Offline: nothing was sent."). Each answer is kept for the flight, so
+      the File stage's row follows at once (`FlightModel.applyFiling`), and the flight list reloads
+      for its filing chip. Form 731, General Declaration, W&B & performance (2A); Navigation log and
+      NOTAM briefing as PDFs to preview, share, print and e-mail (1H, with
+      `Views/Common/PDFPreview.swift`).
 - **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones; each opens its sections:
   Identity, Flight plan items, Speeds, Fuel, Mass & balance (1F); Performance, Compass cards,
   Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
@@ -119,7 +134,11 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
 with the current record, offline); `API+Flights`, `+Aircraft`, `+People`, `+Files`, `+Forms` and
 `+Account` wrap every endpoint the website calls (src/data/api.ts), with typed request bodies and the
 answer decoded as the caller's Codable type or as JSON. In fixture mode (`-fixtures`) the answers come
-from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files.
+from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files. Filing is simulated there
+(`FixtureRoutes+Filing.swift`; nothing reaches ATC): a flight starts from `filing-<id>.json` (else
+filing.json, a plan filed via autorouter); filing via autorouter answers "filed", via fax "sending",
+which the next status request turns "delivered"; delay and cancel change the record, every action is
+logged.
 
 **Launch arguments** (tests, screenshots): `-fixtures`, `-emptyAccount`, `-noNetwork`,
 `-fixturePosition lat,lon,track,gs`, `-today YYYY-MM-DD`, `-openFlight <id>`, `-tab
@@ -215,7 +234,7 @@ extra fields below were added while building the core.
   below that, the navlog's GS. `offRoute` is more than 2 NM off the leg.
 
 The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest,
-exports, hangar, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
+exports, filing, hangar, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
 wraps the website's own module (named in brackets); where the website kept a rule inside a React
 component, it moved to that module and the component imports it. tests/unit/native/<domain>.test.ts
 checks each answer equals the website module's for the same input.
@@ -299,12 +318,25 @@ checks each answer equals the website module's for the same input.
   passengers with an e-mail, and those the flight is not shared with (`people` from GET
   /api/flights/:id/shares) [shared/sharing.ts].
 
-**File & forms** (src/native/core/exports.ts). The flight's ones take `computeFlight`'s `{ flight,
+**File & forms** (src/native/core/exports.ts; filing in filing.ts). The flight's ones take `computeFlight`'s `{ flight,
 aircraft, pilot, ref, weather, now? }`.
 
 - `PGF.fplMessage(…)` → `{ fpl, oneLine, warnings }`: `fpl` is `{ fields, message, lines, complete,
   warnings, fixes }`; `message` is the AFTN text POST /api/flights/:id/filing takes; `warnings` the
   FPL page's `[{ text, fix? }]` [exports/fpl/input.ts fplInputWith, fpl.ts buildFpl, planning.ts].
+- `PGF.filingView({ state, choices?, message?, complete?, busy?, typed? })`: the Filing panel for GET
+  /api/flights/:id/filing (`choices`: `{ excluded, extra, noCopy, via }`, the addressees unticked or
+  typed, the copies unticked, the backend): `{ status: { label, tone }, open, enabled, disabledReason,
+  connect, connectOnly, connectLabel, viaChoice, viaLine, chosen, sendsVia, record, addressees,
+  addresses, copies, copyTo, file: { shown, label, enabled, hint }, delay, cancel, refresh, sending,
+  log }`, with `message` (fplMessage's) also `request` (the body of POST /filing) and `head` (`{ ident,
+  adep, eobt, ades, dof, route }`), `cancelMessage` (the CNL a faxed plan's cancellation carries) and
+  `typedAddress` (the typed AFTN address, null when it is not one) [exports/fpl/filing.ts, which
+  FilingPanel.tsx renders]. `PGF.filingDelay({ state, eobt?, now? })` → `{ problem, message, via, start }`:
+  why a delay to `eobt` cannot be sent (the server's limits, src/shared/briefing.ts FILING_EOBT_*), and the DLA
+  a fax carries [shared/icaoMessages.ts], who sends it, and `start`, where the delay form starts (the
+  filed EOBT, or now once past, to the minute); the website's Delay form uses the same model. `PGF.filingError({ offline?, message?, load? })` → `{ text }`:
+  a refusal (or a failed load) as the panel words it.
 - `PGF.navlogContent(…)` → `{ document, content }`: the navlog page's `{ sheets, terminal, warnings,
   sources }` and the body of POST /api/flights/:id/exports/navlog/email [exports/navlog/model.ts
   navlogDocumentOf, shared/navlogSheets.ts navlogContentOf].

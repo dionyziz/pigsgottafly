@@ -67,10 +67,14 @@ final class FlowUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["notams-read"].waitForExistence(timeout: 10))
         app.back()
 
-        // File: the filing status, and the website's File & forms page until the app files
+        // File: the fixture flight's plan is filed already, so it is delayed or cancelled, not filed again
         app.tapTab("stage-file")
         app.tapRow("section-flightPlan")
-        XCTAssertTrue(app.buttons["File & forms"].waitForExistence(timeout: 5))
+        let filed = app.staticTexts["fpl-filing-status"]
+        XCTAssertTrue(filed.waitForExistence(timeout: 10))
+        expectation(for: NSPredicate(format: "label == 'Filed'"), evaluatedWith: filed)
+        waitForExpectations(timeout: 10)
+        XCTAssertTrue(app.buttons["fpl-delay"].exists)
         app.back()
 
         // back in Fly, its Navlog button opens Plan's Navlog: the legs, and a leg's altitude changed

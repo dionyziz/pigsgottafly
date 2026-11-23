@@ -22,6 +22,7 @@ if (typeof g.crypto?.getRandomValues !== 'function')
 export { brief } from './brief';
 export { chartData, chartStyle, layerGroups, lineStyles, symbolNames } from './chart';
 export { briefingModel, formModel, fplMessage, navlogContent, wbPerfContent } from './exports';
+export { filingDelay, filingError, filingView } from './filing';
 export { computeFlight, type ComputeFlightInput, fromBase64, paperwork, setTerrain, weatherRequests } from './flight';
 export { aircraftFromTemplate, aircraftHelpers, aircraftTemplates, historyText, validateAircraft } from './hangar';
 export { cgToMoment, manifest, shareSuggestions, wbChart } from './manifest';

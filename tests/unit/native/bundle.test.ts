@@ -138,6 +138,13 @@ describe('core.js in a bare JavaScript context', () => {
       expect(call('fplMessage', { flight: f, aircraft: AC, pilot: PILOT, weather: {}, now: NOW }).fpl.message).toMatch(
         /^\(FPL-SXASV/,
       ),
+    filingView: () =>
+      expect(
+        call('filingView', { state: null, message: '(FPL-SXASV-VG -C172/L-S/C -LGTT0830 -N0100VFR DCT -LGSY0045 -0)' })
+          .head.adep,
+      ).toBe('LGTT'),
+    filingDelay: () => expect(call('filingDelay', { state: null, eobt: NOW, now: NOW }).problem).toMatch(/No open/),
+    filingError: () => expect(call('filingError', { offline: true }).text).toBe('Offline: nothing was sent.'),
     navlogContent: () =>
       expect(
         call('navlogContent', { flight: f, aircraft: AC, pilot: PILOT, weather: {}, now: NOW }).content.sheets,

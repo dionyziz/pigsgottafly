@@ -16,12 +16,14 @@
 //   - autorouter only for the pilots on AUTOROUTER_PILOTS, fax only for those on FAX_PILOTS (app.ts);
 //   - the plan's aircraft identification (item 7) and REG/ (item 18) must be the registration of
 //     the flight's aircraft, which is in the pilot's own hangar.
-import type {
-  FilerId,
-  FilingLogEntry,
-  FilingRecord,
-  FilingState,
-  FplCopyRecipient,
+import {
+  type FilerId,
+  FILING_EOBT_AHEAD_MS,
+  FILING_EOBT_PAST_MS,
+  type FilingLogEntry,
+  type FilingRecord,
+  type FilingState,
+  type FplCopyRecipient,
 } from '../../../src/shared/briefing.js';
 import type { FaxDestination } from '../../../src/shared/fax.js';
 import type { Pilot } from '../../../src/shared/types.js';
@@ -43,10 +45,6 @@ import { sendLogged } from '../sendCaps.js';
 /** Longest FPL message accepted (an AFTN message is far shorter). */
 const MAX_FPL_CHARS = 4000;
 const MAX_ADDRESSES = 50;
-/** An EOBT may be this far in the past (a late delay)… */
-const EOBT_PAST_MS = 30 * 60e3;
-/** …and at most this far ahead (5 days). */
-const EOBT_AHEAD_MS = 120 * 3600e3;
 
 const UNKNOWN_CAPS = { file: false, delay: false, cancel: false, status: false, ackRej: false };
 
@@ -313,7 +311,7 @@ export function checkFplAircraft(fpl: string, registration: string | null): void
 function checkEobt(v: unknown, field = 'eobt'): number {
   if (typeof v !== 'number' || !Number.isFinite(v)) throw badRequest(`${field} must be a time (ms since 1970)`);
   const now = Date.now();
-  if (v < now - EOBT_PAST_MS || v > now + EOBT_AHEAD_MS)
+  if (v < now - FILING_EOBT_PAST_MS || v > now + FILING_EOBT_AHEAD_MS)
     throw badRequest(`${field} must be between now and 5 days ahead`);
   return v;
 }

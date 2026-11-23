@@ -1,11 +1,23 @@
 {
   "enabled": true,
   "reason": null,
+  "filers": [
+    {
+      "id": "autorouter",
+      "label": "autorouter",
+      "capabilities": { "file": true, "delay": true, "cancel": true, "status": true, "ackRej": true },
+      "available": true,
+      "reason": null
+    }
+  ],
   "addressees": [{ "address": "LGGGZFZX", "reasons": ["ATHINAI ACC (VFR)"] }],
   "copyTo": [],
   "filing": {
     "provider": "autorouter",
+    "providerLabel": "autorouter",
+    "capabilities": { "file": true, "delay": true, "cancel": true, "status": true, "ackRej": true },
     "providerId": "fx-1",
+    "faxTo": null,
     "status": "filed",
     "eobt": 1795336200000,
     "fpl": "(FPL-SXASV-VG -C172/L-S/C -LGTT0830 -N0100VFR DCT KALAMO DCT KIMI DCT -LGSY0045 LGTG -DOF/261122)",

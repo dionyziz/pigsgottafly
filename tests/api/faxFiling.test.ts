@@ -19,13 +19,13 @@ import {
   verifyTelnyx,
 } from '../../api/_lib/filers/faxProviders';
 import { ATHENS_AIS, faxDestination } from '../../api/_lib/filers/faxRoutes';
-import { cnlMessage, dlaMessage } from '../../api/_lib/filers/icaoMessages';
 import { filerOrder, withFallback } from '../../api/_lib/filers/select';
 import { type Filer, FilerError } from '../../api/_lib/filers/types';
 import { setMailTransport } from '../../api/_lib/mail';
 import { createServer } from '../../server/server';
 import aerodromes from '../../src/data/ref/aerodromes.json';
 import type { FplFaxContent } from '../../src/shared/fax';
+import { cnlMessage, dlaMessage } from '../../src/shared/icaoMessages';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { Pilot, RoutePoint } from '../../src/shared/types';
 import { CID, type Client, client, JWK } from './helpers';

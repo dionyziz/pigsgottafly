@@ -150,6 +150,11 @@ export const FILING_STATUS_LABEL: Record<FilingStatus, string> = {
   unknown: 'Unknown',
 };
 
+/** A filed plan's EOBT may be this far in the past (a late delay)… */
+export const FILING_EOBT_PAST_MS = 30 * 60e3;
+/** …and at most this far ahead (5 days). */
+export const FILING_EOBT_AHEAD_MS = 120 * 3600e3;
+
 /** The filing backends (api/_lib/filers/): which service sends the plan. */
 export type FilerId = 'autorouter' | 'fax';
 

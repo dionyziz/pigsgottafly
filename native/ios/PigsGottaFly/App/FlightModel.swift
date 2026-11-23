@@ -227,6 +227,13 @@ final class FlightModel: ObservableObject {
         await computePaperwork()
     }
 
+    /// A new filing state (an action's answer): kept, and the File & forms row and the stage follow.
+    func applyFiling(_ data: Data) async {
+        try? store.write(data, .filing(id))
+        filing = try? JSONDecoder().decode(FilingState.self, from: data)
+        await computePaperwork()
+    }
+
     // MARK: the core
 
     /// computeFlight from what is cached.

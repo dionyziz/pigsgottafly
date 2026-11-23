@@ -10,46 +10,24 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react
 import { api, ApiRequestError, autorouterConnectUrl, peekGet } from '../../../data/api';
 import { invalidate } from '../../../data/entities';
 import type { Flight } from '../../../shared';
-import {
-  type FilerId,
-  FILING_STATUS_LABEL,
-  type FilingRecord,
-  type FilingState,
-  type FilingStatus,
-} from '../../../shared/briefing';
+import type { FilerId, FilingState } from '../../../shared/briefing';
 import { fmtDateTimeMs } from '../../../shared/format';
 import { Chip, Loading, Panel } from '../../../ui';
 import { ExportWarnings } from '../WarningList';
+import {
+  actionError,
+  aftnAddress,
+  DELAY_STEPS_MIN,
+  delayCheck,
+  delayStart,
+  fileRequest,
+  filingView,
+  fromUtcInput,
+  loadError,
+  utcInput,
+} from './filing';
 
-const OPEN = new Set<FilingStatus>([
-  'created',
-  'filed',
-  'manual_correction',
-  'suspended',
-  'departed',
-  'terminated',
-  'arriving',
-  'sending',
-  'delivered',
-]);
-
-/** '+302103532635' → '+30 210 3532635'. */
-const showNumber = (n: string) => n.replace(/^\+30(\d{3})(\d+)$/, '+30 $1 $2');
-
-/** Which service filed the plan, and what it reports. */
-export function filedVia(f: FilingRecord): string {
-  if (f.provider !== 'fax') return 'Filed via autorouter';
-  const to = f.faxTo ? `${f.faxTo.unit} (${showNumber(f.faxTo.number)})` : 'the ATS office';
-  const what =
-    f.status === 'delivered'
-      ? 'Delivered by fax to'
-      : f.status === 'sending'
-        ? 'Sending by fax to'
-        : f.status === 'failed'
-          ? 'Fax failed to'
-          : 'Faxed to';
-  return `${what} ${to}${f.capabilities.ackRej ? '' : ' — no acknowledgement'}`;
-}
+export { filedVia } from './filing';
 
 const dateTimeZ = (ms: number) => fmtDateTimeMs(ms);
 
@@ -67,7 +45,15 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   // the last state this session shows at once (filing.get updates it)
   const [st, setSt] = useState<FilingState | null>(() => peekGet<FilingState>(`flights/${flight.id}/filing`) ?? null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'' | 'file' | 'cancel' | 'refresh'>('');
+  const [busy, setBusy] = useState<'' | 'file' | 'delay' | 'cancel' | 'refresh'>('');
+  // the new EOBT while the delay form is open (null: closed)
+  const [delayAt, setDelayAt] = useState<number | null>(null);
+  // the clock the delay is checked against, read whenever the pilot changes it
+  const [delayNow, setDelayNow] = useState(0);
+  const setDelay = (ms: number | null) => {
+    setDelayAt(ms);
+    setDelayNow(Date.now());
+  };
   const [actionErr, setActionErr] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [extra, setExtra] = useState<string[]>([]);
@@ -76,19 +62,11 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   const [noCopy, setNoCopy] = useState<Set<string>>(new Set());
   // '' = the first available backend, then the next on a transient failure
   const [via, setVia] = useState<'' | FilerId>('');
-  const copyTo = useMemo(() => (st?.copyTo ?? []).map((r) => r.email).filter((e) => !noCopy.has(e)), [st, noCopy]);
-
   const load = useCallback(() => {
     setLoadErr(null);
     api.filing
       .get(flight.id)
-      .then(setSt, (e: unknown) =>
-        setLoadErr(
-          e instanceof ApiRequestError && e.offline
-            ? 'Offline: addressees and filing status are not available.'
-            : 'Could not load the filing state.',
-        ),
-      );
+      .then(setSt, (e: unknown) => setLoadErr(loadError(e instanceof ApiRequestError && e.offline)));
   }, [flight.id]);
   // The proposed addressees depend on the saved route and altitudes.
   const routeKey = JSON.stringify([
@@ -99,46 +77,39 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
   ]);
   useEffect(load, [load, routeKey]);
 
-  const addresses = useMemo(() => {
-    const prop = (st?.addressees ?? []).map((a) => a.address).filter((a) => !excluded.has(a));
-    return [...new Set([...prop, ...extra])];
-  }, [st, excluded, extra]);
+  const v = useMemo(
+    () => filingView(st, { excluded: [...excluded], extra, noCopy: [...noCopy], via }, complete, !!busy),
+    [st, excluded, extra, noCopy, via, complete, busy],
+  );
+  const { addresses, copyTo, connect, connectOnly } = v;
+  // the delay form's check, as the server checks it (and the DLA a fax carries)
+  const delay = delayAt != null && v.delay.shown ? delayCheck(v.filing, delayAt, delayNow) : null;
   const addrKey = addresses.join(' ');
   const reportAddresses = useEffectEvent(() => onAddresses?.(addresses));
   useEffect(() => reportAddresses(), [addrKey]);
 
-  const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<FilingState>) => {
+  const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<FilingState>): Promise<boolean> => {
     setBusy(kind);
     setActionErr(null);
     try {
       setSt(await fn());
       // the flight's filing status shows elsewhere too (the editor's checklist and top bar, the lobby)
       invalidate('flights');
+      return true;
     } catch (e) {
-      setActionErr(
-        e instanceof ApiRequestError ? (e.offline ? 'Offline: nothing was sent.' : e.message) : 'The request failed.',
-      );
+      setActionErr(actionError(e instanceof ApiRequestError ? e : null));
       if (e instanceof ApiRequestError && e.status === 503) load();
+      return false;
     } finally {
       setBusy('');
     }
   };
 
-  const filing = st?.filing ?? null;
-  const open = !!filing?.providerId && OPEN.has(filing.status);
-  const enabled = !!st?.enabled;
-  const usable = (st?.filers ?? []).filter((f) => f.available);
-  const chosen = usable.some((f) => f.id === via) ? via : '';
-  // not for a pilot the flight is only shared with: the owner files it
-  const connect = (st?.filers ?? []).find(
-    (f) => f.id === 'autorouter' && f.connect && (enabled || st?.reason === f.reason),
-  )?.connect;
-  const connectOnly = !!connect && !usable.length && !open;
   const connectHref = () =>
     autorouterConnectUrl(window.location.pathname + window.location.search + window.location.hash);
   const addTyped = () => {
-    const a = typed.trim().toUpperCase();
-    if (!/^[A-Z]{8}$/.test(a)) return;
+    const a = aftnAddress(typed);
+    if (!a) return;
     setExtra((x) => (x.includes(a) ? x : [...x, a]));
     setExcluded((s) => {
       const n = new Set(s);
@@ -155,19 +126,8 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       testId="fpl-filing"
       status={
         st && (
-          <Chip
-            tone={
-              filing
-                ? filing.status === 'rejected' || filing.status === 'failed'
-                  ? 'danger'
-                  : open
-                    ? 'ok'
-                    : undefined
-                : undefined
-            }
-            testId="fpl-filing-status"
-          >
-            {filing ? FILING_STATUS_LABEL[filing.status] : 'Not filed'}
+          <Chip tone={v.status.tone ?? undefined} testId="fpl-filing-status">
+            {v.status.label}
           </Chip>
         )
       }
@@ -179,30 +139,37 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
               href={connectHref()}
               data-testid="fpl-autorouter-connect"
             >
-              {connect === 'reconnect' ? 'Reconnect autorouter' : 'Connect autorouter'}
-              {connectOnly ? ' to file' : ''}
+              {v.connectLabel}
             </a>
           )}
           {!connectOnly && (
             <button
               className="primary"
               data-testid="fpl-file"
-              disabled={!enabled || !complete || open || !!busy || !addresses.length}
-              title={!complete ? 'The message has missing fields' : undefined}
-              onClick={() =>
-                run('file', () =>
-                  api.filing.file(flight.id, { fpl: message, addresses, copyTo, ...(chosen ? { via: chosen } : {}) }),
-                )
-              }
+              disabled={!v.file.enabled}
+              title={v.file.hint ?? undefined}
+              onClick={() => run('file', () => api.filing.file(flight.id, fileRequest(v, message)))}
             >
-              {busy === 'file' ? 'Filing…' : filing && !open ? 'File again' : 'File'}
+              {busy === 'file' ? 'Filing…' : v.file.label}
             </button>
           )}
-          {open && filing.capabilities.cancel && (
+          {v.delay.shown && (
+            <button
+              data-testid="fpl-delay"
+              disabled={!v.delay.enabled || delayAt != null}
+              onClick={() => {
+                setActionErr(null);
+                setDelay(delayStart(v.filing, Date.now()));
+              }}
+            >
+              {busy === 'delay' ? 'Delaying…' : 'Delay'}
+            </button>
+          )}
+          {v.cancel.shown && (
             <button
               data-testid="fpl-cancel"
               className="danger"
-              disabled={!enabled || !!busy}
+              disabled={!v.cancel.enabled}
               onClick={() => {
                 if (window.confirm('Cancel the filed flight plan?'))
                   void run('cancel', () => api.filing.cancel(flight.id, undefined, copyTo));
@@ -214,7 +181,7 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
           <button
             className="ghost"
             data-testid="fpl-refresh"
-            disabled={!enabled || !filing?.providerId || !filing.capabilities.status || !!busy}
+            disabled={!v.refresh.enabled}
             onClick={() => run('refresh', () => api.filing.refresh(flight.id))}
           >
             {busy === 'refresh' ? 'Checking…' : 'Refresh status'}
@@ -223,54 +190,105 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
       }
     >
       <ExportWarnings warnings={loadErr ? [loadErr] : []} classify={false} />
-      {st && !enabled && !connectOnly && (
-        <ExportWarnings
-          warnings={[st.reason ?? 'Filing is not enabled yet.']}
-          classify={false}
-          testId="fpl-filing-disabled"
-        />
+      {v.disabledReason && (
+        <ExportWarnings warnings={[v.disabledReason]} classify={false} testId="fpl-filing-disabled" />
       )}
       {actionErr && (
         <div className="form-error" role="alert">
           {actionErr}
         </div>
       )}
-      {usable.length > 1 && !open && (
+      {delay && delayAt != null && (
+        <div className="fpl-delay-form" data-testid="fpl-delay-form">
+          <div className="fpl-filing-sub">Delay</div>
+          <div className="fpl-delay-row">
+            <label className="fpl-filing-delay">
+              New EOBT (UTC){' '}
+              <input
+                type="datetime-local"
+                data-testid="fpl-delay-eobt"
+                value={Number.isFinite(delayAt) ? utcInput(delayAt) : ''}
+                onChange={(e) => setDelay(fromUtcInput(e.target.value))}
+              />
+            </label>
+            {DELAY_STEPS_MIN.map((m) => (
+              <button
+                key={m}
+                className="ghost"
+                data-testid={`fpl-delay-plus-${m}`}
+                disabled={!Number.isFinite(delayAt)}
+                onClick={() => setDelay(delayAt + m * 60e3)}
+              >
+                +{m} min
+              </button>
+            ))}
+          </div>
+          <div className="muted" data-testid="fpl-delay-new">
+            Filed EOBT {dateTimeZ(v.filing?.eobt ?? NaN) || '–'} → {dateTimeZ(delayAt) || '–'}
+          </div>
+          {delay.problem && (
+            <div className="form-error" data-testid="fpl-delay-problem">
+              {delay.problem}
+            </div>
+          )}
+          <div className="muted">{delay.via}</div>
+          {delay.message && (
+            <pre className="fpl-delay-message" data-testid="fpl-delay-message">
+              {delay.message}
+            </pre>
+          )}
+          <div className="fpl-delay-row">
+            <button
+              className="primary"
+              data-testid="fpl-delay-send"
+              disabled={!!delay.problem || !!busy}
+              onClick={async () => {
+                if (await run('delay', () => api.filing.delay(flight.id, delayAt))) setDelayAt(null);
+              }}
+            >
+              {busy === 'delay' ? 'Sending…' : 'Send delay'}
+            </button>
+            <button className="ghost" disabled={!!busy} onClick={() => setDelayAt(null)}>
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+      {v.viaChoice && (
         <label className="fpl-filing-via" data-testid="fpl-filing-via-choice">
           Send via{' '}
-          <select value={chosen} onChange={(e) => setVia(e.target.value as '' | FilerId)}>
-            <option value="">{usable.map((f) => f.label).join(', then ')}</option>
-            {usable.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label} only
+          <select value={v.chosen} onChange={(e) => setVia(e.target.value as '' | FilerId)}>
+            {v.viaChoice.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
               </option>
             ))}
           </select>
         </label>
       )}
-      {usable.length === 1 && !filing && (
+      {v.viaLine && (
         <div className="muted fpl-filing-via" data-testid="fpl-filing-via-choice">
-          Files via {usable[0].label}
-          {usable[0].capabilities.ackRej ? '' : ' — no acknowledgement'}
+          {v.viaLine}
         </div>
       )}
-      {filing && (
+      {v.record && (
         <div className="fpl-filing-record">
-          <span data-testid="fpl-filing-via">{filedVia(filing)}</span>
-          {filing.filed != null && <span>Filed {dateTimeZ(filing.filed)}</span>}
-          {filing.polled != null && <span className="muted">checked {dateTimeZ(filing.polled)}</span>}
-          {filing.message && <span>{filing.message}</span>}
+          <span data-testid="fpl-filing-via">{v.record.via}</span>
+          {v.record.filed != null && <span>Filed {dateTimeZ(v.record.filed)}</span>}
+          {v.filing?.eobt != null && <span data-testid="fpl-filing-eobt">EOBT {dateTimeZ(v.filing.eobt)}</span>}
+          {v.record.polled != null && <span className="muted">checked {dateTimeZ(v.record.polled)}</span>}
+          {v.record.message && <span>{v.record.message}</span>}
         </div>
       )}
 
-      {st && st.copyTo.length > 0 && (
+      {v.copies.length > 0 && (
         <fieldset className="fpl-copies" data-testid="fpl-copy-to">
           <legend className="fpl-filing-sub">Copy by e-mail</legend>
-          {st.copyTo.map((r) => (
+          {v.copies.map((r) => (
             <label key={r.email} className="fpl-copy">
               <input
                 type="checkbox"
-                checked={!noCopy.has(r.email)}
+                checked={r.on}
                 onChange={(e) =>
                   setNoCopy((s) => {
                     const n = new Set(s);
@@ -295,35 +313,28 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
         </div>
         {!st && !loadErr && <Loading variant="sm" />}
         <ul>
-          {(st?.addressees ?? []).map((a) => (
+          {v.addressees.map((a) => (
             <li key={a.address}>
               <label>
                 <input
                   type="checkbox"
-                  checked={!excluded.has(a.address)}
+                  checked={a.on}
                   onChange={(e) =>
-                    setExcluded((s) => {
-                      const n = new Set(s);
-                      if (e.target.checked) n.delete(a.address);
-                      else n.add(a.address);
-                      return n;
-                    })
+                    a.byHand
+                      ? setExtra((x) => x.filter((y) => y !== a.address))
+                      : setExcluded((s) => {
+                          const n = new Set(s);
+                          if (e.target.checked) n.delete(a.address);
+                          else n.add(a.address);
+                          return n;
+                        })
                   }
                 />
-                <code>{a.address}</code> <span className="muted">{a.reasons.join(' · ')}</span>
+                {a.byHand ? ' ' : ''}
+                <code>{a.address}</code> <span className="muted">{a.reasons}</span>
               </label>
             </li>
           ))}
-          {extra
-            .filter((a) => !(st?.addressees ?? []).some((p) => p.address === a))
-            .map((a) => (
-              <li key={a}>
-                <label>
-                  <input type="checkbox" checked onChange={() => setExtra((x) => x.filter((y) => y !== a))} />{' '}
-                  <code>{a}</code> <span className="muted">added by hand</span>
-                </label>
-              </li>
-            ))}
         </ul>
         <div className="fpl-addr-add">
           <input
@@ -337,20 +348,19 @@ export function FilingPanel({ flight, message, complete, onAddresses, title = 'F
               if (e.key === 'Enter') addTyped();
             }}
           />
-          <button className="ghost" onClick={addTyped} disabled={!/^[A-Z]{8}$/.test(typed.trim())}>
+          <button className="ghost" onClick={addTyped} disabled={!aftnAddress(typed)}>
             Add
           </button>
         </div>
       </div>
 
-      {st && st.log.length > 0 && (
+      {v.log.length > 0 && (
         <details className="fpl-filing-log">
-          <summary>Filing log ({st.log.length})</summary>
+          <summary>Filing log ({v.log.length})</summary>
           <ul>
-            {st.log.map((l) => (
+            {v.log.map((l) => (
               <li key={l.id} className={l.ok ? '' : 'fpl-log-bad'}>
-                {dateTimeZ(l.at)} · {l.action}
-                {l.via ? ` (${l.via})` : ''} · {l.ok ? 'ok' : 'refused'}: {l.message}
+                {dateTimeZ(l.at)} · {l.line}
               </li>
             ))}
           </ul>

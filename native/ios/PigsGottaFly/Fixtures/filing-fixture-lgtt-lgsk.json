@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "reason": null,
+  "filers": [
+    {
+      "id": "autorouter",
+      "label": "autorouter",
+      "capabilities": { "file": true, "delay": true, "cancel": true, "status": true, "ackRej": true },
+      "available": true,
+      "reason": null
+    },
+    {
+      "id": "fax",
+      "label": "Fax to Athens Central AIS",
+      "capabilities": { "file": true, "delay": true, "cancel": true, "status": true, "ackRej": false },
+      "available": true,
+      "reason": null
+    }
+  ],
+  "addressees": [
+    { "address": "LGGGZFZX", "reasons": ["ATHINAI ACC (VFR)"] },
+    { "address": "LGAVZPZX", "reasons": ["ATHINAI TMA"] },
+    { "address": "LGSKZTZX", "reasons": ["destination LGSK"] }
+  ],
+  "copyTo": [{ "email": "ops@example.com", "for": "Aeroclub Mesogeion" }],
+  "filing": null,
+  "log": []
+}
