@@ -36,6 +36,7 @@ final class ShellUITests: XCTestCase {
             XCTAssertTrue(
                 app.element(tab.replacingOccurrences(of: "stage-", with: "stage-body-")).waitForExistence(timeout: 5))
             for (row, screen, title) in rows { visit(app, row: row, screen: screen, back: title) }
+            if tab == "stage-file" { XCTAssertFalse(app.element("section-form731").exists, "no Form 731 flying alone") }
         }
         app.tapTab("flight-tab-map")
         XCTAssertTrue(app.element("map-tab").waitForExistence(timeout: 5))

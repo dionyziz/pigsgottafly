@@ -66,9 +66,9 @@ enum Sections {
         ("section-atc", "atc-list", "ATC"),
         ("section-warnings", "warnings-section", "Warnings"),
     ]
+    /// The fixture flight's PIC flies alone, so it has no Form 731 (no passengers to declare).
     static let file: [(String, String, String)] = [
         ("section-flightPlan", "fpl-export", "Flight plan"),
-        ("section-form731", "form731", "Form 731"),
         ("section-genDec", "gendec", "General Declaration"),
         ("section-wbPerf", "wbperf-export", "W&B & performance"),
         ("section-navlogExport", "navlog-export", "Navigation log"),
