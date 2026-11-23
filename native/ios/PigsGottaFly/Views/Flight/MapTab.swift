@@ -134,11 +134,13 @@ private struct RouteMapScreen: View {
                     model.route.isEmpty ? "Draw" : "Extend", "point.topleft.down.to.point.bottomright.curvepath",
                     id: "map-draw", active: editor.mode == .draw, help: "Draw the route"
                 ) { editor.setMode(editor.mode == .draw ? .idle : .draw) }
+                .disabled(editor.local)
                 Divider().frame(width: 44)
                 tool(
                     "Custom point", "mappin.and.ellipse", id: "map-custom", active: editor.mode == .custom,
                     help: "Place a custom named point"
                 ) { editor.setMode(editor.mode == .custom ? .idle : .custom) }
+                .disabled(editor.local)
                 Divider().frame(width: 44)
             }
             tool("Zoom to the route", "arrow.up.left.and.arrow.down.right", id: "map-fit", help: "Zoom to the route") {

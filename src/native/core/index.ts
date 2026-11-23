@@ -40,5 +40,6 @@ export {
   setRequest,
   snap,
 } from './plan';
+export { fuelEdit, setAircraft } from './planEdits';
 export { progress } from './progress';
 export { type CoreRef, version } from './shared';

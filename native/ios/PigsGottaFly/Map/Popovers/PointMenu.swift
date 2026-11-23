@@ -47,11 +47,13 @@ struct PointMenuActions: View {
             Button("VFR chart \(c.icao) (PDF)") { if let u = URL(string: c.url) { open(u) } }
                 .accessibilityIdentifier("menu-vfr-chart")
         }
-        if m.last {
-            Button("Continue drawing") { editor.continueDrawing() }.accessibilityIdentifier("menu-continue")
+        if !editor.local {
+            if m.last {
+                Button("Continue drawing") { editor.continueDrawing() }.accessibilityIdentifier("menu-continue")
+            }
+            Button("Remove point", role: .destructive) { Task { await editor.remove(uid: m.uid) } }
+                .accessibilityIdentifier("menu-remove")
         }
-        Button("Remove point", role: .destructive) { Task { await editor.remove(uid: m.uid) } }
-            .accessibilityIdentifier("menu-remove")
         Button("Cancel", role: .cancel) {}
     }
 
