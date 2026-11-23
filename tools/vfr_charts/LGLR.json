@@ -1,135 +1,138 @@
 {
- "chart": "AD 1.6.15-LGLR-VFR, VFR routes LARISSA MTMA. The chart prints no coordinates: positions from open flightmaps (renamed points GONNOI, NIKEAS, PLATAS under their former names) or from the chart that shares the point. Routes not transcribed yet.",
- "points": [
-  {
-   "name": "GALATINI",
-   "from": "ofm"
-  },
-  {
-   "name": "GREVENA",
-   "from": "ofm"
-  },
-  {
-   "name": "SARANTAPORO",
-   "from": "ofm",
-   "ofm_name": "SARANTOPORO"
-  },
-  {
-   "name": "KARPERO",
-   "from": "ofm"
-  },
-  {
-   "name": "FLABOURO",
-   "from": "ofm",
-   "ofm_name": "A/F FLABOURO"
-  },
-  {
-   "name": "ELASONA",
-   "from": "ofm"
-  },
-  {
-   "name": "GONNOI",
-   "from": "ofm",
-   "ofm_name": "GONNI"
-  },
-  {
-   "name": "DELERIA",
-   "from": "ofm"
-  },
-  {
-   "name": "KISA",
-   "from": "ofm"
-  },
-  {
-   "name": "VERDIKOUSA",
-   "from": "ofm"
-  },
-  {
-   "name": "KALABAKA",
-   "from": "ofm"
-  },
-  {
-   "name": "TIRNAVOS",
-   "from": "ofm"
-  },
-  {
-   "name": "SIKOURIO",
-   "from": "ofm"
-  },
-  {
-   "name": "AGISA",
-   "from": "ofm"
-  },
-  {
-   "name": "GEDIKI",
-   "from": "ofm"
-  },
-  {
-   "name": "PLATAS",
-   "from": "ofm",
-   "ofm_name": "PLATA"
-  },
-  {
-   "name": "NIAMATA",
-   "from": "ofm"
-  },
-  {
-   "name": "NIOCHORI",
-   "from": "ofm"
-  },
-  {
-   "name": "TRIKALA",
-   "from": "ofm"
-  },
-  {
-   "name": "MESORACHI",
-   "from": "ofm"
-  },
-  {
-   "name": "NIKEAS",
-   "from": "ofm",
-   "ofm_name": "NIKEA"
-  },
-  {
-   "name": "MATA",
-   "from": "ofm"
-  },
-  {
-   "name": "PLATAMON",
-   "from": "ofm"
-  },
-  {
-   "name": "KATERO",
-   "same_as": "LGTS"
-  },
-  {
-   "name": "AGIA",
-   "same_as": "LGBL"
-  },
-  {
-   "name": "CHALKI",
-   "same_as": "LGBL"
-  },
-  {
-   "name": "STEFANO",
-   "same_as": "LGBL"
-  },
-  {
-   "name": "ZAGORA",
-   "same_as": "LGBL"
-  },
-  {
-   "name": "VOLLOS",
-   "same_as": "LGBL"
-  },
-  {
-   "name": "FARSALA",
-   "same_as": "LGBL"
-  },
-  {
-   "name": "PETROTO",
-   "same_as": "LGBL"
-  }
- ],
- "routes": []
+  "chart": "AD 1.6.15-LGLR-VFR, VFR routes LARISSA MTMA. The chart prints no coordinates: positions from open flightmaps (renamed points GONNOI, NIKEAS, PLATAS under their former names) or from the chart that shares the point.",
+  "points": [
+    {"name": "GALATINI", "from": "ofm"},
+    {"name": "GREVENA", "from": "ofm"},
+    {"name": "SARANTAPORO", "from": "ofm", "ofm_name": "SARANTOPORO"},
+    {"name": "KARPERO", "from": "ofm"},
+    {"name": "FLABOURO", "from": "ofm", "ofm_name": "A/F FLABOURO"},
+    {"name": "ELASONA", "from": "ofm"},
+    {"name": "GONNOI", "from": "ofm", "ofm_name": "GONNI"},
+    {"name": "DELERIA", "from": "ofm"},
+    {"name": "KISA", "from": "ofm"},
+    {"name": "VERDIKOUSA", "from": "ofm"},
+    {"name": "KALABAKA", "from": "ofm"},
+    {"name": "TIRNAVOS", "from": "ofm"},
+    {"name": "SIKOURIO", "from": "ofm"},
+    {"name": "AGISA", "from": "ofm"},
+    {"name": "GEDIKI", "from": "ofm"},
+    {"name": "PLATAS", "from": "ofm", "ofm_name": "PLATA"},
+    {"name": "NIAMATA", "from": "ofm"},
+    {"name": "NIOCHORI", "from": "ofm"},
+    {"name": "TRIKALA", "from": "ofm"},
+    {"name": "MESORACHI", "from": "ofm"},
+    {"name": "NIKEAS", "from": "ofm", "ofm_name": "NIKEA"},
+    {"name": "MATA", "from": "ofm"},
+    {"name": "PLATAMON", "from": "ofm"},
+    {"name": "KATERO", "same_as": "LGTS"},
+    {"name": "AGIA", "same_as": "LGBL"},
+    {"name": "CHALKI", "same_as": "LGBL"},
+    {"name": "STEFANO", "same_as": "LGBL"},
+    {"name": "ZAGORA", "same_as": "LGBL"},
+    {"name": "VOLLOS", "same_as": "LGBL"},
+    {"name": "FARSALA", "same_as": "LGBL"},
+    {"name": "PETROTO", "same_as": "LGBL"},
+    {"name": "LGLR", "dms": "39 39 01 N 022 27 55 E", "no_symbol": true, "note": "ARP printed in the chart header"},
+    {"name": "LGKZ", "dms": "40 17 09 N 021 50 30 E", "no_symbol": true, "note": "KOZANI ARP in the chart table"},
+    {"name": "LGKA", "dms": "40 26 47 N 021 16 52 E", "no_symbol": true, "note": "KASTORIA ARP in the chart table"},
+    {"name": "LGIO", "dms": "39 41 50 N 020 49 19 E", "no_symbol": true, "note": "IOANNINA ARP in the chart table"},
+    {"name": "ANL", "same_as": "LGBL"},
+    {"name": "MAKRIS", "same_as": "LGTS"},
+    {"name": "GOLF", "same_as": "LGTS"},
+    {"name": "POSIDI", "same_as": "LGTS"}
+  ],
+  "routes": [
+    {"a": "GALATINI", "b": "LGKZ", "min": 9500, "max": 9500, "nm": 13, "oneway": true},
+    {"a": "LGKZ", "b": "GALATINI", "min": 10500, "max": 10500, "nm": 13, "oneway": true},
+    {"a": "GALATINI", "b": "LGKA", "min": null, "max": null},
+    {"a": "GREVENA", "b": "LGKA", "min": null, "max": null, "oneway": true},
+    {"a": "LGKZ", "b": "KARPERO", "min": 8500, "max": 8500, "nm": 23, "oneway": true},
+    {"a": "KARPERO", "b": "LGKZ", "min": 7500, "max": 7500, "nm": 23, "oneway": true},
+    {"a": "LGKZ", "b": "SARANTAPORO", "min": 7500, "max": 7500, "nm": 16, "oneway": true},
+    {"a": "SARANTAPORO", "b": "LGKZ", "min": 8500, "max": 8500, "nm": 16, "oneway": true},
+    {"a": "LGKZ", "b": "KATERO", "min": 7500, "max": 7500, "nm": 32, "oneway": true},
+    {"a": "KATERO", "b": "LGKZ", "min": 8500, "max": 8500, "nm": 32, "oneway": true},
+    {"a": "KARPERO", "b": "KATERO", "min": 9500, "max": 9500, "nm": 49, "oneway": true},
+    {"a": "KATERO", "b": "KARPERO", "min": 8500, "max": 8500, "nm": 49, "oneway": true},
+    {"a": "GREVENA", "b": "KALABAKA", "min": 9500, "max": 9500, "nm": 24, "oneway": true},
+    {"a": "KALABAKA", "b": "GREVENA", "min": 10500, "max": 10500, "nm": 24, "oneway": true},
+    {"a": "KARPERO", "b": "KALABAKA", "min": 6500, "max": 6500, "nm": 14, "oneway": true},
+    {"a": "KALABAKA", "b": "KARPERO", "min": 7500, "max": 7500, "nm": 14, "oneway": true},
+    {"a": "KALABAKA", "b": "LGIO", "min": null, "max": null, "oneway": true},
+    {"a": "KALABAKA", "b": "VERDIKOUSA", "min": 7500, "max": 7500, "nm": 17, "oneway": true},
+    {"a": "VERDIKOUSA", "b": "KALABAKA", "min": 6500, "max": 6500, "nm": 17, "oneway": true},
+    {"a": "KALABAKA", "b": "TRIKALA", "min": 7500, "max": 7500, "nm": 11, "oneway": true},
+    {"a": "TRIKALA", "b": "KALABAKA", "min": 6500, "max": 6500, "nm": 11, "oneway": true},
+    {"a": "TRIKALA", "b": "VERDIKOUSA", "min": 7500, "max": 7500, "nm": 17, "oneway": true},
+    {"a": "VERDIKOUSA", "b": "TRIKALA", "min": 6500, "max": 6500, "nm": 17, "oneway": true},
+    {"a": "TRIKALA", "b": "NIOCHORI", "min": 5500, "max": 5500, "nm": 11, "oneway": true},
+    {"a": "NIOCHORI", "b": "TRIKALA", "min": 4500, "max": 4500, "nm": 11, "oneway": true},
+    {"a": "TRIKALA", "b": "MATA", "min": 3500, "max": 3500, "nm": 17, "oneway": true},
+    {"a": "MATA", "b": "TRIKALA", "min": 4500, "max": 4500, "nm": 17, "oneway": true},
+    {"a": "SARANTAPORO", "b": "ELASONA", "min": 7500, "max": 7500, "nm": 12, "oneway": true},
+    {"a": "ELASONA", "b": "SARANTAPORO", "min": 8500, "max": 8500, "nm": 12, "oneway": true},
+    {"a": "ELASONA", "b": "FLABOURO", "min": 7500, "max": 7500, "nm": 5, "oneway": true},
+    {"a": "FLABOURO", "b": "ELASONA", "min": 6500, "max": 6500, "nm": 5, "oneway": true},
+    {"a": "ELASONA", "b": "PLATAMON", "min": 7500, "max": 7500, "nm": 25, "oneway": true},
+    {"a": "PLATAMON", "b": "ELASONA", "min": 6500, "max": 6500, "nm": 25, "oneway": true},
+    {"a": "ELASONA", "b": "GONNOI", "min": 7500, "max": 7500, "nm": 14, "oneway": true},
+    {"a": "GONNOI", "b": "ELASONA", "min": 6500, "max": 6500, "nm": 14, "oneway": true},
+    {"a": "VERDIKOUSA", "b": "ELASONA", "min": 7500, "max": 7500, "nm": 11, "oneway": true},
+    {"a": "ELASONA", "b": "VERDIKOUSA", "min": 6500, "max": 6500, "nm": 11, "oneway": true},
+    {"a": "ELASONA", "b": "TIRNAVOS", "min": 3500, "max": 3500, "nm": 10, "oneway": true},
+    {"a": "TIRNAVOS", "b": "ELASONA", "min": 4500, "max": 4500, "nm": 10, "oneway": true},
+    {"a": "GONNOI", "b": "DELERIA", "min": 6500, "max": 6500, "nm": 7, "oneway": true},
+    {"a": "TIRNAVOS", "b": "DELERIA", "min": 5500, "max": 5500, "nm": 5, "oneway": true},
+    {"a": "GONNOI", "b": "SIKOURIO", "min": 5500, "max": 5500, "nm": 8, "oneway": true},
+    {"a": "SIKOURIO", "b": "GONNOI", "min": 4500, "max": 4500, "nm": 8, "oneway": true},
+    {"a": "TIRNAVOS", "b": "PLATAS", "min": 3500, "max": 3500, "nm": 4, "oneway": true},
+    {"a": "NIOCHORI", "b": "PLATAS", "min": 5500, "max": 5500, "nm": 16, "oneway": true},
+    {"a": "PLATAS", "b": "NIOCHORI", "min": 4500, "max": 4500, "nm": 16, "oneway": true},
+    {"a": "PLATAS", "b": "MESORACHI", "min": 5500, "max": 5500, "nm": 7, "oneway": true},
+    {"a": "MESORACHI", "b": "PLATAS", "min": 4500, "max": 4500, "nm": 7, "oneway": true},
+    {"a": "LGLR", "b": "MESORACHI", "min": null, "max": null, "nm": 6},
+    {"a": "MESORACHI", "b": "NIKEAS", "min": 3500, "max": 3500, "nm": 5, "oneway": true},
+    {"a": "NIKEAS", "b": "MESORACHI", "min": 2500, "max": 2500, "nm": 5, "oneway": true},
+    {"a": "NIKEAS", "b": "CHALKI", "min": null, "max": null, "nm": 4},
+    {"a": "LGLR", "b": "CHALKI", "min": null, "max": null, "nm": 6},
+    {"a": "CHALKI", "b": "NIAMATA", "min": 2500, "max": 2500, "nm": 5, "oneway": true},
+    {"a": "NIAMATA", "b": "CHALKI", "min": 3500, "max": 3500, "nm": 5, "oneway": true},
+    {"a": "NIAMATA", "b": "AGIA", "min": 3500, "max": 3500, "nm": 9, "oneway": true},
+    {"a": "AGIA", "b": "NIAMATA", "min": 4500, "max": 4500, "nm": 9, "oneway": true},
+    {"a": "GONNOI", "b": "PLATAMON", "min": 5500, "max": 5500, "nm": 13, "oneway": true},
+    {"a": "PLATAMON", "b": "GONNOI", "min": 6500, "max": 6500, "nm": 13, "oneway": true},
+    {"a": "PLATAMON", "b": "KISA", "min": 5500, "max": 5500, "nm": 11, "oneway": true},
+    {"a": "KISA", "b": "PLATAMON", "min": 4500, "max": 4500, "nm": 11, "oneway": true},
+    {"a": "AGIA", "b": "KISA", "min": 5500, "max": 5500, "nm": 6, "oneway": true},
+    {"a": "KISA", "b": "AGIA", "min": 4500, "max": 4500, "nm": 6, "oneway": true},
+    {"a": "AGIA", "b": "AGISA", "min": 3500, "max": 3500, "nm": 27, "oneway": true},
+    {"a": "AGISA", "b": "AGIA", "min": 4500, "max": 4500, "nm": 27, "oneway": true},
+    {"a": "AGIA", "b": "STEFANO", "min": 6500, "max": 6500, "nm": 15, "oneway": true},
+    {"a": "STEFANO", "b": "AGIA", "min": 5500, "max": 5500, "nm": 15, "oneway": true},
+    {"a": "AGIA", "b": "ZAGORA", "min": 5500, "max": 5500, "nm": 23, "oneway": true},
+    {"a": "ZAGORA", "b": "AGIA", "min": 6500, "max": 6500, "nm": 23, "oneway": true},
+    {"a": "MATA", "b": "MESORACHI", "min": 3500, "max": 3500, "nm": 16, "oneway": true},
+    {"a": "MESORACHI", "b": "MATA", "min": 4500, "max": 4500, "nm": 16, "oneway": true},
+    {"a": "MATA", "b": "FARSALA", "min": 3500, "max": 3500, "nm": 15, "oneway": true},
+    {"a": "FARSALA", "b": "MATA", "min": 4500, "max": 4500, "nm": 15, "oneway": true},
+    {"a": "MESORACHI", "b": "FARSALA", "min": 3500, "max": 3500, "nm": 17, "oneway": true},
+    {"a": "FARSALA", "b": "MESORACHI", "min": 4500, "max": 4500, "nm": 17, "oneway": true},
+    {"a": "FARSALA", "b": "CHALKI", "min": 3500, "max": 3500, "nm": 18, "oneway": true},
+    {"a": "CHALKI", "b": "FARSALA", "min": 4500, "max": 4500, "nm": 18, "oneway": true},
+    {"a": "FARSALA", "b": "PETROTO", "min": 3500, "max": 3500, "oneway": true},
+    {"a": "PETROTO", "b": "FARSALA", "min": 4500, "max": 4500, "oneway": true},
+    {"a": "CHALKI", "b": "STEFANO", "min": 3500, "max": 3500, "oneway": true},
+    {"a": "STEFANO", "b": "CHALKI", "min": 4500, "max": 4500, "oneway": true},
+    {"a": "CHALKI", "b": "ANL", "min": 5500, "max": 5500, "nm": 24, "oneway": true},
+    {"a": "ANL", "b": "CHALKI", "min": 4500, "max": 4500, "nm": 24, "oneway": true},
+    {"a": "STEFANO", "b": "ANL", "min": 3500, "max": 3500, "nm": 16, "oneway": true},
+    {"a": "ANL", "b": "STEFANO", "min": 4500, "max": 4500, "nm": 16, "oneway": true},
+    {"a": "STEFANO", "b": "VOLLOS", "min": 3500, "max": 3500, "nm": 11, "oneway": true},
+    {"a": "VOLLOS", "b": "STEFANO", "min": 4500, "max": 4500, "nm": 11, "oneway": true},
+    {"a": "PLATAMON", "b": "KATERO", "min": null, "max": null, "oneway": true},
+    {"a": "PLATAMON", "b": "MAKRIS", "min": null, "max": null, "oneway": true},
+    {"a": "PLATAMON", "b": "GOLF", "min": null, "max": null, "oneway": true, "kind": "mil"},
+    {"a": "POSIDI", "b": "AGIA", "min": null, "max": null, "oneway": true, "kind": "mil"}
+  ],
+  "notes": "Altitudes per direction (arrowed). Aerodrome legs end at the ARP (LGLR from the chart header; LGKZ, LGKA, LGIO from the chart table, KOZANI/KASTORIA/IOANNINA ARP); the LGKA and LGIO legs are drawn not to scale with no distance or altitude, GREVENA–LGKA and KALABAKA–LGIO one way. KARPERO–KALABAKA prints 7500 northbound, 6500 southbound (against the semicircular rule; transcribed as printed). GONNOI–DELERIA, TIRNAVOS–DELERIA and TIRNAVOS–PLATAS print one altitude and an arrow one way only. PLATAS–MESORACHI passes an unnamed triangle; its nm is the sum of the printed (4) and (3). The 3500/2500 pair printed at NIKEAS is assigned to MESORACHI–NIKEAS (5); NIKEAS–CHALKI (4) is left without altitude. No altitude: LGLR–MESORACHI (6), LGLR–CHALKI (6). No distance printed: FARSALA–PETROTO, CHALKI–STEFANO. Off-chart arrows PLATAMON to KATERO / to MAKRIS (no altitude or distance), PLATAMON to GOLF and from POSIDI to AGIA (MIL ACFT only, kind mil). ZAGORA to SKOPELOS / to SKIATHOS omitted (endpoint not identifiable: reporting point, heliport or aerodrome). Holdings: KALABAKA 5000, ELASONA 5000, SIKOURIO 4000, AGIA 5000, CHALKI 4000, MATA/FARSALA 6000."
 }
