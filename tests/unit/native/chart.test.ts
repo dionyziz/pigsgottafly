@@ -130,7 +130,8 @@ describe('chartData', () => {
   });
 
   test('the same features as the website’s map for the same flight, reference data and layers', () => {
-    const all = airspaceInfos(REF.airspaces, REF.adAirspaces ?? [], REF.areas ?? [], REF.fir);
+    // the website draws the areas in force on the flight's day
+    const all = airspaceInfos(REF.airspaces, REF.adAirspaces ?? [], REF.areas ?? [], REF.fir, f.date);
     const shown = all.filter((a) => airspaceShown(layers, a.type));
     expect(withoutFar(data.airspaces)).toEqual(json(airspaceFeatures(all)));
     expect(withoutFar(data.zones)).toEqual(json(zoneFeatures(all)));
@@ -161,5 +162,18 @@ describe('chartData', () => {
     // no route: nothing is far
     const none = chartData({ flight: flight([]), now: NOW }) as typeof data;
     expect(none.zones.features.every((x) => x.properties.far === false)).toBe(true);
+  });
+
+  test('the areas in force on the flight’s day: AIP SUP 39/26’s exercise areas only until 27 NOV 2026', () => {
+    const areaIds = (date: string) =>
+      (chartData({ ref: API_REF, flight: flight(ROUTE(), { date }), now: NOW }) as typeof data).areas.features.map(
+        (x) => x.properties.id,
+      );
+    expect(areaIds('2026-11-23')).toEqual(expect.arrayContaining(['LGD4SW', 'LGD12S-NOV', 'LGD102A']));
+    expect(areaIds('2026-11-23')).not.toContain('LGD12S');
+    expect(areaIds('2026-11-28')).not.toContain('LGD4SW');
+    expect(areaIds('2026-11-28')).toContain('LGD102A');
+    // a flight without a date: the day of "now"
+    expect(areaIds('')).toEqual(areaIds(new Date(NOW).toISOString().slice(0, 10)));
   });
 });

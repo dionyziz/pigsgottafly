@@ -94,6 +94,14 @@ export function AirspaceDetails({
                   <dd className="pgf-air-pre">{a.activity}</dd>
                 </>
               )}
+              {a.timeRows?.map((r) => (
+                <Fragment key={r.label}>
+                  <dt>{r.label}</dt>
+                  <dd className="pgf-air-pre" data-testid="airspace-time">
+                    {r.text}
+                  </dd>
+                </Fragment>
+              ))}
               {a.notes.map((n, i) => (
                 <Fragment key={i}>
                   <dt>{i === 0 ? 'Notes' : ''}</dt>

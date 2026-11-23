@@ -13,8 +13,11 @@ import {
   parseEnr53,
   parseLateral,
   parseSups,
+  parseSupTimes,
   splitActivity,
+  supDate,
   supNumber,
+  supValidFrom,
   supValidTo,
 } from '../../../tools/parse_enr5';
 
@@ -540,8 +543,8 @@ HELLENIC AVIATION SERVICE PROVIDER                                              
 
 // ---- Tests
 
-// ---- Verbatim excerpts (pdftotext -layout) of the AIP SUPs in force at AIRAC 09/26: SUP 09/24 and 01/23 (UFN)
-// and the start of SUP 07/26 (time-limited).
+// ---- Verbatim excerpts (pdftotext -layout; runs of blank lines squeezed) of the AIP SUPs in force at AIRAC 09/26:
+// SUP 09/24 and 01/23 (UFN), page 1 of SUP 07/26 and pages 1, 2, 7 and 8 of SUP 39/26 (time-limited).
 
 const SUP_0924 = String.raw`                                                     AIP GREECE
 
@@ -620,7 +623,9 @@ Address:   P.O. BOX 70360              Directorate General of Air Navigation Ser
        by SKIROS APP
 `;
 
-const SUP_0726 = String.raw`                                                 AIP GREECE
+const SUP_0726 = String.raw`                                                                                                           AIRAC
+
+                                                 AIP GREECE
 
 Tel:       +30 2109972480
 Email:     hellas.ais@hasp.gov.gr
@@ -643,6 +648,186 @@ Address:   P.O. BOX 70360              Directorate General of Air Navigation Ser
  LGD102A                                                                      AMC manageable area.
                                                                               Activated by EAUP/EUUP.
  353600N 0240700E - 361800N 0240700E -                                        Crossing area is possible under ATC
+ 361800N 0244700E - 353400N 0250800E -                                        clearance.
+ 353100N 0241100E - 353600N 0240700E
+                                                                              Missile, gun firing and other range activities.
+                                                                              AWYs affected:
+                                                                UNL
+                                                               FL295           UJ56 (SUD - MIL)
+                                                                               UJ62 (IRA - SNI)
+                                                                               UJ65 (SOKRI - SUD - IRA)
+                                                                               UL612 (MANOK - SIT)
+                                                                               UL613 (RESTI - AMAXI)
+                                                                               UL617 (MIL - SIT)
+                                                                               UM749 (MIL - IRA)
+                                                                               UP169 (MANOK - SUD)
+ LGD102AΖ
+                                                                              AMC manageable area.
+ 362847N 0235356E - 362850N 0245525E -                         FL660
+                                                                              Activated by EAUP/EUUP.
+ 352421N 0252649E - 351947N 0240508E -                         FL295
+                                                                              For IFR flight planning purposes only.
+ 353155N 0235423E - 362847N 0235356E
+
+ Hellenic Aviation Service Provider                                                                                             1
+`;
+
+// SUP 39/26: the header, paragraphs 1–2.1 and page 2 (LGD76, LGD2SW and its FBZ), then pages 7 and 8 (LGD12S,
+// LGD12SZ: other limits in November).
+const SUP_3926 = String.raw`                                                                                                       AIRAC
+                                                                                                  AIP SUPPLEMENT
+                                                   AIP GREECE
+
+ Tel:        +30 2109972480
+ Email:      hellas.ais@hasp.gov.gr
+ AFS:        LGGGYNYP                      MINISTRY OF INFRASTRUCTURE AND TRANSPORT                        AIP SUP 39/26
+ URL:        https://aisgr.hasp.gov.gr         HELLENIC AVIATION SERVICE PROVIDER                   Effective from: 09 JUL 26
+ Address:    P.O. BOX 70360              Directorate General of Air Navigation Service Provider                  to: 27 NOV 26
+             16610 GLYFADA                     Aeronautical Information Service Division          Publication date: 28 MAY 26
+
+                            MILITARY EXERCISE - JOINT FLYING COURSE (JFC) 2026
+
+    1.     General
+
+    During the period 28 September 2026 - 27 November 2026 the multinational military exercise “JOINT FLYING
+    COURSE - HELLENIC FIGHTER WEAPON SCHOOL 2026” will be conducted in the ATHINAI FIR / HELLAS UIR.
+
+    The military exercise will be conducted in a number of temporary Danger / Restricted airspaces that have been
+    established. Details can be found in paragraph 2.
+
+    Restrictions apply to non-participating traffic.
+
+    All times are in UTC.
+
+    Coordinates are in WGS-84.
+
+    2.     Exercise areas
+
+    2.1.     Temporary Danger / Restricted Areas
+    Exercise areas are plannable as specified in remark column / paragraph 4 and daily via AUP / UUP.
+
+    Flight planning buffer zones (FBZs) are established for each temporary Danger / Restricted area. These zones enable
+    IFPS to reject non-participating IFR flight plans with a planned routing affecting exercise areas which are activated in
+    accordance with daily AUP / UUP.
+    Each FBZ has an ID that corresponds with the related Reserved / Restricted area ID, with the addition of an Z to the
+    end: e.g. LGD2SW and LGD2SWZ.
+
+Hellenic Aviation Service Provider                                                                                               1
+Publication Date: 28 MAY 26              AIRAC AIP SUP Nr: 39/26                       Effective Date: 09 JUL 26
+
+                   Identification        Upper limit                          Remark
+                   Lateral limits        Lower limit                (dates and times of activity)
+
+                          1                  2                                     3
+ LGD76                                                   13 OCT 26, 1030 - 1230
+                                           FL150
+                                                         16 OCT 26, 0700 - 0900
+                                            SFC
+                                                         19 OCT 26, 0700 - 0800.
+
+ LGD2SW                                                  AMC Manageable areas (AMA)
+ 380900N 0191500E - 380700N 0194500E -                   28 SEP 26, 7000 - 0800 &1000 - 1100
+ 380100N 0200600E - 372500N 0204400E -                   29 SEP 26, 0700 - 0800 & 1000 - 1100 & 1630 - 1800
+ 372300N 0210700E - 373300N 0210700E -                   30 SEP 26, 0700 - 0800 & 1000 - 1100 & 1630 - 1800
+ 373700N 0211600E - 375500N 0211300E -                   01 OCT 26, 0700 - 0800 & 1000 - 1100 & 1630 - 1800
+ 373500N 0214300E - 361400N 0210600E -                   05 OCT 26, 0700 - 0800 & 1000 - 1100
+ 365600N 0194200E - 373000N 0191400E -                   06 OCT 26, 0700 - 0800 & 1000 - 1100
+ 380900N 0191500E.                                       07 OCT 26, 0700 - 0800 & 1630 - 1800
+                                                         08 OCT 26, 0700 - 0800 & 1630 - 1800
+ LGD2SWΖ                                   FL660         09 OCT 26, 0700 - 0800
+                                            SFC
+                                                         12 OCT 26, 0700 - 0800
+ 381446N 0190242E - 381915N 0190857E -
+                                                         19 OCT 26, 0700 - 0800
+ 381640N 0194741E - 380936N 0201321E -
+                                                         09 NOV 26, 0800 - 0900 & 1100 - 1200
+ 373426N 0205017E - 373357N 0205440E -
+                                                         16 NOV 26, 0800 - 0900 & 1100 - 1200.
+ 373738N 0205439E - 373925N 0205555E -
+ 374223N 0210239E - 380123N 0205925E -
+ 380730N 0211325E - 374110N 0215326E -
+ 372939N 0215448E - 360305N 0211452E -
+ 360231N 0210546E - 364846N 0193318E -
+ 372608N 0190137E - 381446N 0190242E.
+
+Hellenic Aviation Service Provider                                                                            2
+Publication Date: 28 MAY 26              AIRAC AIP SUP Nr: 39/26                      Effective Date: 09 JUL 26
+
+                   Identification        Upper limit                           Remark
+                   Lateral limits        Lower limit                 (dates and times of activity)
+
+                           1                  2                                   3
+ LGD12S                                                    AMC Manageable areas (AMA)
+ 370200N 0222100E - 370400N 0223100E -                     15 OCT 26, 1030 - 1230
+ 364900N 0225900E - 354000N 0231700E -                     16 OCT 26, 0700 - 0900
+ 353900N 0230900E - 370200N 0222100E.                      21 OCT 26, 0730 - 0930
+                                            FL240
+                                             SFC           23 OCT 26, 0700 - 0900
+                                                           26 OCT 26, 1130 - 1330 & 1600 - 1800
+                                                           27 OCT 26, 0830 - 1030
+                                                           29 OCT 26, 1130 - 1330 &1600 - 1800
+                                                           30 OCT 26, 0800 - 1000.
+
+                                                           AMC Manageable areas (AMA)
+                                                           02 NOV 26, 1130 - 1330
+                                                           03 NOV 26, 0830 - 1030
+                                                           04 NOV 26, 1130 - 1330
+                                                           05 NOV 26, 0830 - 1030
+                                                           10 NOV 26, 1600 - 1800
+                                                           11 NOV 26, 0830 - 1030
+                                                           12 NOV 26, 1600 - 1800
+                                            FL280
+                                                           13 NOV 26, 0800 - 1000
+                                             SFC
+                                                           17 NOV 26, 1130 - 1330 & 1600 - 1800
+                                                           18 NOV 26, 0830 - 1030
+                                                           19 NOV 26, 1130 - 1330
+                                                           20 NOV 26, 0800 - 1000
+                                                           23 NOV 26, 1130 - 1330
+                                                           24 NOV 26, 0830 - 1030
+                                                           25 NOV 26, 1130 - 1330
+                                                           26 NOV 26, 0830 - 1030
+                                                           27 NOV 26, 0800 - 1000.
+
+Hellenic Aviation Service Provider                                                                           7
+Publication Date: 28 MAY 26              AIRAC AIP SUP Nr: 39/26                      Effective Date: 09 JUL 26
+
+                   Identification        Upper limit                           Remark
+                   Lateral limits        Lower limit                 (dates and times of activity)
+
+                           1                  2                                   3
+ LGD12SZ                                                   AMC Manageable areas (AMA)
+ 370308N 0220647E - 371004N 0221051E -                     15 OCT 26, 1030 - 1230
+ 371434N 0223317E - 365555N 0230955E -                     16 OCT 26, 0700 - 0900
+ 353633N 0233010E - 353108N 0232533E -                     21 OCT 26, 0730 - 0930
+                                            FL245
+                                             SFC           23 OCT 26, 0700 - 0900
+ 352833N 0230453E - 353025N 0230038E -
+                                                           26 OCT 26, 1130 - 1330 & 1600 - 1800
+ 370308N 0220647E.                                         27 OCT 26, 0830 - 1030
+                                                           29 OCT 26, 1130 - 1330 & 1600 - 1800
+                                                           30 OCT 26, 0800 - 1000.
+
+                                                           AMC Manageable areas (AMA)
+                                                           02 NOV 26, 1130 - 1330
+                                                           03 NOV 26, 0830 - 1030
+                                                           04 NOV 26, 1130 - 1330
+                                                           05 NOV 26, 0830 - 1030
+                                                           10 NOV 26, 1600 - 1800
+                                                           11 NOV 26, 0830 - 1030
+                                                           12 NOV 26, 1600 - 1800
+                                            FL285          13 NOV 26, 0800 - 1000
+                                             SFC           17 NOV 26, 1130 - 1330 & 1600 - 1800
+                                                           18 NOV 26, 0830 - 1030
+                                                           19 NOV 26, 1130 - 1330
+                                                           20 NOV 26, 0800 - 1000
+                                                           23 NOV 26, 1130 - 1330
+                                                           24 NOV 26, 0830 - 1030
+                                                           25 NOV 26, 1130 - 1330
+                                                           26 NOV 26, 0830 - 1030
+                                                           27 NOV 26, 0800 - 1000.
+
+Hellenic Aviation Service Provider                                                                           8
 `;
 
 const byId = (areas: RefArea[]) => new Map(areas.map((a) => [a.id, a]));
@@ -967,25 +1152,53 @@ describe('AIP SUP', () => {
     const areas = parseSups(new Map(sups), (m) => warnings.push(m));
     return { areas, warnings };
   };
+  /** The warnings about the SUPs given, not about the table's other SUPs missing from them. */
+  const about = (warnings: string[]) => warnings.filter((w) => !/is no longer in the AIP/.test(w));
   test('file names and validity', () => {
     expect(supNumber('LG_SUP_A_2024_09_en.txt')).toBe('09/24');
     expect(supNumber('LG_ENR_5_1_en.txt')).toBeNull();
     expect(supValidTo(SUP_0924)).toBe('UFN');
     expect(supValidTo(SUP_0123)).toBe('UFN');
     expect(supValidTo(SUP_0726)).toBe('09 JUN 27');
+    expect(supValidTo(SUP_3926)).toBe('27 NOV 26');
     expect(supValidTo('Effective date: 10 SEP 2020\n   End Date: UFN')).toBe('UFN');
+    expect(supValidFrom(SUP_0924)).toBe('08 AUG 24');
+    expect(supValidFrom(SUP_3926)).toBe('09 JUL 26');
+    expect(supValidFrom('Effective date: 10 SEP 2020\n   End Date: UFN')).toBe('10 SEP 2020');
+    expect(supDate('27 NOV 26')).toBe('2026-11-27');
+    expect(supDate('10 SEP 2020')).toBe('2020-09-10');
+    expect(supDate('31 FEB 26')).toBeNull();
+    expect(supDate('UFN')).toBeNull();
+  });
+  test('dated windows as SUP 39/26 prints them, UTC', () => {
+    expect(parseSupTimes('23 NOV 26, 1130 - 1330')).toEqual([{ from: '2026-11-23T11:30Z', to: '2026-11-23T13:30Z' }]);
+    expect(parseSupTimes('29 OCT 26, 1130 - 1330 &1600 - 1800.')).toEqual([
+      { from: '2026-10-29T11:30Z', to: '2026-10-29T13:30Z' },
+      { from: '2026-10-29T16:00Z', to: '2026-10-29T18:00Z' },
+    ]);
+    // past midnight: into the next day, across a month and a year end
+    expect(parseSupTimes('30 NOV 26, 2200 - 0200')).toEqual([{ from: '2026-11-30T22:00Z', to: '2026-12-01T02:00Z' }]);
+    expect(parseSupTimes('31 DEC 26, 2300 - 2400')).toEqual([{ from: '2026-12-31T23:00Z', to: '2027-01-01T00:00Z' }]);
+    // the SUP's misprint of 0700, and what is not a window
+    expect(parseSupTimes('28 SEP 26, 7000 - 0800 &1000 - 1100')).toBeNull();
+    expect(parseSupTimes('28 SEP 26, 0700 - 2460')).toBeNull();
+    expect(parseSupTimes('H24')).toBeNull();
   });
   test('SUP 09/24 LGTRA1A–C: rings read from the numbered list, limits from the remarks', () => {
     const { areas, warnings } = run([
       ['01/23', SUP_0123],
       ['09/24', SUP_0924],
     ]);
-    expect(warnings).toEqual([]);
+    expect(about(warnings)).toEqual([]);
     const p = byId(areas);
     expect([...p.keys()]).toEqual(['UAV-AREA1', 'UAV-AREA2', 'LGTRA1A', 'LGTRA1B', 'LGTRA1C']);
     const a = p.get('LGTRA1A')!;
     expect(a).toMatchObject({ kind: 'MIL', group: 'LGTRA1', lower: 'SFC', upper: 'FL 100', activity: 'H24' });
     expect(a.source).toBe('AIP SUP 09/24');
+    // valid UFN: in force from the SUP's date on, no last day, no windows
+    expect(a.validFrom).toBe('2024-08-08');
+    expect(a.validUntil).toBeUndefined();
+    expect(a.windows).toBeUndefined();
     // 9 points printed, the first repeated at the end; the ring stops there, before '1.2. LGTRA1B:'.
     expect(a.polygon).toHaveLength(9);
     expect(a.polygon![0]).toEqual([40.916667, 25.516667]);
@@ -1004,20 +1217,95 @@ describe('AIP SUP', () => {
     );
     expect(p.get('UAV-AREA2')!.polygon![2]).toEqual([38.966667, 24.766667]);
   });
-  test('a time-limited SUP is reported, not drawn', () => {
+  test('SUP 07/26 LGD102A: drawn with the SUP’s dates, active whenever the EAUP/EUUP activates it', () => {
     const { areas, warnings } = run([['07/26', SUP_0726]]);
-    expect(areas).toEqual([]);
-    expect(warnings.some((w) => /07\/26 \(to 09 JUN 27\).*time-limited/.test(w))).toBe(true);
+    const p = byId(areas);
+    expect([...p.keys()]).toEqual(['LGD102A', 'LGD102AZ']);
+    expect(p.get('LGD102A')!).toMatchObject({
+      kind: 'D',
+      group: 'LGD102',
+      lower: 'FL 295',
+      upper: 'UNL',
+      validFrom: '2026-06-11',
+      validUntil: '2027-06-09',
+      activity: 'AMC manageable area.\nActivated by EAUP/EUUP.',
+      source: 'AIP SUP 07/26',
+    });
+    expect(p.get('LGD102A')!.windows).toBeUndefined();
+    expect(p.get('LGD102A')!.lateral).toBe(
+      '353600N 0240700E - 361800N 0240700E - 361800N 0244700E - 353400N 0250800E - 353100N 0241100E - 353600N 0240700E',
+    );
+    // the FBZ (typed with a Greek Ζ) as ENR 5.1 lists its own
+    expect(p.get('LGD102AZ')!).toMatchObject({ lower: 'FL 295', upper: 'FL 660' });
+    expect(p.get('LGD102AZ')!.remarks).toContain('For IFR flight planning purposes only.');
+    expect(p.get('LGD102AZ')!.polygon![0]).toEqual([36.479722, 23.898889]);
+    // pages 2 and 3 are not in this excerpt
+    expect(about(warnings)).toEqual([
+      'AIP SUP 07/26 LGD102B: text changed (no LGD102B): not drawn',
+      'AIP SUP 07/26 LGD102BZ: text changed (no LGD102BZ): not drawn',
+      'AIP SUP 07/26 LGD102C: text changed (no LGD102C): not drawn',
+      'AIP SUP 07/26 LGD102CZ: text changed (no LGD102CZ): not drawn',
+    ]);
+  });
+  test('SUP 39/26: the exercise areas with their days and times, in force from the first day to the last', () => {
+    const { areas, warnings } = run([['39/26', SUP_3926]]);
+    const p = byId(areas);
+    expect([...p.keys()]).toEqual(['LGD2SW', 'LGD2SWZ', 'LGD12S', 'LGD12S-NOV', 'LGD12SZ', 'LGD12SZ-NOV']);
+    const sw = p.get('LGD2SW')!;
+    expect(sw).toMatchObject({ kind: 'D', lower: 'SFC', upper: 'FL 660', source: 'AIP SUP 39/26' });
+    // 13 days printed, 26 windows; the misprinted '7000' read as 0700
+    expect(sw.windows).toHaveLength(26);
+    expect(sw.windows![0]).toEqual({ from: '2026-09-28T07:00Z', to: '2026-09-28T08:00Z' });
+    expect(sw.windows!.at(-1)).toEqual({ from: '2026-11-16T11:00Z', to: '2026-11-16T12:00Z' });
+    // the exercise's days, within the SUP's 09 JUL 26 – 27 NOV 26
+    expect(sw).toMatchObject({ validFrom: '2026-09-28', validUntil: '2026-11-16' });
+    expect(sw.polygon).toHaveLength(13);
+    expect(sw.polygon![9]).toEqual([36.233333, 21.1]);
+    // its FBZ shares the limits and the days; LGD76 (no coordinates) stays as ENR 5.1 publishes it
+    expect(p.get('LGD2SWZ')!.windows).toEqual(sw.windows);
+    expect(p.get('LGD2SWZ')!.polygon).toHaveLength(18);
+    // other limits in November: two areas with the designator, one per period
+    expect(p.get('LGD12S')!).toMatchObject({
+      upper: 'FL 240',
+      lower: 'SFC',
+      validFrom: '2026-10-15',
+      validUntil: '2026-10-30',
+    });
+    expect(p.get('LGD12S')!.designator).toBeUndefined();
+    expect(p.get('LGD12S-NOV')!).toMatchObject({
+      designator: 'LGD12S',
+      upper: 'FL 280',
+      validFrom: '2026-11-02',
+      validUntil: '2026-11-27',
+    });
+    expect(p.get('LGD12S-NOV')!.windows).toContainEqual({ from: '2026-11-23T11:30Z', to: '2026-11-23T13:30Z' });
+    expect(p.get('LGD12S-NOV')!.windows).toContainEqual({ from: '2026-11-17T16:00Z', to: '2026-11-17T18:00Z' });
+    expect(p.get('LGD12S-NOV')!.lateral).toBe(p.get('LGD12S')!.lateral);
+    expect(p.get('LGD12SZ-NOV')!).toMatchObject({ designator: 'LGD12SZ', upper: 'FL 285' });
+    // the pages left out of the excerpt
+    expect(about(warnings).every((w) => /LGD(4|6|8)SW|LGR|LGD3C/.test(w))).toBe(true);
+  });
+  test('SUP 39/26: a window that changed or was added takes the page’s areas off', () => {
+    const changed = run([['39/26', SUP_3926.replace('23 NOV 26, 1130 - 1330', '23 NOV 26, 1130 - 1400')]]);
+    expect(byId(changed.areas).has('LGD12S')).toBe(false);
+    expect(byId(changed.areas).has('LGD2SW')).toBe(true);
+    expect(changed.warnings).toContain(
+      'AIP SUP 39/26 LGD12S, LGD12S-NOV: windows changed (not transcribed: 23 NOV 26, 1130 - 1400 | not printed: 23 NOV 26, 1130 - 1330): not drawn',
+    );
+    const limits = run([['39/26', SUP_3926.replace('FL240', 'FL250')]]);
+    expect(limits.warnings).toContain('AIP SUP 39/26 LGD12S: text changed (FL240): not drawn');
+  });
+  test('a SUP with coordinates and no entry is flagged, UFN or not', () => {
+    const { warnings } = run([['99/26', SUP_0924.replace('AIP SUP       09/24', 'AIP SUP       99/26')]]);
+    expect(warnings).toContain('AIP SUP 99/26 (to UFN) prints coordinates but has no SUP_AREAS entry');
+    const limited = run([['98/26', SUP_0726]]);
+    expect(limited.warnings).toContain('AIP SUP 98/26 (to 09 JUN 27) prints coordinates but has no SUP_AREAS entry');
   });
   test('a reissued SUP with other limits, and a SUP gone from the AIP, are flagged', () => {
     const { areas, warnings } = run([['09/24', SUP_0924.replace('SFC – FL100', 'SFC – FL120')]]);
     expect(areas).toEqual([]);
     expect(warnings.filter((w) => /09\/24 LGTRA1.: text changed/.test(w))).toHaveLength(3);
     expect(warnings).toContain('AIP SUP 01/23 is no longer in the AIP: drop it from SUP_AREAS');
-  });
-  test('a UFN SUP with coordinates and no entry is flagged', () => {
-    const { warnings } = run([['99/26', SUP_0924.replace('AIP SUP       09/24', 'AIP SUP       99/26')]]);
-    expect(warnings).toContain('AIP SUP 99/26 (UFN) prints coordinates but has no SUP_AREAS entry');
   });
 });
 
@@ -1073,15 +1361,52 @@ describe('tools/enr5_areas.json', () => {
     const rank = (a: RefArea) => (a.source.startsWith('AIP SUP') ? 5 : { P: 0, R: 1, D: 2, MIL: 3, ACT: 4 }[a.kind]);
     for (let i = 1; i < areas.length; i++) expect(rank(areas[i]) >= rank(areas[i - 1]), areas[i].id).toBe(true);
   });
-  test('the areas of the UFN SUPs in force (SUP 01/23, 09/24) are drawn', () => {
+  test('the areas of the SUPs in force are drawn: UFN (01/23, 09/24) and time-limited (07/26, 39/26)', () => {
     const sup = areas.filter((a) => a.source.startsWith('AIP SUP')).map((a) => `${a.source} ${a.id}`);
+    // an area then its FBZ per page; LGD12S's two tables share a page, and so do LGD12SZ's
+    const jfc = [
+      ...['LGD2SW', 'LGD4SW', 'LGD6SW'].flatMap((id) => [id, `${id}Z`]),
+      'LGD6SW-NOV',
+      'LGD6SWZ-NOV',
+      'LGD8SW',
+      'LGD8SWZ',
+      'LGD12S',
+      'LGD12S-NOV',
+      'LGD12SZ',
+      'LGD12SZ-NOV',
+      ...['LGR14S', 'LGR1CE', 'LGD3CL', 'LGD3CU', 'LGR5CE'].flatMap((id) => [id, `${id}Z`]),
+    ];
     expect(sup).toEqual([
       'AIP SUP 01/23 UAV-AREA1',
       'AIP SUP 01/23 UAV-AREA2',
       'AIP SUP 09/24 LGTRA1A',
       'AIP SUP 09/24 LGTRA1B',
       'AIP SUP 09/24 LGTRA1C',
+      ...['A', 'B', 'C'].flatMap((s) => [`AIP SUP 07/26 LGD102${s}`, `AIP SUP 07/26 LGD102${s}Z`]),
+      ...jfc.map((id) => `AIP SUP 39/26 ${id}`),
     ]);
+  });
+  test('time-limited areas: in force within the SUP’s dates, windows in order, each up to 2 h within those days', () => {
+    for (const a of areas.filter((x) => x.validUntil || x.windows)) {
+      expect(a.source, a.id).toMatch(/^AIP SUP (07|39)\/26$/);
+      expect(a.validFrom! <= a.validUntil!, a.id).toBe(true);
+      for (const w of a.windows ?? []) {
+        const h = (Date.parse(w.to) - Date.parse(w.from)) / 3600000;
+        expect(h > 0 && h <= 2, `${a.id} ${w.from}`).toBe(true);
+        expect(w.from.slice(0, 10) >= a.validFrom! && w.to.slice(0, 10) <= a.validUntil!, `${a.id} ${w.from}`).toBe(
+          true,
+        );
+      }
+      const froms = (a.windows ?? []).map((w) => w.from);
+      expect(froms, a.id).toEqual([...froms].sort());
+    }
+    const p = byId(areas);
+    expect(p.get('LGD102C')!).toMatchObject({ validFrom: '2026-06-11', validUntil: '2027-06-09', lower: 'FL 295' });
+    expect(p.get('LGD6SW')!).toMatchObject({ lower: 'FL 200', validFrom: '2026-09-28', validUntil: '2026-10-30' });
+    expect(p.get('LGD6SW-NOV')!).toMatchObject({ designator: 'LGD6SW', lower: 'FL 150', validFrom: '2026-11-02' });
+    expect(p.get('LGD3CU')!).toMatchObject({ lower: 'FL 170', upper: 'FL 220', validUntil: '2026-11-12' });
+    expect(p.get('LGR14S')!).toMatchObject({ kind: 'R', upper: 'FL 130' });
+    expect(p.get('LGR14S')!.windows).toHaveLength(43);
   });
   test('spot checks on the full text', () => {
     const p = byId(areas);

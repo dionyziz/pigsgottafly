@@ -288,6 +288,29 @@ export interface RefArea {
   remarks: string;
   /** e.g. 'ENR 5.1', 'ENR 5.2', 'ENR 5.3', 'AIP SUP 09/24'. */
   source: string;
+  /**
+   * Designator as charted when `id` cannot be it: a SUP that gives one area other limits for part of its
+   * dates (SUP 39/26 LGD6SW) makes two areas with the same designator, and ids are unique per AIRAC.
+   */
+  designator?: string;
+  /**
+   * First and last UTC day the area is in force, 'YYYY-MM-DD', both included: from an AIP SUP's
+   * "Effective from" / "to" (a SUP valid UFN has no last day). An area with dated windows is in force
+   * from its first window's day to its last one's, within the SUP's dates. Absent: always (ENR 5).
+   */
+  validFrom?: string;
+  validUntil?: string;
+  /**
+   * The periods of activity a SUP prints with dates, UTC instants 'YYYY-MM-DDTHH:MMZ' (`to` after `from`;
+   * a period past midnight ends on the next day). The area is active only within them. Absent: active
+   * whenever in force, as `activity` says (H24, activated by NOTAM or EAUP/EUUP, …).
+   */
+  windows?: AreaWindow[];
+}
+
+export interface AreaWindow {
+  from: string;
+  to: string;
 }
 
 export interface RefFis {

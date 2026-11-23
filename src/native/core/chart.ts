@@ -136,7 +136,7 @@ export function chartStyle(
 export function chartData(
   input: Json<{
     ref?: CoreRef | null;
-    flight: Pick<Flight, 'route' | 'options'>;
+    flight: Pick<Flight, 'route' | 'options'> & { date?: string | null };
     notams?: NotamBriefing | null;
     layers?: Partial<MapLayers> | null;
     /** The pilot's saved waypoints (GET /api/waypoints), drawn as on the website. */
@@ -151,7 +151,9 @@ export function chartData(
   const layers = mapLayersOf(i.layers ?? null) ?? mapLayersOf(flight?.options?.mapLayers ?? null) ?? DEFAULT_MAP_LAYERS;
   const route = flight?.route ?? [];
   const routeLatLon = route.map((p) => ({ lat: p.lat, lon: p.lon }));
-  const allInfos = airspaceInfos(r.airspaces, r.adAirspaces, r.areas ?? [], r.fir);
+  const nowDay = new Date(fin(i.now) ? i.now : Date.now()).toISOString().slice(0, 10);
+  // the areas in force on the flight's day (today for a flight without a date)
+  const allInfos = airspaceInfos(r.airspaces, r.adAirspaces, r.areas ?? [], r.fir, flight?.date || nowDay);
   const airInfos = allInfos.filter((a) => airspaceShown(layers, a.type));
   const far = new Set(allInfos.filter((a) => farFromRoute(a, routeLatLon)).map((a) => a.id));
   const withFar = <T extends { features: { properties: unknown }[] }>(fc: T): T => {
@@ -161,7 +163,6 @@ export function chartData(
     }
     return fc;
   };
-  const day = new Date(fin(i.now) ? i.now : Date.now()).toISOString().slice(0, 10);
   const EMPTY = { type: 'FeatureCollection', features: [] };
   const out: Record<string, unknown> = {
     airspaces: withFar(airspaceFeatures(allInfos)),
@@ -172,7 +173,7 @@ export function chartData(
     'vfr-route-arrows': vfrRouteArrowFeatures(r.vfrRoutes, r.vfrPoints),
     'vfr-points': vfrPointFeatures(r.vfrPoints),
     navaids: navaidFeatures(r.navaids),
-    aerodromes: aerodromeFeatures(r.aerodromes, magneticVariation(38, 24, day)),
+    aerodromes: aerodromeFeatures(r.aerodromes, magneticVariation(38, 24, nowDay)),
     waypoints: waypointFeatures(i.waypoints ?? []),
     'air-focus': focusFeatures(null),
     'local-area': localAreaFeatures(route),

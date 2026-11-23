@@ -46,9 +46,9 @@ const RUNWAY_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '005_ref_r
 const HOURS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '012_ref_ad_hours_2609.ts');
 const HOURS_JSON = path.join(ROOT, 'tools', 'ad_hours.json');
 // ENR 5.1 / 5.2 / 5.3 and AIP SUP areas (tools/enr5_areas.json from tools/parse_enr5.ts): the ref_areas table
-// (created by this migration if missing) and src/data/ref/areas.json. 017 is applied (ENR 5 only); 064 reloads
-// the AIRAC's areas with those of the SUPs in force.
-const AREAS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '064_ref_areas_2609.ts');
+// (created by this migration if missing) and src/data/ref/areas.json. 017 (ENR 5 only) and 064 (with the UFN
+// SUPs) are applied; 065 reloads the AIRAC's areas with the time-limited SUPs' too (validity and windows).
+const AREAS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '065_ref_areas_sup_2609.ts');
 const AREAS_JSON = path.join(ROOT, 'tools', 'enr5_areas.json');
 
 function loadWindowGlobal(file: string, name: string): any {

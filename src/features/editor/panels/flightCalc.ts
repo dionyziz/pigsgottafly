@@ -13,6 +13,7 @@ import {
   type Hazard,
   hazardLines,
   isaTempC,
+  legAreaConflicts,
   type LegGeometry,
   localNavlog,
   lowLegs,
@@ -62,10 +63,12 @@ import {
   taxiAllowanceOf,
   validateCrew,
 } from '../../../shared';
+import { fmtAipDay, fmtDatedWindow } from '../../../shared/areaTime';
 import type { NotamBriefing } from '../../../shared/briefing';
 import { todayUtc } from '../../../shared/date';
 import { fmtClock } from '../../../shared/format';
-import type { RefAerodrome, RefRunway, RefSunTable } from '../../../shared/ref';
+import type { AreaWindow, RefAerodrome, RefArea, RefRunway, RefSunTable } from '../../../shared/ref';
+import { fmtVertical } from '../map/airspace';
 import { type AdCheck, aerodromeChecks as buildAdChecks, aerodromeWarnings } from './aerodromeChecks';
 
 export type WarningLevel = 'danger' | 'warn' | 'info';
@@ -119,6 +122,8 @@ export interface CalcRef {
   aerodromes: RefAerodrome[];
   runwaysOf: (aerodromeId: string) => RefRunway[];
   sunTables: Record<string, RefSunTable>;
+  /** ENR 5 / AIP SUP areas (the legs' area warnings); none by default. */
+  areas?: RefArea[];
 }
 
 const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
@@ -528,7 +533,29 @@ export interface WarningsInput {
   aerodromeChecks: AdCheck[];
   terrain: Uint8Array | null;
   altitudesFt: number[];
+  /** ENR 5 / AIP SUP areas: the legs entering them at their altitude while active are warned about. */
+  areas?: RefArea[];
   nowMs: number;
+}
+
+const AREA_WARNING: Record<RefArea['kind'], { level: WarningLevel; what: string }> = {
+  P: { level: 'danger', what: 'prohibited area' },
+  R: { level: 'warn', what: 'restricted area' },
+  D: { level: 'warn', what: 'danger area' },
+  MIL: { level: 'warn', what: 'military area' },
+  ACT: { level: 'info', what: 'local flying area' },
+};
+
+/**
+ * 'Enters danger area LGD4SW (SFC – FL660), active 23 NOV 1130–1330Z (AIP SUP 39/26, valid until 27 NOV 2026).'
+ * The windows and the end date only for an area a SUP limits in time.
+ */
+function areaDetail(a: RefArea, windows: AreaWindow[]): string {
+  const code = a.designator ?? a.id;
+  const name = a.kind === 'ACT' ? a.name || code : a.name ? `${code} ${a.name}` : code;
+  const active = windows.length ? `, active ${windows.map((w) => `${fmtDatedWindow(w)}Z`).join(', ')}` : '';
+  const until = a.validUntil ? ` (${a.source}, valid until ${fmtAipDay(a.validUntil)})` : '';
+  return `Enters ${AREA_WARNING[a.kind].what} ${name} (${fmtVertical(a.lower, a.upper)})${active}${until}.`;
 }
 
 /** Every warning of the flight, most of them in the order the panels show them. */
@@ -699,6 +726,30 @@ export function calcWarnings(i: WarningsInput): CalcWarning[] {
         detail,
       });
     }
+  // ENR 5 / AIP SUP areas entered at the planned altitude while active; without block times, the flight's day
+  // (or today's) stands for the time of every leg
+  if (i.areas?.length && legs.length) {
+    const day = fin(dayMs) ? dayMs : Math.floor(i.nowMs / DAY) * DAY;
+    const timed = !!navlog?.blockOffSet && fin(dayMs);
+    const areaLegs = legs.map((l, k) => {
+      const nl = timed ? navlog.legs[k] : undefined;
+      return {
+        from: l.from,
+        to: l.to,
+        altFt: altitudesFt[k] ?? null,
+        startMs: nl ? day + nl.startMin * 60000 : day,
+        endMs: nl ? day + nl.endMin * 60000 : day + DAY - 1,
+      };
+    });
+    for (const c of legAreaConflicts(areaLegs, i.areas)) {
+      const l = legs[c.legIndex];
+      const detail = areaDetail(c.area, c.windows);
+      add(AREA_WARNING[c.area.kind].level, 'navlog', `${l.from.name} → ${l.to.name}: ${detail}`, {
+        index: c.legIndex,
+        detail,
+      });
+    }
+  }
   // aerodrome hours (AIP AD 2.3 / AD 1.6, NOTAMs) at the planned times
   for (const x of aerodromeWarnings(i.aerodromeChecks)) add(x.level, 'aerodrome', x.text);
   if (fin(dayMs) && navlog && (fin(i.takeoffMs) ? i.takeoffMs : dayMs + DAY) < i.nowMs - DAY)
@@ -838,6 +889,7 @@ export function computeFlightCalc(i: FlightCalcInput): FlightCalcResult {
     aerodromeChecks,
     terrain: i.terrain,
     altitudesFt,
+    areas: ref.areas,
     nowMs,
   });
   return {

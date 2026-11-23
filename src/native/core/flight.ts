@@ -174,7 +174,12 @@ export function computeFlight(input: Json<ComputeFlightInput>) {
     hazardWeather,
     briefing: i.notams ?? null,
     terrain,
-    ref: { aerodromes: ref.bundle.aerodromes, runwaysOf: ref.runwaysOf, sunTables: ref.sunTables },
+    ref: {
+      aerodromes: ref.bundle.aerodromes,
+      runwaysOf: ref.runwaysOf,
+      sunTables: ref.sunTables,
+      areas: ref.bundle.areas,
+    },
     nowMs,
   });
   const rows = readiness({

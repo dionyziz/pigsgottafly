@@ -4,6 +4,7 @@ import { distanceNm } from '../../../../calc';
 import { AD_AIRSPACES, AERODROMES, AIRSPACES, FIR, NAVAIDS, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
 import type { RoutePoint, Waypoint } from '../../../../shared';
 import { legKey } from '../../../../shared';
+import type { RefArea } from '../../../../shared/ref';
 import {
   airspaceInfos,
   airspaceLabel,
@@ -19,6 +20,7 @@ import {
 } from '../airspace';
 import {
   airspaceFeatures,
+  areaFeatures,
   circleRing,
   destination,
   fmtLimit,
@@ -560,6 +562,64 @@ describe('airspace on the map', () => {
     })!;
     expect(sq.lateral).toBe('Polygon, 3 points');
     expect(fromArea({ ...base, id: 'X' })).toBeNull();
+  });
+  it('time-limited areas: drawn only on the days in force, labelled with their designator, windows in the details', () => {
+    const sq: [number, number][] = [
+      [37, 20],
+      [37, 21],
+      [38, 21],
+      [37, 20],
+    ];
+    const area = (o: Partial<RefArea>): RefArea => ({
+      id: 'X',
+      kind: 'D',
+      name: 'JOINT FLYING COURSE (JFC) 2026',
+      lower: 'SFC',
+      upper: 'FL 280',
+      lateral: '',
+      polygon: sq,
+      activity: 'AMC Manageable areas (AMA)',
+      remarks: '',
+      source: 'AIP SUP 39/26',
+      ...o,
+    });
+    const areas = [
+      area({ id: 'LGD12S', upper: 'FL 240', validFrom: '2026-10-15', validUntil: '2026-10-30' }),
+      area({
+        id: 'LGD12S-NOV',
+        designator: 'LGD12S',
+        validFrom: '2026-11-02',
+        validUntil: '2026-11-27',
+        windows: [
+          { from: '2026-11-23T11:30Z', to: '2026-11-23T13:30Z' },
+          { from: '2026-11-27T08:00Z', to: '2026-11-27T10:00Z' },
+        ],
+      }),
+      area({ id: 'LGD102A', validFrom: '2026-06-11', validUntil: '2027-06-09', upper: 'UNL', lower: 'FL 295' }),
+      area({ id: 'LGD76', source: 'ENR 5.1' }),
+    ];
+    const on = (day: string) => airspaceInfos([], [], areas, undefined, day).map((a) => a.id);
+    expect(on('2026-10-30')).toEqual(['LGD12S', 'LGD102A', 'LGD76']);
+    expect(on('2026-11-23')).toEqual(['LGD12S-NOV', 'LGD102A', 'LGD76']);
+    // expired: gone without a data change
+    expect(on('2026-11-28')).toEqual(['LGD102A', 'LGD76']);
+    expect(on('2027-06-10')).toEqual(['LGD76']);
+    // no day: all (the reference data as is)
+    expect(airspaceInfos([], [], areas)).toHaveLength(4);
+    const nov = airspaceInfos([], [], areas, undefined, '2026-11-24').find((a) => a.id === 'LGD12S-NOV')!;
+    expect([nov.code, nov.name]).toEqual(['LGD12S', 'LGD12S JOINT FLYING COURSE (JFC) 2026']);
+    expect(nov.timeRows).toEqual([
+      { label: 'Valid', text: 'until 27 NOV 2026' },
+      { label: 'Windows (UTC)', text: '27 NOV 0800–1000' },
+    ]);
+    // an area without dates has no such rows
+    expect(
+      airspaceInfos([], [], areas, undefined, '2026-11-24').find((a) => a.id === 'LGD76')!.timeRows,
+    ).toBeUndefined();
+    // the chart label uses the designator
+    const f = areaFeatures([nov]).features[0];
+    expect(f.properties.id).toBe('LGD12S-NOV');
+    expect(f.properties.label).toBe('LGD12S · SFC – FL280');
   });
 });
 
