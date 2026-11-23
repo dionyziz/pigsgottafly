@@ -60,6 +60,12 @@
    "dms": "37 12 16 N 025 27 06 E",
    "ref": "ENR 4.4",
    "note": "no coordinates on the chart: ENR 4.4 significant point"
+  },
+  {
+   "name": "MIL",
+   "dms": "36 44 51.03 N 024 31 10.04 E",
+   "no_symbol": true,
+   "note": "MILOS VOR/DME, drawn not to scale at the chart's edge"
   }
  ],
  "routes": [
@@ -132,7 +138,26 @@
    "min": 2000,
    "max": 2000,
    "nm": 7
+  },
+  {
+   "a": "SOREV",
+   "b": "ERAKIS",
+   "min": null,
+   "max": null,
+   "nm": 19
+  },
+  {
+   "a": "EROTU",
+   "b": "GENDO",
+   "min": null,
+   "max": null
+  },
+  {
+   "a": "GENDO",
+   "b": "MIL",
+   "min": null,
+   "max": null
   }
  ],
- "notes": "SOREV–ERAKIS (19, not to scale) and EROTU–GENDO–MIL (R32) show no altitude. Holdings 1000 at ANTIPAROS, MAISTROS, NAKSOS, FANNOS, KOTOMERI."
+ "notes": "Checked complete against the chart (AIRAC 0926). SOREV–ERAKIS (19, not to scale) and EROTU–GENDO–MIL (MIL R032; a solid line, MIL is the MILOS VOR, not a military route) show no altitude; EROTU–GENDO–MIL prints no distance. Holdings 1000 at ANTIPAROS, MAISTROS, NAKSOS, FANNOS, KOTOMERI."
 }

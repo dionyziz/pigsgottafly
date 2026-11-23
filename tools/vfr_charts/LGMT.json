@@ -110,7 +110,8 @@
    "a": "AMANI",
    "b": "LSV",
    "min": 2500,
-   "max": 2500
+   "max": 2500,
+   "nm": 7
   },
   {
    "a": "LSV",
@@ -218,5 +219,5 @@
    "nm": 7
   }
  ],
- "notes": "LSV = LESVOS VOR/DME. Holdings: PALIOS, GERA 2500; MIRSINIA 1500."
+ "notes": "Checked complete against the chart (AIRAC 0926). LSV = LESVOS VOR/DME. Holdings: PALIOS, GERA 2500; MIRSINIA 1500."
 }

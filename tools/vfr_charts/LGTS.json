@@ -92,6 +92,17 @@
    "name": "FSK",
    "dms": "41 05 55.37 N 022 59 29.36 E",
    "no_symbol": true
+  },
+  {
+   "name": "SKP",
+   "same_as": "LGSK"
+  },
+  {
+   "name": "SKIATHOS",
+   "dms": "39 10 39 N 023 30 13 E",
+   "ref": "AD 2-LGSK",
+   "no_symbol": true,
+   "note": "LGSK ARP: end of the MIL route TO SKIATHOS, off the chart"
   }
  ],
  "routes": [
@@ -292,8 +303,7 @@
    "b": "KATERO",
    "min": 5000,
    "max": 5000,
-   "nm": 8,
-   "oneway": true
+   "nm": 8
   },
   {
    "a": "DROMOS",
@@ -333,7 +343,89 @@
    "min": 4500,
    "max": 4500,
    "nm": 20
+  },
+  {
+   "a": "APOLON",
+   "b": "STRIMON",
+   "min": null,
+   "max": null,
+   "nm": 20
+  },
+  {
+   "a": "EPANOM",
+   "b": "GOLF",
+   "min": null,
+   "max": null,
+   "nm": 14
+  },
+  {
+   "a": "MAKRIS",
+   "b": "PLATAMON",
+   "min": null,
+   "max": null,
+   "nm": 29
+  },
+  {
+   "a": "POSIDI",
+   "b": "SKP",
+   "min": null,
+   "max": null,
+   "nm": 48,
+   "oneway": true
+  },
+  {
+   "a": "MAKRIS",
+   "b": "LGAX",
+   "min": 1500,
+   "max": 1500,
+   "nm": 15,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "LGAX",
+   "b": "MAKRIS",
+   "min": 1000,
+   "max": 1000,
+   "nm": 15,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "PLATAMON",
+   "b": "KATERO",
+   "min": null,
+   "max": null,
+   "nm": 26,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "PLATAMON",
+   "b": "KRATIA",
+   "min": null,
+   "max": null,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "POSIDI",
+   "b": "AGIA",
+   "min": 6000,
+   "max": 6000,
+   "nm": 30,
+   "oneway": true,
+   "kind": "mil"
+  },
+  {
+   "a": "GOLF",
+   "b": "SKIATHOS",
+   "min": 2500,
+   "max": 2500,
+   "nm": 67,
+   "oneway": true,
+   "kind": "mil"
   }
  ],
- "notes": "FSK = FISKA VOR/DME (TO/FROM FSK VOR tracks from FALLIA and LAGADA). Dash-dot routes (MIL aircraft only) omitted. No altitude shown: APOLON\u2013STRIMON (20), EPANOM\u2013GOLF (14), MAKRIS\u2013PLATAMON (29). LAGADA\u2192KORONA and MAKRIS\u2192KATERO show a single arrowed altitude (one-way)."
+ "notes": "Checked complete against the chart (AIRAC 0926). FSK = FISKA VOR/DME (TO/FROM FSK VOR tracks from FALLIA via KILKIS and from LAGADA). No altitude shown: APOLON\u2013STRIMON (20), EPANOM\u2013GOLF (14), MAKRIS\u2013PLATAMON (29), POSIDI\u2192TO SKOPELOS (SKP) (48, one-way; SKP as on LGSK). LAGADA\u2192KORONA shows a single arrowed altitude (one-way); MAKRIS\u2013KATERO 5000 is arrowed both ways. Dash-dot MIL ACFT ONLY routes are kind mil: LGAX\u2013MAKRIS (15, 1000 inbound to MAKRIS / 1500 outbound), PLATAMON\u2192KATERO (26, no altitude), PLATAMON\u2192KRATIA via GOLF ('to KRATIA (25 NM) (to LGD92)', no altitude; nm left out: PLATAMON\u2013KRATIA measures 27.7 NM, the 25 is presumably to LGD 92), POSIDI\u2192AGIA (30, 6000) and GOLF\u2192TO SKIATHOS (67, 2500; end point the LGSK ARP)."
 }

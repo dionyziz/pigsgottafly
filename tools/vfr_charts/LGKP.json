@@ -193,7 +193,26 @@
    "min": 6500,
    "max": 6500,
    "nm": 18
+  },
+  {
+   "a": "SKALOMA",
+   "b": "ABEAM RWY",
+   "min": null,
+   "max": null,
+   "nm": 5
+  },
+  {
+   "a": "ALFA",
+   "b": "ABEAM MARATHOS",
+   "min": null,
+   "max": null
+  },
+  {
+   "a": "ALFA",
+   "b": "DELTAS",
+   "min": null,
+   "max": null
   }
  ],
- "notes": "SKALOMA–ABEAM RWY (5 NM) shows no altitude. ALFA/DELTAS–ABEAM MARATHOS are TO/FROM RODOS tracks without altitude (Rodos routes are on the LGRP chart). Holdings 1000 at KASSONISIA, FINIKI, PATELA, SKROFA, ABEAM RWY, SKALOMA."
+ "notes": "Checked complete against the chart (AIRAC 0926). SKALOMA–ABEAM RWY (5 NM) shows no altitude. ALFA–ABEAM MARATHOS and ALFA–DELTAS are TO/FROM RODOS tracks with neither altitude nor distance (kept here, not on LGRP). ALFA's 020° and 058° legs to ALIMIA and LINDOS are on the LGRP chart. Holdings 1000 at KASSONISIA, FINIKI, PATELA, SKROFA, ABEAM RWY, SKALOMA."
 }
