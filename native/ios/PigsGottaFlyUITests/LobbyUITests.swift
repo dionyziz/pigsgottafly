@@ -52,6 +52,14 @@ final class LobbyUITests: XCTestCase {
         search.typeText(" nowhere")
         XCTAssertTrue(app.staticTexts["No matching flights"].waitForExistence(timeout: 5))
         search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 20))
+        // iPad keeps the search active (no Cancel), and under test a row's long press then opens no
+        // menu: the rest starts from a fresh launch
+        if app.isPad {
+            app.terminate()
+            app.launch()
+            XCUIDevice.shared.orientation = .landscapeLeft
+            XCTAssertTrue(lgsk.waitForExistence(timeout: 15))
+        }
         // an active search hides the toolbar: its cancel button ends it (named Close since iOS 26)
         let end = app.buttons.matching(NSPredicate(format: "label IN {'Cancel', 'Close'}")).firstMatch
         if end.exists { end.tap() }

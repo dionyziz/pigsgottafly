@@ -66,7 +66,10 @@ struct RecordList<Destination: View>: View {
                         row(r)
                     }
                 } else {
+                    // a selection row: one element that selects, as the iPhone's link is
                     row(r).tag(rid)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isButton)
                 }
             }
             .accessibilityIdentifier("\(rowPrefix)-\(rid)")
