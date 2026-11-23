@@ -39,11 +39,12 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   Make a copy, Move to trash (with Undo), Leave (shared). The Trash (GET /flights?trash=1) with Restore.
   Pull to refresh.
 - **New flight** (the website's NewFlightPage). The list's + creates the flight at once with the
-  profile's defaults (POST /api/flights `{}`: the server starts it at the home aerodrome); a long press
+  profile's defaults (POST /api/flights `{}`: the server starts it at the home aerodrome, with no
+  destination); a long press
   offers "Choose origin and destination". `Views/NewFlightView.swift` is the sheet for the cases that
   ask first: the first flight asks for the home aerodrome (saved with PUT /api/me before the flight is
-  made); the route form takes origin and destination (an empty destination is back to the origin),
-  Local flight and its duration, or Start with an empty map. With an empty hangar the pilot may type a
+  made); the route form takes origin and destination, or Local flight (back to the origin) and its
+  estimated total time, or Start with an empty map. With an empty hangar the pilot may type a
   registration and the aircraft is made from the hangar's type template (`PGF.aircraftFromTemplate`,
   POST /api/aircraft). The new flight opens on Plan.
 - **A flight** (`Views/Flight/FlightWorkspace.swift`). iPhone: its own tab bar, **Fly · Map · Plan ·

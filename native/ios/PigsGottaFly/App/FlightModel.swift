@@ -54,7 +54,8 @@ final class FlightModel: ObservableObject {
         if !t.isEmpty { return t }
         let route = flight?["route"]?.array ?? []
         guard let a = route.first?["name"]?.string, let b = route.last?["name"]?.string else { return "Flight" }
-        return "\(a) → \(b)"
+        // a new flight starts at the home aerodrome alone; "LGTT → LGTT" would read as a local flight
+        return route.count == 1 ? a : "\(a) → \(b)"
     }
     var date: String { flight?["date"]?.string ?? "" }
     var blockOff: String { flight?["blockOff"]?.string ?? "" }

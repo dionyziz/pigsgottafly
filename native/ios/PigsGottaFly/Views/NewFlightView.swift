@@ -3,8 +3,8 @@ import SwiftUI
 /// New flight (src/features/lobby/NewFlightPage.tsx). The list's New flight creates the flight at once
 /// with the profile's defaults; this sheet is for the two cases that ask first. `.home`: a pilot's first
 /// flight asks for their home aerodrome (sign-up asks nothing), saved to the profile before the server
-/// builds the home route. `.ask`: origin and destination, where an empty destination means back to the
-/// origin, which is a local flight with its duration; or an empty map. With an empty hangar the pilot
+/// starts the flight there. `.ask`: origin and destination, or (Local flight on) the estimated total time
+/// of a flight back to the origin; or an empty map. With an empty hangar the pilot
 /// may type a registration, and the aircraft is made from the hangar's type template.
 struct NewFlightView: View {
     enum Mode: String, Identifiable {
@@ -80,11 +80,11 @@ struct NewFlightView: View {
         Section {
             placeRow("Origin", place: $from, id: "new-from")
             if localChosen {
-                LabeledContent("Destination", value: from.map { "Back to \($0.code)" } ?? "Back to the origin")
+                LabeledContent("Destination", value: from?.code ?? "")
                     .accessibilityIdentifier("new-flight-local-to")
             } else {
                 HStack {
-                    placeRow("Destination", place: $to, id: "new-to", placeholder: toPlaceholder)
+                    placeRow("Destination", place: $to, id: "new-to", placeholder: "ICAO or name")
                     if to != nil {
                         Button {
                             to = nil
@@ -92,15 +92,15 @@ struct NewFlightView: View {
                             Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                         }
                         .buttonStyle(.borderless)
-                        .accessibilityLabel("Back to the origin")
+                        .accessibilityLabel("Clear the destination")
                         .accessibilityIdentifier("new-to-clear")
                     }
                 }
             }
             Toggle("Local flight", isOn: $localChosen).accessibilityIdentifier("new-flight-local")
-            if isLocal {
+            if localChosen {
                 Stepper(value: $durationMin, in: 5...NewFlight.maxLocalDurationMin, step: 5) {
-                    LabeledContent("Duration", value: Fmt.hoursMinutes(Double(durationMin)))
+                    LabeledContent("Estimated total time", value: Fmt.hoursMinutes(Double(durationMin)))
                         .monospacedDigit()
                 }
                 .accessibilityIdentifier("new-flight-duration")
@@ -139,16 +139,8 @@ struct NewFlightView: View {
         .accessibilityIdentifier(id)
     }
 
-    private var toPlaceholder: String { from.map { "\($0.name) (back to the origin)" } ?? "ICAO or name" }
-
-    /// An empty destination means back to the origin.
-    private var dest: Place? { localChosen || to == nil ? from : to }
-    /// Back where it left with nothing between, whether chosen, left empty or typed as the destination.
-    private var isLocal: Bool {
-        guard let from, let dest else { return localChosen }
-        return NewFlight.isLocal(from: from, to: dest)
-    }
-    private var ready: Bool { !busy && (mode == .home ? home != nil : from != nil) }
+    private var dest: Place? { localChosen ? from : to }
+    private var ready: Bool { !busy && (mode == .home ? home != nil : from != nil && dest != nil) }
 
     private func load() async {
         if to == nil, mode == .ask, let code = destination?.uppercased() {

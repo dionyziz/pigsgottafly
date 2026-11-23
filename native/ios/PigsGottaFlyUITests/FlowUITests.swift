@@ -118,33 +118,26 @@ final class FlowUITests: XCTestCase {
         reg.typeText("SX-ABC")
         app.buttons["create-flight"].tap()
 
-        // a new flight opens on Plan, even for today: the home route, there and back; a point is added
-        // and removed in the Navlog
+        // a new flight opens on Plan, even for today: at the home aerodrome with no destination; the
+        // destination is added in the Navlog
         XCTAssertTrue(app.element("stage-body-plan").waitForExistence(timeout: 15))
         XCTAssertFalse(app.element("fly-top-strip").exists)
-        XCTAssertTrue(app.navigationBars["LGTT → LGTT"].exists)
+        XCTAssertTrue(app.navigationBars["LGTT"].exists)
         app.tapRow("section-navlog")
-        let leg = app.buttons["leg-0"]
-        XCTAssertTrue(leg.waitForExistence(timeout: 15))
-        XCTAssertTrue(leg.label.contains("LGTT → LGTT"), leg.label)
+        XCTAssertTrue(app.element("route-point-0").waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["leg-0"].exists, "one point is no leg")
         let add = app.buttons["add-point"]
         for _ in 0..<4 where !add.isHittable { app.swipeUp() }
         add.tap()
         pick(app, search: "kalamo", place: "place-vfr:LGTG/KALAMO")
-        XCTAssertTrue(app.buttons["leg-1"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["leg-0"].label.contains("LGTT → KALAMO"), app.buttons["leg-0"].label)
-        let point = app.descendants(matching: .any)["route-point-1"].firstMatch
-        for _ in 0..<4 where !point.isHittable { app.swipeUp() }
-        point.swipeLeft()
-        app.buttons["Delete"].tap()
-        let gone = NSPredicate(format: "exists == false")
-        expectation(for: gone, evaluatedWith: app.buttons["leg-1"])
-        waitForExpectations(timeout: 15)
+        let leg = app.buttons["leg-0"]
+        XCTAssertTrue(leg.waitForExistence(timeout: 15))
+        XCTAssertTrue(leg.label.contains("LGTT → KALAMO"), leg.label)
 
-        // the flight is in the list, local, with its aircraft
+        // the flight is in the list with its route and aircraft
         app.back(from: "Navlog")
-        app.back(from: "LGTT → LGTT")
-        let row = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'LGTT local'"))
+        app.back(from: "LGTT → KALAMO")
+        let row = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'LGTT → KALAMO'"))
             .firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         XCTAssertTrue(row.label.contains("SX-ABC"), row.label)

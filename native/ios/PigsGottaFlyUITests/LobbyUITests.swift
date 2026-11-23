@@ -106,11 +106,13 @@ final class LobbyUITests: XCTestCase {
         field.tap()
         field.typeText("LGTT")
         app.buttons["place-aerodrome:LGTT"].tap()
-        // an empty destination is back to the origin: a local flight, with its duration
-        XCTAssertTrue(labelled(app, "LGTT (back to the origin)").waitForExistence(timeout: 10))
-        XCTAssertTrue(app.element("new-flight-duration").exists)
+        // a destination or Local flight is needed: an empty destination is not back to the origin
+        XCTAssertTrue(app.buttons["new-from"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["create-flight"].isEnabled, "the destination is required")
+        XCTAssertFalse(app.element("new-flight-duration").exists)
         app.switches["new-flight-local"].switches.firstMatch.tap()
-        XCTAssertTrue(labelled(app, "Back to LGTT").waitForExistence(timeout: 5))
+        XCTAssertTrue(app.element("new-flight-local-to").waitForExistence(timeout: 5))
+        XCTAssertTrue(labelled(app, "Estimated total time").exists)
         let duration = app.steppers["new-flight-duration"]
         duration.buttons.element(boundBy: 1).tap()
         XCTAssertTrue(labelled(app, "1:05").exists)

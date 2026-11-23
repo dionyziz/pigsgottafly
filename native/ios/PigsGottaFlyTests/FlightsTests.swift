@@ -50,10 +50,10 @@ final class FlightsTests: XCTestCase {
         let id = try await app.createFlight(NewFlight.defaults(aircraftId: ac))
         XCTAssertTrue(app.isNew(id))
         let f = try JSON.parse(try await app.api.flight(id))
-        XCTAssertEqual(f["route"]?.array?.map { $0["refId"]?.string }, ["LGTT", "LGTT"])
+        XCTAssertEqual(f["route"]?.array?.map { $0["refId"]?.string }, ["LGTT"], "no destination yet")
         XCTAssertEqual(f["aircraftId"]?.string, ac)
         XCTAssertEqual(app.flights.first?.summary.aircraft, "SX-ABC")
-        XCTAssertEqual(app.flights.first?.summary.routeLine, "LGTT local")
+        XCTAssertNil(app.flights.first?.summary.routeLine, "not a local flight until the pilot makes it one")
     }
 
     // MARK: rows

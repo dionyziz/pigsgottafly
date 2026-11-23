@@ -124,14 +124,14 @@ extension FixtureTransport {
         return (201, nil, Self.encoded(f))
     }
 
-    /// The server starts a flight with no route given at the home aerodrome, there and back.
+    /// The server starts a flight with no route given at the home aerodrome, with no destination.
     private func createAtHome(_ r: FixtureRequest) -> (Int, String?, Data?)? {
         guard var req = r.body.flatMap({ try? JSON.parse($0) }), req.object != nil, req["route"] == nil,
             let home = pilot["homeAerodrome"]?.string, !home.isEmpty,
             let ref = fixture("ref.json").flatMap({ try? JSON.parse($0) }),
             let ad = Places.aerodromes(ref: ref).first(where: { $0.code == home || $0.refId == home })
         else { return nil }
-        req["route"] = [ad.routePoint(), ad.routePoint()]
+        req["route"] = [ad.routePoint()]
         return flightRoutes(FixtureRequest(method: r.method, parts: r.parts, query: r.query, body: try? req.data()))
     }
 }
