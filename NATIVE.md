@@ -34,7 +34,7 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   aircraft, date). Upcoming, Past and Shared with me, newest first. Each row: the route thumbnail
   (Canvas from `summary.route`; a local flight is a dot in a dashed ring), the title, the route line
   ("LGTT local · 1:00") and aircraft, the date with the relative day, block-off in UTC and Greek local
-  time, the passengers, the filing and shared-by chips; on iPad also distance, time and fuel. Swipe and
+  time, the passengers, the filing and shared-by chips; at regular width also distance, time and fuel. Swipe and
   context menu: Fly again (a copy for today), Rename (PUT with the automatic title kept automatic),
   Make a copy, Move to trash (with Undo), Leave (shared). The Trash (GET /flights?trash=1) with Restore.
   Pull to refresh.

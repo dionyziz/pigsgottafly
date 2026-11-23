@@ -2,8 +2,8 @@ import SwiftUI
 
 /// A flight in the list, with what the website's lobby row shows (LobbyPage.tsx row): the route
 /// sketch, the title, the route and aircraft, the filing and shared-by chips, the date with the
-/// relative day, the block-off time in UTC and local time, the passengers; on iPad also the
-/// distance, time and fuel columns.
+/// relative day, the block-off time in UTC and local time, the passengers; at regular width also
+/// the distance, time and fuel columns.
 struct FlightRow: View {
     var item: FlightListItem
     /// Today in Greece: the relative day is counted from it.

@@ -109,7 +109,8 @@ final class FlowUITests: XCTestCase {
         XCTAssertFalse(app.buttons["create-flight"].isEnabled, "the home aerodrome is required")
         home.tap()
         pick(app, search: "LGTT", place: "place-aerodrome:LGTT")
-        XCTAssertTrue(app.staticTexts["LGTT · Dekelia / Tatoi"].waitForExistence(timeout: 10))
+        let chosen = NSPredicate(format: "label CONTAINS 'LGTT · Dekelia / Tatoi'")
+        wait(for: [expectation(for: chosen, evaluatedWith: home)], timeout: 10)
         let reg = app.textFields["new-registration"]
         XCTAssertTrue(reg.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["create-flight"].isEnabled, "an aircraft is not needed")
@@ -174,7 +175,7 @@ final class FlowUITests: XCTestCase {
 
     /// In a place search: types `search` and taps the result `place`.
     private func pick(_ app: XCUIApplication, search: String, place: String) {
-        let field = app.searchFields.firstMatch
+        let field = app.searchField
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText(search)

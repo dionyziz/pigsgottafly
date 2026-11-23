@@ -72,6 +72,10 @@ struct FlightsView: View {
             section("Past", past)
             section("Shared with me", shared)
         }
+        // the list's own menu: on iPad a row's .contextMenu gives way to the selection's
+        .contextMenu(forSelectionType: String.self) { ids in
+            if ids.count == 1, let r = app.flights.first(where: { ids.contains($0.id) }) { menuItems(r) }
+        }
         .listStyle(.insetGrouped)
         .overlay {
             if app.flights.isEmpty {
@@ -132,19 +136,24 @@ struct FlightsView: View {
                     Button("Leave", systemImage: "person.crop.circle.badge.xmark", role: .destructive) { leave(r) }
                 }
             }
-            .contextMenu {
-                Button("Fly again", systemImage: "arrow.clockwise") { flyAgain(r) }
-                if r.sharedBy == nil {
-                    Divider()
-                    Button("Rename", systemImage: "pencil") { startRename(r) }
-                    Button("Make a copy", systemImage: "plus.square.on.square") { copy(r) }
-                    Divider()
-                    Button("Move to trash", systemImage: "trash", role: .destructive) { moveToTrash(r) }
-                } else {
-                    Divider()
-                    Button("Leave", systemImage: "person.crop.circle.badge.xmark", role: .destructive) { leave(r) }
-                }
+    }
+
+    /// The website's row menu (LobbyPage items).
+    @ViewBuilder
+    private func menuItems(_ r: FlightListItem) -> some View {
+        Button("Fly again", systemImage: "arrow.clockwise") { afterMenu { flyAgain(r) } }
+        if r.sharedBy == nil {
+            Divider()
+            Button("Rename", systemImage: "pencil") { startRename(r) }
+            Button("Make a copy", systemImage: "plus.square.on.square") { afterMenu { copy(r) } }
+            Divider()
+            Button("Move to trash", systemImage: "trash", role: .destructive) { afterMenu { moveToTrash(r) } }
+        } else {
+            Divider()
+            Button("Leave", systemImage: "person.crop.circle.badge.xmark", role: .destructive) {
+                afterMenu { leave(r) }
             }
+        }
     }
 
     // MARK: the trash
@@ -161,7 +170,7 @@ struct FlightsView: View {
                                 Button("Restore", systemImage: "arrow.uturn.backward") { restore(r) }.tint(.blue)
                             }
                             .contextMenu {
-                                Button("Restore", systemImage: "arrow.uturn.backward") { restore(r) }
+                                Button("Restore", systemImage: "arrow.uturn.backward") { afterMenu { restore(r) } }
                             }
                     }
                 } header: {
@@ -246,6 +255,15 @@ struct FlightsView: View {
     private func open(_ id: String) {
         trashView = false
         selection = id
+    }
+
+    /// UICollectionView throws (invalid number of items) when the list changes while a context menu's
+    /// preview is still animating back into its row.
+    private func afterMenu(_ action: @escaping () -> Void) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(450))
+            action()
+        }
     }
 
     private func fail(_ what: String, _ error: Error) {

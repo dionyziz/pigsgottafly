@@ -6,6 +6,12 @@ extension XCUIApplication {
 
     var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
 
+    /// The search field of the screen on top: on iPad the flight list's own search stays on screen
+    /// beside it.
+    var searchField: XCUIElement {
+        searchFields.matching(NSPredicate(format: "NOT (label BEGINSWITH 'Search by name')")).firstMatch
+    }
+
     /// The back button of the navigation bar titled `title` (several bars show at once on iPad).
     func back(from title: String? = nil) {
         let bar = title.map { navigationBars[$0] } ?? navigationBars.firstMatch

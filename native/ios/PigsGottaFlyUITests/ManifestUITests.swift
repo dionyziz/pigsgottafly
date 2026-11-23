@@ -25,7 +25,7 @@ final class ManifestUITests: XCTestCase {
         // a passenger from the list
         app.buttons["pax-search"].tap()
         XCTAssertTrue(app.element("pax-picker").waitForExistence(timeout: 10))
-        let search = app.searchFields.firstMatch
+        let search = app.searchField
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("ann")

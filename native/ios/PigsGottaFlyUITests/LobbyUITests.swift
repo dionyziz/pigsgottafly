@@ -101,7 +101,7 @@ final class LobbyUITests: XCTestCase {
         XCTAssertTrue(from.waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["create-flight"].isEnabled, "the origin is required")
         from.tap()
-        let field = app.searchFields.firstMatch
+        let field = app.searchField
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText("LGTT")
