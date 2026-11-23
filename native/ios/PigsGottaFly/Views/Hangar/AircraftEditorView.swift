@@ -69,7 +69,7 @@ struct AircraftEditorView: View {
         }
         .sheet(isPresented: $sharing) {
             // leaving: the hangar list reads itself again (AppModel.hangarChanged) and this page goes
-            ShareAircraftView(aircraftId: aircraftId, registration: title) { dismiss() }
+            ShareSheet(target: .aircraft(aircraftId, title)) { dismiss() }
         }
         .accessibilityIdentifier("aircraft-page")
     }

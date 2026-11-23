@@ -9,14 +9,9 @@ import { useEffect, useState } from 'react';
 import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import { errorMessage } from '../../shared/format';
-import {
-  type AircraftAccess,
-  type ManifestContact,
-  passengerShareSuggestions,
-  type ShareRole,
-} from '../../shared/sharing';
+import type { AircraftAccess, ManifestContact, ShareRole } from '../../shared/sharing';
 import { Chip, Dialog, Loading, RowRemove } from '../../ui';
-import { emailError, sharedBy, shareRows, type SharingState } from './shareModel';
+import { emailError, sharedBy, shareRows, shareSuggestionsFor, type SharingState } from './shareModel';
 
 /** "Shared by Alice · Viewer" for an aircraft the pilot does not own; nothing for their own. */
 export function SharedChip({ access }: { access: Pick<AircraftAccess, 'role' | 'owner'> | undefined }) {
@@ -110,7 +105,7 @@ export function ShareDialog({
   };
 
   const canManage = !!sharing?.canManage;
-  const suggestions = sharing?.canManage && passengers ? passengerShareSuggestions(passengers, sharing.people) : [];
+  const suggestions = sharing ? shareSuggestionsFor(sharing, passengers) : [];
   return (
     <Dialog
       title={`Share ${name}`}

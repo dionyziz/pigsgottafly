@@ -1,7 +1,7 @@
 import Foundation
 
 /// The passenger list the manifest adds from (Fixtures/manifest/passengers.json, then what POST and PUT
-/// change) and the fixture flight's sharing (Fixtures/manifest/shares.json; DELETE takes a person off).
+/// change). A flight's sharing: FixtureRoutes+Sharing.swift.
 extension FixtureTransport {
     func manifestRoutes(_ r: FixtureRequest) -> (Int, String?, Data?)? {
         switch (r.method, r.first, r.count) {
@@ -28,12 +28,6 @@ extension FixtureTransport {
                 s.passengers = s.passengers.map { $0["id"]?.string == id ? saved : $0 }
             }
             return (200, nil, Self.encoded(saved))
-        case ("GET", "flights", 3) where r.parts[2] == "shares":
-            return (200, nil, Self.encoded(shares()))
-        case ("DELETE", "flights", 4) where r.parts[2] == "shares":
-            let key = r.parts[3]
-            ManifestFixtures.shared.change(self) { $0.removedShares.insert(key) }
-            return (204, nil, Data())
         default:
             return nil
         }
@@ -42,20 +36,12 @@ extension FixtureTransport {
     private func passengerList() -> [JSON] {
         ManifestFixtures.shared.state(self).passengers
     }
-
-    private func shares() -> JSON {
-        var s = fixture("manifest/shares.json").flatMap { try? JSON.parse($0) } ?? [:]
-        let removed = ManifestFixtures.shared.state(self).removedShares
-        s["people"] = .array((s["people"]?.array ?? []).filter { !removed.contains($0["pilotId"]?.string ?? "") })
-        return s
-    }
 }
 
 /// What the fixture server changed, per transport (an extension cannot add stored properties).
 final class ManifestFixtures: @unchecked Sendable {
     struct State {
         var passengers: [JSON]
-        var removedShares: Set<String> = []
         /// Held so that its identifier is not reused by another transport (the unit tests make many).
         var owner: AnyObject
     }

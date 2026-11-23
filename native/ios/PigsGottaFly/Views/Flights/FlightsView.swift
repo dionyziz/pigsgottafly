@@ -19,6 +19,7 @@ struct FlightsView: View {
     @State private var renaming: FlightListItem?
     @State private var renameText = ""
     @State private var toast: Toast?
+    @State private var sharing: ShareTarget?
 
     private var today: String { app.localToday }
 
@@ -53,6 +54,12 @@ struct FlightsView: View {
                 .accessibilityIdentifier("rename-title")
             Button("Cancel", role: .cancel) {}
             Button("Rename") { if let r = renaming { rename(r) } }.accessibilityIdentifier("rename-confirm")
+        }
+        .sheet(item: $sharing) { t in
+            ShareSheet(target: t) {
+                if selection == t.id { selection = nil }
+                toast = Toast(message: "You left “\(t.name)”")
+            }
         }
         .toast($toast)
         .accessibilityIdentifier(trashView ? "trash-list" : "flight-list")
@@ -127,6 +134,7 @@ struct FlightsView: View {
             .accessibilityIdentifier("flight-\(r.id)")
             .swipeActions(edge: .leading) {
                 Button("Fly again", systemImage: "arrow.clockwise") { flyAgain(r) }.tint(.blue)
+                Button("Share", systemImage: "person.2") { share(r) }.tint(.indigo)
             }
             .swipeActions(edge: .trailing) {
                 if r.sharedBy == nil {
@@ -142,6 +150,8 @@ struct FlightsView: View {
     @ViewBuilder
     private func menuItems(_ r: FlightListItem) -> some View {
         Button("Fly again", systemImage: "arrow.clockwise") { afterMenu { flyAgain(r) } }
+        Button("Share…", systemImage: "person.2") { afterMenu { share(r) } }
+            .accessibilityIdentifier("flight-share-\(r.id)")
         if r.sharedBy == nil {
             Divider()
             Button("Rename", systemImage: "pencil") { startRename(r) }
@@ -333,6 +343,12 @@ struct FlightsView: View {
             }
             await loadTrash()
         }
+    }
+
+    /// The flight's share sheet. From the list the manifest is not at hand, so its passengers are not
+    /// suggested here (the flight's own Share offers them).
+    private func share(_ r: FlightListItem) {
+        sharing = ShareTarget(kind: .flight, id: r.id, name: Lobby.title(r))
     }
 
     private func leave(_ r: FlightListItem) {

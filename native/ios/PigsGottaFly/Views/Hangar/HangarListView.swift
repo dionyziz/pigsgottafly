@@ -83,7 +83,7 @@ struct HangarListView: View {
             }
         }
         .sheet(item: $sharing) { a in
-            ShareAircraftView(aircraftId: a.id, registration: a.registration) {
+            ShareSheet(target: .aircraft(a.id, a.registration)) {
                 toast = Toast(message: "Removed \(a.registration) from your hangar")
             }
         }

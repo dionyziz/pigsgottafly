@@ -159,6 +159,7 @@ describe('core.js in a bare JavaScript context', () => {
         'Enter an e-mail address.',
       ),
     sharedChip: () => expect(call('sharedChip', {}).chip).toBeNull(),
+    unshareOffer: () => expect(call('unshareOffer', { sharing: null, myId: 'p' }).offer).toBeNull(),
     invite: () => expect(call('invite', { email: 'a@b.c' }).body.email).toBe('a@b.c'),
     newAircraft: () =>
       expect(call('newAircraft', { hangar: [], registration: ' sx-abc ' }).input.registration).toBe('SX-ABC'),

@@ -17,6 +17,9 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     var pilot: JSON
     /// The people each aircraft is shared with (accounts), by aircraft id.
     var aircraftShares: [String: [JSON]] = [:]
+    /// FlightSharing and OperatorSharing by id, once read or changed (FixtureRoutes+Sharing.swift).
+    var flightShares: [String: JSON] = [:]
+    var operatorShares: [String: JSON] = [:]
     /// The pilot's open invitations to the app, newest first (nothing is ever sent).
     var invitations: [JSON] = []
     let emptyAccount: Bool
@@ -83,7 +86,8 @@ final class FixtureTransport: HTTPTransport, @unchecked Sendable {
     private func route(method: String, parts: [String], query: String, body: Data?) -> (Int, String?, Data?) {
         let r = FixtureRequest(method: method, parts: parts, query: query, body: body)
         for domain in [
-            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, sharingRoutes, manifestRoutes,
+            accountRoutes, lobbyRoutes, flightRoutes, briefingRoutes, aircraftRoutes, sharingRoutes, recordShareRoutes,
+            manifestRoutes,
             peopleRoutes,
             fileRoutes, formRoutes, exportRoutes,
         ] {

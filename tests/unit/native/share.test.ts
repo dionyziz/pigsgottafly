@@ -6,10 +6,13 @@ import {
   inviteDone,
   inviteRequest,
   sharedBy,
+  sharedFlightChip,
   shareRows,
+  shareSuggestionsFor,
   type SharingState,
+  unshareOffer as webUnshareOffer,
 } from '../../../src/features/hangar/shareModel';
-import { invite, sharedChip, sharing } from '../../../src/native/core';
+import { invite, sharedChip, sharing, unshareOffer } from '../../../src/native/core';
 import type { PilotInvitation } from '../../../src/shared/sharing';
 
 const json = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
@@ -104,5 +107,67 @@ describe('invite: Invite pilots', () => {
       'Invited bob@example.com.',
     );
     expect(invite({ email: '' })).toMatchObject({ error: 'Enter an e-mail address.', body: null });
+  });
+});
+
+describe('flight sharing: the manifest’s passengers', () => {
+  const owner = { pilotId: 'alice', name: 'Alice Aviatrix', email: 'alice@example.com', role: 'owner' as const };
+  const carol = {
+    pilotId: 'carol@example.com',
+    name: '',
+    email: 'carol@example.com',
+    role: 'view' as const,
+    pending: true,
+  };
+  const contacts = [
+    { name: 'Carol Cabin', email: 'Carol@Example.com' },
+    { name: 'Dan Deck', email: 'dan@example.com' },
+  ];
+
+  test('the passengers it is not shared with are offered to whoever manages the sharing', () => {
+    const state: SharingState = { role: 'owner', canManage: true, people: [owner, carol] };
+    const out = sharing({ kind: 'flight', sharing: state, myId: 'alice', passengers: contacts });
+    expect(out.suggestions).toEqual(shareSuggestionsFor(state, contacts));
+    expect(out.suggestions.map((c) => c.email)).toEqual(['dan@example.com']);
+    expect(
+      sharing({ kind: 'flight', sharing: { ...state, canManage: false }, myId: 'x', passengers: contacts }).suggestions,
+    ).toEqual([]);
+    expect(sharing({ sharing: state, myId: 'alice' }).suggestions).toEqual([]);
+  });
+
+  test('removing a passenger the flight is shared with offers to stop sharing', () => {
+    const state: SharingState = { role: 'owner', canManage: true, people: [owner, carol] };
+    const out = unshareOffer({ sharing: state, email: 'CAROL@example.com', myId: 'alice', name: 'Carol Cabin' });
+    expect(out.offer).toEqual(webUnshareOffer(state, 'CAROL@example.com', 'alice', 'Carol Cabin'));
+    expect(out).toMatchObject({
+      offer: { name: 'Carol Cabin', key: 'carol@example.com' },
+      title: 'Also stop sharing the flight with Carol Cabin?',
+      confirm: 'Stop sharing',
+      cancel: 'Keep sharing',
+    });
+    expect(unshareOffer({ sharing: state, email: 'carol@example.com', myId: 'alice' }).offer?.name).toBe(
+      'carol@example.com',
+    );
+    // no e-mail, not shared, the owner, a viewer's manifest, no sharing read: nothing to ask
+    expect(unshareOffer({ sharing: state, email: '', myId: 'alice' }).offer).toBeNull();
+    expect(unshareOffer({ sharing: state, email: 'dan@example.com', myId: 'alice' }).offer).toBeNull();
+    expect(unshareOffer({ sharing: state, email: 'alice@example.com', myId: 'x' }).offer).toBeNull();
+    expect(
+      unshareOffer({ sharing: { ...state, canManage: false }, email: 'carol@example.com', myId: 'x' }).offer,
+    ).toBeNull();
+    expect(unshareOffer({ sharing: null, email: 'carol@example.com', myId: 'alice' }).offer).toBeNull();
+  });
+
+  test('the chip of a flight shared with the pilot', () => {
+    const access = {
+      role: 'view' as const,
+      owner: { pilotId: 'alice', name: 'Alice Aviatrix', email: 'alice@example.com' },
+    };
+    expect(sharedChip({ kind: 'flight', access }).chip).toEqual(sharedFlightChip(access));
+    expect(sharedChip({ kind: 'flight', access }).chip?.text).toBe('View only · shared by Alice Aviatrix');
+    expect(sharedChip({ kind: 'flight', access: { ...access, role: 'edit' } }).chip?.text).toBe(
+      'Shared by Alice Aviatrix',
+    );
+    expect(sharedChip({ kind: 'flight', access: null }).chip).toBeNull();
   });
 });

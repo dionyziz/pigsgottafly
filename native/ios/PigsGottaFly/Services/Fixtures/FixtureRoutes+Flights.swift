@@ -21,6 +21,11 @@ extension FixtureTransport {
         }
         j["id"] = .string(id)
         if let v = versions[id] { j["version"] = .number(Double(v)) }
+        // a flight flights.json lists as shared with the pilot comes with their access, as the server's
+        let rows = fixture("flights.json").flatMap { try? JSON.parse($0) }?.array ?? []
+        if let row = rows.first(where: { $0["id"]?.string == id }), let by = row["sharedBy"] {
+            j["access"] = ["role": row["role"] ?? "view", "owner": by, "aircraft": nil]
+        }
         return j
     }
 

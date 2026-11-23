@@ -32,9 +32,16 @@ struct CoreSharing: Decodable, Equatable, Sendable {
         var role: ShareRole
         var label: String
     }
+    /// A flight's passenger with an e-mail (src/shared/sharing.ts ManifestContact).
+    struct Contact: Decodable, Equatable, Sendable {
+        var name: String
+        var email: String
+    }
     var canManage: Bool
     var rows: [Row]
     var roles: [RoleOption]
+    /// A flight's passengers it is not shared with yet, offered as viewers.
+    var suggestions: [Contact]
     /// Why the add form's address cannot be sent yet.
     var error: String?
     /// The body of POST …/shares.
@@ -66,20 +73,40 @@ struct CoreInvite: Decodable, Equatable, Sendable {
 
 extension Core {
     /// `sharing`: GET …/:id/shares (JSON text); `email` and `role`: the add form.
+    /// `passengers`: a flight's manifest contacts (JSON text), for the suggestions.
     func sharing(
-        _ sharing: String, myId: String, kind: String = "aircraft", email: String = "", role: ShareRole = .view
+        _ sharing: String, myId: String, kind: String = "aircraft", email: String = "", role: ShareRole = .view,
+        passengers: String? = nil
     ) throws -> CoreSharing {
         try callDecoding(
             "sharing",
             fields: [
                 "sharing": sharing, "myId": JSON.string(myId).text, "kind": JSON.string(kind).text,
                 "email": JSON.string(email).text, "role": JSON.string(role.rawValue).text,
+                "passengers": passengers ?? "null",
             ])
     }
 
-    /// "Shared by Alice · Viewer" (nil for the pilot's own); `access`: the record's access (JSON text).
-    func sharedChip(access: String) throws -> String? {
-        try callJSON("sharedChip", fields: ["access": access])["chip"]?["text"]?.string
+    /// "Shared by Alice · Viewer" (nil for the pilot's own); a flight's "View only · shared by Alice"
+    /// with `kind` "flight". `access`: the record's access (JSON text).
+    func sharedChip(access: String, kind: String = "aircraft") throws -> String? {
+        try callJSON("sharedChip", fields: ["access": access, "kind": JSON.string(kind).text])["chip"]?["text"]?
+            .string
+    }
+
+    /// After a passenger left the manifest: whom to offer to stop sharing the flight with (nil: no
+    /// one). `sharing`: GET /flights/:id/shares (JSON text, nil when it could not be read).
+    func unshareOffer(sharing: String?, email: String, myId: String, name: String) throws
+        -> (name: String, key: String)?
+    {
+        let offer = try callJSON(
+            "unshareOffer",
+            fields: [
+                "sharing": sharing ?? "null", "email": JSON.string(email).text, "myId": JSON.string(myId).text,
+                "name": JSON.string(name).text,
+            ])["offer"]
+        guard let name = offer?["name"]?.string, let key = offer?["key"]?.string else { return nil }
+        return (name, key)
     }
 
     /// `hangar`: GET /api/aircraft, `invitations`: GET /api/invitations (JSON texts); `picked`:

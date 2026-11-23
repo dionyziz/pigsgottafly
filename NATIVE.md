@@ -36,7 +36,8 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   ("LGTT local · 1:00") and aircraft, the date with the relative day, block-off in UTC and Greek local
   time, the passengers, the filing and shared-by chips; at regular width also distance, time and fuel. Swipe and
   context menu: Fly again (a copy for today), Rename (PUT with the automatic title kept automatic),
-  Make a copy, Move to trash (with Undo), Leave (shared). The Trash (GET /flights?trash=1) with Restore.
+  Make a copy, Move to trash (with Undo), Leave (shared), and Share… (the share sheet below). The
+  Trash (GET /flights?trash=1) with Restore.
   Pull to refresh.
 - **New flight** (the website's NewFlightPage). The list's + creates the flight at once with the
   profile's defaults (POST /api/flights `{}`: the server starts it at the home aerodrome, with no
@@ -54,7 +55,12 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   in Fly, and any other flight, or one just made in New flight whatever its date, on Plan
   (`FlightTab.initial`, as the website's stage default). The toolbar has Undo and Redo (every edit
   goes through `FlightModel.edit`, which registers the flight as it was with the UndoManager; a 409
-  clears the stack) and the saving or offline state.
+  clears the stack), the saving or offline state, and **Share** (`Views/Common/ShareSheet.swift`, the
+  website's flight ShareDialog): pilots by e-mail as viewer or editor, also before they have an
+  account (a pending invite), the manifest's passengers with an e-mail offered as viewers ("Share
+  (view)"), roles, removing, and leaving a flight shared with the pilot. A flight shared with the
+  pilot shows "View only · shared by …" (or "Shared by …") atop Plan, Brief and File. Removing a
+  passenger the flight is shared with asks "Also stop sharing the flight with …?" (`PGF.unshareOffer`).
   - **Fly** (`Views/Flight/FlyView.swift`): a full-screen moving map, with no tab bar and no navigation
     bar. It shows the chart (the same style and layers as the website), the route with the active leg,
     the own aircraft from GPS with its track line, and a top strip with the next waypoint, bearing,
@@ -118,8 +124,10 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
   the pilot pauses, with the version; on 409 the unsaved changes are applied again to the server's
   copy).
 - **People** (`Views/People/`; on iPad three sidebar areas): Passengers and their editor, Waypoints
-  (list; map, typed coordinates and notes 1G), Operators and their editor (1G; people 2B, documents
-  2C).
+  (list; map, typed coordinates and notes 1G), Operators and their editor (1G; documents 2C). An
+  operator's Share (its editor's toolbar) is the share sheet: people with access, also those who see
+  it through one of its aircraft ("Viewer (aircraft)"), added by e-mail (accounts only), roles,
+  removing, leaving.
 - **Me** (`Views/Me/`; Profile in the iPad sidebar): the signed-in account; **Profile** (name, phone,
   home aerodrome, PUT /api/me; the pilot's own autorouter account, linked in Apple's sign-in sheet);
   planning defaults, map layers for new flights, licence and medical, data export and "Sign out
@@ -135,7 +143,8 @@ with the current record, offline); `API+Flights`, `+Aircraft`, `+People`, `+File
 answer decoded as the caller's Codable type or as JSON. In fixture mode (`-fixtures`) the answers come
 from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files. Sharing and invitations are
 kept in memory; the fixture server knows one other account (copilot@example.com, shared with at once)
-and sends no e-mail.
+and sends no e-mail; a flight's address with no account becomes a pending invite, an operator's is
+refused as the server refuses it.
 
 **Launch arguments** (tests, screenshots): `-fixtures`, `-emptyAccount`, `-noNetwork`,
 `-fixturePosition lat,lon,track,gs`, `-today YYYY-MM-DD`, `-openFlight <id>`, `-tab
@@ -364,13 +373,19 @@ aircraft, pilot, ref, weather, now? }`.
 
 **Sharing** (src/native/core/share.ts)
 
-- `PGF.sharing({ kind?, sharing, myId, email?, role? })` → `{ canManage, role, rows, roles, error,
-  body }`: the share dialog of an aircraft (default), operator or flight [hangar/shareModel.ts].
+- `PGF.sharing({ kind?, sharing, myId, email?, role?, passengers? })` → `{ canManage, role, rows,
+  roles, suggestions, error, body }`: the share dialog of an aircraft (default), operator or flight
+  [hangar/shareModel.ts]. `passengers`: a flight's manifest contacts (`PGF.shareSuggestions`'
+  `contacts`); `suggestions` those it is not shared with yet, for whoever manages the sharing.
   `sharing` is GET …/:id/shares; `rows` `[{ key, role, name, email, initial, self, pending, note, via,
   control, roleLabel, removeLabel, canRemove }]` (`key` the pilot id or the invited address, the
   `:key` of PUT/DELETE …/shares/:key; `control` 'owner' | 'aircraft' | 'manage' | 'readOnly');
   `error` or `body` (POST …/shares) for the add form's `email` and `role`.
-- `PGF.sharedChip({ access })` → `{ chip: { text, title } | null }`: "Shared by Alice · Viewer".
+- `PGF.sharedChip({ access, kind? })` → `{ chip: { text, title } | null }`: "Shared by Alice ·
+  Viewer"; with `kind: 'flight'` a flight's "View only · shared by Alice" [editor/EditorPage.tsx].
+- `PGF.unshareOffer({ sharing, email, myId, name })` → `{ offer, title, confirm, cancel }`: after a
+  passenger leaves the manifest, whom to offer to stop sharing the flight with (`{ name, key }` or
+  null) and the question's words [editor/panels/ManifestSection.tsx].
 - `PGF.invite({ hangar?, invitations?, email?, note?, picked?, response? })` → `{ shareable,
   invitations, error, body, done }`: Invite pilots. `shareable` the aircraft the pilot owns or edits;
   `invitations` GET /api/invitations as rows `{ id, email, initial, aircraft }` ("SX-ASV (Viewer)");

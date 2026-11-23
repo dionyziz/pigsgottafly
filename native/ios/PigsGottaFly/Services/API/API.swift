@@ -105,6 +105,11 @@ final class API: Sendable {
         switch response.statusCode {
         case 200..<300: return data
         case 401: throw APIError.unauthorized
+        // a POST's 404 can name what is missing ("No Pig’s Gotta Fly account uses …" when sharing an
+        // operator): the pilot reads the server's words
+        case 404 where method == "POST":
+            let message = (try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? ""
+            throw message.isEmpty ? APIError.notFound : APIError.http(404, message)
         case 404: throw APIError.notFound
         case 409: throw APIError.conflict(data)
         default:

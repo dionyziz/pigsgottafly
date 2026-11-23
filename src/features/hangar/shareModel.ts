@@ -1,14 +1,18 @@
 // What the share and invite dialogs show and send, apart from React: the rows of "People with access",
 // the invitation form's body and its messages. The iPhone app's core wraps these
 // (src/native/core/share.ts), so its sheets show the same.
-import type {
-  AircraftAccess,
-  AircraftRole,
-  InviteRequest,
-  InviteResponse,
-  PilotInvitation,
-  SharePerson,
-  ShareRole,
+import {
+  accessByEmail,
+  type AircraftAccess,
+  type AircraftRole,
+  type FlightAccess,
+  type InviteRequest,
+  type InviteResponse,
+  type ManifestContact,
+  passengerShareSuggestions,
+  type PilotInvitation,
+  type SharePerson,
+  type ShareRole,
 } from '../../shared/sharing';
 
 export const ROLE_LABEL = { owner: 'Owner', edit: 'Editor', view: 'Viewer' } as const;
@@ -115,4 +119,42 @@ export function inviteDone(email: string, r: Pick<InviteResponse, 'existing' | '
 /** An open invitation's aircraft: "SX-ASV (Viewer), SX-ASG (Editor)". */
 export function invitationAircraft(inv: Pick<PilotInvitation, 'aircraft'>): string {
   return inv.aircraft.map((a) => `${a.registration} (${ROLE_LABEL[a.role]})`).join(', ');
+}
+
+/** "View only · shared by Alice" on a flight shared with the pilot (null on their own), and its tooltip. */
+export function sharedFlightChip(
+  access: Pick<FlightAccess, 'role' | 'owner'> | undefined | null,
+): { text: string; title: string } | null {
+  if (!access) return null;
+  const by = access.owner.name || access.owner.email;
+  return {
+    text: access.role === 'view' ? `View only · shared by ${by}` : `Shared by ${by}`,
+    title: `Shared with you by ${by}${access.owner.email && access.owner.name ? ` (${access.owner.email})` : ''}${access.role === 'view' ? ': you can view it, not change it' : ''}`,
+  };
+}
+
+/** A flight's manifest passengers with an e-mail it is not shared with yet, offered as viewers to
+ *  whoever manages its sharing. */
+export function shareSuggestionsFor(
+  sharing: Pick<SharingState, 'canManage' | 'people'>,
+  contacts: ManifestContact[] | null | undefined,
+): ManifestContact[] {
+  return sharing.canManage && contacts ? passengerShareSuggestions(contacts, sharing.people) : [];
+}
+
+/**
+ * After a passenger leaves the manifest: whether to offer to stop sharing the flight with them (the
+ * flight is shared with their e-mail, the pilot manages the sharing, and it is not the owner or the
+ * pilot), as `{ name, key }` (`name` the manifest's name, else theirs; `key` for DELETE …/shares/:key).
+ */
+export function unshareOffer(
+  sharing: Pick<SharingState, 'canManage' | 'people'> | null,
+  email: string,
+  myId: string,
+  manifestName: string,
+): { name: string; key: string } | null {
+  if (!email.trim() || !sharing) return null;
+  const who = accessByEmail(sharing.people, email);
+  if (!sharing.canManage || !who || who.role === 'owner' || who.pilotId === myId) return null;
+  return { name: manifestName || who.name || who.email, key: who.pilotId };
 }

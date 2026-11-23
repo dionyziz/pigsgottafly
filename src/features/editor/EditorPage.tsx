@@ -20,6 +20,7 @@ import { fmtClockMs } from '../../shared/format';
 import { manifestContacts } from '../../shared/sharing';
 import { Chip, Icon, Loading } from '../../ui';
 import { ShareDialog } from '../hangar/ShareDialog';
+import { sharedFlightChip } from '../hangar/shareModel';
 import { focusSection, onEditorFocus } from './focus';
 import { LegHoverProvider } from './legHover';
 import { MapView } from './map';
@@ -89,16 +90,11 @@ function SaveState() {
 
 function SharedFlightChip() {
   const { flight } = useEditor();
-  const a = flight.access;
-  if (!a) return null;
-  const by = a.owner.name || a.owner.email;
+  const chip = sharedFlightChip(flight.access);
+  if (!chip) return null;
   return (
-    <Chip
-      className="share-chip"
-      title={`Shared with you by ${by}${a.owner.email && a.owner.name ? ` (${a.owner.email})` : ''}${a.role === 'view' ? ': you can view it, not change it' : ''}`}
-      testId="view-only-chip"
-    >
-      {a.role === 'view' ? `View only · shared by ${by}` : `Shared by ${by}`}
+    <Chip className="share-chip" title={chip.title} testId="view-only-chip">
+      {chip.text}
     </Chip>
   );
 }

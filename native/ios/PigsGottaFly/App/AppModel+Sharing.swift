@@ -26,6 +26,55 @@ extension AppModel {
         return nil
     }
 
+    // MARK: any shared record (ShareSheet)
+
+    /// GET …/:id/shares of the record.
+    func sharingOf(_ t: ShareTarget) async throws -> String {
+        switch t.kind {
+        case .aircraft: try await aircraftSharing(t.id)
+        case .flight: text(try await api.flightShares(t.id, as: JSON.self))
+        case .operator: text(try await api.operatorShares(t.id, as: JSON.self))
+        }
+    }
+
+    /// POST …/:id/shares. A flight's address with no account gets an invite to the flight; an
+    /// aircraft's, an invitation to the app; an operator's must have an account.
+    func addShare(_ t: ShareTarget, _ body: ShareInput) async throws -> String {
+        try await serverMessage {
+            switch t.kind {
+            case .aircraft: return try await shareAircraft(t.id, body)
+            case .flight: return text(try await api.shareFlight(t.id, email: body.email, role: body.role))
+            case .operator: return text(try await api.shareOperator(t.id, email: body.email, role: body.role))
+            }
+        }
+    }
+
+    func setShareRole(_ t: ShareTarget, key: String, role: ShareRole) async throws -> String {
+        try await serverMessage {
+            switch t.kind {
+            case .aircraft: return try await setAircraftShareRole(t.id, key: key, role: role)
+            case .flight: return text(try await api.setFlightShareRole(t.id, key: key, role: role))
+            case .operator: return text(try await api.setOperatorShareRole(t.id, pilotId: key, role: role))
+            }
+        }
+    }
+
+    /// Removes a person or an invited address and answers the sharing after it; with the pilot's own
+    /// id they leave the record (nil: nothing left to show), and the lists that held it follow.
+    func removeShare(_ t: ShareTarget, key: String) async throws -> String? {
+        if t.kind == .aircraft { return try await removeAircraftShare(t.id, key: key) }
+        try await serverMessage {
+            if t.kind == .flight {
+                try await api.removeFlightShare(t.id, key: key)
+            } else {
+                try await api.removeOperatorShare(t.id, pilotId: key)
+            }
+        }
+        guard key == pilot?.id else { return try await sharingOf(t) }
+        if t.kind == .flight { await loadFlights() }
+        return nil
+    }
+
     func invitations() async throws -> String {
         text(try await api.invitations(as: JSON.self))
     }

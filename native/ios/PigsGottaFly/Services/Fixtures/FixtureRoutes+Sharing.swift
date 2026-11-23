@@ -31,13 +31,13 @@ extension FixtureTransport {
         }
     }
 
-    private var me: JSON {
+    var me: JSON {
         ["pilotId": pilot["id"] ?? "", "name": pilot["fullName"] ?? "", "email": pilot["email"] ?? ""]
     }
 
     private func aircraftNamed(_ id: String) -> JSON? { aircraft.first { $0["id"]?.string == id } }
 
-    private func refuse(_ status: Int, _ message: String) -> (Int, String?, Data?) {
+    func refuse(_ status: Int, _ message: String) -> (Int, String?, Data?) {
         (status, nil, try? JSON.object(["error": .string(message)]).data())
     }
 
