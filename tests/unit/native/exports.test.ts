@@ -20,6 +20,7 @@ import { computeExportCalc } from '../../../src/features/exports/wb/exportCalc';
 import { wbPerfOf } from '../../../src/features/exports/wbperf/declaration';
 import {
   briefingModel,
+  declarationText,
   formModel,
   fplMessage,
   navlogContent,
@@ -145,6 +146,8 @@ describe.each(Object.entries(cases))('%s', (_, make) => {
     expect(out.content).toEqual(json(web.content));
     expect(out.warnings).toEqual(web.warnings);
     expect(out.text).toBe(wbPerfText(web.content));
+    // what the server hashes of the sent sheets is what the app hashes of the shown ones
+    expect(declarationText({ content: JSON.parse(JSON.stringify(out.content)) }).text).toBe(out.text);
   });
 });
 

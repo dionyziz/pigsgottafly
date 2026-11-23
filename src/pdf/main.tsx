@@ -7,6 +7,8 @@
 //                  the ICAO form (../features/exports/fpl/FaxSheets.tsx)
 //   kind 'briefing' the NOTAM briefing (../features/exports/briefing/BriefingExport.tsx BriefingSheet)
 //   kind 'fplform' the ICAO flight plan form as the FPL page shows it (../features/exports/fpl/FplForm.tsx)
+//   kind 'form731' Form 731 with its signatures (../features/exports/form731/Form731.tsx)
+//   kind 'gendec'  the General Declaration with the PIC's signature (../features/exports/gendec/GenDec.tsx)
 // Opened by the server's headless Chromium (api/_lib/sheetPdf.ts) and by the iPhone app's off-screen
 // WKWebView (native/ios/.../Services/SheetRenderer.swift, this page inlined into one file by
 // tools/build_native_pdf.ts). Both put the snapshot in window.__PGF_SHEETS__ before the page loads,
@@ -18,15 +20,19 @@ import '../features/exports/export.css';
 import '../features/exports/form731/forms.css';
 import './pdf.css';
 
+import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { BriefingSheet } from '../features/exports/briefing/BriefingExport';
 import type { BriefingModel } from '../features/exports/briefing/model';
-import type { ShownSignature } from '../features/exports/form731/Form731';
+import { Form731Sheets, type ShownSignature } from '../features/exports/form731/Form731';
+import type { Form731Model } from '../features/exports/form731/model';
 import { FaxSheets } from '../features/exports/fpl/FaxSheets';
 import type { FplResult } from '../features/exports/fpl/fpl';
 import { FplForm } from '../features/exports/fpl/FplForm';
 import { parseFplMessage } from '../features/exports/fpl/parseFpl';
+import { GenDecSheet } from '../features/exports/gendec/GenDec';
+import type { GenDecModel } from '../features/exports/gendec/model';
 import { fitSheets } from '../features/exports/navlog/fit';
 import { NavlogStage } from '../features/exports/navlog/NavlogSheet';
 import { PerfSheet } from '../features/exports/performance/PerformanceExport';
@@ -42,7 +48,10 @@ type SheetsSnapshot =
   | { kind: 'fplfax'; content: FplFaxContent }
   // the app's own models (PGF.briefingModel, PGF.fplMessage), never content from someone else
   | { kind: 'briefing'; content: BriefingModel }
-  | { kind: 'fplform'; content: FplFormContent };
+  | { kind: 'fplform'; content: FplFormContent }
+  // PGF.formModel's, with the signatures of GET /api/flights/:id/forms
+  | { kind: 'form731'; content: Form731Model; signatures?: Record<string, ShownSignature> | null }
+  | { kind: 'gendec'; content: GenDecModel; signature?: ShownSignature | null };
 
 /** The FPL page's form: `fpl` as PGF.fplMessage builds it (its fields keep the missing '?'), or the
  *  message alone (its fields read back from the text, as a faxed plan's). */
@@ -121,6 +130,19 @@ function FplFormPage({ c }: { c: FplFormContent }) {
   );
 }
 
+function FormPage({ testId, children }: { testId: string; children: ReactNode }) {
+  return (
+    <div className="page export-page">
+      <div className="pgf-forms print-sheet-page" data-testid={testId}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const signatureOf = (s: ShownSignature | null | undefined): ShownSignature | null =>
+  s && typeof s.name === 'string' && Number.isFinite(s.signedAt) ? { name: s.name, signedAt: s.signedAt } : null;
+
 const snap = window.__PGF_SHEETS__;
 const root = document.documentElement;
 const frame = () => new Promise((r) => requestAnimationFrame(r));
@@ -155,11 +177,30 @@ else if (snap.kind === 'navlog') {
   document.title = 'Flight plan';
   createRoot(document.getElementById('root')!).render(<FplFormPage c={snap.content} />);
   whenDrawn();
+} else if (snap.kind === 'form731') {
+  const signatures: Record<string, ShownSignature> = {};
+  for (const [key, s] of Object.entries(snap.signatures ?? {})) {
+    const v = signatureOf(s);
+    if (v) signatures[key] = v;
+  }
+  document.title = ['Form 731', snap.content.registration, snap.content.date].filter(Boolean).join(' ');
+  createRoot(document.getElementById('root')!).render(
+    <FormPage testId="form731">
+      <Form731Sheets m={snap.content} signatures={signatures} />
+    </FormPage>,
+  );
+  whenDrawn();
+} else if (snap.kind === 'gendec') {
+  document.title = ['General Declaration', snap.content.registration, snap.content.date].filter(Boolean).join(' ');
+  createRoot(document.getElementById('root')!).render(
+    <FormPage testId="gendec">
+      <GenDecSheet m={snap.content} signature={signatureOf(snap.signature)} />
+    </FormPage>,
+  );
+  whenDrawn();
 } else {
   const content = wbPerfContentOf(snap.content);
-  const s = snap.signature;
-  const signature =
-    s && typeof s.name === 'string' && Number.isFinite(s.signedAt) ? { name: s.name, signedAt: s.signedAt } : null;
+  const signature = signatureOf(snap.signature);
   document.title = ['W&B and performance', content.registration, content.date].filter(Boolean).join(' ');
   createRoot(document.getElementById('root')!).render(<Sheets content={content} signature={signature} />);
   whenDrawn();

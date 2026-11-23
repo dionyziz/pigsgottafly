@@ -8,13 +8,10 @@ import { signatureName } from '../../../shared/forms';
 import { transliterate } from '../../../shared/translit';
 import type { FormExportProps } from './common';
 import { FormWarnings } from './FormWarnings';
-import { form731Model, type Form731Row, ROWS_PER_SHEET } from './model';
+import { type Form731Model, form731Model, type Form731Row, ROWS_PER_SHEET } from './model';
+import type { ShownSignature } from './signatures';
 
-/** A signature on the current version of the form: the signer's name and when (epoch ms). */
-export interface ShownSignature {
-  name: string;
-  signedAt: number;
-}
+export type { ShownSignature } from './signatures';
 
 export function Form731(props: FormExportProps & { signatures?: Record<string, ShownSignature>; panel?: ReactNode }) {
   const m = form731Model(props);
@@ -22,10 +19,19 @@ export function Form731(props: FormExportProps & { signatures?: Record<string, S
     <div className="pgf-forms print-sheet-page" data-testid="form731">
       {props.panel}
       <FormWarnings warnings={m.warnings} fixes={m.fixes} />
-      {m.sheets.map((rows, i) => (
-        <Sheet key={i} rows={rows} m={m} index={i} signatures={props.signatures ?? {}} />
-      ))}
+      <Form731Sheets m={m} signatures={props.signatures ?? {}} />
     </div>
+  );
+}
+
+/** The sheets alone, from a model made elsewhere (the PDF page draws PGF.formModel's). */
+export function Form731Sheets({ m, signatures }: { m: Form731Model; signatures: Record<string, ShownSignature> }) {
+  return (
+    <>
+      {m.sheets.map((rows, i) => (
+        <Sheet key={i} rows={rows} m={m} index={i} signatures={signatures} />
+      ))}
+    </>
   );
 }
 
@@ -52,7 +58,7 @@ function Sheet({
   signatures,
 }: {
   rows: Form731Row[];
-  m: ReturnType<typeof form731Model>;
+  m: Form731Model;
   index: number;
   signatures: Record<string, ShownSignature>;
 }) {

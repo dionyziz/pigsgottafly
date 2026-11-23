@@ -1,0 +1,90 @@
+{
+  "form731": {
+    "content": {
+      "airport": "DEKELIA / TATOI (LGTT)",
+      "date": "2026-11-22",
+      "registration": "SX-ASV",
+      "route": "LGTT – LGSY",
+      "people": []
+    },
+    "signatures": [
+      {
+        "key": "PIC",
+        "role": "PIC",
+        "name": "FIXTURE PILOT",
+        "signed": true,
+        "signedAt": 1795284000000,
+        "needsResign": false,
+        "email": "",
+        "emailedAt": null,
+        "link": null
+      },
+      {
+        "key": "pax-anna",
+        "role": "PAX",
+        "name": "ANNA PAPADOPOULOU",
+        "signed": false,
+        "signedAt": null,
+        "needsResign": false,
+        "email": "anna@example.com",
+        "emailedAt": null,
+        "link": null
+      }
+    ],
+    "allSigned": false,
+    "submission": null,
+    "needed": true
+  },
+  "gendec": {
+    "content": {
+      "operator": "Aeroclub Mesogeion",
+      "registration": "SXASV",
+      "flightNo": "PVT",
+      "date": "2026-11-22",
+      "departure": "LGTT",
+      "arrival": "LGSY",
+      "routing": [
+        { "place": "LGTT", "crew": "FIXTURE PILOT" },
+        { "place": "LGSY", "crew": "" }
+      ],
+      "departureCode": "LGTT",
+      "arrivalCode": "LGSY",
+      "departureIcao": "LGTT",
+      "arrivalIcao": "LGSY",
+      "embarking": 1,
+      "throughDeparture": 0,
+      "disembarking": 1,
+      "throughArrival": 0,
+      "picName": "FIXTURE PILOT",
+      "placeCount": 2
+    },
+    "submission": null,
+    "pilotSends": true,
+    "handling": {
+      "ends": [
+        {
+          "role": "departure",
+          "code": "LGTT",
+          "icao": "LGTT",
+          "handled": false,
+          "status": "closed",
+          "reason": "LGTT: no handling (AIP AD 1.6.5.4)"
+        },
+        {
+          "role": "destination",
+          "code": "LGSY",
+          "icao": "LGSY",
+          "handled": true,
+          "status": "open",
+          "reason": "LGSY: handling 0600-1800 (AIP AD 2.3)"
+        }
+      ],
+      "autoPilotSends": true,
+      "override": null,
+      "pilotSends": true
+    },
+    "picSignature": { "name": "FIXTURE PILOT", "signedAt": 1795284000000 }
+  },
+  "emailEnabled": true,
+  "emailReason": null
+}

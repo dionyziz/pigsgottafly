@@ -96,8 +96,21 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
       **Aerodromes**, each at the time the flight uses it (aerodrome, ATS and handling hours);
       Take-off & landing (1D); ATC (1D); **Warnings**, the core's, each with its Fix.
     - File (`Views/Flight/File/`): **Flight plan**, the filing status and EOBT (filing, delay, cancel:
-      2A); Form 731, General Declaration, W&B & performance (2A); Navigation log and NOTAM briefing as
-      PDFs to preview, share, print and e-mail (1H, with `Views/Common/PDFPreview.swift`).
+      2A); Navigation log and NOTAM briefing as PDFs to preview, share, print and e-mail (1H, with
+      `Views/Common/PDFPreview.swift`). The forms (`App/FormsModel.swift` holds GET /forms and
+      /declarations, the saved copy first; every action's answer replaces it, is saved, and the File
+      rows follow): **Form 731** (only with someone besides the PIC on board), each person's signature
+      (the PIC signs when the form is made, as on the website), "Request signatures", per passenger
+      the signing link shared from the device's share sheet (shown once), New link, Revoke, "E-mail
+      the form" (the server mails the form and a new link) or "Add an e-mail address" (the website's
+      passenger page), "E-mail all", "Send to HCAA" once everyone has signed and "Re-send" when the form
+      changed since; **General Declaration**: each end's handling with its reason, "Submitted by a
+      handler" (the flight's override; back to automatic when it agrees, or "Use automatic"), "Send to
+      HCAA" when the PIC sends it; **W&B & performance**: the verdicts, the weather they were made with,
+      the warnings and "Send to <operator>" when the aircraft's operator asks for the sheets ("changed
+      since sent" by the sheets' hash and the operator's address). Each with its missing details (Fix)
+      and the sheets with their signatures as a PDF (`FormParts.swift`). What each panel says and
+      offers is the core's (`PGF.form731Panel`, `genDecPanel`, `operatorPanel`).
 - **Hangar** (`Views/Hangar/`): the pilot's aircraft and the shared ones; each opens its sections:
   Identity, Flight plan items, Speeds, Fuel, Mass & balance (1F); Performance, Compass cards,
   Documents, Photo, History (2C). Edits save by themselves (`Views/Common/Autosave.swift`: a PUT when
@@ -119,7 +132,13 @@ Waypoints, Operators, Profile**, the area's list in the middle column, the open 
 with the current record, offline); `API+Flights`, `+Aircraft`, `+People`, `+Files`, `+Forms` and
 `+Account` wrap every endpoint the website calls (src/data/api.ts), with typed request bodies and the
 answer decoded as the caller's Codable type or as JSON. In fixture mode (`-fixtures`) the answers come
-from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files.
+from `Services/Fixtures/FixtureRoutes+<Domain>.swift` over the bundled files. The forms are simulated
+in memory and nothing is e-mailed (`FixtureRoutes+Paperwork.swift`, from `forms-<id>.json` and
+`declarations-<id>.json`, else `forms.json` and `declarations.json`): links are made, renewed and
+revoked, a passenger given a link has signed by the next GET, and the sends to the HCAA and the
+operator answer as the server does (409 until everyone signed, or for a version already sent).
+`-openFlight fixture-forms` is a flight with a passenger, a GenDec the PIC sends and an operator who
+asks for the W&B and performance sheets.
 
 **Launch arguments** (tests, screenshots): `-fixtures`, `-emptyAccount`, `-noNetwork`,
 `-fixturePosition lat,lon,track,gs`, `-today YYYY-MM-DD`, `-openFlight <id>`, `-tab
@@ -214,7 +233,7 @@ extra fields below were added while building the core.
   `lastLegIndex` (earlier legs are then not gone back to). The GPS groundspeed gives the ETE from 30 kt;
   below that, the navlog's GS. `offRoute` is more than 2 NM off the leg.
 
-The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest,
+The sources are src/native/core/, one file per domain (chart, flight, progress, plan, manifest, forms,
 exports, hangar, people; shared.ts holds the JSON, `ref` and weather plumbing). Every function below
 wraps the website's own module (named in brackets); where the website kept a rule inside a React
 component, it moved to that module and the component imports it. tests/unit/native/<domain>.test.ts
@@ -317,6 +336,26 @@ aircraft, pilot, ref, weather, now? }`.
   [exports/form731/model.ts, exports/gendec/model.ts].
 - `PGF.briefingModel({ flight, briefing })`: the NOTAM briefing laid out for print
   [exports/briefing/model.ts].
+- `PGF.form731Panel({ forms, links?, origin?, now? })` → `{ needed, allSigned, summary, tone,
+  signatures, people, request, emailAll, send, sent, note, emailEnabled }`: the Form 731 signatures
+  panel for GET /forms. `people[]` is `{ key, role, name, signed, needsResign, status, email, emailed,
+  actions: { renew, revoke, email, addEmail }, addEmailPath, link }`; `link` (`{ url, text }`, the
+  signing page and what is shared with it) for the tokens in `links` (the `links` of the answer that
+  made them); `signatures` by key are drawn on the sheet; `send` is `{ label, enabled, hint }`
+  [exports/form731/signatures.ts].
+- `PGF.genDecPanel({ forms, handled? })` → `{ status, tone, send, sent, note, ends, handled, automatic,
+  signature, pilotSends, override }`: "Send to HCAA" of the GenDec (`send` null when a handler submits
+  it); `override` is what POST /forms/gendec/handled takes for "Submitted by a handler" set to
+  `handled` [exports/gendec/send.ts].
+- `PGF.operatorPanel({ declarations, hash?, ready? })` → null, or `{ title, status, tone, changed, send:
+  { label, enabled, hint, resend }, address, addressPath, sent, note }`: "Send to <operator>"; `hash` is
+  the shown sheets' (SHA-256, base64url, of `wbPerfContent`'s `text`) [exports/wbperf/send.ts].
+- `PGF.declarationText({ content })` → `{ text }`: what the server hashes of sent sheets (the fixture
+  server's "changed since sent") [shared/declarations.ts].
+
+The PDF page (`Resources/pdf/sheets.html`, `npm run native:pdf`, src/pdf/main.tsx) draws Form 731
+(kind `form731`: `formModel`'s with `signatures`) and the General Declaration (kind `gendec`, with the
+PIC's `signature`) with the website's sheet components.
 
 **Hangar** (src/native/core/hangar.ts)
 

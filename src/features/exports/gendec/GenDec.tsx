@@ -9,6 +9,7 @@ import {
   GENDEC_DISINSECT_LINES,
   GENDEC_HEALTH_CONT,
   GENDEC_HEALTH_LINES,
+  type GenDecContent,
 } from '../../../shared/forms';
 import type { FormExportProps } from '../form731/common';
 import { type ShownSignature, Signature } from '../form731/Form731';
@@ -26,161 +27,168 @@ const HEALTH_H = 74;
  */
 export function GenDec(props: FormExportProps & { panel?: ReactNode; signature?: ShownSignature | null }) {
   const m = genDecModel(props);
+  return (
+    <div className="pgf-forms print-sheet-page" data-testid="gendec">
+      {props.panel}
+      <FormWarnings warnings={m.warnings} fixes={m.fixes} />
+      <GenDecSheet m={m} signature={props.signature ?? null} />
+    </div>
+  );
+}
+
+/** The sheet alone, from content made elsewhere (the PDF page draws PGF.formModel's). */
+export function GenDecSheet({ m, signature }: { m: GenDecContent; signature: ShownSignature | null }) {
   const [origin, dest] = m.routing;
   const rows: { place: ReactNode; crew: string; field?: string }[] = [];
   if (origin) rows.push({ place: origin.place, crew: origin.crew, field: 'origin' });
   if (dest) rows.push({ place: <DownArrow />, crew: '' }, { place: dest.place, crew: '', field: 'destination' });
   while (rows.length < ROUTING_ROWS) rows.push({ place: '', crew: '' });
   return (
-    <div className="pgf-forms print-sheet-page" data-testid="gendec">
-      {props.panel}
-      <FormWarnings warnings={m.warnings} fixes={m.fixes} />
-      <section className="pgf-sheet gd-sheet" aria-label="General Declaration">
-        <h1 className="gd-title">GENERAL DECLARATION</h1>
-        <div className="gd-sub">(OUTWARD/INWARD)</div>
+    <section className="pgf-sheet gd-sheet" aria-label="General Declaration">
+      <h1 className="gd-title">GENERAL DECLARATION</h1>
+      <div className="gd-sub">(OUTWARD/INWARD)</div>
 
-        <div className="gd-fields">
-          <div className="gd-f">
-            Operator: <Val v={m.operator} field="operator" />
-          </div>
-          <div className="gd-f gd-f-split">
-            <span>
-              Marks of Nationality and Registration: <Val v={m.registration} field="registration" />
-            </span>
-            <span className="gd-right">
-              <span>
-                Flight No.: <Val v={m.flightNo} field="flightNo" />
-              </span>
-              <span>
-                Date: <Val v={m.date} field="date" />
-              </span>
-            </span>
-          </div>
-          <div className="gd-f gd-f-split gd-f-places">
-            <span>
-              <span className="gd-placef">
-                Departure from: <Val v={m.departure} field="departure" />
-                <small>(Place)</small>
-              </span>
-            </span>
-            <span className="gd-right">
-              <span className="gd-placef">
-                Arrival at: <Val v={m.arrival} field="arrival" />
-                <small>(Place)</small>
-              </span>
-            </span>
-          </div>
+      <div className="gd-fields">
+        <div className="gd-f">
+          Operator: <Val v={m.operator} field="operator" />
         </div>
-
-        <div className="gd-box">
-          <div className="gd-routing-head">
-            <div className="gd-h2">FLIGHT ROUTING</div>
-            <div>(“Place” Column always to list origin every en-route stop and destination)</div>
-          </div>
-          <div className="gd-body">
-            <table className="gd-routing">
-              <colgroup>
-                <col className="gd-c-place" />
-                <col />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th>PLACE</th>
-                  <th>NAMES OF CREW*</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={i}>
-                    <td className="gd-place-col pgf-fill" data-field={r.field ? 'place' : undefined} data-end={r.field}>
-                      {r.place}
-                    </td>
-                    <td className="gd-crew-col pgf-fill" data-field={r.crew ? 'crew' : undefined}>
-                      {r.crew}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="gd-pax">
-              <div className="gd-pax-head">
-                NUMBER OF PASSENGERS
-                <br />
-                ON THIS STAGE**
-              </div>
-              <div className="gd-pax-body">
-                <div>
-                  <i className="gd-u">Departure place:</i>
-                </div>
-                <PaxLine label="Embarking" v={m.embarking} field="embarking" />
-                <PaxLine label="Through on same flight" v={m.throughDeparture} field="throughDep" />
-                <div className="gd-gap" />
-                <div>
-                  <i className="gd-u">Arrival place:</i>
-                </div>
-                <PaxLine label="Disembarking" v={m.disembarking} field="disembarking" />
-                <PaxLine label="Through on same flight" v={m.throughArrival} field="throughArr" />
-              </div>
-            </div>
-
-            <div className="gd-health" style={{ width: `${HEALTH_W}mm`, height: `${HEALTH_H}mm` }}>
-              <div className="gd-center">DECLARATION OF HEALTH</div>
-              <Lines lines={GENDEC_HEALTH_LINES} />
-              <div className="gd-dots">
-                {GENDEC_HEALTH_CONT}
-                {DOTS}
-              </div>
-              <div className="gd-dots">{DOTS.slice(1)}</div>
-              <div className="gd-gap-s" />
-              <Lines lines={GENDEC_DISINSECT_LINES} />
-              <div className="gd-dots">
-                {GENDEC_DISINSECT_CONT}
-                {DOTS}
-              </div>
-              <div className="gd-dots">{DOTS.slice(1)}</div>
-              <div className="gd-signed">
-                Signed, if required, with time and date <span className="gd-signed-line" />
-              </div>
-              <div className="gd-concerned">Crew member concerned</div>
-              <svg className="gd-nil" viewBox={`0 0 ${HEALTH_W} ${HEALTH_H}`} aria-label="NIL" data-testid="gendec-nil">
-                <line x1={2} y1={HEALTH_H - 2} x2={HEALTH_W - 2} y2={2} />
-                {/* written level, sitting on the middle of the stroke, as a pen would */}
-                <text x={HEALTH_W / 2} y={HEALTH_H / 2 + 2} textAnchor="middle">
-                  NIL
-                </text>
-              </svg>
-            </div>
-            <div className="gd-official">FOR OFFICIAL USE ONLY</div>
-          </div>
-        </div>
-
-        <p className="gd-declare">
-          I declare that all statements and particulars contained in this General Declaration, and in any supplementary
-          forms required to be presented with this General Declaration, are complete, exact and true to the best of my
-          knowledge and that all through passengers will continue/have continued on the flight.
-        </p>
-        <div className="gd-signature">
-          Signature
-          <span className="gd-sigline">
-            {props.signature && (
-              <span className="gd-pic-signature">
-                <Signature s={props.signature} size={4.6} />
-              </span>
-            )}
+        <div className="gd-f gd-f-split">
+          <span>
+            Marks of Nationality and Registration: <Val v={m.registration} field="registration" />
+          </span>
+          <span className="gd-right">
+            <span>
+              Flight No.: <Val v={m.flightNo} field="flightNo" />
+            </span>
+            <span>
+              Date: <Val v={m.date} field="date" />
+            </span>
           </span>
         </div>
-        <div className="gd-agent">Authorized Agent or Pilot-in-Command</div>
-
-        <div className="gd-foot">
-          <div>* To be completed when required by the State.</div>
-          <div>
-            ** Not to be completed when passenger manifests are presented and to be completed only when required by the
-            State.
-          </div>
+        <div className="gd-f gd-f-split gd-f-places">
+          <span>
+            <span className="gd-placef">
+              Departure from: <Val v={m.departure} field="departure" />
+              <small>(Place)</small>
+            </span>
+          </span>
+          <span className="gd-right">
+            <span className="gd-placef">
+              Arrival at: <Val v={m.arrival} field="arrival" />
+              <small>(Place)</small>
+            </span>
+          </span>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <div className="gd-box">
+        <div className="gd-routing-head">
+          <div className="gd-h2">FLIGHT ROUTING</div>
+          <div>(“Place” Column always to list origin every en-route stop and destination)</div>
+        </div>
+        <div className="gd-body">
+          <table className="gd-routing">
+            <colgroup>
+              <col className="gd-c-place" />
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>PLACE</th>
+                <th>NAMES OF CREW*</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i}>
+                  <td className="gd-place-col pgf-fill" data-field={r.field ? 'place' : undefined} data-end={r.field}>
+                    {r.place}
+                  </td>
+                  <td className="gd-crew-col pgf-fill" data-field={r.crew ? 'crew' : undefined}>
+                    {r.crew}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="gd-pax">
+            <div className="gd-pax-head">
+              NUMBER OF PASSENGERS
+              <br />
+              ON THIS STAGE**
+            </div>
+            <div className="gd-pax-body">
+              <div>
+                <i className="gd-u">Departure place:</i>
+              </div>
+              <PaxLine label="Embarking" v={m.embarking} field="embarking" />
+              <PaxLine label="Through on same flight" v={m.throughDeparture} field="throughDep" />
+              <div className="gd-gap" />
+              <div>
+                <i className="gd-u">Arrival place:</i>
+              </div>
+              <PaxLine label="Disembarking" v={m.disembarking} field="disembarking" />
+              <PaxLine label="Through on same flight" v={m.throughArrival} field="throughArr" />
+            </div>
+          </div>
+
+          <div className="gd-health" style={{ width: `${HEALTH_W}mm`, height: `${HEALTH_H}mm` }}>
+            <div className="gd-center">DECLARATION OF HEALTH</div>
+            <Lines lines={GENDEC_HEALTH_LINES} />
+            <div className="gd-dots">
+              {GENDEC_HEALTH_CONT}
+              {DOTS}
+            </div>
+            <div className="gd-dots">{DOTS.slice(1)}</div>
+            <div className="gd-gap-s" />
+            <Lines lines={GENDEC_DISINSECT_LINES} />
+            <div className="gd-dots">
+              {GENDEC_DISINSECT_CONT}
+              {DOTS}
+            </div>
+            <div className="gd-dots">{DOTS.slice(1)}</div>
+            <div className="gd-signed">
+              Signed, if required, with time and date <span className="gd-signed-line" />
+            </div>
+            <div className="gd-concerned">Crew member concerned</div>
+            <svg className="gd-nil" viewBox={`0 0 ${HEALTH_W} ${HEALTH_H}`} aria-label="NIL" data-testid="gendec-nil">
+              <line x1={2} y1={HEALTH_H - 2} x2={HEALTH_W - 2} y2={2} />
+              {/* written level, sitting on the middle of the stroke, as a pen would */}
+              <text x={HEALTH_W / 2} y={HEALTH_H / 2 + 2} textAnchor="middle">
+                NIL
+              </text>
+            </svg>
+          </div>
+          <div className="gd-official">FOR OFFICIAL USE ONLY</div>
+        </div>
+      </div>
+
+      <p className="gd-declare">
+        I declare that all statements and particulars contained in this General Declaration, and in any supplementary
+        forms required to be presented with this General Declaration, are complete, exact and true to the best of my
+        knowledge and that all through passengers will continue/have continued on the flight.
+      </p>
+      <div className="gd-signature">
+        Signature
+        <span className="gd-sigline">
+          {signature && (
+            <span className="gd-pic-signature">
+              <Signature s={signature} size={4.6} />
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="gd-agent">Authorized Agent or Pilot-in-Command</div>
+
+      <div className="gd-foot">
+        <div>* To be completed when required by the State.</div>
+        <div>
+          ** Not to be completed when passenger manifests are presented and to be completed only when required by the
+          State.
+        </div>
+      </div>
+    </section>
   );
 }
 
