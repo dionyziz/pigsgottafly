@@ -102,12 +102,7 @@ function statusChip(c: AdCheck): { tone: Tone; text: string; detail: string } | 
   return null;
 }
 
-function aerodromeHours(
-  c: Computed,
-  flight: BriefInput['flight'],
-  notams: NotamBriefing | null,
-  now: number,
-) {
+function aerodromeHours(c: Computed, flight: BriefInput['flight'], notams: NotamBriefing | null, now: number) {
   const effects = calcAdEffects(notams);
   const items = (c.aerodromeChecks ?? []).map((ck) => {
     const a = ck.aerodrome;
