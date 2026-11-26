@@ -85,6 +85,9 @@ test('a new account lands in the lobby; its first flight asks for the home aerod
     await page.eval(() => document.querySelector('[data-testid=flow-back]')?.textContent),
     'Back to Flight plan (AFTN)',
   );
+  // the link's field takes the focus a moment after the dialog opens (useHighlightFields): typing before it
+  // would have the rest land in that field
+  await page.waitFor(() => document.activeElement?.getAttribute('name') === 'fullName');
   await page.type('[data-testid=pilot-dialog] input[name=fullName]', 'Test Pilot');
   await page.type('[data-testid=pilot-dialog] input[name=phone]', '+30 690 000 0000');
   await page.click('[data-testid=dialog-done]');
