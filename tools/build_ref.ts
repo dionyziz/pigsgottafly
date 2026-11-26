@@ -28,27 +28,25 @@ import { buildRunways, loadParsedRunways } from './build_ref_runways.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'src', 'data', 'ref');
-const MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '002_ref_2609.ts');
-// 002 is applied and no longer regenerated (its VFR points were incomplete): set false with a new MIGRATION file.
-const MIGRATION_FROZEN = true;
-// The AIRAC's complete VFR reporting points (tools/parse_vfr.ts + tools/build_vfr.py), replacing the ref_waypoints
-// rows of 002. 048 shipped them first and stays as applied; 062 carries the points the full chart transcriptions
-// added (route ends such as MIL, TGG, SKIATHOS). null when MIGRATION itself is regenerated (a new AIRAC).
-const VFR_MIGRATION: string | null = path.join(ROOT, 'api', '_lib', 'migrations', '062_ref_vfr_points_2609.ts');
-// The AIRAC's VFR route segments, replacing the ref_vfr_routes rows of 002, which lack the segments a chart draws
-// without an altitude (minFt = maxFt = null). null when MIGRATION itself is regenerated (a new AIRAC).
-const VFR_ROUTES_MIGRATION: string | null = path.join(ROOT, 'api', '_lib', 'migrations', '063_ref_vfr_routes_2609.ts');
+const MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '066_ref_2610.ts');
+// An applied MIGRATION is never regenerated: set true once it ships, false with a new MIGRATION file.
+const MIGRATION_FROZEN = false;
+// A correction to an applied AIRAC's VFR reporting points (as 062 replaced 002's), replacing its ref_waypoints rows.
+// null when MIGRATION itself is regenerated (a new AIRAC): MIGRATION carries the points.
+const VFR_MIGRATION: string | null = null;
+// A correction to an applied AIRAC's VFR route segments (as 063 replaced 002's). null when MIGRATION itself is
+// regenerated (a new AIRAC): MIGRATION carries the routes.
+const VFR_ROUTES_MIGRATION: string | null = null;
 // Runway physical data and declared distances (tools/runways.json from tools/parse_runways.py) for the same
-// AIRAC, loaded after 002 (which, as applied, has the runway directions with null distances).
-const RUNWAY_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '005_ref_runways_2609.ts');
+// AIRAC, loaded after MIGRATION (which has the runway directions with null distances).
+const RUNWAY_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '067_ref_runways_2610.ts');
 // Operational hours and handling (AD 2.3, AD 1.6.N.3/4: tools/ad_hours.json from tools/extract_ad_hours.ts),
-// added to the AIRAC's aerodrome records after 002 (which, as applied, has none).
-const HOURS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '012_ref_ad_hours_2609.ts');
+// added to the AIRAC's aerodrome records after MIGRATION (which has none).
+const HOURS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '068_ref_ad_hours_2610.ts');
 const HOURS_JSON = path.join(ROOT, 'tools', 'ad_hours.json');
 // ENR 5.1 / 5.2 / 5.3 and AIP SUP areas (tools/enr5_areas.json from tools/parse_enr5.ts): the ref_areas table
-// (created by this migration if missing) and src/data/ref/areas.json. 017 (ENR 5 only) and 064 (with the UFN
-// SUPs) are applied; 065 reloads the AIRAC's areas with the time-limited SUPs' too (validity and windows).
-const AREAS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '065_ref_areas_sup_2609.ts');
+// (created by this migration if missing) and src/data/ref/areas.json, with the SUPs' validity and windows.
+const AREAS_MIGRATION = path.join(ROOT, 'api', '_lib', 'migrations', '069_ref_areas_2610.ts');
 const AREAS_JSON = path.join(ROOT, 'tools', 'enr5_areas.json');
 
 function loadWindowGlobal(file: string, name: string): any {

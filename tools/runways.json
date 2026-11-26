@@ -2912,13 +2912,16 @@
     "year": 2025
    },
    "magVarText": "5°E (JAN 2025) / 5' 50''E",
-   "ref12": "LGKC AD 2.12 (AD 2 LGKC-4 (AIRAC AMDT 10/25))",
-   "ref13": "LGKC AD 2.13 (AD 2 LGKC-4 (AIRAC AMDT 10/25))",
+   "ref12": "LGKC AD 2.12 (AD 2 LGKC-4 (AIRAC AMDT 10/26))",
+   "ref13": "LGKC AD 2.13 (AD 2 LGKC-4 (AIRAC AMDT 10/26))",
    "runways": {
     "02": {
      "asdaM": 1461.0,
      "declaredRemark": null,
-     "end": null,
+     "end": [
+      36.279967,
+      23.020278
+     ],
      "ldaM": 1461.0,
      "lengthM": 1461.0,
      "slopePct": null,
@@ -2939,7 +2942,10 @@
     "20": {
      "asdaM": 1461.0,
      "declaredRemark": null,
-     "end": null,
+     "end": [
+      36.268111,
+      23.0132
+     ],
      "ldaM": 1461.0,
      "lengthM": 1461.0,
      "slopePct": null,

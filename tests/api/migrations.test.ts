@@ -658,6 +658,10 @@ describe('migrations', () => {
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
       '065_ref_areas_sup_2609',
+      '066_ref_2610',
+      '067_ref_runways_2610',
+      '068_ref_ad_hours_2610',
+      '069_ref_areas_2610',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -719,6 +723,10 @@ describe('migrations', () => {
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
       '065_ref_areas_sup_2609',
+      '066_ref_2610',
+      '067_ref_runways_2610',
+      '068_ref_ad_hours_2610',
+      '069_ref_areas_2610',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -835,6 +843,10 @@ describe('migrations', () => {
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
       '065_ref_areas_sup_2609',
+      '066_ref_2610',
+      '067_ref_runways_2610',
+      '068_ref_ad_hours_2610',
+      '069_ref_areas_2610',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -868,12 +880,13 @@ describe('migrations', () => {
     expect(await db.query(`SELECT * FROM aircraft`)).toEqual([]);
     const [{ n }] = await db.query(`SELECT count(*)::int AS n FROM ref_aerodromes`);
     expect(n).toBeGreaterThan(50);
-    // 012: every aerodrome's operational hours, exactly as shipped to the client
+    // the current AIRAC's hours migration: every aerodrome's operational hours, exactly as shipped to the client
     const docs = new Map(
-      (await db.query<{ id: string; doc: any }>(`SELECT id, doc FROM ref_aerodromes WHERE airac = '2609'`)).map((r) => [
-        r.id,
-        r.doc,
-      ]),
+      (
+        await db.query<{ id: string; doc: any }>(
+          `SELECT id, doc FROM ref_aerodromes WHERE airac = (SELECT id FROM ref_airac WHERE current)`,
+        )
+      ).map((r) => [r.id, r.doc]),
     );
     for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
     expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
@@ -924,7 +937,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-28)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-32)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -953,6 +966,10 @@ describe('migrations', () => {
       '063_ref_vfr_routes_2609',
       '064_ref_areas_2609',
       '065_ref_areas_sup_2609',
+      '066_ref_2610',
+      '067_ref_runways_2610',
+      '068_ref_ad_hours_2610',
+      '069_ref_areas_2610',
     ]);
     await db.close();
   });

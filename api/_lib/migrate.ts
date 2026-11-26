@@ -52,6 +52,10 @@ import refVfrPoints062 from './migrations/062_ref_vfr_points_2609.js';
 import refVfrRoutes063 from './migrations/063_ref_vfr_routes_2609.js';
 import refAreas064 from './migrations/064_ref_areas_2609.js';
 import refAreasSup065 from './migrations/065_ref_areas_sup_2609.js';
+import ref066 from './migrations/066_ref_2610.js';
+import refRunways067 from './migrations/067_ref_runways_2610.js';
+import refAdHours068 from './migrations/068_ref_ad_hours_2610.js';
+import refAreas069 from './migrations/069_ref_areas_2610.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -110,6 +114,10 @@ export const MIGRATIONS: Migration[] = [
   { name: '063_ref_vfr_routes_2609', sql: refVfrRoutes063 },
   { name: '064_ref_areas_2609', sql: refAreas064 },
   { name: '065_ref_areas_sup_2609', sql: refAreasSup065 },
+  { name: '066_ref_2610', sql: ref066 },
+  { name: '067_ref_runways_2610', sql: refRunways067 },
+  { name: '068_ref_ad_hours_2610', sql: refAdHours068 },
+  { name: '069_ref_areas_2610', sql: refAreas069 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

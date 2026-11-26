@@ -8,7 +8,7 @@ import aipFilesJson from './ref/aip-files.json';
  * Root of the online eAIP for the AIRAC of the reference data (src/data/ref/airac.json). Updated by
  * tools/update_aip.sh; tests/unit/data/aipLinks.test.ts checks it against the AIRAC.
  */
-export const AIP_EAIP_BASE = 'https://aisgr.hasp.gov.gr/aipgr_incl_amdt_0926_wef_29oct2026/cd/ais/';
+export const AIP_EAIP_BASE = 'https://aisgr.hasp.gov.gr/aipgr_incl_amdt_1026_wef_26nov2026/cd/ais/';
 
 const FILES = aipFilesJson as Record<string, string>;
 

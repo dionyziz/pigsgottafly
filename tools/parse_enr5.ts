@@ -800,7 +800,7 @@ const SUP_AREAS: Record<string, SupArea[]> = {
 
 /** SUPs in force that print coordinates of something other than an airspace area. */
 const SUP_NOT_AREAS: Record<string, string> = {
-  '10/25': 'APPROVED SEAPLANE LANDING AREAS (points)',
+  '63/26': 'APPROVED SEAPLANE LANDING AREAS (points; replaced SUP 10/25)',
   '26/26': 'LGSK temporary obstacles (points)',
   '46/26': 'LGLM RWY 04L/22R (thresholds)',
   '59/26': 'Limited VHF coverage areas (radio coverage, not airspace; bounded by frontiers and TMAs)',

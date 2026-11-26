@@ -126,7 +126,7 @@
   "ad": "Monday to Saturday 1000 - 1700",
   "customs": null,
   "ats": "NIL",
-  "handling": "6    Repair facilities for visiting aircraft                     Available with prior request",
+  "handling": "6  Repair facilities for visiting aircraft  Available with prior request",
   "handlingSource": "AD 1.6.34.4",
   "handlingFromSection": true,
   "remarks": "NIL"
@@ -214,7 +214,7 @@
   "ad": "HS (Hellenic Army)",
   "customs": null,
   "ats": "HS (Hellenic Army)",
-  "handling": "1    Cargo-handling facilities                                 NIL\n2    Fuel/oil types                                            Fuel Grades: B, F.\nOil Grades: 523699.\nJASU: H.\n7    Remarks                                                   NIL",
+  "handling": "1  Cargo-handling facilities  NIL\n2  Fuel/oil types  Fuel Grades: B, F.\nOil Grades: 523699.\nJASU: H.\n7  Remarks  NIL",
   "handlingSource": "AD 1.6.3.4",
   "handlingFromSection": true,
   "remarks": "MIL ACFT MON-THU 5HR after SS during scheduled\ntraining flights\nRest hours: 1HR PN.\nCivil ACFT PPR."
@@ -298,7 +298,7 @@
  },
  "LGKC": {
   "source": "LGKC AD 2.3",
-  "amdt": "AIRAC AMDT 09/25",
+  "amdt": "AIRAC AMDT 10/26",
   "ad": "HO",
   "customs": "HO",
   "ats": "HO",
@@ -430,7 +430,7 @@
  },
  "LGKZ": {
   "source": "LGKZ AD 2.3",
-  "amdt": "AIRAC AMDT 01/26",
+  "amdt": "AIRAC AMDT 10/26",
   "ad": "HO",
   "customs": "NIL",
   "ats": "HO",
@@ -467,7 +467,7 @@
   "ad": "HJ (HAF)",
   "customs": null,
   "ats": "HJ (HAF)",
-  "handling": "1   Cargo-handling facilities                                NIL\n2   Fuel/oil types                                           Fuel: JP-8 MIL – DTL-83133.\nOil: MIL-PRF-7808.\n7   Remarks                                                  For military use only.",
+  "handling": "1  Cargo-handling facilities  NIL\n2  Fuel/oil types  Fuel: JP-8 MIL – DTL-83133.\nOil: MIL-PRF-7808.\n7  Remarks  For military use only.",
   "handlingSource": "AD 1.6.15.4",
   "handlingFromSection": true,
   "remarks": "NIL"
@@ -478,7 +478,7 @@
   "ad": "HJ, HO (Hellenic Army)\nHO (HASP)",
   "customs": null,
   "ats": null,
-  "handling": "2    Fuel/oil types                                            Fuel: Jet A1, AVGAS 100 LL by BP\n7    Remarks                                                   Fuel Jet A1 and AVGAS 100LL available for civil aircraft daily\nduring AD operation hours except Mondays",
+  "handling": "2  Fuel/oil types  Fuel: Jet A1, AVGAS 100 LL by BP\n7  Remarks  Fuel Jet A1 and AVGAS 100LL available for civil aircraft daily\nduring AD operation hours except Mondays",
   "handlingSource": "AD 1.6.18.4",
   "handlingFromSection": true,
   "remarks": "HJ, SR – SS ON WORKING DAYS\nHO On SAT – SUN AND HOL\nOn MON-THU 5 HR after SS during scheduled training flights.\nRest hours 1 HR PNR."
@@ -698,7 +698,7 @@
   "ad": "HJ (HAF)",
   "customs": "NIL",
   "ats": "HJ (HAF)",
-  "handling": "1    Cargo-handling facilities                             NIL.\n2    Fuel/oil types                                        Fuel:\nJP-4, AVGAS 115/145-100LL, MOGAS, JP-8.\nOil:\n7808, 1010, 1100, E120, 90 ,H 515/MIL, 10, 30, 50, for MIRAGE,\nEXXON.\n3    Fuelling facilities/capacity                          For military use only.\n7    Remarks                                               NIL",
+  "handling": "1  Cargo-handling facilities  NIL.\n2  Fuel/oil types  Fuel:\nJP-4, AVGAS 115/145-100LL, MOGAS, JP-8.\nOil:\n7808, 1010, 1100, E120, 90 ,H 515/MIL, 10, 30, 50, for MIRAGE,\nEXXON.\n3  Fuelling facilities/capacity  For military use only.\n7  Remarks  NIL",
   "handlingSource": "AD 1.6.29.4",
   "handlingFromSection": true,
   "remarks": "During night O/R RWY 28C only."

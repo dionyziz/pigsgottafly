@@ -9,7 +9,7 @@ ENR 2.1 (AIRAC AMDT 09/26) and ENR 4.1 (VOR positions for arc centres).
 import json, math, re, sys
 
 SRC, OUT = sys.argv[1], sys.argv[2]
-AIRAC = 'AIRAC AMDT 09/26 (wef 29 OCT 2026)'
+AIRAC = 'AIRAC AMDT 10/26 (wef 26 NOV 2026)'
 
 
 def c(s):
