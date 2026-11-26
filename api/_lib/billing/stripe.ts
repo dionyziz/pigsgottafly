@@ -23,6 +23,12 @@ export function stripeFromEnv(env: NodeJS.ProcessEnv): StripeSettings | null {
   return { secretKey: STRIPE_SECRET_KEY, webhookSecret: STRIPE_WEBHOOK_SECRET, priceId: STRIPE_PRICE_ID };
 }
 
+/**
+ * The API version our requests and the webhook endpoint use (its payload shapes, e.g. the billing period on each
+ * subscription item): pinned, so a change of the account's default version cannot change them under us.
+ */
+export const STRIPE_API_VERSION = '2026-11-18.endive';
+
 /** Stripe signs `${t}.${body}`; a stale timestamp is refused so a captured request cannot be replayed later. */
 const SIGNATURE_TOLERANCE_S = 300;
 
@@ -45,7 +51,11 @@ export function verifyStripeSignature(header: string, raw: Buffer, secret: strin
 async function call<T>(s: StripeSettings, method: 'POST' | 'DELETE', path: string, form: Record<string, string>) {
   const r = await (s.fetch ?? fetch)(`https://api.stripe.com/v1/${path}`, {
     method,
-    headers: { Authorization: `Bearer ${s.secretKey}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      Authorization: `Bearer ${s.secretKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Stripe-Version': STRIPE_API_VERSION,
+    },
     body: new URLSearchParams(form).toString(),
   });
   const j = (await r.json().catch(() => ({}))) as T & { error?: { message?: string } };

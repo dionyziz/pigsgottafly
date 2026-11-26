@@ -590,6 +590,10 @@ free_until / apple_account_token` (migration 070). Dormant until `BILLING_ENFORC
   `POST /api/billing/stripe/webhook` (HMAC `Stripe-Signature`, 5-minute tolerance) records `customer.subscription.*`
   events, an older event never overwriting a newer one. `POST /api/billing/portal` links to Stripe's customer portal.
   Deleting the account cancels a renewing Stripe subscription first.
+  Requests pin `Stripe-Version` (`STRIPE_API_VERSION`); the webhook endpoint is created with the same version.
+  Account setup (sandbox done 2026-11-26, live to repeat): Stripe Tax head office Tallinn, OSS union registration
+  in EE, product tax code `txcd_10103000` (SaaS), price `pgf_yearly` €50/year tax-inclusive, customer portal
+  (cancel at period end, card, invoices, address and VAT id), the account's VAT id EE102415098.
 - **iOS**: StoreKit 2, product `com.pigsgottafly.app.yearly` with `appAccountToken` = `pilots.apple_account_token`.
   The app posts each verified transaction to `POST /api/billing/apple/transaction` and finishes it only after;
   App Store Server Notifications V2 go to `POST /api/billing/apple/notifications`. Both are JWS checked against
