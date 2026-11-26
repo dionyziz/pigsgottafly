@@ -10,13 +10,14 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { usePilot } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { api } from '../../data/api';
-import { resolveAerodrome } from '../../data/ref';
+import { useRefData } from '../../data/refContext';
 import { aerodromeName, aerodromePoint, DEFAULT_LOCAL_DURATION_MIN, type FlightCreateRequest } from '../../shared';
 import { errorMessage } from '../../shared/format';
 import { AerodromeTextInput, Check, DurationField, EmptyState, Field, Loading } from '../../ui';
 import { rememberStage } from '../editor/panels/readiness';
 
 export function NewFlightPage() {
+  const { resolveAerodrome } = useRefData();
   const navigate = useNavigate();
   const pilot = usePilot();
   const [params] = useSearchParams();

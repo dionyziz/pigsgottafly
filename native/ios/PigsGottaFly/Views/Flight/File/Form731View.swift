@@ -148,7 +148,7 @@ struct Form731View: View {
         guard let core = app.core, let f = model.flight, let pilot = app.store.text(.pilot) else { return }
         let flight = f.text
         let aircraft = f["aircraftId"]?.string.flatMap { app.store.text(.aircraft($0)) }
-        let ref = app.store.text(.ref)
+        let ref = model.refText
         let passengers = forms.passengers
         guard
             let m = try? await core.run({

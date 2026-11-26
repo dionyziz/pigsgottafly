@@ -17,6 +17,7 @@ import {
   norm360,
   trueCourse,
 } from '../../../calc';
+import { aipLinksOn } from '../../../data/aipLinks';
 import type { LatLon, RoutePoint, Waypoint } from '../../../shared';
 import {
   type AerodromeRequest,
@@ -289,8 +290,8 @@ export function RouteMap(props: RouteMapProps) {
   const shown = draft ?? route;
   const legs = useMemo(() => buildLegs(shown, date), [shown, date]);
   const chartIdx = useMemo(
-    () => vfrChartIndex(refData.aerodromes, refData.vfrPoints),
-    [refData.aerodromes, refData.vfrPoints],
+    () => vfrChartIndex(refData.aerodromes, refData.vfrPoints, aipLinksOn(refData.airac.effective)),
+    [refData.aerodromes, refData.vfrPoints, refData.airac.effective],
   );
   // snapping follows the layers: only what is on the map (the route's own points always)
   const candidates = useMemo(

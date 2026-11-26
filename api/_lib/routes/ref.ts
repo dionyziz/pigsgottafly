@@ -1,10 +1,12 @@
-// Shared reference data (read-only, the AIRAC in effect: airac.ts): GET /ref/airac, /ref/bundle, /ref/<kind>.
-// /ref/bundle: ETag by AIRAC, Cache-Control private, max-age a day at most and never past the next loaded
-// cycle's effective date, 304 on If-None-Match; the full
+// Shared reference data (read-only, airac.ts): GET /ref/airac (in effect today), /ref/cycles (today's and the
+// ones loaded after it: a flight uses the one in effect on its date), /ref/bundle, /ref/<kind>.
+// /ref/bundle: today's cycle, or ?airac=<id> (one of /ref/cycles) or ?date=YYYY-MM-DD (the cycle in effect then);
+// ETag by AIRAC, Cache-Control private, today's kept a day at most and never past the next loaded cycle's
+// effective date (a chosen cycle's records do not change with the date: a day), 304 on If-None-Match; the full
 // bundle and /ref/<kind> are rate-limited per pilot (rateLimit.ts).
-import { airacInEffect, nextAirac } from '../airac.js';
+import { airacInEffect, airacOn, airacsFromToday, nextAirac } from '../airac.js';
 import type { Route } from '../http.js';
-import { notFound, reply } from '../http.js';
+import { badRequest, notFound, reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';
 
 /** Bumped when the bundle's shape changes (part of its ETag). */
@@ -41,10 +43,30 @@ async function docs(db: Queryable, kind: keyof typeof TABLES, airac: string) {
   return (await db.query(`SELECT doc FROM ${t.table} WHERE airac = $1 ORDER BY ${t.order}`, [airac])).map((r) => r.doc);
 }
 
-export async function findAerodrome(db: Queryable, idOrIcao: string): Promise<RefAerodrome | null> {
+/** The cycle a bundle request asks for: ?airac=<id>, else ?date=YYYY-MM-DD, else today's. */
+async function requested(db: Queryable, query: URLSearchParams): Promise<{ airac: RefAirac; chosen: boolean }> {
+  const id = query.get('airac');
+  const date = query.get('date');
+  if (id) {
+    const [r] = await db.query<RefAirac>('SELECT id, name, effective FROM ref_airac WHERE id = $1', [id]);
+    if (!r) throw notFound('no such AIRAC cycle loaded');
+    return { airac: { id: r.id, name: r.name, effective: r.effective }, chosen: true };
+  }
+  if (date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw badRequest('date must be YYYY-MM-DD');
+    const r = await airacOn(db, date);
+    if (!r) throw notFound('no reference data loaded');
+    return { airac: { id: r.id, name: r.name, effective: r.effective }, chosen: true };
+  }
+  return { airac: await current(db), chosen: false };
+}
+
+/** An aerodrome in the cycle in effect on `day` (a flight's date), else today's. */
+export async function findAerodrome(db: Queryable, idOrIcao: string, day?: string): Promise<RefAerodrome | null> {
+  const airac = day ? await airacOn(db, day) : await current(db);
   const [r] = await db.query(`SELECT doc FROM ref_aerodromes WHERE airac = $2 AND (id = $1 OR icao = $1) LIMIT 1`, [
     idOrIcao.toUpperCase(),
-    (await current(db)).id,
+    airac?.id,
   ]);
   return r ? (r.doc as RefAerodrome) : null;
 }
@@ -53,13 +75,20 @@ export const routes: Route[] = [
   { method: 'GET', path: '/ref/airac', handler: async ({ db }) => current(db) },
   {
     method: 'GET',
+    path: '/ref/cycles',
+    handler: async ({ db }) =>
+      (await airacsFromToday(db)).map((a) => ({ id: a.id, name: a.name, effective: a.effective })),
+  },
+  {
+    method: 'GET',
     path: '/ref/bundle',
-    async handler({ db, pilot, req }) {
-      const airac = await current(db);
-      // the bundle changes only with the AIRAC: a client keeps it until the next cycle can take effect, then
+    async handler({ db, pilot, req, query }) {
+      const { airac, chosen } = await requested(db, query);
+      // the bundle changes only with the AIRAC: a client keeps today's until the next cycle can take effect, then
       // revalidates by ETag
       const etag = `"ref-${airac.id}-${BUNDLE_FORMAT}"`;
-      const cache = { ETag: etag, 'Cache-Control': `private, max-age=${await bundleMaxAge(db)}` };
+      const maxAge = chosen ? 86400 : await bundleMaxAge(db);
+      const cache = { ETag: etag, 'Cache-Control': `private, max-age=${maxAge}` };
       if (
         String(req.headers['if-none-match'] || '')
           .split(',')

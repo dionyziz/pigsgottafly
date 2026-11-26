@@ -2,7 +2,7 @@
 // point's menu, the route's sources while editing, the drawing band, custom point names and the layers.
 import { describe, expect, test } from 'vitest';
 
-import { aipUrl } from '../../../src/data/aipLinks';
+import { aipLinksOn, aipUrl } from '../../../src/data/aipLinks';
 import { aerodrome, REF } from '../../../src/data/ref';
 import { adDayInfo, adHandlingLine, adHoursLine } from '../../../src/features/editor/adDay';
 import { airspaceInfos, airspacesAt, fmtVertical } from '../../../src/features/editor/map/airspace';
@@ -35,7 +35,7 @@ describe('mapInfo: what a tap shows, as RouteMap’s details box', () => {
       source: { ref: tt.source, url: aipUrl(tt.source) },
       airac: REF.airac.id,
     });
-    const idx = vfrChartIndex(REF.aerodromes, REF.vfrPoints);
+    const idx = vfrChartIndex(REF.aerodromes, REF.vfrPoints, aipLinksOn(REF.airac.effective));
     expect(out.aerodrome?.charts).toEqual(json(aerodromeVfrCharts(idx, tt)));
     expect(out.aerodrome?.rows[0]).toMatchObject({ text: info.ad?.text });
   });
@@ -88,7 +88,7 @@ describe('pointMenu: RouteMap’s menu of a route point', () => {
 
   test('a VFR point’s chart; a custom point; an unknown uid', () => {
     const r = [ad('LGTT'), vfr('LGAV/DAPORI'), custom('WP1', 38, 23.5), ad('LGMG')];
-    const idx = vfrChartIndex(REF.aerodromes, REF.vfrPoints);
+    const idx = vfrChartIndex(REF.aerodromes, REF.vfrPoints, aipLinksOn(REF.airac.effective));
     const p = pointMenu({ ref: API_REF, route: r, uid: r[1].uid })!;
     expect(p.charts).toEqual(json(vfrPointCharts(idx, { chart: 'LGAV', lat: r[1].lat, lon: r[1].lon })));
     expect(p.requests).toBeNull();

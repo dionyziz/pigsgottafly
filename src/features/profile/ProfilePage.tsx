@@ -11,7 +11,10 @@ import { useSession } from '../../app/session';
 import { Shell } from '../../app/Shell';
 import { api, ApiRequestError, keepalivePut } from '../../data/api';
 import { useEntity } from '../../data/entities';
-import { resolveAerodrome } from '../../data/ref';
+import { refToday } from '../../data/ref';
+
+// a home aerodrome or default alternate outlives any one cycle: today's names it
+const resolveAerodrome = (text: string) => refToday().resolveAerodrome(text);
 import {
   DEFAULT_MAP_LAYERS,
   type MapLayers,

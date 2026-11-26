@@ -4,15 +4,22 @@ Everything AIP-derived lives in `data/` and is generated. One script does the me
 
 **Load a cycle as soon as HASP publishes it, weeks ahead of its date, and deploy.** Each cycle ships in its own
 folder, `src/data/ref/cycles/<id>/` (`2611` = AIRAC AMDT 11/26), next to the cycle in effect, and its reference
-migrations load it into the `ref_*` tables. Everything then switches to it at 0000 UTC on its effective date with no
-deployment:
+migrations load it into the `ref_*` tables. The current and the next cycles are then loaded side by side, and **a
+flight is planned with the cycle in effect on its date** (`src/shared/ref.ts flightAiracDay` + `cycleOn`: the latest
+cycle whose effective date has come by the flight's date, 0000 UTC), not the cycle of the day it is planned: a flight
+on 24 Dec planned on 20 Dec uses the 24 Dec cycle. A flight with no date, and pages with no flight (lobby, profile,
+About), use today's. No deployment on the date:
 
-- the API takes the latest loaded cycle whose date has come (`api/_lib/airac.ts`; `ref_airac.current` is not read);
-- the website and the iOS app's core pick from their shipped cycles by the same rule (`src/shared/ref.ts cycleOn`);
-  a web page left open across the date offers a reload (`src/app/AiracWatch.tsx`), and the iOS app refetches the
-  server's bundle on a new UTC day (the bundle's `max-age` never runs past the next loaded cycle's date);
-- the iOS app has the cycle's CTR/ATZ, navaid, sunset and AIP-link tables in its core, so the App Store build must
-  include the cycle before its date (upload to TestFlight and release with the deployment);
+- the API: `api/_lib/airac.ts airacOn(day)`; `flightContext`, the forms and the declarations load the flight's cycle
+  (`loadRef(db, flightAiracDay(f.date))`); `GET /api/ref/cycles` lists today's cycle and the loaded ones after it,
+  `GET /api/ref/bundle?airac=<id>` (or `?date=`) serves one of them (no parameter: today's);
+- the website ships every cycle (`src/data/ref refOfFlight(date)`); the editor provides the flight's cycle to its
+  panels (`src/data/refContext.tsx`), the exports take it from the flight;
+- the iOS app downloads `/ref/cycles` and each cycle's bundle (`AppModel.refreshRef`, every 6 hours and on a new UTC
+  day) and gives the core the flight's (`Store.refKey(date:)`); the core takes the CTR/ATZ, navaid, sunset and
+  AIP-link tables of the bundle's cycle from its own copy;
+- so the App Store build must include a cycle in its core as soon as the cycle is loaded (upload to TestFlight and
+  release with the deployment): a flight after its date is planned with it right away;
 - `/api/health` warns a week before the loaded data runs out when the next cycle is not loaded yet.
 
 Unit and API tests run on the newest cycle (`tests/setup/airac.ts` sets `PGF_AIRAC_DATE`); e2e tests run on the

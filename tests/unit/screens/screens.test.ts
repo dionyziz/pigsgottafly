@@ -356,11 +356,11 @@ describe('manifest: putting the PIC back', () => {
 
 describe('flight plan options', () => {
   it('stores alternates as ICAO codes, drops empties and duplicates, keeps at most two', () => {
-    expect(alternateCode(' lgav ')).toBe('LGAV');
-    expect(alternateCode('EDDF')).toBe('EDDF'); // not in the Greek AIP: kept as typed
-    expect(alternatesFrom(['', 'lgav'])).toEqual(['LGAV']);
-    expect(alternatesFrom(['LGAV', 'lgav'])).toEqual(['LGAV']);
-    expect(alternatesFrom(['LGAV', 'LGMG', 'LGTT'])).toEqual(['LGAV', 'LGMG']);
-    expect(alternatesFrom(['', ''])).toEqual([]);
+    expect(alternateCode(' lgav ', resolveAerodrome)).toBe('LGAV');
+    expect(alternateCode('EDDF', resolveAerodrome)).toBe('EDDF'); // not in the Greek AIP: kept as typed
+    expect(alternatesFrom(['', 'lgav'], resolveAerodrome)).toEqual(['LGAV']);
+    expect(alternatesFrom(['LGAV', 'lgav'], resolveAerodrome)).toEqual(['LGAV']);
+    expect(alternatesFrom(['LGAV', 'LGMG', 'LGTT'], resolveAerodrome)).toEqual(['LGAV', 'LGMG']);
+    expect(alternatesFrom(['', ''], resolveAerodrome)).toEqual([]);
   });
 });

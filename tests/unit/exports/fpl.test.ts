@@ -574,8 +574,8 @@ describe('fplInputFrom (flight + hangar + profile + navlog + fuel)', () => {
   });
 
   test('alternates by ICAO; unknown text kept', () => {
-    expect(alternateOf('lgav')?.icao).toBe('LGAV');
-    expect(alternateOf('ABCD')).toMatchObject({ icao: 'ABCD' });
-    expect(alternateOf('')).toBeNull();
+    expect(alternateOf('lgav', aerodrome)?.icao).toBe('LGAV');
+    expect(alternateOf('ABCD', aerodrome)).toMatchObject({ icao: 'ABCD' });
+    expect(alternateOf('', aerodrome)).toBeNull();
   });
 });

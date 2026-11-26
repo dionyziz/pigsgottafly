@@ -56,7 +56,7 @@ import {
   type SigningView,
   type SubmissionState,
 } from '../../../src/shared/forms.js';
-import type { RefAerodrome } from '../../../src/shared/ref.js';
+import { flightAiracDay, type RefAerodrome } from '../../../src/shared/ref.js';
 import type { RoutePoint } from '../../../src/shared/types.js';
 import type { Aircraft, Flight, PersonKey, Pilot } from '../../../src/shared/types.js';
 import { accessibleSql, AIRCRAFT_FROM, flightFor } from '../access.js';
@@ -122,7 +122,7 @@ async function loadForms(
   const aircraft = a ? toAircraft(a) : null;
   const passengers = (await db.query('SELECT * FROM passengers WHERE pilot_id = $1', [pilot.id])).map(toPassenger);
   const emails = new Map(passengers.filter((p) => p.email).map((p) => [p.id, p.email]));
-  const ref = await loadRef(db);
+  const ref = await loadRef(db, flightAiracDay(flight.date));
   const byId = new Map(ref.aerodromes.map((x) => [x.id.toUpperCase(), x]));
   const byIcao = new Map(ref.aerodromes.filter((x) => x.icao).map((x) => [x.icao!.toUpperCase(), x]));
   const lookup: AerodromeLookup = (k) => (k ? (byId.get(k.toUpperCase()) ?? byIcao.get(k.toUpperCase())) : undefined);

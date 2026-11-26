@@ -10,6 +10,8 @@ final class FlightModel: ObservableObject {
     let app: AppModel
     private var api: API { app.api }
     private var store: Store { app.store }
+    /// The reference data of the cycle in effect on the flight's date (Store.refKey).
+    var refText: String? { app.store.refText(date: flight?["date"]?.string) }
     private var core: Core? { app.core }
 
     @Published private(set) var flight: JSON?
@@ -157,8 +159,7 @@ final class FlightModel: ObservableObject {
             }
             if let me = try? await api.me() { try? store.write(me, .pilot) }
             if let w = try? await api.waypoints() { try? store.write(w, .waypoints) }
-            let refAge = store.modified(.ref).map { -$0.timeIntervalSinceNow } ?? .infinity
-            if refAge > 6 * 3600, let ref = try? await api.refBundle() { try? store.write(ref, .ref) }
+            await app.refreshRef()
             await app.ensureTerrain()
             await recompute()
             await fetchWeather()
@@ -181,7 +182,7 @@ final class FlightModel: ObservableObject {
 
     func fetchWeather() async {
         guard let core, let flightText else { return }
-        let ref = store.text(.ref)
+        let ref = refText
         let paths = (try? await core.run { try $0.weatherRequests(flight: flightText, ref: ref) }) ?? []
         // what was saved for these paths stays until a fresh answer replaces it (offline, a failed fetch)
         let saved = store.read(.weather(id)).flatMap { try? JSON.parse($0) }?.object ?? [:]
@@ -247,7 +248,7 @@ final class FlightModel: ObservableObject {
         let aircraft = acId.flatMap { store.text(.aircraft($0)) }
         let pilot = store.text(.pilot)
         // the core keeps the last ref given; without any (a first launch offline) there is nothing to compute
-        guard let ref = store.text(.ref) else { return }
+        guard let ref = refText else { return }
         let weather = store.text(.weather(id)) ?? "{}"
         let notams = store.text(.notams(id))
         let read = notamsRead
@@ -321,7 +322,7 @@ final class FlightModel: ObservableObject {
         var fetched = store.text(.vectorStyle)
         if fetched == nil, !app.noNetwork { fetched = await fetchVectorStyle() }
         let vector = fetched
-        guard let ref = store.text(.ref) else { return }
+        guard let ref = refText else { return }
         let notamsText = store.text(.notams(id))
         let layers = flight?["options"]?["mapLayers"]?.text
         let waypoints = store.text(.waypoints)

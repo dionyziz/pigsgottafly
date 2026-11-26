@@ -2,7 +2,7 @@
 // section (src/data/aipLinks.ts), opening in a new tab; links to AIP VFR charts.
 import { Fragment, type ReactNode } from 'react';
 
-import { aipUrl } from '../data/aipLinks';
+import { useRefData } from '../data/refContext';
 
 export function AipLink({
   refText,
@@ -13,9 +13,10 @@ export function AipLink({
   children?: ReactNode;
   className?: string;
 }) {
+  const { aip } = useRefData();
   return (
     <a
-      href={aipUrl(refText)}
+      href={aip.url(refText)}
       target="_blank"
       rel="noopener noreferrer"
       className={'aip-link' + (className ? ' ' + className : '')}

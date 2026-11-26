@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 
 import type { FuelPlan, NavlogResult } from '../../../calc';
-import { REF, SUN_TABLES } from '../../../data/ref';
+import { refOfFlight } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { RouteWeather } from '../../../data/weather';
@@ -30,6 +30,8 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
   const { legs, weather } = wx;
   const weatherLoading = wx.weatherLoading && legs.length > 0;
   const terrain = useTerrain();
+  // the cycle in effect on the flight's date
+  const rd = refOfFlight(flight.date);
   const { circuitMin, finalReserveMin, reserveMin } = pilot.settings;
   const { navlog, fuel } = useMemo(
     () =>
@@ -40,14 +42,14 @@ export function useFplData(flight: Flight, pilot: Pilot): FplData {
         legs,
         weather,
         ref: {
-          aerodromes: REF.aerodromes,
-          vfrPoints: REF.vfrPoints,
-          vfrRoutes: REF.vfrRoutes,
-          sunTables: SUN_TABLES,
+          aerodromes: rd.ref.aerodromes,
+          vfrPoints: rd.ref.vfrPoints,
+          vfrRoutes: rd.ref.vfrRoutes,
+          sunTables: rd.sun,
           terrain,
         },
       }),
-    [flight, aircraft, circuitMin, finalReserveMin, reserveMin, legs, weather, terrain],
+    [flight, aircraft, circuitMin, finalReserveMin, reserveMin, legs, weather, terrain, rd],
   );
 
   return { aircraft, aircraftLoading, weather, weatherLoading, navlog, fuel };

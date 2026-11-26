@@ -3,8 +3,17 @@ import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { aipFiles } from '../../../../../tools/aip_files';
-import { AIP_EAIP_BASE, vfrChartUrl } from '../../../../data/aipLinks';
-import { AD_AIRSPACES, AERODROMES, AIRSPACES, AREAS, NAVAIDS, VFR_POINTS, VFR_ROUTES } from '../../../../data/ref';
+import { aipLinksOn } from '../../../../data/aipLinks';
+import {
+  AD_AIRSPACES,
+  AERODROMES,
+  AIRAC,
+  AIRSPACES,
+  AREAS,
+  NAVAIDS,
+  VFR_POINTS,
+  VFR_ROUTES,
+} from '../../../../data/ref';
 import type { RefAerodrome, RefVfrPoint, RefVfrRoute } from '../../../../shared/ref';
 import { adDayInfo } from '../../adDay';
 import { AerodromeDetails } from '../AerodromePopover';
@@ -120,7 +129,9 @@ describe('VFR route arrows', () => {
 });
 
 describe('AIP VFR charts', () => {
-  const idx = vfrChartIndex(AERODROMES, VFR_POINTS);
+  const aip = aipLinksOn(AIRAC.effective);
+  const vfrChartUrl = aip.vfrChartUrl;
+  const idx = vfrChartIndex(AERODROMES, VFR_POINTS, aip);
   const ad = (id: string) => AERODROMES.find((a) => a.id === id) as RefAerodrome;
   it('the table of contents gives each aerodrome VFR chart (AD 2.24 and AD 1.6.N.24)', () => {
     const html = `<A HREF="eaip/pdf/AD 2/AD2-LGAV/LG_AD_2_LGAV_VFR_en.pdf">x</A>
@@ -130,7 +141,7 @@ describe('AIP VFR charts', () => {
       'VFR LGAV': 'eaip/pdf/AD 2/AD2-LGAV/LG_AD_2_LGAV_VFR_en.pdf',
       'VFR LGTG': 'eaip/pdf/ad 1/AD 1.6 CAT B AERODROMES/catb/LG_AD_1_6_29_LGTG_VFR_en.pdf',
     });
-    expect(vfrChartUrl('LGAV')).toBe(AIP_EAIP_BASE + 'eaip/pdf/AD%202/AD2-LGAV/LG_AD_2_LGAV_VFR_en.pdf');
+    expect(vfrChartUrl('LGAV')).toBe(aip.base + 'eaip/pdf/AD%202/AD2-LGAV/LG_AD_2_LGAV_VFR_en.pdf');
     expect(vfrChartUrl('LGTG')).toMatch(/LG_AD_1_6_29_LGTG_VFR_en\.pdf$/);
     expect(vfrChartUrl('LGZZ')).toBeNull();
   });

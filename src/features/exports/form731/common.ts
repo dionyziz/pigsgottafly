@@ -1,5 +1,5 @@
 // Shared by Form 731 and the General Declaration. Pure: no DOM, no I/O.
-import { aerodrome } from '../../../data/ref';
+import { refOfFlight } from '../../../data/ref';
 import type { Aircraft, FlightDoc, Passenger, Pilot, RoutePoint } from '../../../shared';
 import {
   type AerodromeLookup,
@@ -24,16 +24,17 @@ export interface FormExportProps {
 // as the native core binds them to GET /api/ref/bundle).
 export { formatDate, type FormPerson, idText, type Place, placeLong } from '../../../shared/forms';
 
-const lookup = (k: string | null | undefined) => aerodrome(k);
+/** The aerodromes of the cycle in effect on the flight's date ('' = today). */
+export const lookupOn = (date: string) => refOfFlight(date).aerodrome;
 
 /** Origin, aerodromes on the way, destination (see routePlacesWith). */
-export function routePlaces(route: RoutePoint[]): Place[] {
-  return routePlacesWith(route, lookup);
+export function routePlaces(route: RoutePoint[], date: string): Place[] {
+  return routePlacesWith(route, lookupOn(date));
 }
 
 /** "LGTT – LGMG – LGTT" */
-export function routeText(route: RoutePoint[]): string {
-  return routeTextWith(route, lookup);
+export function routeText(route: RoutePoint[], date: string): string {
+  return routeTextWith(route, lookupOn(date));
 }
 
 export function routeTextWith(route: RoutePoint[], find: AerodromeLookup): string {

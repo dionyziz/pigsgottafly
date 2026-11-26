@@ -457,6 +457,14 @@ export function airacDay(now: number = Date.now()): string {
   return pinned || new Date(now).toISOString().slice(0, 10);
 }
 
+/**
+ * The day whose AIRAC a flight is planned with: the flight's date (the UTC day of block start), so a flight on or
+ * after a cycle's effective date uses that cycle even when it is planned before; today when it has no date.
+ */
+export function flightAiracDay(date: string | null | undefined, now: number = Date.now()): string {
+  return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : airacDay(now);
+}
+
 /** The cycle in effect on a day: the latest whose effective date has come, else (none yet) the earliest. */
 export function cycleOn<T extends { airac: RefAirac }>(cycles: readonly T[], day: string): T {
   if (!cycles.length) throw new Error('no AIRAC cycle');

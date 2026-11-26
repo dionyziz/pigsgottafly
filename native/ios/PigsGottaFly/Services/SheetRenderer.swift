@@ -240,7 +240,7 @@ struct SheetInputs: Sendable {
         flight = f.text
         aircraft = f["aircraftId"]?.string.flatMap { app.store.text(.aircraft($0)) }
         pilot = app.store.text(.pilot)
-        ref = app.store.text(.ref)
+        ref = model.refText
         weather = app.store.text(.weather(model.id)) ?? "{}"
         notams = app.store.text(.notams(model.id))
     }

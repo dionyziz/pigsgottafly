@@ -23,6 +23,7 @@ import {
   wbPerfText,
 } from '../../../src/shared/declarations.js';
 import { routePlacesWith } from '../../../src/shared/forms.js';
+import { flightAiracDay } from '../../../src/shared/ref.js';
 import type { Pilot, RoutePoint } from '../../../src/shared/types.js';
 import { accessibleSql, flightFor } from '../access.js';
 import type { Queryable } from '../db.js';
@@ -74,8 +75,8 @@ async function sheetsPdf(
 
 /** The route as the sheets print it (the export page's routeText): origin, aerodromes on the way,
  *  destination, by code. */
-async function sheetRoute(db: Queryable, route: RoutePoint[]): Promise<string> {
-  const ref = await loadRef(db);
+async function sheetRoute(db: Queryable, route: RoutePoint[], date: string): Promise<string> {
+  const ref = await loadRef(db, flightAiracDay(date));
   const byId = new Map(ref.aerodromes.map((x) => [x.id.toUpperCase(), x]));
   const byIcao = new Map(ref.aerodromes.filter((x) => x.icao).map((x) => [x.icao!.toUpperCase(), x]));
   return routePlacesWith(route, (k) => (k ? (byId.get(k.toUpperCase()) ?? byIcao.get(k.toUpperCase())) : undefined))
@@ -190,7 +191,7 @@ export const routes: Route[] = [
       const routeText = [facts.origin, facts.destination].filter(Boolean).join(' – ');
       // the sheets print the pilot and the route as the export page does (WbExport.tsx)
       const pic = sheetText(pilot.fullName, 80);
-      const sheetRouteText = (await sheetRoute(db, flight.route).catch(() => '')) || routeText;
+      const sheetRouteText = (await sheetRoute(db, flight.route, flight.date).catch(() => '')) || routeText;
       // the PDF's identifying fields are the server's
       const content: WbPerfContent = {
         ...sent,

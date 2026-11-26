@@ -2,7 +2,7 @@
 // covers a map item, for the links in the info boxes: the aerodrome's own chart, the chart a VFR point is
 // printed on, and otherwise the smallest chart whose area (its aerodrome and the reporting points printed
 // on it) holds the item. Pure (no map), unit-tested.
-import { vfrChartUrl } from '../../../data/aipLinks';
+import type { AipLinks } from '../../../data/aipLinks';
 import type { RefAerodrome, RefVfrPoint } from '../../../shared/ref';
 import { type AirspaceInfo, isArea, pointInRing } from './airspace';
 
@@ -19,6 +19,8 @@ interface Cover {
 }
 
 export interface VfrChartIndex {
+  /** The eAIP of the flight's cycle the charts link to. */
+  aip: AipLinks;
   /** Smallest first. */
   covers: Cover[];
   byAerodrome: Map<string, { a: RefAerodrome; chart: VfrChart }>;
@@ -27,12 +29,12 @@ export interface VfrChartIndex {
 /** Margin around a chart's points, degrees (a few NM). */
 const PAD = 0.05;
 
-export function vfrChart(icao: string): VfrChart | null {
-  const url = vfrChartUrl(icao);
+export function vfrChart(aip: AipLinks, icao: string): VfrChart | null {
+  const url = aip.vfrChartUrl(icao);
   return url ? { icao: icao.toUpperCase(), url } : null;
 }
 
-export function vfrChartIndex(aerodromes: RefAerodrome[], points: RefVfrPoint[]): VfrChartIndex {
+export function vfrChartIndex(aerodromes: RefAerodrome[], points: RefVfrPoint[], aip: AipLinks): VfrChartIndex {
   const byChart = new Map<string, [number, number][]>();
   for (const p of points) {
     if (!isFinite(p.lat) || !isFinite(p.lon)) continue;
@@ -43,7 +45,7 @@ export function vfrChartIndex(aerodromes: RefAerodrome[], points: RefVfrPoint[])
   const covers: Cover[] = [];
   const byAerodrome = new Map<string, { a: RefAerodrome; chart: VfrChart }>();
   for (const a of aerodromes) {
-    const chart = a.icao ? vfrChart(a.icao) : null;
+    const chart = a.icao ? vfrChart(aip, a.icao) : null;
     if (!chart || !isFinite(a.lat) || !isFinite(a.lon)) continue;
     byAerodrome.set(a.id, { a, chart });
     const pts: [number, number][] = [[a.lon, a.lat], ...(byChart.get(chart.icao) ?? [])];
@@ -58,7 +60,7 @@ export function vfrChartIndex(aerodromes: RefAerodrome[], points: RefVfrPoint[])
     covers.push({ chart, bbox, area: (bbox[2] - bbox[0]) * (bbox[3] - bbox[1]) });
   }
   covers.sort((x, y) => x.area - y.area);
-  return { covers, byAerodrome };
+  return { aip, covers, byAerodrome };
 }
 
 /** The smallest VFR chart showing this position (none outside every chart). */
@@ -76,7 +78,7 @@ export function aerodromeVfrCharts(idx: VfrChartIndex, a: RefAerodrome): VfrChar
 /** The chart a VFR reporting point is printed on (its id is '<chart>/<NAME>'); open-flightmaps points
  *  (chart 'LGGG') take the chart that shows them. */
 export function vfrPointCharts(idx: VfrChartIndex, p: Pick<RefVfrPoint, 'chart' | 'lat' | 'lon'>): VfrChart[] {
-  const own = vfrChart(p.chart);
+  const own = vfrChart(idx.aip, p.chart);
   return own ? [own] : vfrChartsAt(idx, p.lon, p.lat);
 }
 
@@ -86,7 +88,7 @@ export function vfrPointCharts(idx: VfrChartIndex, p: Pick<RefVfrPoint, 'chart' 
  */
 export function airspaceVfrCharts(idx: VfrChartIndex, s: AirspaceInfo): VfrChart[] {
   if (s.type === 'CTR' || s.type === 'ATZ') {
-    const own = vfrChart(s.id.replace(/-(CTR|ATZ)$/, ''));
+    const own = vfrChart(idx.aip, s.id.replace(/-(CTR|ATZ)$/, ''));
     if (own) return [own];
   } else if (!isArea(s.type)) {
     const [w, so, e, n] = s.bbox;

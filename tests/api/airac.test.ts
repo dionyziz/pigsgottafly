@@ -1,13 +1,17 @@
 // A cycle loaded ahead of its date switches on by itself at 0000 UTC on that date (AIP-UPDATE.md): the API's
-// AIRAC in effect (api/_lib/airac.ts), the clients' (src/shared/ref.ts cycleOn), and the shipped cycle lists.
+// AIRAC in effect (api/_lib/airac.ts), the clients' (src/shared/ref.ts cycleOn), and the shipped cycle lists. A
+// flight is planned with the cycle in effect on its own date (flightAiracDay) on the website, the API and the core.
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 
 import { airacInEffect, nextAirac } from '../../api/_lib/airac';
 import type { Db } from '../../api/_lib/db';
-import { CYCLE } from '../../src/data/ref';
+import { flightContext } from '../../api/_lib/flightContext';
+import { aipLinksOn } from '../../src/data/aipLinks';
+import { CYCLE, refOfFlight } from '../../src/data/ref';
 import { CYCLES } from '../../src/data/ref/cycles';
 import { CYCLES as CORE_CYCLES } from '../../src/data/ref/cycles/core';
-import { airacDay, cycleOn } from '../../src/shared/ref';
+import { refOf } from '../../src/native/core/shared';
+import { airacDay, cycleOn, flightAiracDay } from '../../src/shared/ref';
 import { client, googleClaims, signToken, startApi } from './helpers';
 
 let apiBase = '';
@@ -38,6 +42,32 @@ describe('the rule', () => {
         .sort()
         .at(-1),
     );
+  });
+});
+
+describe('a flight is planned with the cycle of its date, not of the day it is planned', () => {
+  const [prior, next] = CYCLES.slice(-2).map((c) => c.airac);
+  const before = new Date(Date.parse(next.effective) - 86400e3).toISOString().slice(0, 10);
+  test('the rule: the flight’s date, else today', () => {
+    expect(flightAiracDay('2027-03-04')).toBe('2027-03-04');
+    expect(flightAiracDay('', Date.parse('2026-12-01T12:00:00Z'))).toBe(airacDay(Date.parse('2026-12-01T12:00:00Z')));
+  });
+  test('the website: reference data, sunset tables and eAIP links', () => {
+    expect(refOfFlight(before).airac.id).toBe(prior.id);
+    expect(refOfFlight(next.effective).airac.id).toBe(next.id);
+    expect(refOfFlight(next.effective).aip.base).toBe(aipLinksOn(next.effective).base);
+    expect(refOfFlight(before).aip.base).not.toBe(refOfFlight(next.effective).aip.base);
+    expect(refOfFlight(next.effective).sun).toBe(CYCLES.at(-1)!.sun);
+  });
+  test('the native core: the bundle the app picked for the flight decides the eAIP and the tables', () => {
+    const bundle = (a: typeof prior) => ({
+      ...refOfFlight(a.effective).ref,
+      adAirspaces: undefined,
+      navaids: undefined,
+    });
+    expect(refOf(bundle(prior)).aip.airac.id).toBe(prior.id);
+    expect(refOf(bundle(next)).aip.airac.id).toBe(next.id);
+    expect(refOf(bundle(next)).sunTables).toBe(CORE_CYCLES.find((c) => c.airac.id === next.id)!.sun);
   });
 });
 
@@ -73,6 +103,29 @@ describe('the API', () => {
       headers: { cookie: await signIn('sub-airac', 'airac@example.com') },
     });
     expect(r.headers.get('etag')).toBe(`"ref-${next.id}-1"`);
+  });
+
+  test('a flight dated in the next cycle is computed with it while today is still in the one before', async () => {
+    const [prior, next] = CYCLES.slice(-2).map((c) => c.airac);
+    process.env.PGF_AIRAC_DATE = new Date(Date.parse(next.effective) - 86400e3).toISOString().slice(0, 10);
+    const c = client(api.base);
+    await c.login('sub-airac-3', 'airac3@example.com');
+    const me = (await c.call('GET', 'me')).body;
+    const later = (await c.call('POST', 'flights', { date: next.effective })).body;
+    const now = (await c.call('POST', 'flights', { date: process.env.PGF_AIRAC_DATE })).body;
+    expect((await flightContext(db, me.id, later.id)).ref.airac).toBe(next.id);
+    expect((await flightContext(db, me.id, now.id)).ref.airac).toBe(prior.id);
+
+    const cycles = (await c.call('GET', 'ref/cycles')).body;
+    expect(cycles.map((a: { id: string }) => a.id)).toEqual([prior.id, next.id]);
+    expect((await c.call('GET', 'ref/bundle?airac=' + next.id)).body.airac.id).toBe(next.id);
+    expect((await c.call('GET', 'ref/bundle?date=' + next.effective)).body.airac.id).toBe(next.id);
+    expect((await c.call('GET', 'ref/bundle')).body.airac.id).toBe(prior.id);
+    expect((await c.call('GET', 'ref/bundle?airac=0000')).status).toBe(404);
+    expect((await c.call('GET', 'ref/bundle?date=tomorrow')).status).toBe(400);
+
+    process.env.PGF_AIRAC_DATE = next.effective;
+    expect((await c.call('GET', 'ref/cycles')).body.map((a: { id: string }) => a.id)).toEqual([next.id]);
   });
 
   test('a client keeps the bundle no later than the next cycle’s start', async () => {

@@ -140,7 +140,7 @@ describe.each(Object.entries(cases))('%s', (_, make) => {
       nowMs: NOW,
       ref: webRef,
     });
-    const web = wbPerfOf({ doc: f, aircraft: AC, pilot: PILOT, calc, route: routeText(f.route) });
+    const web = wbPerfOf({ doc: f, aircraft: AC, pilot: PILOT, calc, route: routeText(f.route, f.date) });
     expect(out.wb).toEqual(json(web.wb));
     expect(out.perf).toEqual(json(web.perf));
     expect(out.content).toEqual(json(web.content));

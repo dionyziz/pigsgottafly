@@ -1,7 +1,7 @@
 // FplInput from the app's records: flight, aircraft (hangar), pilot (profile), navlog and fuel plan.
 import type { FuelPlan, NavlogResult } from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
-import { aerodrome, REF } from '../../../data/ref';
+import { refOfFlight } from '../../../data/ref';
 import { type Aircraft, type Flight, isLocalFlight, localDuration, type Pilot, requestRemarks } from '../../../shared';
 import type { AerodromeFinder } from '../../../shared/aerodrome';
 import type { RefAerodrome } from '../../../shared/ref';
@@ -23,11 +23,7 @@ const BLANK_EQUIPMENT: Aircraft['equipment'] = {
 const toFpl = (a: RefAerodrome): FplAerodrome => ({ icao: a.icao, name: a.name, lat: a.lat, lon: a.lon });
 
 /** Alternate typed as an ICAO indicator or a reference aerodrome id; unknown ones keep the text. */
-export function alternateOf(s: string): FplAerodrome | null {
-  return alternateWith(s, aerodrome);
-}
-
-function alternateWith(s: string, find: AerodromeFinder<RefAerodrome>): FplAerodrome | null {
+export function alternateOf(s: string, find: AerodromeFinder<RefAerodrome>): FplAerodrome | null {
   const t = (s || '').trim().toUpperCase();
   if (!t) return null;
   const a = find(t);
@@ -53,8 +49,10 @@ export interface FplSources {
   fuel: FuelPlan | null;
 }
 
+/** With the reference data of the cycle in effect on the flight's date. */
 export function fplInputFrom(o: FplSources): FplInput {
-  return fplInputWith(o, REF.aerodromes, aerodrome);
+  const rd = refOfFlight(o.flight.date);
+  return fplInputWith(o, rd.ref.aerodromes, rd.aerodrome);
 }
 
 /** fplInputFrom with other reference data (the native core's GET /api/ref/bundle). */
@@ -82,7 +80,7 @@ export function fplInputWith(o: FplSources, aerodromes: RefAerodrome[], find: Ae
     departure: dep ? toFpl(dep) : asPoint(first),
     destination: dest ? toFpl(dest) : asPoint(last),
     alternates: (flight.options.alternates || [])
-      .map((a) => alternateWith(a, find))
+      .map((a) => alternateOf(a, find))
       .filter((x): x is FplAerodrome => !!x),
     route: route.map((p) => ({
       name: p.name,

@@ -12,7 +12,8 @@ import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, us
 
 import { type AltitudeDefault, buildLegs, defaultAltitudes, type LegGeometry } from '../../calc';
 import { flightStore, type SaveStatus } from '../../data/flightStore';
-import { REF } from '../../data/ref';
+import { refOfFlight } from '../../data/ref';
+import { FlightRefProvider } from '../../data/refContext';
 import { useTerrain } from '../../data/terrain';
 import type { Aircraft, Flight, FlightDoc, MapLayers, Passenger, Pilot, RefBundle, Waypoint } from '../../shared';
 import { autoTitle, EMPTY_SUMMARY, requestTiming } from '../../shared';
@@ -132,21 +133,22 @@ export function EditorProvider({
     [doc.route, doc.options, circuitMin],
   );
   const terrain = useTerrain();
+  const ref = useMemo(() => refOfFlight(doc.date).ref, [doc.date]);
   const altitudeDefaults = useMemo(
     () =>
       defaultAltitudes(
         doc.route,
         {
-          aerodromes: REF.aerodromes,
-          vfrPoints: REF.vfrPoints,
-          vfrRoutes: REF.vfrRoutes,
+          aerodromes: ref.aerodromes,
+          vfrPoints: ref.vfrPoints,
+          vfrRoutes: ref.vfrRoutes,
           terrain,
           layers: doc.options.mapLayers,
         },
         overrides,
         requestTimes.patternPoints,
       ),
-    [doc.route, overrides, requestTimes, terrain, doc.options.mapLayers],
+    [doc.route, ref, overrides, requestTimes, terrain, doc.options.mapLayers],
   );
   const altitudesFt = useMemo(
     () => altitudeDefaults.map((d, i) => overrides[i] ?? d.altFt),
@@ -257,10 +259,14 @@ export function EditorProvider({
     passengersLoaded,
     reloadLists,
     aircraft,
-    ref: REF,
+    ref,
     legs,
     altitudeDefaults,
     altitudesFt,
   };
-  return <EditorContext value={value}>{children}</EditorContext>;
+  return (
+    <EditorContext value={value}>
+      <FlightRefProvider date={doc.date}>{children}</FlightRefProvider>
+    </EditorContext>
+  );
 }

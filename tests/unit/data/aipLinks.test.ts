@@ -2,8 +2,11 @@
 import { describe, expect, test } from 'vitest';
 
 import { aipRefParts } from '../../../src/app/AipLink';
-import { AIP_EAIP_BASE, AIP_EAIP_INDEX, aipSection, aipUrl, hasAipPdf } from '../../../src/data/aipLinks';
+import { aipLinksOn, aipSection, aipUrl, hasAipPdf } from '../../../src/data/aipLinks';
 import { AD_AIRSPACES, AERODROMES, AIRAC, AIRSPACES, AREAS } from '../../../src/data/ref';
+import { CYCLES } from '../../../src/data/ref/cycles/core';
+
+const { base: AIP_EAIP_BASE, index: AIP_EAIP_INDEX } = aipLinksOn(AIRAC.effective);
 import { aipFiles } from '../../../tools/aip_files';
 
 describe('AIP links', () => {
@@ -11,6 +14,12 @@ describe('AIP links', () => {
     const m = /AMDT (\d\d)\/(\d\d) \(wef (\d+) ([A-Z]{3}) (\d{4})\)/.exec(AIRAC.name)!;
     const wef = `${m[3].padStart(2, '0')}${m[4].toLowerCase()}${m[5]}`;
     expect(AIP_EAIP_BASE).toBe(`https://aisgr.hasp.gov.gr/aipgr_incl_amdt_${m[1]}${m[2]}_wef_${wef}/cd/ais/`);
+  });
+  test('each cycle links its own eAIP, from its effective date', () => {
+    for (const c of CYCLES) {
+      expect(aipLinksOn(c.airac.effective).airac.id).toBe(c.airac.id);
+      expect(aipLinksOn(c.airac.effective).base).toContain(`_amdt_${c.airac.id.slice(2)}${c.airac.id.slice(0, 2)}_`);
+    }
   });
   test('section of a reference as the app prints them', () => {
     expect(aipSection('AD 2 LGAV')).toBe('AD 2 LGAV');

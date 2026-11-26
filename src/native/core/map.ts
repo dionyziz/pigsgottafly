@@ -3,7 +3,6 @@
 // menu, the route's own sources while a point is dragged or drawn, the names a custom point can take,
 // and the layers menu. Texts come formatted as the website's boxes print them.
 import { distanceNm, magneticVariation, midpoint, norm360, trueCourse } from '../../calc';
-import { aipUrl } from '../../data/aipLinks';
 import {
   notamLimits,
   notamSubject,
@@ -81,7 +80,7 @@ function refIndex(r: Ref, date?: string | null) {
       bundle: b,
       day,
       infos: airspaceInfos(b.airspaces, b.adAirspaces ?? [], b.areas ?? [], b.fir, day),
-      charts: cache?.bundle === b ? cache.charts : vfrChartIndex(b.aerodromes, b.vfrPoints),
+      charts: cache?.bundle === b ? cache.charts : vfrChartIndex(b.aerodromes, b.vfrPoints, r.aip),
     };
   return cache;
 }
@@ -89,7 +88,7 @@ function refIndex(r: Ref, date?: string | null) {
 const layersOf = (l: Partial<MapLayers> | null | undefined): MapLayers => mapLayersOf(l ?? null) ?? DEFAULT_MAP_LAYERS;
 
 /** An AIP reference with its PDF. */
-const aip = (ref: string) => ({ ref, url: aipUrl(ref) });
+const aip = (r: Ref, ref: string) => ({ ref, url: r.aip.url(ref) });
 
 interface Row {
   label: string;
@@ -135,10 +134,10 @@ function aerodromeCard(a: RefAerodrome, date: string, briefing: NotamBriefing | 
     notams: published
       ? info.notams.map((n) => ({ key: n.key, summary: n.summary, text: n.partial ? n.text : null }))
       : [],
-    hoursSource: h && info.ad ? aip(h.source) : null,
+    hoursSource: h && info.ad ? aip(r, h.source) : null,
     partial,
     partialNotes: h && partial.length ? h.ad.parsed.notes : [],
-    source: aip(a.source),
+    source: aip(r, a.source),
     charts: aerodromeVfrCharts(refIndex(r).charts, a),
     airac: r.bundle.airac.id,
   };
@@ -170,7 +169,7 @@ function navaidCard(n: RefNavaid, r: Ref) {
     title: `${n.ident} · ${n.name}`,
     freq: navaidFreqText(n),
     rows,
-    sources: n.sources.map(aip),
+    sources: n.sources.map((s) => aip(r, s)),
     charts: vfrChartsAt(refIndex(r).charts, n.lon, n.lat),
     airac: r.bundle.airac.id,
   };
@@ -198,7 +197,7 @@ function airspaceCard(a: AirspaceInfo, r: Ref) {
     units: a.units.map((u) => ({ callsign: u.callsign, freqs: u.freqs, hours: u.hours ?? null })),
     remarks: a.remarks,
     charts: airspaceVfrCharts(refIndex(r).charts, a),
-    source: aip(a.source),
+    source: aip(r, a.source),
     airac: r.bundle.airac.id,
   };
 }

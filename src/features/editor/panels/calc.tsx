@@ -1,11 +1,11 @@
 // Everything numeric comes from src/calc through the pure functions of flightCalc.ts (shared with the
 // native app's core); this file only wires inputs.
-import { createContext, type ReactNode, use, useEffect, useEffectEvent, useMemo, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 
 import type { AdNotamEffect, FuelPlan, Hazard, NavlogResult, WbResult, WbStatus } from '../../../calc';
 import { endpointAerodrome } from '../../../data/atc';
 import { fetchHazardWeather, type HazardWeather } from '../../../data/hazardWeather';
-import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
+import { useRefData } from '../../../data/refContext';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { OpenMeteoLocation, RouteWeather } from '../../../data/weather';
@@ -79,13 +79,17 @@ export function useFlightCalc(): FlightCalc {
 const fin = (x: unknown): x is number => typeof x === 'number' && isFinite(x);
 
 /** The aerodrome a route endpoint stands for (the point's own aerodrome, else one within 2 NM). */
-export function endpointOf(p: RoutePoint | undefined): RefAerodrome | null {
+function endpointOf(p: RoutePoint | undefined, aerodromes: RefAerodrome[]): RefAerodrome | null {
   if (!p) return null;
-  return endpointAerodrome(p, REF.aerodromes);
+  return endpointAerodrome(p, aerodromes);
 }
 
 export function FlightCalcProvider({ children }: { children: ReactNode }) {
   const { doc, legs, altitudesFt, aircraft, pilot, setDerived } = useEditor();
+  const rd = useRefData();
+  const { sun, runwaysOf } = rd;
+  const { areas, aerodromes } = rd.ref;
+  const aerodromeOf = useCallback((p: RoutePoint | undefined) => endpointOf(p, aerodromes), [aerodromes]);
 
   // ---- winds aloft at the leg midpoints, surface forecast and METAR/TAF at the departure, the stops
   // (full stops and touch-and-goes) and the destination
@@ -181,9 +185,10 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         perLeg: legs.map((l) => byMid.get(midKey(l.mid)) ?? null),
         timing,
         taxiAllowanceL,
-        sunTables: SUN_TABLES,
+        sunTables: sun,
       }),
     [
+      sun,
       legs,
       aircraft,
       byMid,
@@ -259,7 +264,7 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
       options: doc.options,
       runwaysOf,
     }),
-    [wb, metar, aircraft, wbMissingWeights, doc.date, doc.options],
+    [wb, metar, aircraft, wbMissingWeights, doc.date, doc.options, runwaysOf],
   );
   const departure = useMemo(
     () => calcEndpoint(endpointCtx, 'takeoff', dep, weather?.departure ?? null, takeoffMs),
@@ -280,9 +285,9 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         times,
         dayMs,
         endpoint: endpointCtx,
-        aerodromeOf: endpointOf,
+        aerodromeOf,
       }),
-    [sectorCalc, stopIdx, stopAds, weather, times, dayMs, endpointCtx, doc.route, doc.options],
+    [sectorCalc, stopIdx, stopAds, weather, times, dayMs, endpointCtx, doc.route, doc.options, aerodromeOf],
   );
 
   const hazards = useMemo(
@@ -298,15 +303,15 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         doc: { route: doc.route, options: doc.options },
         dep,
         arr,
-        aerodromeOf: endpointOf,
+        aerodromeOf,
         dayMs,
         times,
         navlog,
         stops,
         effects: adEffects,
-        sunTables: SUN_TABLES,
+        sunTables: sun,
       }),
-    [adEffects, dayMs, times, doc.route, doc.options, dep, arr, stops, navlog],
+    [adEffects, dayMs, times, doc.route, doc.options, dep, arr, stops, navlog, aerodromeOf, sun],
   );
 
   const crewErrors = useMemo(() => calcCrewErrors(doc.crew, aircraft), [doc.crew, aircraft]);
@@ -338,10 +343,11 @@ export function FlightCalcProvider({ children }: { children: ReactNode }) {
         aerodromeChecks,
         terrain,
         altitudesFt,
-        areas: REF.areas,
+        areas,
         nowMs: Date.now(),
       }),
     [
+      areas,
       aircraft,
       crewErrors,
       weather,

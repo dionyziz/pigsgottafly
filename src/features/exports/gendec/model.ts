@@ -1,7 +1,6 @@
 // General Declaration (ICAO Annex 9 Appendix 1, club form MD 4.7): what goes in each field. The
 // content is src/shared/forms.ts genDecContent (shared with the PDF e-mailed to HCAA); here it is
 // bound to the client's reference data, with what is missing as warnings.
-import { aerodrome } from '../../../data/ref';
 import {
   type AerodromeLookup,
   GENDEC_ROUTING_ROWS,
@@ -9,7 +8,7 @@ import {
   genDecContent,
   routePlacesWith,
 } from '../../../shared/forms';
-import type { FormExportProps } from '../form731/common';
+import { type FormExportProps, lookupOn } from '../form731/common';
 import type { FormFix } from '../form731/FormWarnings';
 
 export const ROUTING_ROWS = GENDEC_ROUTING_ROWS;
@@ -20,7 +19,7 @@ export interface GenDecModel extends GenDecContent {
 }
 
 export function genDecModel(props: FormExportProps): GenDecModel {
-  return genDecModelWith(props, aerodrome);
+  return genDecModelWith(props, lookupOn(props.flight.date));
 }
 
 /** genDecModel with other reference data (the native core's GET /api/ref/bundle). */

@@ -12,7 +12,7 @@ import {
   onlyFromAutorouter,
   visibleNotams,
 } from '../../../data/notams';
-import { aerodrome } from '../../../data/ref';
+import { useRefData } from '../../../data/refContext';
 import { fmtClockMs } from '../../../shared/format';
 import { Chip, Collapsible, Icon } from '../../../ui';
 import { useNotams } from '../notams';
@@ -91,11 +91,12 @@ export function NotamSection() {
   const list = visibleNotams(briefing, showAll);
   // the departure and the destination always have their group, even with no NOTAM
   const route = useEditor().doc.route;
+  const { aerodrome } = useRefData();
   const always = useMemo(() => {
     const icaoOf = (p: (typeof route)[number] | undefined) =>
       p?.kind === 'aerodrome' ? (aerodrome(p.refId ?? p.name)?.icao ?? null) : null;
     return [icaoOf(route[0]), icaoOf(route[route.length - 1])].filter((x): x is string => !!x);
-  }, [route]);
+  }, [route, aerodrome]);
   const ok = briefing?.status === 'ok';
   const sourcesLine = briefing ? notamSourcesLine(briefing) : null;
   const badge =

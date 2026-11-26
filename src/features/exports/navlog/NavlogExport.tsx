@@ -3,7 +3,7 @@
 // are NavlogSheet.tsx, which also draws the PDF e-mailed to the pilot (./MailPanel.tsx).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { REF, SUN_TABLES } from '../../../data/ref';
+import { refOfFlight } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { Flight } from '../../../shared';
@@ -29,6 +29,8 @@ export function NavlogExport({ flight }: { flight: Flight }) {
   });
   const { weather, metar, legs } = wx;
   const terrain = useTerrain();
+  // the cycle in effect on the flight's date
+  const rd = refOfFlight(flight.date);
 
   const doc: NavlogDocument | null = useMemo(() => {
     if (ac.loading) return null;
@@ -39,17 +41,17 @@ export function NavlogExport({ flight }: { flight: Flight }) {
       weather,
       metar,
       ref: {
-        aerodromes: REF.aerodromes,
-        vfrPoints: REF.vfrPoints,
-        vfrRoutes: REF.vfrRoutes,
-        sunTables: SUN_TABLES,
+        aerodromes: rd.ref.aerodromes,
+        vfrPoints: rd.ref.vfrPoints,
+        vfrRoutes: rd.ref.vfrRoutes,
+        sunTables: rd.sun,
         terrain,
-        airspaces: REF.airspaces,
-        fis: REF.fis,
+        airspaces: rd.ref.airspaces,
+        fis: rd.ref.fis,
       },
       nowMs: Date.now(),
     });
-  }, [ac.loading, flight, aircraft, pilot, weather, metar, terrain]);
+  }, [ac.loading, flight, aircraft, pilot, weather, metar, terrain, rd]);
 
   // ---- scale to the container on screen; fit text after every render
   const host = useRef<HTMLDivElement>(null);

@@ -1,7 +1,15 @@
 // Form 731 (HCAA "Official statement of persons boarding private aircraft"): what goes in each field.
-import { aerodrome } from '../../../data/ref';
 import { type AerodromeLookup, routePlacesWith } from '../../../shared/forms';
-import { chunk, formatDate, type FormExportProps, formPeople, idText, placeLong, routeEndsWith } from './common';
+import {
+  chunk,
+  formatDate,
+  type FormExportProps,
+  formPeople,
+  idText,
+  lookupOn,
+  placeLong,
+  routeEndsWith,
+} from './common';
 import type { FormFix, PersonField } from './FormWarnings';
 
 export const ROWS_PER_SHEET = 6;
@@ -35,7 +43,7 @@ export interface Form731Model {
 }
 
 export function form731Model(props: FormExportProps): Form731Model {
-  return form731ModelWith(props, aerodrome);
+  return form731ModelWith(props, lookupOn(props.flight.date));
 }
 
 /** form731Model with other reference data (the native core's GET /api/ref/bundle). */

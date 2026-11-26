@@ -25,7 +25,7 @@ export function WbPerfExport({ flight }: { flight: Flight }) {
     aircraft: st.aircraft,
     pilot: st.pilot,
     calc: st.calc,
-    route: routeText(flight.route),
+    route: routeText(flight.route, flight.date),
   });
   const signer = st.pilot.fullName.trim() || wb.pilot.trim();
   const signature: ShownSignature | null = signer ? { name: signer, signedAt: st.nowMs } : null;

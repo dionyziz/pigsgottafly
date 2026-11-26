@@ -89,10 +89,10 @@ describe('form 731 model', () => {
 
 describe('route places', () => {
   it('keeps origin, aerodromes on the way and destination; drops VFR points and repeats', () => {
-    expect(routeText([ad('LGTT', 'a'), vfr('KEA', 'b'), ad('LGTT', 'c')])).toBe('LGTT – LGTT');
-    expect(routeText([ad('LGTT', 'a'), ad('LGTT', 'x'), ad('LGMG', 'c'), ad('LGMG', 'd')])).toBe('LGTT – LGMG');
-    expect(routeText([vfr('KEA', 'a'), ad('LGMG', 'b')])).toBe('KEA – LGMG');
-    expect(routePlaces([])).toEqual([]);
+    expect(routeText([ad('LGTT', 'a'), vfr('KEA', 'b'), ad('LGTT', 'c')], '')).toBe('LGTT – LGTT');
+    expect(routeText([ad('LGTT', 'a'), ad('LGTT', 'x'), ad('LGMG', 'c'), ad('LGMG', 'd')], '')).toBe('LGTT – LGMG');
+    expect(routeText([vfr('KEA', 'a'), ad('LGMG', 'b')], '')).toBe('KEA – LGMG');
+    expect(routePlaces([], '')).toEqual([]);
     expect(formatDate('')).toBe('');
   });
 });

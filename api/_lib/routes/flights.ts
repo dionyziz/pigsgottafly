@@ -23,6 +23,7 @@ import {
 } from '../../../src/shared/constants.js';
 import { pilotDetails } from '../../../src/shared/forms.js';
 import { mapLayersOf } from '../../../src/shared/mapLayers.js';
+import { flightAiracDay } from '../../../src/shared/ref.js';
 import type { Flight, FlightCrew, FlightDoc, Pilot } from '../../../src/shared/types.js';
 import { accessibleSql, canUseAircraft, flightAircraft, flightFor, type FlightGrant, personName } from '../access.js';
 import type { Queryable, Row } from '../db.js';
@@ -314,7 +315,9 @@ export const routes: Route[] = [
       base.crew = [
         { role: 'PIC', passengerId: null, seat: picSeat(seats ?? FALLBACK_SEATS), snapshot: picSnapshot(pilot) },
       ];
-      const home = pilot.homeAerodrome ? await findAerodrome(db, pilot.homeAerodrome) : null;
+      // the cycle of the flight's date (today's unless the request gives one)
+      const day = flightAiracDay(typeof input.date === 'string' ? input.date : base.date);
+      const home = pilot.homeAerodrome ? await findAerodrome(db, pilot.homeAerodrome, day) : null;
       // home with no destination: home → home would be a local flight, which the pilot ticks explicitly
       if (home) base.route = [aerodromePoint(home)];
       // options given at creation (a local flight's duration) go on top of the profile's, not instead
@@ -328,7 +331,7 @@ export const routes: Route[] = [
       const givenAlternates = !!input.options && typeof input.options === 'object' && 'alternates' in input.options;
       const altn =
         pilot.settings.defaultAlternate && !givenAlternates && !d.options.alternates.length
-          ? await findAerodrome(db, pilot.settings.defaultAlternate)
+          ? await findAerodrome(db, pilot.settings.defaultAlternate, day)
           : null;
       const dest = d.route.length > 1 ? d.route[d.route.length - 1] : null;
       if (altn && !(dest && dest.kind === 'aerodrome' && dest.refId === altn.id))

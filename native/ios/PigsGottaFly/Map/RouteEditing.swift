@@ -379,7 +379,7 @@ final class RouteEditor: ObservableObject {
         return r[0]["refId"]?.string != nil && r[0]["refId"]?.string == r[1]["refId"]?.string
     }
     private var ref: String? {
-        if refText == nil { refText = app.store.text(.ref) }
+        if refText == nil { refText = model.refText }
         return refText
     }
 
@@ -400,7 +400,7 @@ final class RouteEditor: ObservableObject {
 
     /// Opening: drawing when there is no route yet (or only a bare round trip).
     func start() async {
-        refText = app.store.text(.ref)
+        refText = model.refText
         if let pilot = app.store.read(.pilot).flatMap({ try? JSON.parse($0) }),
             let code = pilot["homeAerodrome"]?.string, let ref = refText.flatMap({ try? JSON.parse($0) })
         {

@@ -6,11 +6,20 @@ import { defaultAltitudes } from '../../src/calc/altitudes.js';
 import { distanceNm, parseClock } from '../../src/calc/nav.js';
 import { DEFAULT_FLIGHT_OPTIONS } from '../../src/shared/constants.js';
 import { isLocalFlight, localDuration } from '../../src/shared/local.js';
-import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVfrRoute } from '../../src/shared/ref.js';
+import {
+  airacDay,
+  flightAiracDay,
+  type RefAerodrome,
+  type RefAirspace,
+  type RefFis,
+  type RefSunTable,
+  type RefVfrPoint,
+  type RefVfrRoute,
+} from '../../src/shared/ref.js';
 import { requestTiming } from '../../src/shared/requests.js';
 import type { RoutePoint } from '../../src/shared/types.js';
 import { accessibleSql } from './access.js';
-import { airacInEffect } from './airac.js';
+import { airacOn } from './airac.js';
 import type { Queryable } from './db.js';
 import { notFound } from './http.js';
 import { distanceToRoute } from './notams.js';
@@ -27,13 +36,17 @@ export interface RefDocs {
   sun: Record<string, RefSunTable>;
 }
 
-let refCache: { airac: string; at: number; docs: RefDocs } | null = null;
+const refCache = new Map<string, RefDocs>();
 
-/** Reference data of the AIRAC in effect (cached per process; re-read when another cycle takes effect). */
-export async function loadRef(db: Queryable): Promise<RefDocs> {
-  const cur = await airacInEffect(db);
+/**
+ * Reference data of the AIRAC in effect on a day (a flight's: flightAiracDay; default today), cached per process
+ * and cycle.
+ */
+export async function loadRef(db: Queryable, day: string = airacDay()): Promise<RefDocs> {
+  const cur = await airacOn(db, day);
   if (!cur) throw notFound('no reference data loaded');
-  if (refCache && refCache.airac === cur.id) return refCache.docs;
+  const known = refCache.get(cur.id);
+  if (known) return known;
   const docs = async <T>(table: string) =>
     (await db.query<{ doc: T }>(`SELECT doc FROM ${table} WHERE airac = $1 ORDER BY id`, [cur.id])).map((r) => r.doc);
   const [fis] = await db.query<{ doc: RefFis }>('SELECT doc FROM ref_fis WHERE airac = $1', [cur.id]);
@@ -51,7 +64,7 @@ export async function loadRef(db: Queryable): Promise<RefDocs> {
     vfrRoutes: await docs<RefVfrRoute>('ref_vfr_routes'),
     sun,
   };
-  refCache = { airac: cur.id, at: Date.now(), docs: out };
+  refCache.set(cur.id, out);
   return out;
 }
 
@@ -90,7 +103,7 @@ export async function flightContext(db: Queryable, pilotId: string, id: string):
     [id, pilotId],
   );
   if (!f) throw notFound('no such flight');
-  const ref = await loadRef(db);
+  const ref = await loadRef(db, flightAiracDay(f.date));
   const route: RoutePoint[] = Array.isArray(f.route) ? f.route : [];
   const overrides = (f.leg_overrides || {}) as Record<string, { altFt?: number }>;
   const typed = route.slice(1).map((_, i) => overrides[`${route[i].uid}>${route[i + 1].uid}`]?.altFt);

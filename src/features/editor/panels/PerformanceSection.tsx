@@ -2,7 +2,7 @@
 // stop and touch-and-go (the landing there and the take-off from there, with the sector masses) and at
 // the destination.
 import type { PerfVerdictResult } from '../../../calc/perfVerdict';
-import { runwaysOf } from '../../../data/ref';
+import { useRefData } from '../../../data/refContext';
 import { type FlightOptions, requestOf, setStopChoice } from '../../../shared';
 import { fmtClock } from '../../../shared/format';
 import { Chip, Collapsible } from '../../../ui';
@@ -35,6 +35,7 @@ function VerdictChip({ v }: { v: PerfVerdictResult }) {
 
 function Endpoint({ e }: { e: EndpointCalc }) {
   const { doc, update, aircraft } = useEditor();
+  const { runwaysOf } = useRefData();
   const { dayMs } = useFlightCalc();
   const to = e.phase === 'takeoff';
   const ad = e.aerodrome;

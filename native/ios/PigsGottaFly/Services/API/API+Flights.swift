@@ -48,6 +48,13 @@ extension API {
 
     func refBundle() async throws -> Data { try await get("ref/bundle") }
 
+    /// GET /ref/cycles: the cycle in effect today and the ones loaded after it.
+    func refCycles() async throws -> Data { try await get("ref/cycles") }
+
+    func refBundle(airac: String) async throws -> Data {
+        try await get("ref/bundle?airac=\(airac.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? airac)")
+    }
+
     func refAirac<T: Decodable>(as type: T.Type = JSON.self) async throws -> T {
         try await call("GET", "ref/airac", as: type)
     }

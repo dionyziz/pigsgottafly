@@ -7,7 +7,12 @@ final class Store: @unchecked Sendable {
     enum Key: Hashable {
         case flights
         case pilot
+        /// GET /api/ref/bundle: the cycle in effect today (places outside a flight).
         case ref
+        /// GET /api/ref/cycles: today's cycle and the ones loaded after it.
+        case refCycles
+        /// GET /api/ref/bundle?airac=<id>: one of refCycles.
+        case refCycle(String)
         /// GET /api/waypoints (the pilot's saved points).
         case waypoints
         /// OpenFreeMap's style JSON (the base of the chart).
@@ -33,6 +38,8 @@ final class Store: @unchecked Sendable {
             case .flights: "flights.json"
             case .pilot: "pilot.json"
             case .ref: "ref.json"
+            case .refCycles: "ref/cycles.json"
+            case .refCycle(let id): "ref/\(Store.safe(id)).json"
             case .waypoints: "waypoints.json"
             case .vectorStyle: "map/vector-style.json"
             case .chartStyle(let base): "map/chart-\(Store.safe(base)).json"
@@ -97,5 +104,34 @@ final class Store: @unchecked Sendable {
     func clear() {
         try? fm.removeItem(at: root)
         try? fm.createDirectory(at: root, withIntermediateDirectories: true)
+    }
+}
+
+extension Store {
+    /// The reference data a flight on `date` is planned with, as the website and the server pick it
+    /// (src/shared/ref.ts flightAiracDay, cycleOn): the latest loaded cycle whose effective date has come by
+    /// the flight's date (today when it has none), else the earliest. Today's bundle when that cycle is not
+    /// stored yet.
+    func refKey(date: String?) -> Key {
+        guard let d = read(.refCycles), let list = (try? JSON.parse(d))?.array else { return .ref }
+        let day = date.flatMap { $0.wholeMatch(of: /\d{4}-\d{2}-\d{2}/) != nil ? $0 : nil } ?? Self.utcDay(Date())
+        let cycles = list.compactMap { c -> (id: String, effective: String)? in
+            guard let id = c["id"]?.string, let effective = c["effective"]?.string else { return nil }
+            return (id, effective)
+        }.sorted { $0.effective < $1.effective }
+        guard let pick = cycles.last(where: { $0.effective <= day }) ?? cycles.first,
+            read(.refCycle(pick.id)) != nil
+        else { return .ref }
+        return .refCycle(pick.id)
+    }
+
+    func refText(date: String?) -> String? { text(refKey(date: date)) ?? text(.ref) }
+
+    /// 'YYYY-MM-DD' of a moment in UTC (AIRAC cycles take effect at 0000 UTC).
+    static func utcDay(_ d: Date) -> String {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        let p = c.dateComponents([.year, .month, .day], from: d)
+        return String(format: "%04d-%02d-%02d", p.year!, p.month!, p.day!)
     }
 }

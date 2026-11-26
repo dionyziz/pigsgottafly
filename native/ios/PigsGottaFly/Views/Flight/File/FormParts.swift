@@ -135,7 +135,7 @@ extension SheetInputs {
     @MainActor
     static func key(_ app: AppModel, _ model: FlightModel) -> String {
         let aircraft = model.flight?["aircraftId"]?.string.map { Store.Key.aircraft($0) }
-        return ([.pilot, .ref] + [aircraft].compactMap { $0 })
+        return ([.pilot, app.store.refKey(date: model.flight?["date"]?.string)] + [aircraft].compactMap { $0 })
             .map { app.store.modified($0).map { "\($0.timeIntervalSince1970)" } ?? "-" }
             .joined(separator: ",")
     }

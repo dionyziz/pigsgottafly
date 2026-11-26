@@ -1,7 +1,7 @@
 // The weather comes from useFlightWeather, as for the navlog and the editor, so the printouts agree.
 import { useMemo, useState } from 'react';
 
-import { REF, runwaysOf, SUN_TABLES } from '../../../data/ref';
+import { refOfFlight } from '../../../data/ref';
 import { useTerrain } from '../../../data/terrain';
 import { useFlightWeather } from '../../../data/useFlightWeather';
 import type { RouteWeather } from '../../../data/weather';
@@ -34,6 +34,8 @@ export function useExportCalc(flight: Flight): ExportCalcState {
   });
   const { weather, metar } = wx;
   const terrain = useTerrain();
+  // the cycle in effect on the flight's date
+  const rd = refOfFlight(flight.date);
 
   const loading = ac.loading;
   const [nowMs] = useState(() => Date.now());
@@ -47,15 +49,15 @@ export function useExportCalc(flight: Flight): ExportCalcState {
       metar,
       nowMs: Date.now(),
       ref: {
-        aerodromes: REF.aerodromes,
-        vfrPoints: REF.vfrPoints,
-        vfrRoutes: REF.vfrRoutes,
-        sunTables: SUN_TABLES,
-        runwaysOf,
+        aerodromes: rd.ref.aerodromes,
+        vfrPoints: rd.ref.vfrPoints,
+        vfrRoutes: rd.ref.vfrRoutes,
+        sunTables: rd.sun,
+        runwaysOf: rd.runwaysOf,
         terrain,
       },
     });
-  }, [loading, flight, aircraft, pilot, weather, metar, terrain]);
+  }, [loading, flight, aircraft, pilot, weather, metar, terrain, rd]);
 
   return {
     loading,

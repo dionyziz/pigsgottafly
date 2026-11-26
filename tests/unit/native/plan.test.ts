@@ -4,7 +4,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { atcAfterRegenerate, atcInput, atcStale, generateAtcList } from '../../../src/data/atc';
-import { aerodrome, REF } from '../../../src/data/ref';
+import { aerodrome, REF, resolveAerodrome } from '../../../src/data/ref';
 import { editorWarningFix, sectionOf } from '../../../src/features/editor/focus';
 import {
   addDrawnPoint,
@@ -192,7 +192,10 @@ describe('local flights and requests', () => {
 
   test('fplOptions: the alternates as FplSection stores them', () => {
     const fields = [' lgav ', 'EDDF', 'lgav', 'LGMG'];
-    expect(fplOptions({ fields, ref: API_REF })).toEqual({ alternates: alternatesFrom(fields), max: 2 });
+    expect(fplOptions({ fields, ref: API_REF })).toEqual({
+      alternates: alternatesFrom(fields, resolveAerodrome),
+      max: 2,
+    });
   });
 
   test('fuelLoad', () => {

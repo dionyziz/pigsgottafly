@@ -7,8 +7,8 @@ import './about.css';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
-import { AIP_EAIP_INDEX } from '../data/aipLinks';
-import { AIRAC } from '../data/ref';
+import { aipLinksOn } from '../data/aipLinks';
+import { airacsFromToday } from '../data/ref';
 import { CardSection } from '../ui';
 import { CONTACT_EMAIL } from './contact';
 import { Shell } from './Shell';
@@ -51,7 +51,13 @@ export function AboutPage() {
               [
                 'AIP',
                 <>
-                  {ext(AIP_EAIP_INDEX, 'AIP Greece (HASP eAIP)')}, {airacName(AIRAC.id)}, effective {AIRAC.effective}
+                  {airacsFromToday().map((a, i) => (
+                    <div key={a.id}>
+                      {ext(aipLinksOn(a.effective).index, 'AIP Greece (HASP eAIP)')}, {airacName(a.id)}, effective{' '}
+                      {a.effective}
+                      {i > 0 && ' (flights from that date)'}
+                    </div>
+                  ))}
                 </>,
               ],
               [

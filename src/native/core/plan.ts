@@ -29,7 +29,7 @@ import {
   type ScreenPoint,
   SNAP_RADIUS_PX,
 } from '../../features/editor/map/snap';
-import { alternatesWith, MAX_ALTERNATES } from '../../features/editor/panels/fplOptions';
+import { alternatesFrom, MAX_ALTERNATES } from '../../features/editor/panels/fplOptions';
 import {
   type ItemState,
   type ReadyItem,
@@ -285,7 +285,7 @@ export function requests(
 /** FlightOptions.alternates from the alternate fields (FplSection): known aerodromes by ICAO, at most two. */
 export function fplOptions(input: Json<{ fields: string[]; ref?: CoreRef | null }>) {
   const i = arg(input);
-  return { alternates: alternatesWith(i.fields ?? [], refOf(i.ref).resolve), max: MAX_ALTERNATES };
+  return { alternates: alternatesFrom(i.fields ?? [], refOf(i.ref).resolve), max: MAX_ALTERNATES };
 }
 
 // ---------------------------------------------------------------- fuel

@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react';
 import { clockZ } from '../../../calc';
 import { api } from '../../../data/api';
 import { visibleNotams } from '../../../data/notams';
-import { aerodrome } from '../../../data/ref';
+import { useRefData } from '../../../data/refContext';
 import { type AerodromeRequest, removeRequest, type RoutePoint, setRequest } from '../../../shared';
 import type { RefAerodrome } from '../../../shared/ref';
 import { adDayInfo } from '../adDay';
@@ -36,6 +36,7 @@ export function MapView() {
     reloadLists,
     readOnly,
   } = useEditor();
+  const { aerodrome } = useRefData();
 
   const { hazards, aerodromeChecks, adEffects } = useFlightCalc();
   // weather hazards, and the route's aerodromes that are closed at the planned time (a ring like an aerodrome hazard)
@@ -106,7 +107,7 @@ export function MapView() {
   const home = useMemo(() => {
     const a = aerodrome(pilot.homeAerodrome);
     return a ? { lat: a.lat, lon: a.lon } : null;
-  }, [pilot.homeAerodrome]);
+  }, [pilot.homeAerodrome, aerodrome]);
 
   const onRouteChange = useCallback(
     (route: RoutePoint[], opts?: { coalesce?: string }) => {

@@ -107,15 +107,16 @@ src/
     useFlightWeather.ts    one weather + METAR loader for a flight (leg midpoints, departure, stops, destination;
                            metarRelevant(date) = one "near now" rule; a failed fetch ends loading): for panels/calc.tsx,
                            NavlogExport, wb/useExportCalc, fpl/useFplData
-    aipLinks.ts            links to the official AIP Greece PDFs (HASP eAIP): AIP_EAIP_BASE (the AIRAC's online eAIP,
-                           set by tools/update_aip.sh), aipSection/aipUrl ('LGAV AD 2.3' → AD 2 LGAV PDF; the
-                           eAIP start page when a section has no PDF), from ref/aip-files.json
+    aipLinks.ts            links to the official AIP Greece PDFs (HASP eAIP) of a cycle: aipLinksOn(day) → base, index,
+                           url ('LGAV AD 2.3' → AD 2 LGAV PDF; the eAIP start page when a section has no PDF),
+                           hasPdf, vfrChartUrl, from cycles/<id>/aip-files.json; aipSection
     ref/                   reference data shipped with the client: cycles/<id>/ (generated JSON, one folder per AIRAC
-                           cycle; cycles/index.ts and cycles/core.ts list them) + index.ts typed accessors of the
-                           cycle in effect when the page loads (cycleOn: a cycle shipped ahead switches on by date,
-                           AIP-UPDATE.md): CYCLE, airacInEffect(now), AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, FIR (fir.json), VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
-                           REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id),
-                           resolveAerodrome(text), searchAerodromes(q)
+                           cycle; cycles/index.ts and cycles/core.ts list them) + index.ts: RefView per cycle (ref
+                           bundle, sun, aip links, aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id),
+                           resolveAerodrome(text), searchAerodromes(q)) by refOn(day) / refOfFlight(date) (a flight
+                           uses the cycle in effect on its date, AIP-UPDATE.md) / refToday(), airacsFromToday();
+                           CYCLE, AIRAC, AERODROMES, … REF are the cycle in effect at load (tests, fixtures)
+    refContext.tsx         FlightRefProvider (the editor: the flight's cycle) / useRefData() (else today's)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context,
                            AboutPage (/about: the one place the weather model and the data sources are named)
                            (useSession/usePilot), Shell/TopBar, AccountMenu, toast, ErrorBoundary, styles.css (design tokens, base

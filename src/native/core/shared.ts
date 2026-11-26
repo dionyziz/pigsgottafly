@@ -1,6 +1,7 @@
 // What the core's domain modules share: JSON in and out, the reference data of a call, the terrain
 // grid, and the flight's weather and pilot as the website's editor resolves them.
 import { buildLegs, TERRAIN_GRID } from '../../calc';
+import { type AipLinks, aipLinksOn } from '../../data/aipLinks';
 import { weatherPlan } from '../../data/flightWeatherPlan';
 import { type HazardWeather, hazardWeatherFrom, hazardWeatherPlan } from '../../data/hazardWeather';
 import { CYCLES } from '../../data/ref/cycles/core';
@@ -53,6 +54,8 @@ export type CoreRef = RefBundle & { sunTables?: Record<string, RefSunTable> };
 export interface Ref {
   bundle: RefBundle & { adAirspaces: RefAdAirspace[]; fir: RefFir; navaids: RefNavaid[] };
   sunTables: Record<string, RefSunTable>;
+  /** The eAIP of the bundle's cycle. */
+  aip: AipLinks;
   runwaysOf: (aerodromeId: string) => RefRunway[];
   /** Aerodrome by id or ICAO, as src/data/ref's aerodrome(). */
   find: (idOrIcao: string | null | undefined) => RefAerodrome | undefined;
@@ -86,6 +89,7 @@ export function refOf(given: CoreRef | null | undefined): Ref {
       areas: given.areas ?? [],
     },
     sunTables: given.sunTables ?? cycle.sun,
+    aip: aipLinksOn(cycle.airac.effective),
     runwaysOf: (id) => byAd.get(id) ?? [],
     find: index.find,
     resolve: index.resolve,

@@ -6,7 +6,7 @@
 //   AerodromeTextInput  controlled by the text (the caller resolves it with resolveAerodrome()).
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 
-import { resolveAerodrome, searchAerodromes } from '../data/ref';
+import { useRefData } from '../data/refContext';
 import type { RefAerodrome } from '../shared/ref';
 import { Combobox } from './Combobox';
 
@@ -45,7 +45,8 @@ export function AerodromeTextInput({
   onChange: (text: string, resolved: RefAerodrome | undefined) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const hits = useMemo(() => searchAerodromes(value), [value]);
+  const { resolveAerodrome, searchAerodromes } = useRefData();
+  const hits = useMemo(() => searchAerodromes(value), [value, searchAerodromes]);
   const resolved = resolveAerodrome(value);
   const exactOnly = !!resolved && hits.length === 1 && code(hits[0]) === value.trim().toUpperCase();
   const unknown = !!value.trim() && !resolved;
@@ -103,6 +104,7 @@ export function AerodromeInput({
   onChange: (a: RefAerodrome | null) => void;
 }) {
   const [draft, setDraft] = useState(() => (value ? code(value) : ''));
+  const { resolveAerodrome } = useRefData();
   // A new value from outside (another field, undo) replaces the draft unless the draft names it.
   const syncDraft = useEffectEvent(() => {
     if ((resolveAerodrome(draft)?.id ?? null) !== (value?.id ?? null)) setDraft(value ? code(value) : '');

@@ -4,6 +4,7 @@
 // aircraft, the profile, the manifest, the route and the navlog.
 import { useEffect, useEffectEvent, useState } from 'react';
 
+import { useRefData } from '../../../data/refContext';
 import {
   activeRequests,
   type AerodromeRequest,
@@ -22,6 +23,7 @@ const fieldsOf = (alts: string[]) => Array.from({ length: MAX_ALTERNATES }, (_, 
 
 export function FplSection() {
   const { doc, update } = useEditor();
+  const { resolveAerodrome } = useRefData();
   const alts = doc.options.alternates ?? [];
   const remarks = doc.options.remarks ?? '';
   // The fields keep what is typed; the flight stores the resolved codes. Undo/redo or another
@@ -29,14 +31,14 @@ export function FplSection() {
   const [fields, setFields] = useState(() => fieldsOf(alts));
   const key = alts.join(' ');
   const syncFields = useEffectEvent(() => {
-    if (alternatesFrom(fields).join(' ') !== key) setFields(fieldsOf(alts));
+    if (alternatesFrom(fields, resolveAerodrome).join(' ') !== key) setFields(fieldsOf(alts));
   });
   useEffect(() => syncFields(), [key]);
 
   const setField = (i: number, v: string) => {
     const next = fields.map((f, j) => (j === i ? v : f));
     setFields(next);
-    const codes = alternatesFrom(next);
+    const codes = alternatesFrom(next, resolveAerodrome);
     if (codes.join(' ') !== key)
       update((d) => ({ ...d, options: { ...d.options, alternates: codes } }), { coalesce: `fpl-altn-${i}` });
   };

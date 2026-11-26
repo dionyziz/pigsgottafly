@@ -237,8 +237,10 @@ extra fields below were added while building the core.
   `areas` source, as on the website); `waypoints` is GET /api/waypoints (the pilot's saved points). The
   editing sources (`route-band`, `snap`, `leg-focus`, `air-focus`) are empty; `route-mid` holds the
   website's leg midpoint handles (hide its layer when not editing).
-- `ref`, wherever it is taken, is GET /api/ref/bundle. The core supplies what the bundle lacks (the
-  CTRs and ATZs, the FIR, the navaids and the sunset tables: the website ships them with its code). A
+- `ref`, wherever it is taken, is the bundle of the cycle in effect on the flight's date: GET
+  /api/ref/bundle?airac=<id>, one of GET /api/ref/cycles, as `Store.refKey(date:)` picks it (AIP-UPDATE.md).
+  The core supplies what the bundle lacks from its copy of that cycle (the CTRs and ATZs, the FIR, the navaids,
+  the sunset tables and the eAIP links: the website ships them with its code). A
   call may leave `ref` out after the first one: the last one given is used.
 - `PGF.setTerrain({ base64 })` (or the base64 text alone): the terrain grid,
   https://pigsgottafly.com/terrain/greece.bin in base64, kept for the following `computeFlight` calls

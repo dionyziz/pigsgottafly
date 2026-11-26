@@ -51,7 +51,7 @@ extension FlightModel {
     func routeEdit(_ ops: [CoreRouteOp]) async -> Bool {
         guard let core = app.core, var probe = flight, !readOnly else { return false }
         let needsRef = ops.contains { if case .setEnd = $0 { true } else { false } }
-        let ref = needsRef ? app.store.text(.ref) : nil
+        let ref = needsRef ? refText : nil
         let apply: (inout JSON) throws -> Void = { f in
             for op in ops {
                 let r = try core.routeEdit(
@@ -269,7 +269,7 @@ extension FlightModel {
     /// The alternate fields as typed: the flight keeps the resolved codes, at most two (PGF.fplOptions).
     func setAlternates(fields: [String]) async {
         guard let core = app.core else { return }
-        let ref = app.store.text(.ref)
+        let ref = refText
         guard let codes = try? core.fplAlternates(fields, ref: ref) else { return }
         let now = (flight?["options"]?["alternates"]?.array ?? []).compactMap(\.string)
         guard codes != now else { return }
@@ -300,6 +300,6 @@ extension FlightModel {
     func requestsInfo() -> JSON? {
         guard let core = app.core else { return nil }
         return try? core.requests(
-            route: JSON.array(route).text, options: flight?["options"]?.text, ref: app.store.text(.ref))
+            route: JSON.array(route).text, options: flight?["options"]?.text, ref: refText)
     }
 }

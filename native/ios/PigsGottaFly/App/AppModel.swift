@@ -162,25 +162,31 @@ final class AppModel: ObservableObject {
 
     private var refJSON: JSON?
 
-    /// GET /api/ref/bundle: the cached copy, fetched when missing, older than 6 hours, or from an earlier UTC
-    /// day: a new AIRAC cycle takes effect at 0000 UTC and the server switches to it by itself.
+    /// Today's reference data (places outside a flight): the cached copy, refreshed by refreshRef.
     func ref() async -> JSON? {
-        let fetched = store.modified(.ref)
-        let age = fetched.map { -$0.timeIntervalSinceNow } ?? .infinity
-        let stale = age > 6 * 3600 || fetched.map { Self.utcDay($0) != Self.utcDay(Date()) } ?? true
-        if stale, let data = try? await api.refBundle() {
-            try? store.write(data, .ref)
-            refJSON = nil
-        }
+        if await refreshRef() { refJSON = nil }
         if refJSON == nil, let d = store.read(.ref) { refJSON = try? JSON.parse(d) }
         return refJSON
     }
 
-    nonisolated static func utcDay(_ d: Date) -> String {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "UTC")!
-        let p = c.dateComponents([.year, .month, .day], from: d)
-        return "\(p.year!)-\(p.month!)-\(p.day!)"
+    /// GET /api/ref/bundle (today's cycle), /ref/cycles and each of those cycles' bundles, when missing, older
+    /// than 6 hours or from an earlier UTC day: a flight is planned with the cycle of its date
+    /// (Store.refKey), so the next cycle is on the device before its date, offline too. True when refreshed.
+    @discardableResult
+    func refreshRef() async -> Bool {
+        let fetched = store.modified(.ref)
+        let age = fetched.map { -$0.timeIntervalSinceNow } ?? .infinity
+        let stale = age > 6 * 3600 || fetched.map { Store.utcDay($0) != Store.utcDay(Date()) } ?? true
+        guard stale, let today = try? await api.refBundle() else { return false }
+        try? store.write(today, .ref)
+        guard let cycles = try? await api.refCycles() else { return true }
+        for c in (try? JSON.parse(cycles))?.array ?? [] {
+            guard let id = c["id"]?.string, let data = try? await api.refBundle(airac: id) else { return true }
+            try? store.write(data, .refCycle(id))
+        }
+        // last: refKey reads only the cycles listed, and every one of them is stored now
+        try? store.write(cycles, .refCycles)
+        return true
     }
 
     /// GET /api/waypoints (the cached copy offline).

@@ -179,7 +179,7 @@ const FONT_LIST: {
     url: 'https://github.com/rsms/inter',
   },
   {
-    files: ['Arimo.woff2', 'Arimo-Italic.woff2'],
+    files: ['Arimo-Regular.woff2', 'Arimo-Bold.woff2', 'Arimo-Italic.woff2', 'Arimo-BoldItalic.woff2'],
     name: 'Arimo',
     license: 'OFL-1.1',
     licenseFile: 'Arimo-OFL.txt',

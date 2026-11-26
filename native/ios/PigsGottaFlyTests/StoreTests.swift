@@ -26,6 +26,25 @@ final class StoreTests: XCTestCase {
         XCTAssertNil(store.decode([FlightListItem].self, .notams("a")))
     }
 
+    /// A flight is planned with the cycle in effect on its date (src/shared/ref.ts flightAiracDay, cycleOn).
+    func testPicksTheCycleOfTheFlightsDate() throws {
+        let store = temporaryStore()
+        try store.write(Data(#"{"airac":"today"}"#.utf8), .ref)
+        XCTAssertEqual(store.refKey(date: "2026-12-24"), .ref)
+        let cycles = #"[{"id":"2610","effective":"2026-11-26"},{"id":"2611","effective":"2026-12-24"}]"#
+        try store.write(Data(cycles.utf8), .refCycles)
+        try store.write(Data(#"{"airac":"2610"}"#.utf8), .refCycle("2610"))
+        // listed but not stored yet: today's
+        XCTAssertEqual(store.refKey(date: "2026-12-24"), .ref)
+        try store.write(Data(#"{"airac":"2611"}"#.utf8), .refCycle("2611"))
+        XCTAssertEqual(store.refKey(date: "2026-12-23"), .refCycle("2610"))
+        XCTAssertEqual(store.refKey(date: "2026-12-24"), .refCycle("2611"))
+        XCTAssertEqual(store.refKey(date: "2027-05-01"), .refCycle("2611"))
+        XCTAssertEqual(store.refKey(date: "2026-01-01"), .refCycle("2610"))
+        XCTAssertEqual(store.refText(date: "2026-12-24"), #"{"airac":"2611"}"#)
+        XCTAssertEqual(Store.utcDay(Date(timeIntervalSince1970: 1_798_070_400)), "2026-12-24")
+    }
+
     func testIdsCannotLeaveTheFolder() {
         XCTAssertEqual(Store.safe("../../etc"), "_.._.._etc")
         XCTAssertFalse(Store.Key.flight("../x").path.contains(".." + "/"))

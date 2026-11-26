@@ -115,7 +115,7 @@ extension FlightModel {
         let flightText = flight.text
         let aircraft = aircraftText
         let notams = app.store.text(.notams(id))
-        let ref = app.store.text(.ref)
+        let ref = refText
         let now = Self.clock
         return try? await core.run {
             try $0.brief(
@@ -130,7 +130,7 @@ extension FlightModel {
     /// the rest of the weather stays as it was.
     func refreshMetar() async {
         guard let core = app.core, let flightText = flight?.text else { return }
-        let ref = app.store.text(.ref)
+        let ref = refText
         let paths =
             (try? await core.run { try $0.weatherRequests(flight: flightText, ref: ref) })?
             .filter { $0.contains("/weather/metar") } ?? []
@@ -214,7 +214,7 @@ extension FlightModel {
         let flightText = flight.text
         let altitudes = (computed?.raw["altitudesFt"]?.array ?? []).compactMap(\.double)
         let pilot = app.store.text(.pilot)
-        let ref = app.store.text(.ref)
+        let ref = refText
         guard
             let r = try? await core.run({
                 try $0.regenerateAtc(flight: flightText, altitudesFt: altitudes, pilot: pilot, ref: ref)

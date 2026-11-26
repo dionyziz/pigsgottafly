@@ -3,9 +3,7 @@
 import { type AdDay, type AdNotamEffect, aerodromeDay } from '../../calc';
 // the core's cycle list, not data/ref: that module builds its indexes of all the reference data on import
 import { CYCLES } from '../../data/ref/cycles/core';
-import { airacDay, cycleOn, type RefAerodrome } from '../../shared/ref';
-
-const SUN_TABLES = cycleOn(CYCLES, airacDay()).sun;
+import { cycleOn, type RefAerodrome } from '../../shared/ref';
 
 export interface AdDayInfo {
   day: string;
@@ -26,7 +24,8 @@ export function adDayInfo(
 ): AdDayInfo {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : new Date(nowMs).toISOString().slice(0, 10);
   const start = Date.parse(d + 'T00:00:00Z');
-  const opts = { effects, sunTables: SUN_TABLES };
+  // GEN 2.7 as amended for that day
+  const opts = { effects, sunTables: cycleOn(CYCLES, d).sun };
   const notams = effects.filter((e) => e.icao === a.icao && e.from < start + DAY_MS && (e.to === null || e.to > start));
   if (!a.hours) return { day: d, ad: null, ats: null, handling: null, notams };
   return {

@@ -10,7 +10,6 @@ import { PassengersPage } from '../features/passengers';
 import { ProfilePage } from '../features/profile';
 import { Loading } from '../ui';
 import { AboutPage } from './AboutPage';
-import { AiracWatch } from './AiracWatch';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
 import { RouteTitle } from './title';
@@ -58,7 +57,6 @@ export function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <ToastProvider>
-          <AiracWatch />
           <RouteTitle />
           <Routes>
             <Route

@@ -184,7 +184,10 @@ final class PlanEditsTests: XCTestCase {
         XCTAssertNotEqual(model.route, before)
         undo.undo()
         let end = Date().addingTimeInterval(5)
-        while (model.route != before || model.saving) && Date() < end { try? await Task.sleep(for: .milliseconds(20)) }
+        // the undo's PUT goes out after the recompute: wait for the saved document, not only the model
+        while (model.route != before || (try? lastDoc()["route"]) != .array(before)) && Date() < end {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
         XCTAssertEqual(model.route, before)
         XCTAssertEqual(try lastDoc()["route"], .array(before))
     }

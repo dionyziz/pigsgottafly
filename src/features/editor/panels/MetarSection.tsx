@@ -2,7 +2,6 @@
 // to start or under way (metarStations.ts); fetched again every few minutes while the box is shown.
 import { useEffect, useMemo, useState } from 'react';
 
-import { REF } from '../../../data/ref';
 import { fetchMetarTaf, type MetarTafResult } from '../../../data/weatherMetar';
 import { useEditor } from '../state';
 import { useFlightCalc } from './calc';
@@ -29,7 +28,7 @@ function useClock() {
 }
 
 export function MetarSection() {
-  const { doc } = useEditor();
+  const { doc, ref } = useEditor();
   const { departure, arrival, stops } = useFlightCalc();
   const now = useClock();
   const shown = metarBoxShown(doc.date, departure.timeMs, arrival.timeMs, now);
@@ -39,9 +38,9 @@ export function MetarSection() {
       metarStations(
         [departure.aerodrome, ...stops.map((s) => s.aerodrome), arrival.aerodrome],
         doc.route,
-        REF.aerodromes,
+        ref.aerodromes,
       ),
-    [departure.aerodrome, arrival.aerodrome, stops, doc.route],
+    [departure.aerodrome, arrival.aerodrome, stops, doc.route, ref],
   );
   const key = shown ? stations.map((s) => s.icao).join(',') : '';
   const round = Math.floor(now / REFETCH_MS);

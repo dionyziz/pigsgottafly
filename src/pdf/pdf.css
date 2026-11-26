@@ -2,11 +2,13 @@
    Arial or Menlo, the fonts the sheets name. Where a font is installed (macOS, Windows: local()) it
    is used, as in the pilot's browser; otherwise the metric-compatible free fonts shipped in
    public/fonts take its place: Arimo for Arial (same advance widths, so the same line breaks) and
-   DejaVu Sans Mono for Menlo (Menlo is derived from it: same metrics). */
-@font-face { font-family: Arial; font-style: normal; font-weight: 400; src: local('Arial'), local('ArialMT'), url('/fonts/Arimo.woff2') format('woff2'); }
-@font-face { font-family: Arial; font-style: normal; font-weight: 700; src: local('Arial Bold'), local('Arial-BoldMT'), url('/fonts/Arimo.woff2') format('woff2'); }
+   DejaVu Sans Mono for Menlo (Menlo is derived from it: same metrics). Arimo as static instances of
+   each weight (fontTools varLib.instancer of Google's variable Arimo): Chromium's PDF writer embeds a
+   variable font as Type 3 glyphs, not as a font. */
+@font-face { font-family: Arial; font-style: normal; font-weight: 400; src: local('Arial'), local('ArialMT'), url('/fonts/Arimo-Regular.woff2') format('woff2'); }
+@font-face { font-family: Arial; font-style: normal; font-weight: 700; src: local('Arial Bold'), local('Arial-BoldMT'), url('/fonts/Arimo-Bold.woff2') format('woff2'); }
 @font-face { font-family: Arial; font-style: italic; font-weight: 400; src: local('Arial Italic'), local('Arial-ItalicMT'), url('/fonts/Arimo-Italic.woff2') format('woff2'); }
-@font-face { font-family: Arial; font-style: italic; font-weight: 700; src: local('Arial Bold Italic'), local('Arial-BoldItalicMT'), url('/fonts/Arimo-Italic.woff2') format('woff2'); }
+@font-face { font-family: Arial; font-style: italic; font-weight: 700; src: local('Arial Bold Italic'), local('Arial-BoldItalicMT'), url('/fonts/Arimo-BoldItalic.woff2') format('woff2'); }
 /* ✓ (the performance rows' check marks) is in neither Arial nor Arimo: macOS takes it from Lucida
    Grande, Linux from DejaVu Sans Mono Bold (just these glyphs). Same descriptors as the faces above:
    a face only joins the faces of its own weight and style. */
