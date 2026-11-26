@@ -1,7 +1,7 @@
 {
   "name": "pigsgottafly",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pig's Gotta Fly: a personal VFR flight planner for the Athinai FIR (LGGG)",
   "type": "module",
   "scripts": {
