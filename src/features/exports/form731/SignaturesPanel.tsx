@@ -18,7 +18,7 @@ import {
   signingShare,
 } from './signatures';
 
-export { shownSignatures, signatureSummary } from './signatures';
+export { shownSignatures } from './signatures';
 
 const dayHm = (ms: number) => fmtLocalDayTime(ms);
 const errText = (e: unknown) =>
