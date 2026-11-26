@@ -1,4 +1,4 @@
-// The subscription: entitlement rules, the 402 paywall (BILLING_ENFORCE), Paddle's signed webhooks and the
+// The subscription: entitlement rules, the 402 paywall (BILLING_ENFORCE), Stripe's checkout and signed webhooks and the
 // App Store's signed transactions and notifications (a test chain in tests/fixtures/billing with Apple's
 // marker extensions), admin grants, and account deletion cancelling a website subscription.
 import crypto from 'node:crypto';
@@ -9,8 +9,8 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { APPLE_BUNDLE_ID, APPLE_PRODUCT_ID, verifyAppleJws } from '../../api/_lib/billing/apple';
 import { entitlementOf, GRACE_MS, TRIAL_DAYS } from '../../api/_lib/billing/entitlement';
-import type { PaddleSettings } from '../../api/_lib/billing/paddle';
-import { verifyPaddleSignature } from '../../api/_lib/billing/paddle';
+import type { StripeSettings } from '../../api/_lib/billing/stripe';
+import { verifyStripeSignature } from '../../api/_lib/billing/stripe';
 import type { Db } from '../../api/_lib/db';
 import { type Client, client, startApi } from './helpers';
 
@@ -39,28 +39,31 @@ const transaction = (o: Record<string, unknown> = {}) => ({
   ...o,
 });
 
-const SECRET = 'pdl_ntfset_test';
-const paddleCalls: { url: string; body: unknown }[] = [];
-const PADDLE: PaddleSettings = {
-  apiKey: 'pdl_test_key',
+const SECRET = 'whsec_test';
+const stripeCalls: { method: string; url: string; body: Record<string, string> }[] = [];
+const STRIPE: StripeSettings = {
+  secretKey: 'sk_test_key',
   webhookSecret: SECRET,
-  clientToken: 'test_client_token',
-  priceId: 'pri_test',
-  environment: 'sandbox',
+  priceId: 'price_test',
   fetch: (async (url: string, init: RequestInit) => {
-    paddleCalls.push({ url, body: JSON.parse(String(init.body)) });
-    return new Response(JSON.stringify({ data: { urls: { general: { overview: 'https://portal.test/x' } } } }));
+    stripeCalls.push({
+      method: String(init.method),
+      url,
+      body: Object.fromEntries(new URLSearchParams(String(init.body))),
+    });
+    const link = url.endsWith('checkout/sessions') ? 'https://checkout.test/x' : 'https://portal.test/x';
+    return new Response(JSON.stringify({ url: link }));
   }) as typeof fetch,
 };
-function paddleSign(body: string, ts = Math.floor(Date.now() / 1000)): string {
-  return `ts=${ts};h1=${crypto.createHmac('sha256', SECRET).update(`${ts}:${body}`).digest('hex')}`;
+function stripeSign(body: string, t = Math.floor(Date.now() / 1000)): string {
+  return `t=${t},v1=${crypto.createHmac('sha256', SECRET).update(`${t}.${body}`).digest('hex')}`;
 }
 
 let api: Awaited<ReturnType<typeof startApi>>;
 let db: Db;
 let n = 0;
 beforeAll(async () => {
-  api = await startApi({ billingEnforce: true, paddle: PADDLE, appleTrust: TRUST, adminEmails: ['admin@example.com'] });
+  api = await startApi({ billingEnforce: true, stripe: STRIPE, appleTrust: TRUST, adminEmails: ['admin@example.com'] });
   db = (await api.server.ready).db;
 });
 afterAll(() => api.close());
@@ -81,19 +84,25 @@ async function postRaw(p: string, body: string, headers: Record<string, string> 
   });
   return { status: r.status, body: await r.json().catch(() => null) };
 }
-function paddleEvent(pilotId: string, o: Record<string, unknown> = {}, at = new Date()) {
-  const ends = new Date(Date.now() + 365 * DAY).toISOString();
+function stripeEvent(
+  pilotId: string,
+  o: Record<string, unknown> = {},
+  at = Date.now(),
+  type = 'customer.subscription.created',
+) {
   return JSON.stringify({
-    event_type: 'subscription.created',
-    occurred_at: at.toISOString(),
+    type,
+    created: Math.floor(at / 1000),
     data: {
-      id: `sub_${pilotId}`,
-      status: 'active',
-      customer_id: `ctm_${pilotId}`,
-      custom_data: { pilotId },
-      current_billing_period: { starts_at: new Date().toISOString(), ends_at: ends },
-      scheduled_change: null,
-      ...o,
+      object: {
+        id: `sub_${pilotId}`,
+        status: 'active',
+        customer: `cus_${pilotId}`,
+        metadata: { pilotId },
+        cancel_at_period_end: false,
+        items: { data: [{ current_period_end: Math.floor((Date.now() + 365 * DAY) / 1000) }] },
+        ...o,
+      },
     },
   });
 }
@@ -165,59 +174,91 @@ describe('paywall', () => {
   });
 });
 
-describe('Paddle', () => {
-  test('signature: right secret and fresh timestamp only', () => {
+describe('Stripe', () => {
+  const hook = (body: string, sig = stripeSign(body)) =>
+    postRaw('billing/stripe/webhook', body, { 'Stripe-Signature': sig });
+
+  test('signature: right secret and fresh timestamp only; any v1 of a secret roll', () => {
     const body = Buffer.from('{"a":1}');
     const now = 1_800_000_000;
-    const h = `ts=${now};h1=${crypto.createHmac('sha256', 's').update(`${now}:{"a":1}`).digest('hex')}`;
-    expect(verifyPaddleSignature(h, body, 's', now)).toBe(true);
-    expect(verifyPaddleSignature(h, body, 'other', now)).toBe(false);
-    expect(verifyPaddleSignature(h, Buffer.from('{"a":2}'), 's', now)).toBe(false);
-    expect(verifyPaddleSignature(h, body, 's', now + 301)).toBe(false);
-    expect(verifyPaddleSignature('garbage', body, 's', now)).toBe(false);
+    const v1 = (k: string) => crypto.createHmac('sha256', k).update(`${now}.{"a":1}`).digest('hex');
+    expect(verifyStripeSignature(`t=${now},v1=${v1('s')}`, body, 's', now)).toBe(true);
+    expect(verifyStripeSignature(`t=${now},v1=${v1('old')},v1=${v1('s')}`, body, 's', now)).toBe(true);
+    expect(verifyStripeSignature(`t=${now},v1=${v1('s')}`, body, 'other', now)).toBe(false);
+    expect(verifyStripeSignature(`t=${now},v1=${v1('s')}`, Buffer.from('{"a":2}'), 's', now)).toBe(false);
+    expect(verifyStripeSignature(`t=${now},v1=${v1('s')}`, body, 's', now + 301)).toBe(false);
+    expect(verifyStripeSignature('garbage', body, 's', now)).toBe(false);
+  });
+
+  test('checkout: the pilot in metadata, VAT by country, back to /subscription', async () => {
+    const { c, id } = await pilot({ expired: true });
+    stripeCalls.length = 0;
+    expect((await c.call('POST', 'billing/checkout')).body.url).toBe('https://checkout.test/x');
+    expect(stripeCalls[0].url).toBe('https://api.stripe.com/v1/checkout/sessions');
+    expect(stripeCalls[0].body).toMatchObject({
+      mode: 'subscription',
+      'line_items[0][price]': 'price_test',
+      client_reference_id: id,
+      'subscription_data[metadata][pilotId]': id,
+      'automatic_tax[enabled]': 'true',
+      customer_email: `bill-${n}@example.com`,
+    });
+    expect(stripeCalls[0].body.success_url).toMatch(/\/subscription\?checkout=done$/);
+    expect((await c.call('GET', 'billing')).body.web).toBe(true);
   });
 
   test('a subscription unlocks; a late older event does not undo a newer one; cancelling ends it', async () => {
     const { c, id } = await pilot({ expired: true });
     expect((await c.call('POST', 'flights', {})).status).toBe(402);
-    const body = paddleEvent(id);
-    expect((await postRaw('billing/paddle/webhook', body, { 'Paddle-Signature': 'ts=1;h1=00' })).status).toBe(401);
-    expect((await postRaw('billing/paddle/webhook', body, { 'Paddle-Signature': paddleSign(body) })).status).toBe(200);
+    const body = stripeEvent(id);
+    expect((await hook(body, 't=1,v1=00')).status).toBe(401);
+    expect((await hook(body)).status).toBe(200);
     const b = (await c.call('GET', 'billing')).body;
     expect(b.entitlement.reason).toBe('paid');
     expect(b.entitlement.renews).toBe(true);
-    expect(b.store).toBe('paddle');
-    expect(b.paddle).toEqual({ clientToken: 'test_client_token', priceId: 'pri_test', environment: 'sandbox' });
+    expect(b.store).toBe('stripe');
     expect((await c.call('POST', 'flights', {})).status).toBe(201);
+    expect((await c.call('POST', 'billing/checkout')).status).toBe(409);
 
-    const cancelled = paddleEvent(id, { event_type: 'x', status: 'canceled' }, new Date(Date.now() + 1000));
-    const canc = JSON.stringify({ ...JSON.parse(cancelled), event_type: 'subscription.canceled' });
-    const stale = paddleEvent(id, {}, new Date(Date.now() - 60e3));
-    await postRaw('billing/paddle/webhook', canc, { 'Paddle-Signature': paddleSign(canc) });
-    await postRaw('billing/paddle/webhook', stale, { 'Paddle-Signature': paddleSign(stale) });
+    const ending = stripeEvent(id, { cancel_at_period_end: true }, Date.now() + 1000, 'customer.subscription.updated');
+    await hook(ending);
+    expect((await c.call('GET', 'billing')).body.entitlement).toMatchObject({ reason: 'paid', renews: false });
+    const deleted = stripeEvent(id, { status: 'canceled' }, Date.now() + 2000, 'customer.subscription.deleted');
+    const stale = stripeEvent(id, {}, Date.now() - 60e3);
+    await hook(deleted);
+    await hook(stale);
     const after = (await c.call('GET', 'billing')).body.entitlement;
     expect(after.active).toBe(false);
     const [row] = await db.query('SELECT paid_until FROM pilots WHERE id = $1', [id]);
     expect(Number(row.paid_until)).toBeLessThanOrEqual(GRACE_MS);
   });
 
+  test('a subscription from before API version 2025-03-31 (the period on the subscription)', async () => {
+    const { c, id } = await pilot({ expired: true });
+    const until = Math.floor((Date.now() + 30 * DAY) / 1000);
+    await hook(stripeEvent(id, { items: { data: [{}] }, current_period_end: until }));
+    expect((await c.call('GET', 'billing')).body.entitlement.until).toBe(until * 1000 + GRACE_MS);
+  });
+
   test('portal link and cancellation on account deletion', async () => {
     const { c, id } = await pilot();
-    const body = paddleEvent(id);
-    await postRaw('billing/paddle/webhook', body, { 'Paddle-Signature': paddleSign(body) });
-    paddleCalls.length = 0;
+    await hook(stripeEvent(id));
+    stripeCalls.length = 0;
     expect((await c.call('POST', 'billing/portal')).body.url).toBe('https://portal.test/x');
-    expect(paddleCalls[0].url).toBe(`https://sandbox-api.paddle.com/customers/ctm_${id}/portal-sessions`);
+    expect(stripeCalls[0]).toMatchObject({
+      url: 'https://api.stripe.com/v1/billing_portal/sessions',
+      body: { customer: `cus_${id}` },
+    });
     expect((await c.call('DELETE', 'me', { confirm: `bill-${n}@example.com` })).status).toBe(200);
-    expect(paddleCalls[1]).toEqual({
-      url: `https://sandbox-api.paddle.com/subscriptions/sub_${id}/cancel`,
-      body: { effective_from: 'immediately' },
+    expect(stripeCalls[1]).toMatchObject({
+      method: 'DELETE',
+      url: `https://api.stripe.com/v1/subscriptions/sub_${id}`,
     });
   });
 
-  test('an event for an unknown pilot is refused (Paddle retries it)', async () => {
-    const body = paddleEvent('nobody');
-    expect((await postRaw('billing/paddle/webhook', body, { 'Paddle-Signature': paddleSign(body) })).status).toBe(422);
+  test('an event for an unknown pilot is refused (Stripe retries it); other events are ignored', async () => {
+    expect((await hook(stripeEvent('nobody'))).status).toBe(422);
+    expect((await hook(JSON.stringify({ type: 'invoice.paid', created: 1, data: { object: {} } }))).status).toBe(200);
   });
 });
 

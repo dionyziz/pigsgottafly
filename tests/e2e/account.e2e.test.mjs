@@ -107,7 +107,7 @@ test('sign-in screen: the consent line and footer link to the terms and privacy 
 test('the privacy policy and terms render with their sections and date', async () => {
   for (const [path, title, sections] of [
     ['/privacy', 'Privacy Policy', 12],
-    ['/terms', 'Terms of Service', 12],
+    ['/terms', 'Terms of Service', 13],
   ]) {
     await page.goto(local.url + path);
     await page.waitFor(() => !!document.querySelector('.legal-doc h1'));
@@ -120,7 +120,7 @@ test('the privacy policy and terms render with their sections and date', async (
       contact: !!document.querySelector('a[href="mailto:dionyziz@commonprefix.com"]'),
     }));
     assert.equal(doc.h1, title);
-    assert.equal(doc.date, 'Last updated 21 November 2026');
+    assert.equal(doc.date, 'Last updated 26 November 2026');
     assert.equal(doc.toc, sections);
     assert.equal(doc.h2, sections);
     assert.equal(doc.title, `${title} · Pig's Gotta Fly`);

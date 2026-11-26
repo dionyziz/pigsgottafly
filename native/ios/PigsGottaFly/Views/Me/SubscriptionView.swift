@@ -22,7 +22,7 @@ struct SubscriptionView: View {
                     Button("Manage subscription") { managing = true }
                         .accessibilityIdentifier("subscription-manage")
                 }
-            } else if paid && subs.billing?.store == "paddle" {
+            } else if paid && subs.billing?.store == "stripe" {
                 Section {
                     Text("Bought on the website: manage it there, under Subscription in the account menu.")
                         .foregroundStyle(.secondary)

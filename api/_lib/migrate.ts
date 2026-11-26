@@ -61,6 +61,7 @@ import ref071 from './migrations/071_ref_2611.js';
 import refRunways072 from './migrations/072_ref_runways_2611.js';
 import refAdHours073 from './migrations/073_ref_ad_hours_2611.js';
 import refAreas074 from './migrations/074_ref_areas_2611.js';
+import billingStripe075 from './migrations/075_billing_stripe.js';
 
 export interface Migration {
   /** Unique, sortable: 'NNN_name'. */
@@ -128,6 +129,7 @@ export const MIGRATIONS: Migration[] = [
   { name: '072_ref_runways_2611', sql: refRunways072 },
   { name: '073_ref_ad_hours_2611', sql: refAdHours073 },
   { name: '074_ref_areas_2611', sql: refAreas074 },
+  { name: '075_billing_stripe', sql: billingStripe075 },
 ];
 
 const LOCK_KEY = 7243_0001; // arbitrary, constant

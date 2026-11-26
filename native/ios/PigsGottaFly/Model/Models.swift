@@ -31,10 +31,10 @@ struct Entitlement: Codable, Equatable {
     var untilDate: Date? { until.map { Date(timeIntervalSince1970: $0 / 1000) } }
 }
 
-/// GET /api/billing (src/shared/api.ts BillingResponse); the Paddle checkout is the website's only.
+/// GET /api/billing (src/shared/api.ts BillingResponse); the Stripe checkout is the website's only.
 struct BillingInfo: Codable, Equatable {
     var entitlement: Entitlement
-    /// Where the paid subscription was bought: "paddle" (the website), "apple", or nil.
+    /// Where the paid subscription was bought: "stripe" (the website), "apple", or nil.
     var store: String?
     /// Set as appAccountToken on App Store purchases: the server ties them to this account.
     var appleAccountToken: String

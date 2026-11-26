@@ -1,11 +1,12 @@
-// The subscription as the website shows it: status text, buying through Paddle's checkout, and managing it.
+// The subscription as the website shows it: status text, buying through Stripe's hosted Checkout (it comes back
+// to /subscription?checkout=done), and managing it in Stripe's customer portal.
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { useSession } from '../../app/session';
 import { api } from '../../data/api';
 import type { BillingResponse, Entitlement } from '../../shared';
 import { errorMessage } from '../../shared/format';
-import { openCheckout } from './paddle';
 
 const DAY = 24 * 3600e3;
 const day = (ms: number) =>
@@ -30,12 +31,14 @@ export function entitlementText(e: Entitlement, now = Date.now()): string {
   }
 }
 
-/** Paddle's webhook reaches the server a few seconds after the checkout closes: ask until it has. */
+/** Stripe's webhook reaches the server a few seconds after the checkout: ask until it has. */
 const POLL_MS = 2000;
 const POLL_FOR_MS = 90e3;
 
 export function useBilling() {
-  const { pilot, setEntitlement } = useSession();
+  const { setEntitlement } = useSession();
+  const [params, setParams] = useSearchParams();
+  const returned = params.get('checkout') === 'done';
   const [billing, setBilling] = useState<BillingResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [waiting, setWaiting] = useState(false);
@@ -51,28 +54,32 @@ export function useBilling() {
     refresh().catch((e) => setError(errorMessage(e)));
   }, [refresh]);
 
+  useEffect(() => {
+    if (!returned) return;
+    setParams((p) => (p.delete('checkout'), p), { replace: true });
+    setWaiting(true);
+    const until = Date.now() + POLL_FOR_MS;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tick = async () => {
+      const b = await refresh().catch(() => null);
+      if (b?.entitlement.reason === 'paid' || b?.entitlement.reason === 'founder') return setWaiting(false);
+      if (Date.now() < until) timer = setTimeout(() => void tick(), POLL_MS);
+      else {
+        setWaiting(false);
+        setError('The payment went through, but the subscription has not reached us yet. Reload in a minute.');
+      }
+    };
+    void tick();
+    return () => clearTimeout(timer);
+  }, [returned, refresh, setParams]);
+
   const subscribe = async () => {
-    if (!billing) return;
     setError(null);
     setBusy(true);
     try {
-      await openCheckout(billing, pilot, () => {
-        setWaiting(true);
-        const until = Date.now() + POLL_FOR_MS;
-        const tick = async () => {
-          const b = await refresh().catch(() => null);
-          if (b?.entitlement.reason === 'paid' || b?.entitlement.reason === 'founder') return setWaiting(false);
-          if (Date.now() < until) setTimeout(() => void tick(), POLL_MS);
-          else {
-            setWaiting(false);
-            setError('The payment went through, but the subscription has not reached us yet. Reload in a minute.');
-          }
-        };
-        void tick();
-      });
+      window.location.assign((await api.billing.checkout()).url);
     } catch (e) {
       setError(errorMessage(e));
-    } finally {
       setBusy(false);
     }
   };

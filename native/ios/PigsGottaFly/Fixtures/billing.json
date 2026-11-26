@@ -1,7 +1,7 @@
 {
   "entitlement": { "active": true, "reason": "trial", "until": 1798761600000 },
   "store": null,
-  "paddle": null,
+  "web": false,
   "appleAccountToken": "6f1c2e0a-7d1b-4c3e-9a55-0d3b8f1e2a44",
   "price": "€50 / year"
 }

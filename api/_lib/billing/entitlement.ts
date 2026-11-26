@@ -1,6 +1,6 @@
 // Whether a pilot may plan, brief and file (the €50/year subscription). Decided from the pilot row alone,
 // so the dispatcher needs no extra query: paid_until is kept up to date by the stores' notifications
-// (paddle.ts, apple.ts → refreshPaidUntil).
+// (stripe.ts, apple.ts → refreshPaidUntil).
 import type { Entitlement } from '../../../src/shared/api.js';
 import type { Queryable, Row } from '../db.js';
 
@@ -36,7 +36,7 @@ export async function refreshPaidUntil(db: Queryable, pilotId: string): Promise<
 }
 
 export interface SubscriptionRecord {
-  source: 'paddle' | 'apple';
+  source: 'stripe' | 'apple';
   externalId: string;
   pilotId: string;
   status: string;

@@ -1,8 +1,9 @@
 // The subscription (api/_lib/billing):
 //   GET  /billing                          the pilot's entitlement and how to buy or manage it
-//   POST /billing/portal                   a link to Paddle's customer portal (website subscriptions)
+//   POST /billing/checkout                 a link to Stripe's hosted Checkout (the website's purchase)
+//   POST /billing/portal                   a link to Stripe's customer portal (website subscriptions)
 //   POST /billing/apple/transaction        the iOS app's purchase or restore (a signed StoreKit transaction)
-//   POST /billing/paddle/webhook           Paddle's subscription events (signed; no session)
+//   POST /billing/stripe/webhook           Stripe's subscription events (signed; no session)
 //   POST /billing/apple/notifications      App Store Server Notifications V2 (signed; no session)
 //   POST /admin/pilots/:id/grant           an admin gives a pilot free days ({ days }), or takes them back (0)
 import crypto from 'node:crypto';
@@ -10,10 +11,10 @@ import crypto from 'node:crypto';
 import type { BillingResponse, Entitlement } from '../../../src/shared/api.js';
 import { applyAppleNotification, applyAppTransaction } from '../billing/apple.js';
 import { entitlementOf } from '../billing/entitlement.js';
-import { applyPaddleEvent, paddlePortalUrl, verifyPaddleSignature } from '../billing/paddle.js';
+import { applyStripeEvent, stripeCheckoutUrl, stripePortalUrl, verifyStripeSignature } from '../billing/stripe.js';
 import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
-import { badRequest, HttpError, reply } from '../http.js';
+import { appOrigin, badRequest, HttpError, reply } from '../http.js';
 
 export const PRICE_LABEL = '€50 / year';
 
@@ -23,6 +24,16 @@ async function appleToken(db: Queryable, pilotId: string): Promise<string> {
     [pilotId, crypto.randomUUID()],
   );
   return r.apple_account_token;
+}
+
+/** The pilot's Stripe customer, from their latest website subscription (null: never bought on the website). */
+async function stripeCustomer(db: Queryable, pilotId: string): Promise<string | null> {
+  const [sub] = await db.query(
+    `SELECT data->>'customer' AS customer FROM subscriptions
+     WHERE pilot_id = $1 AND source = 'stripe' ORDER BY updated DESC LIMIT 1`,
+    [pilotId],
+  );
+  return sub?.customer ?? null;
 }
 
 async function entitlementFor(db: Queryable, pilotId: string): Promise<Entitlement> {
@@ -39,11 +50,10 @@ export const routes: Route[] = [
         `SELECT source FROM subscriptions WHERE pilot_id = $1 AND period_end > $2 ORDER BY period_end DESC LIMIT 1`,
         [pilot.id, Date.now()],
       );
-      const p = config.paddle;
       return {
         entitlement: await entitlementFor(db, pilot.id),
         store: sub?.source ?? null,
-        paddle: p ? { clientToken: p.clientToken, priceId: p.priceId, environment: p.environment } : null,
+        web: !!config.stripe,
         appleAccountToken: await appleToken(db, pilot.id),
         price: PRICE_LABEL,
       };
@@ -51,17 +61,32 @@ export const routes: Route[] = [
   },
   {
     method: 'POST',
+    path: '/billing/checkout',
+    paid: false,
+    async handler({ db, pilot, config, req }) {
+      if (!config.stripe) throw new HttpError(404, 'not available');
+      const e = await entitlementFor(db, pilot.id);
+      if (e.reason === 'paid' || e.reason === 'founder') throw new HttpError(409, 'you already have a subscription');
+      const url = await stripeCheckoutUrl(config.stripe, {
+        pilotId: pilot.id,
+        email: pilot.email || null,
+        customerId: await stripeCustomer(db, pilot.id),
+        returnUrl: `${appOrigin(req, config.secureCookie)}/subscription`,
+      });
+      return { url };
+    },
+  },
+  {
+    method: 'POST',
     path: '/billing/portal',
     paid: false,
-    async handler({ db, pilot, config }) {
-      if (!config.paddle) throw new HttpError(404, 'not available');
-      const [sub] = await db.query(
-        `SELECT external_id, data->>'customer_id' AS customer FROM subscriptions
-         WHERE pilot_id = $1 AND source = 'paddle' ORDER BY updated DESC LIMIT 1`,
-        [pilot.id],
-      );
-      if (!sub?.customer) throw new HttpError(404, 'no subscription bought on the website');
-      return { url: await paddlePortalUrl(config.paddle, sub.customer, sub.external_id) };
+    async handler({ db, pilot, config, req }) {
+      if (!config.stripe) throw new HttpError(404, 'not available');
+      const customer = await stripeCustomer(db, pilot.id);
+      if (!customer) throw new HttpError(404, 'no subscription bought on the website');
+      return {
+        url: await stripePortalUrl(config.stripe, customer, `${appOrigin(req, config.secureCookie)}/subscription`),
+      };
     },
   },
   {
@@ -77,21 +102,21 @@ export const routes: Route[] = [
   },
   {
     method: 'POST',
-    path: '/billing/paddle/webhook',
+    path: '/billing/stripe/webhook',
     auth: false,
     webhook: true,
     async handler({ db, req, rawBody, config }) {
-      if (!config.paddle) return reply(404, { error: 'not found' });
+      if (!config.stripe) return reply(404, { error: 'not found' });
       const raw = await rawBody();
-      const sig = String(req.headers['paddle-signature'] || '');
-      if (!verifyPaddleSignature(sig, raw, config.paddle.webhookSecret)) return reply(401, { error: 'bad signature' });
+      const sig = String(req.headers['stripe-signature'] || '');
+      if (!verifyStripeSignature(sig, raw, config.stripe.webhookSecret)) return reply(401, { error: 'bad signature' });
       let event;
       try {
         event = JSON.parse(raw.toString('utf8'));
       } catch {
         throw badRequest('invalid JSON');
       }
-      await applyPaddleEvent(db, event);
+      await applyStripeEvent(db, event);
       return { ok: true };
     },
   },

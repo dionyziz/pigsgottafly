@@ -10,13 +10,14 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          Pig's Gotta Fly (pigsgottafly.com) is a flight-planning tool for VFR flights in the Athinai FIR, run by
-          Dionysis Zindros, an individual based in Greece ("we"). By signing in you agree to these terms. If you do not
-          agree, do not use the service.
+          Pig's Gotta Fly (pigsgottafly.com and the iPhone and iPad app) is a flight-planning tool for VFR flights in
+          the Athinai FIR, provided by Common Prefix OÜ, a company registered in Estonia (registry code 16322929, VAT
+          EE102415098, Lootsa 2a, 11415 Tallinn) ("we"). By signing in you agree to these terms. If you do not agree, do
+          not use the service.
         </p>
         <p>
-          The service is <b>free</b>. We may change, add or remove features at any time, and we may stop the service; if
-          we stop it, we will give you reasonable notice so that you can download your data.
+          We may change, add or remove features at any time, and we may stop the service; if we stop it, we will give
+          you reasonable notice so that you can download your data, and refund the unused part of a subscription.
         </p>
       </>
     ),
@@ -33,6 +34,40 @@ const sections: LegalSection[] = [
         <li>You must be at least 16 years old.</li>
         <li>One person per account. Do not sign in as, or create documents in the name of, someone else.</li>
       </ul>
+    ),
+  },
+  {
+    id: 'subscription',
+    title: 'Subscription and payment',
+    body: (
+      <>
+        <ul>
+          <li>
+            A new account gets a <b>30-day free trial</b>. After it, planning, briefing and filing need a subscription:
+            <b> €50 a year</b>, VAT of your country included. Without one, your flights, aircraft and passengers stay
+            yours to read, export and delete.
+          </li>
+          <li>
+            Pilots who signed up before subscriptions began are <b>founding pilots</b> and keep everything free for
+            life. People you share a flight or an aircraft with can view it without a subscription.
+          </li>
+          <li>
+            On the website you pay through Stripe, our payment provider; in the iPhone and iPad app, through Apple. One
+            subscription covers both.
+          </li>
+          <li>
+            The subscription <b>renews every year</b> at the price then in force until you cancel it. Cancel any time:
+            on the website under Subscription (account menu), or in the App Store settings for one bought in the app. It
+            then runs to the end of the year already paid. We will tell you at least 30 days before a price change
+            applies to your renewal.
+          </li>
+          <li>
+            <b>Right of withdrawal</b>: as a consumer in the EU you may withdraw within 14 days of buying a subscription
+            on the website, by writing to us, and we refund it in full. A subscription bought in the app is refunded
+            through Apple (reportaproblem.apple.com).
+          </li>
+        </ul>
+      </>
     ),
   },
   {
@@ -133,8 +168,9 @@ const sections: LegalSection[] = [
     title: 'No warranty',
     body: (
       <p>
-        The service is provided free of charge, <b>"as is" and "as available"</b>, without any warranty, express or
-        implied, including that it is accurate, complete, fit for a particular purpose, uninterrupted or free of errors.
+        Apart from the rights consumers have under mandatory law, the service is provided{' '}
+        <b>"as is" and "as available"</b>, without any warranty, express or implied, including that it is accurate,
+        complete, fit for a particular purpose, uninterrupted or free of errors.
       </p>
     ),
   },
@@ -145,8 +181,9 @@ const sections: LegalSection[] = [
       <p>
         To the fullest extent the law allows, we are not liable for any loss or damage arising from the use of, or
         inability to use, the service, including from errors in data or calculations, documents not delivered or
-        rejected, or flight-planning decisions. Nothing in these terms limits liability that cannot be limited by law,
-        such as for intent or gross negligence, or your rights as a consumer under mandatory law.
+        rejected, or flight-planning decisions; in any case our liability is limited to what you paid us in the 12
+        months before the claim. Nothing in these terms limits liability that cannot be limited by law, such as for
+        intent or gross negligence, or your rights as a consumer under mandatory law.
       </p>
     ),
   },
@@ -155,8 +192,9 @@ const sections: LegalSection[] = [
     title: 'Governing law',
     body: (
       <p>
-        These terms are governed by the laws of Greece. The courts of Athens have jurisdiction, without prejudice to the
-        mandatory rights of consumers to bring proceedings where they live.
+        These terms are governed by the laws of Estonia. The courts of Tallinn (Harju County Court) have jurisdiction,
+        without prejudice to the mandatory protection of the law where you live and your right as a consumer to bring
+        proceedings there.
       </p>
     ),
   },
@@ -175,7 +213,7 @@ const sections: LegalSection[] = [
     title: 'Contact',
     body: (
       <p>
-        Dionysis Zindros, Greece · <Mail />
+        Common Prefix OÜ, Lootsa 2a, 11415 Tallinn, Estonia · registry code 16322929 · VAT EE102415098 · <Mail />
       </p>
     ),
   },

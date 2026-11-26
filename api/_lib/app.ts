@@ -9,7 +9,7 @@ import { appleKeys, googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCooki
 import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
 import { autorouterOAuthFromEnv, linkedClient, readLink } from './autorouterLinks.js';
 import { entitlementOf } from './billing/entitlement.js';
-import { paddleFromEnv } from './billing/paddle.js';
+import { stripeFromEnv } from './billing/stripe.js';
 import type { Db } from './db.js';
 import { autorouterFiler } from './filers/autorouter.js';
 import { faxFiler } from './filers/fax.js';
@@ -83,7 +83,7 @@ export function configFromEnv(
     notamSources: sourceOrderFromEnv(env.NOTAM_SOURCES),
     adminEmails: emailList(env.ADMIN_EMAILS),
     billingEnforce: env.BILLING_ENFORCE === '1',
-    paddle: paddleFromEnv(env),
+    stripe: stripeFromEnv(env),
     ...(env.OPEN_METEO_DAILY_BUDGET
       ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } }
       : {}),
@@ -177,7 +177,7 @@ export function createApi(
     faxPdf: opts.faxPdf ?? null,
     faxWebhookBase: opts.faxWebhookBase,
     billingEnforce: !!opts.billingEnforce,
-    paddle: opts.paddle ?? null,
+    stripe: opts.stripe ?? null,
     appleTrust: opts.appleTrust,
   };
   const fax = config.fax ? faxProvider(config.fax) : null;

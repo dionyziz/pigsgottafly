@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 
 import type { AppleTrust } from '../../api/_lib/billing/apple';
-import type { PaddleSettings } from '../../api/_lib/billing/paddle';
+import type { StripeSettings } from '../../api/_lib/billing/stripe';
 import type { NavlogPdfRenderer, SheetPdfRenderer } from '../../api/_lib/sheetPdf';
 import { createServer } from '../../server/server';
 
@@ -48,7 +48,7 @@ export async function startApi(
     sheetPdf?: SheetPdfRenderer | null;
     navlogPdf?: NavlogPdfRenderer | null;
     billingEnforce?: boolean;
-    paddle?: PaddleSettings | null;
+    stripe?: StripeSettings | null;
     appleTrust?: AppleTrust;
   } = {},
 ) {
@@ -64,7 +64,7 @@ export async function startApi(
     sheetPdf: opts.sheetPdf,
     navlogPdf: opts.navlogPdf,
     billingEnforce: opts.billingEnforce,
-    paddle: opts.paddle,
+    stripe: opts.stripe,
     appleTrust: opts.appleTrust,
     client: (_req, res) => {
       res.writeHead(404);

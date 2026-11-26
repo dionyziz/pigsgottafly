@@ -12,10 +12,10 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          Pig's Gotta Fly (pigsgottafly.com) is a free flight-planning service for VFR pilots in the Athinai FIR. It is
-          run by an individual, Dionysis Zindros, based in Greece, who is the <b>controller</b> of the personal data
-          described here under the EU General Data Protection Regulation (GDPR). In this policy "we" means him, and
-          "you" means the pilot who has an account.
+          Pig's Gotta Fly (pigsgottafly.com and the iPhone and iPad app) is a flight-planning service for VFR pilots in
+          the Athinai FIR, provided by Common Prefix OÜ (Lootsa 2a, 11415 Tallinn, Estonia; registry code 16322929), the{' '}
+          <b>controller</b> of the personal data described here under the EU General Data Protection Regulation (GDPR).
+          In this policy "we" means Common Prefix OÜ, and "you" means the pilot who has an account.
         </p>
         <p>
           Contact for anything about your data: <Mail />.
@@ -126,6 +126,11 @@ const sections: LegalSection[] = [
             interest in a secure, reliable service (Art. 6(1)(f)).
           </li>
           <li>
+            <b>To sell and manage your subscription</b>: whether you are in your trial, subscribed or a founding pilot,
+            and the subscription's store, status and renewal date. Legal basis: performance of our agreement. Invoices
+            and payment records are kept as accounting law requires (Art. 6(1)(c)).
+          </li>
+          <li>
             <b>To answer you</b> when you write to us. Legal basis: legitimate interest.
           </li>
         </ul>
@@ -176,7 +181,19 @@ const sections: LegalSection[] = [
             </tr>
             <tr>
               <td>Apple</td>
-              <td>Sign in with Apple. Its sign-in script and window are loaded from Apple's servers.</td>
+              <td>
+                Sign in with Apple (its sign-in script and window are loaded from Apple's servers), and subscriptions
+                bought in the app: Apple tells us the subscription's identifiers, status and renewal date, never your
+                payment details.
+              </td>
+            </tr>
+            <tr>
+              <td>Stripe</td>
+              <td>
+                Subscriptions bought on the website: your e-mail address and account identifier go to Stripe's checkout,
+                where you give your card and billing address; Stripe works out the VAT and sends the invoices. We
+                receive the subscription's identifiers, status and renewal date, never your card number.
+              </td>
             </tr>
           </tbody>
         </table>
@@ -280,9 +297,9 @@ const sections: LegalSection[] = [
     title: 'International transfers',
     body: (
       <p>
-        Vercel, Neon, Resend, Google and Apple are based in the United States and may process data outside the European
-        Economic Area. Where they do, the transfer is covered by the EU–US Data Privacy Framework or by the European
-        Commission's Standard Contractual Clauses in their data processing terms.
+        Vercel, Neon, Resend, Google, Apple and Stripe are based in the United States and may process data outside the
+        European Economic Area. Where they do, the transfer is covered by the EU–US Data Privacy Framework or by the
+        European Commission's Standard Contractual Clauses in their data processing terms.
       </p>
     ),
   },
@@ -312,6 +329,11 @@ const sections: LegalSection[] = [
             The record of e-mails sent (when, the kind of form, the recipient's address, the subject and whether it went
             out) stays with your account, to apply the daily sending limits, to show you what was sent and to let the
             administrator look into abuse.
+          </li>
+          <li>
+            Your subscription's record (store, identifiers, status, renewal date): until you delete your account.
+            Invoices and payment records are kept by Stripe or Apple, and by us where accounting law requires it (7
+            years in Estonia).
           </li>
           <li>
             Request counters for rate limiting: per account, or per IP address for requests made before signing in;
@@ -354,11 +376,16 @@ const sections: LegalSection[] = [
             <b>Object</b> to processing based on legitimate interest, and to <b>restrict</b> processing.
           </li>
           <li>
-            <b>Complain</b> to a data protection authority. In Greece that is the Hellenic Data Protection Authority (
+            <b>Complain</b> to a data protection authority. Ours is the Estonian Data Protection Inspectorate (
+            <a href="https://www.aki.ee" target="_blank" rel="noreferrer">
+              aki.ee
+            </a>
+            , Tatari 39, 10134 Tallinn). You can also complain where you live or work in the EU, in Greece to the
+            Hellenic Data Protection Authority (
             <a href="https://www.dpa.gr" target="_blank" rel="noreferrer">
               dpa.gr
             </a>
-            , Kifisias 1-3, 115 23 Athens). You can also complain where you live or work in the EU.
+            ).
           </li>
         </ul>
         <p>
@@ -431,7 +458,7 @@ const sections: LegalSection[] = [
     title: 'Contact',
     body: (
       <p>
-        Dionysis Zindros, Greece · <Mail />
+        Common Prefix OÜ, Lootsa 2a, 11415 Tallinn, Estonia · registry code 16322929 · VAT EE102415098 · <Mail />
       </p>
     ),
   },

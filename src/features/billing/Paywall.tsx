@@ -45,7 +45,7 @@ function PaywallDialog({ onClose }: { onClose: () => void }) {
           primary={{
             label: billing ? `Subscribe, ${billing.price}` : 'Subscribe',
             onClick: () => void subscribe(),
-            disabled: !billing?.paddle,
+            disabled: !billing?.web,
             testId: 'paywall-subscribe',
           }}
         />

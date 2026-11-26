@@ -583,11 +583,13 @@ free_until / apple_account_token` (migration 070). Dormant until `BILLING_ENFORC
   `GET /flights/:id/notams`. Reading, deleting and exporting stay open. The website opens its subscribe dialog on any
   402 (`src/features/billing/Paywall.tsx`); the editor keeps an unsaved edit and sends it once subscribed; the iOS app
   opens Me → Subscription.
-- **Website**: Paddle Billing as merchant of record (`PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`,
-  `PADDLE_CLIENT_TOKEN`, `PADDLE_PRICE_ID`, `PADDLE_ENV=sandbox|production`). Paddle.js opens the checkout with the
-  pilot id in `customData`; `POST /api/billing/paddle/webhook` (HMAC `Paddle-Signature`, 5-minute tolerance) records
-  `subscription.*` events, an older event never overwriting a newer one. `POST /api/billing/portal` links to Paddle's
-  customer portal. Deleting the account cancels a renewing Paddle subscription first.
+- **Website**: Stripe Billing, sold by Common Prefix OÜ (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+  `STRIPE_PRICE_ID`: a yearly €50 price, tax behavior inclusive). `POST /api/billing/checkout` makes a hosted Checkout
+  session (pilot id in `client_reference_id` and the subscription's metadata, Stripe Tax on, VAT ids collected) and
+  the page goes there; it comes back to `/subscription?checkout=done`, which asks until the webhook has arrived.
+  `POST /api/billing/stripe/webhook` (HMAC `Stripe-Signature`, 5-minute tolerance) records `customer.subscription.*`
+  events, an older event never overwriting a newer one. `POST /api/billing/portal` links to Stripe's customer portal.
+  Deleting the account cancels a renewing Stripe subscription first.
 - **iOS**: StoreKit 2, product `com.pigsgottafly.app.yearly` with `appAccountToken` = `pilots.apple_account_token`.
   The app posts each verified transaction to `POST /api/billing/apple/transaction` and finishes it only after;
   App Store Server Notifications V2 go to `POST /api/billing/apple/notifications`. Both are JWS checked against

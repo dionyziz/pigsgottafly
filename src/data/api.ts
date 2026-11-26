@@ -221,7 +221,9 @@ export const api = {
   revokeAllSessions: () => request<{ ok: true }>('POST', 'session/revoke-all'),
   billing: {
     get: () => request<BillingResponse>('GET', 'billing'),
-    /** A one-time link to Paddle's customer portal (website subscriptions). */
+    /** A one-time link to Stripe's hosted Checkout for the subscription. */
+    checkout: () => request<{ url: string }>('POST', 'billing/checkout', {}),
+    /** A one-time link to Stripe's customer portal (website subscriptions). */
     portal: () => request<{ url: string }>('POST', 'billing/portal', {}),
   },
 

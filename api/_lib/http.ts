@@ -7,7 +7,7 @@ import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { AutorouterOAuthSettings } from './autorouterLinks.js';
 import type { AppleTrust } from './billing/apple.js';
-import type { PaddleSettings } from './billing/paddle.js';
+import type { StripeSettings } from './billing/stripe.js';
 import type { Db } from './db.js';
 import type { FaxProvider, FaxSettings } from './filers/faxProviders.js';
 import type { Filer } from './filers/types.js';
@@ -102,8 +102,8 @@ export interface ApiConfig {
    * plan, brief or file. Off, everyone keeps everything and the paywall is never shown.
    */
   billingEnforce?: boolean;
-  /** Paddle Billing (PADDLE_*), the website's checkout; null/undefined: not sold on the website. */
-  paddle?: PaddleSettings | null;
+  /** Stripe Billing (STRIPE_*), the website's checkout; null/undefined: not sold on the website. */
+  stripe?: StripeSettings | null;
   /** The root App Store signatures must chain to; tests inject their own. */
   appleTrust?: AppleTrust;
 }

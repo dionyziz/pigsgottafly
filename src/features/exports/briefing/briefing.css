@@ -12,3 +12,12 @@
 .brief-leg { font-size: 8pt; color: #555; }
 .brief-meta { display: flex; flex-wrap: wrap; column-gap: 4mm; font-size: 8pt; color: #333; }
 .brief-raw { margin: 0; font-family: 'Courier New', monospace; font-size: 8pt; white-space: pre-wrap; overflow-wrap: anywhere; color: #10265c; }
+
+/* Unlike the one-page W&B and performance sheets, the briefing runs over many pages: the margin is the page's
+   (every page gets it, not only where the sheet's padding is), and the sheet adds none. */
+@page brief { size: A4 portrait; margin: 14mm 13mm 14mm; }
+@media print {
+  .xp-sheet.brief-sheet { page: brief; width: auto; min-height: 0; padding: 0; }
+  .brief-h { break-after: avoid; }
+  .brief-notam { orphans: 3; widows: 3; }
+}

@@ -42,10 +42,9 @@ describe('production security headers (vercel.json)', () => {
     expect(headers['X-Frame-Options']).toBe('DENY');
     expect(directives.get('frame-ancestors')).toEqual(["'none'"]);
   });
-  test('scripts only from the app, Google sign-in, Sign in with Apple and Paddle’s checkout; no inline script, no eval', () => {
+  test('scripts only from the app, Google sign-in, Sign in with Apple (Stripe’s checkout is its own page); no inline script, no eval', () => {
     expect(directives.get('script-src')).toEqual([
       "'self'",
-      'https://cdn.paddle.com',
       'https://accounts.google.com/gsi/',
       'https://appleid.cdn-apple.com/appleauth/',
     ]);
@@ -56,8 +55,6 @@ describe('production security headers (vercel.json)', () => {
     expect(
       allows('script-src', 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js'),
     ).toBe(true);
-    expect(allows('script-src', 'https://cdn.paddle.com/paddle/v2/paddle.js')).toBe(true);
-    expect(allows('frame-src', 'https://buy.paddle.com/checkout')).toBe(true);
     expect(allows('script-src', 'https://evil.example.com/x.js')).toBe(false);
   });
   test('every external origin the client talks to is allowed', () => {

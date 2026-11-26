@@ -8,7 +8,7 @@ import { Link } from 'react-router';
 import { CONTACT_EMAIL } from '../../app/contact';
 import { usePageTitle } from '../../app/title';
 
-export const LEGAL_UPDATED = '21 November 2026';
+export const LEGAL_UPDATED = '26 November 2026';
 
 export interface LegalSection {
   id: string;
@@ -76,7 +76,7 @@ export function LegalPage({
         ))}
       </main>
       <footer className="legal-foot">
-        <span>Pig's Gotta Fly · operated by Dionysis Zindros, Greece</span>
+        <span>Pig's Gotta Fly · Common Prefix OÜ, Tallinn, Estonia</span>
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
         {current === 'privacy' ? <Link to="/terms">Terms of Service</Link> : <Link to="/privacy">Privacy Policy</Link>}
       </footer>

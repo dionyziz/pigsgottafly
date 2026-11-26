@@ -75,9 +75,9 @@ export const SUBSCRIPTION_REQUIRED = 'subscription_required';
 export interface BillingResponse {
   entitlement: Entitlement;
   /** Where the paid subscription was bought (null: none); 'apple' is managed in the App Store. */
-  store: 'paddle' | 'apple' | null;
-  /** Paddle.js checkout on the website; null when the website does not sell (not configured). */
-  paddle: { clientToken: string; priceId: string; environment: 'sandbox' | 'production' } | null;
+  store: 'stripe' | 'apple' | null;
+  /** Whether the website sells the subscription (Stripe Checkout configured). */
+  web: boolean;
   /** The UUID the iOS app sets as appAccountToken on purchases, tying them to this account. */
   appleAccountToken: string;
   /** The price as shown, e.g. '€50 / year'. */
