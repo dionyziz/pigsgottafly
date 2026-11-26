@@ -427,6 +427,43 @@ export interface RefSunTable {
   tw: (number | null)[];
 }
 
+/** One AIRAC cycle as the clients ship it (src/data/ref/cycles/<id>/, listed by cycles/index.ts). */
+export interface RefCycle {
+  airac: RefAirac;
+  aerodromes: RefAerodrome[];
+  runways: RefRunway[];
+  airspaces: RefAirspace[];
+  fis: RefFis;
+  vfrPoints: RefVfrPoint[];
+  vfrRoutes: RefVfrRoute[];
+  atcUnits: RefAtcUnit[];
+  areas: RefArea[];
+  adAirspaces: RefAdAirspace[];
+  navaids: RefNavaid[];
+  sun: Record<string, RefSunTable>;
+  /** AIP section → eAIP PDF path (tools/aip_files.ts). */
+  aipFiles: Record<string, string>;
+}
+/** What the native core ships of a cycle: what the server's bundle (GET /api/ref/bundle) lacks. */
+export type RefCoreCycle = Pick<RefCycle, 'airac' | 'adAirspaces' | 'navaids' | 'sun' | 'aipFiles'>;
+
+/**
+ * The UTC day ('YYYY-MM-DD') that decides the AIRAC in effect. AIRAC data takes effect at 0000 UTC on its
+ * effective date. PGF_AIRAC_DATE (Node only: the unit and API tests set it, so their expectations do not change
+ * on a cycle's date) overrides the clock.
+ */
+export function airacDay(now: number = Date.now()): string {
+  const pinned = typeof process !== 'undefined' ? process.env?.PGF_AIRAC_DATE : undefined;
+  return pinned || new Date(now).toISOString().slice(0, 10);
+}
+
+/** The cycle in effect on a day: the latest whose effective date has come, else (none yet) the earliest. */
+export function cycleOn<T extends { airac: RefAirac }>(cycles: readonly T[], day: string): T {
+  if (!cycles.length) throw new Error('no AIRAC cycle');
+  const sorted = [...cycles].sort((a, b) => a.airac.effective.localeCompare(b.airac.effective));
+  return sorted.filter((c) => c.airac.effective <= day).at(-1) ?? sorted[0];
+}
+
 export interface RefBundle {
   airac: RefAirac;
   aerodromes: RefAerodrome[];

@@ -26,7 +26,7 @@ import {
   type SheetSignature,
 } from '../../api/_lib/sheetPdf';
 import { REF, runwaysOf, SUN_TABLES } from '../../src/data/ref';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import { perfSheetModel } from '../../src/features/exports/performance/model';
 import { computeExportCalc } from '../../src/features/exports/wb/exportCalc';
 import { wbSheetModel } from '../../src/features/exports/wb/model';

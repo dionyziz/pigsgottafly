@@ -14,6 +14,8 @@ import {
   type HealthResponse,
   scrubUrl,
 } from '../../../src/shared/monitoring.js';
+import { airacDay } from '../../../src/shared/ref.js';
+import { AIRAC_CYCLE_DAYS, airacInEffect, nextAirac } from '../airac.js';
 import { localPilotRow, sessionPilotRow } from '../auth.js';
 import type { Row } from '../db.js';
 import type { Route } from '../http.js';
@@ -25,7 +27,8 @@ import { rateLimit } from '../rateLimit.js';
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
-const AIRAC_CYCLE_DAYS = 28;
+/** Days before the data runs out that a missing next cycle is warned about (HASP publishes 4–6 weeks ahead). */
+const AIRAC_PRELOAD_WARN_DAYS = 7;
 
 const SOURCES = new Set<ClientErrorReport['source']>(['error', 'rejection', 'react', 'api']);
 const str = (v: unknown, n: number): string | null => (typeof v === 'string' && v.trim() ? v.slice(0, n) : null);
@@ -88,24 +91,22 @@ export const routes: Route[] = [
           problems.push('migrations unknown');
         }
         try {
-          const [a] = await db.query('SELECT id, effective FROM ref_airac WHERE current LIMIT 1');
+          const a = await airacInEffect(db);
           if (a) {
-            const expires = new Date(Date.parse(a.effective + 'T00:00:00Z') + AIRAC_CYCLE_DAYS * 86400e3)
-              .toISOString()
-              .slice(0, 10);
-            const ok = new Date().toISOString().slice(0, 10) < expires;
-            out.checks.airac = { ok, id: a.id, effective: a.effective, expires };
-            // a warning, not a failure: e-mailed once (a new group) by the monitor, listed on /admin/errors
-            if (!ok)
-              await recordError(
-                db,
-                {
-                  kind: 'cron',
-                  message: `AIRAC ${a.id} is out of date since ${expires}: load the new AIRAC (AIP-UPDATE.md)`,
-                  route: '/api/health',
-                },
-                { adminEmails: config.adminEmails },
-              );
+            const next = await nextAirac(db);
+            const plus = (day: string, days: number) =>
+              new Date(Date.parse(day + 'T00:00:00Z') + days * 86400e3).toISOString().slice(0, 10);
+            // data runs out when the last loaded cycle does: a cycle loaded ahead switches on by itself
+            const expires = plus((next ?? a).effective, AIRAC_CYCLE_DAYS);
+            const today = airacDay();
+            const ok = today < expires;
+            out.checks.airac = { ok, id: a.id, effective: a.effective, expires, next: next?.id ?? null };
+            // warnings, not failures: e-mailed once (a new group) by the monitor, listed on /admin/errors
+            const warn = (message: string) =>
+              recordError(db, { kind: 'cron', message, route: '/api/health' }, { adminEmails: config.adminEmails });
+            if (!ok) await warn(`AIRAC ${a.id} is out of date since ${expires}: load the new AIRAC (AIP-UPDATE.md)`);
+            else if (!next && plus(today, AIRAC_PRELOAD_WARN_DAYS) >= expires)
+              await warn(`AIRAC ${a.id} ends on ${expires} and the next cycle is not loaded yet (AIP-UPDATE.md)`);
           }
         } catch {
           /* reported as not ok */

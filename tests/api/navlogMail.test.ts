@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 
 import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { MAIL_FLIGHT_FORM_CAP, SELF_RESEND_MIN_MS } from '../../api/_lib/sendCaps';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import type { NavlogContent, NavlogMailState } from '../../src/shared';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';

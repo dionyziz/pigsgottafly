@@ -7,11 +7,12 @@ import path from 'node:path';
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { fakeOpenMeteo } from '../helpers/openMeteoGrid.ts';
 import { launch, startServer } from './harness.mjs';
+import { refJson } from './refInEffect.mjs';
 
 const out = process.argv[2] || 'tests/e2e/artifacts';
 fs.mkdirSync(out, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const AD = JSON.parse(fs.readFileSync('src/data/ref/aerodromes.json', 'utf8'));
+const AD = refJson('aerodromes.json');
 const ad = (id) => {
   const a = AD.find((x) => x.id === id);
   return { uid: id, kind: 'aerodrome', refId: a.id, name: id, lat: a.lat, lon: a.lon };

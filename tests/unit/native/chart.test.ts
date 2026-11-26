@@ -29,7 +29,7 @@ import { buildStyle, DATA_SOURCES, LAYER_GROUPS, LINE_STYLES } from '../../../sr
 import { SYMBOLS } from '../../../src/features/editor/map/symbols';
 import { chartData, chartStyle, layerGroups, lineStyles, symbolNames } from '../../../src/native/core';
 import { DEFAULT_MAP_LAYERS, type MapLayers, type Waypoint } from '../../../src/shared';
-import { API_REF, briefing, flight, notam, NOW, ROUTE } from './fixtures';
+import { API_REF, API_REF_SUP, briefing, flight, notam, NOW, ROUTE } from './fixtures';
 
 const json = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
@@ -166,7 +166,7 @@ describe('chartData', () => {
 
   test('the areas in force on the flight’s day: AIP SUP 39/26’s exercise areas only until 27 NOV 2026', () => {
     const areaIds = (date: string) =>
-      (chartData({ ref: API_REF, flight: flight(ROUTE(), { date }), now: NOW }) as typeof data).areas.features.map(
+      (chartData({ ref: API_REF_SUP, flight: flight(ROUTE(), { date }), now: NOW }) as typeof data).areas.features.map(
         (x) => x.properties.id,
       );
     expect(areaIds('2026-11-23')).toEqual(expect.arrayContaining(['LGD4SW', 'LGD12S-NOV', 'LGD102A']));

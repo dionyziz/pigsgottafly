@@ -7,6 +7,11 @@
 set -euo pipefail
 PARTS="$1"; CYCLE="$2"; LABEL="$3"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# this AIRAC's folder: 'AIRAC AMDT 11/26 (…)' → src/data/ref/cycles/2611. It ships next to the cycle in effect and
+# takes over on its date by itself (src/shared/ref.ts cycleOn), so a cycle can be loaded weeks ahead.
+ID=$(echo "$LABEL" | sed -E 's/.*AMDT ([0-9]{2})\/([0-9]{2}).*/\2\1/')
+OUT="$ROOT/src/data/ref/cycles/$ID"
+mkdir -p "$OUT"
 WORK="$(mktemp -d -t navlog-aip-XXXX)"
 echo "work dir: $WORK"
 
@@ -40,16 +45,10 @@ done
 
 echo "== 4. aerodromes, airspace, sunset, AIP links, ENR 5 areas, radio navaids"
 sed -i '' "s|^AIRAC = .*|AIRAC = '$LABEL'|" "$ROOT/tools/build_aip.py"
-# the online eAIP of this AIRAC (links to the AIP PDFs): .../aipgr_incl_amdt_1026_wef_26nov2026/cd/ais/
-AMDT=$(echo "$LABEL" | sed -E 's/.*AMDT ([0-9]{2})\/([0-9]{2}).*/\1\2/')
-read -r WD WM WY <<< "$(echo "$LABEL" | sed -E 's/.*wef ([0-9]+) ([A-Z]{3}) ([0-9]{4}).*/\1 \2 \3/')"
-WEF=$(printf '%02d%s%s' "$((10#$WD))" "$(echo "$WM" | tr 'A-Z' 'a-z')" "$WY")
-sed -i '' "s|^export const AIP_EAIP_BASE = .*|export const AIP_EAIP_BASE = 'https://aisgr.hasp.gov.gr/aipgr_incl_amdt_${AMDT}_wef_${WEF}/cd/ais/';|" "$ROOT/src/data/aipLinks.ts"
-grep -n "^export const AIP_EAIP_BASE" "$ROOT/src/data/aipLinks.ts"
 SUPS_MENU=$(find "$WORK/iso/ais" -ipath '*esup/sups-menu.htm' | head -1)
-(cd "$ROOT" && npx tsx tools/aip_files.ts "$WORK/iso/ais/side.htm" src/data/ref/aip-files.json "$SUPS_MENU")
+(cd "$ROOT" && npx tsx tools/aip_files.ts "$WORK/iso/ais/side.htm" "$OUT/aip-files.json" "$SUPS_MENU")
 (cd "$ROOT" && npx tsx tools/parse_enr5.ts "$WORK/txt" tools/enr5_areas.json)   # ENR 5.1/5.2/5.3 and AIP SUP areas: check what it flags
-(cd "$ROOT" && npx tsx tools/parse_navaids.ts "$WORK/txt" src/data/ref/navaids.json)   # ENR 4.1 + AD 2.19 / AD 1.6.N.19 radio navaids: check what it flags
+(cd "$ROOT" && npx tsx tools/parse_navaids.ts "$WORK/txt" "$OUT/navaids.json")   # ENR 4.1 + AD 2.19 / AD 1.6.N.19 radio navaids: check what it flags
 python3 -I "$ROOT/tools/parse_ad.py" "$WORK/txt" "$WORK/ad_raw.json"
 python3 -I "$ROOT/tools/build_aip.py" "$WORK/ad_raw.json" "$ROOT/data/aip.js"
 python3 -I "$ROOT/tools/parse_sun.py" "$WORK/txt/LG_GEN_2_7_en.txt" "$ROOT/data/sun.js"
@@ -74,13 +73,14 @@ done
 python3 -I "$ROOT/tools/build_vfr.py" "$ROOT/tools/vfr_points.json" "$ROOT/tools/vfr_charts" "$ROOT/tools/vfr_ocr" "$ROOT/tools/ofm_points.json" "$ROOT/data/vfr.js"
 
 echo "== 6. reference data"
-# The new cycle's reference data goes into NEW migrations: never edit an applied one (002, 005).
-# Point MIGRATION / RUNWAY_MIGRATION / HOURS_MIGRATION in tools/build_ref.ts at new files (e.g. 006_ref_<cycle>.ts),
-# register them in api/_lib/migrate.ts, then run:  npm run ref && npm test && npm run test:e2e
-echo "data/*.js and tools/runways.json updated. Next: new ref migrations in tools/build_ref.ts, then npm run ref && npm test && npm run test:e2e"
-echo "After npm run ref, the aerodrome CTR/ATZ map layer (client only, AD 2.17 / AD 1.6.N.17):"
-echo "  python3 -I tools/parse_ad_airspace.py $WORK/txt src/data/ref/aerodromes.json src/data/ref/atc-units.json src/data/ref/ad-airspaces.json"
-echo "and the operational hours and handling (AD 2.3, AD 1.6.N.3/4), then npm run ref again:"
+# The new cycle's reference data goes into NEW migrations: never edit an applied one. Point MIGRATION /
+# RUNWAY_MIGRATION / HOURS_MIGRATION / AREAS_MIGRATION in tools/build_ref.ts at new files named for the cycle,
+# register them in api/_lib/migrate.ts, then run the commands below. Deploy as soon as it passes: the cycle ships
+# alongside the one in effect and both the API and the apps switch to it on its date by themselves.
+echo "data/*.js and tools/*.json updated. Next: new ref migrations in tools/build_ref.ts, then:"
+echo "  npm run ref"
+echo "  python3 -I tools/parse_ad_airspace.py $WORK/txt $OUT/aerodromes.json $OUT/atc-units.json $OUT/ad-airspaces.json"
 echo "  npx tsx tools/extract_ad_hours.ts $WORK/txt && npm run ref"
+echo "  npm test && npm run test:e2e"
 python3 -I "$ROOT/tools/vfr_manifest.py" write "$PDF" "$ROOT/tools/vfr_charts/manifest.json"
 echo "done. Chart renders and overlays: $WORK/charts"

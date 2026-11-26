@@ -10,6 +10,7 @@ import test, { after, before } from 'node:test';
 import { linkStatus, seal } from '../../api/_lib/autorouterLinks.ts';
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { launch, ROOT, startServer } from './harness.mjs';
+import { refJson } from './refInEffect.mjs';
 
 const OAUTH = {
   clientId: 'pgf-client',
@@ -42,7 +43,7 @@ const api = async (method, p, body) => {
   });
   return r.status === 204 ? null : r.json();
 };
-const ADS = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref/aerodromes.json'), 'utf8'));
+const ADS = refJson('aerodromes.json');
 const pt = (icao, uid) => {
   const a = (ADS.aerodromes ?? ADS).find((x) => x.icao === icao);
   return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };

@@ -75,7 +75,7 @@
    "y": 2056.199000000168
   },
   {
-   "name": "RODOS",
+   "name": "PAR",
    "lat": 36.3995,
    "lon": 28.0648,
    "src": "printed-nosymbol",
@@ -209,7 +209,7 @@
   {
    "lat": 36.3995,
    "lon": 28.0648,
-   "name": "RODOS",
+   "name": "PAR",
    "votes": 2,
    "cx": 4821.0,
    "cy": 1912.5,

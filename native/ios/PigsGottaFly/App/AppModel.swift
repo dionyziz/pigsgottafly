@@ -162,15 +162,25 @@ final class AppModel: ObservableObject {
 
     private var refJSON: JSON?
 
-    /// GET /api/ref/bundle: the cached copy, fetched when missing or older than 6 hours.
+    /// GET /api/ref/bundle: the cached copy, fetched when missing, older than 6 hours, or from an earlier UTC
+    /// day: a new AIRAC cycle takes effect at 0000 UTC and the server switches to it by itself.
     func ref() async -> JSON? {
-        let age = store.modified(.ref).map { -$0.timeIntervalSinceNow } ?? .infinity
-        if age > 6 * 3600, let data = try? await api.refBundle() {
+        let fetched = store.modified(.ref)
+        let age = fetched.map { -$0.timeIntervalSinceNow } ?? .infinity
+        let stale = age > 6 * 3600 || fetched.map { Self.utcDay($0) != Self.utcDay(Date()) } ?? true
+        if stale, let data = try? await api.refBundle() {
             try? store.write(data, .ref)
             refJSON = nil
         }
         if refJSON == nil, let d = store.read(.ref) { refJSON = try? JSON.parse(d) }
         return refJSON
+    }
+
+    nonisolated static func utcDay(_ d: Date) -> String {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "UTC")!
+        let p = c.dateComponents([.year, .month, .day], from: d)
+        return "\(p.year!)-\(p.month!)-\(p.day!)"
     }
 
     /// GET /api/waypoints (the cached copy offline).

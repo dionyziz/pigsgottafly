@@ -16,7 +16,7 @@ import { aerodromeVfrCharts, vfrChartIndex, vfrPointCharts } from '../../../src/
 import { calcAdEffects } from '../../../src/features/editor/panels/flightCalc';
 import { drawBand, mapInfo, mapLayers, pointMenu, routeFeatures, waypointName } from '../../../src/native/core';
 import { DEFAULT_MAP_LAYERS, DEFAULT_STOP_MIN, requestAllowed } from '../../../src/shared';
-import { ad, API_REF, briefing, custom, DATE, notam, ROUTE, vfr } from './fixtures';
+import { ad, API_REF, API_REF_SUP, briefing, custom, DATE, notam, ROUTE, SUP_39_26_AREAS, vfr } from './fixtures';
 
 const json = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 
@@ -148,23 +148,29 @@ test('mapLayers: the flight’s layers, else the pilot’s, else all; the areas 
 describe('time-limited areas (AIP SUP 39/26 LGD4SW, until 27 NOV 2026), as the website draws them', () => {
   // west of the Peloponnese, inside LGD4SW and LGD2SW
   const at = { lat: 37, lon: 20.5, zoom: 8 };
-  const ids = (date: string) => mapInfo({ ref: API_REF, ...at, date }).airspaces.map((a) => a.id);
+  const ids = (date: string) => mapInfo({ ref: API_REF_SUP, ...at, date }).airspaces.map((a) => a.id);
 
   test('a tap shows the areas in force on the flight’s day, with until when and the windows left', () => {
     expect(ids('2026-11-23')).toContain('LGD4SW');
     expect(ids('2026-11-23')).not.toContain('LGD2SW'); // its last day was 16 NOV
     expect(ids('2026-11-28')).not.toContain('LGD4SW');
     expect(ids('2026-10-01')).toContain('LGD2SW');
-    const card = mapInfo({ ref: API_REF, ...at, date: '2026-11-26' }).airspaces.find((a) => a.id === 'LGD4SW')!;
+    const card = mapInfo({ ref: API_REF_SUP, ...at, date: '2026-11-26' }).airspaces.find((a) => a.id === 'LGD4SW')!;
     expect(card.rows).toContainEqual({ label: 'Valid', text: 'until 27 NOV 2026' });
     expect(card.rows).toContainEqual({ label: 'Windows (UTC)', text: '26 NOV 0830–1030\n27 NOV 0800–1000' });
     // the same as the website's details box for that day
-    const web = airspaceInfos(REF.airspaces, REF.adAirspaces, REF.areas, REF.fir, '2026-11-26');
+    const web = airspaceInfos(
+      REF.airspaces,
+      REF.adAirspaces,
+      [...REF.areas!, ...SUP_39_26_AREAS],
+      REF.fir,
+      '2026-11-26',
+    );
     expect(card.rows.slice(-2)).toEqual(web.find((a) => a.id === 'LGD4SW')!.timeRows);
   });
 
   test('the layers menu counts the areas in force on the flight’s day', () => {
-    const n = (date: string) => mapLayers({ ref: API_REF, date }).counts.prd;
+    const n = (date: string) => mapLayers({ ref: API_REF_SUP, date }).counts.prd;
     expect(n('2026-11-23')).toBeGreaterThan(n('2026-11-28'));
     expect(n('2027-06-10')).toBeLessThan(n('2026-11-28'));
   });

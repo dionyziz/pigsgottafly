@@ -11,7 +11,7 @@ import type { Db } from '../../api/_lib/db';
 import { autorouterNotamSource } from '../../api/_lib/notamSources/autorouter';
 import { returnPath } from '../../api/_lib/routes/autorouter';
 import { createServer } from '../../server/server';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
 import { CID, type Client, client, googleClaims, JWK, signToken } from './helpers';

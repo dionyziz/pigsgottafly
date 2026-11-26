@@ -7,8 +7,9 @@ import test, { after, before } from 'node:test';
 
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { launch, startServer } from './harness.mjs';
+import { refJson } from './refInEffect.mjs';
 
-const AD = JSON.parse(fs.readFileSync('src/data/ref/aerodromes.json', 'utf8'));
+const AD = refJson('aerodromes.json');
 const ad = (id) => {
   const a = AD.find((x) => x.id === id);
   return { uid: id, kind: 'aerodrome', refId: a.id, name: id, lat: a.lat, lon: a.lon };

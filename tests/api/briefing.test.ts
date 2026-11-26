@@ -12,10 +12,8 @@ import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { assessNotams, normalizeNotam, parseLimit, upperAmslFt } from '../../api/_lib/notams';
 import { createServer } from '../../server/server';
 import { TERRAIN_GRID } from '../../src/calc/terrain';
-import aerodromes from '../../src/data/ref/aerodromes.json';
-import airspaces from '../../src/data/ref/airspaces.json';
-import fis from '../../src/data/ref/fis.json';
-import type { RefAerodrome, RefAirspace, RefFis } from '../../src/shared/ref';
+import { AERODROMES as aerodromes, AIRSPACES as airspaces, FIS as fis } from '../../src/data/ref';
+import type { RefAerodrome, RefAirspace } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
 import { CID, type Client, client, JWK } from './helpers';
 
@@ -587,7 +585,7 @@ describe('filing via autorouter (mocked)', () => {
 // ---------------------------------------------------------------- addressees (ENR 1.11)
 
 describe('AFTN addressees', () => {
-  const ctx = { aerodromes: ADS, airspaces: SPACES, fis: fis as RefFis, alternates: [] as string[] };
+  const ctx = { aerodromes: ADS, airspaces: SPACES, fis: fis, alternates: [] as string[] };
   // ENR 2.1.3: the ATHINAI/MAKEDONIA ACC dividing line runs 374836N 0232724E – 375055N 0241807E, south
   // of Athens: Attica is MAKEDONIA ACC (the FIS split the ATC list uses too).
   test('Tatoi → Megara: MAKEDONIA ACC, ATHINAI TMA, both aerodromes and Elefsina CTR crossed', () => {
@@ -635,10 +633,10 @@ describe('AFTN addressees', () => {
     expect(addrs).not.toContain('LGGGZFZX');
   });
   test('FIS boundary side', () => {
-    expect(northOfBoundary({ lat: 40.5, lon: 23 }, (fis as RefFis).boundary)).toBe(true);
-    expect(northOfBoundary({ lat: 37.97, lon: 23.73 }, (fis as RefFis).boundary)).toBe(true); // Athens
-    expect(northOfBoundary({ lat: 37.6, lon: 23.5 }, (fis as RefFis).boundary)).toBe(false); // Saronic gulf
-    expect(northOfBoundary({ lat: 35.3, lon: 25.1 }, (fis as RefFis).boundary)).toBe(false);
+    expect(northOfBoundary({ lat: 40.5, lon: 23 }, fis.boundary)).toBe(true);
+    expect(northOfBoundary({ lat: 37.97, lon: 23.73 }, fis.boundary)).toBe(true); // Athens
+    expect(northOfBoundary({ lat: 37.6, lon: 23.5 }, fis.boundary)).toBe(false); // Saronic gulf
+    expect(northOfBoundary({ lat: 35.3, lon: 25.1 }, fis.boundary)).toBe(false);
   });
 });
 

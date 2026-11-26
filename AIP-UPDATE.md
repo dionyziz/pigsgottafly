@@ -2,13 +2,30 @@
 
 Everything AIP-derived lives in `data/` and is generated. One script does the mechanical part; a few things need a human look.
 
+**Load a cycle as soon as HASP publishes it, weeks ahead of its date, and deploy.** Each cycle ships in its own
+folder, `src/data/ref/cycles/<id>/` (`2611` = AIRAC AMDT 11/26), next to the cycle in effect, and its reference
+migrations load it into the `ref_*` tables. Everything then switches to it at 0000 UTC on its effective date with no
+deployment:
+
+- the API takes the latest loaded cycle whose date has come (`api/_lib/airac.ts`; `ref_airac.current` is not read);
+- the website and the iOS app's core pick from their shipped cycles by the same rule (`src/shared/ref.ts cycleOn`);
+  a web page left open across the date offers a reload (`src/app/AiracWatch.tsx`), and the iOS app refetches the
+  server's bundle on a new UTC day (the bundle's `max-age` never runs past the next loaded cycle's date);
+- the iOS app has the cycle's CTR/ATZ, navaid, sunset and AIP-link tables in its core, so the App Store build must
+  include the cycle before its date (upload to TestFlight and release with the deployment);
+- `/api/health` warns a week before the loaded data runs out when the next cycle is not loaded yet.
+
+Unit and API tests run on the newest cycle (`tests/setup/airac.ts` sets `PGF_AIRAC_DATE`); e2e tests run on the
+cycle in effect. Once a cycle is in effect, delete the folders of the cycles before it from `src/data/ref/cycles` at
+the next update (their rows stay in the database) and run `npm run ref`.
+
 ## 1. Run the update
 
 ```sh
 tools/update_aip.sh ~/Downloads/new-aip  2612  "AIRAC AMDT 10/26 (wef 26 NOV 2026)"
 ```
-- the first argument is the folder holding `aipgr_*.zip.001…`
-- `2612` is the AIRAC cycle, used for the open flightmaps download
+- the first argument is the folder holding `aipgr_*.zip.001…` (kept in `aip/<wef date>/`, not committed)
+- `2612` is the ICAO AIRAC cycle number, used for the open flightmaps download (not the cycle's folder name)
 - the label is shown in Settings → About
 
 It prints the archive SHA-256 (compare it with the published checksum), tests the zip, extracts the ISO and rebuilds:
@@ -20,16 +37,18 @@ It prints the archive SHA-256 (compare it with the published checksum), tests th
 | `data/sun.js`: sunset | GEN 2.7 | `parse_sun.py` |
 | `data/vfr.js`: VFR points (with their charts and AIP references) and route altitudes | the VFR charts (AD 2-LGxx-VFR, AD 1.6.N-LGxx-VFR) and their coordinate tables, the heliports' reporting points (AD 3.N.21), ENR 4.4 for IFR fixes a chart prints without coordinates, open flightmaps | `parse_vfr.ts`, `fetch_ofm.py`, `vfr_chart.py`, `build_vfr.py` |
 | `tools/runways.json`: runway bearings, lengths, surfaces, thresholds, declared distances, slopes | AD 2.12/2.13, AD 1.6.N.12/13 | `parse_runways.py` (corrections in its `OVR` table, e.g. LGBL TORA from the AD 2.13 remark) |
-| `src/data/ref/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
+| `src/data/ref/cycles/<id>/ad-airspaces.json`: aerodrome CTRs and ATZs (map layer, client only) | AD 2.17, AD 1.6.N.17 (+ ENR 4.1 VORs for arc centres) | `parse_ad_airspace.py`, run after `npm run ref` (arcs **hand-transcribed** in its `ARCS` table) |
 | `tools/enr5_areas.json`: prohibited, restricted, danger, military training and local flying areas | ENR 5.1, 5.2, 5.3.1, the AIP SUPs in force | `parse_enr5.ts` (prints what it draws approximately; hand corrections in its `OVERRIDES` table; SUP areas in its `SUP_AREAS` table) |
-| `src/data/ref/aip-files.json` + `AIP_EAIP_BASE` in `src/data/aipLinks.ts`: links to the AIP PDFs, and to each aerodrome VFR chart (`VFR LGxx`: AD 2.24 / AD 1.6.N.24 `…_VFR_en.pdf`, linked from the map info boxes) | the eAIP's `side.htm`, the AIRAC label | `aip_files.ts`, `sed` in the script |
-| `src/data/ref/navaids.json`: radio navaids (VOR, VOR/DME, NDB, locators: ident, frequency, channel, position, DME elevation, variation, declination; map layer, client only) | ENR 4.1, AD 2.19, AD 1.6.N.19 | `parse_navaids.ts` |
+| `src/data/ref/cycles/<id>/aip-files.json`: links to the AIP PDFs (the eAIP root comes from the AIRAC name, `src/data/aipLinks.ts eaipBase`), and to each aerodrome VFR chart (`VFR LGxx`: AD 2.24 / AD 1.6.N.24 `…_VFR_en.pdf`, linked from the map info boxes) | the eAIP's `side.htm` | `aip_files.ts` |
+| `src/data/ref/cycles/<id>/navaids.json`: radio navaids (VOR, VOR/DME, NDB, locators: ident, frequency, channel, position, DME elevation, variation, declination; map layer, client only) | ENR 4.1, AD 2.19, AD 1.6.N.19 | `parse_navaids.ts` |
 | `tools/ad_hours.json`: operational hours, ATS, handling, customs and remarks as printed | AD 2.3, AD 1.6.N.3 (+ AD 1.6.N.4 handling) | `extract_ad_hours.ts`, run after `npm run ref`, then `npm run ref` again (parsed by `src/calc/adHours.ts` into `RefAerodrome.hours`) |
 
 Then it stops before the reference data: a new cycle's data goes into NEW migrations (never edit an applied
 one such as 002, 005 or 012). Point `MIGRATION` / `RUNWAY_MIGRATION` / `HOURS_MIGRATION` / `AREAS_MIGRATION` in `tools/build_ref.ts` at new files
 (set `MIGRATION_FROZEN = false`, `VFR_MIGRATION = null` and `VFR_ROUTES_MIGRATION = null`: the new MIGRATION carries
-the VFR points and routes), register them in `api/_lib/migrate.ts`, then run `npm run ref && npm test && npm run test:e2e`.
+the VFR points and routes), register them in `api/_lib/migrate.ts`, then run the commands the script prints (`npm run ref`
+writes `src/data/ref/cycles/<id>/` and the cycle lists `cycles/index.ts` and `cycles/core.ts`). Once a cycle's
+migrations ship, set `MIGRATION_FROZEN = true` until the next cycle.
 A correction to an applied AIRAC's data goes into its own migration (as 048 replaced 002's VFR points and 062 its VFR
 routes).
 
@@ -78,4 +97,6 @@ routes).
 
 ## 3. Ship
 
-`npm test && npm run test:e2e` must pass. Restart the server (`npm start`).
+`npm test && npm run test:e2e` must pass. Deploy the website and upload the iOS build (the cycle must be in the
+released app before its date). Nothing else is needed on the effective date; `/api/health` shows `airac.next` until
+then.

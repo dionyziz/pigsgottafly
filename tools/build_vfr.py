@@ -34,7 +34,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 tables = json.load(open(table_path))
 ofm = json.load(open(ofm_path))['points']
 FIR = json.load(open(os.path.join(ROOT, 'src', 'data', 'ref', 'fir.json')))['boundary']
-ARP = {a['icao']: a for a in json.load(open(os.path.join(ROOT, 'src', 'data', 'ref', 'aerodromes.json'))) if a.get('icao')}
+CYCLES = os.path.join(ROOT, 'src', 'data', 'ref', 'cycles')
+# the newest AIRAC cycle built so far (tools/refCycles.ts): a cycle being loaded has its folder before its aerodromes
+NEWEST = os.path.join(CYCLES, max(d for d in os.listdir(CYCLES)
+                                  if re.fullmatch(r'\d{4}', d) and os.path.exists(os.path.join(CYCLES, d, 'aerodromes.json'))))
+ARP = {a['icao']: a for a in json.load(open(os.path.join(NEWEST, 'aerodromes.json'))) if a.get('icao')}
 MAX_FROM_AD_NM = 120
 MERGE_NM = 1.0
 

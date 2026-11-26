@@ -17,6 +17,7 @@ import path from 'node:path';
 import test, { after, before } from 'node:test';
 
 import { launch, ROOT, startServer } from './harness.mjs';
+import { refJson } from './refInEffect.mjs';
 
 let server, browser, page;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -29,7 +30,8 @@ const api = async (method, p, body) => {
   if (!r.ok) throw new Error(`${method} ${p}: ${r.status} ${await r.text()}`);
   return r.status === 204 ? null : r.json();
 };
-const ref = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref', f), 'utf8'));
+const ref = (f) =>
+  f === 'fir.json' ? JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref', f), 'utf8')) : refJson(f);
 const AERODROMES = ref('aerodromes.json'),
   VFR = ref('vfr-points.json'),
   AREAS = ref('areas.json'),

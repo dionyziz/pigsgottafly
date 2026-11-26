@@ -52,7 +52,8 @@ export interface HealthResponse {
   checks: {
     db: { ok: boolean };
     migrations: { ok: boolean; expected: number; applied: number; pending: string[] };
-    airac: { ok: boolean; id: string | null; effective: string | null; expires: string | null };
+    /** The AIRAC in effect, the next one when loaded ahead, and when the loaded data runs out. */
+    airac: { ok: boolean; id: string | null; effective: string | null; expires: string | null; next?: string | null };
     mail: { ok: boolean };
   };
 }

@@ -13,16 +13,26 @@ import type {
   MetarTafResponse,
   PersonDetails,
   Pilot,
+  RefArea,
   RoutePoint,
 } from '../../../src/shared';
 import { aircraftFromTypeJson, DEFAULT_SETTINGS, emptyFlightDoc } from '../../../src/shared';
 import type { Notam, NotamBriefing } from '../../../src/shared/briefing';
+import sup3926 from '../../fixtures/sup-39-26-areas.json';
 
 /** The API's bundle: no CTRs/ATZs, FIR, navaids or sunset tables (the core brings its own). */
 export const API_REF: CoreRef = (() => {
   const { adAirspaces: _a, fir: _f, navaids: _n, ...rest } = REF;
   return JSON.parse(JSON.stringify(rest)) as CoreRef;
 })();
+
+/**
+ * AIP SUP 39/26's exercise areas (AIRAC 2610, until 27 NOV 2026) as tools/parse_enr5.ts drew them: the
+ * time-limited areas with dated windows the tests check, kept after the SUP left the AIP.
+ */
+export const SUP_39_26_AREAS = sup3926 as unknown as RefArea[];
+/** API_REF with SUP 39/26's areas. */
+export const API_REF_SUP: CoreRef = { ...API_REF, areas: [...(API_REF.areas ?? []), ...SUP_39_26_AREAS] };
 
 export const T = (s: string) => Date.parse(s);
 /** "Now" of the weather fixtures (tests/helpers/openMeteoGrid.ts). */

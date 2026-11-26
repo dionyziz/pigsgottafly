@@ -802,7 +802,7 @@ const SUP_AREAS: Record<string, SupArea[]> = {
 const SUP_NOT_AREAS: Record<string, string> = {
   '63/26': 'APPROVED SEAPLANE LANDING AREAS (points; replaced SUP 10/25)',
   '26/26': 'LGSK temporary obstacles (points)',
-  '46/26': 'LGLM RWY 04L/22R (thresholds)',
+  '71/26': 'LGLM RWY 04L/22R (thresholds; replaced SUP 46/26)',
   '59/26': 'Limited VHF coverage areas (radio coverage, not airspace; bounded by frontiers and TMAs)',
 };
 

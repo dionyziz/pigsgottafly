@@ -23,7 +23,7 @@ import { filerOrder, withFallback } from '../../api/_lib/filers/select';
 import { type Filer, FilerError } from '../../api/_lib/filers/types';
 import { setMailTransport } from '../../api/_lib/mail';
 import { createServer } from '../../server/server';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import type { FplFaxContent } from '../../src/shared/fax';
 import { cnlMessage, dlaMessage } from '../../src/shared/icaoMessages';
 import type { RefAerodrome } from '../../src/shared/ref';

@@ -12,7 +12,7 @@ import {
   MAIL_FLIGHT_FORM_CAP,
   MAIL_RECIPIENT_CAP,
 } from '../../api/_lib/sendCaps';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import { wbPerfContentOf } from '../../src/shared/declarations';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';

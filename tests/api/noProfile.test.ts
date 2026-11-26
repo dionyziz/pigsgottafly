@@ -5,7 +5,7 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 
 import { type SentMail, setMailTransport } from '../../api/_lib/mail';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import type { Flight, FlightListItem, HangarAircraft } from '../../src/shared';
 import type { FormsState } from '../../src/shared/forms';
 import type { RefAerodrome } from '../../src/shared/ref';

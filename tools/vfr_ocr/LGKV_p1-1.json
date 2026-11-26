@@ -203,7 +203,7 @@
    "y": 1135.1411780339577
   },
   {
-   "name": "OT KAVALA",
+   "name": "KAVALA",
    "lat": 40.9269,
    "lon": 24.6326,
    "src": "printed-nosymbol",
@@ -259,7 +259,7 @@
   {
    "lat": 41.1167,
    "lon": 25.4094,
-   "name": "PNNJIVINS FT ENT",
+   "name": "T PAV TVINS FEIN",
    "votes": 2,
    "cx": 863.5,
    "cy": 3166.5,
@@ -268,7 +268,7 @@
   {
    "lat": 40.9269,
    "lon": 24.6326,
-   "name": "OT KAVALA",
+   "name": "KAVALA",
    "votes": 2,
    "cx": 5590.5,
    "cy": 3411.5,

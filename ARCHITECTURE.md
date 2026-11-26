@@ -110,8 +110,10 @@ src/
     aipLinks.ts            links to the official AIP Greece PDFs (HASP eAIP): AIP_EAIP_BASE (the AIRAC's online eAIP,
                            set by tools/update_aip.sh), aipSection/aipUrl ('LGAV AD 2.3' → AD 2 LGAV PDF; the
                            eAIP start page when a section has no PDF), from ref/aip-files.json
-    ref/                   reference data shipped with the client (generated JSON) + index.ts typed accessors:
-                           AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, FIR (fir.json), VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
+    ref/                   reference data shipped with the client: cycles/<id>/ (generated JSON, one folder per AIRAC
+                           cycle; cycles/index.ts and cycles/core.ts list them) + index.ts typed accessors of the
+                           cycle in effect when the page loads (cycleOn: a cycle shipped ahead switches on by date,
+                           AIP-UPDATE.md): CYCLE, airacInEffect(now), AIRAC, AERODROMES, RUNWAYS, AIRSPACES, AD_AIRSPACES, AREAS (ENR 5), FIS, FIR (fir.json), VFR_POINTS, VFR_ROUTES, ATC_UNITS, SUN_TABLES,
                            REF (RefBundle), aerodrome(idOrIcao), vfrPoint(id), runwaysOf(id),
                            resolveAerodrome(text), searchAerodromes(q)
   app/                     AipLink / AipRefText (AIP references as links to their PDF, new tab), App (router), AuthGate + SignIn (Google Identity Services), session context,

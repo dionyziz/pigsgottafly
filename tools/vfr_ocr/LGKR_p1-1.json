@@ -139,7 +139,7 @@
    "y": 571.2440185546875
   },
   {
-   "name": "VOR/DME OF TN",
+   "name": "VOR/DME SF",
    "lat": 39.4439,
    "lon": 20.0728,
    "src": "printed-nosymbol",
@@ -321,7 +321,7 @@
   {
    "lat": 39.4439,
    "lon": 20.0728,
-   "name": "VOR/DME OF TN",
+   "name": "VOR/DME SF",
    "votes": 3,
    "cx": 6260.0,
    "cy": 3171.5,
@@ -465,7 +465,7 @@
   {
    "lat": 38.8228,
    "lon": 19.9875,
-   "name": "REAL",
+   "name": "A OR",
    "votes": 2,
    "cx": 5784.5,
    "cy": 6525.5,

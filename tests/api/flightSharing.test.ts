@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
 
 import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { MAIL_RECIPIENT_CAP } from '../../api/_lib/sendCaps';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import type { Flight, FlightListItem, FlightSharing } from '../../src/shared';
 import type { RefAerodrome } from '../../src/shared/ref';
 import { blankAircraft } from '../../src/shared/templates';

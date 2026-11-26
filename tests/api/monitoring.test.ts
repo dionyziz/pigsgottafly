@@ -323,22 +323,59 @@ describe('health', () => {
     }
   });
 
+  /** Gives the loaded cycles these effective dates (latest last), on a pinned day; restores both after. */
+  async function onDay<T>(day: string, effective: string[], run: (ids: string[]) => Promise<T>): Promise<T> {
+    const rows = await db.query<{ id: string; effective: string }>('SELECT id, effective FROM ref_airac ORDER BY id');
+    const prev = process.env.PGF_AIRAC_DATE;
+    process.env.PGF_AIRAC_DATE = day;
+    const ids = rows.slice(-effective.length).map((r) => r.id);
+    try {
+      // other tests' health checks ran on the pinned far-future day, when every cycle is out of date
+      await db.query(`DELETE FROM app_errors WHERE message LIKE 'AIRAC %'`);
+      for (const r of rows) await db.query('UPDATE ref_airac SET effective = $2 WHERE id = $1', [r.id, '2019-01-01']);
+      for (const [i, id] of ids.entries())
+        await db.query('UPDATE ref_airac SET effective = $2 WHERE id = $1', [id, effective[i]]);
+      return await run(ids);
+    } finally {
+      process.env.PGF_AIRAC_DATE = prev;
+      for (const r of rows) await db.query('UPDATE ref_airac SET effective = $2 WHERE id = $1', [r.id, r.effective]);
+    }
+  }
+  const airacCheck = async () => {
+    const r = await fetch(base + 'health');
+    expect(r.status).toBe(200);
+    return ((await r.json()) as HealthResponse).checks.airac;
+  };
+
   test('an expired AIRAC is a warning (200) recorded once as a cron error', async () => {
     mock();
-    const [a] = await db.query('SELECT id, effective FROM ref_airac WHERE current');
-    await db.query('UPDATE ref_airac SET effective = $2 WHERE id = $1', [a.id, '2020-01-02']);
-    try {
+    await onDay('2020-02-15', ['2020-01-02'], async ([id]) => {
       const n = sent.length;
-      for (let i = 0; i < 2; i++) {
-        const r = await fetch(base + 'health');
-        expect(r.status).toBe(200);
-        expect(((await r.json()) as HealthResponse).checks.airac).toMatchObject({ ok: false, expires: '2020-01-30' });
-      }
-      expect(await group(`AIRAC ${a.id} is out of date%`)).toMatchObject({ kind: 'cron', count: 2 });
+      for (let i = 0; i < 2; i++) expect(await airacCheck()).toMatchObject({ ok: false, id, expires: '2020-01-30' });
+      expect(await group(`AIRAC ${id} is out of date%`)).toMatchObject({ kind: 'cron', count: 2 });
       expect(sent.length).toBe(n + 1);
-    } finally {
-      await db.query('UPDATE ref_airac SET effective = $2 WHERE id = $1', [a.id, a.effective]);
-    }
+    });
+  });
+
+  test('a week before the data ends without the next cycle loaded: a warning', async () => {
+    mock();
+    await onDay('2020-01-25', ['2020-01-02'], async ([id]) => {
+      expect(await airacCheck()).toMatchObject({ ok: true, id, next: null, expires: '2020-01-30' });
+      expect(await group(`AIRAC ${id} ends on 2020-01-30 and the next cycle is not loaded yet%`)).toMatchObject({
+        kind: 'cron',
+      });
+    });
+  });
+
+  test('a cycle loaded ahead: still the current one until its date, then it, with no warning', async () => {
+    mock();
+    await onDay('2020-01-29', ['2020-01-02', '2020-01-30'], async ([cur, next]) => {
+      expect(await airacCheck()).toMatchObject({ ok: true, id: cur, next, expires: '2020-02-27' });
+      expect(await group(`AIRAC ${cur} ends on%`)).toBeUndefined();
+    });
+    await onDay('2020-01-30', ['2020-01-02', '2020-01-30'], async ([, next]) => {
+      expect(await airacCheck()).toMatchObject({ ok: true, id: next, next: null });
+    });
   });
 });
 

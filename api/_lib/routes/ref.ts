@@ -1,6 +1,8 @@
-// Shared reference data (read-only, current AIRAC): GET /ref/airac, /ref/bundle, /ref/<kind>.
-// /ref/bundle: ETag by AIRAC, Cache-Control private, max-age=86400, 304 on If-None-Match; the full
+// Shared reference data (read-only, the AIRAC in effect: airac.ts): GET /ref/airac, /ref/bundle, /ref/<kind>.
+// /ref/bundle: ETag by AIRAC, Cache-Control private, max-age a day at most and never past the next loaded
+// cycle's effective date, 304 on If-None-Match; the full
 // bundle and /ref/<kind> are rate-limited per pilot (rateLimit.ts).
+import { airacInEffect, nextAirac } from '../airac.js';
 import type { Route } from '../http.js';
 import { notFound, reply } from '../http.js';
 import { rateLimit } from '../rateLimit.js';
@@ -11,9 +13,16 @@ import type { RefAerodrome, RefAirac, RefBundle } from '../../../src/shared/ref.
 import type { Queryable } from '../db.js';
 
 async function current(db: Queryable): Promise<RefAirac> {
-  const [r] = await db.query('SELECT id, name, effective FROM ref_airac WHERE current LIMIT 1');
+  const r = await airacInEffect(db);
   if (!r) throw notFound('no reference data loaded');
   return { id: r.id, name: r.name, effective: r.effective };
+}
+
+/** Seconds a client may keep the bundle: a day, but not past 0000 UTC of the next loaded cycle's date. */
+async function bundleMaxAge(db: Queryable, now = Date.now()): Promise<number> {
+  const next = await nextAirac(db, now);
+  const until = next ? Math.floor((Date.parse(next.effective + 'T00:00:00Z') - now) / 1000) : Infinity;
+  return Math.max(0, Math.min(86400, until));
 }
 
 const TABLES: Record<string, { table: string; order: string }> = {
@@ -33,10 +42,10 @@ async function docs(db: Queryable, kind: keyof typeof TABLES, airac: string) {
 }
 
 export async function findAerodrome(db: Queryable, idOrIcao: string): Promise<RefAerodrome | null> {
-  const [r] = await db.query(
-    `SELECT a.doc FROM ref_aerodromes a JOIN ref_airac c ON c.id = a.airac AND c.current WHERE a.id = $1 OR a.icao = $1 LIMIT 1`,
-    [idOrIcao.toUpperCase()],
-  );
+  const [r] = await db.query(`SELECT doc FROM ref_aerodromes WHERE airac = $2 AND (id = $1 OR icao = $1) LIMIT 1`, [
+    idOrIcao.toUpperCase(),
+    (await current(db)).id,
+  ]);
   return r ? (r.doc as RefAerodrome) : null;
 }
 
@@ -47,9 +56,10 @@ export const routes: Route[] = [
     path: '/ref/bundle',
     async handler({ db, pilot, req }) {
       const airac = await current(db);
-      // the bundle changes only with the AIRAC: the browser keeps it a day and revalidates by ETag
+      // the bundle changes only with the AIRAC: a client keeps it until the next cycle can take effect, then
+      // revalidates by ETag
       const etag = `"ref-${airac.id}-${BUNDLE_FORMAT}"`;
-      const cache = { ETag: etag, 'Cache-Control': 'private, max-age=86400' };
+      const cache = { ETag: etag, 'Cache-Control': `private, max-age=${await bundleMaxAge(db)}` };
       if (
         String(req.headers['if-none-match'] || '')
           .split(',')

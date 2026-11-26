@@ -10,6 +10,7 @@ import type { RefAerodrome, RefAirspace, RefFis, RefSunTable, RefVfrPoint, RefVf
 import { requestTiming } from '../../src/shared/requests.js';
 import type { RoutePoint } from '../../src/shared/types.js';
 import { accessibleSql } from './access.js';
+import { airacInEffect } from './airac.js';
 import type { Queryable } from './db.js';
 import { notFound } from './http.js';
 import { distanceToRoute } from './notams.js';
@@ -28,9 +29,9 @@ export interface RefDocs {
 
 let refCache: { airac: string; at: number; docs: RefDocs } | null = null;
 
-/** Reference data of the current AIRAC (cached per process; re-read when the AIRAC changes). */
+/** Reference data of the AIRAC in effect (cached per process; re-read when another cycle takes effect). */
 export async function loadRef(db: Queryable): Promise<RefDocs> {
-  const [cur] = await db.query<{ id: string }>('SELECT id FROM ref_airac WHERE current LIMIT 1');
+  const cur = await airacInEffect(db);
   if (!cur) throw notFound('no reference data loaded');
   if (refCache && refCache.airac === cur.id) return refCache.docs;
   const docs = async <T>(table: string) =>

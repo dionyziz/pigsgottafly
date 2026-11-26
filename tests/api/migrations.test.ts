@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 
 import { describe, expect, test } from 'vitest';
 
+import { airacInEffect } from '../../api/_lib/airac';
 import { createApi } from '../../api/_lib/app';
 import { connect } from '../../api/_lib/db';
 import { migrate, type Migration, MIGRATIONS } from '../../api/_lib/migrate';
@@ -14,10 +15,8 @@ import {
   equipment as FLEET_EQUIPMENT_011,
 } from '../../api/_lib/migrations/011_fleet_fpl_equipment';
 import { iasKt, performanceKt } from '../../api/_lib/migrations/046_performance_speeds_kt';
-import AERODROMES_JSON from '../../src/data/ref/aerodromes.json';
-import AREAS_JSON from '../../src/data/ref/areas.json';
-import VFR_POINTS_JSON from '../../src/data/ref/vfr-points.json';
-import VFR_ROUTES_JSON from '../../src/data/ref/vfr-routes.json';
+import { AERODROMES as AERODROMES_JSON } from '../../src/data/ref';
+import { AREAS as AREAS_JSON, VFR_POINTS as VFR_POINTS_JSON, VFR_ROUTES as VFR_ROUTES_JSON } from '../../src/data/ref';
 import type { AtcEntry } from '../../src/shared/types';
 import { EXISTING_PILOT_PROFILE, fleetSeed } from '../../tools/build_seed';
 import { CID, JWK } from './helpers';
@@ -663,6 +662,10 @@ describe('migrations', () => {
       '068_ref_ad_hours_2610',
       '069_ref_areas_2610',
       '070_billing',
+      '071_ref_2611',
+      '072_ref_runways_2611',
+      '073_ref_ad_hours_2611',
+      '074_ref_areas_2611',
     ]);
     expect((await db2.query(`SELECT count(*)::int AS n FROM aircraft WHERE pilot_id = 'u1'`))[0].n).toBeGreaterThan(0);
     // 043: every existing aircraft got a placeholder picture 1–3
@@ -729,6 +732,10 @@ describe('migrations', () => {
       '068_ref_ad_hours_2610',
       '069_ref_areas_2610',
       '070_billing',
+      '071_ref_2611',
+      '072_ref_runways_2611',
+      '073_ref_ad_hours_2611',
+      '074_ref_areas_2611',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     // 042: manifest rows kept, nothing edited on the flight yet
@@ -850,6 +857,10 @@ describe('migrations', () => {
       '068_ref_ad_hours_2610',
       '069_ref_areas_2610',
       '070_billing',
+      '071_ref_2611',
+      '072_ref_runways_2611',
+      '073_ref_ad_hours_2611',
+      '074_ref_areas_2611',
     ]);
     expect(await migrate(db, withOwner(OWNER))).toEqual([]);
     const after = await db.query<any>(`SELECT * FROM aircraft ORDER BY id`);
@@ -883,33 +894,34 @@ describe('migrations', () => {
     expect(await db.query(`SELECT * FROM aircraft`)).toEqual([]);
     const [{ n }] = await db.query(`SELECT count(*)::int AS n FROM ref_aerodromes`);
     expect(n).toBeGreaterThan(50);
+    const inEffect = (await airacInEffect(db))!.id;
     // the current AIRAC's hours migration: every aerodrome's operational hours, exactly as shipped to the client
     const docs = new Map(
-      (
-        await db.query<{ id: string; doc: any }>(
-          `SELECT id, doc FROM ref_aerodromes WHERE airac = (SELECT id FROM ref_airac WHERE current)`,
-        )
-      ).map((r) => [r.id, r.doc]),
+      (await db.query<{ id: string; doc: any }>(`SELECT id, doc FROM ref_aerodromes WHERE airac = $1`, [inEffect])).map(
+        (r) => [r.id, r.doc],
+      ),
     );
     for (const a of AERODROMES_JSON as any[]) expect(docs.get(a.id), a.id).toEqual(a);
     expect(docs.get('LGAV').hours.handling).toMatchObject({ text: 'H24', source: 'LGAV AD 2.3' });
     // 048, then 062: the AIRAC's complete VFR reporting points (002's list replaced), exactly as shipped to the client
-    const waypoints = await db.query<{ doc: any }>(`SELECT doc FROM ref_waypoints WHERE airac = '2609'`);
+    const waypoints = await db.query<{ doc: any }>(`SELECT doc FROM ref_waypoints WHERE airac = $1`, [inEffect]);
     const byId = (a: any, b: any) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     expect(waypoints.map((r) => r.doc).sort(byId)).toEqual([...(VFR_POINTS_JSON as any[])].sort(byId));
     expect(waypoints.some((r) => r.doc.id === 'LGTG/KALAMO')).toBe(true);
     // 063: the AIRAC's VFR route segments (002's list replaced), including those charted without an altitude
-    const vfrRoutes = await db.query<{ doc: any }>(`SELECT doc FROM ref_vfr_routes WHERE airac = '2609'`);
+    const vfrRoutes = await db.query<{ doc: any }>(`SELECT doc FROM ref_vfr_routes WHERE airac = $1`, [inEffect]);
     expect(vfrRoutes.map((r) => r.doc).sort(byId)).toEqual([...(VFR_ROUTES_JSON as any[])].sort(byId));
     expect(vfrRoutes.find((r) => r.doc.id === 'LGKV:STRIMON>LOUTRA')!.doc).toMatchObject({ minFt: null, maxFt: null });
     expect(vfrRoutes.some((r) => r.doc.id === 'LGAV:ILIOUP>HOLARGOS')).toBe(true);
     // 065: the AIRAC's areas again (064's list replaced), with those of the time-limited AIP SUPs, their dates
     // and windows
-    const areas = await db.query<{ doc: any }>(`SELECT doc FROM ref_areas WHERE airac = '2609'`);
+    const areas = await db.query<{ doc: any }>(`SELECT doc FROM ref_areas WHERE airac = $1`, [inEffect]);
     expect(areas.map((r) => r.doc).sort(byId)).toEqual([...(AREAS_JSON as any[])].sort(byId));
     expect(areas.find((r) => r.doc.id === 'LGTRA1A')!.doc).toMatchObject({ source: 'AIP SUP 09/24', upper: 'FL 100' });
     expect(areas.find((r) => r.doc.id === 'LGD102A')!.doc).toMatchObject({ validUntil: '2027-06-09' });
-    expect(areas.find((r) => r.doc.id === 'LGD4SW')!.doc.windows).toContainEqual({
+    // a time-limited SUP's dated windows survive the migration (SUP 39/26, in AIRAC 2610's areas, 069)
+    const [jfc] = await db.query<{ doc: any }>(`SELECT doc FROM ref_areas WHERE airac = '2610' AND id = 'LGD4SW'`);
+    expect(jfc.doc.windows).toContainEqual({
       from: '2026-11-23T11:30Z',
       to: '2026-11-23T13:30Z',
     });
@@ -940,7 +952,7 @@ describe('migrations', () => {
     expect(await db.query(`SELECT icao, fpl_copy_email FROM ref_aerodrome_contacts`)).toEqual([
       { icao: 'LGTT', fpl_copy_email: 'lgttatc@gmail.com' },
     ]);
-    expect(MIGRATIONS.map((m) => m.name).slice(-33)).toEqual([
+    expect(MIGRATIONS.map((m) => m.name).slice(-37)).toEqual([
       '030_mail_log',
       '031_mail_log_details',
       '032_rate_limits',
@@ -974,6 +986,10 @@ describe('migrations', () => {
       '068_ref_ad_hours_2610',
       '069_ref_areas_2610',
       '070_billing',
+      '071_ref_2611',
+      '072_ref_runways_2611',
+      '073_ref_ad_hours_2611',
+      '074_ref_areas_2611',
     ]);
     await db.close();
   });

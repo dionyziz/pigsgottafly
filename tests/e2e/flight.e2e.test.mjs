@@ -17,6 +17,7 @@ import test, { after, before } from 'node:test';
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { launch, openMeteoFetch, ROOT, startServer } from './harness.mjs';
 import * as O from './oracle.mjs';
+import { refJson } from './refInEffect.mjs';
 
 let server, browser, page;
 /** Open-Meteo requests the API made (the browser makes none). */
@@ -32,9 +33,9 @@ const api = async (method, p, body) => {
   return r.status === 204 ? null : r.json();
 };
 const REF = {
-  aerodromes: JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref/aerodromes.json'), 'utf8')),
-  vfr: JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref/vfr-points.json'), 'utf8')),
-  runways: JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref/runways.json'), 'utf8')),
+  aerodromes: refJson('aerodromes.json'),
+  vfr: refJson('vfr-points.json'),
+  runways: refJson('runways.json'),
 };
 const AD = (id) => REF.aerodromes.find((a) => a.id === id);
 const VFR = (id) => REF.vfr.find((p) => p.id === id);

@@ -11,7 +11,7 @@ import handTtf from '../../api/_lib/fonts/homemadeApple';
 import { stampZ } from '../../api/_lib/formPdf';
 import { type SentMail, setMailTransport } from '../../api/_lib/mail';
 import { parseTtf, PdfDoc, winAnsi } from '../../api/_lib/pdf';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import { type FormsState, GENDEC_DISINSECT_LINES, GENDEC_HEALTH_LINES, type SigningView } from '../../src/shared/forms';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';

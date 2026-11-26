@@ -27,7 +27,7 @@ import {
 } from '../../api/_lib/notamSources/nms';
 import { blankNotam, NotamSourceError, type RawNotam } from '../../api/_lib/notamSources/types';
 import { createServer } from '../../server/server';
-import aerodromes from '../../src/data/ref/aerodromes.json';
+import { AERODROMES as aerodromes } from '../../src/data/ref';
 import type { RefAerodrome } from '../../src/shared/ref';
 import type { RoutePoint } from '../../src/shared/types';
 import features from '../fixtures/nms-features.json';

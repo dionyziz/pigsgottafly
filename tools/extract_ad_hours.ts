@@ -13,6 +13,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { newestCycleDir } from './refCycles.js';
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const AD_HOURS_JSON = path.join(ROOT, 'tools', 'ad_hours.json');
 
@@ -191,7 +193,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     console.error('usage: npx tsx tools/extract_ad_hours.ts TXT_DIR');
     process.exit(2);
   }
-  const ads = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'ref', 'aerodromes.json'), 'utf8'));
+  const ads = JSON.parse(fs.readFileSync(path.join(newestCycleDir(ROOT), 'aerodromes.json'), 'utf8'));
   const { out, missing } = extractAll(dir, ads);
   for (const id of missing) console.warn('no operational hours found for', id);
   const sorted = Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)));

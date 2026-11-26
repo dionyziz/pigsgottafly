@@ -49,6 +49,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { newestCycleDir } from './refCycles.js';
+
 type LonLat = [number, number];
 
 const dms = (s: string): number => {
@@ -302,7 +304,7 @@ const ring = [...SEA_AIP, ...CORFU_STRAIT, ...simplify(land, TOLERANCE_M), ...AE
   .filter((p, i, a) => i === 0 || !same(p, a[i - 1]));
 checkSimple(ring);
 const root = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
-const aerodromes = JSON.parse(fs.readFileSync(path.join(root, 'src/data/ref/aerodromes.json'), 'utf8')) as {
+const aerodromes = JSON.parse(fs.readFileSync(path.join(newestCycleDir(root), 'aerodromes.json'), 'utf8')) as {
   id: string;
   lat: number;
   lon: number;

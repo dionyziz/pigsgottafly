@@ -13,6 +13,7 @@ import { setMailTransport } from '../../api/_lib/mail.ts';
 import { chromiumSheetPdf } from '../../api/_lib/sheetPdf.ts';
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { ARTIFACTS, launch, ROOT } from './harness.mjs';
+import { refJson } from './refInEffect.mjs';
 
 let server, db, url, browser, page;
 const sent = [];
@@ -47,7 +48,7 @@ const api = async (method, p, body) => {
 const shot = async (name) => {
   if (process.env.SHOTS) await page.screenshot(name);
 };
-const ADS = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref/aerodromes.json'), 'utf8'));
+const ADS = refJson('aerodromes.json');
 const pt = (icao, uid) => {
   const a = (ADS.aerodromes ?? ADS).find((x) => x.icao === icao);
   return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };

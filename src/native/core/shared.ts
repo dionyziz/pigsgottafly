@@ -3,16 +3,16 @@
 import { buildLegs, TERRAIN_GRID } from '../../calc';
 import { weatherPlan } from '../../data/flightWeatherPlan';
 import { type HazardWeather, hazardWeatherFrom, hazardWeatherPlan } from '../../data/hazardWeather';
-import adAirspacesJson from '../../data/ref/ad-airspaces.json';
+import { CYCLES } from '../../data/ref/cycles/core';
 import firJson from '../../data/ref/fir.json';
-import navaidsJson from '../../data/ref/navaids.json';
-import sunJson from '../../data/ref/sun.json';
 import { type RouteWeather, routeWeatherFrom, routeWeatherPlan } from '../../data/weather';
 import { answerOf, type GridAnswer, gridRequests, type GridResult, mergeGrid } from '../../data/weatherGrid';
 import { metarGroups, metarTafOf, type MetarTafResult } from '../../data/weatherMetar';
 import {
   aerodromeIndex,
+  airacDay,
   type Aircraft,
+  cycleOn,
   DEFAULT_SETTINGS,
   type Flight,
   type MetarTafResponse,
@@ -75,15 +75,17 @@ export function refOf(given: CoreRef | null | undefined): Ref {
     byAd.set(r.aerodromeId, list);
   }
   const index = aerodromeIndex(given.aerodromes ?? []);
+  // the server picks the AIRAC in effect; what its bundle lacks comes from the core's copy of that same cycle
+  const cycle = CYCLES.find((c) => c.airac.id === given.airac?.id) ?? cycleOn(CYCLES, airacDay());
   const ref: Ref = {
     bundle: {
       ...given,
-      adAirspaces: given.adAirspaces ?? (adAirspacesJson as unknown as RefAdAirspace[]),
+      adAirspaces: given.adAirspaces ?? cycle.adAirspaces,
       fir: given.fir ?? (firJson as unknown as RefFir),
-      navaids: given.navaids ?? (navaidsJson as unknown as RefNavaid[]),
+      navaids: given.navaids ?? cycle.navaids,
       areas: given.areas ?? [],
     },
-    sunTables: given.sunTables ?? (sunJson as unknown as Record<string, RefSunTable>),
+    sunTables: given.sunTables ?? cycle.sun,
     runwaysOf: (id) => byAd.get(id) ?? [],
     find: index.find,
     resolve: index.resolve,

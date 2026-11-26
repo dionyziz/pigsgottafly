@@ -12,6 +12,7 @@ import { setMailTransport } from '../../api/_lib/mail.ts';
 import { chromiumNavlogPdf } from '../../api/_lib/sheetPdf.ts';
 import { fleetSeed } from '../../tools/build_seed.ts';
 import { ARTIFACTS, launch, ROOT, startServer } from './harness.mjs';
+import { refJson } from './refInEffect.mjs';
 
 let server, browser, page;
 const sent = [];
@@ -39,7 +40,7 @@ const api = async (method, p, body) => {
   });
   return r.status === 204 ? null : r.json();
 };
-const ADS = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/data/ref/aerodromes.json'), 'utf8'));
+const ADS = refJson('aerodromes.json');
 const pt = (icao, uid) => {
   const a = (ADS.aerodromes ?? ADS).find((x) => x.icao === icao);
   return { uid, kind: 'aerodrome', refId: a.id, name: icao, lat: a.lat, lon: a.lon };

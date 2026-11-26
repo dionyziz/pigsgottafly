@@ -20,6 +20,7 @@ import {
   supValidFrom,
   supValidTo,
 } from '../../../tools/parse_enr5';
+import sup3926 from '../../fixtures/sup-39-26-areas.json';
 
 // ---- Verbatim excerpts (pdftotext -layout) of AIP Greece ENR 5, AIRAC 09/26:
 // ENR 5.1 pages 1, 3, 4 and 9; ENR 5.2 page 1; ENR 5.3 page 1.
@@ -1361,21 +1362,10 @@ describe('tools/enr5_areas.json', () => {
     const rank = (a: RefArea) => (a.source.startsWith('AIP SUP') ? 5 : { P: 0, R: 1, D: 2, MIL: 3, ACT: 4 }[a.kind]);
     for (let i = 1; i < areas.length; i++) expect(rank(areas[i]) >= rank(areas[i - 1]), areas[i].id).toBe(true);
   });
-  test('the areas of the SUPs in force are drawn: UFN (01/23, 09/24) and time-limited (07/26, 39/26)', () => {
+  test('the areas of the SUPs in force are drawn: UFN (01/23, 09/24) and time-limited (07/26)', () => {
     const sup = areas.filter((a) => a.source.startsWith('AIP SUP')).map((a) => `${a.source} ${a.id}`);
-    // an area then its FBZ per page; LGD12S's two tables share a page, and so do LGD12SZ's
-    const jfc = [
-      ...['LGD2SW', 'LGD4SW', 'LGD6SW'].flatMap((id) => [id, `${id}Z`]),
-      'LGD6SW-NOV',
-      'LGD6SWZ-NOV',
-      'LGD8SW',
-      'LGD8SWZ',
-      'LGD12S',
-      'LGD12S-NOV',
-      'LGD12SZ',
-      'LGD12SZ-NOV',
-      ...['LGR14S', 'LGR1CE', 'LGD3CL', 'LGD3CU', 'LGR5CE'].flatMap((id) => [id, `${id}Z`]),
-    ];
+    // SUP 39/26 (JFC 2026, until 27 NOV 26) is no longer in the AIP from AIRAC 2611: its areas are a test
+    // fixture now (tests/fixtures/sup-39-26-areas.json)
     expect(sup).toEqual([
       'AIP SUP 01/23 UAV-AREA1',
       'AIP SUP 01/23 UAV-AREA2',
@@ -1383,11 +1373,11 @@ describe('tools/enr5_areas.json', () => {
       'AIP SUP 09/24 LGTRA1B',
       'AIP SUP 09/24 LGTRA1C',
       ...['A', 'B', 'C'].flatMap((s) => [`AIP SUP 07/26 LGD102${s}`, `AIP SUP 07/26 LGD102${s}Z`]),
-      ...jfc.map((id) => `AIP SUP 39/26 ${id}`),
     ]);
   });
   test('time-limited areas: in force within the SUP’s dates, windows in order, each up to 2 h within those days', () => {
-    for (const a of areas.filter((x) => x.validUntil || x.windows)) {
+    const all = [...areas, ...(sup3926 as unknown as typeof areas)];
+    for (const a of all.filter((x) => x.validUntil || x.windows)) {
       expect(a.source, a.id).toMatch(/^AIP SUP (07|39)\/26$/);
       expect(a.validFrom! <= a.validUntil!, a.id).toBe(true);
       for (const w of a.windows ?? []) {
@@ -1400,8 +1390,12 @@ describe('tools/enr5_areas.json', () => {
       const froms = (a.windows ?? []).map((w) => w.from);
       expect(froms, a.id).toEqual([...froms].sort());
     }
-    const p = byId(areas);
-    expect(p.get('LGD102C')!).toMatchObject({ validFrom: '2026-06-11', validUntil: '2027-06-09', lower: 'FL 295' });
+    expect(byId(areas).get('LGD102C')!).toMatchObject({
+      validFrom: '2026-06-11',
+      validUntil: '2027-06-09',
+      lower: 'FL 295',
+    });
+    const p = byId(sup3926 as unknown as typeof areas);
     expect(p.get('LGD6SW')!).toMatchObject({ lower: 'FL 200', validFrom: '2026-09-28', validUntil: '2026-10-30' });
     expect(p.get('LGD6SW-NOV')!).toMatchObject({ designator: 'LGD6SW', lower: 'FL 150', validFrom: '2026-11-02' });
     expect(p.get('LGD3CU')!).toMatchObject({ lower: 'FL 170', upper: 'FL 220', validUntil: '2026-11-12' });

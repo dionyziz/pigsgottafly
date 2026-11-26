@@ -1,11 +1,11 @@
 // An aerodrome's day: AIP AD 2.3 / AD 1.6 overlaid with the flight's NOTAMs (src/calc/aerodromeStatus.ts),
 // and its one-line summaries. Pure, so the native core shares it with the editor's sections and the map.
 import { type AdDay, type AdNotamEffect, aerodromeDay } from '../../calc';
-// the JSON itself, not data/ref: that module builds its indexes of all the reference data on import
-import sunJson from '../../data/ref/sun.json';
-import type { RefAerodrome, RefSunTable } from '../../shared/ref';
+// the core's cycle list, not data/ref: that module builds its indexes of all the reference data on import
+import { CYCLES } from '../../data/ref/cycles/core';
+import { airacDay, cycleOn, type RefAerodrome } from '../../shared/ref';
 
-const SUN_TABLES = sunJson as unknown as Record<string, RefSunTable>;
+const SUN_TABLES = cycleOn(CYCLES, airacDay()).sun;
 
 export interface AdDayInfo {
   day: string;
