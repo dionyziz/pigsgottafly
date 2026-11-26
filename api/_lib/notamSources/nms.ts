@@ -11,9 +11,13 @@
 // effectiveStart, effectiveEnd ('PERM'), estimated, schedule, text = item E, lowerLimit, upperLimit,
 // coordinates, radius) and notamTranslation[type ICAO].formattedText, the full ICAO text: read first
 // (icao.ts), the record's fields filling what it does not state. The location filter returns the
-// NOTAMs active now and later; the window is applied here. No documented rate limit; the source is
-// cached anyway (cache.ts) and asks at most NMS_CONCURRENCY locations at a time.
+// NOTAMs active now and later; the window is applied here. The rate limit is undocumented but real: a burst
+// of one-location requests gets HTTP 429 (26 Nov 2026, a briefing left with autorouter's NOTAMs only), so
+// at most NMS_CONCURRENCY locations are asked at a time and a 429 is waited out (Retry-After, else backing
+// off) instead of failing the whole source. The source is cached too (cache.ts).
 // Hosts: pre-production https://api-staging.cgifederal-aim.com, production https://api-nms.aim.faa.gov.
+import { setTimeout as wait } from 'node:timers/promises';
+
 import { parseIcaoNotam } from './icao.js';
 import {
   blankNotam,
@@ -26,7 +30,10 @@ import {
 
 export const NMS_LABEL = 'International NOTAM feed';
 /** Locations asked at once. */
-export const NMS_CONCURRENCY = 4;
+export const NMS_CONCURRENCY = 2;
+/** 429s waited out per location before the source fails; the waits stay well inside the source's 25 s limit. */
+export const NMS_RATE_RETRIES = 4;
+const RATE_WAIT_MAX_MS = 4_000;
 const REQUEST_TIMEOUT_MS = 20_000;
 /** A token this close to expiring is renewed first. */
 const TOKEN_MARGIN_MS = 60e3;
@@ -39,6 +46,16 @@ export interface NmsSettings {
   /** Injectable for tests (nothing is ever sent to the service in tests). */
   fetch?: typeof fetch;
   now?: () => number;
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+}
+
+const sleep = (ms: number, signal?: AbortSignal): Promise<void> => wait(ms, undefined, { signal });
+
+/** How long to wait after a 429: the Retry-After seconds when given, else 0.5 s, 1 s, 2 s, 4 s. */
+export function rateWaitMs(retryAfter: string | null, attempt: number): number {
+  const s = Number(retryAfter);
+  const ms = retryAfter !== null && Number.isFinite(s) && s >= 0 ? s * 1000 : 500 * 2 ** attempt;
+  return Math.min(RATE_WAIT_MAX_MS, ms);
 }
 
 /** Settings from the environment, or null without NMS_BASE, NMS_CLIENT_ID and NMS_CLIENT_SECRET. */
@@ -225,9 +242,10 @@ export class NmsClient {
     return this.tokenP;
   }
 
-  /** The features of one location; a 401 renews the token once. */
+  /** The features of one location; a 401 renews the token once; a 429 is waited out NMS_RATE_RETRIES times. */
   async location(loc: string, signal?: AbortSignal): Promise<NmsFeature[]> {
-    for (let attempt = 0; ; attempt++) {
+    let renewed = false;
+    for (let limited = 0; ;) {
       const token = await this.accessToken();
       const res = await this.doFetch(`${this.base}/nmsapi/v1/notams?location=${encodeURIComponent(loc)}`, {
         headers: { Authorization: `Bearer ${token}`, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
@@ -235,8 +253,13 @@ export class NmsClient {
           ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
           : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      if (res.status === 401 && attempt === 0) {
+      if (res.status === 401 && !renewed) {
+        renewed = true;
         if (this.token?.value === token) this.token = null;
+        continue;
+      }
+      if (res.status === 429 && limited < NMS_RATE_RETRIES) {
+        await (this.s.sleep ?? sleep)(rateWaitMs(res.headers.get('retry-after'), limited++), signal);
         continue;
       }
       const body = (await res.json().catch(() => null)) as {

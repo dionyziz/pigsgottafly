@@ -17,11 +17,13 @@ import {
   fromNms,
   NMS_CONCURRENCY,
   NMS_LABEL,
+  NMS_RATE_RETRIES,
   NmsClient,
   type NmsFeature,
   nmsFromEnv,
   nmsNotamSource,
   type NmsSettings,
+  rateWaitMs,
 } from '../../api/_lib/notamSources/nms';
 import { blankNotam, NotamSourceError, type RawNotam } from '../../api/_lib/notamSources/types';
 import { createServer } from '../../server/server';
@@ -170,6 +172,9 @@ function mockNms(opts: { byLocation?: Record<string, unknown>; expiresIn?: strin
     fail: 0,
     inFlight: 0,
     maxInFlight: 0,
+    /** The next this many NOTAM requests answer 429, with this Retry-After (null: none). */
+    limited: 0,
+    retryAfter: null as string | null,
   };
   const json = (status: number, body: unknown) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -192,6 +197,13 @@ function mockNms(opts: { byLocation?: Record<string, unknown>; expiresIn?: strin
     if (!/^tok\d+$/.test(token) || state.revoked.has(token))
       return json(401, { status: '401', message: 'Unauthorized' });
     if (state.fail) return json(state.fail, { status: String(state.fail), message: 'Service unavailable' });
+    if (state.limited > 0) {
+      state.limited--;
+      return new Response(JSON.stringify({ message: 'Too Many Requests' }), {
+        status: 429,
+        headers: state.retryAfter === null ? {} : { 'Retry-After': state.retryAfter },
+      });
+    }
     if (url.pathname !== '/nmsapi/v1/notams') return json(404, { message: 'Not Found' });
     state.inFlight++;
     state.maxInFlight = Math.max(state.maxInFlight, state.inFlight);
@@ -203,12 +215,14 @@ function mockNms(opts: { byLocation?: Record<string, unknown>; expiresIn?: strin
   return { calls, state, fetch };
 }
 
+const slept: number[] = [];
 const settings = (m: ReturnType<typeof mockNms>, now?: () => number): NmsSettings => ({
   baseUrl: 'https://nms.test/',
   clientId: 'cid',
   clientSecret: 'csecret',
   fetch: m.fetch,
   now,
+  sleep: async (ms) => void slept.push(ms),
 });
 
 const geo = (...numbers: string[]) => ({ status: 'Success', data: { geojson: numbers.map(byNumber) } });
@@ -248,6 +262,26 @@ describe('NMS client', () => {
     expect(await new NmsClient(settings(m)).notams(locs, 0, Date.now())).toEqual([]);
     expect(m.state.maxInFlight).toBeGreaterThan(1);
     expect(m.state.maxInFlight).toBeLessThanOrEqual(NMS_CONCURRENCY);
+  });
+
+  test('a 429 is waited out (Retry-After, else backing off), then the source fails', async () => {
+    const m = mockNms({ byLocation: { LGAV: geo('A4147/26') } });
+    const c = new NmsClient(settings(m));
+    slept.length = 0;
+    m.state.limited = 2;
+    m.state.retryAfter = '1';
+    expect((await c.location('LGAV')).length).toBe(1);
+    expect(slept).toEqual([1000, 1000]);
+    slept.length = 0;
+    m.state.limited = 3;
+    m.state.retryAfter = null;
+    expect((await c.location('LGAV')).length).toBe(1);
+    expect(slept).toEqual([500, 1000, 2000]);
+    expect(rateWaitMs('60', 0)).toBe(4000);
+    m.state.limited = NMS_RATE_RETRIES + 1;
+    const e = await c.location('LGAV').catch((x) => x);
+    expect(e).toBeInstanceOf(NotamSourceError);
+    expect(e.message).toBe(`${NMS_LABEL} answered HTTP 429: Too Many Requests`);
   });
 
   test('the token is kept until a minute before it expires, then renewed', async () => {
