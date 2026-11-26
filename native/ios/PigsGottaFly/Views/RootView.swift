@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var session: Session
+    @State private var paywall = false
 
     var body: some View {
         Group {
@@ -16,6 +17,16 @@ struct RootView: View {
             }
         }
         .task { await session.check() }
+        .onReceive(NotificationCenter.default.publisher(for: .subscriptionRequired)) { _ in paywall = true }
+        .sheet(isPresented: $paywall) {
+            NavigationStack {
+                SubscriptionView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("Not now") { paywall = false } }
+                    }
+            }
+            .onChange(of: session.entitlement?.active) { _, active in if active == true { paywall = false } }
+        }
     }
 }
 

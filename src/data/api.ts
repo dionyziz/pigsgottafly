@@ -18,6 +18,7 @@ import type {
   AttachmentInput,
   AttachmentRef,
   AutorouterLinkStatus,
+  BillingResponse,
   DeclarationsState,
   Flight,
   FlightCopyRequest,
@@ -121,6 +122,8 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   const out = res.status === 204 ? null : await res.json().catch(() => null);
   if (res.status === 401 && typeof window !== 'undefined' && path !== 'session')
     window.dispatchEvent(new Event('pgf:unauthorized'));
+  if (res.status === 402 && typeof window !== 'undefined')
+    window.dispatchEvent(new CustomEvent('pgf:subscription-required', { detail: out?.entitlement ?? null }));
   if (res.status >= 500)
     reportApiFailure(method, path, res.status, (out && typeof out.error === 'string' && out.error) || '');
   if (!res.ok) throw new ApiRequestError(res.status, (out && out.error) || `HTTP ${res.status}`, out);
@@ -216,6 +219,11 @@ export const api = {
   appCode: () => request<{ code: string }>('POST', 'app-code'),
   logout: () => request<{ ok: true }>('POST', 'logout'),
   revokeAllSessions: () => request<{ ok: true }>('POST', 'session/revoke-all'),
+  billing: {
+    get: () => request<BillingResponse>('GET', 'billing'),
+    /** A one-time link to Paddle's customer portal (website subscriptions). */
+    portal: () => request<{ url: string }>('POST', 'billing/portal', {}),
+  },
 
   me: {
     get: () => request<Pilot>('GET', 'me'),

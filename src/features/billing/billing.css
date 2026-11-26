@@ -1,0 +1,16 @@
+.billing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.billing-banner.expired {
+  background: var(--warn-soft);
+  border-color: var(--warn-line);
+}

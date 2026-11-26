@@ -4,6 +4,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
+import { BillingBanner } from '../features/billing/Paywall';
 import { AccountMenu } from './AccountMenu';
 import { FlowBack } from './FlowLinks';
 
@@ -26,6 +27,7 @@ export function Shell({ children, top }: { children: ReactNode; top?: ReactNode 
       <TopBar>{top}</TopBar>
       <main className="page">
         <FlowBack />
+        <BillingBanner />
         {children}
       </main>
     </>

@@ -19,6 +19,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/app-code',
+    paid: false,
     async handler({ db, pilot }) {
       await rateLimit(db, 'login', { pilotId: pilot.id });
       const code = randomBytes(24).toString('base64url');

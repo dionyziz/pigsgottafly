@@ -183,6 +183,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/admin/errors/:fingerprint/resolve',
+    paid: false,
     async handler({ db, isAdmin, params }) {
       if (!isAdmin) throw new HttpError(403, 'admins only');
       const r = await db.query('UPDATE app_errors SET resolved_at = $2 WHERE fingerprint = $1 RETURNING fingerprint', [

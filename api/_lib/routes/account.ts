@@ -14,6 +14,7 @@
 // not own stay, by "a former pilot" (aircraft_log.author_id is SET NULL). tests/api/account.test.ts checks that no column of
 // any table still holds the pilot's id or e-mail afterwards.
 import { sessionCookie } from '../auth.js';
+import { paddleCancel } from '../billing/paddle.js';
 import type { Queryable } from '../db.js';
 import type { Route } from '../http.js';
 import { badRequest, reply } from '../http.js';
@@ -328,6 +329,14 @@ export const routes: Route[] = [
       const expected = (pilot.email || '').trim().toLowerCase() || 'delete';
       if (typeof b.confirm !== 'string' || b.confirm.trim().toLowerCase() !== expected) {
         throw badRequest(pilot.email ? 'type your e-mail address to confirm' : 'type "delete" to confirm');
+      }
+      // a website subscription would keep charging a deleted account; App Store ones only the pilot can cancel
+      if (config.paddle) {
+        const live = await db.query(
+          `SELECT external_id FROM subscriptions WHERE pilot_id = $1 AND source = 'paddle' AND auto_renew`,
+          [pilot.id],
+        );
+        for (const s of live) await paddleCancel(config.paddle, s.external_id);
       }
       await db.transaction((tx) => deletePilotData(tx, pilot.id));
       return reply(200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0, config.secureCookie) });

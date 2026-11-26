@@ -1,10 +1,13 @@
 // HTTP plumbing shared by the route modules: the route type, errors, JSON helpers.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import type { Entitlement } from '../../src/shared/api.js';
 import type { FilerId } from '../../src/shared/briefing.js';
 import type { Pilot } from '../../src/shared/types.js';
 import type { AutorouterClient, AutorouterSettings } from './autorouter.js';
 import type { AutorouterOAuthSettings } from './autorouterLinks.js';
+import type { AppleTrust } from './billing/apple.js';
+import type { PaddleSettings } from './billing/paddle.js';
 import type { Db } from './db.js';
 import type { FaxProvider, FaxSettings } from './filers/faxProviders.js';
 import type { Filer } from './filers/types.js';
@@ -94,6 +97,15 @@ export interface ApiConfig {
   faxPdf?: FaxPdfRenderer | null;
   /** The origin fax delivery callbacks go to (FAX_WEBHOOK_BASE); default: the origin the pilot used. */
   faxWebhookBase?: string;
+  /**
+   * BILLING_ENFORCE=1: a pilot without an entitlement (billing/entitlement.ts) gets 402 on the routes that
+   * plan, brief or file. Off, everyone keeps everything and the paywall is never shown.
+   */
+  billingEnforce?: boolean;
+  /** Paddle Billing (PADDLE_*), the website's checkout; null/undefined: not sold on the website. */
+  paddle?: PaddleSettings | null;
+  /** The root App Store signatures must chain to; tests inject their own. */
+  appleTrust?: AppleTrust;
 }
 
 /**
@@ -133,6 +145,8 @@ export interface Ctx {
   /** True when this pilot may not send forms by e-mail (no e-mail address to cc). */
   formsMailDenied: boolean;
   isAdmin: boolean;
+  /** The session pilot's subscription state (null on routes without auth). */
+  entitlement: Entitlement | null;
 }
 
 /** A handler returns the JSON body (status 200), a Reply (other status/headers), or undefined (204). */
@@ -158,6 +172,12 @@ export interface Route {
   webhook?: boolean;
   /** The handler uses ctx.autorouter or ctx.filers: the pilot's linked autorouter account is looked up first. */
   autorouter?: boolean;
+  /**
+   * Needs the subscription when BILLING_ENFORCE is on (402 otherwise). Default: POST, PUT and PATCH with a
+   * session (a pilot without it keeps reading, deleting and exporting their data); set it on a GET that
+   * costs us (NOTAMs), or false on a write anyone may do (their own profile, sign-out, buying).
+   */
+  paid?: boolean;
   handler: Handler;
 }
 

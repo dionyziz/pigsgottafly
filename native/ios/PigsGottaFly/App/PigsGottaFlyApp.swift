@@ -11,6 +11,7 @@ struct PigsGottaFlyApp: App {
             RootView()
                 .environmentObject(app)
                 .environmentObject(app.session)
+                .environmentObject(app.subscriptions)
         }
     }
 }

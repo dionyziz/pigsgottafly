@@ -81,6 +81,7 @@ async function flush(): Promise<void> {
   if (flushing) return;
   flushing = true;
   let failed = false;
+  let paywalled = false;
   try {
     for (const id of LS.get<string[]>(PENDING) || []) {
       const c = LS.get<Cached>(key(id));
@@ -106,6 +107,10 @@ async function flush(): Promise<void> {
           if (now) LS.set(key(id), { ...now, dirty: false });
           setStatus('error');
           console.error('save failed', e);
+        } else if (e instanceof ApiRequestError && e.status === 402) {
+          // the subscription ended (the paywall is open): keep the edit to send once subscribed, but do not
+          // retry in a loop; the next edit or load sends it again
+          paywalled = true;
         } else failed = true;
       }
     }
@@ -113,6 +118,7 @@ async function flush(): Promise<void> {
     flushing = false;
   }
   const left = (LS.get<string[]>(PENDING) || []).length;
+  if (paywalled) return setStatus('error');
   if (status !== 'error' || left) setStatus(left ? (failed ? 'offline' : 'saving') : 'saved');
   if (left) {
     if (timer) clearTimeout(timer);

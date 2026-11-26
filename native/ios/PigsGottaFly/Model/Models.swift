@@ -15,6 +15,30 @@ struct SessionResponse: Codable, Equatable {
     var mode: String
     var pilot: PilotInfo?
     var admin: Bool?
+    var entitlement: Entitlement?
+    var billingEnforced: Bool?
+}
+
+/// Whether the pilot may plan, brief and file (src/shared/api.ts Entitlement): founder (free for life), paid,
+/// granted (by an admin), trial (the first 30 days) or expired (read-only).
+struct Entitlement: Codable, Equatable {
+    var active: Bool
+    var reason: String
+    /// Epoch ms the reason ends; nil for founders.
+    var until: Double?
+    var renews: Bool?
+
+    var untilDate: Date? { until.map { Date(timeIntervalSince1970: $0 / 1000) } }
+}
+
+/// GET /api/billing (src/shared/api.ts BillingResponse); the Paddle checkout is the website's only.
+struct BillingInfo: Codable, Equatable {
+    var entitlement: Entitlement
+    /// Where the paid subscription was bought: "paddle" (the website), "apple", or nil.
+    var store: String?
+    /// Set as appAccountToken on App Store purchases: the server ties them to this account.
+    var appleAccountToken: String
+    var price: String
 }
 
 /// GET /api/autorouter: the pilot's own autorouter account (src/shared/api.ts AutorouterLinkStatus).

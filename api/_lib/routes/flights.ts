@@ -401,6 +401,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/restore',
+    paid: false,
     async handler({ db, pilot, params }) {
       await flightFor(db, pilot, params.id, 'owner');
       const r = await db.query('UPDATE flights SET deleted = FALSE WHERE id = $1 AND pilot_id = $2 RETURNING id', [
@@ -414,6 +415,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/flights/:id/opened',
+    paid: false,
     async handler({ db, pilot, params }) {
       const g = await flightFor(db, pilot, params.id);
       // a shared flight: when this pilot opened it (their lobby's order), not the owner's

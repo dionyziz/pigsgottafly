@@ -50,6 +50,7 @@ export const routes: Route[] = [
   {
     method: 'GET',
     path: '/flights/:id/notams',
+    paid: true,
     autorouter: true,
     async handler(c): Promise<NotamBriefing> {
       const { db, pilot, params, query } = c;

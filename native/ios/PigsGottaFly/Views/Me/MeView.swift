@@ -22,6 +22,11 @@ struct MeView: View {
                 link("Map layers", "square.3.layers.3d", id: "profile-map-layers") { MapLayersView() }
                 link("Licence and medical", "doc.on.doc", id: "pilot-documents") { PilotDocumentsView() }
             }
+            if session.billingEnforced || session.admin {
+                Section {
+                    link("Subscription", "creditcard", id: "subscription-link") { SubscriptionView() }
+                }
+            }
             Section {
                 Button(role: .destructive) {
                     Task { await session.signOut() }

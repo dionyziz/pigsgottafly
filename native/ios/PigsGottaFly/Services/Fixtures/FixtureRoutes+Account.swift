@@ -6,6 +6,7 @@ extension FixtureTransport {
     func accountRoutes(_ r: FixtureRequest) -> (Int, String?, Data?)? {
         switch (r.method, r.first, r.count) {
         case ("GET", "session", 1): (200, "session.json", nil)
+        case ("GET", "billing", 1): (200, "billing.json", nil)
         case ("POST", "logout", _): (200, nil, Data(#"{"ok":true}"#.utf8))
         case ("POST", "session", 2) where r.parts[1] == "revoke-all": (200, nil, Data(#"{"ok":true}"#.utf8))
         case ("GET", "me", 1): (200, nil, Self.encoded(pilot))

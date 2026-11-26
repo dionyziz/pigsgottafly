@@ -74,6 +74,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/autorouter/app-connect',
+    paid: false,
     async handler(ctx) {
       const s = settings(ctx);
       const origin = appOrigin(ctx.req, ctx.config.secureCookie);
@@ -127,6 +128,7 @@ export const routes: Route[] = [
   {
     method: 'POST',
     path: '/autorouter/disconnect',
+    paid: false,
     async handler({ db, pilot, config }) {
       if (!config.autorouterOAuth) throw notFound();
       await deleteLink(db, pilot.id);

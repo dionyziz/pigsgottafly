@@ -565,6 +565,32 @@ autorouter's licence is personal, so each pilot links their own account by OAuth
   shared account for `AUTOROUTER_PILOTS`, else none. Filing, NOTAMs (any flight the pilot is on) and the
   METAR/TAF fill then run with that account.
 
+## Subscription (€50 / year)
+
+`api/_lib/billing/` and `routes/billing.ts`; tables `subscriptions` and `pilots.founder / paid_until / paid_renews /
+free_until / apple_account_token` (migration 070). Dormant until `BILLING_ENFORCE=1`.
+
+- **Entitlement** (`billing/entitlement.ts entitlementOf`, from the pilot row alone): founder (every pilot who
+  signed up before the subscription; free for life), paid (`paid_until`, the latest end over the pilot's
+  subscriptions in either store plus 3 days' grace), granted (`free_until`, `POST /api/admin/pilots/:id/grant`),
+  trial (30 days from sign-up), else expired. The local pilot is a founder.
+- **Paywall**: with `BILLING_ENFORCE=1` the dispatcher answers 402 `{ error: 'subscription_required', entitlement }`
+  to an expired pilot on `Route.paid` routes: by default POST/PUT/PATCH with a session; `paid: false` on the writes
+  anyone keeps (profile, sign-in and sign-out, autorouter link, restore from trash, buying), `paid: true` on
+  `GET /flights/:id/notams`. Reading, deleting and exporting stay open. The website opens its subscribe dialog on any
+  402 (`src/features/billing/Paywall.tsx`); the editor keeps an unsaved edit and sends it once subscribed; the iOS app
+  opens Me → Subscription.
+- **Website**: Paddle Billing as merchant of record (`PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`,
+  `PADDLE_CLIENT_TOKEN`, `PADDLE_PRICE_ID`, `PADDLE_ENV=sandbox|production`). Paddle.js opens the checkout with the
+  pilot id in `customData`; `POST /api/billing/paddle/webhook` (HMAC `Paddle-Signature`, 5-minute tolerance) records
+  `subscription.*` events, an older event never overwriting a newer one. `POST /api/billing/portal` links to Paddle's
+  customer portal. Deleting the account cancels a renewing Paddle subscription first.
+- **iOS**: StoreKit 2, product `com.pigsgottafly.app.yearly` with `appAccountToken` = `pilots.apple_account_token`.
+  The app posts each verified transaction to `POST /api/billing/apple/transaction` and finishes it only after;
+  App Store Server Notifications V2 go to `POST /api/billing/apple/notifications`. Both are JWS checked against
+  Apple Root CA - G3 (pinned fingerprint) with Apple's marker extensions (`billing/apple.ts`); sandbox transactions
+  count too (App Review buys in the sandbox against production).
+
 ## Database, migrations and seeds
 
 - Tables: `pilots`, `sessions`, `aircraft`, `passengers`, `waypoints`, `flights`, `flight_crew`, `aircraft_attachments` (file content, base64), `aircraft_shares` (aircraft, pilot, role view|edit), `operators`, `operator_shares`, `operator_files` + `operator_file_chunks`; shared `ref_airac`, `ref_aerodromes`, `ref_runways`, `ref_airspaces`, `ref_fis`, `ref_waypoints` (VFR points), `ref_vfr_routes`, `ref_atc_units`, `ref_sun`, `ref_areas` (ENR 5 and AIP SUP areas, migrations 017, 064, 065); `schema_migrations`. Large owned documents (aircraft fuel, mass_balance, performance, equipment, compass_cards; flight route, leg_overrides, atc, options, summary) are jsonb. The ref tables keep the full record in `doc` jsonb.

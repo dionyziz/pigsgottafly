@@ -3,10 +3,13 @@
 // and turns handler results/errors into JSON responses.
 import path from 'node:path';
 
+import { type Entitlement, SUBSCRIPTION_REQUIRED } from '../../src/shared/api.js';
 import type { Pilot } from '../../src/shared/types.js';
 import { appleKeys, googleKeys, isAdmin, localPilotRow, SESSION_MS, sessionCookie, sessionPilotRow } from './auth.js';
 import { AutorouterClient, autorouterFromEnv, type TokenStore } from './autorouter.js';
 import { autorouterOAuthFromEnv, linkedClient, readLink } from './autorouterLinks.js';
+import { entitlementOf } from './billing/entitlement.js';
+import { paddleFromEnv } from './billing/paddle.js';
 import type { Db } from './db.js';
 import { autorouterFiler } from './filers/autorouter.js';
 import { faxFiler } from './filers/fax.js';
@@ -79,6 +82,8 @@ export function configFromEnv(
     notamify: notamifyFromEnv(env),
     notamSources: sourceOrderFromEnv(env.NOTAM_SOURCES),
     adminEmails: emailList(env.ADMIN_EMAILS),
+    billingEnforce: env.BILLING_ENFORCE === '1',
+    paddle: paddleFromEnv(env),
     ...(env.OPEN_METEO_DAILY_BUDGET
       ? { openMeteo: { dailyBudget: Math.max(0, Number(env.OPEN_METEO_DAILY_BUDGET) || 0) } }
       : {}),
@@ -171,6 +176,9 @@ export function createApi(
     faxPilots: (opts.faxPilots ?? allowedEmails).map((e) => e.trim().toLowerCase()).filter(Boolean),
     faxPdf: opts.faxPdf ?? null,
     faxWebhookBase: opts.faxWebhookBase,
+    billingEnforce: !!opts.billingEnforce,
+    paddle: opts.paddle ?? null,
+    appleTrust: opts.appleTrust,
   };
   const fax = config.fax ? faxProvider(config.fax) : null;
   const autorouter = config.autorouter ? new AutorouterClient(config.autorouter, tokenStore(opts.db)) : null;
@@ -264,6 +272,7 @@ export function createApi(
         if (r.method !== req.method) continue;
         route = '/api' + r.path;
         let renewed: string | null = null;
+        let entitlement: Entitlement | null = null;
         if (r.auth !== false) {
           const row = config.googleClientId
             ? await sessionPilotRow(db, req, config.allowedEmails, (tok) => {
@@ -272,6 +281,10 @@ export function createApi(
             : await localPilotRow(db);
           if (!row) return send(res, 401, { error: 'sign in' });
           pilot = toPilot(row);
+          entitlement = entitlementOf(row);
+          const paid = r.paid ?? (r.method === 'POST' || r.method === 'PUT' || r.method === 'PATCH');
+          if (paid && config.billingEnforce && !entitlement.active)
+            return send(res, 402, { error: SUBSCRIPTION_REQUIRED, entitlement });
         }
         let bodyP: Promise<JsonBody> | null = null;
         const ar = await autorouterFor(pilot, !!r.autorouter);
@@ -291,6 +304,7 @@ export function createApi(
           rawBody: () => readRaw(req),
           formsMailDenied: !formsMailFor(pilot),
           isAdmin: isAdmin(config, pilot),
+          entitlement,
           body: () => (bodyP ||= readJsonObject(req)),
         };
         const out = await r.handler(ctx);

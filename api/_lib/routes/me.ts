@@ -50,6 +50,7 @@ export const routes: Route[] = [
   {
     method: 'PUT',
     path: '/me',
+    paid: false,
     async handler({ db, pilot, body }) {
       const input = (await body()) as PilotUpdate;
       const p = personColumns(input, pilot);

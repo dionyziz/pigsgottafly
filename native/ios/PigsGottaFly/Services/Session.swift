@@ -18,6 +18,10 @@ final class Session: NSObject, ObservableObject {
     @Published private(set) var pilot: SessionResponse.PilotInfo?
     /// ADMIN_EMAILS: Me links to the website's admin pages.
     @Published private(set) var admin = false
+    /// The subscription (nil until the server says); Subscriptions updates it after a purchase.
+    @Published var entitlement: Entitlement?
+    /// BILLING_ENFORCE: without it the subscription is never asked for.
+    @Published private(set) var billingEnforced = false
     @Published var error: String?
     @Published private(set) var busy = false
 
@@ -39,6 +43,8 @@ final class Session: NSObject, ObservableObject {
             let s = try await api.session()
             pilot = s.pilot
             admin = s.admin ?? false
+            entitlement = s.entitlement
+            billingEnforced = s.billingEnforced ?? false
             set(signedIn: s.authed)
         } catch APIError.unauthorized {
             set(signedIn: false)

@@ -49,6 +49,11 @@ export function AccountMenu() {
           <Link to="/profile" role="menuitem">
             Profile
           </Link>
+          {(session.billingEnforced || session.admin) && (
+            <Link to="/subscription" role="menuitem" data-testid="menu-subscription">
+              Subscription
+            </Link>
+          )}
           <Link to="/hangar" role="menuitem">
             Hangar
           </Link>

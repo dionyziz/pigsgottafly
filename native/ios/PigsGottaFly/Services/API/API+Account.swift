@@ -7,6 +7,15 @@ extension API {
         try decode(SessionResponse.self, try await get("session"))
     }
 
+    func billing() async throws -> BillingInfo {
+        try decode(BillingInfo.self, try await get("billing"))
+    }
+
+    /// A StoreKit transaction (its JWS) the app just saw: the server checks Apple's signature and records it.
+    func postAppleTransaction(_ jws: String) async throws -> Entitlement {
+        try await call("POST", "billing/apple/transaction", body: ["jws": jws], as: Entitlement.self)
+    }
+
     func logout() async throws {
         _ = try await request("POST", "logout", body: Data("{}".utf8))
     }

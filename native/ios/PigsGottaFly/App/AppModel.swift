@@ -11,6 +11,7 @@ final class AppModel: ObservableObject {
     let core: Core?
     let coreError: String?
     let session: Session
+    let subscriptions: Subscriptions
     let fixtures: Bool
     let simulatedPosition: Position?
     /// `-noNetwork` (tests): not even the base map's style is fetched.
@@ -95,6 +96,7 @@ final class AppModel: ObservableObject {
             coreError = error.localizedDescription
         }
         session = Session(api: api, store: store, fixtures: fixtures)
+        subscriptions = Subscriptions(api: api, session: session, listen: !fixtures && testAPI == nil)
         flights = Self.sorted(store.decode([FlightListItem].self, .flights) ?? [])
     }
 

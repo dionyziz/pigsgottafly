@@ -18,6 +18,7 @@ import {
   verifyGoogleToken,
 } from '../auth.js';
 import { isAdmin } from '../auth.js';
+import { entitlementOf } from '../billing/entitlement.js';
 import type { Queryable, Row } from '../db.js';
 import type { ApiConfig, Route } from '../http.js';
 import { HttpError, newId, reply } from '../http.js';
@@ -164,6 +165,8 @@ export const routes: Route[] = [
         appleClientId: (google && config.appleClientId) || null,
         pilot: row ? toPilot(row) : null,
         admin: isAdmin(config, row),
+        entitlement: row ? entitlementOf(row) : null,
+        billingEnforced: !!config.billingEnforce,
       };
     },
   },
@@ -266,6 +269,7 @@ export const routes: Route[] = [
     // "Sign out everywhere": every session of the pilot ends, this one included
     method: 'POST',
     path: '/session/revoke-all',
+    paid: false,
     async handler({ db, pilot, config }) {
       await db.query('DELETE FROM sessions WHERE pilot_id = $1', [pilot.id]);
       return reply(200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0, config.secureCookie) });

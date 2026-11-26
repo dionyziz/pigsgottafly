@@ -8,7 +8,8 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { api, ApiRequestError, clearGetCache } from '../data/api';
 import { clearEntities, getEntity, putEntity, subscribeEntity } from '../data/entities';
 import { clearAsyncCache } from '../data/useAsync';
-import type { Pilot, SessionResponse } from '../shared';
+import { Paywall } from '../features/billing/Paywall';
+import type { Entitlement, Pilot, SessionResponse } from '../shared';
 import { Loading } from '../ui';
 import { APP_LOGIN_PATH, handBackToApp } from './appLogin';
 import { SessionContext, type SessionValue } from './session';
@@ -46,6 +47,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
     window.addEventListener('pgf:unauthorized', onUnauthorized);
     return () => window.removeEventListener('pgf:unauthorized', onUnauthorized);
   }, []);
+  useEffect(() => {
+    const onPaywall = (e: Event) => {
+      const ent = (e as CustomEvent<Entitlement | null>).detail;
+      if (ent) setSession((s) => (s ? { ...s, entitlement: ent } : s));
+    };
+    window.addEventListener('pgf:subscription-required', onPaywall);
+    return () => window.removeEventListener('pgf:subscription-required', onPaywall);
+  }, []);
 
   useEffect(
     () =>
@@ -78,6 +87,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               forgetAll();
               await load();
             },
+            setEntitlement: (entitlement: Entitlement) => setSession((s) => (s ? { ...s, entitlement } : s)),
             signOutEverywhere: async () => {
               await api.revokeAllSessions().catch(() => {});
               try {
@@ -107,7 +117,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <SignIn clientId={session.googleClientId} appleClientId={session.appleClientId ?? null} onSignedIn={load} />;
   // the iOS app's sign-in sheet, signed in: hand the sign-in back to the app
   if (location.pathname === APP_LOGIN_PATH) return <AppHandoff />;
-  return <SessionContext value={value}>{children}</SessionContext>;
+  return (
+    <SessionContext value={value}>
+      {children}
+      <Paywall />
+    </SessionContext>
+  );
 }
 
 /** /app-login once signed in: a one-time code for the app, which closes this sheet. */

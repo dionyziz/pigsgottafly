@@ -49,6 +49,39 @@ export interface SessionResponse {
   pilot: Pilot | null;
   /** The pilot is an admin (ADMIN_EMAILS): the admin page is theirs. */
   admin?: boolean;
+  /** Whether the pilot may plan, brief and file (null when signed out). */
+  entitlement?: Entitlement | null;
+  /** The subscription is enforced (BILLING_ENFORCE): without it the paywall is never shown. */
+  billingEnforced?: boolean;
+}
+
+/**
+ * founder: signed up before the subscription started (free for life); paid: a subscription (website or
+ * App Store); granted: free time from an admin; trial: the first 30 days; expired: read-only.
+ */
+export type EntitlementReason = 'founder' | 'paid' | 'granted' | 'trial' | 'expired';
+export interface Entitlement {
+  active: boolean;
+  reason: EntitlementReason;
+  /** Epoch ms the reason ends (null for founders); for 'expired', when access ended. */
+  until: number | null;
+  /** paid: the subscription renews by itself at `until`. */
+  renews?: boolean;
+}
+/** The body of a 402: the action needs a subscription. */
+export const SUBSCRIPTION_REQUIRED = 'subscription_required';
+
+/** GET /api/billing: the pilot's subscription and how to buy or manage it. */
+export interface BillingResponse {
+  entitlement: Entitlement;
+  /** Where the paid subscription was bought (null: none); 'apple' is managed in the App Store. */
+  store: 'paddle' | 'apple' | null;
+  /** Paddle.js checkout on the website; null when the website does not sell (not configured). */
+  paddle: { clientToken: string; priceId: string; environment: 'sandbox' | 'production' } | null;
+  /** The UUID the iOS app sets as appAccountToken on purchases, tying them to this account. */
+  appleAccountToken: string;
+  /** The price as shown, e.g. '€50 / year'. */
+  price: string;
 }
 /** POST /api/login (Google ID token from GIS). 401 bad token, 403 email not allowed. */
 export interface LoginRequest {

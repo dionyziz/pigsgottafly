@@ -24,6 +24,8 @@ enum APIError: Error, Equatable, LocalizedError {
     case http(Int, String)
     /// No connection (or the server could not be reached).
     case offline
+    /// 402: planning, briefing and filing need the subscription (the trial or subscription ended).
+    case subscriptionRequired
 
     var errorDescription: String? {
         switch self {
@@ -32,8 +34,14 @@ enum APIError: Error, Equatable, LocalizedError {
         case .conflict: "The flight was changed on another device."
         case .http(let code, let message): message.isEmpty ? "The server answered \(code)." : message
         case .offline: "No connection."
+        case .subscriptionRequired: "Your free trial or subscription has ended. Subscribe in Me → Subscription."
         }
     }
+}
+
+extension Notification.Name {
+    /// The API answered 402: the root view offers the subscription.
+    static let subscriptionRequired = Notification.Name("pgf.subscriptionRequired")
 }
 
 /// A cancelled task or request (a view went away, a newer load replaced it): not something to show the pilot.
@@ -105,6 +113,9 @@ final class API: Sendable {
         switch response.statusCode {
         case 200..<300: return data
         case 401: throw APIError.unauthorized
+        case 402:
+            await MainActor.run { NotificationCenter.default.post(name: .subscriptionRequired, object: nil) }
+            throw APIError.subscriptionRequired
         // a POST's 404 can name what is missing ("No Pig’s Gotta Fly account uses …" when sharing an
         // operator): the pilot reads the server's words
         case 404 where method == "POST":

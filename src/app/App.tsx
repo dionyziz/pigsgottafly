@@ -2,6 +2,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router';
 
+import { SubscriptionPage } from '../features/billing/SubscriptionPage';
 import { AircraftPage, HangarPage } from '../features/hangar';
 import { LobbyPage } from '../features/lobby';
 import { NewFlightPage } from '../features/lobby/NewFlightPage';
@@ -102,6 +103,7 @@ export function App() {
                       <Route path="/flights/:id" element={<EditorPage />} />
                       <Route path="/flights/:id/export/:kind" element={<ExportPage />} />
                       <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/subscription" element={<SubscriptionPage />} />
                       <Route path="/hangar" element={<HangarPage />} />
                       <Route path="/hangar/:id" element={<AircraftPage />} />
                       <Route path="/operators" element={<OperatorsPage />} />
