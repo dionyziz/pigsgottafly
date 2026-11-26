@@ -1,7 +1,6 @@
 // NOTAMs in the editor (a fake autorouter answers the server): hovering one in the panel outlines
 // its area on the map with marching dashes; leaving it clears the outline.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test, { after, before } from 'node:test';
 
 import { fleetSeed } from '../../tools/build_seed.ts';

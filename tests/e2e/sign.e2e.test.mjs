@@ -2,12 +2,10 @@
 // own details, signs, and the page shows the corrected row; the pilot's "signed" e-mail (mail transport
 // MOCKED) lists what changed.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import test, { after, before } from 'node:test';
 
 import { setMailTransport } from '../../api/_lib/mail.ts';
-import { launch, ROOT, startServer } from './harness.mjs';
+import { launch, startServer } from './harness.mjs';
 import { refJson } from './refInEffect.mjs';
 
 let server, browser, page;

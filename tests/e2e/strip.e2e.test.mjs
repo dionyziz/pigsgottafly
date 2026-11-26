@@ -3,7 +3,6 @@
 // flight's start-up/taxi fuel edited in the Fuel section (required fuel follows; saved), and a leg
 // too close to the ground flagged under its row.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test, { after, before } from 'node:test';
 
 import { fleetSeed } from '../../tools/build_seed.ts';

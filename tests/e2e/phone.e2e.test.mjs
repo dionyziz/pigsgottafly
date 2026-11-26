@@ -2,7 +2,6 @@
 // page (the editor then scrolls sideways), so every element must fit the screen or sit inside
 // something that scrolls or clips it (the navlog table scrolls on its own).
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test, { after, before } from 'node:test';
 
 import { fleetSeed } from '../../tools/build_seed.ts';

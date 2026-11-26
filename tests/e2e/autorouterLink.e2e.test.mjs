@@ -3,13 +3,11 @@
 // file", both through /api/autorouter/connect and back to the same page. autorouter itself is never
 // reached (nothing here follows the link); a link stored directly shows as connected and disconnects.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import test, { after, before } from 'node:test';
 
 import { linkStatus, seal } from '../../api/_lib/autorouterLinks.ts';
 import { fleetSeed } from '../../tools/build_seed.ts';
-import { launch, ROOT, startServer } from './harness.mjs';
+import { launch, startServer } from './harness.mjs';
 import { refJson } from './refInEffect.mjs';
 
 const OAUTH = {
