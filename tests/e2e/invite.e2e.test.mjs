@@ -145,6 +145,8 @@ test(
     await shot(alice, 'invite-share-dialog');
     await alice.click('[data-testid=share-people] li[data-pilot-id="bob@example.com"] button');
     await alice.waitFor(() => document.querySelectorAll('[data-testid=share-people] li').length === 1);
+    // Escape does nothing while the dialog is busy (its buttons disabled until the request settles)
+    await alice.waitFor(() => !document.querySelector('[data-testid=share-dialog] button:disabled'));
     await alice.key('Escape');
     await alice.waitFor(() => !document.querySelector('[data-testid=share-dialog]'));
 
